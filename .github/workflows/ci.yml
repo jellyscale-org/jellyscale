@@ -60,6 +60,8 @@ jobs:
           mkdir -p /tmp/pw && cd /tmp/pw
           npm init -y >/dev/null
           npm install playwright-core
-          npx playwright-core install --with-deps chromium
+      # Chrome, because fixtures are H.264 and AAC, which Chromium builds can omit.
       - run: bash test/e2e/run.sh /tmp/e2e /tmp/pw
+        env:
+          CHROMIUM_PATH: /usr/bin/google-chrome
       - run: bash test/roles.sh /tmp/e2e

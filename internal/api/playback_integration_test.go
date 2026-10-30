@@ -26,6 +26,7 @@ import (
 
 	"jellyscale/internal/db"
 	"jellyscale/internal/items"
+	"jellyscale/internal/playstate"
 	"jellyscale/internal/store"
 )
 
@@ -760,6 +761,18 @@ func (e *env) dialSocket(t *testing.T, replica int) *websocket.Conn {
 	return conn
 }
 
+func TestCrashedReplicaCannotBecomeTheClaim(t *testing.T) {
+	e := newEnv(t)
+	e.apis[0].SocketIdle = time.Minute
+	socket := e.dialSocket(t, 0)
+	e.waitClaim(t, 1, e.apis[0].replica())
+	// A row a replica left behind when it crashed.
+	mustExec(t, e.pool, `INSERT INTO session_sockets (connection_id, token, replica, connected_at, last_seen_at)
+		VALUES ('crashed', $1, 'dead', now() + interval '1 hour', now() - interval '1 hour')`, e.token)
+	socket.Close(websocket.StatusNormalClosure, "")
+	e.waitClaim(t, 0, "")
+}
+
 func TestTwoSocketsOnDifferentReplicas(t *testing.T) {
 	for _, order := range []string{"older first", "newer first"} {
 		t.Run(order, func(t *testing.T) {
@@ -894,10 +907,14 @@ func TestExtremeNumbersNeverFail(t *testing.T) {
 			t.Errorf("ActiveWithinSeconds=%s: %d %s", within, response.StatusCode, body)
 		}
 	}
-	var position int64
-	e.pool.QueryRow(context.Background(), "SELECT position_ticks FROM sessions WHERE token = $1", e.token).Scan(&position) //nolint:errcheck
-	if position < 0 || position > 1<<50 {
-		t.Errorf("session position %d", position)
+	e.report(t, 0, "", e.item, 1)
+	mustExec(t, e.pool, "UPDATE user_item_data SET progress_at = NULL WHERE item_id = $1", e.item)
+	e.report(t, 0, "/Progress", e.item, math.MaxInt64)
+	var session, stored int64
+	e.pool.QueryRow(context.Background(), "SELECT position_ticks FROM sessions WHERE token = $1", e.token).Scan(&session)       //nolint:errcheck
+	e.pool.QueryRow(context.Background(), "SELECT position_ticks FROM user_item_data WHERE item_id = $1", e.item).Scan(&stored) //nolint:errcheck
+	if session != playstate.MaxTicks || stored != playstate.MaxTicks {
+		t.Errorf("session %d, stored %d, want %d", session, stored, playstate.MaxTicks)
 	}
 	// A far-out window still finds the recently active device.
 	_, body := e.do(t, 0, "GET", "/Sessions?ActiveWithinSeconds=9223372036854775807", e.token, nil)
@@ -923,9 +940,21 @@ func TestLateStoppedLeavesTheCurrentItem(t *testing.T) {
 	if item, ticks := current(); item == nil || *item != other || ticks != 77 {
 		t.Fatalf("a late Stopped for A cleared B: %v %d", item, ticks)
 	}
+	e.report(t, 0, "/Progress", e.item, 9) // A, late, while B plays.
+	if item, ticks := current(); item == nil || *item != other || ticks != 77 {
+		t.Fatalf("a late Progress for A moved the session: %v %d", item, ticks)
+	}
+	e.report(t, 1, "/Progress", other, 88)
+	if _, ticks := current(); ticks != 88 {
+		t.Fatalf("Progress for the current item wasn't recorded: %d", ticks)
+	}
 	e.report(t, 1, "/Stopped", other, 5)
 	if item, _ := current(); item != nil {
 		t.Fatalf("Stopped for the current item left it: %v", *item)
+	}
+	e.report(t, 0, "/Progress", other, 9) // Late, after the stop.
+	if item, _ := current(); item != nil {
+		t.Fatalf("a late Progress revived a stopped session: %v", *item)
 	}
 }
 

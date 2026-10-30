@@ -59,7 +59,17 @@ func (s *Server) playbackProgress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, err := playstate.Progress(r.Context(), s.Pool, sessionOf(r).User.ID, report.ItemID, report.PositionTicks)
-	s.finishReport(w, r, err, func() error { return s.saveSession(r, report) })
+	s.finishReport(w, r, err, func() error { return s.updateSessionPosition(r, report) })
+}
+
+// updateSessionPosition only moves the item the session is already on. Only
+// Playing changes the item, so a late Progress can't revive a stopped session
+// or pull the device back from what it plays now.
+func (s *Server) updateSessionPosition(r *http.Request, report playbackReport) error {
+	_, err := s.Pool.Exec(r.Context(), `UPDATE sessions SET position_ticks = $3, is_paused = $4, last_seen_at = now()
+		WHERE token = $1 AND item_id = $2::uuid`,
+		sessionOf(r).Token, report.ItemID, min(max(report.PositionTicks, 0), playstate.MaxTicks), report.IsPaused)
+	return err
 }
 
 func (s *Server) playbackStopped(w http.ResponseWriter, r *http.Request) {

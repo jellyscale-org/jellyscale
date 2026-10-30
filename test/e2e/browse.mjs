@@ -8,7 +8,7 @@ const require = createRequire(`${process.cwd()}/`);
 const { chromium } = require("playwright-core");
 
 const [base, user, password] = process.argv.slice(2);
-const browser = await chromium.launch({ executablePath: "/usr/bin/chromium", args: ["--disable-gpu"] });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? "/usr/bin/chromium", args: ["--disable-gpu"] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 
 const failures = [];

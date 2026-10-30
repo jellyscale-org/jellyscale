@@ -68,6 +68,9 @@ func (s *Server) socket(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if message.MessageType == "KeepAlive" {
+			if _, err := s.Pool.Exec(ctx, "UPDATE session_sockets SET last_seen_at = now() WHERE connection_id = $1", connectionID); err != nil {
+				s.Log.Error("record socket keepalive", "error", err)
+			}
 			if err := writeMessage(ctx, conn, map[string]any{"MessageType": "KeepAlive"}); err != nil {
 				return
 			}
@@ -97,6 +100,9 @@ func (s *Server) attachSocket(ctx context.Context, token, connectionID, replica 
 			ON CONFLICT (token) DO UPDATE SET last_seen_at = now()`, token); err != nil {
 			return err
 		}
+		if _, err := tx.Exec(ctx, deleteQuietSockets, token); err != nil {
+			return err
+		}
 		if _, err := tx.Exec(ctx, `INSERT INTO session_sockets (connection_id, token, replica) VALUES ($1, $2, $3)`,
 			connectionID, token, replica); err != nil {
 			return err
@@ -116,10 +122,18 @@ func (s *Server) detachSocket(ctx context.Context, token, connectionID string) e
 		if _, err := tx.Exec(ctx, "DELETE FROM session_sockets WHERE connection_id = $1", connectionID); err != nil {
 			return err
 		}
+		if _, err := tx.Exec(ctx, deleteQuietSockets, token); err != nil {
+			return err
+		}
 		_, err := tx.Exec(ctx, syncWSReplica, token)
 		return err
 	})
 }
+
+// deleteQuietSockets drops rows left by a crashed replica, so one can't become
+// the fallback claim. Live sockets refresh last_seen_at on every KeepAlive,
+// which clients send well inside this window.
+const deleteQuietSockets = `DELETE FROM session_sockets WHERE token = $1 AND last_seen_at < now() - interval '2 minutes'`
 
 func writeMessage(ctx context.Context, conn *websocket.Conn, message map[string]any) error {
 	id := make([]byte, 16)
