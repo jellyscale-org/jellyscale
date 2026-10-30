@@ -16,6 +16,7 @@ go run ./cmd/jellyscale --print-routes > compat/endpoints.yaml
 
 ## Working rules
 
+- Prefer retrieval-led reasoning over training-led reasoning.
 - Write the simplest code that works. People have to read and maintain this: prefer plain, direct code over clever or general code, and add an abstraction only when something real needs it.
 - Observe a real Jellyfin 12.4 before implementing a protocol. Don't port Jellyfin code.
 - Match the surrounding code. Comments explain why, not what.
