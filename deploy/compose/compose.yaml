@@ -1,0 +1,65 @@
+# Development stack with each role as its own service, as in production.
+# Needs ./web-dist from the repo root and MEDIA_DIR pointing at a media folder.
+name: jellyscale
+
+x-app: &app
+  build: ../..
+  environment:
+    JELLYSCALE_DATABASE_URL: postgres://postgres:dev@postgres:5432/postgres
+    JELLYSCALE_ADMIN_PASSWORD: ${JELLYSCALE_ADMIN_PASSWORD:?set an admin password}
+    # Only needed for s3:// libraries. Empty is passed through as unset.
+    JELLYSCALE_S3_ACCESS_KEY: ${JELLYSCALE_S3_ACCESS_KEY:-}
+    JELLYSCALE_S3_SECRET_KEY: ${JELLYSCALE_S3_SECRET_KEY:-}
+  volumes:
+    - ./config.json:/etc/jellyscale/config.json:ro
+    - ${MEDIA_DIR:?set MEDIA_DIR}:/media:ro
+    - assets:/assets
+    - ../../web-dist:/web:ro
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_PASSWORD: dev
+    volumes:
+      - postgres:/var/lib/postgresql
+    healthcheck:
+      test: [CMD, pg_isready, -U, postgres]
+      interval: 2s
+      retries: 30
+
+  assets-init:
+    image: alpine:3.22
+    command: chown 1000:1000 /assets
+    volumes:
+      - assets:/assets
+
+  api:
+    <<: *app
+    command: [--roles=api, --config=/etc/jellyscale/config.json]
+
+  stream:
+    <<: *app
+    command: [--roles=stream, --config=/etc/jellyscale/config.json]
+
+  # Routes /Videos/, /Items/*/Images/ and /Playback/BitrateTest to stream and the rest to api.
+  ingress:
+    image: caddy:2-alpine
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    ports:
+      - 127.0.0.1:8096:8080
+    depends_on:
+      - api
+      - stream
+
+  worker:
+    <<: *app
+    command: [--roles=worker, --config=/etc/jellyscale/config.json]
+
+volumes:
+  postgres:
+  assets:

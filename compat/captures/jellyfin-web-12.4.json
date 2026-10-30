@@ -1,0 +1,172 @@
+[
+ {
+  "method": "GET",
+  "path": "/Branding/Configuration",
+  "count": 4
+ },
+ {
+  "method": "GET",
+  "path": "/DisplayPreferences/usersettings",
+  "count": 2
+ },
+ {
+  "method": "GET",
+  "path": "/Items/Latest",
+  "count": 2
+ },
+ {
+  "method": "GET",
+  "path": "/Items/{id}",
+  "count": 4
+ },
+ {
+  "method": "GET",
+  "path": "/Items/{id}/Ancestors",
+  "count": 2
+ },
+ {
+  "method": "GET",
+  "path": "/Items/{id}/Collections",
+  "count": 2
+ },
+ {
+  "method": "GET",
+  "path": "/Items/{id}/Images/Primary",
+  "count": 10
+ },
+ {
+  "method": "POST",
+  "path": "/Items/{id}/PlaybackInfo",
+  "count": 2
+ },
+ {
+  "method": "GET",
+  "path": "/Items/{id}/Similar",
+  "count": 2
+ },
+ {
+  "method": "GET",
+  "path": "/Items/{id}/ThemeMedia",
+  "count": 4
+ },
+ {
+  "method": "GET",
+  "path": "/LiveTv/Programs/Recommended",
+  "count": 2
+ },
+ {
+  "method": "GET",
+  "path": "/Playback/BitrateTest",
+  "count": 12
+ },
+ {
+  "method": "GET",
+  "path": "/QuickConnect/Enabled",
+  "count": 4
+ },
+ {
+  "method": "POST",
+  "path": "/Sessions/Capabilities/Full",
+  "count": 2
+ },
+ {
+  "method": "POST",
+  "path": "/Sessions/Playing",
+  "count": 2
+ },
+ {
+  "method": "POST",
+  "path": "/Sessions/Playing/Progress",
+  "count": 4
+ },
+ {
+  "method": "POST",
+  "path": "/Sessions/Playing/Stopped",
+  "count": 2
+ },
+ {
+  "method": "GET",
+  "path": "/Shows/NextUp",
+  "count": 2
+ },
+ {
+  "method": "WS",
+  "path": "/socket",
+  "count": 2
+ },
+ {
+  "method": "GET",
+  "path": "/SyncPlay/List",
+  "count": 2
+ },
+ {
+  "method": "GET",
+  "path": "/System/Endpoint",
+  "count": 6
+ },
+ {
+  "method": "GET",
+  "path": "/System/Info",
+  "count": 2
+ },
+ {
+  "method": "GET",
+  "path": "/System/Info/Public",
+  "count": 8
+ },
+ {
+  "method": "GET",
+  "path": "/UserItems/Resume",
+  "count": 6
+ },
+ {
+  "method": "POST",
+  "path": "/Users/authenticatebyname",
+  "count": 2
+ },
+ {
+  "method": "GET",
+  "path": "/users/public",
+  "count": 2
+ },
+ {
+  "method": "GET",
+  "path": "/Users/{id}",
+  "count": 8
+ },
+ {
+  "method": "GET",
+  "path": "/Users/{id}/Items/{id}",
+  "count": 4
+ },
+ {
+  "method": "GET",
+  "path": "/Users/{id}/Items/{id}/Intros",
+  "count": 2
+ },
+ {
+  "method": "GET",
+  "path": "/UserViews",
+  "count": 2
+ },
+ {
+  "method": "GET",
+  "path": "/videos/{id}/hls1/main/{n}.mp4",
+  "count": 11
+ },
+ {
+  "method": "GET",
+  "path": "/videos/{id}/main.m3u8",
+  "count": 1
+ },
+ {
+  "method": "GET",
+  "path": "/videos/{id}/master.m3u8",
+  "count": 1
+ },
+ {
+  "method": "GET",
+  "path": "/Videos/{id}/stream.mkv",
+  "count": 3
+ }
+]

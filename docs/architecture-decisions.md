@@ -1,3 +1,5 @@
+> **Superseded.** This June 2026 document is kept for history. The project now targets Jellyfin client compatibility, with unmodified jellyfin-web as the reference client, and ships as one binary with scalable roles. See [PRODUCT.md](../PRODUCT.md) and [DOMAINS.md](../DOMAINS.md).
+
 # Jellyscale Architecture Decisions
 
 This document captures the initial product and architecture decisions for Jellyscale: a brand-new, distributed media server intended as a full media platform replacement rather than a Jellyfin add-on.

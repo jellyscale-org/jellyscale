@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: test -z "$(gofmt -l cmd internal test)"
+      - run: go vet ./...
+      - run: go test ./...
+      - name: Route manifest is current
+        run: |
+          go run ./cmd/jellyscale --print-routes > /tmp/endpoints.yaml
+          diff compat/endpoints.yaml /tmp/endpoints.yaml
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: bash test/integration.sh
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Fetch jellyfin-web from the baseline image
+        run: |
+          docker create --name jf jellyfin/jellyfin:12.4
+          docker cp jf:/jellyfin/jellyfin-web web-dist
+          docker rm jf
+      - name: Install browser driver
+        run: |
+          mkdir -p /tmp/pw && cd /tmp/pw
+          npm init -y >/dev/null
+          npm install playwright-core
+      # Chrome, because fixtures are H.264 and AAC, which Chromium builds can omit.
+      - run: bash test/e2e/run.sh /tmp/e2e /tmp/pw
+        env:
+          CHROMIUM_PATH: /usr/bin/google-chrome
+      - run: bash test/roles.sh /tmp/e2e
