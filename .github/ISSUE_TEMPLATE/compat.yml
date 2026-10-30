@@ -1,0 +1,22 @@
+name: Client compatibility
+description: A current Jellyfin client doesn't work
+labels: [compatibility]
+body:
+  - type: input
+    id: client
+    attributes:
+      label: Client and version
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What fails?
+    validations:
+      required: true
+  - type: textarea
+    id: routes
+    attributes:
+      label: Unknown routes
+      description: Lines from the server log containing "unknown route".
+      render: text
