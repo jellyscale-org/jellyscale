@@ -3,7 +3,7 @@
 # role as its own process behind a router, as in production: Postgres, S3
 # (SeaweedFS), two api replicas, a stream replica and a worker.
 # Usage: run.sh <workdir> <dir_with_playwright>
-# E2E_GATES picks which gates run, default "browse play transcode".
+# E2E_GATES picks which gates run, default "browse play subtitles transcode".
 # Expects jellyfin-web in ./web-dist: docker cp <jellyfin>:/jellyfin/jellyfin-web web-dist
 # Writes <workdir>/config.json (POSIX libraries only, for test/roles.sh) and
 # <workdir>/config-s3.json (adds a library on S3 for media and assets).
@@ -96,6 +96,12 @@ export JELLYSCALE_S3_ACCESS_KEY=$seaweed_key JELLYSCALE_S3_SECRET_KEY=$seaweed_s
 (cd "$repo" && go build -o "$work/jellyscale" ./cmd/jellyscale && go build -o "$work/putfile" ./test/e2e/putfile) || exit 1
 "$work/putfile" "s3://e2e/media?$s3" "Epsilon Film (2022)/Epsilon Film (2022).mkv" "$epsilon" || exit 1
 "$work/putfile" "s3://e2e/media?$s3" "Eta Film (2024)/Eta Film (2024).mkv" "$zeta" || exit 1
+# The subtitle films again, on S3: one that direct plays, one that transcodes,
+# and the black one that burn-in shows against.
+sub="$work/media/transcode"
+"$work/putfile" "s3://e2e/media?$s3" "Chi Film (2038)/Chi Film (2038).mkv" "$sub/Sigma Film (2034)/Sigma Film (2034).mkv" || exit 1
+"$work/putfile" "s3://e2e/media?$s3" "Psi Film (2039)/Psi Film (2039).mkv" "$sub/Tau Film (2035)/Tau Film (2035).mkv" || exit 1
+"$work/putfile" "s3://e2e/media?$s3" "Omega Film (2040)/Omega Film (2040).mkv" "$sub/Phi Film (2037)/Phi Film (2037).mkv" || exit 1
 
 free() { python3 -I -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])'; }
 export JELLYSCALE_DATABASE_URL="postgres://postgres:e2e@127.0.0.1:$port/postgres" JELLYSCALE_ADMIN_PASSWORD=e2e-pass
@@ -108,7 +114,9 @@ start() { "$work/jellyscale" "$@" --config "$work/config-s3.json" >>"$work/serve
 mkdir -p "$work/bin"
 speed="-readrate 2"
 [[ -n ${E2E_NO_SHIM:-} ]] && speed="-hide_banner"
-printf '#!/bin/sh\nexec %s %s "$@"\n' "$(command -v ffmpeg)" "$speed" >"$work/bin/ffmpeg"
+# Only the transcode (the one that writes HLS) is slowed; extracting a subtitle
+# track reads the whole file and would take as long as the film.
+printf '#!/bin/sh\ncase "$*" in *"-f hls"*) exec %s %s "$@";; esac\nexec %s "$@"\n' "$(command -v ffmpeg)" "$speed" "$(command -v ffmpeg)" >"$work/bin/ffmpeg"
 chmod +x "$work/bin/ffmpeg"
 PATH="$work/bin:$PATH" "$work/jellyscale" --roles=worker --config "$work/config-s3.json" >>"$work/server.log" 2>&1 &
 pids+=($!)
@@ -136,10 +144,11 @@ done
 for _ in $(seq 1 120); do [[ $(grep -c 'scan finished' "$work/server.log") -ge 4 ]] && break; sleep 0.5; done
 
 base="http://127.0.0.1:$router"
-cp "$repo/test/e2e/browse.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/transcode.mjs" "$playwright/"
+cp "$repo/test/e2e/browse.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/transcode.mjs" "$repo/test/e2e/subtitles.mjs" "$playwright/"
 result=0
 export E2E_SCRATCH="$work/scratch" E2E_MEDIA="$work/media/transcode" E2E_PG="$pg" E2E_LOG="$work/server.log"
-for gate in ${E2E_GATES:-browse play transcode}; do
+# The transcode gate ends by killing the worker, so subtitles run before it.
+for gate in ${E2E_GATES:-browse play subtitles transcode}; do
   echo "=== $gate"
   (cd "$playwright" && timeout 900 node $gate.mjs "$base" admin e2e-pass) || result=1
 done

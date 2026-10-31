@@ -16,6 +16,10 @@ const ticksPerSecond = 10_000_000
 // maxDuration is a century in seconds, 3e16 ticks, far below overflow.
 const maxDuration = 100 * 365 * 86400
 
+// textSubtitleCodecs are the ffprobe names of the subtitle codecs that hold
+// text.
+var textSubtitleCodecs = []string{"subrip", "ass", "ssa", "webvtt", "mov_text"}
+
 // Probe is what a media file says about itself.
 type Probe struct {
 	Container    string
@@ -139,7 +143,11 @@ func ProbeInput(ctx context.Context, input string) (Probe, error) {
 				entry["SampleRate"] = rate
 			}
 		case "Subtitle":
-			entry["DisplayTitle"] = strings.TrimSpace(stream.Tags["language"] + " " + strings.ToUpper(stream.CodecName))
+			entry["DisplayTitle"] = displaySubtitle(stream.Tags["language"], stream.CodecName, stream.Disposition.Default == 1, stream.Disposition.Forced == 1)
+			// Only text tracks can be extracted and delivered; image ones
+			// (PGS, VobSub, DVB) stay in media_sources.streams alone.
+			text := slices.Contains(textSubtitleCodecs, stream.CodecName)
+			entry["IsTextSubtitleStream"], entry["SupportsExternalStream"] = text, text
 		}
 		probe.Streams = append(probe.Streams, entry)
 	}
@@ -222,4 +230,21 @@ func displayAudio(language, codec string, channels int) string {
 		layout = "7.1"
 	}
 	return strings.TrimSpace(fmt.Sprintf("%s %s %s", language, strings.ToUpper(codec), layout))
+}
+
+// displaySubtitle is the menu label, which clients show as it is. Like
+// Jellyfin's ("English - Default - SUBRIP") it says whether the track is the
+// default or forced, so two tracks in one language can be told apart.
+func displaySubtitle(language, codec string, isDefault, isForced bool) string {
+	var parts []string
+	if language != "" {
+		parts = append(parts, language)
+	}
+	if isDefault {
+		parts = append(parts, "Default")
+	}
+	if isForced {
+		parts = append(parts, "Forced")
+	}
+	return strings.Join(append(parts, strings.ToUpper(codec)), " - ")
 }

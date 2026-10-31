@@ -43,6 +43,6 @@ Operators running one library on Kubernetes for a household or community, with t
 
 ## Roadmap
 
-Phases and gates are in the project plan. In short: read-only browse (done), direct play (done), transcode, HA, library and metadata, Kubernetes, SyncPlay.
+Subtitles inside the file are delivered or burnt in (done for text tracks); image tracks, external subtitle files and burn-in of images are not. Phases and gates are in the project plan. In short: read-only browse (done), direct play (done), transcode, HA, library and metadata, Kubernetes, SyncPlay.
 
 Gate for Phase 4 (HA): a worker, and an API replica, killed in the middle of a film recover without losing the viewer's picture or resume position. Until then a worker that dies mid-film freezes jellyfin-web's picture with no dialog, even if a replacement starts at once, because its job holds its lease, which lasts 10 seconds from each renewal (7 to 10 seconds after a kill) (`DOMAINS.md` invariant 37). Only a worker that stops gracefully and is replaced within six seconds goes unnoticed.

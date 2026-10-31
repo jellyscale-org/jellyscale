@@ -370,3 +370,81 @@ func TestMasterURLIsJellyfinShaped(t *testing.T) {
 		t.Error("TranscodingUrl must stay unsigned")
 	}
 }
+
+func withSubtitles(source Source) Source {
+	text, image := stream("Subtitle", "subrip", 10), stream("Subtitle", "hdmv_pgs_subtitle", 11)
+	text.IsTextSubtitleStream = true
+	source.Streams = append(source.Streams, text, image)
+	return source
+}
+
+func TestDecideBurnsInSubtitlesOnlyWhenTheClientCantShowThem(t *testing.T) {
+	source := withSubtitles(film("mkv", "h264", "aac"))
+	none := request(t, `{"SubtitleStreamIndex": 10}`)
+	none.DeviceProfile.SubtitleProfiles = nil // jellyfin-web sends none when the viewer burns all.
+	always := request(t, `{"SubtitleStreamIndex": "10", "AlwaysBurnInSubtitleWhenTranscoding": true}`)
+	capped := request(t, `{"SubtitleStreamIndex": 10, "MaxStreamingBitrate": 1000000, "AlwaysBurnInSubtitleWhenTranscoding": true}`)
+
+	// A client that shows subtitles itself gets the file as it is.
+	if d := Decide(request(t, `{"SubtitleStreamIndex": 10}`), source, true); !d.DirectPlay || d.Subtitle != nil {
+		t.Errorf("client-rendered: %+v", d)
+	}
+	// With none to show, a chosen text track is drawn in, which takes a transcode.
+	d := Decide(none, source, true)
+	if d.DirectPlay || d.Subtitle == nil || *d.Subtitle != 10 || !reflect.DeepEqual(d.Reasons, []string{"SubtitleCodecNotSupported"}) {
+		t.Errorf("no subtitle profile: %+v", d)
+	}
+	// No track chosen, or an image one, or one that doesn't exist: nothing to draw.
+	for _, body := range []string{`{"SubtitleStreamIndex": -1}`, `{"SubtitleStreamIndex": 11}`, `{"SubtitleStreamIndex": 99}`, `{}`} {
+		none := request(t, body)
+		none.DeviceProfile.SubtitleProfiles = nil
+		if d := Decide(none, source, true); !d.DirectPlay || d.Subtitle != nil {
+			t.Errorf("%s: %+v", body, d)
+		}
+	}
+	// The viewer's setting burns in only when the film is transcoded anyway.
+	if d := Decide(always, source, true); !d.DirectPlay || d.Subtitle != nil {
+		t.Errorf("always burn, direct play: %+v", d)
+	}
+	d = Decide(capped, source, true)
+	if d.DirectPlay || d.Subtitle == nil || !reflect.DeepEqual(d.Reasons, []string{"ContainerBitrateExceedsLimit", "SubtitleCodecNotSupported"}) {
+		t.Errorf("always burn, transcode: %+v", d)
+	}
+}
+
+func TestSubtitleIsInTheSpecAndTheURL(t *testing.T) {
+	source := withSubtitles(film("mkv", "h264", "aac"))
+	source.ETag = "e1"
+	spec := func(query string) (Spec, Params, error) {
+		p, err := params(t, "mediasourceid="+sourceID+"&playsessionid=abc&"+query, source)
+		if err != nil {
+			return Spec{}, p, err
+		}
+		s, err := NewSpec("11111111-2222-3333-4444-555555555555", p, source)
+		return s, p, err
+	}
+	plain, _, _ := spec("audiostreamindex=1")
+	burnt, p, err := spec("audiostreamindex=1&subtitlestreamindex=10")
+	if err != nil || burnt.Hash() == plain.Hash() {
+		t.Fatalf("a burnt subtitle must change the hash: %v", err)
+	}
+	if off, _, _ := spec("audiostreamindex=1&subtitlestreamindex=-1"); off.Hash() != plain.Hash() {
+		t.Error("-1 means none, as in the capture")
+	}
+	if other, _, _ := spec("audiostreamindex=1&subtitlestreamindex=10"); other.Hash() != burnt.Hash() {
+		t.Error("the same request must hash the same")
+	}
+	// Without a subtitle the URL and hash are what they were before subtitles.
+	if !strings.Contains(Query(p, "tok", "etag", ""), "AudioStreamIndex=1&SubtitleStreamIndex=10&VideoBitrate=") {
+		t.Errorf("query: %s", Query(p, "tok", "etag", ""))
+	}
+	p.Subtitle = nil
+	if strings.Contains(Query(p, "tok", "etag", ""), "SubtitleStreamIndex") {
+		t.Error("a subtitle in the query that isn't one")
+	}
+	for _, query := range []string{"subtitlestreamindex=11", "subtitlestreamindex=1", "subtitlestreamindex=99", "subtitlestreamindex=x"} {
+		if _, _, err := spec(query); err == nil {
+			t.Errorf("%s accepted: only a text subtitle track can be drawn", query)
+		}
+	}
+}

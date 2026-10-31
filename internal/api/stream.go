@@ -227,8 +227,13 @@ func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, map[string]any{"MediaSources": []any{}, "PlaySessionId": playSession, "ErrorCode": "RateLimitExceeded"})
 			return
 		}
+		burn := request.NoSubtitleProfiles() || (request.AlwaysBurnInSubtitleWhenTranscoding && source["TranscodingUrl"] != nil)
+		deliverSubtitles(source, id, sessionOf(r).Token, burn)
 		if index, ok := defaultAudio(source); ok {
 			source["DefaultAudioStreamIndex"] = index
+		}
+		if index, ok := chosenSubtitle(source, request.SubtitleStreamIndex); ok {
+			source["DefaultSubtitleStreamIndex"] = index
 		}
 		result = append(result, source)
 	}
@@ -261,7 +266,7 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 		return false, err
 	}
 	user := sessionOf(r)
-	params := playback.Params{SourceID: media.ID, AudioIndex: decision.AudioIndex, VideoBitrate: decision.VideoBitrate,
+	params := playback.Params{SourceID: media.ID, AudioIndex: decision.AudioIndex, Subtitle: decision.Subtitle, VideoBitrate: decision.VideoBitrate,
 		AudioBitrate: decision.AudioBitrate, PlaySessionID: playSession, DeviceID: user.DeviceID}
 	if request.StartTimeTicks != nil {
 		params.StartTicks = min(max(int64(*request.StartTimeTicks), 0), playback.MaxStartTicks)
@@ -295,11 +300,13 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 	}
 	if reason != "" {
 		// A viewer whose default track plays as it is keeps it, whichever track
-		// they picked, rather than lose the player. Otherwise there is nothing
-		// to fall back on.
-		request.AudioStreamIndex = nil
+		// they picked, rather than lose the player; a subtitle that was to be
+		// drawn is then missing. Otherwise there is nothing to fall back on.
+		request.AudioStreamIndex, request.SubtitleStreamIndex = nil, nil
 		if playback.Decide(request, media, true).DirectPlay {
-			s.Log.Warn("cannot switch audio tracks, so the default plays on", "item", spec.Item, "reason", reason)
+			s.Log.Warn("cannot switch audio tracks or burn in subtitles, so the default plays on", "item", spec.Item, "reason", reason)
+			// So no subtitle is listed that only a transcode could draw.
+			source["SupportsTranscoding"] = false
 			return false, nil
 		}
 		s.Log.Error("refusing to offer a transcode: "+reason, "item", spec.Item, "spec", spec.Hash())
@@ -346,6 +353,25 @@ func offerTranscoding(source map[string]any, storedStreams []byte) error {
 func number(v any) float64 {
 	n, _ := v.(float64)
 	return n
+}
+
+// chosenSubtitle returns the subtitle track the client asked for, if the source
+// lists it. jellyfin-web reads the reply's DefaultSubtitleStreamIndex as a
+// position in MediaStreams, so it is only given where position and Index agree;
+// otherwise the client would find another stream, or none. The track is still
+// in the menu and can be picked by hand.
+func chosenSubtitle(source map[string]any, wanted *playback.Number) (int, bool) {
+	if wanted == nil {
+		return 0, false
+	}
+	streams, _ := source["MediaStreams"].([]any)
+	if position := int(*wanted); position >= 0 && position < len(streams) {
+		stream, _ := streams[position].(map[string]any)
+		if stream["Type"] == "Subtitle" && int(number(stream["Index"])) == position {
+			return position, true
+		}
+	}
+	return 0, false
 }
 
 // defaultAudio picks the flagged audio stream, else the first.

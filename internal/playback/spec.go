@@ -37,6 +37,7 @@ const (
 type Params struct {
 	SourceID      string // compact hex
 	AudioIndex    int    // -1 for none; set from the source when the URL omits it
+	Subtitle      *int   // The text track drawn into the picture; nil for none
 	VideoBitrate  int64
 	AudioBitrate  int64
 	PlaySessionID string
@@ -58,6 +59,13 @@ func ParseParams(query url.Values, source Source) (Params, error) {
 	p := Params{SourceID: strings.ReplaceAll(strings.ToLower(query.Get("mediasourceid")), "-", ""), AudioIndex: source.DefaultAudio()}
 	if len(p.SourceID) != 32 || !isHex(p.SourceID) {
 		return p, errors.New("invalid MediaSourceId")
+	}
+	if raw := query.Get("subtitlestreamindex"); raw != "" && raw != "-1" {
+		index, err := strconv.Atoi(raw)
+		if err != nil || !source.TextSubtitle(index) {
+			return p, errors.New("SubtitleStreamIndex is not a text subtitle stream")
+		}
+		p.Subtitle = &index
 	}
 	if raw := query.Get("audiostreamindex"); raw != "" {
 		index, err := strconv.Atoi(raw)
@@ -116,13 +124,16 @@ func isHex(s string) bool {
 }
 
 // Spec identifies one transcode output. Two requests with equal specs share
-// segments and jobs. Bitrate and size are the values ffmpeg will use, not the
+// segments and jobs. A burnt-in subtitle changes the picture, so it joins the
+// hash; the field is a pointer so a spec stored before it existed reads as
+// having none. Bitrate and size are the values ffmpeg will use, not the
 // request's, so Auto and a 120 Mbps cap share segments.
 type Spec struct {
 	Item         string
 	Source       string
 	ETag         string
 	AudioIndex   int
+	Subtitle     *int // Drawn into the picture; nil for none
 	VideoBitrate int64
 	AudioBitrate int64
 	Width        int
@@ -138,7 +149,7 @@ func NewSpec(item string, p Params, source Source) (Spec, error) {
 	width, height := outputSize(video, p.VideoBitrate)
 	return Spec{
 		Item: strings.ReplaceAll(strings.ToLower(item), "-", ""), Source: p.SourceID, ETag: source.ETag,
-		AudioIndex: p.AudioIndex, AudioBitrate: p.AudioBitrate, Width: width, Height: height,
+		AudioIndex: p.AudioIndex, Subtitle: p.Subtitle, AudioBitrate: p.AudioBitrate, Width: width, Height: height,
 		// Six bits per pixel per second is about what 8-bit H.264 needs at its
 		// worst, so a larger cap buys nothing.
 		VideoBitrate: min(p.VideoBitrate, int64(width)*int64(height)*6),
@@ -149,6 +160,9 @@ func NewSpec(item string, p Params, source Source) (Spec, error) {
 func (s Spec) Hash() string {
 	text := fmt.Sprintf("v%d|%s|%s|%s|a%d|vb%d|ab%d|%dx%d|seg%d|%s",
 		OutputVersion, s.Item, s.Source, s.ETag, s.AudioIndex, s.VideoBitrate, s.AudioBitrate, s.Width, s.Height, SegmentSeconds, Family)
+	if s.Subtitle != nil {
+		text += fmt.Sprintf("|sub%d", *s.Subtitle)
+	}
 	sum := sha256.Sum256([]byte(text))
 	return fmt.Sprintf("%x", sum[:16])
 }
@@ -223,11 +237,17 @@ func ParseSegment(name string, count int) (int, bool) {
 func Query(p Params, apiKey, tag, extra string) string {
 	pairs := [][2]string{
 		{"DeviceId", p.DeviceID}, {"MediaSourceId", p.SourceID}, {"VideoCodec", "h264"}, {"AudioCodec", "aac"},
-		{"AudioStreamIndex", strconv.Itoa(p.AudioIndex)}, {"VideoBitrate", strconv.FormatInt(p.VideoBitrate, 10)},
+		{"AudioStreamIndex", strconv.Itoa(p.AudioIndex)},
+	}
+	if p.Subtitle != nil {
+		pairs = append(pairs, [2]string{"SubtitleStreamIndex", strconv.Itoa(*p.Subtitle)})
+	}
+	pairs = append(pairs, [][2]string{
+		{"VideoBitrate", strconv.FormatInt(p.VideoBitrate, 10)},
 		{"AudioBitrate", strconv.FormatInt(p.AudioBitrate, 10)}, {"AudioSampleRate", "48000"},
 		{"SegmentContainer", "mp4"}, {"MinSegments", "1"}, {"PlaySessionId", p.PlaySessionID}, {"ApiKey", apiKey},
 		{"TranscodingMaxAudioChannels", "2"}, {"RequireAvc", "false"}, {"EnableAudioVbrEncoding", "true"}, {"Tag", tag},
-	}
+	}...)
 	var out strings.Builder
 	for i, pair := range pairs {
 		if i > 0 {

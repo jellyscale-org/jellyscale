@@ -35,9 +35,17 @@ type Request struct {
 	DeviceProfile       *DeviceProfile `json:"DeviceProfile"`
 	MaxStreamingBitrate *Number
 	AudioStreamIndex    *Number
-	SubtitleStreamIndex *Number // Read but unused until subtitles are built.
+	SubtitleStreamIndex *Number
 	StartTimeTicks      *Number // Where the viewer starts; the TranscodingUrl carries it to the init segment's request.
 	MediaSourceID       string  `json:"MediaSourceId"`
+	// A transcode draws the chosen subtitle into the picture.
+	AlwaysBurnInSubtitleWhenTranscoding bool
+}
+
+// NoSubtitleProfiles is true when the client says it can show no subtitle
+// itself, as jellyfin-web does when the viewer's setting is to burn them all.
+func (r Request) NoSubtitleProfiles() bool {
+	return r.DeviceProfile != nil && len(r.DeviceProfile.SubtitleProfiles) == 0
 }
 
 // DeviceProfile is what a client says it can play.
@@ -46,6 +54,7 @@ type DeviceProfile struct {
 	DirectPlayProfiles  []DirectPlayProfile
 	TranscodingProfiles []TranscodingProfile
 	CodecProfiles       []CodecProfile
+	SubtitleProfiles    []struct{} // Only whether there are any matters.
 }
 
 // DirectPlayProfile lists containers and codecs the client plays as they are.
@@ -111,6 +120,9 @@ type Stream struct {
 	// DurationTicks is how long the video stream runs; 0 if the probe didn't
 	// say.
 	DurationTicks int64
+	// IsTextSubtitleStream is true for a subtitle track that can be extracted
+	// as text.
+	IsTextSubtitleStream bool
 }
 
 // Source is what the decision knows about a file.
@@ -181,6 +193,16 @@ func (s Source) audio(index int) (Stream, bool) {
 	return Stream{}, false
 }
 
+// TextSubtitle reports whether index is a subtitle track we can deliver.
+func (s Source) TextSubtitle(index int) bool {
+	for _, stream := range s.Streams {
+		if stream.Type == "Subtitle" && stream.Index == index {
+			return stream.IsTextSubtitleStream
+		}
+	}
+	return false
+}
+
 // Decision is how to play one source.
 type Decision struct {
 	DirectPlay bool
@@ -188,6 +210,8 @@ type Decision struct {
 	// the audio track choice has none.
 	Reasons    []string
 	AudioIndex int
+	// Subtitle is the text track to draw into the picture, or nil.
+	Subtitle *int
 	// The split of the bitrate cap, set when transcoding.
 	VideoBitrate, AudioBitrate int64
 }
@@ -216,6 +240,18 @@ func Decide(request Request, source Source, canTranscode bool) Decision {
 	if limit > 0 && source.Bitrate > limit {
 		reasons = append(reasons, "ContainerBitrateExceedsLimit")
 	}
+	// A client with no subtitle profile can't show a track, so one that is
+	// chosen is drawn into the picture, which takes a transcode. A client that
+	// does show them is burnt into only when it transcodes anyway and the
+	// viewer asked for it.
+	var chosen *int
+	if request.SubtitleStreamIndex != nil && source.TextSubtitle(int(*request.SubtitleStreamIndex)) {
+		index := int(*request.SubtitleStreamIndex)
+		chosen = &index
+		if request.NoSubtitleProfiles() {
+			reasons = append(reasons, "SubtitleCodecNotSupported")
+		}
+	}
 	// Direct play can't pick a track, so any other than the default transcodes.
 	if len(reasons) == 0 && audio == source.DefaultAudio() {
 		return direct
@@ -224,7 +260,14 @@ func Decide(request Request, source Source, canTranscode bool) Decision {
 		limit = Unlimited
 	}
 	videoBitrate, audioBitrate := SplitBitrate(limit)
-	return Decision{Reasons: reasons, AudioIndex: audio, VideoBitrate: videoBitrate, AudioBitrate: audioBitrate}
+	decision := Decision{Reasons: reasons, AudioIndex: audio, VideoBitrate: videoBitrate, AudioBitrate: audioBitrate}
+	if chosen != nil && (request.NoSubtitleProfiles() || request.AlwaysBurnInSubtitleWhenTranscoding) {
+		decision.Subtitle = chosen
+		if !slices.Contains(reasons, "SubtitleCodecNotSupported") {
+			decision.Reasons = append(reasons, "SubtitleCodecNotSupported")
+		}
+	}
+	return decision
 }
 
 // SplitBitrate divides the cap between video and audio so they sum to it, as
