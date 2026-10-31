@@ -4,7 +4,7 @@
 set -uo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
 work=$(mktemp -d)
-pg=jellyscale-it-pg sw=jellyscale-it-sw ga=jellyscale-it-garage
+pg=jellyscale-it-pg-$$ sw=jellyscale-it-sw-$$ ga=jellyscale-it-garage-$$
 clean() { docker rm -f "$pg" "$sw" "$ga" >/dev/null 2>&1; rm -rf "$work"; }
 clean; mkdir -p "$work"; trap clean EXIT
 docker run -d --rm --name "$pg" -e POSTGRES_PASSWORD=it -p 127.0.0.1::5432 postgres:18-alpine >/dev/null || exit 1

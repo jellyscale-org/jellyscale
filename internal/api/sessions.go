@@ -58,7 +58,7 @@ func (s *Server) playbackProgress(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	_, err := playstate.Progress(r.Context(), s.Pool, sessionOf(r).User.ID, report.ItemID, report.PositionTicks)
+	err := playstate.Progress(r.Context(), s.Pool, sessionOf(r).User.ID, report.ItemID, report.PositionTicks)
 	s.finishReport(w, r, err, func() error { return s.updateSessionPosition(r, report) })
 }
 
@@ -68,7 +68,7 @@ func (s *Server) playbackProgress(w http.ResponseWriter, r *http.Request) {
 func (s *Server) updateSessionPosition(r *http.Request, report playbackReport) error {
 	_, err := s.Pool.Exec(r.Context(), `UPDATE sessions SET position_ticks = $3, is_paused = $4, last_seen_at = now()
 		WHERE token = $1 AND item_id = $2::uuid`,
-		sessionOf(r).Token, report.ItemID, min(max(report.PositionTicks, 0), playstate.MaxTicks), report.IsPaused)
+		sessionOf(r).Token, report.ItemID, playstate.ClampTicks(report.PositionTicks), report.IsPaused)
 	return err
 }
 
@@ -89,7 +89,10 @@ func (s *Server) playbackStopped(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) playbackPing(w http.ResponseWriter, r *http.Request) {
-	s.finishReport(w, r, nil, func() error { return s.upsertSession(r, "last_seen_at = now()") })
+	s.finishReport(w, r, nil, func() error {
+		_, err := s.Pool.Exec(r.Context(), touchSession, sessionOf(r).Token)
+		return err
+	})
 }
 
 // finishReport answers 204 once the play state and the device's session row
@@ -105,14 +108,11 @@ func (s *Server) finishReport(w http.ResponseWriter, r *http.Request, err error,
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// upsertSession creates the device's row from its login if there isn't one,
-// and applies update if there is. Bound arguments after the token are $2 on.
-func (s *Server) upsertSession(r *http.Request, update string, args ...any) error {
-	_, err := s.Pool.Exec(r.Context(), `INSERT INTO sessions (token, user_id, client, device_id, device_name, app_version)
-		SELECT d.token, d.user_id, d.client, d.device_id, d.device_name, d.app_version FROM devices d WHERE d.token = $1
-		ON CONFLICT (token) DO UPDATE SET `+update, append([]any{sessionOf(r).Token}, args...)...)
-	return err
-}
+// touchSession creates the device's session row from its login if there isn't
+// one, and marks it seen.
+const touchSession = `INSERT INTO sessions (token, user_id, client, device_id, device_name, app_version)
+	SELECT d.token, d.user_id, d.client, d.device_id, d.device_name, d.app_version FROM devices d WHERE d.token = $1
+	ON CONFLICT (token) DO UPDATE SET last_seen_at = now()`
 
 // saveSession stores what the device is playing. The item may have been
 // removed since the client started; the subselect then yields NULL instead of
@@ -126,7 +126,7 @@ func (s *Server) saveSession(r *http.Request, report playbackReport) error {
 		ON CONFLICT (token) DO UPDATE SET item_id = EXCLUDED.item_id, position_ticks = EXCLUDED.position_ticks,
 			is_paused = EXCLUDED.is_paused, play_method = EXCLUDED.play_method,
 			play_session_id = EXCLUDED.play_session_id, last_seen_at = now()`,
-		sessionOf(r).Token, report.ItemID, min(max(report.PositionTicks, 0), playstate.MaxTicks), report.IsPaused, report.PlayMethod, report.PlaySessionID)
+		sessionOf(r).Token, report.ItemID, playstate.ClampTicks(report.PositionTicks), report.IsPaused, report.PlayMethod, report.PlaySessionID)
 	return err
 }
 

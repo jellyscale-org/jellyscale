@@ -115,7 +115,7 @@ func (r *Repo) hydrate(ctx context.Context, ids []string, userID string, fields 
 	if len(ids) == 0 {
 		return hydrated, nil
 	}
-	rows, err := r.Pool.Query(ctx, `SELECT i.id::text, i.dto, i.date_created, COALESCE(d.played, false), COALESCE(d.favorite, false),
+	rows, err := r.Pool.Query(ctx, `SELECT i.id::text, i.dto, COALESCE(d.played, false), COALESCE(d.favorite, false),
 			COALESCE(d.play_count, 0), COALESCE(d.position_ticks, 0), i.run_time_ticks, d.last_played_at
 		FROM items i
 		LEFT JOIN user_item_data d ON d.item_id = i.id AND d.user_id = $2::uuid
@@ -129,13 +129,12 @@ func (r *Repo) hydrate(ctx context.Context, ids []string, userID string, fields 
 	for rows.Next() {
 		var id string
 		var raw []byte
-		var created any
 		var played, favorite bool
 		var playCount int
 		var position int64
 		var runtime *int64
 		var lastPlayed *time.Time
-		if err := rows.Scan(&id, &raw, &created, &played, &favorite, &playCount, &position, &runtime, &lastPlayed); err != nil {
+		if err := rows.Scan(&id, &raw, &played, &favorite, &playCount, &position, &runtime, &lastPlayed); err != nil {
 			return nil, err
 		}
 		var dto map[string]any
@@ -326,18 +325,18 @@ func (r *Repo) MediaSources(ctx context.Context, itemID string) ([]map[string]an
 // Source is the playable object behind a media source, with the media store
 // of its library.
 type Source struct {
-	ID, Key, ETag, Container, StoreURI string
-	Size                               int64
+	Key, ETag, Container, StoreURI string
+	Size                           int64
 }
 
 // Source finds an item's media source, a specific one if mediaSourceID is set.
 func (r *Repo) Source(ctx context.Context, itemID, mediaSourceID string) (Source, bool, error) {
 	var s Source
-	err := r.Pool.QueryRow(ctx, `SELECT m.id::text, m.store_key, m.object_etag, m.container, l.media_store_uri, m.size
+	err := r.Pool.QueryRow(ctx, `SELECT m.store_key, m.object_etag, m.container, l.media_store_uri, m.size
 		FROM media_sources m JOIN items i ON i.id = m.item_id JOIN libraries l ON l.id = i.library_id
 		WHERE m.item_id = $1::uuid AND ($2 = '' OR m.id = NULLIF($2, '')::uuid)
 		ORDER BY m.id LIMIT 1`, itemID, mediaSourceID).
-		Scan(&s.ID, &s.Key, &s.ETag, &s.Container, &s.StoreURI, &s.Size)
+		Scan(&s.Key, &s.ETag, &s.Container, &s.StoreURI, &s.Size)
 	if err == pgx.ErrNoRows {
 		return Source{}, false, nil
 	}
