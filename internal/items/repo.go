@@ -323,20 +323,22 @@ func (r *Repo) MediaSources(ctx context.Context, itemID string) ([]map[string]an
 }
 
 // Source is the playable object behind a media source, with the media store
-// of its library.
+// of its library. Streams is the full probed list as JSON, subtitles included.
 type Source struct {
-	Key, ETag, Container, StoreURI string
-	Size                           int64
+	ID, Key, ETag, Container, StoreURI string
+	Size, RunTimeTicks                 int64
+	Streams                            []byte
 }
 
 // Source finds an item's media source, a specific one if mediaSourceID is set.
 func (r *Repo) Source(ctx context.Context, itemID, mediaSourceID string) (Source, bool, error) {
 	var s Source
-	err := r.Pool.QueryRow(ctx, `SELECT m.store_key, m.object_etag, m.container, l.media_store_uri, m.size
+	err := r.Pool.QueryRow(ctx, `SELECT m.id::text, m.store_key, m.object_etag, m.container, l.media_store_uri, m.size,
+			COALESCE(i.run_time_ticks, 0), m.streams
 		FROM media_sources m JOIN items i ON i.id = m.item_id JOIN libraries l ON l.id = i.library_id
 		WHERE m.item_id = $1::uuid AND ($2 = '' OR m.id = NULLIF($2, '')::uuid)
 		ORDER BY m.id LIMIT 1`, itemID, mediaSourceID).
-		Scan(&s.Key, &s.ETag, &s.Container, &s.StoreURI, &s.Size)
+		Scan(&s.ID, &s.Key, &s.ETag, &s.Container, &s.StoreURI, &s.Size, &s.RunTimeTicks, &s.Streams)
 	if err == pgx.ErrNoRows {
 		return Source{}, false, nil
 	}

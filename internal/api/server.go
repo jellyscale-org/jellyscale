@@ -22,6 +22,7 @@ import (
 	"jellyscale/internal/compat"
 	"jellyscale/internal/items"
 	"jellyscale/internal/store"
+	"jellyscale/internal/transcode"
 )
 
 // Version is the Jellyfin API baseline clients see. It moves only after the
@@ -64,11 +65,14 @@ type Server struct {
 	WebDir   string
 	Roles    []string
 	Log      *slog.Logger
+	// Transcode is nil when no transcode store is configured, and then every
+	// source plays as it is.
+	Transcode *transcode.Jobs
 	// SocketIdle closes a WebSocket that sends nothing for this long.
 	// Defaults to 60 seconds, the interval ForceKeepAlive promises.
 	SocketIdle time.Duration
 
-	stores      sync.Map // store URI -> store.Store
+	stores      store.Cache
 	replicaOnce sync.Once
 	replicaID   string
 }
@@ -235,21 +239,6 @@ func queryBool(r *http.Request, key string) *bool {
 		return nil
 	}
 	return &value
-}
-
-// storeFor returns the store a stored URI names, opening it once per process.
-// Stores hold HTTP clients and connection pools, so reopening per request would
-// throw away every warm connection.
-func (s *Server) storeFor(uri string) (store.Store, error) {
-	if cached, ok := s.stores.Load(uri); ok {
-		return cached.(store.Store), nil
-	}
-	opened, err := store.Open(uri)
-	if err != nil {
-		return nil, err
-	}
-	cached, _ := s.stores.LoadOrStore(uri, opened)
-	return cached.(store.Store), nil
 }
 
 // replica returns this process's ID for sessions.ws_replica.

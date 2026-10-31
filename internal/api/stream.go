@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -14,7 +15,9 @@ import (
 
 	"jellyscale/internal/db"
 	"jellyscale/internal/items"
+	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
+	"jellyscale/internal/transcode"
 )
 
 // maxBitrateTest bounds /Playback/BitrateTest. The web client asks for at most
@@ -44,7 +47,7 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	media, err := s.storeFor(source.StoreURI)
+	media, err := s.stores.Open(source.StoreURI)
 	if err != nil {
 		s.fail(w, r, err)
 		return
@@ -160,13 +163,25 @@ func contentType(source items.Source) string {
 	}
 }
 
-// playbackInfo describes how an item can be played. Until transcoding exists
-// every source is direct play only, so the DeviceProfile in the body is unused.
+// playbackInfo describes how an item can be played. A request with a
+// DeviceProfile gets a direct play or a transcode, whichever the profile
+// needs; one without stays direct play.
 func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("itemId")
 	if !db.ValidID(id) {
 		http.NotFound(w, r)
 		return
+	}
+	var request playback.Request
+	if r.Method == http.MethodPost {
+		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+		if err == nil {
+			request, err = playback.ParseRequest(body)
+		}
+		if err != nil {
+			http.Error(w, "invalid body", http.StatusBadRequest)
+			return
+		}
 	}
 	sources, found, err := s.Items.MediaSources(r.Context(), id)
 	if err != nil {
@@ -178,6 +193,10 @@ func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	wanted := r.URL.Query().Get("mediasourceid")
+	if wanted == "" {
+		wanted = request.MediaSourceID
+	}
+	playSession := randomHex(16)
 	result := make([]map[string]any, 0, len(sources))
 	for _, source := range sources {
 		if wanted != "" && db.CompactID(wanted) != source["Id"] {
@@ -189,18 +208,144 @@ func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
 		source["HasSegments"] = false
 		source["IsInfiniteStream"] = false
 		source["DefaultSubtitleStreamIndex"] = -1
-		if index, ok := defaultAudio(source); ok {
-			source["DefaultAudioStreamIndex"] = index
-		}
 		if source["MediaAttachments"] == nil {
 			source["MediaAttachments"] = []any{}
 		}
 		if source["Formats"] == nil {
 			source["Formats"] = []any{}
 		}
+		refused, err := s.planPlayback(r, id, playSession, request, source)
+		if err != nil {
+			s.fail(w, r, err)
+			return
+		}
+		if refused {
+			// jellyfin-web shows a dialog for this; offering a transcode that
+			// can't start instead makes it retry without end. Its "rate limits"
+			// text says the media can't play now, where "no compatible stream"
+			// would blame the client.
+			writeJSON(w, map[string]any{"MediaSources": []any{}, "PlaySessionId": playSession, "ErrorCode": "RateLimitExceeded"})
+			return
+		}
+		if index, ok := defaultAudio(source); ok {
+			source["DefaultAudioStreamIndex"] = index
+		}
 		result = append(result, source)
 	}
-	writeJSON(w, map[string]any{"MediaSources": result, "PlaySessionId": randomHex(16)})
+	writeJSON(w, map[string]any{"MediaSources": result, "PlaySessionId": playSession})
+}
+
+// planPlayback fills in the transcoding fields of one source in the reply.
+// Where transcoding is on, the source lists every audio stream, because
+// transcoding can deliver any of them, and a stream change then asks for one.
+// refused is true when the source needs a transcode that can't start now.
+func (s *Server) planPlayback(r *http.Request, itemID, playSession string, request playback.Request, source map[string]any) (refused bool, err error) {
+	if s.Transcode == nil && request.DeviceProfile == nil {
+		return false, nil
+	}
+	sourceID, _ := source["Id"].(string)
+	stored, found, err := s.Items.Source(r.Context(), itemID, sourceID)
+	if err != nil || !found || stored.RunTimeTicks <= 0 {
+		return false, err
+	}
+	media, err := playbackSource(stored)
+	if err != nil {
+		return false, err
+	}
+	media.Bitrate = int64(number(source["Bitrate"]))
+	decision := playback.Decide(request, media, true)
+	if s.Transcode != nil {
+		err = offerTranscoding(source, stored.Streams)
+	}
+	if err != nil || decision.DirectPlay {
+		return false, err
+	}
+	user := sessionOf(r)
+	params := playback.Params{SourceID: media.ID, AudioIndex: decision.AudioIndex, VideoBitrate: decision.VideoBitrate,
+		AudioBitrate: decision.AudioBitrate, PlaySessionID: playSession, DeviceID: user.DeviceID}
+	if request.StartTimeTicks != nil {
+		params.StartTicks = min(max(int64(*request.StartTimeTicks), 0), playback.MaxStartTicks)
+	}
+	spec, err := playback.NewSpec(itemID, params, media)
+	if err != nil {
+		return false, err
+	}
+	// A live job is always offered (invariant 37), by any replica.
+	live, err := transcode.LiveJob(r.Context(), s.Pool, spec.Hash())
+	if err != nil {
+		return false, err
+	}
+	var reason string
+	switch {
+	case live:
+		// jellyfin-web ignores TranscodingUrl unless SupportsTranscoding is set.
+		err = offerTranscoding(source, stored.Streams)
+		if mismatch, mismatchErr := transcode.StoreMismatch(r.Context(), s.Pool); mismatch != "" || mismatchErr != nil {
+			s.Log.Warn("offering a running transcode though the stores may differ", "item", spec.Item, "reason", mismatch, "error", mismatchErr)
+		}
+	case s.Transcode != nil:
+		reason, err = s.Transcode.Unavailable(r.Context(), spec.Hash(), user.User.ID, user.DeviceID)
+	default: // A replica with no transcodeStore asks only whether the stores differ.
+		if reason, err = transcode.StoreMismatch(r.Context(), s.Pool); err == nil && reason == "" {
+			return false, nil // No worker anywhere: transcoding is simply off.
+		}
+	}
+	if err != nil {
+		return false, err
+	}
+	if reason != "" {
+		// A viewer whose default track plays as it is keeps it, whichever track
+		// they picked, rather than lose the player. Otherwise there is nothing
+		// to fall back on.
+		request.AudioStreamIndex = nil
+		if playback.Decide(request, media, true).DirectPlay {
+			s.Log.Warn("cannot switch audio tracks, so the default plays on", "item", spec.Item, "reason", reason)
+			return false, nil
+		}
+		s.Log.Error("refusing to offer a transcode: "+reason, "item", spec.Item, "spec", spec.Hash())
+		return true, nil
+	}
+	source["SupportsDirectPlay"] = false
+	source["SupportsDirectStream"] = false
+	source["TranscodingUrl"] = playback.MasterURL(db.DashedID(itemID), params, user.Token, stored.ETag, decision, media.FrameRate())
+	source["TranscodingSubProtocol"] = "hls"
+	source["TranscodingContainer"] = "mp4"
+	return false, nil
+}
+
+// offerTranscoding marks the source transcodable, and puts all of the file's
+// audio streams in the reply, which the item's own DTO lists only the default
+// of (invariant 32). Everything else the DTO lists, subtitles included, stays
+// as it was.
+func offerTranscoding(source map[string]any, storedStreams []byte) error {
+	var all []map[string]any
+	if err := json.Unmarshal(storedStreams, &all); err != nil {
+		return err
+	}
+	// The DTO's own entries are kept as they are: the stored ones carry what
+	// the decision needs and the item page never showed.
+	listed := map[int]any{}
+	current, _ := source["MediaStreams"].([]any)
+	for _, entry := range current {
+		stream, _ := entry.(map[string]any)
+		listed[int(number(stream["Index"]))] = entry
+	}
+	streams := []any{}
+	for _, stream := range all {
+		if entry, ok := listed[int(number(stream["Index"]))]; ok {
+			streams = append(streams, entry)
+		} else if stream["Type"] == "Audio" {
+			streams = append(streams, stream)
+		}
+	}
+	source["MediaStreams"] = streams
+	source["SupportsTranscoding"] = true
+	return nil
+}
+
+func number(v any) float64 {
+	n, _ := v.(float64)
+	return n
 }
 
 // defaultAudio picks the flagged audio stream, else the first.
