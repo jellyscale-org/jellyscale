@@ -56,12 +56,18 @@ func (s *Server) Routes() []Route {
 		{Method: "GET", Path: "/SyncPlay/List", Status: Stub, Role: RoleAPI, Handler: emptyList},
 		{Method: "GET", Path: "/Plugins", Status: Stub, Role: RoleAPI, Handler: emptyList},
 
-		// Playback. Media is served by the stream role. The stream route takes one
-		// wildcard because patterns can't match part of a segment; the handler
-		// accepts "stream" and "stream.{container}". Literal siblings, such as
-		// master.m3u8 later, win over it.
+		// Playback. Media is served by the stream role. A GET pattern answers HEAD
+		// too, and a separate HEAD pattern would collide with the literal
+		// siblings below. The stream route takes one wildcard because patterns
+		// can't match part of a segment; the handler accepts "stream" and
+		// "stream.{container}". Literal siblings, such as master.m3u8, win.
+		{Method: "GET", Path: "/Videos/{itemId}/master.m3u8", Status: Implemented, Role: RoleStream, Handler: s.masterPlaylist},
+		{Method: "GET", Path: "/Videos/{itemId}/main.m3u8", Status: Implemented, Role: RoleStream, Handler: s.mainPlaylist},
+		// Jellyfin's pattern is hls1/{playlistId}/{segmentId}.{container}; the
+		// handler splits the file name, since patterns can't match part of one.
+		{Method: "GET", Path: "/Videos/{itemId}/hls1/{playlistId}/{segmentId}", Status: Implemented, Role: RoleStream, Handler: s.hlsSegment},
+		{Method: "DELETE", Path: "/Videos/ActiveEncodings", Status: Implemented, Role: RoleStream, Handler: s.deleteActiveEncodings},
 		{Method: "GET", Path: "/Videos/{itemId}/{file}", Status: Implemented, Role: RoleStream, Handler: s.stream},
-		{Method: "HEAD", Path: "/Videos/{itemId}/{file}", Status: Implemented, Role: RoleStream, Handler: s.stream},
 		{Method: "GET", Path: "/Items/{itemId}/PlaybackInfo", Status: Implemented, Role: RoleAPI, Handler: s.playbackInfo},
 		{Method: "POST", Path: "/Items/{itemId}/PlaybackInfo", Status: Implemented, Role: RoleAPI, Handler: s.playbackInfo},
 		{Method: "GET", Path: "/Playback/BitrateTest", Status: Implemented, Role: RoleStream, Handler: s.bitrateTest},

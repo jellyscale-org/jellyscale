@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -83,8 +84,7 @@ func (s *S3) List(ctx context.Context, prefix string) ([]Object, error) {
 	return objects, nil
 }
 
-// Open starts an open-ended ranged GET. Closing early abandons the rest, which
-// is how a client disconnect stops the transfer.
+// Open reads from offset to the end of the object in one GET.
 func (s *S3) Open(ctx context.Context, key string, offset int64) (io.ReadCloser, error) {
 	objectKey := s.objectKey(key)
 	input := &s3.GetObjectInput{Bucket: &s.bucket, Key: &objectKey}
@@ -100,7 +100,27 @@ func (s *S3) Open(ctx context.Context, key string, offset int64) (io.ReadCloser,
 		}
 		return nil, fmt.Errorf("get %s: %w", key, err)
 	}
-	return output.Body, nil
+	if input.Range != nil && output.ContentRange == nil { // Not the range asked for.
+		output.Body.Close()
+		return &whole{ReadCloser: http.NoBody, left: 1}, nil
+	}
+	return &whole{ReadCloser: output.Body, left: aws.ToInt64(output.ContentLength)}, nil
+}
+
+// whole turns a body that ends before its Content-Length into an error, which
+// SeaweedFS's cut GETs would not otherwise give.
+type whole struct {
+	io.ReadCloser
+	left int64
+}
+
+func (w *whole) Read(p []byte) (int, error) {
+	n, err := w.ReadCloser.Read(p)
+	w.left -= int64(n)
+	if err == io.EOF && w.left > 0 {
+		err = io.ErrUnexpectedEOF
+	}
+	return n, err
 }
 
 // Put buffers the body, because signing needs a seekable payload. Bodies are
@@ -114,6 +134,15 @@ func (s *S3) Put(ctx context.Context, key string, body io.Reader) error {
 	_, err = s.client.PutObject(ctx, &s3.PutObjectInput{Bucket: &s.bucket, Key: &objectKey, Body: bytes.NewReader(data)})
 	if err != nil {
 		return fmt.Errorf("put %s: %w", key, err)
+	}
+	return nil
+}
+
+// Delete removes an object. S3 answers success for a key that isn't there.
+func (s *S3) Delete(ctx context.Context, key string) error {
+	objectKey := s.objectKey(key)
+	if _, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{Bucket: &s.bucket, Key: &objectKey}); err != nil {
+		return fmt.Errorf("delete %s: %w", key, err)
 	}
 	return nil
 }

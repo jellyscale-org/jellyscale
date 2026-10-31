@@ -47,7 +47,9 @@ const SNAPSHOT = {
   required: ['tree'],
 }
 
-const { task, acceptance = [], tests = [], ux = false, maxRounds = 3, roleFiles = false } = args
+// base continues earlier work: reviewers then see the whole change since that
+// snapshot, not just this run's fixes.
+const { task, acceptance = [], tests = [], ux = false, maxRounds = 3, roleFiles = false, base: earlierBase } = args
 if (!task) throw new Error('deliver needs args.task')
 
 const criteria = acceptance.map((line) => `- ${line}`).join('\n')
@@ -83,7 +85,7 @@ const snapshot = async (label) => {
 const reviewers = (base, head) => {
   // The brief reads as instructions to implement, so say plainly that a reviewer
   // isn't to carry them out. Parallel reviewers share one working tree.
-  const diff = `Someone else has already done the task above. You are reviewing it, not doing it: never edit, stash or mutate the working tree. Inspect the change with \`git diff ${base} ${head}\`, between two tree snapshots, so nothing is committed. To build, test or mutate, use your own export: \`git archive ${head} | tar -x -C <dir in your scratchpad>\`, plus a symlink to web-dist for the e2e test.`
+  const diff = `Someone else has already done the task above. You are reviewing it, not doing it: never edit, stash or mutate the working tree. Inspect the change with \`git diff ${base} ${head}\`, between two tree snapshots, so nothing is committed. To build, test or mutate, use your own export: \`git archive ${head} | tar -x -C <dir in your scratchpad>\`, plus a symlink to web-dist for the e2e test. /tmp has a small quota: use test media no larger than you need, and delete your export and media before you finish.`
   const roles = [
     { key: 'adversarial-1', agentType: 'adversarial-reviewer', focus: 'Concentrate on failure: concurrency across replicas, partial failure, disconnects and resource leaks.' },
     { key: 'adversarial-2', agentType: 'adversarial-reviewer', focus: 'Concentrate on correctness and trust: client input, protocol behavior against the evidence in the task, security, and whether the tests can really fail. Also check this is the simplest code that does the job.' },
@@ -111,7 +113,7 @@ const runReviews = async (roles, round) => {
 }
 
 phase('Implement')
-const base = await snapshot('snapshot before')
+const base = earlierBase ?? await snapshot('snapshot before')
 let implementation = await agent(`${rolePrefix('implementer')}${brief}\n\nImplement this. Don't commit.`, {
   label: 'implement',
   phase: 'Implement',

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -25,6 +26,10 @@ type Probe struct {
 	Streams      []map[string]any
 }
 
+type sideData struct {
+	Type string `json:"side_data_type"`
+}
+
 type ffprobeOutput struct {
 	Format struct {
 		FormatName string `json:"format_name"`
@@ -36,11 +41,16 @@ type ffprobeOutput struct {
 		CodecType   string            `json:"codec_type"`
 		CodecName   string            `json:"codec_name"`
 		Profile     string            `json:"profile"`
+		Level       int               `json:"level"`
+		FieldOrder  string            `json:"field_order"`
+		Transfer    string            `json:"color_transfer"`
+		SideData    []sideData        `json:"side_data_list"`
 		Width       int               `json:"width"`
 		Height      int               `json:"height"`
 		Channels    int               `json:"channels"`
 		SampleRate  string            `json:"sample_rate"`
 		BitRate     string            `json:"bit_rate"`
+		Duration    string            `json:"duration"`
 		AvgFrame    string            `json:"avg_frame_rate"`
 		Tags        map[string]string `json:"tags"`
 		Disposition struct {
@@ -104,6 +114,17 @@ func ProbeInput(ctx context.Context, input string) (Probe, error) {
 		switch kind {
 		case "Video":
 			entry["Width"], entry["Height"] = stream.Width, stream.Height
+			// What a client's CodecProfile can rule out. Level is ffprobe's
+			// number, 52 for H.264 level 5.2, as profiles write it.
+			entry["Level"] = max(stream.Level, 0)
+			entry["IsInterlaced"] = slices.Contains([]string{"tt", "bb", "tb", "bt"}, stream.FieldOrder)
+			entry["VideoRangeType"] = rangeType(stream.Transfer, stream.SideData)
+			// The video can end before the audio does, and an HLS playlist
+			// has to stop where the video does. Matroska keeps the duration
+			// in a tag.
+			if ticks := streamTicks(stream.Duration, stream.Tags["DURATION"]); ticks > 0 {
+				entry["DurationTicks"] = ticks
+			}
 			entry["DisplayTitle"] = fmt.Sprintf("%dp %s", stream.Height, strings.ToUpper(stream.CodecName))
 			if fps := frameRate(stream.AvgFrame); fps > 0 {
 				entry["AverageFrameRate"] = fps
@@ -123,6 +144,41 @@ func ProbeInput(ctx context.Context, input string) (Probe, error) {
 		probe.Streams = append(probe.Streams, entry)
 	}
 	return probe, nil
+}
+
+// rangeType is Jellyfin's VideoRangeType. HDR10+ looks like HDR10 here, and
+// either is simply not SDR to the profiles that matter.
+func rangeType(transfer string, sideData []sideData) string {
+	for _, d := range sideData {
+		if strings.Contains(d.Type, "DOVI") || strings.Contains(d.Type, "Dolby Vision") {
+			return "DOVI"
+		}
+	}
+	switch transfer {
+	case "smpte2084":
+		return "HDR10"
+	case "arib-std-b67":
+		return "HLG"
+	}
+	return "SDR"
+}
+
+// streamTicks reads a stream's duration from ffprobe's "12.5" or a Matroska
+// tag's "00:00:12.500000000", or returns 0 if it has none.
+func streamTicks(seconds, tag string) int64 {
+	value, err := strconv.ParseFloat(seconds, 64)
+	if err != nil {
+		var h, m int
+		var s float64
+		if _, err := fmt.Sscanf(tag, "%d:%d:%f", &h, &m, &s); err != nil {
+			return 0
+		}
+		value = float64(h*3600+m*60) + s
+	}
+	if !(value > 0) {
+		return 0
+	}
+	return int64(min(value, maxDuration) * ticksPerSecond)
 }
 
 // containerName picks the conventional name from ffprobe's comma-separated

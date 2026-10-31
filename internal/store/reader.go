@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"sync"
@@ -23,27 +24,57 @@ type Reader struct {
 	size   int64
 	pos    int64
 	stream io.ReadCloser
+	// resumes counts bodies that ended early since one last delivered bytes.
+	resumes int
 }
 
-// NewReader returns a Reader for an object of known size.
+// maxResumes bounds how often a read reopens after a body ended early without
+// progress, so a truncated object fails instead of looping.
+const maxResumes = 3
+
+// NewReader returns a Reader for an object of known size. math.MaxInt64 reads
+// to the end of an object whose size isn't known, such as a segment.
 func NewReader(ctx context.Context, s Store, key string, size int64) *Reader {
 	return &Reader{ctx: ctx, store: s, key: key, size: size}
 }
 
 func (r *Reader) Read(p []byte) (int, error) {
-	if r.pos >= r.size {
-		return 0, io.EOF
-	}
-	if r.stream == nil {
-		stream, err := r.store.Open(r.ctx, r.key, r.pos)
-		if err != nil {
+	for {
+		if r.pos >= r.size {
+			return 0, io.EOF
+		}
+		if r.stream == nil {
+			stream, err := r.store.Open(r.ctx, r.key, r.pos)
+			if err != nil {
+				return 0, err
+			}
+			r.stream = stream
+		}
+		n, err := r.stream.Read(p)
+		r.pos += int64(n)
+		if n > 0 {
+			r.resumes = 0
+		}
+		// An empty 200 to a resumed GET ends cleanly, short of the size.
+		if err == io.EOF && r.pos < r.size && r.size != math.MaxInt64 {
+			err = io.ErrUnexpectedEOF
+		}
+		if err != io.ErrUnexpectedEOF || r.pos >= r.size {
+			return n, err
+		}
+		// SeaweedFS cuts a GET when another GET of the object is dropped, and
+		// S3.Open reports that as ErrUnexpectedEOF: carry on from here.
+		r.closeStream()
+		if r.resumes++; r.resumes > maxResumes {
+			return n, io.ErrUnexpectedEOF
+		}
+		if n > 0 {
+			return n, nil
+		}
+		if err := r.ctx.Err(); err != nil {
 			return 0, err
 		}
-		r.stream = stream
 	}
-	n, err := r.stream.Read(p)
-	r.pos += int64(n)
-	return n, err
 }
 
 // Seek moves the position, dropping any open stream that no longer lines up.
@@ -115,11 +146,21 @@ func Input(ctx context.Context, s Store, key string, size int64) (string, func()
 		}),
 	}
 	var once sync.Once
+	done := make(chan struct{})
 	go server.Serve(listener) //nolint:errcheck
-	closeInput := func() { once.Do(func() { server.Close() }) }
+	closeInput := func() {
+		once.Do(func() {
+			close(done)
+			server.Close()
+		})
+	}
+	// ctx can outlive the input by far, so this must end when the input does.
 	go func() {
-		<-ctx.Done()
-		closeInput()
+		select {
+		case <-ctx.Done():
+			closeInput()
+		case <-done:
+		}
 	}()
 	return "http://" + listener.Addr().String() + path, closeInput, nil
 }

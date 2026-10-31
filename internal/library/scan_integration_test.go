@@ -270,3 +270,26 @@ func TestReplicasCanMigrateTogether(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+// A source stored before the probe recorded level, field order and range is
+// probed again by the next scan, though the file hasn't changed.
+func TestScanProbesAgainWhatWasStoredWithoutRange(t *testing.T) {
+	f := setup(t, "movies")
+	clip(t, filepath.Join(f.media, "Old Film (2020)", "Old Film (2020).mkv"))
+	f.scan(t)
+	const probed = "SELECT streams @> '[{\"VideoRangeType\": \"SDR\"}]' FROM media_sources"
+	if !scalar[bool](t, f.pool, probed) {
+		t.Fatal("a fresh scan didn't record the range")
+	}
+	if _, err := f.pool.Exec(context.Background(),
+		`UPDATE media_sources SET streams = '[{"Index":0,"Type":"Video","Codec":"h264"}]'`); err != nil {
+		t.Fatal(err)
+	}
+	f.scan(t)
+	if !scalar[bool](t, f.pool, probed) {
+		t.Fatal("the scan left the old streams alone")
+	}
+	if n := f.count(t, "Movie"); n != 1 {
+		t.Fatalf("%d movies after probing again", n)
+	}
+}

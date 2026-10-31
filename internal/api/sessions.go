@@ -81,6 +81,16 @@ func (s *Server) playbackStopped(w http.ResponseWriter, r *http.Request) {
 	// The device is no longer playing this item. A late report for an earlier
 	// one must not clear what it has moved on to.
 	s.finishReport(w, r, err, func() error {
+		// Closing the player sends no DELETE ActiveEncodings, so this is what
+		// ends the transcode. A report with no PlaySessionId (invariant 18)
+		// ends the device's transcode of this item only, so a late report for
+		// an earlier item can't stop what the device plays now.
+		if s.Transcode != nil {
+			user := sessionOf(r)
+			if err := s.Transcode.Stop(r.Context(), user.User.ID, report.PlaySessionID, user.DeviceID, db.CompactID(report.ItemID)); err != nil {
+				return err
+			}
+		}
 		_, err := s.Pool.Exec(r.Context(), `UPDATE sessions SET item_id = NULL, position_ticks = 0, is_paused = false,
 			play_method = NULL, play_session_id = NULL, last_seen_at = now() WHERE token = $1 AND item_id = $2::uuid`,
 			sessionOf(r).Token, report.ItemID)

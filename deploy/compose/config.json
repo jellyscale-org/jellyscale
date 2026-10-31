@@ -3,6 +3,7 @@
   "adminUser": "admin",
   "webDir": "/web",
   "scanInterval": "15m",
+  "transcodeStore": "file:///transcode",
   "libraries": [
     {"name": "Movies", "kind": "movies", "media": "file:///media/movies", "assets": "file:///assets/movies"},
     {"name": "Shows", "kind": "tvshows", "media": "file:///media/shows", "assets": "file:///assets/shows"}

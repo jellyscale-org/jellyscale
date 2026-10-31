@@ -273,7 +273,7 @@ func (s *Server) itemImage(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	assets, err := s.storeFor(uri)
+	assets, err := s.stores.Open(uri)
 	if err != nil {
 		s.fail(w, r, err)
 		return

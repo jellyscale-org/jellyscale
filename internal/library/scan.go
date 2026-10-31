@@ -13,6 +13,7 @@ import (
 	_ "image/png"  // Sidecar decoding.
 	"io"
 	"log/slog"
+	"maps"
 	"os/exec"
 	"path"
 	"strings"
@@ -87,6 +88,9 @@ type seenObject struct {
 	size   int64
 	etag   string
 	itemID *string
+	// unprobed: stored before the probe recorded level, field order and range,
+	// which transcode decisions need. A scan probes it again.
+	unprobed bool
 }
 
 // Scan lists the store and applies the difference. A session advisory lock
@@ -122,7 +126,7 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 	for _, object := range objects {
 		if IsVideo(object.Key) {
 			current[object.Key] = true
-			if old, ok := seen[object.Key]; !ok || old.etag != object.ETag || old.size != object.Size {
+			if old, ok := seen[object.Key]; !ok || old.etag != object.ETag || old.size != object.Size || old.unprobed {
 				changed = append(changed, object)
 			}
 			continue
@@ -190,7 +194,10 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 }
 
 func (s *Scanner) loadSeen(ctx context.Context, libraryID string) (map[string]seenObject, error) {
-	rows, err := s.Pool.Query(ctx, "SELECT key, size, etag, item_id::text FROM scan_objects WHERE library_id = $1", libraryID)
+	rows, err := s.Pool.Query(ctx, `SELECT o.key, o.size, o.etag, o.item_id::text,
+			EXISTS (SELECT 1 FROM media_sources m WHERE m.item_id = o.item_id
+				AND jsonb_path_exists(m.streams, '$[*] ? (@.Type == "Video" && !exists(@.VideoRangeType))'))
+		FROM scan_objects o WHERE o.library_id = $1`, libraryID)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +206,7 @@ func (s *Scanner) loadSeen(ctx context.Context, libraryID string) (map[string]se
 	for rows.Next() {
 		var key string
 		var old seenObject
-		if err := rows.Scan(&key, &old.size, &old.etag, &old.itemID); err != nil {
+		if err := rows.Scan(&key, &old.size, &old.etag, &old.itemID, &old.unprobed); err != nil {
 			return nil, err
 		}
 		seen[key] = old
@@ -549,7 +556,9 @@ func videoDTO(item record, object store.Object, probe Probe) map[string]any {
 // playableStreams is what direct play can deliver until transcoding (Phase 3):
 // no subtitles, and only the default audio track, or else the first. Clients
 // build their track menus from this, so anything else would be a dead choice.
-// media_sources.streams keeps the full list.
+// media_sources.streams keeps the full list, and the probe's fields for
+// transcode decisions, which the DTO leaves out so direct play replies stay as
+// they were.
 func playableStreams(streams []map[string]any) []map[string]any {
 	audio := -1
 	for i, stream := range streams {
@@ -565,6 +574,13 @@ func playableStreams(streams []map[string]any) []map[string]any {
 	}
 	playable := make([]map[string]any, 0, len(streams))
 	for i, stream := range streams {
+		if stream["Type"] == "Video" {
+			// What the decision needs and the item page never listed.
+			stream = maps.Clone(stream)
+			for _, key := range []string{"Level", "IsInterlaced", "VideoRangeType", "DurationTicks"} {
+				delete(stream, key)
+			}
+		}
 		if stream["Type"] == "Video" || i == audio {
 			playable = append(playable, stream)
 		}

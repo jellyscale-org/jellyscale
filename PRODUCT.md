@@ -30,6 +30,7 @@ Operators running one library on Kubernetes for a household or community, with t
 - **Target:** the current Jellyfin release, currently 12.4.
 - **Future-facing:** a client that depends on obsolete routes isn't well-suited to jellyscale.
 - **The one exception:** thin aliases for routes jellyfin-web still calls, flagged `alias` in `compat/endpoints.yaml`. Each one is removed when the web client stops calling it. Never add an alias for another client.
+- **Improve on Jellyfin.** Real Jellyfin behavior shows what clients depend on, not what to copy. Keep what clients need, and do better wherever they allow it.
 - **Outside scope but called anyway:** answer with a valid empty response if the client breaks otherwise; otherwise 404.
 - **Kodi** isn't a stated target. It works if it happens to, and no work goes in solely for it.
 
@@ -43,3 +44,5 @@ Operators running one library on Kubernetes for a household or community, with t
 ## Roadmap
 
 Phases and gates are in the project plan. In short: read-only browse (done), direct play (done), transcode, HA, library and metadata, Kubernetes, SyncPlay.
+
+Gate for Phase 4 (HA): a worker, and an API replica, killed in the middle of a film recover without losing the viewer's picture or resume position. Until then a worker that dies mid-film freezes jellyfin-web's picture with no dialog, even if a replacement starts at once, because its job holds its lease, which lasts 10 seconds from each renewal (7 to 10 seconds after a kill) (`DOMAINS.md` invariant 37). Only a worker that stops gracefully and is replaced within six seconds goes unnoticed.

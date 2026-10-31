@@ -43,15 +43,12 @@ func (p *Posix) List(ctx context.Context, prefix string) ([]Object, error) {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if entry.IsDir() {
+		if !entry.Type().IsRegular() {
 			return nil
 		}
 		info, err := entry.Info()
 		if err != nil {
 			return err
-		}
-		if !info.Mode().IsRegular() {
-			return nil
 		}
 		rel, err := filepath.Rel(p.root, file)
 		if err != nil {
@@ -114,6 +111,23 @@ func (p *Posix) Put(_ context.Context, key string, body io.Reader) error {
 		return err
 	}
 	return os.Rename(temp.Name(), file)
+}
+
+// Delete removes the file, and its directory if that leaves it empty, so
+// swept transcode specs don't leave a directory each.
+func (p *Posix) Delete(_ context.Context, key string) error {
+	file, err := p.resolve(key)
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(file); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	// Never the root itself, which is empty whenever its last file goes.
+	if dir := filepath.Dir(file); dir != filepath.Clean(p.root) {
+		os.Remove(dir) //nolint:errcheck // Fails, correctly, when the directory isn't empty.
+	}
+	return nil
 }
 
 // LocalPath returns the file behind key.

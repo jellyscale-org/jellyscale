@@ -252,7 +252,7 @@ func checkStream(t *testing.T, e *env) {
 		t.Fatal(err)
 	}
 	counting := &countingStore{Store: opened}
-	e.apis[0].stores.Store(e.uri, counting)
+	e.apis[0].stores.Put(e.uri, counting)
 	base := "/Videos/" + db.CompactID(e.item) + "/stream.mkv"
 	size := len(e.body)
 
@@ -361,7 +361,7 @@ func TestMediaRoutesNeedAToken(t *testing.T) {
 func TestClientDisconnectStopsTheStoreRead(t *testing.T) {
 	e := newEnv(t)
 	blocking := &blockingStore{opened: make(chan struct{}), canceled: make(chan struct{})}
-	e.apis[0].stores.Store(e.uri, blocking)
+	e.apis[0].stores.Put(e.uri, blocking)
 	ctx, cancel := context.WithCancel(context.Background())
 	request, _ := http.NewRequestWithContext(ctx, "GET", e.servers[0].URL+"/Videos/"+db.CompactID(e.item)+"/stream.mkv", nil)
 	request.Header.Set("X-Emby-Token", e.token)
