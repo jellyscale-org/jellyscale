@@ -73,13 +73,19 @@ func (f fixture) scan(t *testing.T) {
 	}
 }
 
+// scalar reads the one value a query returns.
+func scalar[T any](t *testing.T, pool *pgxpool.Pool, sql string, args ...any) T {
+	t.Helper()
+	var value T
+	if err := pool.QueryRow(context.Background(), sql, args...).Scan(&value); err != nil {
+		t.Fatalf("%s: %v", sql, err)
+	}
+	return value
+}
+
 func (f fixture) count(t *testing.T, kind string) int {
 	t.Helper()
-	var n int
-	if err := f.pool.QueryRow(context.Background(), "SELECT count(*) FROM items WHERE type = $1", kind).Scan(&n); err != nil {
-		t.Fatal(err)
-	}
-	return n
+	return scalar[int](t, f.pool, "SELECT count(*) FROM items WHERE type = $1", kind)
 }
 
 func TestRenameKeepsItemAndWatchState(t *testing.T) {
@@ -89,14 +95,8 @@ func TestRenameKeepsItemAndWatchState(t *testing.T) {
 	clip(t, old)
 	f.scan(t)
 
-	var id string
-	if err := f.pool.QueryRow(ctx, "SELECT id::text FROM items").Scan(&id); err != nil {
-		t.Fatal(err)
-	}
-	var user string
-	if err := f.pool.QueryRow(ctx, `INSERT INTO users (id, name, password_hash) VALUES (gen_random_uuid(), 'u', 'x') RETURNING id::text`).Scan(&user); err != nil {
-		t.Fatal(err)
-	}
+	id := scalar[string](t, f.pool, "SELECT id::text FROM items")
+	user := scalar[string](t, f.pool, `INSERT INTO users (id, name, password_hash) VALUES (gen_random_uuid(), 'u', 'x') RETURNING id::text`)
 	if _, err := f.pool.Exec(ctx, `INSERT INTO user_item_data (user_id, item_id, played) VALUES ($1, $2, true)`, user, id); err != nil {
 		t.Fatal(err)
 	}
@@ -126,54 +126,34 @@ func TestRenameKeepsItemAndWatchState(t *testing.T) {
 	if name != "New Name" || year != 2021 || !played {
 		t.Fatalf("got %q %d played=%v", name, year, played)
 	}
-	var keys int
-	if err := f.pool.QueryRow(ctx, "SELECT count(*) FROM scan_objects").Scan(&keys); err != nil {
-		t.Fatal(err)
-	}
-	if keys != 1 {
+	if keys := scalar[int](t, f.pool, "SELECT count(*) FROM scan_objects"); keys != 1 {
 		t.Fatalf("expected the old scan object to be gone, got %d", keys)
 	}
 }
 
 func TestChangedFileKeepsItem(t *testing.T) {
 	f := setup(t, "movies")
-	ctx := context.Background()
 	file := filepath.Join(f.media, "Film (2020).mkv")
 	clip(t, file)
 	f.scan(t)
-	var before string
-	if err := f.pool.QueryRow(ctx, "SELECT id::text FROM items").Scan(&before); err != nil {
-		t.Fatal(err)
-	}
+	before := scalar[string](t, f.pool, "SELECT id::text FROM items")
 	if err := os.WriteFile(file, nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	clip(t, file)
 	f.scan(t)
-	var after string
-	if err := f.pool.QueryRow(ctx, "SELECT id::text FROM items").Scan(&after); err != nil {
-		t.Fatal(err)
-	}
-	if before != after {
+	if after := scalar[string](t, f.pool, "SELECT id::text FROM items"); before != after {
 		t.Fatal("replacing the file's content changed its item")
 	}
 }
 
 func TestRepeatScanChangesNothing(t *testing.T) {
 	f := setup(t, "movies")
-	ctx := context.Background()
 	clip(t, filepath.Join(f.media, "Film (2020).mkv"))
 	f.scan(t)
-	var before string
-	if err := f.pool.QueryRow(ctx, "SELECT dto::text FROM items").Scan(&before); err != nil {
-		t.Fatal(err)
-	}
+	before := scalar[string](t, f.pool, "SELECT dto::text FROM items")
 	f.scan(t)
-	var after string
-	if err := f.pool.QueryRow(ctx, "SELECT dto::text FROM items").Scan(&after); err != nil {
-		t.Fatal(err)
-	}
-	if before != after {
+	if after := scalar[string](t, f.pool, "SELECT dto::text FROM items"); before != after {
 		t.Fatal("repeat scan rewrote an unchanged item")
 	}
 }

@@ -200,7 +200,7 @@ func (s *Server) itemAncestors(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, ancestors)
 }
 
-func (s *Server) rootFolder(w http.ResponseWriter, r *http.Request) {
+func (s *Server) rootFolder(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, map[string]any{
 		"Name": "Media Folders", "ServerId": s.ServerID, "Id": s.ServerID, "Type": "UserRootFolder",
 		"IsFolder": true, "ImageTags": map[string]string{}, "BackdropImageTags": []string{},

@@ -81,7 +81,9 @@ const snapshot = async (label) => {
 // Reviewers get the task, the diff range and the docs. The implementer's report
 // is deliberately absent, and each reviewer runs without seeing the others.
 const reviewers = (base, head) => {
-  const diff = `Inspect the change with \`git diff ${base} ${head}\`. It's between two tree snapshots, so nothing is committed; read current files from the working directory.`
+  // The brief reads as instructions to implement, so say plainly that a reviewer
+  // isn't to carry them out. Parallel reviewers share one working tree.
+  const diff = `Someone else has already done the task above. You are reviewing it, not doing it: never edit, stash or mutate the working tree. Inspect the change with \`git diff ${base} ${head}\`, between two tree snapshots, so nothing is committed. To build, test or mutate, use your own export: \`git archive ${head} | tar -x -C <dir in your scratchpad>\`, plus a symlink to web-dist for the e2e test.`
   const roles = [
     { key: 'adversarial-1', agentType: 'adversarial-reviewer', focus: 'Concentrate on failure: concurrency across replicas, partial failure, disconnects and resource leaks.' },
     { key: 'adversarial-2', agentType: 'adversarial-reviewer', focus: 'Concentrate on correctness and trust: client input, protocol behavior against the evidence in the task, security, and whether the tests can really fail. Also check this is the simplest code that does the job.' },

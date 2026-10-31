@@ -23,6 +23,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"jellyscale/internal/db"
 	"jellyscale/internal/store"
 )
 
@@ -116,10 +117,14 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 	}
 
 	sidecars := map[string]string{}
-	var videos []store.Object
+	current := map[string]bool{}
+	var changed []store.Object
 	for _, object := range objects {
 		if IsVideo(object.Key) {
-			videos = append(videos, object)
+			current[object.Key] = true
+			if old, ok := seen[object.Key]; !ok || old.etag != object.ETag || old.size != object.Size {
+				changed = append(changed, object)
+			}
 			continue
 		}
 		name := strings.ToLower(path.Base(object.Key))
@@ -127,20 +132,9 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 			sidecars[path.Dir(object.Key)] = object.Key
 		}
 	}
-
-	current := make(map[string]store.Object, len(videos))
-	for _, video := range videos {
-		current[video.Key] = video
-	}
-	var changed []store.Object
-	for _, video := range videos {
-		if old, ok := seen[video.Key]; !ok || old.etag != video.ETag || old.size != video.Size {
-			changed = append(changed, video)
-		}
-	}
 	gone := map[string]seenObject{}
 	for key, old := range seen {
-		if _, ok := current[key]; !ok {
+		if !current[key] {
 			gone[key] = old
 		}
 	}
@@ -181,6 +175,8 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 			return err
 		}
 	}
+	// A series is empty only once its empty seasons are gone, which one
+	// statement can't see, so the second pass catches those.
 	if _, err := s.Pool.Exec(ctx, `DELETE FROM items parent WHERE library_id = $1 AND type IN ('Season', 'Series')
 		AND NOT EXISTS (SELECT 1 FROM items child WHERE child.parent_id = parent.id)`, lib.ID); err != nil {
 		return err
@@ -189,7 +185,7 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 		AND NOT EXISTS (SELECT 1 FROM items child WHERE child.parent_id = parent.id)`, lib.ID); err != nil {
 		return err
 	}
-	s.Log.Info("scan finished", "library", lib.Name, "videos", len(videos), "changed", len(changed), "removed", len(gone))
+	s.Log.Info("scan finished", "library", lib.Name, "videos", len(current), "changed", len(changed), "removed", len(gone))
 	return nil
 }
 
@@ -254,6 +250,7 @@ type record struct {
 	year, index, parentIndex         *int
 	ticks                            *int64
 	imageKey, imageTag               *string
+	aspect                           float64 // Of the image.
 	dto                              map[string]any
 }
 
@@ -297,26 +294,18 @@ func (s *Scanner) upsert(ctx context.Context, lib Library, object store.Object, 
 	item.id = &id
 	item.ticks = &probe.RunTimeTicks
 
-	aspect := 0.0
 	if key, ok := sidecars[path.Dir(object.Key)]; ok && lib.Kind == "movies" {
-		imageKey, tag, ratio, err := s.copySidecar(ctx, lib, id, key)
-		if err != nil {
+		if err := s.copySidecar(ctx, lib, &item, key); err != nil {
 			s.Log.Warn("sidecar image failed", "key", key, "error", err)
-		} else {
-			item.imageKey, item.imageTag, aspect = &imageKey, &tag, ratio
 		}
 	}
 	if item.imageKey == nil {
-		imageKey, tag, ratio, err := s.extractFrame(ctx, lib, id, object, probe)
-		if err != nil {
+		if err := s.extractFrame(ctx, lib, &item, object, probe); err != nil {
 			s.Log.Warn("frame extraction failed", "key", object.Key, "error", err)
-		} else {
-			item.imageKey, item.imageTag, aspect = &imageKey, &tag, ratio
 		}
 	}
 
-	sourceID := id
-	item.dto = videoDTO(item, object, probe, sourceID, aspect)
+	item.dto = videoDTO(item, object, probe)
 	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		if err := writeItem(ctx, tx, lib.ID, item); err != nil {
 			return err
@@ -377,16 +366,12 @@ func (s *Scanner) ensureSeries(ctx context.Context, lib Library, folder, name st
 	}
 	id = uuid.NewString()
 	item := record{id: &id, kind: "Series", name: name, naturalKey: key}
-	aspect := 0.0
 	if sidecar, ok := sidecars[folder]; ok {
-		imageKey, tag, ratio, err := s.copySidecar(ctx, lib, id, sidecar)
-		if err != nil {
+		if err := s.copySidecar(ctx, lib, &item, sidecar); err != nil {
 			s.Log.Warn("sidecar image failed", "key", sidecar, "error", err)
-		} else {
-			item.imageKey, item.imageTag, aspect = &imageKey, &tag, ratio
 		}
 	}
-	item.dto = folderDTO(item, aspect)
+	item.dto = folderDTO(item)
 	return id, pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error { return writeItem(ctx, tx, lib.ID, item) })
 }
 
@@ -406,30 +391,31 @@ func (s *Scanner) ensureSeason(ctx context.Context, lib Library, seriesID, serie
 		name = "Specials"
 	}
 	item := record{id: &id, parentID: &seriesID, seriesID: &seriesID, kind: "Season", name: name, naturalKey: key, index: &number}
-	item.dto = folderDTO(item, 0)
+	item.dto = folderDTO(item)
 	item.dto["SeriesName"] = seriesName
 	return id, pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error { return writeItem(ctx, tx, lib.ID, item) })
 }
 
-func (s *Scanner) copySidecar(ctx context.Context, lib Library, itemID, key string) (string, string, float64, error) {
+// copySidecar, extractFrame and saveImage set the item's image on success.
+func (s *Scanner) copySidecar(ctx context.Context, lib Library, item *record, key string) error {
 	reader, err := lib.Media.Open(ctx, key, 0)
 	if err != nil {
-		return "", "", 0, err
+		return err
 	}
 	defer reader.Close()
 	body, err := io.ReadAll(reader)
 	if err != nil {
-		return "", "", 0, err
+		return err
 	}
-	return s.saveImage(ctx, lib, itemID, body)
+	return s.saveImage(ctx, lib, item, body)
 }
 
 // extractFrame captures one frame a tenth of the way in, far enough to skip
 // logos and black. Metadata providers replace this in Phase 5.
-func (s *Scanner) extractFrame(ctx context.Context, lib Library, itemID string, object store.Object, probe Probe) (string, string, float64, error) {
+func (s *Scanner) extractFrame(ctx context.Context, lib Library, item *record, object store.Object, probe Probe) error {
 	input, closeInput, err := store.Input(ctx, lib.Media, object.Key, object.Size)
 	if err != nil {
-		return "", "", 0, err
+		return err
 	}
 	defer closeInput()
 	at := float64(probe.RunTimeTicks) / ticksPerSecond / 10
@@ -438,26 +424,28 @@ func (s *Scanner) extractFrame(ctx context.Context, lib Library, itemID string, 
 		"-frames:v", "1", "-vf", "scale=-2:720", "-q:v", "3", "-f", "image2pipe", "-c:v", "mjpeg", "-")
 	cmd.Stdout = &out
 	if err := cmd.Run(); err != nil {
-		return "", "", 0, fmt.Errorf("ffmpeg: %w", err)
+		return fmt.Errorf("ffmpeg: %w", err)
 	}
-	return s.saveImage(ctx, lib, itemID, out.Bytes())
+	return s.saveImage(ctx, lib, item, out.Bytes())
 }
 
-func (s *Scanner) saveImage(ctx context.Context, lib Library, itemID string, body []byte) (string, string, float64, error) {
+func (s *Scanner) saveImage(ctx context.Context, lib Library, item *record, body []byte) error {
 	config, _, err := image.DecodeConfig(bytes.NewReader(body))
 	if err != nil {
-		return "", "", 0, fmt.Errorf("decode image: %w", err)
+		return fmt.Errorf("decode image: %w", err)
 	}
 	digest := sha256.Sum256(body)
 	tag := hex.EncodeToString(digest[:16])
-	key := fmt.Sprintf("images/%s/%s", itemID, tag)
+	key := fmt.Sprintf("images/%s/%s", *item.id, tag)
 	if err := lib.Assets.Put(ctx, key, bytes.NewReader(body)); err != nil {
-		return "", "", 0, err
+		return err
 	}
-	return key, tag, float64(config.Width) / float64(config.Height), nil
+	item.imageKey, item.imageTag = &key, &tag
+	item.aspect = float64(config.Width) / float64(config.Height)
+	return nil
 }
 
-func baseDTO(item record, aspect float64) map[string]any {
+func baseDTO(item record) map[string]any {
 	dto := map[string]any{
 		"Name":              item.name,
 		"Type":              item.kind,
@@ -486,7 +474,7 @@ func baseDTO(item record, aspect float64) map[string]any {
 	}
 	if item.imageTag != nil {
 		dto["ImageTags"] = map[string]string{"Primary": *item.imageTag}
-		dto["PrimaryImageAspectRatio"] = aspect
+		dto["PrimaryImageAspectRatio"] = item.aspect
 	}
 	if item.year != nil {
 		dto["ProductionYear"] = *item.year
@@ -498,31 +486,29 @@ func baseDTO(item record, aspect float64) map[string]any {
 		dto["ParentIndexNumber"] = *item.parentIndex
 	}
 	if item.parentID != nil {
-		dto["ParentId"] = compact(*item.parentID)
+		dto["ParentId"] = db.CompactID(*item.parentID)
 	}
 	if item.seriesID != nil {
-		dto["SeriesId"] = compact(*item.seriesID)
+		dto["SeriesId"] = db.CompactID(*item.seriesID)
 	}
 	if item.seasonID != nil {
-		dto["SeasonId"] = compact(*item.seasonID)
+		dto["SeasonId"] = db.CompactID(*item.seasonID)
 	}
 	return dto
 }
 
-func compact(id string) string { return strings.ReplaceAll(id, "-", "") }
-
-func folderDTO(item record, aspect float64) map[string]any {
-	dto := baseDTO(item, aspect)
+func folderDTO(item record) map[string]any {
+	dto := baseDTO(item)
 	dto["IsFolder"] = true
 	dto["Etag"] = etag(item.naturalKey)
 	return dto
 }
 
-func videoDTO(item record, object store.Object, probe Probe, sourceID string, aspect float64) map[string]any {
-	dto := baseDTO(item, aspect)
+func videoDTO(item record, object store.Object, probe Probe) map[string]any {
+	dto := baseDTO(item)
 	streams := playableStreams(probe.Streams)
 	sources := []map[string]any{{
-		"Id":                   compact(sourceID),
+		"Id":                   db.CompactID(*item.id),
 		"Protocol":             "File",
 		"Type":                 "Default",
 		"Name":                 item.name,

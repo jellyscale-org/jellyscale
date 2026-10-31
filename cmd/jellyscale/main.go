@@ -48,18 +48,15 @@ func main() {
 		return
 	}
 
-	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel()}))
+	level := slog.LevelInfo
+	if os.Getenv("JELLYSCALE_DEBUG") != "" {
+		level = slog.LevelDebug
+	}
+	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
 	if err := run(*roles, *listen, *configPath, log); err != nil {
 		log.Error("exiting", "error", err)
 		os.Exit(1)
 	}
-}
-
-func logLevel() slog.Level {
-	if os.Getenv("JELLYSCALE_DEBUG") != "" {
-		return slog.LevelDebug
-	}
-	return slog.LevelInfo
 }
 
 func run(roleList, listen, configPath string, log *slog.Logger) error {
