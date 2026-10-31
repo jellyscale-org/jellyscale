@@ -76,7 +76,7 @@ func ffmpegRun(t *testing.T, args ...string) {
 	}
 }
 
-// subtitleFilm makes a short H.264 and AAC film with a SubRip track (stream 2,
+// subtitleFilm makes a short H.264 and FLAC film with a SubRip track (stream 2,
 // the default) and an ASS track (3). With image set, it has only a track that
 // says it is PGS, which is all the probe looks at.
 func subtitleFilm(t *testing.T, image bool, srt string) []byte {
@@ -84,6 +84,7 @@ func subtitleFilm(t *testing.T, image bool, srt string) []byte {
 	if _, err := exec.LookPath("ffmpeg"); err != nil {
 		t.Skip("no ffmpeg")
 	}
+	// Not AAC: its negative start moves cues 23 ms on ffmpeg 6 (invariant 43).
 	dir := t.TempDir()
 	must := func(name, text string) string {
 		path := filepath.Join(dir, name)
@@ -95,7 +96,7 @@ func subtitleFilm(t *testing.T, image bool, srt string) []byte {
 	a, b := must("a.srt", srt), must("b.ass", testASS)
 	film := filepath.Join(dir, "film.mkv")
 	input := []string{"-f", "lavfi", "-i", "testsrc2=size=160x90:rate=10:duration=3", "-f", "lavfi", "-i", "sine=frequency=440:duration=3"}
-	codecs := []string{"-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "-metadata:s:a:0", "language=eng"}
+	codecs := []string{"-c:v", "libx264", "-preset", "ultrafast", "-c:a", "flac", "-metadata:s:a:0", "language=eng"}
 	if image {
 		ffmpegRun(t, append(append(input, "-i", b, "-map", "0", "-map", "1", "-map", "2", "-c:s", "ass"), append(codecs, film)...)...)
 	} else {
