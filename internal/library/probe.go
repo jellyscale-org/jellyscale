@@ -104,7 +104,7 @@ func ProbeInput(ctx context.Context, input string) (Probe, error) {
 		switch kind {
 		case "Video":
 			entry["Width"], entry["Height"] = stream.Width, stream.Height
-			entry["DisplayTitle"] = displayVideo(stream.Height, stream.CodecName)
+			entry["DisplayTitle"] = fmt.Sprintf("%dp %s", stream.Height, strings.ToUpper(stream.CodecName))
 			if fps := frameRate(stream.AvgFrame); fps > 0 {
 				entry["AverageFrameRate"] = fps
 			}
@@ -151,10 +151,6 @@ func frameRate(value string) float64 {
 		return 0
 	}
 	return n / d
-}
-
-func displayVideo(height int, codec string) string {
-	return fmt.Sprintf("%dp %s", height, strings.ToUpper(codec))
 }
 
 func displayAudio(language, codec string, channels int) string {

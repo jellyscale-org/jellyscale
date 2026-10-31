@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -164,6 +165,29 @@ func mustExec(t *testing.T, pool *pgxpool.Pool, sql string, args ...any) {
 	}
 }
 
+// scalar reads the one value a query returns.
+func scalar[T any](t *testing.T, pool *pgxpool.Pool, sql string, args ...any) T {
+	t.Helper()
+	var value T
+	if err := pool.QueryRow(context.Background(), sql, args...).Scan(&value); err != nil {
+		t.Fatalf("%s: %v", sql, err)
+	}
+	return value
+}
+
+// eventually polls until cond holds, for state that handlers' deferred
+// cleanups settle after the client has moved on. It reports whether cond held.
+func eventually(cond func() bool) bool {
+	deadline := time.Now().Add(5 * time.Second)
+	for !cond() {
+		if time.Now().After(deadline) {
+			return false
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return true
+}
+
 func (e *env) do(t *testing.T, replica int, method, path, token string, body any, headers ...string) (*http.Response, []byte) {
 	t.Helper()
 	var reader io.Reader
@@ -288,16 +312,11 @@ func TestMissingObjectIs404BeforeAnyBody(t *testing.T) {
 			mustExec(t, e.pool, "UPDATE media_sources SET store_key = 'gone-' || store_key")
 			base := "/Videos/" + db.CompactID(e.item) + "/stream.mkv"
 			for _, rng := range []string{"", "bytes=0-", "bytes=100-200"} {
-				request, _ := http.NewRequest("GET", e.servers[0].URL+base, nil)
-				request.Header.Set("X-Emby-Token", e.token)
+				var headers []string
 				if rng != "" {
-					request.Header.Set("Range", rng)
+					headers = []string{"Range", rng}
 				}
-				response, err := http.DefaultClient.Do(request)
-				if err != nil {
-					t.Fatal(err)
-				}
-				response.Body.Close()
+				response, _ := e.do(t, 0, "GET", base, e.token, nil, headers...)
 				if response.StatusCode != 404 || response.Header.Get("Content-Range") != "" {
 					t.Errorf("range %q: %d, Content-Range %q", rng, response.StatusCode, response.Header.Get("Content-Range"))
 				}
@@ -315,13 +334,8 @@ func TestBitrateTestIsOnTheStreamRole(t *testing.T) {
 	apiOnly := &Server{Pool: e.pool, Items: &items.Repo{Pool: e.pool, ServerID: "srv"}, Roles: []string{RoleAPI}, Log: slog.New(slog.DiscardHandler)}
 	server := httptest.NewServer(apiOnly.Handler())
 	defer server.Close()
-	request, _ := http.NewRequest("GET", server.URL+"/Playback/BitrateTest?Size=10", nil)
-	request.Header.Set("X-Emby-Token", e.token)
-	response, err := http.DefaultClient.Do(request)
-	if err != nil {
-		t.Fatal(err)
-	}
-	response.Body.Close()
+	e.servers = append(e.servers, server)
+	response, _ := e.do(t, len(e.servers)-1, "GET", "/Playback/BitrateTest?Size=10", e.token, nil)
 	if response.StatusCode != 404 {
 		t.Fatalf("api role served the bitrate test: %d", response.StatusCode)
 	}
@@ -519,9 +533,7 @@ func TestReportsForMissingItemsAreAccepted(t *testing.T) {
 			t.Errorf("%q: %d", kind, code)
 		}
 	}
-	var rows int
-	e.pool.QueryRow(context.Background(), "SELECT count(*) FROM user_item_data").Scan(&rows) //nolint:errcheck
-	if rows != 0 {
+	if rows := scalar[int](t, e.pool, "SELECT count(*) FROM user_item_data"); rows != 0 {
 		t.Errorf("%d rows for a missing item", rows)
 	}
 	if response, _ := e.do(t, 0, "POST", "/Sessions/Playing/Ping", e.token, nil); response.StatusCode != 204 {
@@ -592,9 +604,7 @@ func TestPlayedAndFavoriteToggles(t *testing.T) {
 	if r := e.row(t, e.user); !r.played || !r.favorite {
 		t.Fatalf("alias missed the caller: %+v", r)
 	}
-	var n int
-	e.pool.QueryRow(context.Background(), "SELECT count(*) FROM user_item_data WHERE user_id = $1", e.other).Scan(&n) //nolint:errcheck
-	if n != 0 {
+	if scalar[int](t, e.pool, "SELECT count(*) FROM user_item_data WHERE user_id = $1", e.other) != 0 {
 		t.Fatal("an alias wrote another user's data")
 	}
 	data("DELETE", "/Users/"+e.other+"/PlayedItems/"+id)
@@ -608,8 +618,7 @@ func TestPlayedAndFavoriteToggles(t *testing.T) {
 
 func TestPlayedCascadesToEpisodes(t *testing.T) {
 	e := newEnv(t)
-	var lib string
-	e.pool.QueryRow(context.Background(), "SELECT library_id FROM items WHERE id = $1", e.item).Scan(&lib) //nolint:errcheck
+	lib := scalar[string](t, e.pool, "SELECT library_id FROM items WHERE id = $1", e.item)
 	series, season, ep1, ep2 := uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString()
 	mustExec(t, e.pool, `INSERT INTO items (id, library_id, type, name, sort_name, natural_key, dto) VALUES ($1, $2, 'Series', 'S', 's', 's', '{}')`, series, lib)
 	mustExec(t, e.pool, `INSERT INTO items (id, library_id, parent_id, series_id, type, name, sort_name, natural_key, dto) VALUES ($1, $2, $3, $3, 'Season', 'Se', 'se', 'se', '{}')`, season, lib, series)
@@ -617,9 +626,7 @@ func TestPlayedCascadesToEpisodes(t *testing.T) {
 		mustExec(t, e.pool, `INSERT INTO items (id, library_id, parent_id, series_id, season_id, type, name, sort_name, natural_key, dto) VALUES ($1::uuid, $2, $3, $4, $3, 'Episode', $5, $5, $5, '{}')`, ep, lib, season, series, ep)
 	}
 	played := func(id string) bool {
-		var p bool
-		e.pool.QueryRow(context.Background(), "SELECT COALESCE((SELECT played FROM user_item_data WHERE user_id = $1 AND item_id = $2), false)", e.user, id).Scan(&p) //nolint:errcheck
-		return p
+		return scalar[bool](t, e.pool, "SELECT COALESCE((SELECT played FROM user_item_data WHERE user_id = $1 AND item_id = $2), false)", e.user, id)
 	}
 	if r, _ := e.do(t, 0, "POST", "/UserPlayedItems/"+db.CompactID(series), e.token, nil); r.StatusCode != 200 {
 		t.Fatalf("status %d", r.StatusCode)
@@ -641,21 +648,19 @@ func TestPlayedCascadesToEpisodes(t *testing.T) {
 	}
 }
 
+func (e *env) socketURL(replica int, token string) string {
+	return "ws" + strings.TrimPrefix(e.servers[replica].URL, "http") + "/socket?ApiKey=" + token
+}
+
 func TestSocket(t *testing.T) {
 	e := newEnv(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	wsURL := func(token string) string {
-		return "ws" + strings.TrimPrefix(e.servers[0].URL, "http") + "/socket?ApiKey=" + token
-	}
-	if _, response, err := websocket.Dial(ctx, wsURL("nope"), nil); err == nil || response == nil || response.StatusCode != 401 {
+	if _, response, err := websocket.Dial(ctx, e.socketURL(0, "nope"), nil); err == nil || response == nil || response.StatusCode != 401 {
 		t.Fatalf("bad token: %v %v", err, response)
 	}
 
-	conn, _, err := websocket.Dial(ctx, wsURL(e.token), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	conn := e.dialSocket(t, 0)
 	_, data, err := conn.Read(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -666,9 +671,7 @@ func TestSocket(t *testing.T) {
 		t.Fatalf("first message: %s", data)
 	}
 	replica := func() *string {
-		var value *string
-		e.pool.QueryRow(ctx, "SELECT ws_replica FROM sessions WHERE token = $1", e.token).Scan(&value) //nolint:errcheck
-		return value
+		return scalar[*string](t, e.pool, "SELECT ws_replica FROM sessions WHERE token = $1", e.token)
 	}
 	if got := replica(); got == nil || *got != e.apis[0].replica() {
 		t.Fatalf("ws_replica = %v", got)
@@ -687,34 +690,19 @@ func TestSocket(t *testing.T) {
 	if _, _, err := conn.Read(ctx); websocket.CloseStatus(err) != websocket.StatusGoingAway {
 		t.Fatalf("idle close: %v", err)
 	}
-	deadline := time.Now().Add(3 * time.Second)
-	for replica() != nil {
-		if time.Now().After(deadline) {
-			t.Fatal("ws_replica not cleared after close")
-		}
-		time.Sleep(20 * time.Millisecond)
+	if !eventually(func() bool { return replica() == nil }) {
+		t.Fatal("ws_replica not cleared after close")
 	}
 }
 
 func TestOldSocketCloseKeepsTheNewSocketsClaim(t *testing.T) {
 	e := newEnv(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	url := "ws" + strings.TrimPrefix(e.servers[0].URL, "http") + "/socket?ApiKey=" + e.token
-	first, _, err := websocket.Dial(ctx, url, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	second, _, err := websocket.Dial(ctx, url, nil) // The reconnect, same replica.
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer second.CloseNow() //nolint:errcheck
+	first := e.dialSocket(t, 0)
+	second := e.dialSocket(t, 0) // The reconnect, same replica.
+	defer second.CloseNow()      //nolint:errcheck
 	first.Close(websocket.StatusNormalClosure, "")
 	time.Sleep(300 * time.Millisecond) // Under the 700ms idle limit; lets the old handler finish.
-	var claim *string
-	e.pool.QueryRow(ctx, "SELECT ws_replica FROM sessions WHERE token = $1", e.token).Scan(&claim) //nolint:errcheck
-	if claim == nil {
+	if scalar[*string](t, e.pool, "SELECT ws_replica FROM sessions WHERE token = $1", e.token) == nil {
 		t.Fatal("closing the old socket cleared the live socket's ws_replica")
 	}
 }
@@ -722,41 +710,42 @@ func TestOldSocketCloseKeepsTheNewSocketsClaim(t *testing.T) {
 // socketClaim reads what the database says about a device's sockets.
 func (e *env) socketClaim(t *testing.T) (replica *string, open int) {
 	t.Helper()
-	ctx := context.Background()
-	if err := e.pool.QueryRow(ctx, "SELECT ws_replica FROM sessions WHERE token = $1", e.token).Scan(&replica); err != nil && err != pgx.ErrNoRows {
+	// No session row yet reads as no claim.
+	if err := e.pool.QueryRow(context.Background(), "SELECT ws_replica FROM sessions WHERE token = $1", e.token).Scan(&replica); err != nil && err != pgx.ErrNoRows {
 		t.Fatal(err)
 	}
-	if err := e.pool.QueryRow(ctx, "SELECT count(*) FROM session_sockets WHERE token = $1", e.token).Scan(&open); err != nil {
-		t.Fatal(err)
-	}
-	return replica, open
+	return replica, scalar[int](t, e.pool, "SELECT count(*) FROM session_sockets WHERE token = $1", e.token)
 }
 
 // waitClaim waits for the handlers' deferred cleanups, which run after the
 // close handshake, to land.
 func (e *env) waitClaim(t *testing.T, open int, replica string) {
 	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
-	for {
-		got, n := e.socketClaim(t)
-		if n == open && ((replica == "" && got == nil) || (got != nil && *got == replica)) {
-			return
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("want %d sockets on %q, have %d, ws_replica %v", open, replica, n, got)
-		}
-		time.Sleep(10 * time.Millisecond)
+	var got *string
+	var n int
+	if !eventually(func() bool {
+		got, n = e.socketClaim(t)
+		return n == open && ((replica == "" && got == nil) || (got != nil && *got == replica))
+	}) {
+		t.Fatalf("want %d sockets on %q, have %d, ws_replica %v", open, replica, n, got)
 	}
 }
 
-func (e *env) dialSocket(t *testing.T, replica int) *websocket.Conn {
-	t.Helper()
+// tryDial opens a socket on a replica. It's safe to call from any goroutine.
+func (e *env) tryDial(replica int) (*websocket.Conn, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	conn, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(e.servers[replica].URL, "http")+"/socket?ApiKey="+e.token, nil)
+	conn, _, err := websocket.Dial(ctx, e.socketURL(replica, e.token), nil)
+	return conn, err
+}
+
+// dialSocket fails the test if the dial fails, so call it from the test's own
+// goroutine.
+func (e *env) dialSocket(t *testing.T, replica int) *websocket.Conn {
+	t.Helper()
+	conn, err := e.tryDial(replica)
 	if err != nil {
-		t.Error(err)
-		return nil
+		t.Fatal(err)
 	}
 	return conn
 }
@@ -771,6 +760,32 @@ func TestCrashedReplicaCannotBecomeTheClaim(t *testing.T) {
 		VALUES ('crashed', $1, 'dead', now() + interval '1 hour', now() - interval '1 hour')`, e.token)
 	socket.Close(websocket.StatusNormalClosure, "")
 	e.waitClaim(t, 0, "")
+}
+
+// Any frame proves a socket is alive, not only KeepAlive. A closing socket
+// drops the device's quiet rows, so a live socket whose row wasn't refreshed
+// would be dropped by another socket's close.
+func TestAnyFrameKeepsTheSocketsRowFresh(t *testing.T) {
+	e := newEnv(t)
+	e.apis[0].SocketIdle = time.Minute
+	e.apis[1].SocketIdle = time.Minute
+	live := e.dialSocket(t, 0)
+	defer live.CloseNow() //nolint:errcheck
+	e.waitClaim(t, 1, e.apis[0].replica())
+	mustExec(t, e.pool, "UPDATE session_sockets SET last_seen_at = now() - interval '10 minutes' WHERE token = $1", e.token)
+	if err := live.Write(context.Background(), websocket.MessageText, []byte(`{"MessageType":"SessionsStart","Data":"0,1500"}`)); err != nil {
+		t.Fatal(err)
+	}
+	if !eventually(func() bool {
+		return scalar[bool](t, e.pool, "SELECT last_seen_at > now() - interval '1 minute' FROM session_sockets WHERE token = $1", e.token)
+	}) {
+		t.Fatal("a received frame didn't refresh last_seen_at")
+	}
+
+	other := e.dialSocket(t, 1)
+	e.waitClaim(t, 2, e.apis[1].replica())
+	other.Close(websocket.StatusNormalClosure, "")
+	e.waitClaim(t, 1, e.apis[0].replica())
 }
 
 func TestTwoSocketsOnDifferentReplicas(t *testing.T) {
@@ -800,65 +815,58 @@ func TestTwoSocketsOnDifferentReplicas(t *testing.T) {
 	}
 }
 
+// Connects and closes that all start at the same instant, over several rounds,
+// so the session row lock is what keeps ws_replica on the right socket.
 func TestConcurrentSocketReconnects(t *testing.T) {
 	e := newEnv(t)
 	for _, api := range e.apis {
 		api.SocketIdle = time.Minute
 	}
-	const n = 24
-	conns := make([]*websocket.Conn, n)
-	var wg sync.WaitGroup
-	for i := range n {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			conns[i] = e.dialSocket(t, i%2)
-		}()
-	}
-	wg.Wait()
-	// Handlers register after the upgrade, so wait for all of them.
-	deadline := time.Now().Add(5 * time.Second)
-	for {
-		if _, open := e.socketClaim(t); open == n {
-			break
+	const n = 32
+	// together runs f(0..n-1) at once, and returns the first error.
+	together := func(f func(i int) error) error {
+		errs := make([]error, n)
+		start := make(chan struct{})
+		var wg sync.WaitGroup
+		for i := range n {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				<-start
+				errs[i] = f(i)
+			}()
 		}
-		if time.Now().After(deadline) {
-			t.Fatalf("only %d of %d sockets registered", func() int { _, o := e.socketClaim(t); return o }(), n)
+		close(start)
+		wg.Wait()
+		return errors.Join(errs...)
+	}
+	for round := range 12 {
+		conns := make([]*websocket.Conn, n)
+		if err := together(func(i int) (err error) { conns[i], err = e.tryDial(i % 2); return }); err != nil {
+			t.Fatalf("round %d: %v", round, err)
 		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	// The claim names the replica of the newest row.
-	var newest string
-	e.pool.QueryRow(context.Background(), `SELECT replica FROM session_sockets WHERE token = $1
-		ORDER BY connected_at DESC, connection_id DESC LIMIT 1`, e.token).Scan(&newest) //nolint:errcheck
-	if got, _ := e.socketClaim(t); got == nil || *got != newest {
-		t.Fatalf("ws_replica = %v, newest socket is on %q", got, newest)
-	}
+		// Handlers register after the upgrade, so wait for all of them.
+		if !eventually(func() bool { _, open := e.socketClaim(t); return open == n }) {
+			t.Fatalf("round %d: not every socket registered", round)
+		}
+		// The claim names the replica of the newest row.
+		newest := scalar[string](t, e.pool, `SELECT replica FROM session_sockets WHERE token = $1
+			ORDER BY connected_at DESC, connection_id DESC LIMIT 1`, e.token)
+		if got, _ := e.socketClaim(t); got == nil || *got != newest {
+			t.Fatalf("round %d: ws_replica = %v, newest socket is on %q", round, got, newest)
+		}
 
-	// Close all but one at once; the claim must end on the survivor's replica.
-	for i := 1; i < n; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			conns[i].Close(websocket.StatusNormalClosure, "")
-		}()
+		// Close all but one at once; the claim must end on the survivor's replica.
+		_ = together(func(i int) error {
+			if i > 0 {
+				conns[i].Close(websocket.StatusNormalClosure, "") //nolint:errcheck
+			}
+			return nil
+		})
+		e.waitClaim(t, 1, e.apis[0].replica())
+		conns[0].Close(websocket.StatusNormalClosure, "")
+		e.waitClaim(t, 0, "")
 	}
-	wg.Wait()
-	deadline = time.Now().Add(5 * time.Second)
-	for {
-		if _, open := e.socketClaim(t); open == 1 {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("sockets didn't close")
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	var survivor string
-	e.pool.QueryRow(context.Background(), "SELECT replica FROM session_sockets WHERE token = $1", e.token).Scan(&survivor) //nolint:errcheck
-	e.waitClaim(t, 1, survivor)
-	conns[0].Close(websocket.StatusNormalClosure, "")
-	e.waitClaim(t, 0, "")
 }
 
 func TestToggleDuringPlaybackDoesNotSuppressProgress(t *testing.T) {
@@ -910,9 +918,8 @@ func TestExtremeNumbersNeverFail(t *testing.T) {
 	e.report(t, 0, "", e.item, 1)
 	mustExec(t, e.pool, "UPDATE user_item_data SET progress_at = NULL WHERE item_id = $1", e.item)
 	e.report(t, 0, "/Progress", e.item, math.MaxInt64)
-	var session, stored int64
-	e.pool.QueryRow(context.Background(), "SELECT position_ticks FROM sessions WHERE token = $1", e.token).Scan(&session)       //nolint:errcheck
-	e.pool.QueryRow(context.Background(), "SELECT position_ticks FROM user_item_data WHERE item_id = $1", e.item).Scan(&stored) //nolint:errcheck
+	session := scalar[int64](t, e.pool, "SELECT position_ticks FROM sessions WHERE token = $1", e.token)
+	stored := scalar[int64](t, e.pool, "SELECT position_ticks FROM user_item_data WHERE item_id = $1", e.item)
 	if session != playstate.MaxTicks || stored != playstate.MaxTicks {
 		t.Errorf("session %d, stored %d, want %d", session, stored, playstate.MaxTicks)
 	}
@@ -926,8 +933,7 @@ func TestExtremeNumbersNeverFail(t *testing.T) {
 
 func TestLateStoppedLeavesTheCurrentItem(t *testing.T) {
 	e := newEnv(t)
-	var lib string
-	e.pool.QueryRow(context.Background(), "SELECT library_id FROM items WHERE id = $1", e.item).Scan(&lib) //nolint:errcheck
+	lib := scalar[string](t, e.pool, "SELECT library_id FROM items WHERE id = $1", e.item)
 	other := uuid.NewString()
 	mustExec(t, e.pool, `INSERT INTO items (id, library_id, type, name, sort_name, natural_key, dto) VALUES ($1, $2, 'Movie', 'B', 'b', 'b', '{}')`, other, lib)
 	current := func() (item *string, ticks int64) {

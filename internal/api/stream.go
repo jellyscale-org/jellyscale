@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -58,12 +57,7 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 // what they return, and its context is the request's: a client that goes away
 // cancels the store read.
 func (s *Server) serveSource(w http.ResponseWriter, r *http.Request, media store.Store, source items.Source) {
-	reader := &loggedReader{
-		Reader: store.NewReader(r.Context(), media, source.Key, source.Size),
-		log: func(err error) {
-			s.Log.Warn("media read failed", "key", source.Key, "error", err)
-		},
-	}
+	reader := &failureReader{Reader: store.NewReader(r.Context(), media, source.Key, source.Size)}
 	defer reader.Close()
 	// Headers wait for the first body byte, so an object that has gone missing
 	// can still answer 404 instead of a 206 with nothing behind it.
@@ -75,6 +69,10 @@ func (s *Server) serveSource(w http.ResponseWriter, r *http.Request, media store
 	w.Header().Set("ETag", `"`+hex.EncodeToString(digest[:16])+`"`)
 	w.Header().Set("Content-Type", contentType(source))
 	http.ServeContent(w, r, "", time.Time{}, reader)
+	// A client that goes away cancels the request context; that isn't a fault.
+	if err := reader.failure; err != nil && !errors.Is(err, context.Canceled) {
+		s.Log.Warn("media read failed", "key", source.Key, "error", err)
+	}
 	if lazy.committed || lazy.status == 0 {
 		return
 	}
@@ -123,26 +121,17 @@ func (l *lazyWriter) Write(p []byte) (int, error) {
 	return l.ResponseWriter.Write(p)
 }
 
-func (l *lazyWriter) Unwrap() http.ResponseWriter { return l.ResponseWriter }
-
-// loggedReader reports store failures, which ServeContent would otherwise
-// turn into a silently truncated body, and remembers the first one.
-type loggedReader struct {
+// failureReader remembers the first store failure, which ServeContent would
+// otherwise turn into a silently truncated body.
+type failureReader struct {
 	*store.Reader
-	log     func(error)
 	failure error
 }
 
-func (l *loggedReader) Read(p []byte) (int, error) {
+func (l *failureReader) Read(p []byte) (int, error) {
 	n, err := l.Reader.Read(p)
-	// A client that goes away cancels the request context; that isn't a fault.
-	if err != nil && !errors.Is(err, io.EOF) {
-		if l.failure == nil {
-			l.failure = err
-		}
-		if !errors.Is(err, context.Canceled) {
-			l.log(err)
-		}
+	if err != nil && !errors.Is(err, io.EOF) && l.failure == nil {
+		l.failure = err
 	}
 	return n, err
 }
@@ -211,9 +200,7 @@ func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
 		}
 		result = append(result, source)
 	}
-	random := make([]byte, 16)
-	rand.Read(random) //nolint:errcheck
-	writeJSON(w, map[string]any{"MediaSources": result, "PlaySessionId": hex.EncodeToString(random)})
+	writeJSON(w, map[string]any{"MediaSources": result, "PlaySessionId": randomHex(16)})
 }
 
 // defaultAudio picks the flagged audio stream, else the first.

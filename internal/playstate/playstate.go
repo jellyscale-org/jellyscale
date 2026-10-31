@@ -20,7 +20,8 @@ const CoalesceWindow = 30 * time.Second
 // from overflowing a bigint.
 const MaxTicks = int64(1) << 50
 
-func clampTicks(ticks int64) int64 { return min(max(ticks, 0), MaxTicks) }
+// ClampTicks bounds a client-reported position to [0, MaxTicks].
+func ClampTicks(ticks int64) int64 { return min(max(ticks, 0), MaxTicks) }
 
 // Started records that a user began playing an item. A report for an item that
 // no longer exists is ignored, not an error: the client can't act on it.
@@ -33,19 +34,20 @@ func Started(ctx context.Context, pool *pgxpool.Pool, userID, itemID string) err
 
 // Progress stores a position unless the row was written within CoalesceWindow.
 // The age check is in the statement, so it holds across replicas without any
-// flush logic. It reports whether the row was written.
-func Progress(ctx context.Context, pool *pgxpool.Pool, userID, itemID string, ticks int64) (bool, error) {
-	tag, err := pool.Exec(ctx, `INSERT INTO user_item_data (user_id, item_id, position_ticks, last_played_at, progress_at)
+// flush logic.
+func Progress(ctx context.Context, pool *pgxpool.Pool, userID, itemID string, ticks int64) error {
+	_, err := pool.Exec(ctx, `INSERT INTO user_item_data (user_id, item_id, position_ticks, last_played_at, progress_at)
 		SELECT $1::uuid, i.id, $3, now(), now() FROM items i WHERE i.id = $2::uuid
 		ON CONFLICT (user_id, item_id) DO UPDATE
 		SET position_ticks = EXCLUDED.position_ticks, last_played_at = now(), progress_at = now()
 		WHERE user_item_data.progress_at IS NULL OR user_item_data.progress_at < now() - make_interval(secs => $4)`,
-		userID, itemID, clampTicks(ticks), CoalesceWindow.Seconds())
-	return tag.RowsAffected() > 0, err
+		userID, itemID, ClampTicks(ticks), CoalesceWindow.Seconds())
+	return err
 }
 
-// Stopped always writes, and shields the row from the progress that follows. Near the end (90% or more) the item counts as watched
-// and the resume point clears. Within the first 5% there's nothing worth
+// Stopped always writes, and shields the row from the progress that follows.
+// Near the end (90% or more) the item counts as watched and the resume point
+// clears. Within the first 5% there's nothing worth
 // resuming, so the point clears too. Otherwise the position is kept. An item
 // with an unknown runtime keeps whatever position was reported.
 func Stopped(ctx context.Context, pool *pgxpool.Pool, userID, itemID string, ticks int64) error {
@@ -66,7 +68,7 @@ func Stopped(ctx context.Context, pool *pgxpool.Pool, userID, itemID string, tic
 		SET position_ticks = EXCLUDED.position_ticks,
 			played = user_item_data.played OR EXCLUDED.played,
 			play_count = user_item_data.play_count + EXCLUDED.play_count,
-			last_played_at = now(), progress_at = now()`, userID, itemID, clampTicks(ticks))
+			last_played_at = now(), progress_at = now()`, userID, itemID, ClampTicks(ticks))
 	return err
 }
 

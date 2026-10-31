@@ -2,8 +2,6 @@ package api
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
@@ -88,12 +86,7 @@ func (s *Server) authenticateByName(w http.ResponseWriter, r *http.Request) {
 	}
 
 	info := compat.ParseAuth(r)
-	token := make([]byte, 16)
-	if _, err := rand.Read(token); err != nil {
-		s.fail(w, r, err)
-		return
-	}
-	accessToken := hex.EncodeToString(token)
+	accessToken := randomHex(16)
 	now := time.Now().UTC()
 	// One token per device, so signing in again replaces the old one.
 	if err := pgx.BeginFunc(r.Context(), s.Pool, func(tx pgx.Tx) error {

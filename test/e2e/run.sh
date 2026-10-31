@@ -10,7 +10,7 @@ set -uo pipefail
 work=$1
 playwright=$2
 repo=$(cd "$(dirname "$0")/../.." && pwd)
-pg=jellyscale-e2e-pg sw=jellyscale-e2e-sw
+pg=jellyscale-e2e-pg-$$ sw=jellyscale-e2e-sw-$$
 pids=()
 mkdir -p "$work"
 work=$(cd "$work" && pwd)

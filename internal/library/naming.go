@@ -57,10 +57,7 @@ func ParseMovie(key string) Movie {
 func titleWithYear(name string) (Movie, bool) {
 	for _, pattern := range []*regexp.Regexp{titleYear, bareYear} {
 		if match := pattern.FindStringSubmatch(name); match != nil && strings.TrimSpace(match[1]) != "" {
-			year, err := strconv.Atoi(match[2])
-			if err != nil {
-				continue
-			}
+			year, _ := strconv.Atoi(match[2]) // Four digits, so it parses.
 			return Movie{Title: cleanTitle(match[1]), Year: year}, true
 		}
 	}
@@ -84,19 +81,18 @@ func ParseEpisode(key string) (Episode, bool) {
 	}
 	stem := strings.TrimSuffix(parts[len(parts)-1], path.Ext(key))
 
-	var season, number int
-	var rest string
-	if match := episodeTag.FindStringSubmatchIndex(stem); match != nil {
-		season, _ = strconv.Atoi(stem[match[2]:match[3]])
-		number, _ = strconv.Atoi(stem[match[4]:match[5]])
-		rest = stem[match[1]:]
-	} else if match := episodeAltX.FindStringSubmatchIndex(stem); match != nil {
-		season, _ = strconv.Atoi(stem[match[2]:match[3]])
-		number, _ = strconv.Atoi(stem[match[4]:match[5]])
-		rest = stem[match[1]:]
-	} else {
+	var match []int
+	for _, pattern := range []*regexp.Regexp{episodeTag, episodeAltX} {
+		if match = pattern.FindStringSubmatchIndex(stem); match != nil {
+			break
+		}
+	}
+	if match == nil {
 		return Episode{}, false
 	}
+	season, _ := strconv.Atoi(stem[match[2]:match[3]])
+	number, _ := strconv.Atoi(stem[match[4]:match[5]])
+	rest := stem[match[1]:]
 
 	// A season folder wins over the filename, which is often the less reliable.
 	if len(parts) >= 3 {

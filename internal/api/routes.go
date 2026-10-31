@@ -5,7 +5,6 @@ import "net/http"
 // Routes is the source of truth for the API surface. compat/endpoints.yaml is
 // generated from it and a test keeps the two in step.
 func (s *Server) Routes() []Route {
-	empty := emptyResult
 	return []Route{
 		// System.
 		{Method: "GET", Path: "/System/Info/Public", Status: Implemented, Role: RoleAPI, Public: true, Handler: s.systemInfoPublic},
@@ -38,22 +37,22 @@ func (s *Server) Routes() []Route {
 		{Method: "GET", Path: "/Items/Filters2", Status: Stub, Role: RoleAPI, Handler: s.itemFilters},
 		{Method: "GET", Path: "/Items/{itemId}", Status: Implemented, Role: RoleAPI, Handler: s.getItem},
 		{Method: "GET", Path: "/Items/{itemId}/Ancestors", Status: Implemented, Role: RoleAPI, Handler: s.itemAncestors},
-		{Method: "GET", Path: "/Items/{itemId}/Similar", Status: Stub, Role: RoleAPI, Handler: empty},
+		{Method: "GET", Path: "/Items/{itemId}/Similar", Status: Stub, Role: RoleAPI, Handler: emptyResult},
 		{Method: "GET", Path: "/Items/{itemId}/ThemeMedia", Status: Stub, Role: RoleAPI, Handler: s.themeMedia},
 		{Method: "GET", Path: "/Items/{itemId}/Collections", Status: Stub, Role: RoleAPI, Handler: emptyList},
 		{Method: "GET", Path: "/Items/{itemId}/SpecialFeatures", Status: Stub, Role: RoleAPI, Handler: emptyList},
 		{Method: "GET", Path: "/Items/{itemId}/LocalTrailers", Status: Stub, Role: RoleAPI, Handler: emptyList},
 		{Method: "GET", Path: "/UserItems/Resume", Status: Implemented, Role: RoleAPI, Handler: s.resumeItems},
-		{Method: "GET", Path: "/Shows/NextUp", Status: Stub, Role: RoleAPI, Handler: empty},
+		{Method: "GET", Path: "/Shows/NextUp", Status: Stub, Role: RoleAPI, Handler: emptyResult},
 		{Method: "GET", Path: "/Shows/{seriesId}/Seasons", Status: Implemented, Role: RoleAPI, Handler: s.seasons},
 		{Method: "GET", Path: "/Shows/{seriesId}/Episodes", Status: Implemented, Role: RoleAPI, Handler: s.episodes},
-		{Method: "GET", Path: "/Genres", Status: Stub, Role: RoleAPI, Handler: empty},
-		{Method: "GET", Path: "/Studios", Status: Stub, Role: RoleAPI, Handler: empty},
-		{Method: "GET", Path: "/Persons", Status: Stub, Role: RoleAPI, Handler: empty},
+		{Method: "GET", Path: "/Genres", Status: Stub, Role: RoleAPI, Handler: emptyResult},
+		{Method: "GET", Path: "/Studios", Status: Stub, Role: RoleAPI, Handler: emptyResult},
+		{Method: "GET", Path: "/Persons", Status: Stub, Role: RoleAPI, Handler: emptyResult},
 
 		// Out of scope: valid empty answers so the web client's home page loads.
-		{Method: "GET", Path: "/LiveTv/Programs", Status: Stub, Role: RoleAPI, Handler: empty},
-		{Method: "GET", Path: "/LiveTv/Programs/Recommended", Status: Stub, Role: RoleAPI, Handler: empty},
+		{Method: "GET", Path: "/LiveTv/Programs", Status: Stub, Role: RoleAPI, Handler: emptyResult},
+		{Method: "GET", Path: "/LiveTv/Programs/Recommended", Status: Stub, Role: RoleAPI, Handler: emptyResult},
 		{Method: "GET", Path: "/SyncPlay/List", Status: Stub, Role: RoleAPI, Handler: emptyList},
 		{Method: "GET", Path: "/Plugins", Status: Stub, Role: RoleAPI, Handler: emptyList},
 
@@ -88,7 +87,7 @@ func (s *Server) Routes() []Route {
 		{Method: "GET", Path: "/Users/{userId}/Items/Resume", Status: Alias, Role: RoleAPI, Handler: s.resumeItems},
 		{Method: "GET", Path: "/Users/{userId}/Items/Root", Status: Alias, Role: RoleAPI, Handler: s.rootFolder},
 		{Method: "GET", Path: "/Users/{userId}/Items/{itemId}", Status: Alias, Role: RoleAPI, Handler: s.getItem},
-		{Method: "GET", Path: "/Users/{userId}/Items/{itemId}/Intros", Status: Alias, Role: RoleAPI, Handler: empty},
+		{Method: "GET", Path: "/Users/{userId}/Items/{itemId}/Intros", Status: Alias, Role: RoleAPI, Handler: emptyResult},
 		{Method: "GET", Path: "/Users/{userId}/Items/{itemId}/LocalTrailers", Status: Alias, Role: RoleAPI, Handler: emptyList},
 		{Method: "GET", Path: "/Users/{userId}/Items/{itemId}/SpecialFeatures", Status: Alias, Role: RoleAPI, Handler: emptyList},
 		// These act on the caller whatever userId says.

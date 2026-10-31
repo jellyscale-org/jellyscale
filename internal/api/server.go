@@ -2,14 +2,12 @@
 package api
 
 import (
-	"bufio"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"log/slog"
-	"net"
 	"net/http"
 	"net/url"
 	"slices"
@@ -66,14 +64,13 @@ type Server struct {
 	WebDir   string
 	Roles    []string
 	Log      *slog.Logger
-	// ReplicaID names this process in sessions.ws_replica. Random if empty.
-	ReplicaID string
 	// SocketIdle closes a WebSocket that sends nothing for this long.
 	// Defaults to 60 seconds, the interval ForceKeepAlive promises.
 	SocketIdle time.Duration
 
-	stores    sync.Map // store URI -> store.Store
-	replicaID sync.Once
+	stores      sync.Map // store URI -> store.Store
+	replicaOnce sync.Once
+	replicaID   string
 }
 
 type contextKey struct{}
@@ -170,15 +167,7 @@ func (w *statusWriter) WriteHeader(status int) {
 	w.ResponseWriter.WriteHeader(status)
 }
 
-// Hijack lets the WebSocket upgrade take the connection.
-func (w *statusWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return http.NewResponseController(w.ResponseWriter).Hijack()
-}
-
-func (w *statusWriter) Flush() {
-	http.NewResponseController(w.ResponseWriter).Flush() //nolint:errcheck
-}
-
+// Unwrap lets the WebSocket upgrade find the real connection to hijack.
 func (w *statusWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
 func (s *Server) logRequests(next http.Handler) http.Handler {
@@ -265,12 +254,13 @@ func (s *Server) storeFor(uri string) (store.Store, error) {
 
 // replica returns this process's ID for sessions.ws_replica.
 func (s *Server) replica() string {
-	s.replicaID.Do(func() {
-		if s.ReplicaID == "" {
-			random := make([]byte, 6)
-			rand.Read(random) //nolint:errcheck
-			s.ReplicaID = hex.EncodeToString(random)
-		}
-	})
-	return s.ReplicaID
+	s.replicaOnce.Do(func() { s.replicaID = randomHex(6) })
+	return s.replicaID
+}
+
+// randomHex returns n random bytes as hex. crypto/rand.Read never fails.
+func randomHex(n int) string {
+	random := make([]byte, n)
+	rand.Read(random) //nolint:errcheck
+	return hex.EncodeToString(random)
 }

@@ -73,12 +73,8 @@ func (s *S3) List(ctx context.Context, prefix string) ([]Object, error) {
 			if strings.HasSuffix(*item.Key, "/") {
 				continue
 			}
-			key := strings.TrimPrefix(*item.Key, s.prefix+"/")
-			if s.prefix == "" {
-				key = *item.Key
-			}
 			objects = append(objects, Object{
-				Key:  key,
+				Key:  strings.TrimPrefix(*item.Key, s.objectKey("")),
 				Size: aws.ToInt64(item.Size),
 				ETag: strings.Trim(aws.ToString(item.ETag), `"`),
 			})

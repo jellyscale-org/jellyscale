@@ -130,10 +130,9 @@ func (q Query) order() string {
 		if !ok {
 			continue
 		}
+		// The last direction given applies to the keys after it.
 		direction := "ASC"
-		if i < len(q.Descending) && q.Descending[i] {
-			direction = "DESC"
-		} else if i >= len(q.Descending) && len(q.Descending) > 0 && q.Descending[len(q.Descending)-1] {
+		if last := min(i, len(q.Descending)-1); last >= 0 && q.Descending[last] {
 			direction = "DESC"
 		}
 		parts = append(parts, column+" "+direction+" NULLS LAST")
