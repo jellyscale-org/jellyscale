@@ -11,6 +11,7 @@ func (s *Server) Routes() []Route {
 		{Method: "GET", Path: "/System/Info", Status: Implemented, Role: RoleAPI, Handler: s.systemInfo},
 		{Method: "GET", Path: "/System/Ping", Status: Implemented, Role: RoleAPI, Public: true, Handler: s.ping},
 		{Method: "POST", Path: "/System/Ping", Status: Implemented, Role: RoleAPI, Public: true, Handler: s.ping},
+		{Method: "GET", Path: "/System/Configuration/encoding", Status: Implemented, Role: RoleAPI, Handler: encodingConfiguration},
 		{Method: "GET", Path: "/System/Endpoint", Status: Implemented, Role: RoleAPI, Handler: s.systemEndpoint},
 		{Method: "GET", Path: "/Branding/Configuration", Status: Stub, Role: RoleAPI, Public: true, Handler: s.branding},
 		{Method: "GET", Path: "/Branding/Css", Status: Stub, Role: RoleAPI, Public: true, Handler: noContent},
@@ -67,6 +68,7 @@ func (s *Server) Routes() []Route {
 		// handler splits the file name, since patterns can't match part of one.
 		{Method: "GET", Path: "/Videos/{itemId}/hls1/{playlistId}/{segmentId}", Status: Implemented, Role: RoleStream, Handler: s.hlsSegment},
 		{Method: "DELETE", Path: "/Videos/ActiveEncodings", Status: Implemented, Role: RoleStream, Handler: s.deleteActiveEncodings},
+		{Method: "GET", Path: "/Videos/{itemId}/{sourceId}/Subtitles/{index}/{startPositionTicks}/{file}", Status: Implemented, Role: RoleStream, Handler: s.subtitleStream},
 		{Method: "GET", Path: "/Videos/{itemId}/{file}", Status: Implemented, Role: RoleStream, Handler: s.stream},
 		{Method: "GET", Path: "/Items/{itemId}/PlaybackInfo", Status: Implemented, Role: RoleAPI, Handler: s.playbackInfo},
 		{Method: "POST", Path: "/Items/{itemId}/PlaybackInfo", Status: Implemented, Role: RoleAPI, Handler: s.playbackInfo},

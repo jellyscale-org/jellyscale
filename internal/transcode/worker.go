@@ -23,6 +23,7 @@ import (
 	"jellyscale/internal/items"
 	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
+	"jellyscale/internal/subtitles"
 )
 
 // Worker claims jobs and runs ffmpeg for them.
@@ -191,16 +192,34 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		return err
 	}
 	defer closeInput()
-	if err := os.MkdirAll(w.Scratch, 0o755); err != nil {
+	// Absolute, because ffmpeg runs in the directory when it burns subtitles.
+	scratch, err := filepath.Abs(w.Scratch)
+	if err != nil {
 		return err
 	}
-	dir, err := os.MkdirTemp(w.Scratch, "job-")
+	if err := os.MkdirAll(scratch, 0o755); err != nil {
+		return err
+	}
+	// The first burn of a track reads the whole file, here, before ffmpeg
+	// starts; it is cached for every job after.
+	var ass string
+	if job.Spec.Subtitle != nil {
+		assets, err := w.Media(source.AssetStoreURI)
+		if err != nil {
+			return err
+		}
+		if ass, err = w.extractSubtitle(ctx, job, log, source, media, assets); err != nil {
+			return fmt.Errorf("subtitle track %d: %w", *job.Spec.Subtitle, err)
+		}
+	}
+	// Made after the read, which can outlast scratchIdle, so the sweep doesn't
+	// remove it as abandoned.
+	dir, err := os.MkdirTemp(scratch, "job-")
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(dir)
-
-	cmd, err := Command(ctx, input, job.Spec, job.Start, dir)
+	cmd, err := Command(ctx, input, job.Spec, job.Start, dir, ass)
 	if err != nil {
 		return err
 	}
@@ -208,7 +227,7 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	// backstop, so no path leaves ffmpeg running.
 	var stderr tail
 	cmd.Stderr = &stderr
-	dieWithParent(cmd)
+	subtitles.DieWithParent(cmd)
 	if err := cmd.Start(); err != nil {
 		return err
 	}
@@ -310,6 +329,46 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	}
 }
 
+// extractSubtitle returns the job's subtitle track as ASS. An extraction can
+// take minutes, so it keeps the lease alive meanwhile, and stops when the job
+// is lost or nobody wants it, so it doesn't hold a slot for a cancelled job.
+func (w *Worker) extractSubtitle(ctx context.Context, job claimed, log *slog.Logger, source items.Source, media, assets store.Store) (string, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	type result struct {
+		track subtitles.Track
+		err   error
+	}
+	done := make(chan result, 1)
+	go func() {
+		track, err := subtitles.Cache{Pool: w.Pool, Log: log}.Track(ctx, source, media, assets, *job.Spec.Subtitle)
+		done <- result{track, err}
+	}()
+	beat := time.NewTicker(w.heartbeat())
+	defer beat.Stop()
+	for {
+		select {
+		case r := <-done:
+			return r.track.ASS, r.err
+		case <-beat.C:
+			alive, wanted, err := w.beat(ctx, job)
+			switch {
+			case err != nil:
+				log.Warn("transcode heartbeat failed", "error", err)
+			case !alive:
+				cancel()
+				<-done
+				return "", fmt.Errorf("%w: %s", errInterrupted, w.lostReason(context.WithoutCancel(ctx), job))
+			case !wanted:
+				cancel()
+				<-done
+				w.Pool.Exec(context.WithoutCancel(ctx), "UPDATE transcode_jobs SET state = 'cancelled' WHERE id = $1 AND state = 'running'", job.ID) //nolint:errcheck
+				return "", fmt.Errorf("%w: no viewer is watching", errInterrupted)
+			}
+		}
+	}
+}
+
 // lostReason says why the job is no longer ours to run: a seek replaced it, or
 // something took the lease from us.
 func (w *Worker) lostReason(ctx context.Context, job claimed) string {
@@ -402,7 +461,7 @@ func (w *Worker) stored(ctx context.Context, hash string, n int) bool {
 // scratchIdle is how long a job directory may go untouched before nobody is
 // using it: a live job stores a segment, and so changes its directory, far
 // more often, and a hung one is failed after Stall.
-const scratchIdle = 2 * time.Minute
+var scratchIdle = 2 * time.Minute
 
 // clearScratch removes the directories a crashed worker left. Workers on one
 // host may share Scratch, so it leaves any that a job is still writing to.

@@ -20,6 +20,10 @@ type Posix struct {
 
 // NewPosix returns a Store rooted at root.
 func NewPosix(root string) *Posix {
+	// Absolute, so a path handed to ffmpeg means the same in any directory.
+	if abs, err := filepath.Abs(root); err == nil {
+		root = abs
+	}
 	return &Posix{root: root}
 }
 

@@ -23,7 +23,7 @@ start() { "$work/jellyscale" "$@" --config "$work/config.json" 2>>"$work/roles.l
 # The workers' ffmpeg reads at twice the film's speed, so it is still running
 # when the checks below look for it. run.sh may have made the shim already.
 mkdir -p "$work/bin"
-printf '#!/bin/sh\nexec %s -readrate 2 "$@"\n' "$(command -v ffmpeg)" >"$work/bin/ffmpeg"
+printf '#!/bin/sh\ncase "$*" in *"-f hls"*) exec %s -readrate 2 "$@";; esac\nexec %s "$@"\n' "$(command -v ffmpeg)" "$(command -v ffmpeg)" >"$work/bin/ffmpeg"
 chmod +x "$work/bin/ffmpeg"
 PATH="$work/bin:$PATH" start --roles=worker
 PATH="$work/bin:$PATH" start --roles=worker
@@ -53,7 +53,7 @@ id=$(curl -s -H "$header" "127.0.0.1:$api2/Items?Recursive=true&IncludeItemTypes
   python3 -I -c 'import json,sys;print(json.load(sys.stdin)["Items"][0]["Id"])')
 total=$(curl -s -H "$header" "127.0.0.1:$api2/Items?Recursive=true&IncludeItemTypes=Movie" |
   python3 -I -c 'import json,sys;print(json.load(sys.stdin)["TotalRecordCount"])')
-check "two workers scanned without duplicates" 13 "$total"
+check "two workers scanned without duplicates" 17 "$total"
 check "stream role serves images" 200 "$(code "127.0.0.1:$stream/Items/$id/Images/Primary")"
 check "api role doesn't serve images" 404 "$(code "127.0.0.1:$api1/Items/$id/Images/Primary")"
 check "stream role doesn't serve the API" 404 "$(code -H "$header" "127.0.0.1:$stream/Items")"
@@ -64,6 +64,40 @@ check "wrong password is refused" 401 "$(code -X POST "127.0.0.1:$api1/Users/Aut
 check "invalid token is refused" 401 "$(code -H 'X-Emby-Token: nope' "127.0.0.1:$api1/Users/Me")"
 check "audio routes aren't served" 404 "$(code -H "$header" "127.0.0.1:$api1/Audio/$id/stream")"
 check "music lists are empty" '{"Items":[],"TotalRecordCount":0,"StartIndex":0}' "$(curl -s -H "$header" "127.0.0.1:$api1/Items?Recursive=true&IncludeItemTypes=Audio")"
+
+# Subtitles: two stream replicas, each with a counting ffmpeg in front of the
+# real one, are asked for one track at the same moment. The track is read out of
+# the file once, by one process of either, and a later request reads the cache.
+sigma=$(curl -s -H "$header" "127.0.0.1:$api2/Items?Recursive=true&IncludeItemTypes=Movie&SearchTerm=Sigma" |
+  python3 -I -c 'import json,sys;print(json.load(sys.stdin)["Items"][0]["Id"])')
+mkdir -p "$work/count"
+: >"$work/count/runs"
+printf '#!/bin/sh\necho run >>"%s/runs"\nexec %s "$@"\n' "$work/count" "$(command -v ffmpeg)" >"$work/count/ffmpeg"
+chmod +x "$work/count/ffmpeg"
+counted1=$(free) counted2=$(free)
+PATH="$work/count:$PATH" start --roles=stream --listen "127.0.0.1:$counted1"
+PATH="$work/count:$PATH" start --roles=stream --listen "127.0.0.1:$counted2"
+for p in $counted1 $counted2; do for _ in $(seq 1 60); do curl -fs -o /dev/null "127.0.0.1:$p/healthz" && break; sleep 0.25; done; done
+track="/Videos/$sigma/$sigma/Subtitles/3/0/Stream.ass?ApiKey=$token"
+rm -f "$work/subs".*
+requests=()
+for i in $(seq 1 12); do
+  p=$counted1; [[ $((i % 2)) -eq 0 ]] && p=$counted2
+  curl -s -o "$work/subs.$i" -w '%{http_code} %{content_type}\n' "127.0.0.1:$p$track" >>"$work/subs.codes" &
+  requests+=($!)
+done
+wait "${requests[@]}" # Not a bare wait, which would wait for the servers too.
+check "twelve requests across two replicas all get the track" "12" "$(grep -c '^200 text/x-ssa' "$work/subs.codes")"
+check "they all get the same text" 1 "$(md5sum "$work"/subs.[0-9]* | cut -d' ' -f1 | sort -u | wc -l)"
+check "the text keeps its style" 1 "$(grep -c 'Style: Loud,Arial,64,&H0000FF00' "$work/subs.1")"
+check "the file was read once, by one ffmpeg" 1 "$(wc -l <"$work/count/runs")"
+check "another format and replica reads the cache" 200 "$(code "127.0.0.1:$counted2/Videos/$sigma/$sigma/Subtitles/3/0/Stream.vtt?ApiKey=$token")"
+check "a start position shifts the cues" 1 "$(curl -s "127.0.0.1:$counted1/Videos/$sigma/$sigma/Subtitles/2/50000000/Stream.srt?ApiKey=$token" | grep -c '^00:00:00,000 --> 00:00:01,000$')"
+check "that was the other track, so a second extraction" 2 "$(wc -l <"$work/count/runs")"
+check "no extension is not found" 404 "$(code "127.0.0.1:$counted1/Videos/$sigma/$sigma/Subtitles/3/0/Stream?ApiKey=$token")"
+check "subtitles need a token" 401 "$(code "127.0.0.1:$counted1/Videos/$sigma/$sigma/Subtitles/3/0/Stream.vtt")"
+check "the api role doesn't serve subtitles" 404 "$(code "127.0.0.1:$api1/Videos/$sigma/$sigma/Subtitles/3/0/Stream.vtt?ApiKey=$token")"
+check "the api role serves the encoding configuration" 200 "$(code -H "$header" "127.0.0.1:$api1/System/Configuration/encoding")"
 
 # Transcoding across processes: the stream role serves HLS, a worker process
 # makes the segments, and no ffmpeg outlives the DELETE that ends the session.

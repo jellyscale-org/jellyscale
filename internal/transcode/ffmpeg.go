@@ -10,12 +10,14 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"jellyscale/internal/playback"
+	subs "jellyscale/internal/subtitles"
 )
 
 const (
@@ -40,16 +42,25 @@ const (
 // A restart has to splice with the segments before it, so its audio is cut on
 // the same AAC frame grid as a run from zero; that takes the source's start
 // time, frame rate and the first frame at the restart point.
-func Command(ctx context.Context, input string, spec playback.Spec, start int, dir string) (*exec.Cmd, error) {
+//
+// When the spec has a subtitle, ass is that track as an ASS file, with times as
+// the track's file has them, counted from the source's start time. It is drawn
+// into the picture after the scale, so it is sharp at the output size, and
+// from a file in dir, so no client text reaches the filter's arguments.
+func Command(ctx context.Context, input string, spec playback.Spec, start int, dir, ass string) (*exec.Cmd, error) {
 	seek := float64(start * playback.SegmentSeconds)
 	hasAudio := spec.AudioIndex >= 0
+	burn := spec.Subtitle != nil
+	var base, frameDuration float64
+	if (start > 0 && hasAudio) || burn {
+		var err error
+		if base, frameDuration, err = sourceTiming(ctx, input); err != nil {
+			return nil, err
+		}
+	}
 	var audioSeek float64
 	var drop string
 	if start > 0 && hasAudio {
-		base, frameDuration, err := sourceTiming(ctx, input)
-		if err != nil {
-			return nil, err
-		}
 		keyframe, err := firstFrameAt(ctx, input, seek+base)
 		if err != nil {
 			return nil, err
@@ -76,11 +87,20 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		args = append(args, "-map", "1:"+strconv.Itoa(spec.AudioIndex))
 	}
 	vb := strconv.FormatInt(spec.VideoBitrate, 10)
+	subtitles := ""
+	if burn {
+		// -copyts keeps the frames' times in the source's own clock, which starts
+		// at base, and the track's cues start at 0.
+		if err := os.WriteFile(filepath.Join(dir, "subtitles.ass"), []byte(subs.Delay(ass, base)), 0o644); err != nil {
+			return nil, err
+		}
+		subtitles = ",subtitles=subtitles.ass"
+	}
 	args = append(args,
 		// Frames the decoder marks interlaced are deinterlaced, since the output
 		// is progressive; the rest pass through untouched. The captured profile
 		// asks for progressive H.264.
-		"-vf", fmt.Sprintf("yadif=mode=send_frame:parity=auto:deint=interlaced,scale=%d:%d:flags=bicubic,format=yuv420p", spec.Width, spec.Height),
+		"-vf", fmt.Sprintf("yadif=mode=send_frame:parity=auto:deint=interlaced,scale=%d:%d:flags=bicubic%s,format=yuv420p", spec.Width, spec.Height, subtitles),
 		"-c:v", "libx264", "-preset", "veryfast", "-profile:v", "high", "-level", "51",
 		"-crf", "23", "-maxrate", vb, "-bufsize", strconv.FormatInt(2*spec.VideoBitrate, 10),
 		// Fixed B-frames and a closed GOP, so a restart makes the same frames.
@@ -103,7 +123,11 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		"-hls_segment_options", "use_editlist=0:avoid_negative_ts=disabled:movflags=+frag_discont",
 		"-hls_segment_filename", filepath.Join(dir, "%d.m4s"), filepath.Join(dir, "index.m3u8"),
 	)
-	return exec.CommandContext(ctx, "ffmpeg", args...), nil
+	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
+	if burn {
+		cmd.Dir = dir // Where the subtitle filter finds its file; dir is absolute.
+	}
+	return cmd, nil
 }
 
 func seconds(v float64) string { return strconv.FormatFloat(v, 'f', 6, 64) }

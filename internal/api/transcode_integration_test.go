@@ -112,7 +112,7 @@ func TestPlaybackInfoDecidesFromTheDeviceProfile(t *testing.T) {
 	if again := e.playbackInfo(t, 1, e.item, body(nil)); again["PlaySessionId"] == reply["PlaySessionId"] {
 		t.Fatal("PlaySessionId repeated")
 	}
-	// All audio is offered; the item DTO lists no subtitles.
+	// All audio is offered; the DTO here lists no subtitle track, so none is offered.
 	types := map[string]int{}
 	for _, s := range media["MediaStreams"].([]any) {
 		types[s.(map[string]any)["Type"].(string)]++

@@ -60,7 +60,7 @@ var testSpec = playback.Spec{AudioIndex: 1, VideoBitrate: 1_500_000, AudioBitrat
 func encode(t *testing.T, input string, start int) string {
 	t.Helper()
 	dir := t.TempDir()
-	cmd, err := Command(context.Background(), input, testSpec, start, dir)
+	cmd, err := Command(context.Background(), input, testSpec, start, dir, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,7 +201,7 @@ func TestAudioIndexSelectsTheTrack(t *testing.T) {
 		spec := testSpec
 		spec.AudioIndex = index
 		dir := t.TempDir()
-		cmd, err := Command(context.Background(), input, spec, 0, dir)
+		cmd, err := Command(context.Background(), input, spec, 0, dir, "")
 		if err != nil {
 			t.Fatal(err)
 		}

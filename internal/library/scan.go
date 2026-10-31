@@ -89,7 +89,8 @@ type seenObject struct {
 	etag   string
 	itemID *string
 	// unprobed: stored before the probe recorded level, field order and range,
-	// which transcode decisions need. A scan probes it again.
+	// which transcode decisions need, or which subtitle tracks are text. A scan
+	// probes it again.
 	unprobed bool
 }
 
@@ -196,7 +197,7 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 func (s *Scanner) loadSeen(ctx context.Context, libraryID string) (map[string]seenObject, error) {
 	rows, err := s.Pool.Query(ctx, `SELECT o.key, o.size, o.etag, o.item_id::text,
 			EXISTS (SELECT 1 FROM media_sources m WHERE m.item_id = o.item_id
-				AND jsonb_path_exists(m.streams, '$[*] ? (@.Type == "Video" && !exists(@.VideoRangeType))'))
+				AND jsonb_path_exists(m.streams, '$[*] ? ((@.Type == "Video" && !exists(@.VideoRangeType)) || (@.Type == "Subtitle" && !exists(@.IsTextSubtitleStream)))'))
 		FROM scan_objects o WHERE o.library_id = $1`, libraryID)
 	if err != nil {
 		return nil, err
@@ -553,9 +554,10 @@ func videoDTO(item record, object store.Object, probe Probe) map[string]any {
 	return dto
 }
 
-// playableStreams is what direct play can deliver until transcoding (Phase 3):
-// no subtitles, and only the default audio track, or else the first. Clients
-// build their track menus from this, so anything else would be a dead choice.
+// playableStreams is what direct play can deliver: the video, the default audio
+// track, or else the first, and the text subtitle tracks, which are extracted
+// on request. Image subtitles can't be delivered yet. Clients build their
+// track menus from this, so anything else would be a dead choice.
 // media_sources.streams keeps the full list, and the probe's fields for
 // transcode decisions, which the DTO leaves out so direct play replies stay as
 // they were.
@@ -581,7 +583,7 @@ func playableStreams(streams []map[string]any) []map[string]any {
 				delete(stream, key)
 			}
 		}
-		if stream["Type"] == "Video" || i == audio {
+		if stream["Type"] == "Video" || i == audio || (stream["Type"] == "Subtitle" && stream["IsTextSubtitleStream"] == true) {
 			playable = append(playable, stream)
 		}
 	}

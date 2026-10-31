@@ -42,6 +42,7 @@ routes:
   - {method: GET, path: "/socket", status: implemented, role: api}
   - {method: GET, path: "/Studios", status: stub, role: api}
   - {method: GET, path: "/SyncPlay/List", status: stub, role: api}
+  - {method: GET, path: "/System/Configuration/encoding", status: implemented, role: api}
   - {method: GET, path: "/System/Endpoint", status: implemented, role: api}
   - {method: GET, path: "/System/Info", status: implemented, role: api}
   - {method: GET, path: "/System/Info/Public", status: implemented, role: api}
@@ -76,3 +77,4 @@ routes:
   - {method: GET, path: "/Videos/{itemId}/main.m3u8", status: implemented, role: stream}
   - {method: GET, path: "/Videos/{itemId}/master.m3u8", status: implemented, role: stream}
   - {method: GET, path: "/Videos/{itemId}/{file}", status: implemented, role: stream}
+  - {method: GET, path: "/Videos/{itemId}/{sourceId}/Subtitles/{index}/{startPositionTicks}/{file}", status: implemented, role: stream}

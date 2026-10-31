@@ -108,9 +108,23 @@ func newEnvOn(t *testing.T, s3Target string) *env {
 	return e
 }
 
-// putOnS3 stores the film on a target and returns its store URI. Credentials go
-// in the environment, as they do for the server, never in the URI.
+// putOnS3 stores the film on a target and returns its store URI.
 func putOnS3(t *testing.T, target string, body []byte) string {
+	t.Helper()
+	uri := s3Root(t, target)
+	media, err := store.Open(uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := media.Put(context.Background(), "film.mkv", bytes.NewReader(body)); err != nil {
+		t.Fatal(err)
+	}
+	return uri
+}
+
+// s3Root returns the URI of a fresh, empty place on a target. Credentials go
+// in the environment, as they do for the server, never in the URI.
+func s3Root(t *testing.T, target string) string {
 	t.Helper()
 	var raw string
 	for _, entry := range strings.Split(os.Getenv("JELLYSCALE_TEST_S3"), ",") {
@@ -129,13 +143,6 @@ func putOnS3(t *testing.T, target string, body []byte) string {
 	query.Del("secret")
 	parsed.RawQuery = query.Encode()
 	parsed.Path = "/api-" + uuid.NewString()
-	media, err := store.Open(parsed.String())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := media.Put(context.Background(), "film.mkv", bytes.NewReader(body)); err != nil {
-		t.Fatal(err)
-	}
 	return parsed.String()
 }
 
