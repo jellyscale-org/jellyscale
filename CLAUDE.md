@@ -27,8 +27,8 @@ go run ./cmd/jellyscale --print-routes > compat/endpoints.yaml
 
 ## Delivery
 
-Non-trivial work goes through the `deliver` workflow in `.claude/workflows/deliver.js`: implement, then two blind adversarial reviews, QA, Product, and UX when a change affects what viewers or operators experience. Role definitions are in `.claude/agents/`.
+Non-trivial work goes through the `deliver` workflow in `.claude/workflows/deliver.js`: an architecture review of the design, implement, then a blind architecture review, two blind adversarial reviews, QA, Product, and UX when a change affects what viewers or operators experience. Role definitions are in `.claude/agents/`, and the intended design is in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 Blind means a reviewer sees the task, the diff and these docs, never the implementer's reasoning or another reviewer's findings. Keep it that way when changing the workflow.
 
-After fixes, both adversarial reviewers, QA, and every other reviewer who raised a blocking finding run again.
+After fixes, the architecture reviewer, both adversarial reviewers, QA, and every other reviewer who raised a blocking finding run again.

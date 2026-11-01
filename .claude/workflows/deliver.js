@@ -3,8 +3,9 @@ export const meta = {
   description: 'Implement a scoped change, then run blind adversarial, QA, Product and optional UX reviews, fixing until clean',
   whenToUse: 'Non-trivial changes. Args: {task, acceptance: string[], tests: string[], ux?: boolean, maxRounds?: number}',
   phases: [
+    { title: 'Design', detail: 'architecture review before anything is built' },
     { title: 'Implement', detail: 'implementation subagent' },
-    { title: 'Review', detail: 'two blind adversarial, QA, Product, optional UX' },
+    { title: 'Review', detail: 'architecture, two blind adversarial, QA, Product, optional UX' },
     { title: 'Fix', detail: 'fix blocking findings, then re-review' },
   ],
 }
@@ -49,12 +50,14 @@ const SNAPSHOT = {
 
 // base continues earlier work: reviewers then see the whole change since that
 // snapshot, not just this run's fixes.
-const { task, acceptance = [], tests = [], ux = false, maxRounds = 3, roleFiles = false, base: earlierBase } = args
+// designReview: false skips the review before building, for a fix pass on work
+// whose design has been reviewed.
+const { task, acceptance = [], tests = [], ux = false, maxRounds = 3, roleFiles = false, base: earlierBase, designReview = true } = args
 if (!task) throw new Error('deliver needs args.task')
 
 const criteria = acceptance.map((line) => `- ${line}`).join('\n')
 const commands = tests.map((line) => `- ${line}`).join('\n')
-const brief = `## Task\n${task}\n\n## Acceptance criteria\n${criteria}\n\n## Test commands\n${commands}`
+let brief = `## Task\n${task}\n\n## Acceptance criteria\n${criteria}\n\n## Test commands\n${commands}`
 
 // Agent definitions register at session start, so a session that created them
 // sets roleFiles and loads each role by reading its file. That keeps the role
@@ -62,6 +65,7 @@ const brief = `## Task\n${task}\n\n## Acceptance criteria\n${criteria}\n\n## Tes
 // tree didn't change under reviewers.
 const MODELS = {
   implementer: { model: 'sonnet' },
+  'architecture-reviewer': { model: 'sonnet' },
   'adversarial-reviewer': { model: 'sonnet' },
   qa: { model: 'haiku', effort: 'max' },
   'product-reviewer': { model: 'haiku', effort: 'max' },
@@ -87,6 +91,7 @@ const reviewers = (base, head) => {
   // isn't to carry them out. Parallel reviewers share one working tree.
   const diff = `Someone else has already done the task above. You are reviewing it, not doing it: never edit, stash or mutate the working tree. Inspect the change with \`git diff ${base} ${head}\`, between two tree snapshots, so nothing is committed. To build, test or mutate, use your own export: \`git archive ${head} | tar -x -C <dir in your scratchpad>\`, plus a symlink to web-dist for the e2e test. /tmp has a small quota: use test media no larger than you need, and delete your export and media before you finish.`
   const roles = [
+    { key: 'architecture', agentType: 'architecture-reviewer', focus: 'Decide whether this is the right design, now that it is built.' },
     { key: 'adversarial-1', agentType: 'adversarial-reviewer', focus: 'Concentrate on failure: concurrency across replicas, partial failure, disconnects and resource leaks.' },
     { key: 'adversarial-2', agentType: 'adversarial-reviewer', focus: 'Concentrate on correctness and trust: client input, protocol behavior against the evidence in the task, security, and whether the tests can really fail. Also check this is the simplest code that does the job.' },
     { key: 'qa', agentType: 'qa', focus: 'Run everything and check each acceptance criterion.' },
@@ -110,6 +115,25 @@ const runReviews = async (roles, round) => {
   const failed = results.filter((entry) => !entry || !entry.result)
   if (failed.length) log(`${failed.length} reviewer(s) returned nothing, which counts as not reviewed`)
   return results
+}
+
+// Cheapest place to catch a wrong design: nothing is built yet. A blocker stops
+// the run, and anything else reaches the implementer and reviewers in the brief.
+if (designReview) {
+  phase('Design')
+  const design = await agent(`${rolePrefix('architecture-reviewer')}${brief}\n\nNothing is built yet. You are reviewing the task's design, not doing the task. Read the code it would touch, and decide where this work should live and in what shape. Never edit the working tree.`, {
+    label: 'design review',
+    phase: 'Design',
+    ...roleOptions('architecture-reviewer'),
+    schema: FINDINGS,
+  })
+  if (!design) throw new Error('design review returned nothing')
+  const stops = design.findings.filter((finding) => finding.severity === 'blocker')
+  if (stops.length) return { clean: false, rounds: 0, stoppedAtDesign: true, open: stops, design }
+  if (design.findings.length) {
+    const notes = design.findings.map((finding) => `- ${finding.title}: ${finding.scenario}`).join('\n')
+    brief += `\n\n## Design review\nRaised before this was built. Address these or say why not.\n${notes}`
+  }
 }
 
 phase('Implement')
@@ -159,9 +183,9 @@ for (let round = 1; round <= maxRounds; round++) {
   head = await snapshot(`snapshot round ${round}`)
   // Reviewers who raised something, and QA always, look again. They stay blind:
   // the diff is the whole change, and they don't see the fixer's explanation.
-  // Both adversarial reviewers always return, so fix code gets the same
-  // scrutiny as the original.
-  const again = new Set(['qa', 'adversarial-1', 'adversarial-2', ...open.map((finding) => finding.reviewer), ...unreviewed])
+  // Architecture and both adversarial reviewers always return, so fix code gets
+  // the same scrutiny as the original.
+  const again = new Set(['qa', 'architecture', 'adversarial-1', 'adversarial-2', ...open.map((finding) => finding.reviewer), ...unreviewed])
   roles = reviewers(base, head).filter((role) => again.has(role.key))
 }
 
