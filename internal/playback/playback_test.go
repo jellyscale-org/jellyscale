@@ -214,11 +214,11 @@ func TestStartTimeTicksPicksTheSegmentAndLeavesTheSpec(t *testing.T) {
 	}
 	start, specA := at("starttimeticks=400000000") // 40 s.
 	_, specB := at("")
-	if start.StartSegment(Segments(source.Ticks())) != 10 || specA.Hash() != specB.Hash() {
-		t.Errorf("segment %d, hashes %s %s", start.StartSegment(Segments(source.Ticks())), specA.Hash(), specB.Hash())
+	if start.StartSegment(EncodedLayout(source.Ticks())) != 10 || specA.Hash() != specB.Hash() {
+		t.Errorf("segment %d, hashes %s %s", start.StartSegment(EncodedLayout(source.Ticks())), specA.Hash(), specB.Hash())
 	}
-	if far := (Params{StartTicks: MaxStartTicks}); far.StartSegment(5) != 4 {
-		t.Errorf("a start past the end gave segment %d of 5", far.StartSegment(5))
+	if far := (Params{StartTicks: MaxStartTicks}); far.StartSegment(EncodedLayout(200_000_000)) != 4 {
+		t.Errorf("a start past the end gave segment %d of 5", far.StartSegment(EncodedLayout(200_000_000)))
 	}
 	if !strings.Contains(Query(start, "tok", "etag", ""), "&StartTimeTicks=400000000") || strings.Contains(Query(Params{}, "tok", "etag", ""), "StartTimeTicks") {
 		t.Error("the query carries the start only when there is one")
@@ -295,7 +295,7 @@ func TestTicksStopAtTheEndOfTheVideo(t *testing.T) {
 	// 20 s of video under 28 s of audio: the format runs 28 s, and ffmpeg
 	// cuts segments only while video lasts, so the playlist must stop at 20 s.
 	source := Source{RunTimeTicks: 280_000_000, Streams: []Stream{{Type: "Video", DurationTicks: 200_000_000}}}
-	if got := Segments(source.Ticks()); got != 5 {
+	if got := EncodedLayout(source.Ticks()).Count(); got != 5 {
 		t.Errorf("%d segments, want 5", got)
 	}
 	for name, s := range map[string]Source{
@@ -310,7 +310,7 @@ func TestTicksStopAtTheEndOfTheVideo(t *testing.T) {
 
 func TestSegmentCount(t *testing.T) {
 	for seconds, want := range map[float64]int{0.5: 1, 4: 1, 4.5: 1, 5: 2, 8: 2, 90.021: 23, 90.9: 23} {
-		if got := Segments(int64(seconds * ticksPerSecond)); got != want {
+		if got := EncodedLayout(int64(seconds * ticksPerSecond)).Count(); got != want {
 			t.Errorf("%.3f s: %d segments, want %d", seconds, got, want)
 		}
 	}
@@ -331,7 +331,7 @@ func TestParseSegment(t *testing.T) {
 }
 
 func TestMainPlaylistIsCompleteVODWithoutDiscontinuities(t *testing.T) {
-	text := Main(880_210_000, "q=1") // 88.021 s: 22 segments and a 21 ms tail
+	text := Main(EncodedLayout(880_210_000), "q=1") // 88.021 s: 22 segments and a 21 ms tail
 	for _, line := range []string{"#EXT-X-PLAYLIST-TYPE:VOD", "#EXT-X-VERSION:7", "#EXT-X-TARGETDURATION:5", "#EXT-X-ENDLIST", "#EXT-X-MAP:URI=\"hls1/main/-1.mp4?q=1&runtimeTicks=0&actualSegmentLengthTicks=0\""} {
 		if !strings.Contains(text, line+"\n") && !strings.Contains(text, line) {
 			t.Errorf("missing %q", line)
@@ -352,7 +352,7 @@ func TestMainPlaylistIsCompleteVODWithoutDiscontinuities(t *testing.T) {
 	if !strings.Contains(text, "#EXTINF:4.021000, nodesc\nhls1/main/21.mp4?q=1&runtimeTicks=840000000&actualSegmentLengthTicks=40210000\n") {
 		t.Errorf("last entry: %s", text)
 	}
-	if !strings.Contains(Main(880_000_000, "q"), "#EXTINF:4.000000, nodesc\nhls1/main/21.mp4?q&runtimeTicks=840000000&actualSegmentLengthTicks=40000000") {
+	if !strings.Contains(Main(EncodedLayout(880_000_000), "q"), "#EXTINF:4.000000, nodesc\nhls1/main/21.mp4?q&runtimeTicks=840000000&actualSegmentLengthTicks=40000000") {
 		t.Error("an exact multiple ends on a full segment")
 	}
 }
@@ -447,4 +447,268 @@ func TestSubtitleIsInTheSpecAndTheURL(t *testing.T) {
 			t.Errorf("%s accepted: only a text subtitle track can be drawn", query)
 		}
 	}
+}
+
+// seconds turns keyframe times into ticks.
+func seconds(times ...float64) []int64 {
+	ticks := make([]int64, len(times))
+	for i, t := range times {
+		ticks[i] = int64(t * ticksPerSecond)
+	}
+	return ticks
+}
+
+// capturedKeyframes are those of the fixture in compat/captures/transcode-12.4.md.
+var capturedKeyframes = seconds(0, 3, 7, 13, 18, 26, 31, 39, 44, 52, 57, 65, 70, 78, 83)
+
+func TestCopyLayoutCutsOnKeyframes(t *testing.T) {
+	layout, ok := CopyLayout(capturedKeyframes, 900_000_000)
+	if !ok {
+		t.Fatal("the captured keyframes make a layout")
+	}
+	// The captured playlist: the 3 s keyframe skipped, every later one a cut.
+	var lengths []float64
+	for n := range layout.Count() {
+		_, length := layout.Segment(n)
+		lengths = append(lengths, float64(length)/ticksPerSecond)
+	}
+	if want := []float64{7, 6, 5, 8, 5, 8, 5, 8, 5, 8, 5, 8, 5, 7}; !reflect.DeepEqual(lengths, want) {
+		t.Errorf("lengths %v, want %v", lengths, want)
+	}
+	// Everything counts from the first keyframe, which need not be 0.
+	late, _ := CopyLayout(seconds(600, 603, 607), 100_000_000)
+	if start, length := late.Segment(1); start != 70_000_000 || length != 30_000_000 {
+		t.Errorf("shifted layout: segment 1 at %d for %d", start, length)
+	}
+	// The playlist says so: the sum of lengths is the video, and the target is
+	// the longest segment rounded up.
+	text := Main(layout, "q")
+	if !strings.Contains(text, "#EXT-X-TARGETDURATION:8\n") || strings.Count(text, "#EXTINF:") != 14 {
+		t.Errorf("playlist:\n%s", text)
+	}
+	if !strings.Contains(text, "#EXTINF:8.000000, nodesc\nhls1/main/3.mp4?q&runtimeTicks=180000000&actualSegmentLengthTicks=80000000\n") {
+		t.Errorf("segment 3:\n%s", text)
+	}
+	if layout.At(0) != 0 || layout.At(69_999_999) != 0 || layout.At(70_000_000) != 1 || layout.At(1<<60) != 13 {
+		t.Errorf("At: %d %d %d %d", layout.At(0), layout.At(69_999_999), layout.At(70_000_000), layout.At(1<<60))
+	}
+}
+
+func TestCopyLayoutRefusesWhatItCannotCut(t *testing.T) {
+	for name, c := range map[string]struct {
+		keyframes []int64
+		end       int64
+		ok        bool
+	}{
+		"no keyframes":           {nil, 900_000_000, false},
+		"a gap over the limit":   {seconds(0, 3, 20, 24), 300_000_000, false},
+		"a tail over the limit":  {seconds(0, 4, 8), 300_000_000, false},
+		"the limit itself":       {seconds(0, 12), 240_000_000, true},
+		"gaps 3 and 11":          {seconds(0, 3, 14, 17, 28), 300_000_000, true},
+		"a scene cut and a GOP":  {seconds(0, 2, 12.4, 22.8, 33.2), 440_000_000, true},
+		"keyframes 3.75 s apart": {seconds(0, 3.75, 7.5, 11.25, 15), 150_000_000, true},
+	} {
+		if _, ok := CopyLayout(c.keyframes, c.end); ok != c.ok {
+			t.Errorf("%s: ok %v", name, ok)
+		}
+	}
+}
+
+// A segment is cut short of 4 s only to stay within MaxCopySegment, and then no
+// segment is over it, though one can be longer than any gap between keyframes.
+func TestCopyLayoutKeepsSegmentsWithinTheLimit(t *testing.T) {
+	layout, ok := CopyLayout(seconds(0, 3, 14, 17, 28), 300_000_000)
+	var lengths []float64
+	for n := range layout.Count() {
+		_, length := layout.Segment(n)
+		lengths = append(lengths, float64(length)/ticksPerSecond)
+	}
+	if want := []float64{3, 11, 3, 11, 2}; !ok || !reflect.DeepEqual(lengths, want) {
+		t.Errorf("ok %v, lengths %v, want %v", ok, lengths, want)
+	}
+	// Two gaps under the limit make a segment longer than either.
+	layout, _ = CopyLayout(seconds(0, 3.75, 7.5, 11.25), 150_000_000)
+	if _, length := layout.Segment(0); length != 75_000_000 {
+		t.Errorf("segment 0 is %d ticks, want 7.5 s", length)
+	}
+}
+
+func copyable(container string, audio ...string) Source {
+	source := film(container, "h264", audio...)
+	source.Keyframes = capturedKeyframes
+	source.VideoEnd = 900_000_000
+	source.RunTimeTicks = 900_000_000
+	source.Size = 22_500_000
+	return source
+}
+
+func TestDecideCopiesVideoTheClientPlays(t *testing.T) {
+	hevc := copyable("mkv", "ac3")
+	hevc.Streams[0].Codec = "hevc"
+	level53 := copyable("mkv", "ac3")
+	level53.Streams[0].Level = 53
+	interlaced := copyable("mkv", "ac3")
+	interlaced.Streams[0].IsInterlaced = true
+	hdr := copyable("mkv", "ac3")
+	hdr.Streams[0].VideoRangeType = "HDR10"
+	noIndex := copyable("mkv", "ac3")
+	noIndex.Keyframes = nil
+	emptyIndex := copyable("mkv", "ac3")
+	emptyIndex.Keyframes = []int64{}
+	longGap := copyable("mkv", "ac3")
+	longGap.Keyframes = seconds(0, 30, 60, 90)
+	heavy := copyable("mkv", "ac3")
+	heavy.Bitrate = 8_000_000
+	noBitrate := copyable("mkv", "ac3")
+	noBitrate.Bitrate = 0
+
+	for _, test := range []struct {
+		name    string
+		source  Source
+		body    string
+		copy    bool
+		reasons []string
+	}{
+		{"ac3 in mkv", copyable("mkv", "ac3"), `{}`, true, []string{"AudioCodecNotSupported"}},
+		{"ac3 in mp4", copyable("mp4", "ac3"), `{}`, true, []string{"AudioCodecNotSupported"}},
+		{"a container the client lacks", copyable("avi", "aac"), `{}`, true, []string{"ContainerNotSupported"}},
+		{"another audio track", copyable("mkv", "aac", "aac"), `{"AudioStreamIndex": 2}`, true, nil},
+		{"hevc is re-encoded", hevc, `{}`, false, []string{"VideoCodecNotSupported", "AudioCodecNotSupported"}},
+		{"a level the profile refuses", level53, `{}`, false, []string{"AudioCodecNotSupported", "VideoLevelNotSupported"}},
+		{"interlaced", interlaced, `{}`, false, []string{"AudioCodecNotSupported", "InterlacedVideoNotSupported"}},
+		{"hdr", hdr, `{}`, false, []string{"AudioCodecNotSupported", "VideoRangeTypeNotSupported"}},
+		{"no index", noIndex, `{}`, false, []string{"AudioCodecNotSupported"}},
+		{"a file with no index to read", emptyIndex, `{}`, false, []string{"AudioCodecNotSupported"}},
+		{"keyframes too far apart", longGap, `{}`, false, []string{"AudioCodecNotSupported"}},
+		{"a cap above the file", heavy, `{"MaxStreamingBitrate": 20000000}`, true, []string{"AudioCodecNotSupported"}},
+		{"a cap below the file", heavy, `{"MaxStreamingBitrate": 4000000}`, false, []string{"AudioCodecNotSupported", "ContainerBitrateExceedsLimit"}},
+		{"a cap and a file of unknown bitrate", noBitrate, `{"MaxStreamingBitrate": 4000000}`, false, []string{"AudioCodecNotSupported"}},
+		{"no cap and a file of unknown bitrate", noBitrate, `{"MaxStreamingBitrate": 2147483647}`, true, []string{"AudioCodecNotSupported"}},
+		{"a text subtitle drawn in", copyable("mkv", "ac3"), `{"SubtitleStreamIndex": 2, "AlwaysBurnInSubtitleWhenTranscoding": true}`, false, []string{"AudioCodecNotSupported", "SubtitleCodecNotSupported"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			source := test.source
+			source.Streams = append(source.Streams, Stream{Index: 2, Type: "Subtitle", Codec: "subrip", IsTextSubtitleStream: true})
+			d := Decide(request(t, test.body), source, true)
+			if d.DirectPlay || d.Copy != test.copy || !reflect.DeepEqual(d.Reasons, test.reasons) {
+				t.Fatalf("got %+v", d)
+			}
+		})
+	}
+	// A client with no subtitle profiles can't show a chosen track, so it is drawn in.
+	r := request(t, `{"SubtitleStreamIndex": 2}`)
+	r.DeviceProfile.SubtitleProfiles = nil
+	source := copyable("mkv", "ac3")
+	source.Streams = append(source.Streams, Stream{Index: 2, Type: "Subtitle", Codec: "subrip", IsTextSubtitleStream: true})
+	if d := Decide(r, source, true); d.Copy || d.Subtitle == nil {
+		t.Errorf("a burnt subtitle: %+v", d)
+	}
+	// What plays as it is stays direct play.
+	if d := Decide(request(t, `{}`), copyable("mp4", "aac"), true); !d.DirectPlay || d.Copy {
+		t.Errorf("direct play: %+v", d)
+	}
+}
+
+func TestCopySpecNeverMixesWithAnEncodedOne(t *testing.T) {
+	source := copyable("mkv", "ac3")
+	source.ID, source.ETag = "0123456789abcdef0123456789abcdef", "etag"
+	query := "mediasourceid=" + source.ID + "&playsessionid=abc"
+	encoded, err := ParseParams(mustQuery(query+"&videocodec=h264"), source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	copied, err := ParseParams(mustQuery(query+"&videocodec=copy"), source)
+	if err != nil || !copied.Copy || encoded.Copy {
+		t.Fatalf("copy %v %v, error %v", copied.Copy, encoded.Copy, err)
+	}
+	a, err := NewSpec("item", encoded, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := NewSpec("item", copied, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Hash() == b.Hash() || !b.Copy || b.Width != 1280 || b.Height != 720 {
+		t.Errorf("%+v %+v", a, b)
+	}
+	// A cap changes nothing in a copy, so Auto and a cap share segments.
+	capped := copied
+	capped.VideoBitrate = 6_000_000
+	if c, _ := NewSpec("item", capped, source); c.Hash() != b.Hash() {
+		t.Error("a cap above the file split the copied segments")
+	}
+	// A client that edits the URL to copy what can't be copied is refused.
+	source.Keyframes = nil
+	if _, err := NewSpec("item", copied, source); err == nil {
+		t.Error("copy asked for a file with no index")
+	}
+	source.Keyframes = capturedKeyframes
+	source.Streams[0].Codec = "hevc"
+	if _, err := NewSpec("item", copied, source); err == nil {
+		t.Error("copy asked for HEVC")
+	}
+	if !strings.Contains(Query(copied, "tok", "etag", ""), "&VideoCodec=copy&") || !strings.Contains(Query(encoded, "tok", "etag", ""), "&VideoCodec=h264&") {
+		t.Error("the URL says which")
+	}
+}
+
+// The video lasts from its first keyframe to where its last frame ends, which
+// is not the film's run time when the video starts late.
+func TestCopyLayoutCountsTheVideoFromItsFirstKeyframe(t *testing.T) {
+	source := copyable("mkv", "ac3")
+	source.Keyframes = seconds(5, 8, 12)
+	source.VideoEnd = 95 * ticksPerSecond
+	source.RunTimeTicks = 95 * ticksPerSecond
+	layout := source.Layout(true)
+	if _, length := layout.Segment(layout.Count() - 1); layout.Starts[layout.Count()-1]+length != 90*ticksPerSecond {
+		t.Errorf("the playlist is %d ticks long, want 90 s", layout.Starts[layout.Count()-1]+length)
+	}
+}
+
+// A 130 GB film is 1.7 Gbps over 10 minutes, and a file over 107 GiB overflowed
+// the product of its size and the tick rate.
+func TestFileBitrateDoesNotOverflow(t *testing.T) {
+	source := copyable("mkv", "ac3")
+	source.Size = 130_000_000_000
+	source.RunTimeTicks = 600 * ticksPerSecond
+	source.Streams[0].DurationTicks = 0
+	if got, want := source.FileBitrate(), int64(1_733_333_333); got < want-1 || got > want+1 {
+		t.Errorf("FileBitrate is %d, want %d", got, want)
+	}
+}
+
+// A subtitle can't be burnt into a copy; a URL that asks for both is refused
+// like any other invalid copy.
+func TestCopyWithABurntSubtitleIsRefused(t *testing.T) {
+	source := copyable("mkv", "ac3")
+	source.ID, source.ETag = "0123456789abcdef0123456789abcdef", "etag"
+	source.Streams = append(source.Streams, Stream{Index: 2, Type: "Subtitle", Codec: "subrip", IsTextSubtitleStream: true})
+	params, err := ParseParams(mustQuery("mediasourceid="+source.ID+"&playsessionid=abc&videocodec=copy&subtitlestreamindex=2"), source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewSpec("item", params, source); err == nil {
+		t.Error("a copy that also burns a subtitle was accepted")
+	}
+}
+
+func TestMasterNamesTheCopiedProfile(t *testing.T) {
+	source := copyable("mkv", "ac3")
+	source.Streams[0].Profile, source.Streams[0].Level = "Main", 40
+	spec := Spec{Copy: true, Width: 1280, Height: 720, VideoBitrate: 5_000_000, AudioBitrate: 192_000}
+	if text := Master(spec, source, "q"); !strings.Contains(text, `CODECS="avc1.4D0028,mp4a.40.2"`) || !strings.Contains(text, "RESOLUTION=1280x720") || !strings.Contains(text, "BANDWIDTH=5192000") {
+		t.Errorf("master:\n%s", text)
+	}
+	if text := Master(Spec{Width: 960, Height: 540, VideoBitrate: 1_000_000, AudioBitrate: 128_000}, source, "q"); !strings.Contains(text, `CODECS="avc1.640033,mp4a.40.2"`) {
+		t.Errorf("an encoded stream is High 5.1:\n%s", text)
+	}
+}
+
+func mustQuery(raw string) url.Values {
+	values, err := url.ParseQuery(raw)
+	if err != nil {
+		panic(err)
+	}
+	return values
 }

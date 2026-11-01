@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"os/exec"
@@ -130,6 +131,68 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 	return cmd, nil
 }
 
+// copyReadRate is how many times the film's speed a copy reads its input.
+var copyReadRate = "5"
+
+// CopyCommand builds the ffmpeg run for a copied stream: the video is copied
+// and the audio re-encoded, and one fragment is written for each keyframe, as
+// g0.m4s, g1.m4s ... with init.mp4 beside them. gather joins the fragments
+// into the playlist's segments, which ffmpeg can't cut the same way from every
+// start: the hls muxer counts its segment lengths from where it began.
+//
+// The input is read at copyReadRate times the film's speed, which stops a copy
+// from reading, writing and uploading the whole film as fast as the disk and
+// the store allow. It does not follow the viewer: the file is opened twice, once
+// for the video and once for the audio, so ten times the film's bitrate is read
+// while the job runs (twice the film's, per film), until the film ends or the job is stopped.
+//
+// video and audio say where in the source's clock (seconds) to begin, or are
+// negative to begin at the start of the file. A run for segment N begins at
+// the keyframe before it and its audio two seconds early, on the same AAC
+// frame grid as a run from the start. The video then reaches segment N's
+// keyframe as it would in a run from the start, with the same decode time,
+// and the audio is warm and whole by then, with no need to know which packet
+// the muxer will cut at. What comes before segment N is dropped.
+func CopyCommand(ctx context.Context, input string, spec playback.Spec, video, audio float64, dir string) (*exec.Cmd, error) {
+	hasAudio := spec.AudioIndex >= 0
+	var base float64
+	if video >= 0 {
+		var err error
+		if base, _, err = sourceTiming(ctx, input); err != nil {
+			return nil, err
+		}
+	}
+	// Errors only: -readrate logs a warning each time it lets ffmpeg read again.
+	args := []string{"-nostdin", "-v", "error", "-y", "-copyts"}
+	if video >= 0 {
+		// A little past the keyframe: the seek goes to the last one at or before
+		// the time, and the file's own times are exact to a millisecond.
+		args = append(args, "-ss", seconds(max(video-base, 0)+0.005))
+	}
+	args = append(args, "-readrate", copyReadRate, "-i", input)
+	if hasAudio {
+		if audio >= 0 {
+			args = append(args, "-ss", seconds(math.Floor(max(audio-base, 0)/aacFrame)*aacFrame))
+		}
+		args = append(args, "-readrate", copyReadRate, "-i", input)
+	}
+	args = append(args, "-map", "0:v:0", "-c:v", "copy")
+	if hasAudio {
+		args = append(args, "-map", "1:"+strconv.Itoa(spec.AudioIndex),
+			"-c:a", "aac", "-b:a", strconv.FormatInt(spec.AudioBitrate, 10), "-ac", "2", "-ar", strconv.Itoa(audioRate))
+	}
+	args = append(args,
+		"-output_ts_offset", strconv.Itoa(tsOffset),
+		// Every keyframe is a cut: the segment length is so short that the muxer
+		// is always past it.
+		"-f", "hls", "-hls_time", "0.001", "-hls_list_size", "0",
+		"-hls_segment_type", "fmp4", "-hls_flags", "temp_file", "-hls_fmp4_init_filename", "init.mp4",
+		"-hls_segment_options", "use_editlist=0:avoid_negative_ts=disabled:movflags=+frag_discont+skip_sidx",
+		"-hls_segment_filename", filepath.Join(dir, "g%d.m4s"), filepath.Join(dir, "index.m3u8"),
+	)
+	return exec.CommandContext(ctx, "ffmpeg", args...), nil
+}
+
 func seconds(v float64) string { return strconv.FormatFloat(v, 'f', 6, 64) }
 
 // sourceTiming returns the source's start time and the duration of one video
@@ -182,9 +245,14 @@ func firstFrameAt(ctx context.Context, input string, t float64) (float64, error)
 }
 
 func ffprobe(ctx context.Context, args ...string) ([]byte, error) {
+	return ffprobeFrom(ctx, nil, args...)
+}
+
+// ffprobeFrom runs ffprobe with stdin as its input, if there is one.
+func ffprobeFrom(ctx context.Context, stdin io.Reader, args ...string) ([]byte, error) {
 	var out, errOut bytes.Buffer
 	cmd := exec.CommandContext(ctx, "ffprobe", append([]string{"-v", "error"}, args...)...)
-	cmd.Stdout, cmd.Stderr = &out, &errOut
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = stdin, &out, &errOut
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("ffprobe: %w: %s", err, strings.TrimSpace(errOut.String()))
 	}

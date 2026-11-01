@@ -64,6 +64,59 @@ if [[ ! -f $nu ]]; then
     -metadata:s:a:0 language=eng -metadata:s:a:1 language=spa "$nu" || exit 1
 fi
 
+# Films whose video Chrome plays and whose audio it doesn't, with keyframes at
+# the irregular times of the captured fixture (compat/captures/transcode-12.4.md),
+# so a copied stream's playlist is no fixed grid: Matroska and MP4 (moov at the
+# end, with an edit list, as ffmpeg writes it), and a Matroska with no Cues,
+# which has no index to cut on and is re-encoded.
+keyframes=0,3,7,13,18,26,31,39,44,52,57,65,70,78,83
+rho="$work/media/transcode/Rho Film (2041)/Rho Film (2041).mkv"
+if [[ ! -f $rho ]]; then
+  mkdir -p "$(dirname "$rho")"
+  ffmpeg -nostdin -v error -y \
+    -f lavfi -i "testsrc2=size=640x360:rate=24000/1001:duration=90" \
+    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=90" \
+    -f lavfi -i "sine=frequency=880:sample_rate=48000:duration=90" \
+    -map 0:v -map 1:a -map 2:a -c:v libx264 -preset veryfast -x264-params bframes=2:scenecut=0 -force_key_frames "$keyframes" \
+    -c:a:0 ac3 -c:a:1 aac -metadata:s:a:0 language=eng -metadata:s:a:1 language=spa "$rho" || exit 1
+fi
+qoppa="$work/media/transcode/Qoppa Film (2042)/Qoppa Film (2042).mp4"
+[[ -f $qoppa ]] || { mkdir -p "$(dirname "$qoppa")" && ffmpeg -nostdin -v error -y -i "$rho" -map 0 -c copy "$qoppa" || exit 1; }
+# ffmpeg writes the Cues last, so cutting the file where they start leaves a
+# film with its duration and no Cues; the SeekHead still points to them.
+nocues="$work/media/transcode/Digamma Film (2045)/Digamma Film (2045).mkv"
+if [[ ! -f $nocues ]]; then
+  mkdir -p "$(dirname "$nocues")"
+  python3 -I -c 'import sys; d = open(sys.argv[1], "rb").read(); i = d.rfind(bytes.fromhex("1c53bb6b")); assert i > len(d) * 0.9; open(sys.argv[2], "wb").write(d[:i])' "$rho" "$nocues" || exit 1
+fi
+# H.264 that has to be re-encoded, because it is interlaced, with the same
+# structure as Zeta (two audio tracks, a keyframe every two seconds): what the
+# scenarios that follow Zeta, Theta and Mu run on, to show re-encoding works.
+for interlaced in "Zeta Interlaced (2050)" "Theta Interlaced (2051)" "Mu Interlaced (2052)"; do
+  file="$work/media/transcode/$interlaced/$interlaced.mkv"
+  [[ -f $file ]] && continue
+  mkdir -p "$(dirname "$file")"
+  ffmpeg -nostdin -v error -y \
+    -f lavfi -i "testsrc2=size=640x360:rate=25:duration=180" \
+    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=180" \
+    -f lavfi -i "sine=frequency=880:sample_rate=48000:duration=180" \
+    -map 0:v -map 1:a -map 2:a -vf interlace=scan=tff -c:v libx264 -preset ultrafast -flags +ilme+ildct -x264-params tff=1 -g 50 \
+    -c:a:0 ac3 -c:a:1 aac -metadata:s:a:0 language=eng -metadata:s:a:1 language=spa "$file" || exit 1
+done
+# A 1080p film for measuring what a copy saves: noisy, so the encode has work to do.
+big="$work/media/transcode/Stigma Film (2047)/Stigma Film (2047).mkv"
+if [[ ! -f $big ]]; then
+  mkdir -p "$(dirname "$big")"
+  ffmpeg -nostdin -v error -y \
+    -f lavfi -i "testsrc2=size=1920x1080:rate=24:duration=60" \
+    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=60" \
+    -vf "noise=alls=20:allf=t" -c:v libx264 -preset veryfast -b:v 8M -maxrate 8M -bufsize 16M -g 48 -c:a ac3 "$big" || exit 1
+fi
+
+# The same film twice more, so resuming it finds nothing made: each item has its own segments.
+sho="$work/media/transcode/Sho Film (2048)/Sho Film (2048).mkv"
+[[ -f $sho ]] || { mkdir -p "$(dirname "$sho")" && ln "$big" "$sho"; }
+
 docker run -d --rm --name "$pg" -e POSTGRES_PASSWORD=e2e -p 127.0.0.1::5432 postgres:18-alpine >/dev/null || exit 1
 port=$(docker port "$pg" 5432/tcp | head -1 | sed 's/.*://')
 start_seaweed "$sw" "$work" e2e || exit 1
@@ -96,6 +149,9 @@ export JELLYSCALE_S3_ACCESS_KEY=$seaweed_key JELLYSCALE_S3_SECRET_KEY=$seaweed_s
 (cd "$repo" && go build -o "$work/jellyscale" ./cmd/jellyscale && go build -o "$work/putfile" ./test/e2e/putfile) || exit 1
 "$work/putfile" "s3://e2e/media?$s3" "Epsilon Film (2022)/Epsilon Film (2022).mkv" "$epsilon" || exit 1
 "$work/putfile" "s3://e2e/media?$s3" "Eta Film (2024)/Eta Film (2024).mkv" "$zeta" || exit 1
+"$work/putfile" "s3://e2e/media?$s3" "Heta Film (2043)/Heta Film (2043).mkv" "$rho" || exit 1
+"$work/putfile" "s3://e2e/media?$s3" "Koppa Film (2044)/Koppa Film (2044).mp4" "$qoppa" || exit 1
+"$work/putfile" "s3://e2e/media?$s3" "Heh Film (2049)/Heh Film (2049).mkv" "$big" || exit 1
 # The subtitle films again, on S3: one that direct plays, one that transcodes,
 # and the black one that burn-in shows against.
 sub="$work/media/transcode"

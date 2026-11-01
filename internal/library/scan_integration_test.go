@@ -1,11 +1,13 @@
 package library_test
 
 import (
+	"bytes"
 	"context"
 	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
@@ -291,5 +293,92 @@ func TestScanProbesAgainWhatWasStoredWithoutRange(t *testing.T) {
 	}
 	if n := f.count(t, "Movie"); n != 1 {
 		t.Fatalf("%d movies after probing again", n)
+	}
+}
+
+func keyframeCount(t *testing.T, pool *pgxpool.Pool) *int {
+	t.Helper()
+	return scalar[*int](t, pool, "SELECT cardinality(keyframes) FROM media_sources")
+}
+
+// A scan reads the keyframe index of an H.264 file in Matroska or MP4; a file
+// with none to read is marked, so it isn't looked at again; one that is not
+// H.264 is never looked at.
+func TestScanReadsTheKeyframeIndex(t *testing.T) {
+	f := setup(t, "movies")
+	var logged bytes.Buffer
+	f.scanner.Log = slog.New(slog.NewTextHandler(&logged, nil))
+	file := filepath.Join(f.media, "Indexed Film (2020)", "Indexed Film (2020).mkv")
+	clip(t, file)
+	f.scan(t)
+	if n := keyframeCount(t, f.pool); n == nil || *n == 0 {
+		t.Fatalf("an H.264 file in Matroska: keyframes %v", n)
+	}
+	// The 2 s clip's last frame ends at 2 s.
+	if end := scalar[int64](t, f.pool, "SELECT video_end FROM media_sources"); end < 19_000_000 || end > 21_000_000 {
+		t.Fatalf("the video ends at %d ticks, want about 20000000", end)
+	}
+
+	// A file that has no Cues is stored with an empty index, not NULL, which
+	// would have every scan look again.
+	live := filepath.Join(f.media, "Live Film (2021)", "Live Film (2021).mkv")
+	if err := os.MkdirAll(filepath.Dir(live), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=10:duration=2",
+		"-c:v", "libx264", "-preset", "ultrafast", "-live", "1", live).CombinedOutput(); err != nil {
+		t.Fatalf("ffmpeg: %v: %s", err, out)
+	}
+	f.scan(t)
+	if n := scalar[*int](t, f.pool, "SELECT cardinality(keyframes) FROM media_sources m JOIN items i ON i.id = m.item_id WHERE i.name = 'Live Film'"); n == nil || *n != 0 {
+		t.Fatalf("a file with no Cues: keyframes %v, want an empty array", n)
+	}
+	// An operator can see why the film is re-encoded.
+	if !strings.Contains(logged.String(), "level=INFO") || !strings.Contains(logged.String(), "Live Film") || !strings.Contains(logged.String(), "SeekHead names no Cues") {
+		t.Errorf("the scan did not say why the film has no index:\n%s", logged.String())
+	}
+
+	// Stored before keyframes were read: the next scan fills them in.
+	if _, err := f.pool.Exec(context.Background(), "UPDATE media_sources SET keyframes = NULL"); err != nil {
+		t.Fatal(err)
+	}
+	f.scan(t)
+	if n := scalar[int](t, f.pool, "SELECT count(*) FROM media_sources WHERE keyframes IS NULL"); n != 0 {
+		t.Fatalf("%d sources still without an index after a scan", n)
+	}
+
+	// HEVC is never copied, so nothing is read.
+	hevc := filepath.Join(f.media, "Hevc Film (2022)", "Hevc Film (2022).mkv")
+	if err := os.MkdirAll(filepath.Dir(hevc), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=10:duration=2",
+		"-c:v", "libx265", "-preset", "ultrafast", hevc).CombinedOutput(); err != nil {
+		t.Skipf("no libx265: %v: %s", err, out)
+	}
+	f.scan(t)
+	if n := scalar[*int](t, f.pool, "SELECT cardinality(keyframes) FROM media_sources m JOIN items i ON i.id = m.item_id WHERE i.name = 'Hevc Film'"); n != nil {
+		t.Fatalf("an HEVC file has keyframes %v, want NULL", *n)
+	}
+}
+
+// One source still without an index (a read that keeps failing) must not
+// make every other file be probed again on each scan.
+func TestScanLooksAgainOnlyAtTheFileWithoutAnIndex(t *testing.T) {
+	f := setup(t, "movies")
+	clip(t, filepath.Join(f.media, "Stuck Film (2020)", "Stuck Film (2020).mkv"))
+	clip(t, filepath.Join(f.media, "Done Film (2021)", "Done Film (2021).mkv"))
+	f.scan(t)
+	// A value a probe would never write, so a second probe shows.
+	if _, err := f.pool.Exec(context.Background(), `UPDATE media_sources m SET keyframes = CASE WHEN i.name = 'Stuck Film' THEN NULL ELSE ARRAY[12345]::bigint[] END
+		FROM items i WHERE i.id = m.item_id`); err != nil {
+		t.Fatal(err)
+	}
+	f.scan(t)
+	if n := scalar[*int](t, f.pool, "SELECT cardinality(keyframes) FROM media_sources m JOIN items i ON i.id = m.item_id WHERE i.name = 'Stuck Film'"); n == nil {
+		t.Error("the file without an index was not read again")
+	}
+	if first := scalar[*int64](t, f.pool, "SELECT keyframes[1] FROM media_sources m JOIN items i ON i.id = m.item_id WHERE i.name = 'Done Film'"); first == nil || *first != 12345 {
+		t.Errorf("a file with an index was probed again: first keyframe %v", first)
 	}
 }

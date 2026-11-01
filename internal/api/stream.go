@@ -258,6 +258,11 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 		return false, err
 	}
 	media.Bitrate = int64(number(source["Bitrate"]))
+	if media.H264() {
+		if media.Keyframes, media.VideoEnd, err = s.Items.Keyframes(r.Context(), stored.ID); err != nil {
+			return false, err
+		}
+	}
 	decision := playback.Decide(request, media, true)
 	if s.Transcode != nil {
 		err = offerTranscoding(source, stored.Streams)
@@ -267,7 +272,7 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 	}
 	user := sessionOf(r)
 	params := playback.Params{SourceID: media.ID, AudioIndex: decision.AudioIndex, Subtitle: decision.Subtitle, VideoBitrate: decision.VideoBitrate,
-		AudioBitrate: decision.AudioBitrate, PlaySessionID: playSession, DeviceID: user.DeviceID}
+		AudioBitrate: decision.AudioBitrate, Copy: decision.Copy, PlaySessionID: playSession, DeviceID: user.DeviceID}
 	if request.StartTimeTicks != nil {
 		params.StartTicks = min(max(int64(*request.StartTimeTicks), 0), playback.MaxStartTicks)
 	}

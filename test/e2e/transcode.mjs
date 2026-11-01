@@ -4,7 +4,9 @@
 // Usage: E2E_SCRATCH=<worker scratch dir> node transcode.mjs <base_url> <user> <password>
 // Run from a directory with playwright-core installed.
 import { execFileSync, spawn } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { createRequire } from "node:module";
 
 const require = createRequire(`${process.cwd()}/`);
@@ -29,7 +31,15 @@ function sql(text) {
 function ffmpegRuns() {
   try {
     const lines = execFileSync("pgrep", ["-af", `ffmpeg.*${scratch}`]).toString().trim().split("\n").filter(Boolean);
-    return lines.map((line) => ({ line, start: Number(/-start_number (\d+)/.exec(line)?.[1]), audio: /-map 1:(\d+)/.exec(line)?.[1] }));
+    // A re-encode says its first segment; a copy says where it seeks to, the
+    // keyframe before its first segment, from which the segment follows on
+    // these films (a keyframe every two seconds, segments of four).
+    return lines.map((line) => ({
+      line,
+      copy: /-c:v copy/.test(line),
+      start: /-start_number (\d+)/.test(line) ? Number(/-start_number (\d+)/.exec(line)[1]) : Math.ceil(Number(/-ss ([\d.]+)/.exec(line)?.[1] ?? 0) / 4),
+      audio: /-map 1:(\d+)/.exec(line)?.[1],
+    }));
   } catch {
     return []; // pgrep exits 1 when nothing matches.
   }
@@ -134,13 +144,22 @@ const leave = async (page) => {
   console.log(`      Stopped answered in ${Math.round(timing.responseEnd - timing.requestStart)} ms`);
 };
 
-await scenario("POSIX: an AC3 film transcodes, plays from the stream replica, then far seek and stop end the right ffmpeg", async ({ page, seen }) => {
-  await play(page, "Transcode", "Zeta Film");
+// Each of these scenarios runs on a film whose video is copied and on one that
+// has to be re-encoded (interlaced), with the same structure, so what the
+// system does for a stream does not depend on how it was made.
+const flavours = [
+  { name: "copied", copy: true, far: "Zeta Film", audio: "Theta Film", resume: "Mu Film" },
+  { name: "re-encoded", copy: false, far: "Zeta Interlaced", audio: "Theta Interlaced", resume: "Mu Interlaced" },
+];
+
+for (const flavour of flavours) await scenario(`POSIX, ${flavour.name}: an AC3 film transcodes, plays from the stream replica, then far seek and stop end the right ffmpeg`, async ({ page, seen }) => {
+  await play(page, "Transcode", flavour.far);
   const source = seen.infos.at(-1).source;
   if (source.SupportsDirectPlay !== false || source.TranscodingSubProtocol !== "hls" || source.TranscodingContainer !== "mp4") {
     throw new Error(`PlaybackInfo did not ask for a transcode: ${JSON.stringify(source).slice(0, 300)}`);
   }
   if (!/TranscodeReasons=AudioCodecNotSupported/.test(source.TranscodingUrl)) throw new Error(`reasons: ${source.TranscodingUrl}`);
+  if (/VideoCodec=copy/.test(source.TranscodingUrl) !== flavour.copy) throw new Error(`copy expected ${flavour.copy}: ${source.TranscodingUrl}`);
   if (!(await page.evaluate(() => document.querySelector("video").src.startsWith("blob:")))) throw new Error("not played through MSE");
   await advances(page);
   noErrors(seen);
@@ -150,6 +169,7 @@ await scenario("POSIX: an AC3 film transcodes, plays from the stream replica, th
   // Far past the encoded point: a job starts there, and the first one stops.
   const first = ffmpegRuns();
   if (first.length !== 1) throw new Error(`expected one ffmpeg, saw ${first.length}`);
+  if (first[0].copy !== flavour.copy || /libx264/.test(first[0].line) === flavour.copy) throw new Error(`ffmpeg does not do what ${flavour.name} means: ${first[0].line.slice(0, 400)}`);
   const total = await duration(page);
   const target = total * 0.8;
   const seeked = Date.now();
@@ -176,6 +196,207 @@ await scenario("S3: a film from the bucket transcodes and plays", async ({ page,
   await leave(page);
 });
 
+// ---- Copied streams ----
+// H.264 in AC3 films whose keyframes are at 0, 3, 7, 13, 18 ... (run.sh): the
+// captured Jellyfin cut a copied MP4 at 6 s steps it then did not keep to. Ours
+// cuts on the keyframes the file has, and says so exactly.
+const keyframeLengths = [7, 6, 5, 8, 5, 8, 5, 8, 5, 8, 5, 8, 5, 7];
+const frame = 1001 / 24000;
+
+// ffprobe may stop reading before the end, which a pipe reports as an error, so
+// it reads a file.
+function probe(input, ...args) {
+  const dir = mkdtempSync(`${tmpdir()}/jellyscale-e2e-`);
+  try {
+    writeFileSync(`${dir}/in.mp4`, input);
+    return execFileSync("ffprobe", ["-v", "error", ...args, `${dir}/in.mp4`], { maxBuffer: 1 << 28 }).toString();
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+async function bytesOf(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`${response.status} for ${url.pathname}`);
+  return Buffer.from(await response.arrayBuffer());
+}
+
+async function playlistOf(masterUrl) {
+  const master = new URL(masterUrl, base);
+  const mainUrl = new URL((await (await fetch(master)).text()).split("\n").find((line) => line.startsWith("main.m3u8")), master);
+  const text = await (await fetch(mainUrl)).text();
+  const lines = text.split("\n");
+  const segments = [];
+  lines.forEach((line, i) => {
+    if (line.startsWith("#EXTINF:")) segments.push({ length: parseFloat(line.slice(8)), url: new URL(lines[i + 1], mainUrl) });
+  });
+  return { text, segments, init: new URL(/URI="([^"]+)"/.exec(text)[1], mainUrl), target: Number(/TARGETDURATION:(\d+)/.exec(text)[1]) };
+}
+
+// Where a segment's video starts and ends, in the stream's own clock.
+function span(init, body) {
+  const packets = probe(Buffer.concat([init, body]), "-select_streams", "v:0", "-show_entries", "packet=pts_time,duration_time,flags", "-of", "csv=p=0")
+    .trim().split("\n").map((line) => line.split(","));
+  const start = Math.min(...packets.filter((p) => p[2]?.startsWith("K")).map((p) => parseFloat(p[0])));
+  const end = Math.max(...packets.map((p) => parseFloat(p[0]) + parseFloat(p[1])));
+  return { start, end };
+}
+
+async function copiedFilm({ page, seen }, library, title, sourceFile, where) {
+  await play(page, library, title);
+  const source = seen.infos.at(-1).source;
+  if (!/VideoCodec=copy/.test(source.TranscodingUrl) || !/TranscodeReasons=AudioCodecNotSupported/.test(source.TranscodingUrl)) throw new Error(`not a copy: ${source.TranscodingUrl}`);
+  if (source.SupportsDirectPlay !== false || source.TranscodingSubProtocol !== "hls" || source.TranscodingContainer !== "mp4") throw new Error("the reply fields are not the capture's");
+  const runs = ffmpegRuns();
+  if (runs.length !== 1 || !runs[0].copy || /libx264/.test(runs[0].line)) throw new Error(`ffmpeg is not copying the video: ${runs.map((r) => r.line.slice(0, 300))}`);
+  await advances(page, 3);
+  noErrors(seen);
+
+  // The playlist is the file's keyframes, which fall on frames (23.976 fps) near the times asked for.
+  const playlist = await playlistOf(source.TranscodingUrl);
+  const lengths = playlist.segments.map((x) => x.length);
+  if (lengths.length !== keyframeLengths.length || lengths.some((x, i) => Math.abs(x - keyframeLengths[i]) > 2 * frame + 0.001)) {
+    throw new Error(`playlist lengths ${lengths}`);
+  }
+  if (playlist.target !== Math.ceil(Math.max(...lengths)) || /DISCONTINUITY/.test(playlist.text)) throw new Error(`target ${playlist.target}, or a discontinuity`);
+
+  // A far seek, with nothing stored there yet.
+  const total = await duration(page);
+  const target = total * 0.7;
+  const seeked = Date.now();
+  await page.evaluate((t) => { document.querySelector("video").currentTime = t; }, target);
+  const first = await waitFor("the first segment of the far seek", async () => seen.hls.find((r) => r.at > seeked && r.status === 200 && /\/\d+\.mp4$/i.test(r.path)), 60000);
+  await waitFor("playback past the seek target", async () => (await time(page)) > target + 1, 60000);
+  console.log(`      ${where}, copied: far seek, first segment answered ${first.at - seeked} ms after the seek, playing after ${Date.now() - seeked} ms`);
+
+  // Every segment, fetched as a player would, some from jobs that began in the
+  // middle of the film: they must be the file's video, byte for byte, cut where
+  // the playlist says.
+  // As another viewer: one session's new request replaces its own earlier job,
+  // and the player is still asking for what it needs.
+  const downloader = (url) => { url.searchParams.set("PlaySessionId", randomBytes(16).toString("hex")); return url; };
+  const init = await bytesOf(downloader(playlist.init));
+  const bodies = [];
+  for (const segment of playlist.segments) bodies.push(await bytesOf(downloader(segment.url)));
+  const spans = bodies.map((body) => span(init, body));
+  spans.forEach((x, i) => {
+    const length = i + 1 < spans.length ? spans[i + 1].start - x.start : x.end - x.start;
+    if (Math.abs(length - lengths[i]) > frame + 0.001) throw new Error(`segment ${i} is ${length.toFixed(3)} s long, the playlist says ${lengths[i]}`);
+  });
+  const dir = mkdtempSync(`${tmpdir()}/jellyscale-e2e-`);
+  writeFileSync(`${dir}/all.mp4`, Buffer.concat([init, ...bodies]));
+  const copied = execFileSync("ffmpeg", ["-v", "error", "-i", `${dir}/all.mp4`, "-map", "0:v:0", "-c", "copy", "-f", "md5", "-"]).toString().trim();
+  rmSync(dir, { recursive: true, force: true });
+  const original = execFileSync("ffmpeg", ["-v", "error", "-i", sourceFile, "-map", "0:v:0", "-c", "copy", "-f", "md5", "-"]).toString().trim();
+  if (copied !== original) throw new Error(`the video is not the source's: ${copied} against ${original}`);
+  const audio = probe(Buffer.concat([init, bodies[0]]), "-select_streams", "a:0", "-show_entries", "stream=codec_name", "-of", "csv=p=0").trim();
+  if (audio !== "aac") throw new Error(`audio is ${audio}`);
+  console.log(`      ${where}: ${bodies.length} segments cut as the playlist says, video identical to the file`);
+
+  // Played through the seams, now that every segment exists: no stall, no error.
+  await page.evaluate(() => { document.querySelector("video").currentTime = 0; });
+  await waitFor("playback from the start", async () => (await time(page)) < 2 && (await time(page)) > 0.2, 30000);
+  await page.evaluate(() => { window.__waits = 0; document.querySelector("video").addEventListener("waiting", () => window.__waits++); });
+  await waitFor("playback to pass 15 s, over two seams", async () => (await time(page)) > 15, 40000);
+  const health = await page.evaluate(() => {
+    const video = document.querySelector("video");
+    const quality = video.getVideoPlaybackQuality();
+    return { waits: window.__waits, error: video.error?.message ?? null, corrupted: quality.corruptedVideoFrames };
+  });
+  if (health.waits || health.error || health.corrupted) throw new Error(`playback through the seams: ${JSON.stringify(health)}`);
+  noErrors(seen);
+  await leave(page);
+}
+
+const media = process.env.E2E_MEDIA;
+await scenario("copy, POSIX, Matroska: an H.264 and AC3 film plays with the video copied", (v) => copiedFilm(v, "Transcode", "Rho Film", `${media}/Rho Film (2041)/Rho Film (2041).mkv`, "POSIX mkv"));
+await scenario("copy, POSIX, MP4: the playlist is exact where Jellyfin's lies", (v) => copiedFilm(v, "Transcode", "Qoppa Film", `${media}/Qoppa Film (2042)/Qoppa Film (2042).mp4`, "POSIX mp4"));
+await scenario("copy, S3, Matroska", (v) => copiedFilm(v, "Cloud", "Heta Film", `${media}/Rho Film (2041)/Rho Film (2041).mkv`, "S3 mkv"));
+await scenario("copy, S3, MP4", (v) => copiedFilm(v, "Cloud", "Koppa Film", `${media}/Qoppa Film (2042)/Qoppa Film (2042).mp4`, "S3 mp4"));
+
+await scenario("a Matroska with no Cues has no index and is re-encoded", async ({ page, seen }) => {
+  await play(page, "Transcode", "Digamma Film");
+  const url = seen.infos.at(-1).source.TranscodingUrl;
+  if (!/VideoCodec=h264/.test(url)) throw new Error(`a file with no index was offered a copy: ${url}`);
+  const runs = ffmpegRuns();
+  if (runs.length !== 1 || runs[0].copy || !/libx264/.test(runs[0].line)) throw new Error(`ffmpeg: ${runs.map((r) => r.line.slice(0, 300))}`);
+  await advances(page, 2);
+  noErrors(seen);
+  await leave(page);
+});
+
+await scenario("a bitrate cap re-encodes a film that would be copied", async ({ page, seen }) => {
+  await play(page, "Transcode", "Rho Film");
+  if (!/VideoCodec=copy/.test(seen.infos.at(-1).source.TranscodingUrl)) throw new Error("Rho should be copied at Auto");
+  await page.mouse.move(600, 400);
+  await page.click(".btnVideoOsdSettings");
+  await page.click('[data-id="quality"]');
+  await page.click('[data-id="420000"]');
+  const info = await waitFor("a PlaybackInfo with the cap", async () => seen.infos.find((i) => i.request.MaxStreamingBitrate === 420000));
+  if (!/VideoCodec=h264/.test(info.source.TranscodingUrl)) throw new Error(`a cap below the file was offered a copy: ${info.source.TranscodingUrl}`);
+  await waitFor("the re-encode to run", async () => ffmpegRuns().some((r) => !r.copy && /libx264/.test(r.line)), 30000);
+  await waitFor("only the re-encode to be left", async () => ffmpegRuns().length === 1, 20000);
+  await advances(page, 2);
+  noErrors(seen);
+  await leave(page);
+});
+
+// What a copy saves. The worker's own ffmpeg time is its children's, read from
+// the process table once they are gone.
+function workerCpu() {
+  const fields = readFileSync(`/proc/${process.env.E2E_WORKER_PID}/stat`, "utf8").replace(/^.*\) /, "").split(" ");
+  return (Number(fields[13]) + Number(fields[14])) / 100; // cutime and cstime, in clock ticks.
+}
+
+async function cpuPerSegment(page, seen, title, segments, quality) {
+  await play(page, "Transcode", title);
+  if (quality) {
+    await page.mouse.move(600, 400);
+    await page.click(".btnVideoOsdSettings");
+    await page.click('[data-id="quality"]');
+    await page.click(`[data-id="${quality}"]`);
+    await waitFor("the new stream", async () => seen.infos.length >= 2, 20000);
+  }
+  const stored = () => Number(sql("SELECT COALESCE(max(next_segment), 0) FROM transcode_jobs WHERE state = 'running'"));
+  await waitFor(`${segments} segments`, async () => stored() >= segments, 120000);
+  await leave(page);
+  await waitFor("ffmpeg to exit", async () => ffmpegRuns().length === 0, 30000);
+}
+
+await scenario("a copied 1080p film costs a fraction of the CPU of the re-encode", async ({ page, seen }) => {
+  const segments = 8; // 32 s of film each way.
+  let before = workerCpu();
+  await cpuPerSegment(page, seen, "Stigma Film", segments, null);
+  const copy = workerCpu() - before;
+  const copyRuns = seen.infos.at(-1).source.TranscodingUrl;
+  if (!/VideoCodec=copy/.test(copyRuns)) throw new Error("the first run was not a copy");
+  const second = await viewer();
+  try {
+    before = workerCpu();
+    await cpuPerSegment(second.page, second.seen, "Stigma Film", segments, 3000000);
+    const encoded = workerCpu() - before;
+    if (!/VideoCodec=h264/.test(second.seen.infos.at(-1).source.TranscodingUrl)) throw new Error("the second run was not a re-encode");
+    console.log(`      1080p, ${segments * 4} s of film: copy ${copy.toFixed(2)} CPU s, re-encode ${encoded.toFixed(2)} CPU s (${(copy / encoded * 100).toFixed(0)}%)`);
+    if (copy > encoded * 0.25) throw new Error(`a copy used ${copy.toFixed(2)} CPU s, a re-encode ${encoded.toFixed(2)}`);
+  } finally {
+    await second.context.close().catch(() => {});
+  }
+});
+
+// How long a seek takes on a copied 1080p film, from POSIX and from S3: resuming
+// in the middle starts a job there, as a seek past what is made does. A copy
+// reads its input at 5 times the film's speed on its own, so the shim's slower
+// rate does not apply to it.
+for (const [where, library, title] of [["POSIX", "Transcode", "Sho Film"], ["S3", "Cloud", "Heh Film"]]) {
+  await scenario(`${where}: a copied 1080p film resumes in the middle`, async ({ page, seen }) => {
+    const { firstFrameMs, starts } = await resume(page, library, title, 40);
+    if (!/VideoCodec=copy/.test(seen.infos.at(-1).source.TranscodingUrl)) throw new Error("not a copy");
+    console.log(`      ${where}, 1080p copied: time to first frame on resume at 40 s of 60 s: ${firstFrameMs} ms; ffmpeg started at ${starts}`);
+    noErrors(seen);
+    await leave(page);
+  });
+}
+
 await scenario("the quality menu cap transcodes a film that direct plays", async ({ page, seen }) => {
   await play(page, "Movies", "Alpha Film");
   if (seen.infos.at(-1).source.TranscodingUrl !== undefined) throw new Error("Alpha should direct play at Auto");
@@ -193,8 +414,8 @@ await scenario("the quality menu cap transcodes a film that direct plays", async
   await leave(page);
 });
 
-await scenario("switching audio plays the new track and the old job stops", async ({ page, seen }) => {
-  await play(page, "Transcode", "Theta Film");
+for (const flavour of flavours) await scenario(`switching audio plays the new track and the old job stops (${flavour.name})`, async ({ page, seen }) => {
+  await play(page, "Transcode", flavour.audio);
   await advances(page);
   const before = ffmpegRuns();
   if (before.length !== 1 || before[0].audio !== "1") throw new Error(`expected one ffmpeg on track 1: ${JSON.stringify(before)}`);
@@ -289,7 +510,8 @@ async function resume(page, library, title, seconds) {
   await page.reload();
   const button = page.locator(".btnPlay[data-action=resume]:visible").first();
   await button.waitFor({ timeout: 30000 });
-  const started = Date.now();
+  const began = Date.now();
+  const started = page.waitForResponse((r) => r.request().method() === "POST" && /\/Sessions\/Playing$/i.test(new URL(r.url()).pathname), { timeout: 60000 });
   await button.click();
   // Every ffmpeg start number seen while it loads.
   const starts = new Set();
@@ -297,11 +519,14 @@ async function resume(page, library, title, seconds) {
     for (const run of ffmpegRuns()) starts.add(run.start);
     return (await time(page)) > seconds + 0.1;
   }, 60000);
-  return { firstFrameMs: Date.now() - started, starts: [...starts] };
+  // The player reports its start just after the video starts; leaving before
+  // that goes back before it has anything to stop.
+  await started;
+  return { firstFrameMs: Date.now() - began, starts: [...starts] };
 }
 
-await scenario("resuming mid-film starts one job, at the resume point", async ({ page, seen }) => {
-  const { firstFrameMs, starts } = await resume(page, "Transcode", "Mu Film", 40);
+for (const flavour of flavours) await scenario(`resuming mid-film starts one job, at the resume point (${flavour.name})`, async ({ page, seen }) => {
+  const { firstFrameMs, starts } = await resume(page, "Transcode", flavour.resume, 40);
   console.log(`      time to first frame on resume: ${firstFrameMs} ms; ffmpeg start segments seen: ${starts}`);
   if (starts.length !== 1 || starts[0] !== 10) throw new Error(`ffmpeg started at ${starts}, want only segment 10`);
   noErrors(seen);

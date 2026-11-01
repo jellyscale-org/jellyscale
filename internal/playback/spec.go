@@ -35,11 +35,14 @@ const (
 // They're the only client values a Spec is built from, and every request
 // parses them again, because clients can edit the URL.
 type Params struct {
-	SourceID      string // compact hex
-	AudioIndex    int    // -1 for none; set from the source when the URL omits it
-	Subtitle      *int   // The text track drawn into the picture; nil for none
-	VideoBitrate  int64
-	AudioBitrate  int64
+	SourceID     string // compact hex
+	AudioIndex   int    // -1 for none; set from the source when the URL omits it
+	Subtitle     *int   // The text track drawn into the picture; nil for none
+	VideoBitrate int64
+	AudioBitrate int64
+	// Copy: the video is copied from the source, not re-encoded. A client may
+	// ask for it, and the spec refuses it for a source that can't be copied.
+	Copy          bool
 	PlaySessionID string
 	DeviceID      string
 	// StartTicks is where the viewer starts, from PlaybackInfo's
@@ -48,10 +51,8 @@ type Params struct {
 	StartTicks int64
 }
 
-// StartSegment is the segment the viewer starts at, in a playlist of count.
-func (p Params) StartSegment(count int) int {
-	return int(min(p.StartTicks/(SegmentSeconds*ticksPerSecond), int64(count-1)))
-}
+// StartSegment is the segment the viewer starts at.
+func (p Params) StartSegment(layout Layout) int { return layout.At(p.StartTicks) }
 
 // ParseParams validates the query. Keys must already be lowercase. The source
 // supplies the default audio stream and says which audio indexes exist.
@@ -91,6 +92,7 @@ func ParseParams(query url.Values, source Source) (Params, error) {
 		}
 		p.StartTicks = ticks
 	}
+	p.Copy = strings.EqualFold(query.Get("videocodec"), "copy")
 	p.PlaySessionID = query.Get("playsessionid")
 	if len(p.PlaySessionID) == 0 || len(p.PlaySessionID) > 64 || !isHex(p.PlaySessionID) {
 		return p, errors.New("invalid PlaySessionId")
@@ -127,7 +129,9 @@ func isHex(s string) bool {
 // segments and jobs. A burnt-in subtitle changes the picture, so it joins the
 // hash; the field is a pointer so a spec stored before it existed reads as
 // having none. Bitrate and size are the values ffmpeg will use, not the
-// request's, so Auto and a 120 Mbps cap share segments.
+// request's, so Auto and a 120 Mbps cap share segments. A copied stream has the
+// source's own size, and a bitrate estimated from its file, none of which
+// change the output; Copy does, so the two kinds never share segments.
 type Spec struct {
 	Item         string
 	Source       string
@@ -138,6 +142,7 @@ type Spec struct {
 	AudioBitrate int64
 	Width        int
 	Height       int
+	Copy         bool
 }
 
 // NewSpec turns validated parameters into the output they ask for.
@@ -145,6 +150,19 @@ func NewSpec(item string, p Params, source Source) (Spec, error) {
 	video, ok := source.video()
 	if !ok || video.Width < 2 || video.Height < 2 {
 		return Spec{}, errors.New("source has no video to transcode")
+	}
+	if p.Copy {
+		if !source.CanCopy() {
+			return Spec{}, errors.New("source can't be copied")
+		}
+		if p.Subtitle != nil {
+			return Spec{}, errors.New("a copied video can't have a subtitle burnt into it")
+		}
+		return Spec{
+			Item: strings.ReplaceAll(strings.ToLower(item), "-", ""), Source: p.SourceID, ETag: source.ETag,
+			AudioIndex: p.AudioIndex, AudioBitrate: p.AudioBitrate, Width: video.Width, Height: video.Height,
+			VideoBitrate: source.FileBitrate(), Copy: true,
+		}, nil
 	}
 	width, height := outputSize(video, p.VideoBitrate)
 	return Spec{
@@ -162,6 +180,9 @@ func (s Spec) Hash() string {
 		OutputVersion, s.Item, s.Source, s.ETag, s.AudioIndex, s.VideoBitrate, s.AudioBitrate, s.Width, s.Height, SegmentSeconds, Family)
 	if s.Subtitle != nil {
 		text += fmt.Sprintf("|sub%d", *s.Subtitle)
+	}
+	if s.Copy {
+		text += "|copy"
 	}
 	sum := sha256.Sum256([]byte(text))
 	return fmt.Sprintf("%x", sum[:16])
@@ -189,32 +210,6 @@ func outputSize(video Stream, bitrate int64) (int, int) {
 	return max(width, 2), height
 }
 
-// Segments is how many segments a film of this length has. A tail under a
-// second joins the segment before it, because the encoder may not cut one.
-func Segments(runTimeTicks int64) int {
-	seconds := float64(runTimeTicks) / ticksPerSecond
-	count := int(seconds / SegmentSeconds)
-	if count == 0 || seconds-float64(count*SegmentSeconds) >= 1 {
-		count++
-	}
-	return count
-}
-
-// segmentTicks returns where segment n starts and how long it is.
-func segmentTicks(n, count int, runTimeTicks int64) (start, length int64) {
-	start = int64(n) * SegmentSeconds * ticksPerSecond
-	if n == count-1 {
-		return start, runTimeTicks - start
-	}
-	return start, SegmentSeconds * ticksPerSecond
-}
-
-// SegmentLength is how long segment n of the playlist is.
-func SegmentLength(n int, runTimeTicks int64) float64 {
-	_, length := segmentTicks(n, Segments(runTimeTicks), runTimeTicks)
-	return float64(length) / ticksPerSecond
-}
-
 // ParseSegment reads "-1.mp4" (the init segment, as -1) or "12.mp4" and
 // rejects numbers outside the playlist.
 func ParseSegment(name string, count int) (int, bool) {
@@ -232,11 +227,18 @@ func ParseSegment(name string, count int) (int, bool) {
 	return n, err == nil && n < count
 }
 
+func videoCodec(p Params) string {
+	if p.Copy {
+		return "copy"
+	}
+	return "h264"
+}
+
 // Query renders parameters the way Jellyfin's TranscodingUrl does, in its
 // order. extra is appended as it is.
 func Query(p Params, apiKey, tag, extra string) string {
 	pairs := [][2]string{
-		{"DeviceId", p.DeviceID}, {"MediaSourceId", p.SourceID}, {"VideoCodec", "h264"}, {"AudioCodec", "aac"},
+		{"DeviceId", p.DeviceID}, {"MediaSourceId", p.SourceID}, {"VideoCodec", videoCodec(p)}, {"AudioCodec", "aac"},
 		{"AudioStreamIndex", strconv.Itoa(p.AudioIndex)},
 	}
 	if p.Subtitle != nil {
@@ -280,26 +282,28 @@ func MasterURL(itemDashed string, p Params, apiKey, tag string, d Decision, fram
 }
 
 // Master is the one-variant master playlist.
-func Master(spec Spec, query string, framerate float64) string {
+func Master(spec Spec, source Source, query string) string {
 	rate := ""
-	if framerate > 0 {
+	if framerate := source.FrameRate(); framerate > 0 {
 		rate = ",FRAME-RATE=" + strconv.FormatFloat(framerate, 'f', 3, 64)
 	}
+	codecs := "avc1.640033"
+	if spec.Copy {
+		codecs = source.avc1()
+	}
 	bandwidth := spec.VideoBitrate + spec.AudioBitrate
-	return fmt.Sprintf("#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=%d,AVERAGE-BANDWIDTH=%d,VIDEO-RANGE=SDR,CODECS=\"avc1.640033,mp4a.40.2\",RESOLUTION=%dx%d%s\nmain.m3u8?%s\n",
-		bandwidth, bandwidth, spec.Width, spec.Height, rate, query)
+	return fmt.Sprintf("#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=%d,AVERAGE-BANDWIDTH=%d,VIDEO-RANGE=SDR,CODECS=\"%s,mp4a.40.2\",RESOLUTION=%dx%d%s\nmain.m3u8?%s\n",
+		bandwidth, bandwidth, codecs, spec.Width, spec.Height, rate, query)
 }
 
 // Main is the complete VOD playlist, known before any segment exists.
-func Main(runTimeTicks int64, query string) string {
-	count := Segments(runTimeTicks)
-	_, last := segmentTicks(count-1, count, runTimeTicks)
+func Main(layout Layout, query string) string {
 	var out strings.Builder
 	fmt.Fprintf(&out, "#EXTM3U\n#EXT-X-PLAYLIST-TYPE:VOD\n#EXT-X-VERSION:7\n#EXT-X-TARGETDURATION:%d\n#EXT-X-MEDIA-SEQUENCE:0\n",
-		int(math.Ceil(max(float64(last)/ticksPerSecond, SegmentSeconds))))
+		int(math.Ceil(max(float64(layout.longest())/ticksPerSecond, SegmentSeconds))))
 	fmt.Fprintf(&out, "#EXT-X-MAP:URI=\"hls1/main/-1.mp4?%s&runtimeTicks=0&actualSegmentLengthTicks=0\"\n", query)
-	for n := range count {
-		start, length := segmentTicks(n, count, runTimeTicks)
+	for n := range layout.Count() {
+		start, length := layout.Segment(n)
 		fmt.Fprintf(&out, "#EXTINF:%.6f, nodesc\nhls1/main/%d.mp4?%s&runtimeTicks=%d&actualSegmentLengthTicks=%d\n",
 			float64(length)/ticksPerSecond, n, query, start, length)
 	}

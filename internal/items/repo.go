@@ -331,6 +331,26 @@ type Source struct {
 	Streams                            []byte
 }
 
+// Keyframes returns the video's keyframe times in ticks from the file's index,
+// and where its last frame ends on the same clock. None if the file has no
+// index or hasn't been scanned for one.
+func (r *Repo) Keyframes(ctx context.Context, mediaSourceID string) (keyframes []int64, end int64, err error) {
+	err = r.Pool.QueryRow(ctx, "SELECT keyframes, video_end FROM media_sources WHERE id = $1::uuid", mediaSourceID).Scan(&keyframes, &end)
+	if err == pgx.ErrNoRows {
+		return nil, 0, nil
+	}
+	return keyframes, end, err
+}
+
+// DropKeyframes marks a file's index as unusable, as an empty one, so that it
+// is re-encoded and not copied. A file rescanned since, whose ETag is no longer
+// etag, has a new index that this says nothing of, and nothing is dropped.
+// It reports whether a row changed.
+func (r *Repo) DropKeyframes(ctx context.Context, mediaSourceID, etag string) (bool, error) {
+	tag, err := r.Pool.Exec(ctx, "UPDATE media_sources SET keyframes = '{}' WHERE id = $1::uuid AND object_etag = $2", mediaSourceID, etag)
+	return tag.RowsAffected() > 0, err
+}
+
 // Source finds an item's media source, a specific one if mediaSourceID is set.
 func (r *Repo) Source(ctx context.Context, itemID, mediaSourceID string) (Source, bool, error) {
 	var s Source

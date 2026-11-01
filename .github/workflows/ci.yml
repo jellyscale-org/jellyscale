@@ -31,6 +31,7 @@ jobs:
 
   integration:
     runs-on: ubuntu-latest
+    timeout-minutes: 30 # The tests' own limit is 20, set in test/integration.sh.
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7

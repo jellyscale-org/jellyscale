@@ -47,7 +47,7 @@ func TestPlaylistStopsWhereTheVideoDoes(t *testing.T) {
 		"-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=28",
 		"-c:v", "libx264", "-preset", "ultrafast", "-g", "48", "-c:a", "aac", filepath.Join(film(t), "long-audio.mkv"))
 	source := r.useFile(t, "long-audio.mkv")
-	count := playback.Segments(source.Ticks())
+	count := playback.EncodedLayout(source.Ticks()).Count()
 	if count != 5 {
 		t.Fatalf("playlist has %d segments for 20 s of video, want 5", count)
 	}
@@ -115,5 +115,53 @@ func TestUnreadableStoreIsNamed(t *testing.T) {
 	}
 	if n := r.count(t, "SELECT count(*) FROM transcode_jobs WHERE state = 'failed'"); n != 1 {
 		t.Fatalf("%d failed jobs, want the unreadable one marked so PlaybackInfo stops offering it", n)
+	}
+}
+
+// A film whose streams start late still gets a re-encode that ends where the
+// playlist does: Matroska's durations are ends on the file's clock, which
+// count the start, and the encoder writes only what the video holds.
+func TestReEncodedPlaylistOfAFilmThatStartsLate(t *testing.T) {
+	needFFmpeg(t)
+	for _, container := range []string{"mkv", "mp4"} {
+		for name, offsets := range map[string][2]string{"video late": {"2", "0"}, "audio late": {"0", "2"}, "all late": {"2", "2"}} {
+			t.Run(container+", "+name, func(t *testing.T) {
+				dir := t.TempDir()
+				file := filepath.Join(dir, "late."+container)
+				run(t, "ffmpeg", "-nostdin", "-v", "error", "-y",
+					"-itsoffset", offsets[0], "-f", "lavfi", "-i", "testsrc2=size=160x90:rate=24:duration=12",
+					"-itsoffset", offsets[1], "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=12",
+					"-map", "0:v", "-map", "1:a", "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "ac3", file)
+				probe, err := library.ProbeInput(context.Background(), file)
+				if err != nil {
+					t.Fatal(err)
+				}
+				streams, _ := json.Marshal(probe.Streams)
+				parsed, _ := playback.ParseStreams(streams)
+				layout := playback.Source{RunTimeTicks: probe.RunTimeTicks, Streams: parsed}.Layout(false)
+
+				out := filepath.Join(dir, "out")
+				os.Mkdir(out, 0o755)
+				cmd, err := Command(context.Background(), file, playback.Spec{AudioIndex: 1, AudioBitrate: 128_000, VideoBitrate: 1_000_000, Width: 160, Height: 90}, 0, out, "")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if output, err := cmd.CombinedOutput(); err != nil {
+					t.Fatalf("ffmpeg: %v: %s", err, output)
+				}
+				pieces, err := (&gatherer{dir: out, begins: 0}).pieces(context.Background())
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(pieces) != layout.Count() {
+					t.Fatalf("ffmpeg wrote %d segments, the playlist has %d", len(pieces), layout.Count())
+				}
+				for n, p := range pieces {
+					if _, length := layout.Segment(n); length-(p.end-p.start) > ticksPerSecond/12 || (p.end-p.start)-length > ticksPerSecond/12 {
+						t.Errorf("segment %d is %d ticks, the playlist says %d", n, p.end-p.start, length)
+					}
+				}
+			})
+		}
 	}
 }

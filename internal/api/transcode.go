@@ -20,6 +20,7 @@ type hlsRequest struct {
 	params playback.Params
 	source items.Source
 	media  playback.Source
+	layout playback.Layout
 	viewer transcode.Viewer
 }
 
@@ -54,7 +55,16 @@ func (s *Server) hlsRequestFor(w http.ResponseWriter, r *http.Request) (hlsReque
 		s.fail(w, r, err)
 		return req, false
 	}
-	if req.params, err = playback.ParseParams(r.URL.Query(), req.media); err == nil {
+	req.params, err = playback.ParseParams(r.URL.Query(), req.media)
+	if err == nil && req.params.Copy {
+		// The request names the copy, so it is the one place that reads the index.
+		var dbErr error
+		if req.media.Keyframes, req.media.VideoEnd, dbErr = s.Items.Keyframes(r.Context(), source.ID); dbErr != nil {
+			s.fail(w, r, dbErr)
+			return req, false
+		}
+	}
+	if err == nil {
 		req.spec, err = playback.NewSpec(itemID, req.params, req.media)
 	}
 	if err != nil {
@@ -62,6 +72,7 @@ func (s *Server) hlsRequestFor(w http.ResponseWriter, r *http.Request) (hlsReque
 		return req, false
 	}
 	req.hash = req.spec.Hash()
+	req.layout = req.media.Layout(req.spec.Copy)
 	req.viewer = transcode.Viewer{PlaySessionID: req.params.PlaySessionID, DeviceID: req.params.DeviceID, UserID: sessionOf(r).User.ID, Item: req.spec.Item}
 	if err := s.Transcode.Watch(r.Context(), req.viewer, req.hash); err != nil {
 		if errors.Is(err, transcode.ErrStopped) {
@@ -77,7 +88,7 @@ func (s *Server) hlsRequestFor(w http.ResponseWriter, r *http.Request) (hlsReque
 func playbackSource(source items.Source) (playback.Source, error) {
 	streams, err := playback.ParseStreams(source.Streams)
 	return playback.Source{ID: db.CompactID(source.ID), ETag: source.ETag, Container: source.Container,
-		RunTimeTicks: source.RunTimeTicks, Streams: streams}, err
+		Size: source.Size, RunTimeTicks: source.RunTimeTicks, Streams: streams}, err
 }
 
 // query is what every playlist line carries. The client's token goes in it
@@ -93,13 +104,13 @@ func playlist(w http.ResponseWriter, text string) {
 
 func (s *Server) masterPlaylist(w http.ResponseWriter, r *http.Request) {
 	if req, ok := s.hlsRequestFor(w, r); ok {
-		playlist(w, playback.Master(req.spec, req.query(r), req.media.FrameRate()))
+		playlist(w, playback.Master(req.spec, req.media, req.query(r)))
 	}
 }
 
 func (s *Server) mainPlaylist(w http.ResponseWriter, r *http.Request) {
 	if req, ok := s.hlsRequestFor(w, r); ok {
-		playlist(w, playback.Main(req.media.Ticks(), req.query(r)))
+		playlist(w, playback.Main(req.layout, req.query(r)))
 	}
 }
 
@@ -108,13 +119,13 @@ func (s *Server) hlsSegment(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	n, valid := playback.ParseSegment(r.PathValue("segmentId"), playback.Segments(req.media.Ticks()))
+	n, valid := playback.ParseSegment(r.PathValue("segmentId"), req.layout.Count())
 	if r.PathValue("playlistId") != "main" || !valid {
 		http.NotFound(w, r)
 		return
 	}
 	began := time.Now()
-	body, err := s.Transcode.Segment(r.Context(), req.spec, req.hash, req.viewer, n, req.params.StartSegment(playback.Segments(req.media.Ticks())))
+	body, err := s.Transcode.Segment(r.Context(), req.spec, req.hash, req.viewer, n, req.params.StartSegment(req.layout))
 	var failed transcode.FailedError
 	switch {
 	case err == nil:
