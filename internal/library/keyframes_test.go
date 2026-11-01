@@ -451,6 +451,9 @@ func TestKeyframesRefuseASumThatOverflowsTicks(t *testing.T) {
 // duration says: whichever stream starts late or ends early, in both
 // containers.
 func TestVideoEndIsWhereTheLastFrameEnds(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("no ffmpeg")
+	}
 	for _, container := range []string{"mkv", "mp4"} {
 		for name, input := range map[string][]string{
 			"video late":      {"-itsoffset", "0.5", "-f", "lavfi", "-i", "testsrc2=size=160x90:rate=24:duration=90", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=90"},
