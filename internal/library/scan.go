@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"image"
 	_ "image/jpeg" // Sidecar decoding.
@@ -25,6 +26,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"jellyscale/internal/db"
+	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
 )
 
@@ -89,8 +91,8 @@ type seenObject struct {
 	etag   string
 	itemID *string
 	// unprobed: stored before the probe recorded level, field order and range,
-	// which transcode decisions need, or which subtitle tracks are text. A scan
-	// probes it again.
+	// which transcode decisions need, or which subtitle tracks are text, or
+	// before keyframes were read from an H.264 file. A scan probes it again.
 	unprobed bool
 }
 
@@ -197,7 +199,9 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 func (s *Scanner) loadSeen(ctx context.Context, libraryID string) (map[string]seenObject, error) {
 	rows, err := s.Pool.Query(ctx, `SELECT o.key, o.size, o.etag, o.item_id::text,
 			EXISTS (SELECT 1 FROM media_sources m WHERE m.item_id = o.item_id
-				AND jsonb_path_exists(m.streams, '$[*] ? ((@.Type == "Video" && !exists(@.VideoRangeType)) || (@.Type == "Subtitle" && !exists(@.IsTextSubtitleStream)))'))
+				AND (jsonb_path_exists(m.streams, '$[*] ? ((@.Type == "Video" && !exists(@.VideoRangeType)) || (@.Type == "Subtitle" && !exists(@.IsTextSubtitleStream)))')
+				OR (m.keyframes IS NULL AND m.container IN ('mkv', 'mp4')
+					AND jsonb_path_exists(m.streams, '$[*] ? (@.Type == "Video" && @.Codec == "h264")'))))
 		FROM scan_objects o WHERE o.library_id = $1`, libraryID)
 	if err != nil {
 		return nil, err
@@ -242,6 +246,9 @@ func (s *Scanner) probeAll(ctx context.Context, lib Library, objects []store.Obj
 				s.Log.Error("probe failed", "key", object.Key, "error", err)
 				return
 			}
+			if probe.wantsKeyframes() {
+				s.readIndex(ctx, lib, object, input, &probe)
+			}
 			mu.Lock()
 			results[object.Key] = probe
 			mu.Unlock()
@@ -249,6 +256,32 @@ func (s *Scanner) probeAll(ctx context.Context, lib Library, objects []store.Obj
 	}
 	wg.Wait()
 	return results
+}
+
+// readIndex fills in what a copied stream is cut from. A file with no index
+// gets an empty one and is re-encoded; a failed read leaves it unset, so the
+// next scan tries again.
+func (s *Scanner) readIndex(ctx context.Context, lib Library, object store.Object, input string, probe *Probe) {
+	keyframes, err := ReadKeyframes(ctx, lib.Media, object.Key, object.Size, probe.Container)
+	if err == nil {
+		// Reading the video's end costs the film from the last keyframe on,
+		// twice. A longer gap can't be cut into segments, so don't pay for it.
+		last := keyframes[len(keyframes)-1]
+		if probe.RunTimeTicks-last > playback.MaxCopySegment {
+			err = noIndex("the last keyframe is more than 12 seconds before the end")
+		} else {
+			probe.VideoEnd, err = ReadVideoEnd(ctx, input, last)
+		}
+	}
+	switch {
+	case errors.Is(err, ErrNoIndex):
+		probe.Keyframes = []int64{}
+		s.Log.Info("the film has no keyframe index to copy from and is re-encoded", "key", object.Key, "why", err)
+	case err != nil:
+		s.Log.Warn("reading the keyframe index failed; the next scan tries again", "key", object.Key, "error", err)
+	default:
+		probe.Keyframes = keyframes
+	}
 }
 
 // record is one row of the items table.
@@ -331,9 +364,9 @@ func (s *Scanner) upsert(ctx context.Context, lib Library, object store.Object, 
 		if _, err := tx.Exec(ctx, "DELETE FROM media_sources WHERE item_id = $1", stored); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO media_sources (id, item_id, store_key, size, object_etag, container, streams)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-			stored, stored, object.Key, object.Size, object.ETag, probe.Container, streams); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO media_sources (id, item_id, store_key, size, object_etag, container, streams, keyframes, video_end)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+			stored, stored, object.Key, object.Size, object.ETag, probe.Container, streams, probe.Keyframes, probe.VideoEnd); err != nil {
 			return err
 		}
 		_, err = tx.Exec(ctx, `INSERT INTO scan_objects (library_id, key, size, etag, item_id) VALUES ($1, $2, $3, $4, $5)

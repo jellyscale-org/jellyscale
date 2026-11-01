@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"jellyscale/internal/playback"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,7 +35,7 @@ func TestCheckLast(t *testing.T) {
 		{"cut short by a failed read", 24, "0.750000", "the last segment is 0.75s"},
 		{"stopped before the end", 3, "4.000000", "stopped after segment 3 of 25"},
 	} {
-		err := checkLast(write(c.extinf), c.n, ticks)
+		err := checkLast(write(c.extinf), c.n, playback.EncodedLayout(ticks))
 		if c.failure == "" && err != nil || c.failure != "" && (err == nil || !strings.Contains(err.Error(), c.failure)) {
 			t.Errorf("%s: got %v, want %q", c.name, err, c.failure)
 		}

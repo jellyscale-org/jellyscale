@@ -647,3 +647,82 @@ func TestInitSegmentStartsTheJobWhereTheViewerResumes(t *testing.T) {
 		t.Fatalf("started at %d", start)
 	}
 }
+
+// An H.264 film in AC3 is offered as a copy when it has an index, with the
+// reasons the capture shows and the same reply fields; the playlist is the
+// source's keyframes, exactly; and a cap below the file and a file with no
+// index are re-encoded, and a client that edits the URL to ask for a copy of
+// that file is refused.
+func TestPlaybackInfoOffersACopy(t *testing.T) {
+	e, _, source := transcodeEnv(t, "h264", "ac3")
+	// The captured fixture: keyframes at 0, 3, 7, 13, 18, 26 ... in a 90 s film.
+	mustExec(t, e.pool, "UPDATE media_sources SET keyframes = '{0,30000000,70000000,130000000,180000000,260000000,310000000,390000000,440000000,520000000,570000000,650000000,700000000,780000000,830000000}', video_end = 900000000, size = 25000000")
+	mustExec(t, e.pool, "UPDATE items SET run_time_ticks = 900000000") // 90 s.
+	profile := capturedProfile(t)
+	body := func(extra map[string]any) map[string]any {
+		b := map[string]any{"DeviceProfile": profile, "MaxStreamingBitrate": 2147483647, "AudioStreamIndex": "1", "SubtitleStreamIndex": "-1", "MediaSourceId": source}
+		for k, v := range extra {
+			b[k] = v
+		}
+		return b
+	}
+	media := firstSource(e.playbackInfo(t, 0, e.item, body(nil)))
+	if media["SupportsDirectPlay"] != false || media["SupportsDirectStream"] != false || media["SupportsTranscoding"] != true ||
+		media["TranscodingSubProtocol"] != "hls" || media["TranscodingContainer"] != "mp4" || media["Container"] != "mkv" {
+		t.Fatalf("the reply fields are those of the capture: %v", media)
+	}
+	transcodingURL := media["TranscodingUrl"].(string)
+	query := mustQuery(t, transcodingURL)
+	if query.Get("VideoCodec") != "copy" || query.Get("TranscodeReasons") != "AudioCodecNotSupported" {
+		t.Fatalf("query: %v", query)
+	}
+
+	// The playlist, and its master, through the stream route.
+	_, master := e.do(t, 1, "GET", transcodingURL, "", nil)
+	if !strings.Contains(string(master), `CODECS="avc1.4D0029,mp4a.40.2"`) || !strings.Contains(string(master), "RESOLUTION=1280x720") {
+		t.Errorf("master:\n%s", master)
+	}
+	_, mainPlaylist := e.do(t, 0, "GET", strings.Replace(transcodingURL, "master.m3u8", "main.m3u8", 1), "", nil)
+	var lengths []string
+	for _, line := range strings.Split(string(mainPlaylist), "\n") {
+		if length, ok := strings.CutPrefix(line, "#EXTINF:"); ok {
+			lengths = append(lengths, strings.TrimSuffix(strings.TrimSuffix(length, ", nodesc"), "000"))
+		}
+	}
+	// Seven seconds, then every keyframe that comes after the 3 s one is a cut,
+	// and the last runs to the end of the 90 s film.
+	if got, want := strings.Join(lengths, " "), "7.000 6.000 5.000 8.000 5.000 8.000 5.000 8.000 5.000 8.000 5.000 8.000 5.000 7.000"; got != want {
+		t.Errorf("segment lengths %s, want %s", got, want)
+	}
+	if !strings.Contains(string(mainPlaylist), "#EXT-X-TARGETDURATION:8\n") || strings.Contains(string(mainPlaylist), "DISCONTINUITY") {
+		t.Errorf("playlist:\n%s", mainPlaylist)
+	}
+	// A segment past the layout is refused: 14, where a 4 s grid would have 23.
+	if response, _ := e.do(t, 0, "GET", strings.Replace(transcodingURL, "master.m3u8", "hls1/main/14.mp4", 1), "", nil); response.StatusCode != 404 {
+		t.Errorf("segment 14 of 14 got %d", response.StatusCode)
+	}
+
+	// A cap below the file is a re-encode (a subtitle drawn in is, in the unit test of the decision).
+	capped := mustQuery(t, firstSource(e.playbackInfo(t, 0, e.item, body(map[string]any{"MaxStreamingBitrate": 720000})))["TranscodingUrl"].(string))
+	if capped.Get("VideoCodec") != "h264" {
+		t.Errorf("a cap below the file: %v", capped)
+	}
+
+	// The same file with no index to read stays a re-encode, and the URL of a
+	// copy is refused for it.
+	mustExec(t, e.pool, "UPDATE media_sources SET keyframes = '{}'")
+	if plain := mustQuery(t, firstSource(e.playbackInfo(t, 0, e.item, body(nil)))["TranscodingUrl"].(string)); plain.Get("VideoCodec") != "h264" {
+		t.Errorf("a file with no index: %v", plain)
+	}
+	if response, body := e.do(t, 0, "GET", transcodingURL, "", nil); response.StatusCode != 400 {
+		t.Errorf("a copy of a file with no index: %d %s", response.StatusCode, body)
+	}
+
+	// A database that fails to give the index is the server's fault, not a bad request.
+	mustExec(t, e.pool, "ALTER TABLE media_sources RENAME COLUMN keyframes TO keyframes_away")
+	response, failure := e.do(t, 0, "GET", transcodingURL, "", nil)
+	mustExec(t, e.pool, "ALTER TABLE media_sources RENAME COLUMN keyframes_away TO keyframes")
+	if response.StatusCode != 500 {
+		t.Errorf("the index could not be read: %d %s", response.StatusCode, failure)
+	}
+}

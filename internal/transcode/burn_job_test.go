@@ -37,16 +37,6 @@ func TestWorkerBurnsTheTrackOrFailsTheJob(t *testing.T) {
 	if err := os.WriteFile(joined, append(init, segment...), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	frames := brightByHalf(t, joined)
-	if len(frames) < 3 {
-		t.Fatalf("%d frames", len(frames))
-	}
-	for second, half := range frames[:3] {
-		if half[1] < 20 || half[0] > 3 {
-			t.Errorf("second %d of the segment: bright pixels top %d, bottom %d; want text at the bottom", second, half[0], half[1])
-		}
-	}
-
 	// Stream 1 is audio: there is no such track to draw.
 	bad := 1
 	r.spec.Subtitle = &bad
@@ -58,6 +48,18 @@ func TestWorkerBurnsTheTrackOrFailsTheJob(t *testing.T) {
 		t.Fatalf("after %s: %v", time.Since(began), err)
 	}
 	waitFor(t, "no ffmpeg to be left", 10*time.Second, func() bool { return len(r.ffmpegProcesses()) == 0 })
+
+	// Last, so that a host without a font still checks the failure above.
+	needFont(t)
+	frames := brightByHalf(t, joined)
+	if len(frames) < 3 {
+		t.Fatalf("%d frames", len(frames))
+	}
+	for second, half := range frames[:3] {
+		if half[1] < 20 || half[0] > 3 {
+			t.Errorf("second %d of the segment: bright pixels top %d, bottom %d; want text at the bottom", second, half[0], half[1])
+		}
+	}
 }
 
 // useBurnFilm makes a black film with the burn track as its stream 2.

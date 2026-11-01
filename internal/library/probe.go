@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"slices"
@@ -28,6 +29,27 @@ type Probe struct {
 	Width        int
 	Height       int
 	Streams      []map[string]any
+	// Keyframes are the video's keyframe times, from ReadKeyframes. Nil: not
+	// looked for, or it failed and a later scan tries again. Empty: the file
+	// has no index to read.
+	Keyframes []int64
+	// VideoEnd is where the last video frame ends, from ReadVideoEnd, on the
+	// same clock as Keyframes. Set with them.
+	VideoEnd int64
+}
+
+// wantsKeyframes: only H.264 is ever copied, and only these containers have
+// an index ReadKeyframes reads.
+func (p Probe) wantsKeyframes() bool {
+	if p.Container != "mkv" && p.Container != "mp4" {
+		return false
+	}
+	for _, stream := range p.Streams {
+		if stream["Type"] == "Video" {
+			return stream["Codec"] == "h264"
+		}
+	}
+	return false
 }
 
 type sideData struct {
@@ -55,6 +77,7 @@ type ffprobeOutput struct {
 		SampleRate  string            `json:"sample_rate"`
 		BitRate     string            `json:"bit_rate"`
 		Duration    string            `json:"duration"`
+		StartTime   string            `json:"start_time"`
 		AvgFrame    string            `json:"avg_frame_rate"`
 		Tags        map[string]string `json:"tags"`
 		Disposition struct {
@@ -125,8 +148,17 @@ func ProbeInput(ctx context.Context, input string) (Probe, error) {
 			entry["VideoRangeType"] = rangeType(stream.Transfer, stream.SideData)
 			// The video can end before the audio does, and an HLS playlist
 			// has to stop where the video does. Matroska keeps the duration
-			// in a tag.
-			if ticks := streamTicks(stream.Duration, stream.Tags["DURATION"]); ticks > 0 {
+			// in a tag, as the end on the file's clock, so a video that
+			// starts late has that much less than the tag says.
+			ticks := streamTicks(stream.Duration, stream.Tags["DURATION"])
+			if _, err := strconv.ParseFloat(stream.Duration, 64); err != nil && probe.Container == "mkv" {
+				start, _ := strconv.ParseFloat(stream.StartTime, 64)
+				if ticks == 0 {
+					ticks = int64(duration * ticksPerSecond)
+				}
+				ticks -= int64(max(start, 0) * ticksPerSecond)
+			}
+			if ticks > 0 {
 				entry["DurationTicks"] = ticks
 			}
 			entry["DisplayTitle"] = fmt.Sprintf("%dp %s", stream.Height, strings.ToUpper(stream.CodecName))
@@ -247,4 +279,46 @@ func displaySubtitle(language, codec string, isDefault, isForced bool) string {
 		parts = append(parts, "Forced")
 	}
 	return strings.Join(append(parts, strings.ToUpper(codec)), " - ")
+}
+
+// ReadVideoEnd returns where the last video frame ends on the file's clock, in
+// ticks. Neither a container's duration nor its tags say: they count from the
+// file's first stream, not from where the video begins, and can be the audio's
+// instead. So it reads the packets of the last group of pictures, from the last
+// keyframe to the end of the file. ffprobe opens the start of the file (a few
+// MB, more with some versions) and asks for that stretch twice, so it reads up to twice the last
+// keyframe's distance to the end (at most MaxCopySegment of film; 120 MB at
+// 40 Mbps), whatever the length of the film. Matroska and MP4 alike.
+func ReadVideoEnd(ctx context.Context, input string, lastKeyframe int64) (int64, error) {
+	// A little past the keyframe: the seek goes to the last one at or before it.
+	from := strconv.FormatFloat(float64(lastKeyframe)/ticksPerSecond+0.005, 'f', 3, 64)
+	var out, errOut bytes.Buffer
+	cmd := exec.CommandContext(ctx, "ffprobe", "-v", "error", "-select_streams", "v:0", "-read_intervals", from+"%",
+		"-show_entries", "packet=pts_time,duration_time", "-of", "csv=p=0", "--", input)
+	cmd.Stdout, cmd.Stderr = &out, &errOut
+	if err := cmd.Run(); err != nil {
+		return 0, fmt.Errorf("ffprobe: %w: %s", err, strings.TrimSpace(errOut.String()))
+	}
+	// The last frame shown ends the video. A packet without a duration is
+	// given the gap before it.
+	var last, before, duration float64
+	found := false
+	for _, line := range strings.Fields(out.String()) {
+		pts, length, _ := strings.Cut(line, ",")
+		t, err := strconv.ParseFloat(pts, 64)
+		if err != nil {
+			continue
+		}
+		if t > last || !found {
+			before, last, found = last, t, true
+			duration, _ = strconv.ParseFloat(length, 64)
+		}
+	}
+	if !found {
+		return 0, errors.New("ffprobe found no video packets after the last keyframe")
+	}
+	if duration <= 0 {
+		duration = last - before
+	}
+	return int64((last + duration) * ticksPerSecond), nil
 }

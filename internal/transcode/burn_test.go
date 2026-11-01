@@ -1,7 +1,9 @@
 package transcode
 
 import (
+	"bytes"
 	"context"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -47,10 +49,20 @@ func brightByHalf(t *testing.T, file string) [][2]int {
 	return counts
 }
 
+// needFont skips a test that looks for drawn text on a host with no font, which
+// draws none.
+func needFont(t *testing.T) {
+	t.Helper()
+	if out, err := exec.Command("fc-list").Output(); err != nil || len(bytes.TrimSpace(out)) == 0 {
+		t.Skip("no font on this host")
+	}
+}
+
 // The text is in the picture at the cue's time, from a run that starts at
 // zero and from restarts at a far seek, whatever the source's own start time.
 func TestBurnedSubtitleIsAtTheRightTime(t *testing.T) {
 	needFFmpeg(t)
+	needFont(t)
 	work := t.TempDir()
 	black := filepath.Join(work, "black.mkv")
 	run(t, "ffmpeg", "-nostdin", "-v", "error", "-y",

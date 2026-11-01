@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -24,53 +25,59 @@ func TestAnyReplicaServesAnySegmentAndOneJobStarts(t *testing.T) {
 		targets[name] = s
 	}
 	for name, segments := range targets {
-		t.Run(name, func(t *testing.T) {
-			r := newRig(t, segments)
-			r.worker(t, nil)
-			replicas := []*Jobs{r.jobs(t), r.jobs(t)}
-
-			const viewers = 8
-			results := make([][]byte, viewers)
-			errs := make([]error, viewers)
-			var wg sync.WaitGroup
-			for i := range viewers {
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-					results[i], errs[i] = r.fetch(t, replicas[i%2], psid(i), 3)
-				}()
-			}
-			wg.Wait()
-			for i := range viewers {
-				if errs[i] != nil {
-					t.Fatalf("viewer %d: %v", i, errs[i])
+		for _, copied := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s, copied %v", name, copied), func(t *testing.T) {
+				r := newRig(t, segments)
+				if copied {
+					r.copied(t, "film.mkv")
 				}
-				if !isMP4Segment(results[i]) || !bytes.Equal(results[i], results[0]) {
-					t.Fatalf("viewer %d got %d bytes that differ from viewer 0's", i, len(results[i]))
-				}
-			}
-			if jobs := r.count(t, "SELECT count(*) FROM transcode_jobs WHERE spec_hash = $1", r.hash); jobs != 1 {
-				t.Fatalf("%d concurrent requests for one segment started %d jobs", viewers, jobs)
-			}
-			if started := r.count(t, "SELECT start_segment FROM transcode_jobs WHERE spec_hash = $1", r.hash); started != 3 {
-				t.Fatalf("the job started at segment %d, want 3", started)
-			}
-			if procs := r.ffmpegProcesses(); len(procs) != 1 {
-				t.Fatalf("%d ffmpeg processes: %v", len(procs), procs)
-			}
+				r.worker(t, nil)
+				replicas := []*Jobs{r.jobs(t), r.jobs(t)}
 
-			// Either replica now serves the init segment and the next one without a new job.
-			init, err := r.fetch(t, replicas[1], psid(0), -1)
-			if err != nil || !bytes.Contains(init[:32], []byte("ftyp")) {
-				t.Fatalf("init segment: %d bytes, %v", len(init), err)
-			}
-			if next, err := r.fetch(t, replicas[0], psid(1), 4); err != nil || !isMP4Segment(next) {
-				t.Fatalf("segment 4: %d bytes, %v", len(next), err)
-			}
-			if jobs := r.count(t, "SELECT count(*) FROM transcode_jobs WHERE spec_hash = $1", r.hash); jobs != 1 {
-				t.Fatalf("serving the next segment started another job: %d", jobs)
-			}
-		})
+				const viewers = 8
+				results := make([][]byte, viewers)
+				errs := make([]error, viewers)
+				var wg sync.WaitGroup
+				for i := range viewers {
+					wg.Add(1)
+					go func() {
+						defer wg.Done()
+						results[i], errs[i] = r.fetch(t, replicas[i%2], psid(i), 3)
+					}()
+				}
+				wg.Wait()
+				for i := range viewers {
+					if errs[i] != nil {
+						t.Fatalf("viewer %d: %v", i, errs[i])
+					}
+					if !isMP4Segment(results[i]) || !bytes.Equal(results[i], results[0]) {
+						t.Fatalf("viewer %d got %d bytes that differ from viewer 0's", i, len(results[i]))
+					}
+				}
+				if jobs := r.count(t, "SELECT count(*) FROM transcode_jobs WHERE spec_hash = $1", r.hash); jobs != 1 {
+					t.Fatalf("%d concurrent requests for one segment started %d jobs", viewers, jobs)
+				}
+				if started := r.count(t, "SELECT start_segment FROM transcode_jobs WHERE spec_hash = $1", r.hash); started != 3 {
+					t.Fatalf("the job started at segment %d, want 3", started)
+				}
+				// A copy is over in a moment, so only an encode is still running.
+				if procs := r.ffmpegProcesses(); !copied && len(procs) != 1 {
+					t.Fatalf("%d ffmpeg processes: %v", len(procs), procs)
+				}
+
+				// Either replica now serves the init segment and the next one without a new job.
+				init, err := r.fetch(t, replicas[1], psid(0), -1)
+				if err != nil || !bytes.Contains(init[:32], []byte("ftyp")) {
+					t.Fatalf("init segment: %d bytes, %v", len(init), err)
+				}
+				if next, err := r.fetch(t, replicas[0], psid(1), 4); err != nil || !isMP4Segment(next) {
+					t.Fatalf("segment 4: %d bytes, %v", len(next), err)
+				}
+				if jobs := r.count(t, "SELECT count(*) FROM transcode_jobs WHERE spec_hash = $1", r.hash); jobs != 1 {
+					t.Fatalf("serving the next segment started another job: %d", jobs)
+				}
+			})
+		}
 	}
 }
 
@@ -403,5 +410,21 @@ func TestStoppedViewerWaitingForASegmentStartsNoJob(t *testing.T) {
 	}
 	if n := r.count(t, "SELECT count(*) FROM transcode_jobs"); n != 1 {
 		t.Fatalf("%d jobs: the stopped viewer started another", n)
+	}
+}
+
+// A worker that has lost its job's lease stops storing segments: a copied run
+// can have many waiting, and each would otherwise be put and counted.
+func TestUploadStopsWhenTheLeaseIsLost(t *testing.T) {
+	r := newRig(t, nil)
+	file := filepath.Join(t.TempDir(), "3.m4s")
+	if err := os.WriteFile(file, []byte("segment"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// No row is running for this job id, as after a seek replaced it.
+	w := &Worker{ID: "w", Pool: r.pool, Segments: r.segments}
+	err := w.upload(context.Background(), claimed{ID: 1 << 40, Hash: r.hash, Start: 3}, 4, file)
+	if !errors.Is(err, errInterrupted) {
+		t.Fatalf("got %v, want the job to be interrupted", err)
 	}
 }

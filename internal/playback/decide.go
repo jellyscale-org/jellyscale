@@ -4,6 +4,7 @@ package playback
 
 import (
 	"encoding/json"
+	"fmt"
 	"slices"
 	"strconv"
 	"strings"
@@ -130,8 +131,69 @@ type Source struct {
 	ID, ETag     string
 	Container    string
 	Bitrate      int64
+	Size         int64
 	RunTimeTicks int64
 	Streams      []Stream
+	// Keyframes are the video's keyframe times in ticks, ascending, when the
+	// caller loaded them. They are what a copied stream is cut on.
+	Keyframes []int64
+	// VideoEnd is where the last video frame ends, on the clock of Keyframes.
+	VideoEnd int64
+}
+
+// Layout is how this source is cut into segments.
+func (s Source) Layout(copied bool) Layout {
+	if copied {
+		layout, _ := s.copyLayout()
+		return layout
+	}
+	return EncodedLayout(s.Ticks())
+}
+
+// copyLayout cuts the video, which lasts from its first keyframe to its end.
+func (s Source) copyLayout() (Layout, bool) {
+	if len(s.Keyframes) == 0 {
+		return Layout{}, false
+	}
+	return CopyLayout(s.Keyframes, s.VideoEnd-s.Keyframes[0])
+}
+
+// H264 reports whether the video is H.264, the only codec that is copied.
+func (s Source) H264() bool {
+	video, ok := s.video()
+	return ok && video.Codec == "h264"
+}
+
+// CanCopy reports whether the video can go to the client as it is: H.264, and
+// keyframes that make a playlist.
+func (s Source) CanCopy() bool {
+	_, cut := s.copyLayout()
+	return s.H264() && cut
+}
+
+// FileBitrate is the file's average bitrate, audio included, which is close
+// enough for a copied stream's BANDWIDTH.
+func (s Source) FileBitrate() int64 {
+	if ticks := s.Ticks(); ticks > 0 {
+		return int64(float64(s.Size) * 8 * ticksPerSecond / float64(ticks))
+	}
+	return 0
+}
+
+// avc1 is the RFC 6381 name of the video's H.264 profile and level, which
+// players use to tell whether they can decode it.
+func (s Source) avc1() string {
+	video, _ := s.video()
+	profile, ok := map[string]string{"constrained baseline": "42E0", "baseline": "4200", "main": "4D00", "high": "6400",
+		"high 10": "6E00", "high 4:2:2": "7A00", "high 4:4:4 predictive": "F400"}[strings.ToLower(video.Profile)]
+	if !ok {
+		profile = "6400"
+	}
+	level := video.Level
+	if level <= 0 {
+		level = 51
+	}
+	return fmt.Sprintf("avc1.%s%02X", profile, level)
 }
 
 // Ticks is how long a transcode of this source runs: to the end of the video,
@@ -214,6 +276,9 @@ type Decision struct {
 	Subtitle *int
 	// The split of the bitrate cap, set when transcoding.
 	VideoBitrate, AudioBitrate int64
+	// Copy: the video goes to the client as it is, and only the audio is
+	// re-encoded.
+	Copy bool
 }
 
 // Decide chooses direct play or transcode. canTranscode is false when this
@@ -256,6 +321,9 @@ func Decide(request Request, source Source, canTranscode bool) Decision {
 	if len(reasons) == 0 && audio == source.DefaultAudio() {
 		return direct
 	}
+	// A file over the cap is re-encoded to fit it. A cap of 0 or Unlimited
+	// is no cap, whatever the file.
+	fits := !slices.Contains(reasons, "ContainerBitrateExceedsLimit") && (limit <= 0 || limit >= Unlimited || source.Bitrate > 0)
 	if limit <= 0 {
 		limit = Unlimited
 	}
@@ -267,6 +335,10 @@ func Decide(request Request, source Source, canTranscode bool) Decision {
 			decision.Reasons = append(reasons, "SubtitleCodecNotSupported")
 		}
 	}
+	// The video is copied when the client takes it as it is, whatever its
+	// container, and only the audio or the container forced the stream.
+	audioStream, _ := source.audio(audio)
+	decision.Copy = fits && decision.Subtitle == nil && source.CanCopy() && len(profile.limits("Video", video.Codec, video, audioStream)) == 0
 	return decision
 }
 

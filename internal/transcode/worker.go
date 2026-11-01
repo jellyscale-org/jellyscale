@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -138,9 +139,20 @@ func (w *Worker) run(ctx context.Context, job claimed) {
 	// while locked takes its thread with it.
 	runtime.LockOSThread()
 	log := w.Log.With("job", job.ID, "spec", job.Hash, "item", job.Spec.Item, "start", job.Start)
-	log.Info("transcode started")
+	log.Info("transcode started", "copy", job.Spec.Copy)
 	began := time.Now()
 	err := w.encode(ctx, job, log)
+	// Only this error says the index is wrong; a cancelled or failed run says
+	// nothing of it. The next PlaybackInfo re-encodes the film.
+	if errors.Is(err, errWrongIndex) && ctx.Err() == nil {
+		if dropped, dropErr := w.Items.DropKeyframes(ctx, job.Spec.Source, job.Spec.ETag); dropErr != nil {
+			log.Error("dropping the wrong keyframe index failed", "source", job.Spec.Source, "error", dropErr)
+		} else if !dropped {
+			log.Warn("the keyframe index was wrong, but the file changed during the job; its new index stays", "source", job.Spec.Source, "error", err)
+		} else {
+			log.Error("the film's keyframe index is wrong; it is re-encoded from now on", "source", job.Spec.Source, "error", err)
+		}
+	}
 	state, reason := "done", ""
 	switch {
 	case err == nil:
@@ -182,7 +194,16 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	if err != nil {
 		return err
 	}
-	ticks := playback.Source{RunTimeTicks: source.RunTimeTicks, Streams: streams}.Ticks()
+	film := playback.Source{RunTimeTicks: source.RunTimeTicks, Streams: streams}
+	if job.Spec.Copy {
+		if film.Keyframes, film.VideoEnd, err = w.Items.Keyframes(ctx, source.ID); err != nil {
+			return err
+		}
+	}
+	layout := film.Layout(job.Spec.Copy)
+	if layout.Count() == 0 {
+		return errors.New("the file has no keyframe index to copy from")
+	}
 	media, err := w.Media(source.StoreURI)
 	if err != nil {
 		return err
@@ -219,7 +240,15 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		return err
 	}
 	defer os.RemoveAll(dir)
-	cmd, err := Command(ctx, input, job.Spec, job.Start, dir, ass)
+	var cmd *exec.Cmd
+	var gather *gatherer
+	if job.Spec.Copy {
+		video, audio := copyStart(film.Keyframes, layout, job.Start)
+		cmd, err = CopyCommand(ctx, input, job.Spec, video, audio, dir)
+		gather = newGatherer(dir, layout, film.Keyframes[0])
+	} else {
+		cmd, err = Command(ctx, input, job.Spec, job.Start, dir, ass)
+	}
 	if err != nil {
 		return err
 	}
@@ -245,12 +274,18 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	// film's real last one.
 	upload := func(final bool) (caughtUp bool, err error) {
 		for {
-			name := filepath.Join(dir, strconv.Itoa(next)+".m4s")
-			if _, err := os.Stat(name); err != nil {
-				return false, nil
+			if next >= layout.Count() {
+				return false, nil // A copied run has fragments past the end.
 			}
-			if _, more := os.Stat(filepath.Join(dir, strconv.Itoa(next+1)+".m4s")); final && more != nil {
-				if err := checkLast(dir, next, ticks); err != nil {
+			name := filepath.Join(dir, strconv.Itoa(next)+".m4s")
+			if gather != nil {
+				if built, err := gather.segment(ctx, next, final); err != nil || !built {
+					return false, err
+				}
+			} else if _, err := os.Stat(name); err != nil {
+				return false, nil
+			} else if _, more := os.Stat(filepath.Join(dir, strconv.Itoa(next+1)+".m4s")); final && more != nil {
+				if err := checkLast(dir, next, layout); err != nil {
 					return false, err
 				}
 			}
@@ -273,7 +308,7 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	for {
 		select {
 		case err := <-exited:
-			_, uploadErr := upload(true)
+			caughtUp, uploadErr := upload(true)
 			if err != nil {
 				return fmt.Errorf("ffmpeg: %w: %s", err, stderr.String())
 			}
@@ -282,6 +317,11 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 			}
 			if next == job.Start {
 				return fmt.Errorf("ffmpeg ended without a segment: %s", stderr.String())
+			}
+			// A cut input can end exactly between two segments, leaving no
+			// partial one to notice.
+			if next < layout.Count() && !caughtUp {
+				return fmt.Errorf("the input ended early: ffmpeg stopped after segment %d of %d: %s", next-1, layout.Count(), stderr.String())
 			}
 			return nil
 		case <-poll.C:
@@ -382,11 +422,11 @@ func (w *Worker) lostReason(ctx context.Context, job claimed) string {
 
 // checkLast rejects a final segment that ffmpeg cut short because its input
 // ended early, which it does without an error when the read fails midway.
-func checkLast(dir string, n int, runTimeTicks int64) error {
-	if n < playback.Segments(runTimeTicks)-1 {
-		return fmt.Errorf("the input ended early: ffmpeg stopped after segment %d of %d", n, playback.Segments(runTimeTicks))
+func checkLast(dir string, n int, layout playback.Layout) error {
+	if n < layout.Count()-1 {
+		return fmt.Errorf("the input ended early: ffmpeg stopped after segment %d of %d", n, layout.Count())
 	}
-	if n > playback.Segments(runTimeTicks)-1 {
+	if n > layout.Count()-1 {
 		return nil
 	}
 	text, err := os.ReadFile(filepath.Join(dir, "index.m3u8"))
@@ -399,8 +439,8 @@ func checkLast(dir string, n int, runTimeTicks int64) error {
 			length, _ = strconv.ParseFloat(strings.TrimSuffix(value, ","), 64)
 		}
 	}
-	if want := playback.SegmentLength(n, runTimeTicks); math.Abs(length-want) > 1.5 {
-		return fmt.Errorf("the input ended early: the last segment is %.2fs, not %.2fs", length, want)
+	if _, ticks := layout.Segment(n); math.Abs(length-float64(ticks)/ticksPerSecond) > 1.5 {
+		return fmt.Errorf("the input ended early: the last segment is %.2fs, not %.2fs", length, float64(ticks)/ticksPerSecond)
 	}
 	return nil
 }
@@ -432,9 +472,14 @@ func (w *Worker) upload(ctx context.Context, job claimed, n int, name string) er
 		return err
 	}
 	os.Remove(name)
-	if _, err := w.Pool.Exec(ctx, `UPDATE transcode_jobs SET next_segment = $2, lease_expires_at = now() + make_interval(secs => $4)
-		WHERE id = $1 AND worker = $3 AND state = 'running'`, job.ID, n+1, w.ID, w.lease().Seconds()); err != nil {
+	tag, err := w.Pool.Exec(ctx, `UPDATE transcode_jobs SET next_segment = $2, lease_expires_at = now() + make_interval(secs => $4)
+		WHERE id = $1 AND worker = $3 AND state = 'running'`, job.ID, n+1, w.ID, w.lease().Seconds())
+	if err != nil {
 		return err
+	}
+	if tag.RowsAffected() == 0 {
+		// A copied run can have many segments waiting; don't keep storing them.
+		return fmt.Errorf("%w: %s", errInterrupted, w.lostReason(ctx, job))
 	}
 	Notify(ctx, w.Pool, segmentHint(job.Hash))
 	return nil

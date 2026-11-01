@@ -53,7 +53,7 @@ id=$(curl -s -H "$header" "127.0.0.1:$api2/Items?Recursive=true&IncludeItemTypes
   python3 -I -c 'import json,sys;print(json.load(sys.stdin)["Items"][0]["Id"])')
 total=$(curl -s -H "$header" "127.0.0.1:$api2/Items?Recursive=true&IncludeItemTypes=Movie" |
   python3 -I -c 'import json,sys;print(json.load(sys.stdin)["TotalRecordCount"])')
-check "two workers scanned without duplicates" 17 "$total"
+check "two workers scanned without duplicates" 25 "$total"
 check "stream role serves images" 200 "$(code "127.0.0.1:$stream/Items/$id/Images/Primary")"
 check "api role doesn't serve images" 404 "$(code "127.0.0.1:$api1/Items/$id/Images/Primary")"
 check "stream role doesn't serve the API" 404 "$(code -H "$header" "127.0.0.1:$stream/Items")"
