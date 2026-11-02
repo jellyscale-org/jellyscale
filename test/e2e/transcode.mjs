@@ -147,7 +147,15 @@ async function scenario(name, run) {
 const leave = async (page) => {
   const stopped = page.waitForResponse((r) => /\/Sessions\/Playing\/Stopped/i.test(r.url()), { timeout: 15000 });
   await page.evaluate(() => window.history.back());
-  const response = await stopped;
+  const response = await stopped.catch(async () => {
+    // jellyfin-web sends nothing if it thinks the stream is changing, or if its
+    // player page never saw the start. This says how far the page got.
+    const video = await page.evaluate(() => {
+      const v = document.querySelector("video");
+      return v ? `a video at ${v.currentTime} s, paused ${v.paused}` : "no video";
+    });
+    throw new Error(`no Stopped within 15 s of going back: the page is ${new URL(page.url()).hash} with ${video}`);
+  });
   if (response.status() !== 204) throw new Error(`Stopped answered ${response.status()}`);
   await response.finished();
   const timing = response.request().timing();
