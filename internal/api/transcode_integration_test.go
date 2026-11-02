@@ -32,7 +32,7 @@ func transcodeEnv(t *testing.T, codec, audio string) (*env, store.Store, string)
 	mustExec(t, e.pool, `UPDATE items SET run_time_ticks = 1000000000, dto = jsonb_set(dto, '{MediaSources,0}',
 		(dto->'MediaSources'->0) || '{"SupportsDirectPlay":true,"SupportsDirectStream":true,"Bitrate":2000000}')`)
 	mustExec(t, e.pool, "TRUNCATE transcode_jobs, transcode_nodes")
-	mustExec(t, e.pool, "INSERT INTO transcode_nodes (id, slots) VALUES ('w1', 2)")
+	mustExec(t, e.pool, "INSERT INTO transcode_nodes (id, roles, slots) VALUES ('w1', 'worker', 2)")
 	segments := store.NewPosix(t.TempDir())
 	for _, s := range e.apis {
 		s.Transcode = &transcode.Jobs{Pool: s.Pool, Segments: segments}

@@ -12,13 +12,13 @@ One binary, chosen with `--roles`, run as separate Deployments. Roles version to
 
 | Role | Job | State | Scales on | Runtime needs |
 |---|---|---|---|---|
-| `api` | REST, WebSocket, PlaybackInfo | Connections | CPU, connections | Postgres |
+| `api` | REST, WebSocket, PlaybackInfo | Connections | CPU, connections | Postgres, and the asset store to see which subtitles are cached while no worker runs |
 | `stream` | Sends bytes: direct play, playlists, segments, images, subtitles | None | Bandwidth | Postgres, stores |
-| `worker` | Runs media tools: transcodes, burn-in, scans, probes | Scratch only | Slots, queue depth | Postgres, stores, ffmpeg |
+| `worker` | Runs media tools: transcodes, burn-in, subtitle extraction, scans, probes | Scratch only | Slots, queue depth | Postgres, stores, ffmpeg |
 
 ## Rules
 
-1. **Only workers run media tools.** `api` and `stream` move bytes and coordinate. A viewer waiting for a result doesn't put the work in the role answering the request: segments already work this way.
+1. **Only workers run media tools.** `api` and `stream` move bytes and coordinate. A viewer waiting for a result doesn't put the work in the role answering the request: segments and subtitle extraction both work this way. `test/roles.sh` and `test/e2e/run.sh` run `api` and `stream` with no `ffmpeg` on their PATH, so an `api` and `stream` image can leave ffmpeg out; the Dockerfile has not been split yet.
 2. **Roles never call each other.** Work goes through Postgres and results through the store, so either side can be replaced or scaled alone.
 3. **Work is pulled.** A worker takes a job only when it has a free slot, so overload is a queue, and the queue is the autoscaling signal.
 4. **Workers are replaceable.** Jobs are leased, and a segment's video and timing depend on the spec, not on which worker made it. Encoded audio can differ in its bytes after a restart, inaudibly (DOMAINS 48).
@@ -28,5 +28,4 @@ One binary, chosen with `--roles`, run as separate Deployments. Roles version to
 
 ## Known departures
 
-- `stream` runs ffmpeg to extract subtitles (DOMAINS 43), against rule 1. Extraction moves to workers in the next slice.
 - A copy job has no read-ahead limit (DOMAINS 48): it reads to the end of the film or until 60 seconds after the last request. That cost has to be bounded in a later slice.

@@ -68,6 +68,8 @@ type Server struct {
 	// Transcode is nil when no transcode store is configured, and then every
 	// source plays as it is.
 	Transcode *transcode.Jobs
+	// Hub wakes requests waiting on a subtitle extraction; nil means they poll.
+	Hub *transcode.Hub
 	// SocketIdle closes a WebSocket that sends nothing for this long.
 	// Defaults to 60 seconds, the interval ForceKeepAlive promises.
 	SocketIdle time.Duration

@@ -14,6 +14,10 @@ port=$(docker port "$pg" 5432/tcp | head -1 | sed 's/.*://')
 for _ in $(seq 1 60); do docker exec "$pg" psql -U postgres -Atc 'select 1' >/dev/null 2>&1 && break; sleep 0.5; done
 sleep 2
 (cd "$repo" && go build -o "$work/jellyscale" ./cmd/jellyscale) || exit 1
+# api and stream run with no ffmpeg or ffprobe on their PATH (an empty
+# directory), because only workers run media tools. Anything they still ran
+# would fail with "executable file not found".
+mkdir -p "$work/nobin"
 
 export JELLYSCALE_DATABASE_URL="postgres://postgres:r@127.0.0.1:$port/postgres" JELLYSCALE_ADMIN_PASSWORD=r-pass
 free() { python3 -I -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])'; }
@@ -21,15 +25,28 @@ api1=$(free) api2=$(free) stream=$(free)
 start() { "$work/jellyscale" "$@" --config "$work/config.json" 2>>"$work/roles.log" & pids+=($!); }
 : >"$work/roles.log"
 # The workers' ffmpeg reads at twice the film's speed, so it is still running
-# when the checks below look for it. run.sh may have made the shim already.
+# when the checks below look for it. It also counts each subtitle extraction (the
+# run that writes track files), and waits while $work/bin/hold exists, noting
+# in $work/bin/held that it has begun. run.sh may have made the shim already.
 mkdir -p "$work/bin"
-printf '#!/bin/sh\ncase "$*" in *"-f hls"*) exec %s -readrate 2 "$@";; esac\nexec %s "$@"\n' "$(command -v ffmpeg)" "$(command -v ffmpeg)" >"$work/bin/ffmpeg"
+: >"$work/bin/runs"
+rm -f "$work/bin/hold" "$work/bin/held"
+cat >"$work/bin/ffmpeg" <<E2
+#!/bin/sh
+case "\$*" in
+*"-f hls"*) exec $(command -v ffmpeg) -readrate 2 "\$@";;
+*track.vtt*)
+  echo run >>"$work/bin/runs"
+  if [ -e "$work/bin/hold" ]; then touch "$work/bin/held"; while [ -e "$work/bin/hold" ]; do sleep 0.1 >/dev/null 2>&1; done; fi;;
+esac
+exec $(command -v ffmpeg) "\$@"
+E2
 chmod +x "$work/bin/ffmpeg"
 PATH="$work/bin:$PATH" start --roles=worker
 PATH="$work/bin:$PATH" start --roles=worker
-start --roles=api --listen "127.0.0.1:$api1"
-start --roles=api --listen "127.0.0.1:$api2"
-start --roles=stream --listen "127.0.0.1:$stream"
+PATH="$work/nobin" start --roles=api --listen "127.0.0.1:$api1"
+PATH="$work/nobin" start --roles=api --listen "127.0.0.1:$api2"
+PATH="$work/nobin" start --roles=stream --listen "127.0.0.1:$stream"
 
 for _ in $(seq 1 60); do
   curl -fs -o /dev/null "127.0.0.1:$api1/healthz" && curl -fs -o /dev/null "127.0.0.1:$api2/healthz" &&
@@ -65,18 +82,14 @@ check "invalid token is refused" 401 "$(code -H 'X-Emby-Token: nope' "127.0.0.1:
 check "audio routes aren't served" 404 "$(code -H "$header" "127.0.0.1:$api1/Audio/$id/stream")"
 check "music lists are empty" '{"Items":[],"TotalRecordCount":0,"StartIndex":0}' "$(curl -s -H "$header" "127.0.0.1:$api1/Items?Recursive=true&IncludeItemTypes=Audio")"
 
-# Subtitles: two stream replicas, each with a counting ffmpeg in front of the
-# real one, are asked for one track at the same moment. The track is read out of
-# the file once, by one process of either, and a later request reads the cache.
+# Subtitles: two stream replicas with no ffmpeg are asked for one track at the
+# same moment. A worker reads it out of the file once, whichever of the two
+# takes the job, and a later request reads the cache.
 sigma=$(curl -s -H "$header" "127.0.0.1:$api2/Items?Recursive=true&IncludeItemTypes=Movie&SearchTerm=Sigma" |
   python3 -I -c 'import json,sys;print(json.load(sys.stdin)["Items"][0]["Id"])')
-mkdir -p "$work/count"
-: >"$work/count/runs"
-printf '#!/bin/sh\necho run >>"%s/runs"\nexec %s "$@"\n' "$work/count" "$(command -v ffmpeg)" >"$work/count/ffmpeg"
-chmod +x "$work/count/ffmpeg"
 counted1=$(free) counted2=$(free)
-PATH="$work/count:$PATH" start --roles=stream --listen "127.0.0.1:$counted1"
-PATH="$work/count:$PATH" start --roles=stream --listen "127.0.0.1:$counted2"
+PATH="$work/nobin" start --roles=stream --listen "127.0.0.1:$counted1"
+PATH="$work/nobin" start --roles=stream --listen "127.0.0.1:$counted2"
 for p in $counted1 $counted2; do for _ in $(seq 1 60); do curl -fs -o /dev/null "127.0.0.1:$p/healthz" && break; sleep 0.25; done; done
 track="/Videos/$sigma/$sigma/Subtitles/3/0/Stream.ass?ApiKey=$token"
 rm -f "$work/subs".*
@@ -90,14 +103,35 @@ wait "${requests[@]}" # Not a bare wait, which would wait for the servers too.
 check "twelve requests across two replicas all get the track" "12" "$(grep -c '^200 text/x-ssa' "$work/subs.codes")"
 check "they all get the same text" 1 "$(md5sum "$work"/subs.[0-9]* | cut -d' ' -f1 | sort -u | wc -l)"
 check "the text keeps its style" 1 "$(grep -c 'Style: Loud,Arial,64,&H0000FF00' "$work/subs.1")"
-check "the file was read once, by one ffmpeg" 1 "$(wc -l <"$work/count/runs")"
+check "the file was read once, by one worker's ffmpeg" 1 "$(wc -l <"$work/bin/runs")"
 check "another format and replica reads the cache" 200 "$(code "127.0.0.1:$counted2/Videos/$sigma/$sigma/Subtitles/3/0/Stream.vtt?ApiKey=$token")"
 check "a start position shifts the cues" 1 "$(curl -s "127.0.0.1:$counted1/Videos/$sigma/$sigma/Subtitles/2/50000000/Stream.srt?ApiKey=$token" | grep -c '^00:00:00,000 --> 00:00:01,0[0-9][0-9]$')"
-check "that was the other track, so a second extraction" 2 "$(wc -l <"$work/count/runs")"
+check "that was the other track, so a second extraction" 2 "$(wc -l <"$work/bin/runs")"
 check "no extension is not found" 404 "$(code "127.0.0.1:$counted1/Videos/$sigma/$sigma/Subtitles/3/0/Stream?ApiKey=$token")"
 check "subtitles need a token" 401 "$(code "127.0.0.1:$counted1/Videos/$sigma/$sigma/Subtitles/3/0/Stream.vtt")"
 check "the api role doesn't serve subtitles" 404 "$(code "127.0.0.1:$api1/Videos/$sigma/$sigma/Subtitles/3/0/Stream.vtt?ApiKey=$token")"
 check "the api role serves the encoding configuration" 200 "$(code -H "$header" "127.0.0.1:$api1/System/Configuration/encoding")"
+
+# A worker killed outright in the middle of an extraction loses nothing: its
+# ffmpeg dies with it, the lease runs out, and the other worker finishes the
+# track for the request that is still waiting.
+tau=$(curl -s -H "$header" "127.0.0.1:$api2/Items?Recursive=true&IncludeItemTypes=Movie&SearchTerm=Tau" |
+  python3 -I -c 'import json,sys;print(json.load(sys.stdin)["Items"][0]["Id"])')
+sql() { docker exec "$pg" psql -U postgres -Atc "$1"; }
+runs_before=$(wc -l <"$work/bin/runs")
+touch "$work/bin/hold"
+(curl -s -o "$work/tau.vtt" -w '%{http_code}' "127.0.0.1:$counted1/Videos/$tau/$tau/Subtitles/2/0/Stream.vtt?ApiKey=$token" >"$work/tau.code") &
+requester=$!
+for _ in $(seq 1 40); do [[ -e "$work/bin/held" ]] && break; sleep 0.25; done
+check "a worker has begun the extraction" yes "$([[ -e "$work/bin/held" ]] && echo yes)"
+owner=$(sql "SELECT worker FROM subtitle_jobs WHERE state = 'running'")
+kill -9 "${owner%%-*}"
+rm -f "$work/bin/hold"
+wait "$requester"
+check "the request waiting on the killed worker gets the track" 200 "$(cat "$work/tau.code")"
+check "the track has its cues" 1 "$(grep -c 'English line 0' "$work/tau.vtt")"
+check "the job was claimed twice" 2 "$(sql "SELECT max(attempts) FROM subtitle_jobs")"
+check "the killed worker's ffmpeg started and the survivor's finished" 2 "$(($(wc -l <"$work/bin/runs") - runs_before))"
 
 # Transcoding across processes: the stream role serves HLS, a worker process
 # makes the segments, and no ffmpeg outlives the DELETE that ends the session.
@@ -136,7 +170,7 @@ main=$(curl -s "127.0.0.1:$stream$url" | sed -n 's/^\(main.m3u8.*\)$/\1/p')
 segment=$(curl -s "127.0.0.1:$stream$base/$main" | grep -m1 '^hls1/main/30.mp4') # Not made by the first session.
 curl -s -o /dev/null "127.0.0.1:$stream$base/$segment"
 check "ffmpeg runs for the second session" 1 "$(pgrep -f "ffmpeg.*$work/scratch" | wc -l)"
-kill -9 "${pids[0]}" "${pids[1]}"
+kill -9 "${pids[0]}" "${pids[1]}" 2>/dev/null
 for _ in $(seq 1 20); do [[ $(pgrep -f "ffmpeg.*$work/scratch" | wc -l) -eq 0 ]] && break; sleep 0.25; done
 check "ffmpeg dies with a worker that was killed" 0 "$(pgrep -f "ffmpeg.*$work/scratch" | wc -l)"
 
@@ -160,4 +194,18 @@ sleep 3
 PATH="$work/bin:$PATH" start --roles=worker
 wait "$requester"
 check "a request made while no worker runs waits for the replacement" 200 "$(cat "$work/replaced.code")"
+
+# With every worker gone, a track that was extracted before still plays and one
+# that wasn't is neither listed nor left hanging.
+pkill -9 -f "$work/jellyscale --roles=worker"
+sleep 11 # A worker counts as running for ten seconds after it last reported.
+phi=$(curl -s -H "$header" "127.0.0.1:$api2/Items?Recursive=true&IncludeItemTypes=Movie&SearchTerm=Phi" |
+  python3 -I -c 'import json,sys;print(json.load(sys.stdin)["Items"][0]["Id"])')
+check "a cached track plays with no worker" 200 "$(code "127.0.0.1:$stream/Videos/$sigma/$sigma/Subtitles/3/0/Stream.vtt?ApiKey=$token")"
+began=$SECONDS
+check "an uncached track is refused" 503 "$(code "127.0.0.1:$stream/Videos/$phi/$phi/Subtitles/2/0/Stream.vtt?ApiKey=$token")"
+check "the refusal comes within ten seconds" 1 "$(( SECONDS - began <= 10 ))"
+subtitles() { curl -s -H "$header" "127.0.0.1:$api2/Items/$1" | python3 -I -c 'import json,sys;print(sum(s["Type"] == "Subtitle" for s in json.load(sys.stdin)["MediaStreams"]))'; }
+check "the uncached film lists no subtitle track" 0 "$(subtitles "$phi")"
+check "the cached film lists both of its tracks" 2 "$(subtitles "$sigma")"
 exit $failed

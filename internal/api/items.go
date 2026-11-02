@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -183,7 +184,34 @@ func (s *Server) getItem(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	if err := s.hideUndeliverable(r.Context(), id, dto); err != nil {
+		s.fail(w, r, err)
+		return
+	}
 	writeJSON(w, dto)
+}
+
+// hideUndeliverable drops the text tracks from an item's DTO that no worker is
+// there to extract (invariant 32). The DTO lists the first source's streams
+// twice, in MediaStreams and in MediaSources.
+func (s *Server) hideUndeliverable(ctx context.Context, itemID string, dto map[string]any) error {
+	sources, _ := dto["MediaSources"].([]any)
+	for i, entry := range sources {
+		source, _ := entry.(map[string]any)
+		deliverable, err := s.deliverable(ctx, itemID, source)
+		if err != nil {
+			return err
+		}
+		streams, _ := source["MediaStreams"].([]any)
+		source["MediaStreams"] = slices.DeleteFunc(slices.Clone(streams), func(entry any) bool {
+			stream, _ := entry.(map[string]any)
+			return stream["Type"] == "Subtitle" && !deliverable(int(number(stream["Index"])))
+		})
+		if i == 0 {
+			dto["MediaStreams"] = source["MediaStreams"]
+		}
+	}
+	return nil
 }
 
 func (s *Server) itemAncestors(w http.ResponseWriter, r *http.Request) {

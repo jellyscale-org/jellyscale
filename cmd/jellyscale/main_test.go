@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"io"
 	"log/slog"
 	"strings"
@@ -18,10 +19,18 @@ func TestOpenTranscodingRefusesWhatCannotWork(t *testing.T) {
 		_, err := openTranscoding(context.Background(), cfg, roles, nil, "", log)
 		return err
 	}
-	// A worker with no transcodeStore would run in silence, so it doesn't start.
-	if err := open(config{}, "worker"); err == nil || !strings.Contains(err.Error(), "transcodeStore") {
+	// A worker with no transcodeStore still extracts subtitles, so it starts.
+	// The pool connects lazily and nothing here needs it to.
+	pool, err := pgxpool.New(context.Background(), "postgres://nobody@127.0.0.1:1/none")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	ctx, stop := context.WithCancel(context.Background())
+	if _, err := openTranscoding(ctx, config{}, []string{"worker"}, pool, "", log); err != nil {
 		t.Fatalf("a worker without a store: %v", err)
 	}
+	stop()
 	if err := open(config{TranscodeSlots: -1}, "api"); err == nil || !strings.Contains(err.Error(), "transcodeSlots") {
 		t.Fatalf("negative slots: %v", err)
 	}
