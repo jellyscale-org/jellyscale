@@ -45,4 +45,135 @@ Operators running one library on Kubernetes for a household or community, with t
 
 Subtitles inside the file are delivered or burnt in (done for text tracks, extracted by workers so that `api` and `stream` need no ffmpeg); image tracks, external subtitle files and burn-in of images are not. When the client plays a film's video but not its audio or container, the video is copied and only the audio is re-encoded (done for H.264 in MKV and MP4), so the picture keeps its quality exactly and the operator spends almost no CPU; the audio becomes stereo AAC. A copy at Auto carries the file's whole bitrate and size, 4K included, as direct play does, and a viewer on a slow link picks a cap. Its segments are stored at the file's own bitrate, not under the re-encode's ceiling, and a worker opens the file twice and reads it at 5 times the film's speed each time, so ten times the film's bitrate while the job runs and twice its bytes for the whole film, until the film ends or a minute after the last request, with no limit on how far it gets ahead of the viewer; a seek waits for a whole segment, up to 12 seconds of film. Copying audio while the video is re-encoded, and HEVC to clients that play it, are not built. The scan reads a keyframe index from each H.264 file (a Matroska file's Cues, an MP4's moov, which for a large file is megabytes), and reads where the video ends from the last stretch of the file. Phases and gates are in the project plan. In short: read-only browse (done), direct play (done), transcode (re-encode, subtitles and video copy done), HA, library and metadata, Kubernetes, SyncPlay.
 
+Slices, in delivery order. The slice names are the ones in the `slice` column of `compat/coverage-12.4.tsv`, and `go test ./compat` fails if a needed route names another.
+
+1. `phase3`: the remainder of Phase 3, the transcode gaps named above and in Features.
+2. `phase4-ha`: Phase 4, high availability, with the gate below. Remote control of sessions rides on its cross-replica delivery.
+3. `identity`: user management, hashed tokens, Quick Connect, then OIDC beside local accounts, right after HA.
+4. `phase5-library`: Phase 5, library and metadata.
+5. `phase6-k8s`: Phase 6, Kubernetes, with metrics and upgrades.
+6. `phase7-syncplay`: Phase 7, SyncPlay.
+
 Gate for Phase 4 (HA): a worker, and an API replica, killed in the middle of a film recover without losing the viewer's picture or resume position. Until then a worker that dies mid-film freezes jellyfin-web's picture with no dialog, even if a replacement starts at once, because its job holds its lease, which lasts 10 seconds from each renewal (7 to 10 seconds after a kill) (`DOMAINS.md` invariant 37). Only a worker that stops gracefully and is replaced within six seconds goes unnoticed. Likewise, a viewer already playing a video copy whose keyframe index is found wrong freezes with no dialog, possibly long before the bad point because the job reads ahead at 5 times the film's speed; this is accepted until the read-ahead has a limit.
+
+## Features
+
+Every viewer-visible and operator-visible feature in scope, in one list. Status is **done**, **partial** or **not built**, and a feature is grouped under the slice that delivers it. A feature that is a non-goal is listed in the last group with a reason. Items marked (decision) are choices a maintainer should confirm.
+
+### Built
+
+- Browse libraries, items, seasons and episodes, latest and continue watching, and favourites: **done**.
+- Played state through `/UserPlayedItems` and playback reporting: **partial** (writing played state and favourites as one `UserData` record is not built, so offline sync cannot write it; see `phase3`).
+- Direct play from POSIX and S3-compatible stores, with ranges and HEAD: **done**.
+- Transcode to H.264 with audio track and bitrate choice, seeks, and text subtitles delivered or burnt in: **done**.
+- Video copy with audio re-encoded (H.264 in MKV and MP4): **done**.
+- Local accounts with bcrypt passwords and per-device tokens; the first administrator comes from configuration: **partial** (no user management, see `identity`).
+- Sessions list and playback reporting: **partial** (listing and progress done, no operator view of devices).
+- Items' multiple audio tracks: **done**.
+- Search by term (jellyfin-web's search page calls `GET /Items` with `searchTerm`): **done**.
+
+### `phase3`
+
+- HEVC to clients that play it, copied or encoded; AV1: **not built**. In scope.
+- Copying audio while the video is re-encoded: **not built**. In scope.
+- HDR tone mapping to SDR: **not built**. In scope, because a viewer on an SDR display otherwise sees washed-out colour.
+- Image subtitles (PGS, VobSub, DVB) and their burn-in: **not built**. In scope.
+- External subtitle files beside the film: **not built**. In scope.
+- Font attachments for ASS rendering and the subtitle HLS playlist: **not built**. In scope.
+- File download: **not built**. In scope.
+- Chapters (names, positions, chapter images): **not built**. In scope.
+- Client log upload (`POST /ClientLog/Document`, which Android TV uses for crash logs): **not built**. In scope, accepted and discarded, because operators read their own logs (decision).
+- `POST /UserItems/{itemId}/UserData`, which writes played state and favourites as one record (Streamyfin's offline sync; a name match, not a trace): **not built**. In scope. `GET` on the same path is out of scope until something is found that calls it.
+
+### `phase4-ha`
+
+- A worker or an API replica killed mid-film recovers without losing the picture or resume position: **not built** (the gate above).
+- Remote control of another session (play on another device, messages): **not built**. In scope because jellyfin-web offers it (decision).
+
+### `identity`
+
+- User management: create, delete, disable, change a password, preferences: **not built**. In scope.
+- Hashed tokens at rest and operator API keys: **not built**. In scope.
+- Per-user library access: **not built**. In scope.
+- Quick Connect: **not built**. In scope; apps and TVs sign in through it.
+- `POST /Users/ForgotPassword`: **not built**. In scope; it answers `Action: ContactAdmin`, because the operator resets passwords (`/Users/ForgotPassword/Pin` is a non-goal).
+- OIDC beside local accounts: **not built**. In scope. In jellyfin-web it is a link on the login page, carried by the branding login disclaimer (so `GET /Branding/Configuration` stops being an empty stub); apps and TVs use Quick Connect. Capture real clients before building it (decision).
+- Signing the URLs inside playlists, so that they stop carrying the client's own token as `ApiKey` (`DOMAINS.md` invariant 17): **not built**. Known exposure today: anyone who can read a playlist, or a log of the segment requests, holds the viewer's token. In scope.
+- Sessions and devices view, with revoking a device: **not built**. In scope.
+- Activity log: **not built**. In scope.
+- User avatars: **not built**. In scope.
+
+### `phase5-library`
+
+- Library scanning from configured libraries with keyframe index and probe: **partial** (done for films and episodes, no metadata providers).
+- Genres, studios, persons and their pages and images: **not built**. In scope. The pages list them through `GET /Items` filters; `GET /Persons/{name}` and `GET /Studios/{name}` are non-goals, because nothing calls them.
+- Collections and playlists of films and episodes: **not built**. In scope.
+- Similar items (`/Items/{id}/Similar` and the movie, show and trailer variants): **not built**. In scope.
+- Next up and filters: **not built**. In scope.
+- Movie recommendations on the Movies page (`/Movies/Recommendations`; today a 404 hides its rows): **not built**. In scope, with an empty list as the first answer.
+- TV Shows Upcoming tab (`/Shows/Upcoming`) and Suggestions (`/Items/Suggestions`): **not built**. In scope (decision).
+- Multi-part films (`/Videos/{id}/AdditionalParts`): **not built**. In scope (decision).
+- Parental ratings (maximum rating per user, set under `identity` user management): **not built**. In scope here because ratings come from the scan: an item's official rating is read from the file's embedded tags or a sidecar `.nfo`, never fetched. `GET /Localization/ParentalRatings`, which fills the user-edit page's rating list, is built here too. Until then every item is unrated, so a maximum rating filters nothing and `BlockUnratedItems` would hide every film; `identity` therefore answers `POST /Users/{userId}/Policy` with 400 when it sets `MaxParentalRating` or `BlockUnratedItems`, and the control is never presented as working (decision).
+- Multiple versions of a film (4K and 1080p files grouped at scan by file name): **not built**. In scope; merging by hand through the API is a non-goal (decision).
+- Hardware encoding (NVENC and VAAPI): **not built**. In scope; the encoder family is already part of `spec_hash`, per the plan.
+- Empty answers for the music routes global search calls (`GET /Artists`): **not built**. In scope as a stub, because music is a non-goal and an empty list is the final answer.
+- Media segments and intro skip: **not built**. In scope. Segments come only from data an operator provides or from chapter markers; there is no audio or video fingerprinting (decision).
+- Trickplay: **not built**. In scope; workers generate it.
+- Artwork and synopses from files beside the film (poster and fanart images, `.nfo`) and from embedded tags and cover art: **not built**. In scope; this is the only metadata source (decision). Fetching from remote providers, and editing items, are non-goals below.
+
+### `phase6-k8s`
+
+- Helm chart, readiness and liveness, Kubernetes deployment: **not built**. The chart is the packaging: no operator and no raw-manifest install (decision).
+- Metrics (Prometheus): **not built**. In scope.
+- Backup and restore: **not built**. In scope as documented procedure: the operator backs up Postgres and the object stores, so Jellyfin's Backup API is a non-goal (decision).
+- Migration from Jellyfin: **not built**. In scope as a one-way import of users, watch state and libraries, so that viewers keep their history. Users arrive without passwords: they set one, or sign in through OIDC (decision).
+- Upgrades without downtime (workers replaced before `stream` and `api`, migrations that old replicas survive): **not built**. In scope.
+
+### `phase7-syncplay`
+
+- SyncPlay groups, with `GetUtcTime`: **not built**. In scope.
+
+### Non-goals
+
+- Music, photos, audiobooks, channels and Live TV: better tools exist.
+- Plugins and the plugin catalogue.
+- Multi-tenancy.
+- Library, metadata and scheduled-task administration through the dashboard, the setup wizard, and API-driven server configuration; these are declarative configuration.
+- Forgotten-password flows by email or PIN: the operator resets a password, and `POST /Users/ForgotPassword` says so with `ContactAdmin` (decision).
+- Routes Jellyfin marks obsolete, unless a jellyfin-web page calls them through the legacy `ApiClient`: those are aliases of the current route, `needed` in the audit until built and then in `compat/endpoints.yaml`. The `web_caller` column names the call, and `go test ./compat` fails if an obsolete route is `needed` without one. `POST /Users/{userId}` is out of scope: only a library defines `ApiClient.updateUser`, and the page calls the SDK, which posts to `POST /Users`.
+- Server administration the operator does outside the API: restart, shutdown and log files (the orchestrator does them), custom device names, branding set through the API (splash screen, custom CSS), and the metadata country and language lists.
+- Extras: trailers, theme songs and videos and special features answer empty lists or 404.
+- Remote metadata and image providers, remote subtitle download, editing items, uploading images or subtitles and deleting media: an operator supplies metadata as files beside the film (decision).
+- Routes no viewer-facing page calls and no client in scope needs, answered 404: `/FallbackFont/*`, `/Items/Counts`, `/Items/Root` (the user-scoped alias is served), `/System/Info/Storage`, `/Search/Hints` (jellyfin-web searches through `GET /Items`), `/Persons/{name}`, `/Studios/{name}`, `/Years` and `/Years/{year}`, `/Items/{itemId}/File` (the download link is `/Items/{itemId}/Download`), likes and ratings (`/UserItems/{itemId}/Rating`), `GET /UserItems/{itemId}/UserData` (decision).
+- Kodi is not a gate.
+
+## Feature audit against Jellyfin 12.4
+
+`compat/coverage-12.4.tsv` has one row for each operation in Jellyfin 12.4.0's stable OpenAPI document (`https://repo.jellyfin.org/files/openapi/stable/jellyfin-openapi-12.4.json`, 364 operations: 346 plus 18 HEAD operations the document lists apart), each of the 55 routes in `compat/hidden-routes-12.4.txt`, and two routes outside the document: `/socket`, the WebSocket Jellyfin serves and jellyfin-web opens, and `/System/Configuration/encoding`, the one key of `/System/Configuration/{key}` that clients read, which jellyscale serves by its own route. The document is not kept in the repository; `compat/spec-operations-12.4.txt` lists its operations, one `METHOD path` per line, generated from it. Columns are method, path, class, slice, served_by, web_caller and evidence.
+
+- Class is `done` (implemented or an alias in `compat/endpoints.yaml`), `stub-ok` (an empty answer is the final behaviour), `needed` (a client or feature above needs it) or `out-of-scope` (a non-goal above, or nothing calls it).
+- Slice is the slice that delivers a `needed` route, or a `stub-ok` route that is not built yet; otherwise `-`.
+- web_caller is `-` (no call found), `sdk` (a name match, see the search rule) or `ApiClient.<name>`, the legacy call a page makes.
+- served_by is `-`, or for a `done` row that a different pattern answers, that route as `METHOD path`. The method must be the row's, except that a HEAD row may be served by the GET pattern.
+
+`go test ./compat` fails when: a spec operation or hidden route has no row, or a row is in neither list (so a dropped or mistyped row fails); the file and the API's route list disagree about what is built; a `served_by` names the wrong method or a path that cannot serve the row; a `web_caller` is malformed; an obsolete route is `needed` without an `ApiClient.<name>` web_caller; the parental-ratings route leaves `phase5-library`; a slice has work and no group in Features; or the counts below are wrong.
+
+Routes still to build, by slice (checked against the rows):
+
+- `phase3`: 6 routes to build
+- `phase4-ha`: 10 routes to build
+- `identity`: 34 routes to build
+- `phase5-library`: 47 routes to build
+- `phase6-k8s`: 0 routes to build
+- `phase7-syncplay`: 23 routes to build
+
+A slice is complete when its count is 0 and its Features group has no **not built** line. Features without a route (HEVC, AV1, tone mapping, image and external subtitles, chapters, hardware encoding, trickplay generation) are not measured by the rows; their status is a claim by hand, to be proved by the integration tests of the slice. `phase6-k8s` has no routes (it is a chart, metrics and migration), so only its Features group counts.
+
+How the evidence was gathered, and its limits:
+
+- Search rule, stated once. A route counts as called by jellyfin-web 12.4.0 (`web-dist`) when its SDK method name appears there as `.name(` (`~N SDK call sites`), or when a page calls the legacy `ApiClient` (`ApiClient.name(`, or `getUrl("Path/...")` followed by `ajax` or `getJSON`), which the SDK count does not see; the row's web_caller names it. A definition inside `node_modules.@jellyfin.sdk` or `node_modules.jellyfin-apiclient` is not a call: only a page chunk calling it counts, so a method nothing calls (`getSearchHints`, `getPerson`, `getStudio`) leaves its route out of scope unless a client in scope matches its name. The SDK count is by method name, so a short or common name (`play`, `getYear`) over-counts; a name that something else in the bundle also uses is a false positive, and the row says so. Either way it says a call exists somewhere in the bundle, often on a dashboard page, not that a viewer reaches it.
+- `compat/captures/jellyfin-web-12.4.json` says whether a real session exercised the route.
+- The `clients` field is a match of the operation's name in the source of jellyfin-androidtv, Swiftfin and Streamyfin (default branches cloned on 2026-11-02). It is a name match, not a trace of a call, and acceptable as evidence when labelled so; a route no one matches is "none", not proof it is unused.
+- A route nothing matched is `out-of-scope` only when its row says what was checked; a reason that is not a Non-goal bullet above is a bug in the row. A route that jellyfin-web calls on a viewer page is `needed`, never out of scope.
+- Rows that say `observed on jellyfin/jellyfin:12.4 (empty server)` were requested from a disposable `jellyfin/jellyfin:12.4` container on a Docker-assigned port (2026-11-02). It had no library, so it shows existence and shape, not behaviour with data. Rows that do not say it were not observed.
+- Rows in `needed` found only by a client name match carry `phase5-library` as a default slice, and the row says so; a maintainer should confirm those.
