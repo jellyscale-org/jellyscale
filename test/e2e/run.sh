@@ -163,7 +163,10 @@ free() { python3 -I -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));
 export JELLYSCALE_DATABASE_URL="postgres://postgres:e2e@127.0.0.1:$port/postgres" JELLYSCALE_ADMIN_PASSWORD=e2e-pass
 api1=$(free) api2=$(free) stream=$(free) router=$(free)
 : >"$work/server.log"
-start() { "$work/jellyscale" "$@" --config "$work/config-s3.json" >>"$work/server.log" 2>&1 & pids+=($!); }
+# api and stream run with no ffmpeg on their PATH (an empty directory): only
+# workers run media tools, and anything else that tried would fail.
+mkdir -p "$work/nobin"
+start() { PATH="$work/nobin" "$work/jellyscale" "$@" --config "$work/config-s3.json" >>"$work/server.log" 2>&1 & pids+=($!); }
 # The worker's ffmpeg reads its input at twice the film's speed, so a transcode
 # takes a while on any machine and the stop tests find it still running.
 # E2E_NO_SHIM=1 leaves ffmpeg at full speed, to measure latency.
@@ -187,8 +190,8 @@ pids+=($!)
 # again, because every role is compared and the others would be refused meanwhile.
 sed 's/"transcodeStore": "[^"]*", //' "$work/config-s3.json" >"$work/config-nostore.json"
 nostream=$(free) norouter=$(free)
-printf '#!/bin/sh\nexec "%s" --roles=stream --listen "127.0.0.1:%s" --config "%s" >>"%s" 2>&1\n' \
-  "$work/jellyscale" "$nostream" "$work/config-nostore.json" "$work/server.log" >"$work/bin/nostore"
+printf '#!/bin/sh\nPATH="%s" exec "%s" --roles=stream --listen "127.0.0.1:%s" --config "%s" >>"%s" 2>&1\n' \
+  "$work/nobin" "$work/jellyscale" "$nostream" "$work/config-nostore.json" "$work/server.log" >"$work/bin/nostore"
 chmod +x "$work/bin/nostore"
 export E2E_NOSTORE="$work/bin/nostore"
 node "$repo/test/e2e/router.mjs" "$norouter" "$nostream" "$api1,$api2" >>"$work/server.log" 2>&1 &

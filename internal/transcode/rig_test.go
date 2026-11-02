@@ -99,7 +99,7 @@ func newRig(t *testing.T, segments store.Store) *rig {
 			t.Fatalf("%s: %v", sql, err)
 		}
 	}
-	exec("TRUNCATE libraries, users, transcode_jobs, transcode_viewers, transcode_nodes CASCADE")
+	exec("TRUNCATE libraries, users, transcode_jobs, transcode_viewers, transcode_nodes, subtitle_jobs CASCADE")
 	library, item := uuid.NewString(), uuid.NewString()
 	r.user = uuid.NewString()
 	exec(`INSERT INTO libraries (id, name, kind, media_store_uri, asset_store_uri) VALUES ($1, 'L', 'movies', $2, $2)`, library, "file://"+dir)
@@ -153,7 +153,13 @@ func (r *rig) worker(t *testing.T, change func(*Worker)) (stop func()) {
 			defer registered.Done()
 			Register(ctx, pool, r.log, w.ID, "worker", r.storeURI, w.Slots, 200*time.Millisecond)
 		}()
+		subtitlesDone := make(chan struct{})
+		go func() {
+			w.RunSubtitles(ctx)
+			close(subtitlesDone)
+		}()
 		w.Run(ctx)
+		<-subtitlesDone
 		registered.Wait()
 		close(done)
 	}()

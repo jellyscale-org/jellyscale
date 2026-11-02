@@ -121,6 +121,13 @@ func TestStoreMismatchIsFoundInTheNodes(t *testing.T) {
 	if reason, err := j.Unavailable(ctx, r.hash, "", ""); err != nil || reason != "" {
 		t.Fatalf("matching stores: %q %v", reason, err)
 	}
+	// A worker with no store only extracts subtitles, and shares no segments.
+	if _, err := r.pool.Exec(ctx, `INSERT INTO transcode_nodes (id, roles, store, slots) VALUES ('sub', 'worker', '', 0)`); err != nil {
+		t.Fatal(err)
+	}
+	if reason, err := j.Unavailable(ctx, r.hash, "", ""); err != nil || reason != "" {
+		t.Fatalf("a subtitle-only worker refused transcodes: %q %v", reason, err)
+	}
 }
 
 // Seeking back before the point a resume started at needs a job there.

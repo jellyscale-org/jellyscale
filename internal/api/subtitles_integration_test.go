@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -20,7 +22,6 @@ import (
 	"jellyscale/internal/items"
 	"jellyscale/internal/library"
 	"jellyscale/internal/store"
-	"jellyscale/internal/subtitles"
 	"jellyscale/internal/transcode"
 )
 
@@ -50,6 +51,7 @@ type subtitleFixture struct {
 	textStore   string
 	runs        func() int // How many times ffmpeg has started since the scan.
 	log         *syncBuffer
+	stopWorker  func()
 }
 
 type syncBuffer struct {
@@ -150,7 +152,33 @@ func subtitleEnv(t *testing.T, target string) *subtitleFixture {
 		s.Log = slog.New(slog.NewTextHandler(f.log, nil))
 	}
 	f.runs = countFFmpeg(t)
+	f.startWorker(t, 0)
 	return f
+}
+
+// startWorker runs a worker in this process, the only thing that extracts a
+// subtitle track. It registers as the role does, and stopWorker removes it.
+func (f *subtitleFixture) startWorker(t *testing.T, timeout time.Duration) {
+	t.Helper()
+	mustExec(t, f.pool, "TRUNCATE transcode_nodes, subtitle_jobs")
+	ctx, cancel := context.WithCancel(context.Background())
+	var media store.Cache
+	log := slog.New(slog.NewTextHandler(f.log, nil))
+	w := &transcode.Worker{ID: "subtitle-worker-" + t.Name(), Pool: f.pool, Items: &items.Repo{Pool: f.pool, ServerID: "srv"}, Log: log,
+		Media: media.Open, Lease: 3 * time.Second, Heartbeat: 200 * time.Millisecond, SubtitleTimeout: timeout}
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		transcode.Register(ctx, f.pool, log, w.ID, "worker", "", 0, 200*time.Millisecond)
+	}()
+	go func() { defer wg.Done(); w.RunSubtitles(ctx) }()
+	var once sync.Once
+	f.stopWorker = func() { once.Do(func() { cancel(); wg.Wait() }) }
+	t.Cleanup(f.stopWorker)
+	waitUntil(t, "the worker to register", func() bool {
+		return scalar[int](t, f.pool, "SELECT count(*)::int FROM transcode_nodes WHERE roles = 'worker'") == 1
+	})
 }
 
 // countFFmpeg puts an ffmpeg in front of the real one that notes each start,
@@ -311,12 +339,16 @@ func TestSubtitleFailuresDoNotHang(t *testing.T) {
 	} {
 		damage()
 		mustExec(t, f.pool, "UPDATE media_sources SET object_etag = $1 WHERE item_id = $2", name, f.text)
-		for range 2 { // The second finds the lock free again.
+		before := f.runs()
+		for range 2 { // The second is answered from the failure, without reading the file again.
 			began := time.Now()
 			status, _, body := f.get(t, 0, f.path(f.text, 2, 0, "Stream.vtt"))
 			if status != 500 || !strings.Contains(body, "could not be read") || time.Since(began) > 10*time.Second {
 				t.Fatalf("%s: %d %q after %s", name, status, body, time.Since(began))
 			}
+		}
+		if runs := f.runs() - before; runs > 1 {
+			t.Fatalf("%s: %d extractions for two requests, want at most 1", name, runs)
 		}
 	}
 	if !strings.Contains(f.log.String(), "subtitle extraction failed") {
@@ -336,8 +368,8 @@ func subtitleTracks(source map[string]any) map[int]map[string]any {
 
 func (f *subtitleFixture) enableTranscoding(t *testing.T) {
 	t.Helper()
-	mustExec(t, f.pool, "TRUNCATE transcode_jobs, transcode_nodes")
-	mustExec(t, f.pool, "INSERT INTO transcode_nodes (id, slots) VALUES ('w1', 2)")
+	mustExec(t, f.pool, "TRUNCATE transcode_jobs")
+	mustExec(t, f.pool, "INSERT INTO transcode_nodes (id, roles, slots) VALUES ('w1', 'worker', 2) ON CONFLICT DO NOTHING")
 	segments := store.NewPosix(t.TempDir())
 	for _, s := range f.apis {
 		s.Transcode = &transcode.Jobs{Pool: s.Pool, Segments: segments}
@@ -477,6 +509,7 @@ func TestSubtitlesAreListedAsCaptured(t *testing.T) {
 	// A transcode store with no worker behind it can't draw either, and the
 	// default plays on without a menu of dead choices.
 	f.enableTranscoding(t)
+	f.stopWorker()
 	mustExec(t, f.pool, "TRUNCATE transcode_nodes")
 	if source := info(f.text, none, map[string]any{"SubtitleStreamIndex": 2}); len(subtitleTracks(source)) != 0 || source["TranscodingUrl"] != nil {
 		t.Errorf("burn-in tracks offered with no worker: %v", subtitleTracks(source))
@@ -554,23 +587,18 @@ func TestSlowExtractionLeavesThePoolFree(t *testing.T) {
 	}
 }
 
-// An extraction that outlasts its limit says so, and caches nothing.
+// An extraction that outlasts its limit fails with a message that names it,
+// and caches nothing.
 func TestSlowExtractionNamesItsLimit(t *testing.T) {
 	f := subtitleEnv(t, "")
+	f.stopWorker()
+	f.startWorker(t, time.Second)
 	started, _ := slowFFmpeg(t)
-	source, _, err := f.apis[0].Items.Source(context.Background(), f.text, db.CompactID(f.text))
-	if err != nil {
-		t.Fatal(err)
-	}
-	media, err := store.Open(source.StoreURI)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cache := subtitles.Cache{Pool: f.pool, Timeout: time.Second}
 	began := time.Now()
-	_, err = cache.Track(context.Background(), source, media, media, 2)
-	if err == nil || !strings.Contains(err.Error(), "took longer than 1s") || time.Since(began) > 10*time.Second || !started() {
-		t.Fatalf("after %s: %v", time.Since(began), err)
+	status, _, _ := f.get(t, 0, f.path(f.text, 2, 0, "Stream.vtt"))
+	reason := scalar[string](t, f.pool, "SELECT COALESCE(error, '') FROM subtitle_jobs")
+	if status != 500 || !strings.Contains(reason, "took longer than 1s") || time.Since(began) > 10*time.Second || !started() {
+		t.Fatalf("%d after %s: %q", status, time.Since(began), reason)
 	}
 }
 
@@ -636,6 +664,7 @@ func TestDistinctTracksRunFourAtATime(t *testing.T) {
 		t.Fatal(err)
 	}
 	f := &subtitleFixture{env: newEnv(t), log: &syncBuffer{}}
+	f.startWorker(t, 0)
 	ctx := context.Background()
 	media, assets := "file://"+t.TempDir(), "file://"+t.TempDir()
 	files, err := store.Open(media)
@@ -691,5 +720,118 @@ func TestDistinctTracksRunFourAtATime(t *testing.T) {
 	}
 	if strings.Count(string(log), "+") != tracks || most != 4 {
 		t.Errorf("%d runs, at most %d at once; want %d and 4", strings.Count(string(log), "+"), most, tracks)
+	}
+}
+
+// With no worker, a track that isn't cached can't be delivered: it is listed
+// nowhere, a request for it is refused within seconds, and cached tracks go on
+// working. When a worker returns every track is listed again.
+func TestNoWorkerHidesUncachedTracks(t *testing.T) {
+	f := subtitleEnv(t, "")
+	if status, _, _ := f.get(t, 0, f.path(f.text, 3, 0, "Stream.ass")); status != 200 {
+		t.Fatalf("caching track 3: %d", status)
+	}
+	f.stopWorker()
+	mustExec(t, f.pool, "TRUNCATE transcode_nodes")
+
+	listed := func() (item, info []int) {
+		t.Helper()
+		_, raw := f.do(t, 0, "GET", "/Items/"+f.text, f.token, nil)
+		var dto struct {
+			MediaStreams []map[string]any
+			MediaSources []struct{ MediaStreams []map[string]any }
+		}
+		if err := json.Unmarshal(raw, &dto); err != nil {
+			t.Fatal(err)
+		}
+		tracks := func(streams []map[string]any) (indexes []int) {
+			for _, s := range streams {
+				if s["Type"] == "Subtitle" {
+					indexes = append(indexes, int(s["Index"].(float64)))
+				}
+			}
+			return indexes
+		}
+		if len(dto.MediaSources) != 1 || fmt.Sprint(tracks(dto.MediaSources[0].MediaStreams)) != fmt.Sprint(tracks(dto.MediaStreams)) {
+			t.Errorf("the item's two lists differ: %s", raw)
+		}
+		profile := map[string]any{}
+		if err := json.Unmarshal(capturedProfile(t), &profile); err != nil {
+			t.Fatal(err)
+		}
+		source := firstSource(f.playbackInfo(t, 0, f.text, map[string]any{"DeviceProfile": profile, "MaxStreamingBitrate": 2147483647, "MediaSourceId": db.CompactID(f.text)}))
+		for index := range subtitleTracks(source) {
+			info = append(info, index)
+		}
+		slices.Sort(info)
+		return tracks(dto.MediaStreams), info
+	}
+	if item, info := listed(); fmt.Sprint(item) != "[3]" || fmt.Sprint(info) != "[3]" {
+		t.Errorf("with no worker the item lists %v and PlaybackInfo %v; want only the cached track 3", item, info)
+	}
+	if status, _, _ := f.get(t, 1, f.path(f.text, 3, 0, "Stream.vtt")); status != 200 {
+		t.Errorf("the cached track: %d", status)
+	}
+	began := time.Now()
+	status, _, _ := f.get(t, 0, f.path(f.text, 2, 0, "Stream.vtt"))
+	if status != 503 || time.Since(began) > 10*time.Second {
+		t.Errorf("an uncached track with no worker: %d after %s", status, time.Since(began))
+	}
+	if runs := f.runs(); runs != 1 {
+		t.Errorf("%d extractions, want the one that cached track 3", runs)
+	}
+
+	f.startWorker(t, 0)
+	if item, info := listed(); fmt.Sprint(item) != "[2 3]" || fmt.Sprint(info) != "[2 3]" {
+		t.Errorf("with a worker the item lists %v and PlaybackInfo %v; want both tracks", item, info)
+	}
+}
+
+// With no worker the film's details are answered even when the asset store
+// can't be opened (a replica without S3 credentials) or never answers (a
+// connection that opens and stays silent): the uncached tracks are not listed.
+func TestNoWorkerAnswersWhenTheAssetStoreIsUnusable(t *testing.T) {
+	f := subtitleEnv(t, "")
+	f.stopWorker()
+	mustExec(t, f.pool, "TRUNCATE transcode_nodes")
+	silent, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer silent.Close()
+	go func() {
+		for {
+			conn, err := silent.Accept()
+			if err != nil {
+				return
+			}
+			defer conn.Close()
+		}
+	}()
+	uri := "s3://assets?endpoint=http://" + silent.Addr().String()
+	mustExec(t, f.pool, "UPDATE libraries SET asset_store_uri = $1", uri)
+
+	// In this order: a store opened for the second case stays cached.
+	cases := []struct {
+		name  string
+		setup func()
+	}{
+		{"no credentials", func() {
+			t.Setenv("JELLYSCALE_S3_ACCESS_KEY", "")
+			t.Setenv("JELLYSCALE_S3_SECRET_KEY", "")
+		}},
+		{"a silent store", func() {
+			t.Setenv("JELLYSCALE_S3_ACCESS_KEY", "key")
+			t.Setenv("JELLYSCALE_S3_SECRET_KEY", "secret")
+		}},
+	}
+	for _, c := range cases {
+		name := c.name
+		c.setup()
+		began := time.Now()
+		resp, raw := f.do(t, 0, "GET", "/Items/"+f.text, f.token, nil)
+		if status := resp.StatusCode; status != 200 || time.Since(began) > 15*time.Second || strings.Contains(string(raw), `"Type":"Subtitle"`) {
+			t.Errorf("%s: details answered %d after %s: %.300s", name, resp.StatusCode, time.Since(began), raw)
+		}
 	}
 }

@@ -78,10 +78,12 @@ func expireQueued(ctx context.Context, pool *pgxpool.Pool, timeout time.Duration
 // returns "" if they can. Every process records its roles and transcodeStore in
 // transcode_nodes, and this compares them, so a missing store and a different
 // one are found the same way. A URI never holds credentials (invariant 12), so
-// it can be named.
+// it can be named. A process that is only a worker and has no store just extracts
+// subtitles: it shares no segments, so it doesn't count.
 func StoreMismatch(ctx context.Context, pool *pgxpool.Pool) (string, error) {
 	rows, err := pool.Query(ctx, `SELECT DISTINCT ON (store) roles, store FROM transcode_nodes
-		WHERE seen_at > now() - make_interval(secs => $1) ORDER BY store, id LIMIT 2`, workerAlive.Seconds())
+		WHERE seen_at > now() - make_interval(secs => $1) AND NOT (store = '' AND roles = 'worker')
+		ORDER BY store, id LIMIT 2`, workerAlive.Seconds())
 	if err != nil {
 		return "", err
 	}

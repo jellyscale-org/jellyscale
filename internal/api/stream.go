@@ -228,7 +228,12 @@ func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		burn := request.NoSubtitleProfiles() || (request.AlwaysBurnInSubtitleWhenTranscoding && source["TranscodingUrl"] != nil)
-		deliverSubtitles(source, id, sessionOf(r).Token, burn)
+		deliverable, err := s.deliverable(r.Context(), id, source)
+		if err != nil {
+			s.fail(w, r, err)
+			return
+		}
+		deliverSubtitles(source, id, sessionOf(r).Token, burn, deliverable)
 		if index, ok := defaultAudio(source); ok {
 			source["DefaultAudioStreamIndex"] = index
 		}

@@ -53,13 +53,15 @@ type Worker struct {
 	// job fails (default 30 seconds). The lease alone can't tell a hung ffmpeg
 	// from a working one, and viewers would wait on it for good.
 	Stall time.Duration
+	// SubtitleTimeout bounds one subtitle extraction; zero is an hour.
+	SubtitleTimeout time.Duration
+
+	idOnce sync.Once
 }
 
 // Run claims and runs jobs until ctx ends, then waits for ffmpeg to be gone.
 func (w *Worker) Run(ctx context.Context) {
-	if w.ID == "" {
-		w.ID = fmt.Sprintf("%d-%d", os.Getpid(), time.Now().UnixNano())
-	}
+	w.setID()
 	slots := make(chan struct{}, max(w.Slots, 1))
 	var running sync.WaitGroup
 	defer running.Wait()
@@ -229,7 +231,7 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		if err != nil {
 			return err
 		}
-		if ass, err = w.extractSubtitle(ctx, job, log, source, media, assets); err != nil {
+		if ass, err = w.extractSubtitle(ctx, job, log, source, assets); err != nil {
 			return fmt.Errorf("subtitle track %d: %w", *job.Spec.Subtitle, err)
 		}
 	}
@@ -369,10 +371,12 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	}
 }
 
-// extractSubtitle returns the job's subtitle track as ASS. An extraction can
-// take minutes, so it keeps the lease alive meanwhile, and stops when the job
-// is lost or nobody wants it, so it doesn't hold a slot for a cancelled job.
-func (w *Worker) extractSubtitle(ctx context.Context, job claimed, log *slog.Logger, source items.Source, media, assets store.Store) (string, error) {
+// extractSubtitle returns the job's subtitle track as ASS. Burning shares the
+// track's extraction with everyone who asks for it (see FetchSubtitle), which
+// can take minutes, so it keeps the lease alive meanwhile, and stops waiting
+// when the job is lost or nobody wants it, so it doesn't hold a slot for a
+// cancelled job.
+func (w *Worker) extractSubtitle(ctx context.Context, job claimed, log *slog.Logger, source items.Source, assets store.Store) (string, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	type result struct {
@@ -381,7 +385,7 @@ func (w *Worker) extractSubtitle(ctx context.Context, job claimed, log *slog.Log
 	}
 	done := make(chan result, 1)
 	go func() {
-		track, err := subtitles.Cache{Pool: w.Pool, Log: log}.Track(ctx, source, media, assets, *job.Spec.Subtitle)
+		track, err := FetchSubtitle(ctx, w.Pool, w.Hub, assets, job.Spec.Item, source, *job.Spec.Subtitle)
 		done <- result{track, err}
 	}()
 	beat := time.NewTicker(w.heartbeat())
@@ -561,6 +565,7 @@ func (w *Worker) Sweep(ctx context.Context) error {
 		`UPDATE transcode_jobs SET state = 'cancelled', error = 'the worker stopped renewing its lease', ended_at = now()
 			WHERE state = 'running' AND lease_expires_at < now()`,
 		`DELETE FROM transcode_jobs WHERE state IN ('done', 'failed', 'cancelled') AND created_at < now() - interval '1 day'`,
+		`DELETE FROM subtitle_jobs WHERE state IN ('done', 'failed') AND ended_at < now() - interval '1 day'`,
 	} {
 		if _, err := w.Pool.Exec(ctx, statement); err != nil {
 			return err

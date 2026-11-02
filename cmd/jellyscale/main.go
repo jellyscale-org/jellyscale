@@ -148,7 +148,7 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 
 	server := &api.Server{
 		Pool: pool, Items: &items.Repo{Pool: pool, ServerID: serverID}, ServerID: serverID,
-		Name: cfg.Name, WebDir: cfg.WebDir, Roles: enabled, Log: log, Transcode: transcodes.jobs,
+		Name: cfg.Name, WebDir: cfg.WebDir, Roles: enabled, Log: log, Transcode: transcodes.jobs, Hub: transcodes.hub,
 	}
 	httpServer := &http.Server{Addr: listen, Handler: server.Handler(), ReadHeaderTimeout: 10 * time.Second}
 	go func() {
@@ -168,6 +168,7 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 // transcoding is what this process runs for transcodes.
 type transcoding struct {
 	jobs *transcode.Jobs // nil when transcoding is off
+	hub  *transcode.Hub  // nil unless this process waits for hints
 	// stopped closes once the process has left transcode_nodes and the worker,
 	// if any, has ended every ffmpeg.
 	stopped chan struct{}
@@ -182,17 +183,14 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 		return result, errors.New("transcodeSlots: want a positive number, or leave it out for the default")
 	}
 	worker := slices.Contains(roles, roleWorker)
-	if cfg.TranscodeStore == "" && worker && !slices.Contains(roles, api.RoleStream) && !slices.Contains(roles, api.RoleAPI) {
-		// A worker with nothing to share segments through would sit idle and
-		// say nothing, so a process that is only a worker doesn't start.
-		return result, errors.New("transcodeStore is not set, and the worker role needs it: set it, to the same value, on every role")
-	}
 	var segments store.Store
 	if cfg.TranscodeStore != "" {
 		var err error
 		if segments, err = store.Open(cfg.TranscodeStore); err != nil {
 			return result, fmt.Errorf("transcodeStore: %w", err)
 		}
+	} else if len(roles) == 1 && worker {
+		log.Info("transcodeStore is not set: this worker extracts subtitles and runs no transcodes")
 	} else {
 		log.Warn("transcodeStore is not set: this process cannot run, serve or offer transcodes, so set it, to the same value, on every role or none")
 	}
@@ -223,20 +221,10 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 			close(result.stopped)
 		}()
 	}
-	if segments == nil {
-		finish()
-		return result, nil
-	}
 	// Only roles that wait for hints listen for them.
-	var hub *transcode.Hub
 	if slices.Contains(roles, api.RoleStream) || worker {
-		hub = &transcode.Hub{Pool: pool, Log: log}
-		go hub.Run(ctx)
-	}
-	result.jobs = &transcode.Jobs{Pool: pool, Segments: segments, Hub: hub}
-	if !worker {
-		finish()
-		return result, nil
+		result.hub = &transcode.Hub{Pool: pool, Log: log}
+		go result.hub.Run(ctx)
 	}
 	scratch := cfg.TranscodeScratch
 	if scratch == "" {
@@ -244,8 +232,25 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 	}
 	var media store.Cache
 	w := &transcode.Worker{
-		ID: id, Pool: pool, Items: &items.Repo{Pool: pool, ServerID: serverID}, Segments: segments, Hub: hub, Log: log,
+		ID: id, Pool: pool, Items: &items.Repo{Pool: pool, ServerID: serverID}, Segments: segments, Hub: result.hub, Log: log,
 		Media: media.Open, Scratch: scratch, Slots: slots, Idle: idle, Retention: retention,
+	}
+	if worker {
+		// Subtitle extraction needs no transcode store.
+		running.Add(1)
+		go func() {
+			defer running.Done()
+			w.RunSubtitles(ctx)
+		}()
+	}
+	if segments == nil {
+		finish()
+		return result, nil
+	}
+	result.jobs = &transcode.Jobs{Pool: pool, Segments: segments, Hub: result.hub}
+	if !worker {
+		finish()
+		return result, nil
 	}
 	running.Add(1)
 	go func() {
