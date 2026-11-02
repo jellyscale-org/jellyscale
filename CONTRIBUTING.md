@@ -18,7 +18,7 @@ A test that needs ffmpeg, Postgres, S3 or a font goes in a file named `*_integra
 These were each seen on a developer machine, have not recurred on demand, and have no known cause. If you see one, keep the logs.
 
 - `ffmpeg made no segment in 30s` on the copied 1080p film. The e2e log also shows this message from a scenario that freezes ffmpeg on purpose; that one is expected.
-- `leave()` timed out waiting for Stopped: once in `a bitrate cap re-encodes a film that would be copied`, and once in CI in `resuming mid-film starts one job, at the resume point: re-encoded`, where the server log shows the request never arrived. jellyfin-web sends no Stopped while changing stream, and its player page stops playback only if it saw the start, but neither is shown to be the cause. The failure now reports where the page and video were.
+- `a bitrate cap re-encodes a film that would be copied` timed out in `leave()`. jellyfin-web sends no Stopped while changing stream, and the test now waits for the switch, but the failure was not reproduced, so that isn't shown to be the cause. `leave()` also waits for the player page now: going back before it is ready leaves the film playing and sends no Stopped, the same symptom. That failure can be forced by delaying the page's chunk, and a timeout reports where the page and video were.
 
 ## Rules
 

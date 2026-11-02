@@ -125,6 +125,10 @@ async function scenario(name, run) {
 }
 
 const leave = async (page) => {
+  // The player reports its start without waiting for its page, and only that
+  // page sends Stopped on leaving. It listens for leaving before it first shows
+  // the position, so going back any sooner leaves the film playing.
+  await page.waitForFunction(() => location.hash.startsWith("#/video") && document.querySelector(".osdPositionText")?.textContent, null, { timeout: 15000 });
   const stopped = page.waitForResponse((r) => /\/Sessions\/Playing\/Stopped/i.test(r.url()), { timeout: 15000 });
   await page.evaluate(() => window.history.back());
   await stopped;
