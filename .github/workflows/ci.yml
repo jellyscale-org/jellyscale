@@ -23,12 +23,27 @@ jobs:
       - name: gofmt
         run: test -z "$(gofmt -l cmd internal test)"
       - run: go vet ./...
-      - run: go test ./...
+      # The integration tier has a build tag; vet type-checks it and the second
+      # command links its test binaries, so a tagged file can't rot unseen.
+      - run: go vet -tags integration ./...
+      - run: go test -tags integration -count=1 -run '^$' ./...
+      - name: Tests that need nothing outside Go
+        run: bash test/unit.sh
+        env:
+          JELLYSCALE_LOG_DIR: ${{ runner.temp }}/logs
       - name: Route manifest is current
         run: |
           go run ./cmd/jellyscale --print-routes > /tmp/endpoints.yaml
           diff compat/endpoints.yaml /tmp/endpoints.yaml
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: unit-logs
+          path: ${{ runner.temp }}/logs
+          if-no-files-found: ignore
 
+  # Everything the integration tier needs is installed here, so a test that
+  # can't run fails, and test/report.sh fails the job if any test is skipped.
   integration:
     runs-on: ubuntu-latest
     timeout-minutes: 30 # The tests' own limit is 20, set in test/integration.sh.
@@ -37,8 +52,35 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      # ffmpeg from Ubuntu has libx264, libx265 and libass; burn-in needs a font.
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg fontconfig fonts-dejavu-core
       - run: bash test/integration.sh
+        env:
+          JELLYSCALE_LOG_DIR: ${{ runner.temp }}/logs
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: integration-logs
+          path: ${{ runner.temp }}/logs
+
+  # Each role as its own process, against Postgres, with real ffmpeg.
+  roles:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: bash test/roles.sh "$RUNNER_TEMP/roles"
+        env:
+          JELLYSCALE_LOG_DIR: ${{ runner.temp }}/logs
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: roles-logs
+          path: ${{ runner.temp }}/logs
 
   e2e:
     runs-on: ubuntu-latest
@@ -65,4 +107,9 @@ jobs:
       - run: bash test/e2e/run.sh /tmp/e2e /tmp/pw
         env:
           CHROMIUM_PATH: /usr/bin/google-chrome
-      - run: bash test/roles.sh /tmp/e2e
+          JELLYSCALE_LOG_DIR: ${{ runner.temp }}/logs
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: e2e-logs
+          path: ${{ runner.temp }}/logs

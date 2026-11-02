@@ -15,6 +15,8 @@ const { chromium } = require("playwright-core");
 const [home, user, password] = process.argv.slice(2);
 let base = home;
 const scratch = process.env.E2E_SCRATCH;
+const workerPid = Number(process.env.E2E_WORKER_PID);
+if (!workerPid) throw new Error("the transcode gate needs E2E_WORKER_PID (test/e2e/run.sh sets it)");
 if (!scratch) throw new Error("E2E_SCRATCH is the worker's scratch directory");
 
 const browser = await chromium.launch({
@@ -116,13 +118,16 @@ function noErrors(seen) {
 
 const transcodeUrl = (seen) => seen.infos.map((i) => i.source.TranscodingUrl).filter(Boolean).at(-1);
 
-// E2E_ONLY="audio" runs just the scenarios whose name matches.
+// E2E_ONLY="audio" runs just the scenarios whose name matches. A name is a quoted
+// literal, with any part known only at run time after ": ", so that test/report.sh
+// can annotate the scenario at its own line.
 async function scenario(name, run) {
   if (process.env.E2E_ONLY && !new RegExp(process.env.E2E_ONLY, "i").test(name)) return;
   const v = await viewer();
+  let passed = false;
   try {
     await run(v);
-    console.log(`ok    ${name}`);
+    passed = true;
   } catch (error) {
     failures.push(`${name}: ${error.message.split("\n")[0]}`);
     console.log(`FAIL  ${name}: ${error.message.split("\n")[0]}`);
@@ -131,7 +136,12 @@ async function scenario(name, run) {
     await v.context.close().catch(() => {});
   }
   // Nothing may be left running for the next scenario.
-  await waitFor("ffmpeg to exit between scenarios", async () => ffmpegRuns().length === 0, 60000).catch(() => failures.push(`${name}: ffmpeg still running afterwards`));
+  await waitFor("ffmpeg to exit between scenarios", async () => ffmpegRuns().length === 0, 60000).catch(() => {
+    failures.push(`${name}: ffmpeg still running afterwards`);
+    console.log(`FAIL  ${name}: ffmpeg still running afterwards`);
+    passed = false;
+  });
+  if (passed) console.log(`ok    ${name}`);
 }
 
 const leave = async (page) => {
@@ -152,7 +162,7 @@ const flavours = [
   { name: "re-encoded", copy: false, far: "Zeta Interlaced", audio: "Theta Interlaced", resume: "Mu Interlaced" },
 ];
 
-for (const flavour of flavours) await scenario(`POSIX, ${flavour.name}: an AC3 film transcodes, plays from the stream replica, then far seek and stop end the right ffmpeg`, async ({ page, seen }) => {
+for (const flavour of flavours) await scenario("an AC3 film transcodes, plays from the stream replica, then far seek and stop end the right ffmpeg" + `: POSIX, ${flavour.name}`, async ({ page, seen }) => {
   await play(page, "Transcode", flavour.far);
   const source = seen.infos.at(-1).source;
   if (source.SupportsDirectPlay !== false || source.TranscodingSubProtocol !== "hls" || source.TranscodingContainer !== "mp4") {
@@ -328,6 +338,7 @@ await scenario("a Matroska with no Cues has no index and is re-encoded", async (
 await scenario("a bitrate cap re-encodes a film that would be copied", async ({ page, seen }) => {
   await play(page, "Transcode", "Rho Film");
   if (!/VideoCodec=copy/.test(seen.infos.at(-1).source.TranscodingUrl)) throw new Error("Rho should be copied at Auto");
+  const oldSource = await page.evaluate(() => document.querySelector("video")?.currentSrc);
   await page.mouse.move(600, 400);
   await page.click(".btnVideoOsdSettings");
   await page.click('[data-id="quality"]');
@@ -336,6 +347,16 @@ await scenario("a bitrate cap re-encodes a film that would be copied", async ({ 
   if (!/VideoCodec=h264/.test(info.source.TranscodingUrl)) throw new Error(`a cap below the file was offered a copy: ${info.source.TranscodingUrl}`);
   await waitFor("the re-encode to run", async () => ffmpegRuns().some((r) => !r.copy && /libx264/.test(r.line)), 30000);
   await waitFor("only the re-encode to be left", async () => ffmpegRuns().length === 1, 20000);
+  // The old stream, buffered, goes on playing while the new one loads, and the
+  // new one then jumps from 0 to the resume point (Rho was played before), which
+  // advances() would take for seconds of playing. jellyfin-web sends no Stopped
+  // while it is changing stream (its isChangingStream, until the new stream's
+  // play() resolves), so leaving then would wait for a Stopped that isn't sent.
+  // A full gate timed out in leave() here on one machine; that has not recurred
+  // since, with or without these waits, so they aren't shown to be what cured it.
+  // Wait for the switch and the jump, then for playing.
+  await waitFor("the player to switch to the capped stream", async () => (await page.evaluate(() => document.querySelector("video")?.currentSrc)) !== oldSource);
+  await waitFor("the capped stream to start at the resume point", async () => (await time(page)) > 1, 30000);
   await advances(page, 2);
   noErrors(seen);
   await leave(page);
@@ -357,7 +378,10 @@ async function cpuPerSegment(page, seen, title, segments, quality) {
     await page.click(`[data-id="${quality}"]`);
     await waitFor("the new stream", async () => seen.infos.length >= 2, 20000);
   }
-  const stored = () => Number(sql("SELECT COALESCE(max(next_segment), 0) FROM transcode_jobs WHERE state = 'running'"));
+  // This stream's own job. Any running job would count the previous stream's,
+  // whose segments are already there: the wait then ends at once and the viewer
+  // leaves, measuring 0.11 CPU s of re-encode where a real one takes 18.
+  const stored = () => Number(sql(`SELECT COALESCE(max(next_segment), 0) FROM transcode_jobs WHERE owner = '${seen.infos.at(-1).session}'`));
   await waitFor(`${segments} segments`, async () => stored() >= segments, 120000);
   await leave(page);
   await waitFor("ffmpeg to exit", async () => ffmpegRuns().length === 0, 30000);
@@ -388,7 +412,7 @@ await scenario("a copied 1080p film costs a fraction of the CPU of the re-encode
 // reads its input at 5 times the film's speed on its own, so the shim's slower
 // rate does not apply to it.
 for (const [where, library, title] of [["POSIX", "Transcode", "Sho Film"], ["S3", "Cloud", "Heh Film"]]) {
-  await scenario(`${where}: a copied 1080p film resumes in the middle`, async ({ page, seen }) => {
+  await scenario("a copied 1080p film resumes in the middle" + `: ${where}`, async ({ page, seen }) => {
     const { firstFrameMs, starts } = await resume(page, library, title, 40);
     if (!/VideoCodec=copy/.test(seen.infos.at(-1).source.TranscodingUrl)) throw new Error("not a copy");
     console.log(`      ${where}, 1080p copied: time to first frame on resume at 40 s of 60 s: ${firstFrameMs} ms; ffmpeg started at ${starts}`);
@@ -414,7 +438,7 @@ await scenario("the quality menu cap transcodes a film that direct plays", async
   await leave(page);
 });
 
-for (const flavour of flavours) await scenario(`switching audio plays the new track and the old job stops (${flavour.name})`, async ({ page, seen }) => {
+for (const flavour of flavours) await scenario("switching audio plays the new track and the old job stops" + `: ${flavour.name}`, async ({ page, seen }) => {
   await play(page, "Transcode", flavour.audio);
   await advances(page);
   const before = ffmpegRuns();
@@ -463,6 +487,7 @@ await scenario("DELETE ActiveEncodings ends ffmpeg", async ({ page, seen }) => {
 });
 
 // Two viewers on one spec share a job, and stopping one leaves the other.
+const twoViewers = "two viewers share a job and stopping one leaves the other playing";
 if (!process.env.E2E_ONLY) {
   const a = await viewer();
   const b = await viewer();
@@ -480,10 +505,10 @@ if (!process.env.E2E_ONLY) {
     noErrors(b.seen);
     await leave(b.page);
     await waitFor("ffmpeg to end once both left", async () => ffmpegRuns().length === 0, 20000);
-    console.log("ok    two viewers share a job and stopping one leaves the other playing");
+    console.log(`ok    ${twoViewers}`);
   } catch (error) {
-    failures.push(`two viewers: ${error.message.split("\n")[0]}`);
-    console.log(`FAIL  two viewers: ${error.message.split("\n")[0]}`);
+    failures.push(`${twoViewers}: ${error.message.split("\n")[0]}`);
+    console.log(`FAIL  ${twoViewers}: ${error.message.split("\n")[0]}`);
   } finally {
     await a.context.close().catch(() => {});
     await b.context.close().catch(() => {});
@@ -525,7 +550,7 @@ async function resume(page, library, title, seconds) {
   return { firstFrameMs: Date.now() - began, starts: [...starts] };
 }
 
-for (const flavour of flavours) await scenario(`resuming mid-film starts one job, at the resume point (${flavour.name})`, async ({ page, seen }) => {
+for (const flavour of flavours) await scenario("resuming mid-film starts one job, at the resume point" + `: ${flavour.name}`, async ({ page, seen }) => {
   const { firstFrameMs, starts } = await resume(page, "Transcode", flavour.resume, 40);
   console.log(`      time to first frame on resume: ${firstFrameMs} ms; ffmpeg start segments seen: ${starts}`);
   if (starts.length !== 1 || starts[0] !== 10) throw new Error(`ffmpeg started at ${starts}, want only segment 10`);
@@ -619,8 +644,7 @@ await scenario("a stream replica without transcodeStore: the dialog, and the log
 
 // Last, because it stops the worker. A viewer whose transcode can't start must
 // be told, not left to jellyfin-web's retries, which never end on their own.
-const workerPid = Number(process.env.E2E_WORKER_PID);
-if (workerPid && (!process.env.E2E_ONLY || /no worker/i.test(process.env.E2E_ONLY))) {
+if (!process.env.E2E_ONLY || /no worker/i.test(process.env.E2E_ONLY)) {
   // The worker goes away while a film plays. The player abandons a request
   // after ten seconds, so a server that answers later leaves it asking for
   // ever; it must answer sooner. jellyfin-web shows no dialog for an error
@@ -660,7 +684,7 @@ if (workerPid && (!process.env.E2E_ONLY || /no worker/i.test(process.env.E2E_ONL
 
 // Still without a worker: a film that direct plays keeps playing when the
 // viewer picks its other audio track, which would have needed a transcode.
-if (workerPid && (!process.env.E2E_ONLY || /no worker/i.test(process.env.E2E_ONLY))) {
+if (!process.env.E2E_ONLY || /no worker/i.test(process.env.E2E_ONLY)) {
   await scenario("no worker: switching audio on a direct play film keeps it playing", async ({ page, seen }) => {
     await play(page, "Transcode", "Nu Film");
     if (seen.infos.at(-1).source.TranscodingUrl !== undefined) throw new Error("Nu Film should direct play");

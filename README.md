@@ -102,12 +102,14 @@ MEDIA_DIR=/path/to/media JELLYSCALE_ADMIN_PASSWORD=change-me \
 ## Test
 
 ```sh
-go test ./...                               # Unit tests
-test/integration.sh                         # Adds disposable Postgres, SeaweedFS, Garage
-test/roles.sh <workdir>                     # Each role as its own process
+go test ./...                               # Tests that need nothing outside Go
+test/integration.sh                         # Every test, with disposable Postgres, SeaweedFS, Garage and real ffmpeg
+test/roles.sh <workdir>                     # Each role as its own process (makes its own films and config in <workdir>)
 test/e2e/run.sh <workdir> <playwright_dir>  # Real jellyfin-web, two api replicas, S3, a router, a worker
 go run ./cmd/jellyscale --print-routes > compat/endpoints.yaml
 ```
+
+There are two tiers of Go tests. `go test ./...` runs the tests that need nothing outside Go and passes on a machine with no ffmpeg, Postgres, S3 or fonts. Tests that need any of them live in files named `*_integration_test.go` with the build tag `//go:build integration`, and `test/integration.sh` runs them (`go test -tags integration`) with everything else. It needs Docker, curl, ffmpeg and ffprobe built with libx264, libx265 and libass, and fontconfig with a font (`fonts-dejavu-core`, or `font-dejavu` on Alpine), and says which is missing when it stops. No test skips for a missing dependency: it fails, naming what it needs. A mistyped build tag would hide a test without any skip, so `TestBuildTags` requires a file's name and tag to agree. `cmd/testreport` fails a run with a skipped test, or with a different number of tests from what `go test -list` finds for the tier, which catches a run that stopped partway. Go tests run through [gotestsum](https://github.com/gotestyourself/gotestsum) (pinned in `go.mod`, run as `go tool gotestsum`), and in CI each job's summary lists passed, failed and skipped counts and each failure's reason, the last line a test located, with an annotation at that file and line. A panic or skip is named but has no line, and an e2e scenario is annotated at the quoted literal of its name, so a scenario keeps any part known only at run time after `: `; a name with no such literal is annotated at the top of the file. `test/roles.sh` and each `test/e2e` gate do the same in CI and print as before locally. A failed job uploads its logs as an artifact: for the Go tiers, `unit.json` or `tests.json` (every test's output, which holds the workers' log lines and the ffmpeg stderr in their errors) and `failures.log` (the full output of each failure, plus the server and worker log of a subtitle test that failed); for roles and e2e, the server, worker and ffmpeg logs; run locally, `JELLYSCALE_LOG_DIR` picks where the logs go. Roles and e2e default to `<workdir>/logs`; the Go tiers keep theirs only when it is set.
 
 `test/e2e` needs `web-dist` (see Run), and a directory with `playwright-core` installed. It drives the browser at `$CHROMIUM_PATH`, `/usr/bin/chromium` if unset. Use Google Chrome (`CHROMIUM_PATH=/usr/bin/google-chrome-stable`) where Chromium is built without H.264 and AAC, which every fixture needs. `E2E_GATES="transcode"` runs one gate.
 

@@ -1,3 +1,5 @@
+//go:build integration
+
 package transcode
 
 import (
@@ -18,14 +20,20 @@ import (
 	"jellyscale/internal/library"
 	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
+
+	"jellyscale/internal/testenv"
 )
 
 // capturedKeyframes are those of the fixture in compat/captures/transcode-12.4.md.
 const capturedKeyframes = "0,3,7,13,18,26,31,39,44,52,57,65,70,78,83"
 
-// The tests read their sources far faster than a viewer would; the one that
-// tests the pacing puts it back.
-func init() { copyReadRate = "500" }
+// The tests read their sources as fast as they can; the one that tests the
+// pacing puts it back. The rate is 0, no limit, and not a large number: on
+// ffmpeg 9.0 a rate above 5 doesn't mean faster. A 90 s film took 18 s at 5
+// every time, 8 to 65 s at 20 and 39 to 53 s at 500, against 0.1 s at 0. With
+// twice as many busy loops as cores, the 30 s waits below timed out in 13 of 13
+// runs at 500 and none of 16 at 0; with one per core they passed at both.
+func init() { copyReadRate = "0" }
 
 // copySource is a 90 second film of H.264 with B-frames and AC3 audio, with
 // the captured irregular keyframes.
@@ -42,7 +50,7 @@ type delays struct{ videoStart, audioStart, video, audio float64 }
 // the index and the scan read them.
 func delayedSource(t *testing.T, name string, d delays, extra ...string) (path string, source playback.Source) {
 	t.Helper()
-	needFFmpeg(t)
+	testenv.FFmpeg(t)
 	dir := t.TempDir()
 	path = filepath.Join(dir, name)
 	seconds := func(v float64) string { return strconv.FormatFloat(v, 'f', 3, 64) }
@@ -224,7 +232,7 @@ func TestCopiedPlaylistEndsWhereTheVideoDoes(t *testing.T) {
 func TestCopyReadsAtFiveTimesTheFilmsSpeed(t *testing.T) {
 	input, source := copySource(t, "film.mkv")
 	copyReadRate = "5"
-	defer func() { copyReadRate = "500" }()
+	defer func() { copyReadRate = "0" }()
 	dir := t.TempDir()
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()

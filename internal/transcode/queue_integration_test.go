@@ -1,3 +1,5 @@
+//go:build integration
+
 package transcode
 
 import (
@@ -14,6 +16,8 @@ import (
 	"time"
 
 	"jellyscale/internal/store"
+
+	"jellyscale/internal/testenv"
 )
 
 // logBuffer is a log destination that goroutines can share.
@@ -181,7 +185,7 @@ func TestChangingStreamIsNotRefusedByTheViewersOwnJob(t *testing.T) {
 // ffmpeg that hangs holds its lease for as long as the worker lives, so the
 // worker has to fail the job itself, and the viewer gets an answer.
 func TestHungFFmpegFailsTheJob(t *testing.T) {
-	needFFmpeg(t)
+	testenv.FFmpeg(t)
 	film(t)
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "ffmpeg"), []byte("#!/bin/sh\nexec sleep 300\n"), 0o755); err != nil {

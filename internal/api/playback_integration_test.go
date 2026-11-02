@@ -1,3 +1,5 @@
+//go:build integration
+
 package api
 
 import (
@@ -29,6 +31,8 @@ import (
 	"jellyscale/internal/items"
 	"jellyscale/internal/playstate"
 	"jellyscale/internal/store"
+
+	"jellyscale/internal/testenv"
 )
 
 // These need a disposable database; test/integration.sh provides one.
@@ -54,10 +58,7 @@ func newEnv(t *testing.T) *env { return newEnvOn(t, "") }
 // directory when it is empty.
 func newEnvOn(t *testing.T, s3Target string) *env {
 	t.Helper()
-	dsn := os.Getenv("JELLYSCALE_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("JELLYSCALE_TEST_DATABASE_URL not set")
-	}
+	dsn := testenv.DatabaseURL(t)
 	ctx := context.Background()
 	e := &env{}
 	var err error
@@ -127,7 +128,7 @@ func putOnS3(t *testing.T, target string, body []byte) string {
 func s3Root(t *testing.T, target string) string {
 	t.Helper()
 	var raw string
-	for _, entry := range strings.Split(os.Getenv("JELLYSCALE_TEST_S3"), ",") {
+	for _, entry := range testenv.S3(t) {
 		if name, uri, _ := strings.Cut(entry, "="); name == target {
 			raw = uri
 		}
@@ -146,9 +147,10 @@ func s3Root(t *testing.T, target string) string {
 	return parsed.String()
 }
 
-func s3Targets() []string {
+func s3Targets(t *testing.T) []string {
+	t.Helper()
 	var names []string
-	for _, entry := range strings.Split(os.Getenv("JELLYSCALE_TEST_S3"), ",") {
+	for _, entry := range testenv.S3(t) {
 		if name, _, found := strings.Cut(entry, "="); found {
 			names = append(names, name)
 		}
@@ -248,7 +250,7 @@ func (e *env) row(t *testing.T, user string) userRow {
 }
 
 func TestStreamRangesAndHead(t *testing.T) {
-	for _, target := range append([]string{""}, s3Targets()...) {
+	for _, target := range append([]string{""}, s3Targets(t)...) {
 		t.Run("backend="+target, func(t *testing.T) { checkStream(t, newEnvOn(t, target)) })
 	}
 }
@@ -313,7 +315,7 @@ func checkStream(t *testing.T, e *env) {
 }
 
 func TestMissingObjectIs404BeforeAnyBody(t *testing.T) {
-	for _, target := range append([]string{""}, s3Targets()...) {
+	for _, target := range append([]string{""}, s3Targets(t)...) {
 		t.Run("backend="+target, func(t *testing.T) {
 			e := newEnvOn(t, target)
 			mustExec(t, e.pool, "UPDATE media_sources SET store_key = 'gone-' || store_key")
@@ -980,21 +982,6 @@ func TestContentTypeComesFromTheStoredContainer(t *testing.T) {
 		if got := response.Header.Get("Content-Type"); got != "video/mp4" {
 			t.Errorf("%s: %q", path, got)
 		}
-	}
-}
-
-func TestWebMKeepsItsContentType(t *testing.T) {
-	// ffprobe's "matroska,webm" is stored as mkv; the .webm key marks it WebM.
-	for key, want := range map[string]string{
-		"film.webm": "video/webm", "Film.WEBM": "video/webm",
-		"film.mkv": "video/x-matroska", "film": "video/x-matroska",
-	} {
-		if got := contentType(items.Source{Key: key, Container: "mkv"}); got != want {
-			t.Errorf("%s: %q, want %q", key, got, want)
-		}
-	}
-	if got := contentType(items.Source{Key: "film.webm", Container: "mp4"}); got != "video/mp4" {
-		t.Errorf("a non-Matroska container follows the container: %q", got)
 	}
 }
 

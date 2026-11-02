@@ -1,14 +1,28 @@
 #!/usr/bin/env bash
 # Starts each role as its own process, at the same moment, and checks they
-# cooperate through Postgres alone. Usage: roles.sh <workdir_with_e2e_config>
+# cooperate through Postgres alone. Usage: roles.sh <workdir>
+# It makes its own films and config in <workdir> (test/fixtures/posix.sh), so
+# it needs ffmpeg, Docker, Go, curl and python3, and nothing from test/e2e/run.sh.
+# Logs go to $JELLYSCALE_LOG_DIR, default <workdir>/logs: roles.log with every
+# role's output, whose errors carry the end of ffmpeg's stderr, and ffmpeg.log
+# with each command line a worker ran.
+# In CI ($GITHUB_ACTIONS set) failed checks go to the job summary and become
+# annotations (test/report.sh); locally the output stays as it is.
 set -uo pipefail
+for tool in docker ffmpeg go curl python3; do
+  command -v "$tool" >/dev/null || { echo "test/roles.sh needs $tool on PATH" >&2; exit 1; }
+done
+mkdir -p "$1"
 work=$(cd "$1" && pwd)
 repo=$(cd "$(dirname "$0")/.." && pwd)
-pg=jellyscale-roles-pg
+logs=${JELLYSCALE_LOG_DIR:-$work/logs}
+mkdir -p "$logs"
+logs=$(cd "$logs" && pwd)
+pg=jellyscale-roles-pg-$$
 pids=()
 cleanup() { [[ ${#pids[@]} -gt 0 ]] && kill "${pids[@]}" 2>/dev/null; docker rm -f "$pg" >/dev/null 2>&1; }
 trap cleanup EXIT
-docker rm -f "$pg" >/dev/null 2>&1
+bash "$repo/test/fixtures/posix.sh" "$work" || exit 1
 docker run -d --rm --name "$pg" -e POSTGRES_PASSWORD=r -p 127.0.0.1::5432 postgres:18-alpine >/dev/null || exit 1
 port=$(docker port "$pg" 5432/tcp | head -1 | sed 's/.*://')
 for _ in $(seq 1 60); do docker exec "$pg" psql -U postgres -Atc 'select 1' >/dev/null 2>&1 && break; sleep 0.5; done
@@ -22,17 +36,18 @@ mkdir -p "$work/nobin"
 export JELLYSCALE_DATABASE_URL="postgres://postgres:r@127.0.0.1:$port/postgres" JELLYSCALE_ADMIN_PASSWORD=r-pass
 free() { python3 -I -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])'; }
 api1=$(free) api2=$(free) stream=$(free)
-start() { "$work/jellyscale" "$@" --config "$work/config.json" 2>>"$work/roles.log" & pids+=($!); }
-: >"$work/roles.log"
+start() { "$work/jellyscale" "$@" --config "$work/config.json" 2>>"$logs/roles.log" & pids+=($!); }
+: >"$logs/roles.log"
 # The workers' ffmpeg reads at twice the film's speed, so it is still running
 # when the checks below look for it. It also counts each subtitle extraction (the
 # run that writes track files), and waits while $work/bin/hold exists, noting
-# in $work/bin/held that it has begun. run.sh may have made the shim already.
+# in $work/bin/held that it has begun.
 mkdir -p "$work/bin"
 : >"$work/bin/runs"
 rm -f "$work/bin/hold" "$work/bin/held"
 cat >"$work/bin/ffmpeg" <<E2
 #!/bin/sh
+echo "\$(date +%T) \$*" >>$logs/ffmpeg.log
 case "\$*" in
 *"-f hls"*) exec $(command -v ffmpeg) -readrate 2 "\$@";;
 *track.vtt*)
@@ -50,17 +65,23 @@ PATH="$work/nobin" start --roles=stream --listen "127.0.0.1:$stream"
 
 for _ in $(seq 1 60); do
   curl -fs -o /dev/null "127.0.0.1:$api1/healthz" && curl -fs -o /dev/null "127.0.0.1:$api2/healthz" &&
-    curl -fs -o /dev/null "127.0.0.1:$stream/healthz" && [[ $(grep -c 'scan finished' "$work/roles.log") -ge 6 ]] && break
+    curl -fs -o /dev/null "127.0.0.1:$stream/healthz" && [[ $(grep -c 'scan finished' "$logs/roles.log") -ge 6 ]] && break
   sleep 0.5
 done
 
 failed=0
+passed=0 failures=0
 check() { # name want got
-  if [[ $2 == "$3" ]]; then echo "ok    $1"; else echo "FAIL  $1: want $2, got $3"; failed=1; fi
+  if [[ $2 == "$3" ]]; then
+    echo "ok    $1"; passed=$((passed + 1))
+  else
+    echo "FAIL  $1: want $2, got $3"; failed=1; failures=$((failures + 1))
+    bash "$repo/test/report.sh" fail test/roles.sh "${BASH_LINENO[0]}" "roles" "$1: want $2, got $3"
+  fi
 }
 code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 
-for pid in "${pids[@]}"; do kill -0 "$pid" 2>/dev/null || { echo "FAIL  a process exited at startup"; failed=1; }; done
+for pid in "${pids[@]}"; do kill -0 "$pid" 2>/dev/null || check "a process exited at startup" running exited; done
 token=$(curl -s -X POST "127.0.0.1:$api1/Users/AuthenticateByName" -H 'Content-Type: application/json' \
   -H 'Authorization: MediaBrowser Client="c", Device="d", DeviceId="i", Version="1"' -d '{"Username":"admin","Pw":"r-pass"}' |
   python3 -I -c 'import json,sys;print(json.load(sys.stdin)["AccessToken"])')
@@ -70,7 +91,8 @@ id=$(curl -s -H "$header" "127.0.0.1:$api2/Items?Recursive=true&IncludeItemTypes
   python3 -I -c 'import json,sys;print(json.load(sys.stdin)["Items"][0]["Id"])')
 total=$(curl -s -H "$header" "127.0.0.1:$api2/Items?Recursive=true&IncludeItemTypes=Movie" |
   python3 -I -c 'import json,sys;print(json.load(sys.stdin)["TotalRecordCount"])')
-check "two workers scanned without duplicates" 25 "$total"
+movies=$(find "$work/media/movies" "$work/media/transcode" -type f \( -name '*.mkv' -o -name '*.mp4' \) | wc -l)
+check "two workers scanned without duplicates" "$movies" "$total"
 check "stream role serves images" 200 "$(code "127.0.0.1:$stream/Items/$id/Images/Primary")"
 check "api role doesn't serve images" 404 "$(code "127.0.0.1:$api1/Items/$id/Images/Primary")"
 check "stream role doesn't serve the API" 404 "$(code -H "$header" "127.0.0.1:$stream/Items")"
@@ -208,4 +230,5 @@ check "the refusal comes within ten seconds" 1 "$(( SECONDS - began <= 10 ))"
 subtitles() { curl -s -H "$header" "127.0.0.1:$api2/Items/$1" | python3 -I -c 'import json,sys;print(sum(s["Type"] == "Subtitle" for s in json.load(sys.stdin)["MediaStreams"]))'; }
 check "the uncached film lists no subtitle track" 0 "$(subtitles "$phi")"
 check "the cached film lists both of its tracks" 2 "$(subtitles "$sigma")"
+bash "$repo/test/report.sh" totals roles "$passed" "$failures"
 exit $failed

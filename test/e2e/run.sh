@@ -5,8 +5,13 @@
 # Usage: run.sh <workdir> <dir_with_playwright>
 # E2E_GATES picks which gates run, default "browse play subtitles transcode".
 # Expects jellyfin-web in ./web-dist: docker cp <jellyfin>:/jellyfin/jellyfin-web web-dist
-# Writes <workdir>/config.json (POSIX libraries only, for test/roles.sh) and
-# <workdir>/config-s3.json (adds a library on S3 for media and assets).
+# Writes <workdir>/config.json (POSIX libraries only, from test/fixtures/posix.sh)
+# and <workdir>/config-s3.json (adds a library on S3 for media and assets).
+# Logs (server.log with every role's output, whose errors carry the end of
+# ffmpeg's stderr, and ffmpeg.log with each command line the worker ran) go to
+# $JELLYSCALE_LOG_DIR, default <workdir>/logs.
+# In CI ($GITHUB_ACTIONS set) each gate's failures go to the job summary and
+# become annotations (test/report.sh); locally the output stays as it is.
 set -uo pipefail
 work=$1
 playwright=$2
@@ -15,6 +20,9 @@ pg=jellyscale-e2e-pg-$$ sw=jellyscale-e2e-sw-$$
 pids=()
 mkdir -p "$work"
 work=$(cd "$work" && pwd)
+logs=${JELLYSCALE_LOG_DIR:-$work/logs}
+mkdir -p "$logs"
+logs=$(cd "$logs" && pwd)
 
 cleanup() {
   [[ ${#pids[@]} -gt 0 ]] && kill "${pids[@]}" 2>/dev/null
@@ -24,28 +32,17 @@ trap cleanup EXIT
 cleanup
 source "$repo/test/s3-lib.sh"
 
-bash "$repo/test/fixtures/make.sh" "$work/media"
-rm -rf "$work/assets"
+bash "$repo/test/fixtures/posix.sh" "$work" || exit 1
 epsilon="$work/Epsilon Film (2022).mkv"
 [[ -f $epsilon ]] || ffmpeg -nostdin -v error -y \
   -f lavfi -i "testsrc2=size=1280x720:rate=24000/1001:duration=30" \
   -f lavfi -i "sine=frequency=660:sample_rate=48000:duration=30" \
   -c:v libx264 -preset ultrafast -c:a aac -metadata:s:a:0 language=eng "$epsilon" || exit 1
 
-# Films the captured Chrome profile can't direct-play: AC3 audio forces a
-# transcode, and a second track gives the audio menu something to switch to.
-# Each scenario gets its own item, with its own segments, and a hard link is
-# enough because no scenario rewrites these files, which keeps the media small.
+# Films the captured Chrome profile can't direct-play (Zeta, from posix.sh, has
+# AC3 audio). Each scenario gets its own item, with its own segments, and a hard
+# link is enough because no scenario rewrites these files, which keeps the media small.
 zeta="$work/media/transcode/Zeta Film (2023)/Zeta Film (2023).mkv"
-if [[ ! -f $zeta ]]; then
-  mkdir -p "$(dirname "$zeta")"
-  ffmpeg -nostdin -v error -y \
-    -f lavfi -i "testsrc2=size=1280x720:rate=24:duration=180" \
-    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=180" \
-    -f lavfi -i "sine=frequency=880:sample_rate=48000:duration=180" \
-    -map 0:v -map 1:a -map 2:a -c:v libx264 -preset ultrafast -crf 26 -g 48 -c:a:0 ac3 -c:a:1 aac \
-    -metadata:s:a:0 language=eng -metadata:s:a:1 language=spa "$zeta" || exit 1
-fi
 for copy in "Theta Film (2025)" "Iota Film (2026)" "Kappa Film (2027)" "Lambda Film (2028)" "Mu Film (2029)" "Omicron Film (2032)" "Pi Film (2033)"; do
   [[ -f "$work/media/transcode/$copy/$copy.mkv" ]] || { mkdir -p "$work/media/transcode/$copy" && ln "$zeta" "$work/media/transcode/$copy/$copy.mkv"; }
 done
@@ -124,17 +121,8 @@ for _ in $(seq 1 60); do docker exec "$pg" psql -U postgres -Atc 'select 1' >/de
 sleep 2
 
 s3="endpoint=http://127.0.0.1:$seaweed_port&region=us-east-1"
-rm -rf "$work/scratch" "$work/segments"
-# Segments go to a directory in config.json and to S3 in config-s3.json, so the
-# transcode store is exercised on both. Idle is short so closing a tab shows.
-cat >"$work/config.json" <<E2
-{"name": "e2e", "adminUser": "admin", "webDir": "$repo/web-dist", "scanInterval": "1h",
- "transcodeStore": "file://$work/segments", "transcodeScratch": "$work/scratch", "transcodeIdle": "10s", "libraries": [
-  {"name": "Movies", "kind": "movies", "media": "file://$work/media/movies", "assets": "file://$work/assets/movies"},
-  {"name": "Shows", "kind": "tvshows", "media": "file://$work/media/shows", "assets": "file://$work/assets/shows"},
-  {"name": "Transcode", "kind": "movies", "media": "file://$work/media/transcode", "assets": "file://$work/assets/transcode"}
-]}
-E2
+# config.json, which posix.sh wrote, keeps segments in a directory; this one puts
+# them on S3, so the transcode store is exercised on both.
 cat >"$work/config-s3.json" <<E2
 {"name": "e2e", "adminUser": "admin", "webDir": "$repo/web-dist", "scanInterval": "1h",
  "transcodeStore": "s3://e2e/segments?$s3", "transcodeScratch": "$work/scratch", "transcodeIdle": "10s", "libraries": [
@@ -162,11 +150,11 @@ sub="$work/media/transcode"
 free() { python3 -I -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])'; }
 export JELLYSCALE_DATABASE_URL="postgres://postgres:e2e@127.0.0.1:$port/postgres" JELLYSCALE_ADMIN_PASSWORD=e2e-pass
 api1=$(free) api2=$(free) stream=$(free) router=$(free)
-: >"$work/server.log"
+: >"$logs/server.log"
 # api and stream run with no ffmpeg on their PATH (an empty directory): only
 # workers run media tools, and anything else that tried would fail.
 mkdir -p "$work/nobin"
-start() { PATH="$work/nobin" "$work/jellyscale" "$@" --config "$work/config-s3.json" >>"$work/server.log" 2>&1 & pids+=($!); }
+start() { PATH="$work/nobin" "$work/jellyscale" "$@" --config "$work/config-s3.json" >>"$logs/server.log" 2>&1 & pids+=($!); }
 # The worker's ffmpeg reads its input at twice the film's speed, so a transcode
 # takes a while on any machine and the stop tests find it still running.
 # E2E_NO_SHIM=1 leaves ffmpeg at full speed, to measure latency.
@@ -175,15 +163,15 @@ speed="-readrate 2"
 [[ -n ${E2E_NO_SHIM:-} ]] && speed="-hide_banner"
 # Only the transcode (the one that writes HLS) is slowed; extracting a subtitle
 # track reads the whole file and would take as long as the film.
-printf '#!/bin/sh\ncase "$*" in *"-f hls"*) exec %s %s "$@";; esac\nexec %s "$@"\n' "$(command -v ffmpeg)" "$speed" "$(command -v ffmpeg)" >"$work/bin/ffmpeg"
+printf '#!/bin/sh\necho "$(date +%%T) $*" >>%s\ncase "$*" in *"-f hls"*) exec %s %s "$@";; esac\nexec %s "$@"\n' "$logs/ffmpeg.log" "$(command -v ffmpeg)" "$speed" "$(command -v ffmpeg)" >"$work/bin/ffmpeg"
 chmod +x "$work/bin/ffmpeg"
-PATH="$work/bin:$PATH" "$work/jellyscale" --roles=worker --config "$work/config-s3.json" >>"$work/server.log" 2>&1 &
+PATH="$work/bin:$PATH" "$work/jellyscale" --roles=worker --config "$work/config-s3.json" >>"$logs/server.log" 2>&1 &
 pids+=($!)
 export E2E_WORKER_PID=$!
 start --roles=api --listen "127.0.0.1:$api1"
 start --roles=api --listen "127.0.0.1:$api2"
 start --roles=stream --listen "127.0.0.1:$stream"
-node "$repo/test/e2e/router.mjs" "$router" "$stream" "$api1,$api2" >>"$work/server.log" 2>&1 &
+node "$repo/test/e2e/router.mjs" "$router" "$stream" "$api1,$api2" >>"$logs/server.log" 2>&1 &
 pids+=($!)
 # A second stream replica set up wrongly, with no transcodeStore, behind its own
 # router. The scenario that needs it starts it with E2E_NOSTORE and stops it
@@ -191,29 +179,41 @@ pids+=($!)
 sed 's/"transcodeStore": "[^"]*", //' "$work/config-s3.json" >"$work/config-nostore.json"
 nostream=$(free) norouter=$(free)
 printf '#!/bin/sh\nPATH="%s" exec "%s" --roles=stream --listen "127.0.0.1:%s" --config "%s" >>"%s" 2>&1\n' \
-  "$work/nobin" "$work/jellyscale" "$nostream" "$work/config-nostore.json" "$work/server.log" >"$work/bin/nostore"
+  "$work/nobin" "$work/jellyscale" "$nostream" "$work/config-nostore.json" "$logs/server.log" >"$work/bin/nostore"
 chmod +x "$work/bin/nostore"
 export E2E_NOSTORE="$work/bin/nostore"
-node "$repo/test/e2e/router.mjs" "$norouter" "$nostream" "$api1,$api2" >>"$work/server.log" 2>&1 &
+node "$repo/test/e2e/router.mjs" "$norouter" "$nostream" "$api1,$api2" >>"$logs/server.log" 2>&1 &
 pids+=($!)
 export E2E_BASE_NOSTORE="http://127.0.0.1:$norouter"
 for p in $api1 $api2 $stream; do
   for _ in $(seq 1 60); do curl -fs -o /dev/null "http://127.0.0.1:$p/healthz" && break; sleep 0.25; done
 done
-for _ in $(seq 1 120); do [[ $(grep -c 'scan finished' "$work/server.log") -ge 4 ]] && break; sleep 0.5; done
+for _ in $(seq 1 120); do [[ $(grep -c 'scan finished' "$logs/server.log") -ge 4 ]] && break; sleep 0.5; done
 
 base="http://127.0.0.1:$router"
 cp "$repo/test/e2e/browse.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/transcode.mjs" "$repo/test/e2e/subtitles.mjs" "$playwright/"
 result=0
-export E2E_SCRATCH="$work/scratch" E2E_MEDIA="$work/media/transcode" E2E_PG="$pg" E2E_LOG="$work/server.log"
+export E2E_SCRATCH="$work/scratch" E2E_MEDIA="$work/media/transcode" E2E_PG="$pg" E2E_LOG="$logs/server.log"
 # The transcode gate ends by killing the worker, so subtitles run before it.
 for gate in ${E2E_GATES:-browse play subtitles transcode}; do
   echo "=== $gate"
-  (cd "$playwright" && timeout 900 node $gate.mjs "$base" admin e2e-pass) || result=1
+  if [[ -n ${GITHUB_ACTIONS:-} ]]; then
+    (cd "$playwright" && timeout 900 node $gate.mjs "$base" admin e2e-pass) 2>&1 | bash "$repo/test/report.sh" lines "test/e2e/$gate.mjs" "e2e $gate"
+    status=${PIPESTATUS[0]}
+    if [[ $status -ne 0 ]]; then
+      result=1
+      bash "$repo/test/report.sh" fail "test/e2e/$gate.mjs" 1 "e2e $gate" "the gate exited $status (124 is its 900 s limit)"
+    fi
+  else
+    (cd "$playwright" && timeout 900 node $gate.mjs "$base" admin e2e-pass) || result=1
+  fi
 done
 # For poking at the stack by hand: E2E_HOLD=600 keeps it up for ten minutes.
 [[ -n ${E2E_HOLD:-} ]] && { echo "holding $base"; sleep "$E2E_HOLD"; }
 echo "--- server warnings"
-grep -E 'level=(WARN|ERROR)' "$work/server.log" | sed -E 's/^time=[^ ]+ //' | sort | uniq -c | sort -rn | head -20
-if grep -q "$seaweed_secret" "$work/server.log"; then echo "FAIL  the S3 secret appears in the log"; result=1; fi
+grep -E 'level=(WARN|ERROR)' "$logs/server.log" | sed -E 's/^time=[^ ]+ //' | sort | uniq -c | sort -rn | head -20
+if grep -q "$seaweed_secret" "$logs/server.log"; then
+  echo "FAIL  the S3 secret appears in the log"; result=1
+  bash "$repo/test/report.sh" fail test/e2e/run.sh "$LINENO" "e2e" "the S3 secret appears in the log"
+fi
 exit $result

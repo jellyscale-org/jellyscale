@@ -1,3 +1,5 @@
+//go:build integration
+
 package transcode
 
 import (
@@ -15,16 +17,9 @@ import (
 	"testing"
 
 	"jellyscale/internal/playback"
-)
 
-func needFFmpeg(t *testing.T) {
-	t.Helper()
-	for _, name := range []string{"ffmpeg", "ffprobe"} {
-		if _, err := exec.LookPath(name); err != nil {
-			t.Skipf("%s not installed", name)
-		}
-	}
-}
+	"jellyscale/internal/testenv"
+)
 
 func run(t *testing.T, name string, args ...string) string {
 	t.Helper()
@@ -143,7 +138,7 @@ func segmentFiles(dir string, from, to int) []string {
 // run made, with no discontinuity: same frames at the same times, and audio
 // packets on the same grid.
 func TestRestartSplicesWithEarlierSegments(t *testing.T) {
-	needFFmpeg(t)
+	testenv.FFmpeg(t)
 	work := t.TempDir()
 	sources := map[string]string{
 		"ntsc":    makeSource(t, work, "ntsc", "24000/1001", "48000", ""),
@@ -190,7 +185,7 @@ func readFile(t *testing.T, name string) []byte {
 // Each audio index picks that stream: the output carries the tone of the track
 // asked for.
 func TestAudioIndexSelectsTheTrack(t *testing.T) {
-	needFFmpeg(t)
+	testenv.FFmpeg(t)
 	input := filepath.Join(t.TempDir(), "two-tracks.mkv")
 	run(t, "ffmpeg", "-nostdin", "-v", "error", "-y",
 		"-f", "lavfi", "-i", "testsrc2=size=640x360:rate=24:duration=9",
@@ -228,7 +223,7 @@ func TestAudioIndexSelectsTheTrack(t *testing.T) {
 // An interlaced source comes out progressive: its fields are not left woven
 // into combed frames.
 func TestInterlacedSourceIsDeinterlaced(t *testing.T) {
-	needFFmpeg(t)
+	testenv.FFmpeg(t)
 	dir := t.TempDir()
 	source := filepath.Join(dir, "interlaced.mkv")
 	run(t, "ffmpeg", "-nostdin", "-v", "error", "-y",

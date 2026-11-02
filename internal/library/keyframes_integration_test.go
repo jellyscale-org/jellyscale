@@ -1,3 +1,5 @@
+//go:build integration
+
 package library
 
 import (
@@ -21,6 +23,8 @@ import (
 	"github.com/google/uuid"
 
 	"jellyscale/internal/store"
+
+	"jellyscale/internal/testenv"
 )
 
 // capturedKeyframes are the irregular keyframes of the captured Jellyfin
@@ -32,9 +36,7 @@ const capturedKeyframes = "0,3,7,13,18,26,31,39,44,52,57,65,70,78,83"
 // as the first or second track, in the container the name ends in.
 func makeFilm(t *testing.T, name string, extra ...string) string {
 	t.Helper()
-	if _, err := exec.LookPath("ffmpeg"); err != nil {
-		t.Skip("no ffmpeg")
-	}
+	testenv.FFmpeg(t)
 	file := filepath.Join(t.TempDir(), name)
 	args := append([]string{"-nostdin", "-v", "error", "-y",
 		"-f", "lavfi", "-i", "testsrc2=size=160x90:rate=24:duration=90",
@@ -216,7 +218,7 @@ func TestKeyframesReadLittle(t *testing.T) {
 func s3Stores(t *testing.T) map[string]store.Store {
 	t.Helper()
 	stores := map[string]store.Store{}
-	for _, entry := range strings.Split(os.Getenv("JELLYSCALE_TEST_S3"), ",") {
+	for _, entry := range testenv.S3(t) {
 		name, uri, _ := strings.Cut(entry, "=")
 		if uri == "" {
 			continue
@@ -247,9 +249,6 @@ func s3Stores(t *testing.T) map[string]store.Store {
 // in flight, which the figure in DOMAINS.md measures at the server.
 func TestKeyframesFromS3ReadLittle(t *testing.T) {
 	stores := s3Stores(t)
-	if len(stores) == 0 {
-		t.Skip("JELLYSCALE_TEST_S3 not set")
-	}
 	// Noise, so that the picture is big: a real film's is.
 	file := makeFilm(t, "big.mkv", "-vf", "noise=alls=40:allf=t", "-b:v", "6M")
 	moov := makeFilm(t, "big.mp4", "-vf", "noise=alls=40:allf=t", "-b:v", "6M")
@@ -423,9 +422,7 @@ func TestKeyframesRefuseSampleTimesThatWrapInt64(t *testing.T) {
 // a timescale of 1 makes the time of sample 215 almost 2^63 ticks, and the
 // longest empty edit ahead of it carries the sum over.
 func TestKeyframesRefuseASumThatOverflowsTicks(t *testing.T) {
-	if _, err := exec.LookPath("ffmpeg"); err != nil {
-		t.Skip("no ffmpeg")
-	}
+	testenv.FFmpeg(t)
 	file := filepath.Join(t.TempDir(), "sum.mp4")
 	// The late start of the video makes an empty edit; the keyframe at sample 215.
 	if out, err := exec.Command("ffmpeg", "-nostdin", "-v", "error", "-y", "-itsoffset", "1", "-f", "lavfi", "-i", "testsrc2=size=160x90:rate=24:duration=10",
@@ -451,9 +448,7 @@ func TestKeyframesRefuseASumThatOverflowsTicks(t *testing.T) {
 // duration says: whichever stream starts late or ends early, in both
 // containers.
 func TestVideoEndIsWhereTheLastFrameEnds(t *testing.T) {
-	if _, err := exec.LookPath("ffmpeg"); err != nil {
-		t.Skip("no ffmpeg")
-	}
+	testenv.FFmpeg(t)
 	for _, container := range []string{"mkv", "mp4"} {
 		for name, input := range map[string][]string{
 			"video late":      {"-itsoffset", "0.5", "-f", "lavfi", "-i", "testsrc2=size=160x90:rate=24:duration=90", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=90"},
@@ -498,9 +493,6 @@ func TestVideoEndIsWhereTheLastFrameEnds(t *testing.T) {
 // are those the client reads from the store, as in the test above.
 func TestVideoEndFromS3ReadsLittle(t *testing.T) {
 	stores := s3Stores(t)
-	if len(stores) == 0 {
-		t.Skip("JELLYSCALE_TEST_S3 not set")
-	}
 	files := map[string]string{
 		"mkv": makeFilm(t, "big.mkv", "-vf", "noise=alls=40:allf=t", "-b:v", "6M"),
 		"mp4": makeFilm(t, "big.mp4", "-vf", "noise=alls=40:allf=t", "-b:v", "6M"),
@@ -552,7 +544,7 @@ func TestScanSkipsTheVideoEndOfAFilmItCannotCut(t *testing.T) {
 			if out, err := exec.Command("ffmpeg", "-nostdin", "-v", "error", "-y",
 				"-f", "lavfi", "-i", "testsrc2=size=160x90:rate=24:duration=60",
 				"-c:v", "libx264", "-preset", "ultrafast", "-g", "100000", "-keyint_min", "100000", "-sc_threshold", "0", file).CombinedOutput(); err != nil {
-				t.Skipf("ffmpeg: %v: %s", err, out)
+				t.Fatalf("ffmpeg: %v: %s", err, out)
 			}
 			probe, err := ProbeInput(context.Background(), file)
 			if err != nil {

@@ -1,3 +1,5 @@
+//go:build integration
+
 package transcode
 
 import (
@@ -7,7 +9,6 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -19,6 +20,8 @@ import (
 	"jellyscale/internal/items"
 	"jellyscale/internal/store"
 	"jellyscale/internal/subtitles"
+
+	"jellyscale/internal/testenv"
 )
 
 // subtitleRig is a rig whose film has a track, and a way to ask for it.
@@ -40,7 +43,7 @@ func (r *rig) track(t *testing.T) (items.Source, store.Store) {
 // extraction (the run that writes track files), and returns the count.
 func countExtractions(t *testing.T, extra string) func() int {
 	t.Helper()
-	real, _ := exec.LookPath("ffmpeg")
+	real := testenv.FFmpeg(t)
 	dir := t.TempDir()
 	runs := filepath.Join(dir, "runs")
 	script := fmt.Sprintf("#!/bin/sh\ncase \"$*\" in *track.vtt*) echo run >>%q; %s;; esac\nexec %q \"$@\"\n", runs, extra, real)
@@ -57,7 +60,7 @@ func countExtractions(t *testing.T, extra string) func() int {
 // Many requests across replicas and a burn-in job that wants the same track
 // run one extraction, on whichever of two workers claims it.
 func TestOneExtractionForManyRequestsAndABurn(t *testing.T) {
-	needFFmpeg(t)
+	testenv.FFmpeg(t)
 	r := newRig(t, nil)
 	source, assets := r.track(t)
 	runs := countExtractions(t, "sleep 1 >/dev/null 2>&1")
@@ -95,11 +98,11 @@ func TestOneExtractionForManyRequestsAndABurn(t *testing.T) {
 // Extractions have slots of their own: with every transcode slot taken, a
 // track is still extracted at once.
 func TestExtractionsProceedWithEveryTranscodeSlotBusy(t *testing.T) {
-	needFFmpeg(t)
+	testenv.FFmpeg(t)
 	r := newRig(t, nil)
 	source, assets := r.track(t)
 	// Only the transcode is slowed, to the film's speed.
-	real, _ := exec.LookPath("ffmpeg")
+	real := testenv.FFmpeg(t)
 	dir := t.TempDir()
 	script := fmt.Sprintf("#!/bin/sh\ncase \"$*\" in *\"-f hls\"*) exec %q -re \"$@\";; esac\nexec %q \"$@\"\n", real, real)
 	if err := os.WriteFile(filepath.Join(dir, "ffmpeg"), []byte(script), 0o755); err != nil {
@@ -123,7 +126,7 @@ func TestExtractionsProceedWithEveryTranscodeSlotBusy(t *testing.T) {
 // job over; once a job has lost its lease three times it is failed, and the
 // failure is remembered, so a track that kills its workers isn't tried forever.
 func TestLostLeasesAreRetriedThenGivenUp(t *testing.T) {
-	needFFmpeg(t)
+	testenv.FFmpeg(t)
 	r := newRig(t, nil)
 	source, assets := r.track(t)
 	runs := countExtractions(t, "")
@@ -156,7 +159,7 @@ func TestLostLeasesAreRetriedThenGivenUp(t *testing.T) {
 // With no worker, a track that isn't cached can't be delivered, and the
 // request says so within seconds. A cached track is read with no worker.
 func TestNoWorkerAnswersQuicklyAndCachedTracksStillWork(t *testing.T) {
-	needFFmpeg(t)
+	testenv.FFmpeg(t)
 	r := newRig(t, nil)
 	source, assets := r.track(t)
 	stop := r.worker(t, nil)
@@ -192,7 +195,7 @@ func (r *rig) reportWorker(t *testing.T) {
 // request must not wait on it for hours: an unclaimed job is answered like no
 // worker at all.
 func TestAnUnclaimedJobAnswersQuicklyWhileAWorkerReportsIn(t *testing.T) {
-	needFFmpeg(t)
+	testenv.FFmpeg(t)
 	r := newRig(t, nil)
 	source, assets := r.track(t)
 	r.reportWorker(t)
@@ -206,7 +209,7 @@ func TestAnUnclaimedJobAnswersQuicklyWhileAWorkerReportsIn(t *testing.T) {
 // With every extraction slot busy a job stays queued, and the request waits its
 // turn: jellyfin-web asks once, so a refusal would lose the track.
 func TestAQueuedJobWaitsBehindBusyWorkers(t *testing.T) {
-	needFFmpeg(t)
+	testenv.FFmpeg(t)
 	r := newRig(t, nil)
 	source, assets := r.track(t)
 	r.reportWorker(t)
@@ -286,7 +289,7 @@ func blackhole(t *testing.T, dsn string) (through string, cut func()) {
 // A worker cut off from the database stops extracting before its lease lapses.
 // Another worker takes the job once it does, so going on would read the file twice.
 func TestAWorkerCutOffFromTheDatabaseStopsBeforeItsLeaseLapses(t *testing.T) {
-	needFFmpeg(t)
+	testenv.FFmpeg(t)
 	r := newRig(t, nil)
 	source, assets := r.track(t)
 	slow(t)

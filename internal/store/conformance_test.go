@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"math"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"runtime"
 	"strings"
 	"sync"
@@ -18,28 +16,12 @@ import (
 	"time"
 )
 
-// backends returns every store to test. test/integration.sh sets S3 targets as
-// JELLYSCALE_TEST_S3 entries, comma-separated, each a store URI with a bucket.
+// backends returns every store to test: a directory, and in the integration
+// tier the S3 targets test/integration.sh starts.
 func backends(t *testing.T) map[string]Store {
 	t.Helper()
 	stores := map[string]Store{"posix": NewPosix(t.TempDir())}
-	for _, entry := range strings.Split(os.Getenv("JELLYSCALE_TEST_S3"), ",") {
-		if entry == "" {
-			continue
-		}
-		name, uri, _ := strings.Cut(entry, "=")
-		parsed, err := url.Parse(uri)
-		if err != nil {
-			t.Fatal(err)
-		}
-		query := parsed.Query()
-		t.Setenv("JELLYSCALE_S3_ACCESS_KEY", query.Get("key"))
-		t.Setenv("JELLYSCALE_S3_SECRET_KEY", query.Get("secret"))
-		parsed.Path = "/" + fmt.Sprintf("conformance-%d", time.Now().UnixNano())
-		s3Store, err := NewS3(parsed)
-		if err != nil {
-			t.Fatal(err)
-		}
+	for name, s3Store := range s3Backends(t) {
 		stores[name] = s3Store
 	}
 	return stores
