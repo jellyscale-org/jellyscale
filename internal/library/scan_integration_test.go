@@ -1,3 +1,5 @@
+//go:build integration
+
 package library_test
 
 import (
@@ -15,15 +17,14 @@ import (
 
 	"jellyscale/internal/db"
 	"jellyscale/internal/library"
+
+	"jellyscale/internal/testenv"
 )
 
 // These need a disposable database and ffmpeg; test/integration.sh provides both.
 func openDB(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	dsn := os.Getenv("JELLYSCALE_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("JELLYSCALE_TEST_DATABASE_URL not set")
-	}
+	dsn := testenv.DatabaseURL(t)
 	ctx := context.Background()
 	pool, err := db.Open(ctx, dsn)
 	if err != nil {
@@ -235,10 +236,7 @@ func TestReplicasCanSyncLibrariesTogether(t *testing.T) {
 }
 
 func TestReplicasCanMigrateTogether(t *testing.T) {
-	dsn := os.Getenv("JELLYSCALE_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("JELLYSCALE_TEST_DATABASE_URL not set")
-	}
+	dsn := testenv.DatabaseURL(t)
 	ctx := context.Background()
 	admin, err := pgxpool.New(ctx, dsn)
 	if err != nil {
@@ -354,7 +352,7 @@ func TestScanReadsTheKeyframeIndex(t *testing.T) {
 	}
 	if out, err := exec.Command("ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=10:duration=2",
 		"-c:v", "libx265", "-preset", "ultrafast", hevc).CombinedOutput(); err != nil {
-		t.Skipf("no libx265: %v: %s", err, out)
+		t.Fatalf("this test needs ffmpeg with libx265: %v: %s", err, out)
 	}
 	f.scan(t)
 	if n := scalar[*int](t, f.pool, "SELECT cardinality(keyframes) FROM media_sources m JOIN items i ON i.id = m.item_id WHERE i.name = 'Hevc Film'"); n != nil {

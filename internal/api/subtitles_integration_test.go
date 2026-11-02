@@ -1,3 +1,5 @@
+//go:build integration
+
 package api
 
 import (
@@ -23,6 +25,8 @@ import (
 	"jellyscale/internal/library"
 	"jellyscale/internal/store"
 	"jellyscale/internal/transcode"
+
+	"jellyscale/internal/testenv"
 )
 
 // These need ffmpeg and a disposable database; test/integration.sh provides both.
@@ -83,9 +87,7 @@ func ffmpegRun(t *testing.T, args ...string) {
 // says it is PGS, which is all the probe looks at.
 func subtitleFilm(t *testing.T, image bool, srt string) []byte {
 	t.Helper()
-	if _, err := exec.LookPath("ffmpeg"); err != nil {
-		t.Skip("no ffmpeg")
-	}
+	testenv.FFmpeg(t)
 	// Not AAC: its negative start moves cues 23 ms on ffmpeg 6 (invariant 43).
 	dir := t.TempDir()
 	must := func(name, text string) string {
@@ -120,6 +122,12 @@ func subtitleFilm(t *testing.T, image bool, srt string) []byte {
 func subtitleEnv(t *testing.T, target string) *subtitleFixture {
 	t.Helper()
 	f := &subtitleFixture{env: newEnv(t), log: &syncBuffer{}}
+	t.Cleanup(func() {
+		if t.Failed() {
+			// Printed, not t.Logf: the test's last t.Logf line is taken for its failure.
+			fmt.Printf("server and worker log:\n%s", f.log)
+		}
+	})
 	ctx := context.Background()
 	films := map[string][]byte{"Text": subtitleFilm(t, false, testSRT), "Image": subtitleFilm(t, true, testSRT)}
 	for name, data := range films {
@@ -185,10 +193,7 @@ func (f *subtitleFixture) startWorker(t *testing.T, timeout time.Duration) {
 // and returns the count. Real processes, so it counts what really ran.
 func countFFmpeg(t *testing.T) func() int {
 	t.Helper()
-	real, err := exec.LookPath("ffmpeg")
-	if err != nil {
-		t.Skip("no ffmpeg")
-	}
+	real := testenv.FFmpeg(t)
 	dir := t.TempDir()
 	count := filepath.Join(dir, "runs")
 	script := fmt.Sprintf("#!/bin/sh\necho run >>%q\nexec %q \"$@\"\n", count, real)
@@ -203,7 +208,7 @@ func countFFmpeg(t *testing.T) func() int {
 }
 
 func eachBackend(t *testing.T, test func(t *testing.T, f *subtitleFixture)) {
-	for _, target := range append([]string{""}, s3Targets()...) {
+	for _, target := range append([]string{""}, s3Targets(t)...) {
 		t.Run("backend="+target, func(t *testing.T) { test(t, subtitleEnv(t, target)) })
 	}
 }
@@ -526,10 +531,7 @@ func TestSubtitlesAreListedAsCaptured(t *testing.T) {
 // one has begun.
 func slowFFmpeg(t *testing.T) (started func() bool, release func()) {
 	t.Helper()
-	real, err := exec.LookPath("ffmpeg")
-	if err != nil {
-		t.Skip("no ffmpeg")
-	}
+	real := testenv.FFmpeg(t)
 	dir := t.TempDir()
 	begun, proceed := filepath.Join(dir, "begun"), filepath.Join(dir, "go")
 	// sleep's output goes nowhere, so one left behind by a killed shim doesn't
@@ -548,7 +550,7 @@ func slowFFmpeg(t *testing.T) (started func() bool, release func()) {
 // pool is used up by extractions can't serve anyone else.
 func TestSlowExtractionLeavesThePoolFree(t *testing.T) {
 	f := subtitleEnv(t, "")
-	config, err := pgxpool.ParseConfig(os.Getenv("JELLYSCALE_TEST_DATABASE_URL"))
+	config, err := pgxpool.ParseConfig(testenv.DatabaseURL(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -640,9 +642,7 @@ func TestManyRequestsForOneTrackAllAnswer(t *testing.T) {
 // A burst of distinct tracks runs at most four ffmpegs at once, and all finish.
 func TestDistinctTracksRunFourAtATime(t *testing.T) {
 	const tracks = 20
-	if _, err := exec.LookPath("ffmpeg"); err != nil {
-		t.Skip("no ffmpeg")
-	}
+	testenv.FFmpeg(t)
 	// The film is Text's, with 20 SubRip tracks: streams 2 to 21.
 	dir := t.TempDir()
 	srt := filepath.Join(dir, "a.srt")
@@ -664,6 +664,12 @@ func TestDistinctTracksRunFourAtATime(t *testing.T) {
 		t.Fatal(err)
 	}
 	f := &subtitleFixture{env: newEnv(t), log: &syncBuffer{}}
+	t.Cleanup(func() {
+		if t.Failed() {
+			// Printed, not t.Logf: the test's last t.Logf line is taken for its failure.
+			fmt.Printf("server and worker log:\n%s", f.log)
+		}
+	})
 	f.startWorker(t, 0)
 	ctx := context.Background()
 	media, assets := "file://"+t.TempDir(), "file://"+t.TempDir()
@@ -684,7 +690,7 @@ func TestDistinctTracksRunFourAtATime(t *testing.T) {
 	item := scalar[string](t, f.pool, "SELECT id::text FROM items WHERE library_id = $1 AND type = 'Movie'", libs[0].ID)
 
 	// Each ffmpeg notes its start and end; it waits first so that runs overlap.
-	real, _ := exec.LookPath("ffmpeg")
+	real := testenv.FFmpeg(t)
 	shim := t.TempDir()
 	events := filepath.Join(shim, "events")
 	script := fmt.Sprintf("#!/bin/sh\necho + >>%[1]q\nsleep 0.3 >/dev/null 2>&1\n%[2]q \"$@\"\nstatus=$?\necho - >>%[1]q\nexit $status\n", events, real)

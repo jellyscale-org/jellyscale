@@ -1,3 +1,5 @@
+//go:build integration
+
 package transcode
 
 import (
@@ -13,6 +15,8 @@ import (
 	"jellyscale/internal/library"
 	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
+
+	"jellyscale/internal/testenv"
 )
 
 // useFile points the rig's item at a file in the film directory, with the
@@ -40,7 +44,7 @@ func (r *rig) useFile(t *testing.T, name string) playback.Source {
 // ffmpeg's hls muxer cuts segments only while video lasts, so a file whose
 // audio outruns its video must get a playlist that stops with the video.
 func TestPlaylistStopsWhereTheVideoDoes(t *testing.T) {
-	needFFmpeg(t)
+	testenv.FFmpeg(t)
 	r := newRig(t, nil)
 	run(t, "ffmpeg", "-nostdin", "-v", "error", "-y",
 		"-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=24:duration=20",
@@ -74,7 +78,7 @@ func TestPlaylistStopsWhereTheVideoDoes(t *testing.T) {
 // of the file to ffmpeg) must not store the segment it cut short, and must
 // fail, so viewers never get a bad segment.
 func TestInputThatEndsEarlyFailsTheJob(t *testing.T) {
-	needFFmpeg(t)
+	testenv.FFmpeg(t)
 	r := newRig(t, nil)
 	whole, err := os.ReadFile(filepath.Join(film(t), "film.mkv"))
 	if err != nil {
@@ -103,7 +107,7 @@ func TestInputThatEndsEarlyFailsTheJob(t *testing.T) {
 
 // A replica that can't read what the worker wrote gets told why.
 func TestUnreadableStoreIsNamed(t *testing.T) {
-	needFFmpeg(t)
+	testenv.FFmpeg(t)
 	r := newRig(t, nil)
 	r.worker(t, nil) // Writes to the rig's store.
 	j := r.jobs(t)
@@ -122,7 +126,7 @@ func TestUnreadableStoreIsNamed(t *testing.T) {
 // playlist does: Matroska's durations are ends on the file's clock, which
 // count the start, and the encoder writes only what the video holds.
 func TestReEncodedPlaylistOfAFilmThatStartsLate(t *testing.T) {
-	needFFmpeg(t)
+	testenv.FFmpeg(t)
 	for _, container := range []string{"mkv", "mp4"} {
 		for name, offsets := range map[string][2]string{"video late": {"2", "0"}, "audio late": {"0", "2"}, "all late": {"2", "2"}} {
 			t.Run(container+", "+name, func(t *testing.T) {

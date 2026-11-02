@@ -1,8 +1,27 @@
 #!/usr/bin/env bash
-# Runs Go tests against disposable Postgres, SeaweedFS and Garage, on
-# Docker-assigned ports.
+# Runs every Go test, the integration tier included (build tag integration),
+# against disposable Postgres, SeaweedFS and Garage on Docker-assigned ports.
+# Needs Docker, curl, and ffmpeg with libx264, libx265 and libass, ffprobe, and a font.
+# A test that lacks any of them fails; none is skipped.
+# JELLYSCALE_LOG_DIR keeps the test results (tests.json) after the run.
 set -uo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
+
+missing=()
+for tool in docker ffmpeg ffprobe fc-list curl; do command -v "$tool" >/dev/null || missing+=("$tool"); done
+if [[ ${#missing[@]} -gt 0 ]]; then
+  echo "test/integration.sh needs ${missing[*]} on PATH (it needs docker and curl, ffmpeg and ffprobe built with libx264, libx265 and libass, and fontconfig with a font: fonts-dejavu-core, or font-dejavu on Alpine)" >&2
+  exit 1
+fi
+docker info >/dev/null 2>&1 || { echo "test/integration.sh needs a running Docker daemon for Postgres, SeaweedFS and Garage" >&2; exit 1; }
+encoders=$(ffmpeg -hide_banner -encoders 2>/dev/null)
+filters=$(ffmpeg -hide_banner -filters 2>/dev/null)
+for want in libx264 libx265; do
+  grep -q " $want " <<<"$encoders" || { echo "test/integration.sh needs ffmpeg built with $want" >&2; exit 1; }
+done
+grep -q " subtitles " <<<"$filters" || { echo "test/integration.sh needs ffmpeg built with libass (the subtitles filter)" >&2; exit 1; }
+[[ -n $(fc-list 2>/dev/null) ]] || { echo "test/integration.sh needs a font that fontconfig finds (fc-list lists none): fonts-dejavu-core, or font-dejavu on Alpine" >&2; exit 1; }
+
 work=$(mktemp -d)
 pg=jellyscale-it-pg-$$ sw=jellyscale-it-sw-$$ ga=jellyscale-it-garage-$$
 clean() { docker rm -f "$pg" "$sw" "$ga" >/dev/null 2>&1; rm -rf "$work"; }
@@ -30,4 +49,12 @@ start_seaweed "$sw" "$work" conformance || exit 1
 start_garage "$ga" "$work" conformance || exit 1
 export JELLYSCALE_TEST_S3="seaweedfs=s3://conformance?endpoint=http://127.0.0.1:$seaweed_port&key=$seaweed_key&secret=$seaweed_secret,garage=s3://conformance?endpoint=http://127.0.0.1:$garage_port&region=garage&key=$garage_key&secret=$garage_secret"
 
-cd "$repo" && go test -p 1 -count=1 -timeout 20m "$@" ./...
+# Extra arguments pick tests (-run), so the count of tests is only checked without them.
+cd "$repo" || exit 1
+results=${JELLYSCALE_LOG_DIR:-$work}
+mkdir -p "$results"
+go tool gotestsum --format testname --jsonfile "$results/tests.json" -- -tags integration -p 1 -count=1 -timeout 20m "$@" ./...
+status=$?
+tier=integration; [[ $# -gt 0 ]] && tier=
+bash test/report.sh go "$results/tests.json" "go test (integration tier)" $tier || status=1
+exit $status

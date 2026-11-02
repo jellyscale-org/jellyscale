@@ -5,14 +5,14 @@ A horizontally scalable, Jellyfin-compatible video server in Go. Read [PRODUCT.m
 ## Commands
 
 ```sh
-go test ./...                               # Unit tests
-test/integration.sh                         # Adds Postgres, SeaweedFS, Garage
+go test ./...                               # Tests that need nothing outside Go
+test/integration.sh                         # Every test, with Postgres, SeaweedFS, Garage and real ffmpeg
 test/roles.sh <workdir>                     # Each role as its own process
 test/e2e/run.sh <workdir> <playwright_dir>  # Real jellyfin-web in Chromium
 go run ./cmd/jellyscale --print-routes > compat/endpoints.yaml
 ```
 
-`test/e2e` needs `web-dist` copied from the Jellyfin image and a directory with `playwright-core` installed; see the README.
+Tests that need ffmpeg, Postgres, S3 or a font live in `*_integration_test.go` files tagged `//go:build integration`; the integration tier needs Docker, ffmpeg with libx264, libx265 and libass, and a font. Go tests run through `go tool gotestsum`. `test/e2e` needs `web-dist` copied from the Jellyfin image and a directory with `playwright-core` installed; see the README.
 
 ## Working rules
 
@@ -23,6 +23,7 @@ go run ./cmd/jellyscale --print-routes > compat/endpoints.yaml
 - Tests must be able to fail. When fixing a bug, show the regression test catches it.
 - Concurrency claims need a test with real processes or real contention; a single process proves little.
 - Disposable infrastructure uses Docker-assigned ports. Never connect to a service already running on this machine.
+- A missing dependency fails a test; it never skips one. A CI failure is never fixed by adding a skip.
 - Don't commit or push unless asked.
 
 ## Delivery

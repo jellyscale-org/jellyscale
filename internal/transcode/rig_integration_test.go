@@ -1,3 +1,5 @@
+//go:build integration
+
 package transcode
 
 import (
@@ -6,7 +8,6 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -20,6 +21,8 @@ import (
 	"jellyscale/internal/items"
 	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
+
+	"jellyscale/internal/testenv"
 )
 
 // These tests need a disposable database and ffmpeg; test/integration.sh
@@ -49,14 +52,15 @@ func film(t *testing.T) string {
 		if err != nil {
 			t.Fatal(err)
 		}
-		filmDir = dir
+		testenv.FFmpeg(t)
 		run(t, "ffmpeg", "-nostdin", "-v", "error", "-y",
 			"-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=24:duration=90",
 			"-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=90",
 			"-c:v", "libx264", "-preset", "ultrafast", "-crf", "28", "-g", "240", "-c:a", "aac", filepath.Join(dir, "film.mkv"))
+		filmDir = dir
 	})
 	if filmDir == "" {
-		t.Skip("could not make the film")
+		t.Fatal("the film could not be made; see the first test that asked for it")
 	}
 	return filmDir
 }
@@ -76,11 +80,8 @@ type rig struct {
 
 func newRig(t *testing.T, segments store.Store) *rig {
 	t.Helper()
-	needFFmpeg(t)
-	dsn := os.Getenv("JELLYSCALE_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("JELLYSCALE_TEST_DATABASE_URL not set")
-	}
+	testenv.FFmpeg(t)
+	dsn := testenv.DatabaseURL(t)
 	dir := film(t)
 	pool, err := db.Open(context.Background(), dsn)
 	if err != nil {
@@ -88,7 +89,7 @@ func newRig(t *testing.T, segments store.Store) *rig {
 	}
 	t.Cleanup(pool.Close)
 	r := &rig{dsn: dsn, pool: pool, items: &items.Repo{Pool: pool, ServerID: "srv"}, scratch: t.TempDir(),
-		log: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))}
+		log: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))}
 	if segments == nil {
 		segments = store.NewPosix(t.TempDir())
 	}
@@ -181,9 +182,8 @@ func (r *rig) worker(t *testing.T, change func(*Worker)) (stop func()) {
 // stopping ffmpeg would pass because ffmpeg stopped itself.
 func slow(t *testing.T) {
 	t.Helper()
-	needFFmpeg(t)
 	film(t) // Made at full speed, before the shim is in the way.
-	real, _ := exec.LookPath("ffmpeg")
+	real := testenv.FFmpeg(t)
 	dir := t.TempDir()
 	script := "#!/bin/sh\nexec " + real + " -re \"$@\"\n"
 	if err := os.WriteFile(filepath.Join(dir, "ffmpeg"), []byte(script), 0o755); err != nil {
@@ -267,7 +267,7 @@ func segmentStart(cmdline string) string {
 func s3Segments(t *testing.T) map[string]store.Store {
 	t.Helper()
 	stores := map[string]store.Store{}
-	for _, entry := range strings.Split(os.Getenv("JELLYSCALE_TEST_S3"), ",") {
+	for _, entry := range testenv.S3(t) {
 		name, uri, _ := strings.Cut(entry, "=")
 		if uri == "" {
 			continue

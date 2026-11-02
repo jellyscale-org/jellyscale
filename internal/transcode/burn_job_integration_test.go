@@ -1,21 +1,24 @@
+//go:build integration
+
 package transcode
 
 import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"jellyscale/internal/testenv"
 )
 
 // A worker draws the track its job names, extracting it from the source on the
 // way, and a track it can't read fails the job with the reason and leaves no
 // ffmpeg behind.
 func TestWorkerBurnsTheTrackOrFailsTheJob(t *testing.T) {
-	needFFmpeg(t)
+	testenv.FFmpeg(t)
 	r := newRig(t, nil)
 	r.useBurnFilm(t)
 	r.worker(t, nil)
@@ -49,8 +52,7 @@ func TestWorkerBurnsTheTrackOrFailsTheJob(t *testing.T) {
 	}
 	waitFor(t, "no ffmpeg to be left", 10*time.Second, func() bool { return len(r.ffmpegProcesses()) == 0 })
 
-	// Last, so that a host without a font still checks the failure above.
-	needFont(t)
+	testenv.Font(t)
 	frames := brightByHalf(t, joined)
 	if len(frames) < 3 {
 		t.Fatalf("%d frames", len(frames))
@@ -81,10 +83,9 @@ func (r *rig) useBurnFilm(t *testing.T) {
 // A worker keeps its lease while it extracts a track, which can take minutes,
 // and gives the extraction up, with its slot, when the worker is stopped.
 func TestWorkerHoldsItsLeaseWhileExtracting(t *testing.T) {
-	needFFmpeg(t)
 	r := newRig(t, nil)
 	r.useBurnFilm(t)
-	real, _ := exec.LookPath("ffmpeg")
+	real := testenv.FFmpeg(t)
 	shimDir := t.TempDir()
 	begun := filepath.Join(shimDir, "begun")
 	// Waits only for the extraction, which is the run that writes track files.
@@ -118,7 +119,7 @@ func TestWorkerHoldsItsLeaseWhileExtracting(t *testing.T) {
 // A scratch directory given as a relative path works: ffmpeg runs inside the
 // job's directory when it burns, so the paths it is given can't be relative.
 func TestBurnWithRelativeScratch(t *testing.T) {
-	needFFmpeg(t)
+	testenv.FFmpeg(t)
 	r := newRig(t, nil)
 	r.useBurnFilm(t)
 	// Beside the scratch directory, so the path needs no "..", which would
@@ -136,10 +137,9 @@ func TestBurnWithRelativeScratch(t *testing.T) {
 // A read of the track that outlasts the time after which the sweep takes a
 // scratch directory for abandoned doesn't cost the job its directory.
 func TestBurnSurvivesALongRead(t *testing.T) {
-	needFFmpeg(t)
 	r := newRig(t, nil)
 	r.useBurnFilm(t)
-	real, _ := exec.LookPath("ffmpeg")
+	real := testenv.FFmpeg(t)
 	shimDir := t.TempDir()
 	script := fmt.Sprintf("#!/bin/sh\ncase \"$*\" in *track.vtt*) sleep 3 >/dev/null 2>&1;; esac\nexec %q \"$@\"\n", real)
 	if err := os.WriteFile(filepath.Join(shimDir, "ffmpeg"), []byte(script), 0o755); err != nil {

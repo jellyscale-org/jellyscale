@@ -104,9 +104,10 @@ function noErrors(seen) {
 async function scenario(name, run) {
   if (process.env.E2E_ONLY && !new RegExp(process.env.E2E_ONLY, "i").test(name)) return;
   const v = await viewer();
+  let passed = false;
   try {
     await run(v);
-    console.log(`ok    ${name}`);
+    passed = true;
   } catch (error) {
     const why = error.message.split("\n").filter(Boolean).slice(0, 3).join(" / ");
     failures.push(`${name}: ${why}`);
@@ -115,7 +116,12 @@ async function scenario(name, run) {
   } finally {
     await v.context.close().catch(() => {});
   }
-  await waitFor("ffmpeg to exit between scenarios", async () => ffmpegRuns().length === 0, 90000).catch(() => failures.push(`${name}: ffmpeg still running afterwards`));
+  await waitFor("ffmpeg to exit between scenarios", async () => ffmpegRuns().length === 0, 90000).catch(() => {
+    failures.push(`${name}: ffmpeg still running afterwards`);
+    console.log(`FAIL  ${name}: ffmpeg still running afterwards`);
+    passed = false;
+  });
+  if (passed) console.log(`ok    ${name}`);
 }
 
 const leave = async (page) => {

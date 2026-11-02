@@ -1,3 +1,5 @@
+//go:build integration
+
 package transcode
 
 import (
@@ -14,6 +16,8 @@ import (
 	"jellyscale/internal/library"
 	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
+
+	"jellyscale/internal/testenv"
 )
 
 // copied makes the rig's film a copied stream: its keyframes, read from the
@@ -212,7 +216,7 @@ func TestCopiedStreamWithAWrongIndexFailsAndIsReEncoded(t *testing.T) {
 // index still lists that keyframe, but ffmpeg has no fragment in the last
 // segment. That is an input cut short, which says nothing of the index.
 func TestCopiedMP4CutAtTheLastKeyframeKeepsTheIndex(t *testing.T) {
-	needFFmpeg(t)
+	testenv.FFmpeg(t)
 	dir := film(t)
 	run(t, "ffmpeg", "-nostdin", "-v", "error", "-y", "-i", filepath.Join(dir, "film.mkv"), "-c", "copy", "-movflags", "+faststart", filepath.Join(dir, "faststart.mp4"))
 	cutAtTheLastKeyframe(t, "faststart.mp4", 9)
@@ -220,7 +224,7 @@ func TestCopiedMP4CutAtTheLastKeyframeKeepsTheIndex(t *testing.T) {
 
 // The last group of frames is under 1.5 s, as a film's can be.
 func TestCopiedMP4CutAtAShortLastGroupKeepsTheIndex(t *testing.T) {
-	needFFmpeg(t)
+	testenv.FFmpeg(t)
 	dir := film(t)
 	run(t, "ffmpeg", "-nostdin", "-v", "error", "-y",
 		"-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=24:duration=30",
