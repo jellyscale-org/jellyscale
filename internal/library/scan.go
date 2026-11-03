@@ -572,6 +572,10 @@ func videoDTO(item record, object store.Object, probe Probe) map[string]any {
 		"Formats":              []string{},
 	}}
 	dto["IsFolder"] = false
+	// Jellyfin sends true for a film or episode, for a user allowed to download
+	// (policy EnableContentDownloading, always on here); jellyfin-web shows its
+	// Download entry only then.
+	dto["CanDownload"] = true
 	dto["MediaType"] = "Video"
 	dto["VideoType"] = "VideoFile"
 	dto["Container"] = probe.Container

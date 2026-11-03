@@ -380,3 +380,36 @@ func TestScanLooksAgainOnlyAtTheFileWithoutAnIndex(t *testing.T) {
 		t.Errorf("a file with an index was probed again: first keyframe %v", first)
 	}
 }
+
+// jellyfin-web offers Download only for an item that says CanDownload.
+func TestScannedVideosCanBeDownloaded(t *testing.T) {
+	f := setup(t, "movies")
+	clip(t, filepath.Join(f.media, "Film (2020)", "Film (2020).mkv"))
+	f.scan(t)
+	if !scalar[bool](t, f.pool, "SELECT (dto->>'CanDownload')::boolean FROM items WHERE type = 'Movie'") {
+		t.Fatal("a scanned film says CanDownload false")
+	}
+	if scalar[bool](t, f.pool, "SELECT coalesce(bool_or((dto->>'CanDownload')::boolean), false) FROM items WHERE type <> 'Movie'") {
+		t.Fatal("a folder says CanDownload")
+	}
+}
+
+// Items scanned before CanDownload was true are fixed by the migration.
+func TestMigrationMakesStoredVideosDownloadable(t *testing.T) {
+	f := setup(t, "movies")
+	clip(t, filepath.Join(f.media, "Film (2020)", "Film (2020).mkv"))
+	f.scan(t)
+	if _, err := f.pool.Exec(context.Background(), `UPDATE items SET dto = jsonb_set(dto, '{CanDownload}', 'false')`); err != nil {
+		t.Fatal(err)
+	}
+	sql, err := os.ReadFile("../db/migrations/0009_can_download.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.pool.Exec(context.Background(), string(sql)); err != nil {
+		t.Fatal(err)
+	}
+	if !scalar[bool](t, f.pool, "SELECT (dto->>'CanDownload')::boolean FROM items WHERE type = 'Movie'") {
+		t.Fatal("the stored film is still not downloadable")
+	}
+}

@@ -49,6 +49,7 @@ func (s *Server) Routes() []Route {
 		{Method: "GET", Path: "/Shows/{seriesId}/Episodes", Status: Implemented, Role: RoleAPI, Handler: s.episodes},
 		{Method: "GET", Path: "/Genres", Status: Stub, Role: RoleAPI, Handler: emptyResult},
 		{Method: "GET", Path: "/Studios", Status: Stub, Role: RoleAPI, Handler: emptyResult},
+		{Method: "GET", Path: "/Artists", Status: Stub, Role: RoleAPI, Handler: emptyResult},
 		{Method: "GET", Path: "/Persons", Status: Stub, Role: RoleAPI, Handler: emptyResult},
 
 		// Out of scope: valid empty answers so the web client's home page loads.
@@ -72,6 +73,7 @@ func (s *Server) Routes() []Route {
 		{Method: "GET", Path: "/Videos/{itemId}/{file}", Status: Implemented, Role: RoleStream, Handler: s.stream},
 		{Method: "GET", Path: "/Items/{itemId}/PlaybackInfo", Status: Implemented, Role: RoleAPI, Handler: s.playbackInfo},
 		{Method: "POST", Path: "/Items/{itemId}/PlaybackInfo", Status: Implemented, Role: RoleAPI, Handler: s.playbackInfo},
+		{Method: "GET", Path: "/Items/{itemId}/Download", Status: Implemented, Role: RoleStream, Handler: s.download},
 		{Method: "GET", Path: "/Playback/BitrateTest", Status: Implemented, Role: RoleStream, Handler: s.bitrateTest},
 		{Method: "POST", Path: "/Sessions/Playing", Status: Implemented, Role: RoleAPI, Handler: s.playbackStarted},
 		{Method: "POST", Path: "/Sessions/Playing/Progress", Status: Implemented, Role: RoleAPI, Handler: s.playbackProgress},
@@ -79,6 +81,7 @@ func (s *Server) Routes() []Route {
 		{Method: "POST", Path: "/Sessions/Playing/Ping", Status: Implemented, Role: RoleAPI, Handler: s.playbackPing},
 		{Method: "GET", Path: "/Sessions", Status: Implemented, Role: RoleAPI, Handler: s.listSessions},
 		{Method: "GET", Path: "/socket", Status: Implemented, Role: RoleAPI, Handler: s.socket},
+		{Method: "POST", Path: "/UserItems/{itemId}/UserData", Status: Implemented, Role: RoleAPI, Handler: s.setUserData},
 		{Method: "POST", Path: "/UserPlayedItems/{itemId}", Status: Implemented, Role: RoleAPI, Handler: s.markPlayed(true)},
 		{Method: "DELETE", Path: "/UserPlayedItems/{itemId}", Status: Implemented, Role: RoleAPI, Handler: s.markPlayed(false)},
 		{Method: "POST", Path: "/UserFavoriteItems/{itemId}", Status: Implemented, Role: RoleAPI, Handler: s.markFavorite(true)},
