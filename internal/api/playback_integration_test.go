@@ -208,8 +208,11 @@ func (e *env) do(t *testing.T, replica int, method, path, token string, body any
 	if err != nil {
 		t.Fatal(err)
 	}
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	if token != "" {
-		request.Header.Set("X-Emby-Token", token)
+		request.Header.Set("Authorization", `MediaBrowser Token="`+token+`"`)
 	}
 	for i := 0; i+1 < len(headers); i += 2 {
 		request.Header.Set(headers[i], headers[i+1])

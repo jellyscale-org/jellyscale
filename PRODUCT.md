@@ -63,7 +63,7 @@ Every viewer-visible and operator-visible feature in scope, in one list. Status 
 ### Built
 
 - Browse libraries, items, seasons and episodes, latest and continue watching, and favourites: **done**.
-- Played state through `/UserPlayedItems` and playback reporting: **partial** (writing played state and favourites as one `UserData` record is not built, so offline sync cannot write it; see `phase3`).
+- Played state through `/UserPlayedItems`, `POST /UserItems/{itemId}/UserData` (a partial write of played, position, last played and favourite; a body whose `LastPlayedDate` is older than the stored one cannot undo a newer position or played state, `DOMAINS.md` invariant 49) and playback reporting: **done**.
 - Direct play from POSIX and S3-compatible stores, with ranges and HEAD: **done**.
 - Transcode to H.264 with audio track and bitrate choice, seeks, and text subtitles delivered or burnt in: **done**.
 - Video copy with audio re-encoded (H.264 in MKV and MP4): **done**.
@@ -80,10 +80,9 @@ Every viewer-visible and operator-visible feature in scope, in one list. Status 
 - Image subtitles (PGS, VobSub, DVB) and their burn-in: **not built**. In scope.
 - External subtitle files beside the film: **not built**. In scope.
 - Font attachments for ASS rendering and the subtitle HLS playlist: **not built**. In scope.
-- File download: **not built**. In scope.
+- File download (`GET /Items/{itemId}/Download`, from POSIX and S3 through the direct-play path, on the `stream` role and the ingress's stream rule; items say `CanDownload` true so jellyfin-web offers it): **done**. `Content-Disposition` carries both `filename` and `filename*`, as Jellyfin does. It differs from Jellyfin in answering HEAD like GET (Jellyfin gives 405) and in taking a token in every form the server reads, including `X-Emby-Token` and `api_key`, which Jellyfin 12.4 refuses with 401 (`DOMAINS.md` invariant 49).
 - Chapters (names, positions, chapter images): **not built**. In scope.
-- Client log upload (`POST /ClientLog/Document`, which Android TV uses for crash logs): **not built**. In scope, accepted and discarded, because operators read their own logs (decision).
-- `POST /UserItems/{itemId}/UserData`, which writes played state and favourites as one record (Streamyfin's offline sync; a name match, not a trace): **not built**. In scope. `GET` on the same path is out of scope until something is found that calls it.
+- `POST /UserItems/{itemId}/UserData`, which writes played state and favourites as one record (Streamyfin's offline sync; a name match, not a trace): **done**. `GET` on the same path is out of scope until something is found that calls it.
 
 ### `phase4-ha`
 
@@ -116,7 +115,7 @@ Every viewer-visible and operator-visible feature in scope, in one list. Status 
 - Parental ratings (maximum rating per user, set under `identity` user management): **not built**. In scope here because ratings come from the scan: an item's official rating is read from the file's embedded tags or a sidecar `.nfo`, never fetched. `GET /Localization/ParentalRatings`, which fills the user-edit page's rating list, is built here too. Until then every item is unrated, so a maximum rating filters nothing and `BlockUnratedItems` would hide every film; `identity` therefore answers `POST /Users/{userId}/Policy` with 400 when it sets `MaxParentalRating` or `BlockUnratedItems`, and the control is never presented as working (decision).
 - Multiple versions of a film (4K and 1080p files grouped at scan by file name): **not built**. In scope; merging by hand through the API is a non-goal (decision).
 - Hardware encoding (NVENC and VAAPI): **not built**. In scope; the encoder family is already part of `spec_hash`, per the plan.
-- Empty answers for the music routes global search calls (`GET /Artists`): **not built**. In scope as a stub, because music is a non-goal and an empty list is the final answer.
+- Empty answers for the music routes global search calls (`GET /Artists`): **done**, as a stub, because music is a non-goal and an empty list is the final answer.
 - Media segments and intro skip: **not built**. In scope. Segments come only from data an operator provides or from chapter markers; there is no audio or video fingerprinting (decision).
 - Trickplay: **not built**. In scope; workers generate it.
 - Artwork and synopses from files beside the film (poster and fanart images, `.nfo`) and from embedded tags and cover art: **not built**. In scope; this is the only metadata source (decision). Fetching from remote providers, and editing items, are non-goals below.
@@ -137,6 +136,7 @@ Every viewer-visible and operator-visible feature in scope, in one list. Status 
 
 - Music, photos, audiobooks, channels and Live TV: better tools exist.
 - Plugins and the plugin catalogue.
+- Client log upload (`POST /ClientLog/Document`): answered 404, so Android TV shows its own "Failed to submit document". Accepting a report nobody can read would tell the viewer it reached the operator, and keeping one could store tokens from a crash log (decision).
 - Multi-tenancy.
 - Library, metadata and scheduled-task administration through the dashboard, the setup wizard, and API-driven server configuration; these are declarative configuration.
 - Forgotten-password flows by email or PIN: the operator resets a password, and `POST /Users/ForgotPassword` says so with `ContactAdmin` (decision).
@@ -160,10 +160,10 @@ Every viewer-visible and operator-visible feature in scope, in one list. Status 
 
 Routes still to build, by slice (checked against the rows):
 
-- `phase3`: 6 routes to build
+- `phase3`: 3 routes to build
 - `phase4-ha`: 10 routes to build
 - `identity`: 34 routes to build
-- `phase5-library`: 47 routes to build
+- `phase5-library`: 46 routes to build
 - `phase6-k8s`: 0 routes to build
 - `phase7-syncplay`: 23 routes to build
 

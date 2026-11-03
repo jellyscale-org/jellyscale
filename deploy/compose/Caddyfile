@@ -1,8 +1,8 @@
-# The ingress: media, images and the bitrate test go to the stream role, everything else
+# The ingress: media, images, file downloads and the bitrate test go to the stream role, everything else
 # (WebSocket included) to the api role. Clients vary the case of paths, so the
 # match is case-insensitive.
 :8080 {
-	@stream path_regexp stream (?i)^/(videos/|playback/bitratetest$|items/[^/]+/images(/|$))
+	@stream path_regexp stream (?i)^/(videos/|playback/bitratetest$|items/[^/]+/(images(/|$)|download$))
 	handle @stream {
 		reverse_proxy stream:8096 {
 			flush_interval -1

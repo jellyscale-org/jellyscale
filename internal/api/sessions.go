@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"mime"
 	"net/http"
 	"strconv"
 	"strings"
@@ -13,6 +14,8 @@ import (
 
 	"jellyscale/internal/db"
 	"jellyscale/internal/playstate"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // maxActiveWithin caps ActiveWithinSeconds at about eight years, well inside
@@ -216,11 +219,11 @@ func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
 }
 
 // markPlayed and favorite serve both the current routes and the web aliases.
-// The aliases carry a userId, which is ignored: a caller only ever changes
-// their own data.
+// The aliases carry a userId, which is ignored: they only change the caller's
+// own data.
 func (s *Server) markPlayed(played bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		s.changeUserData(w, r, func(user, item string) (bool, error) {
+		s.changeUserData(w, r, sessionOf(r).User.ID, func(user, item string) (bool, error) {
 			return playstate.SetPlayed(r.Context(), s.Pool, user, item, played)
 		})
 	}
@@ -228,19 +231,18 @@ func (s *Server) markPlayed(played bool) http.HandlerFunc {
 
 func (s *Server) markFavorite(favorite bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		s.changeUserData(w, r, func(user, item string) (bool, error) {
+		s.changeUserData(w, r, sessionOf(r).User.ID, func(user, item string) (bool, error) {
 			return playstate.SetFavorite(r.Context(), s.Pool, user, item, favorite)
 		})
 	}
 }
 
-func (s *Server) changeUserData(w http.ResponseWriter, r *http.Request, change func(user, item string) (bool, error)) {
+func (s *Server) changeUserData(w http.ResponseWriter, r *http.Request, user string, change func(user, item string) (bool, error)) {
 	item := r.PathValue("itemId")
 	if !db.ValidID(item) {
 		http.NotFound(w, r)
 		return
 	}
-	user := sessionOf(r).User.ID
 	found, err := change(user, item)
 	if err != nil {
 		s.fail(w, r, err)
@@ -260,4 +262,79 @@ func (s *Server) changeUserData(w http.ResponseWriter, r *http.Request, change f
 		return
 	}
 	writeJSON(w, data)
+}
+
+// userDataBody is the part of Jellyfin's UserItemDataDto that a write takes.
+// A field the body leaves out stays as it is. PlayedPercentage is derived from
+// the position, so it is read and ignored, as Jellyfin does.
+type userDataBody struct {
+	Played                *bool
+	PlaybackPositionTicks *int64
+	LastPlayedDate        *time.Time
+	IsFavorite            *bool
+}
+
+// setUserData writes the fields the body names, for the caller. Its
+// LastPlayedDate says when the data was true, so a body older than what is
+// stored cannot undo a newer position or played state (see playstate.SetUserData).
+func (s *Server) setUserData(w http.ResponseWriter, r *http.Request) {
+	if kind, _, err := mime.ParseMediaType(r.Header.Get("Content-Type")); err != nil || kind != "application/json" {
+		// Jellyfin's answer, a problem document, for a form or untyped body.
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusUnsupportedMediaType)
+		writeJSON(w, map[string]any{"type": "https://tools.ietf.org/html/rfc9110#section-15.5.16",
+			"title": "Unsupported Media Type", "status": http.StatusUnsupportedMediaType, "traceId": randomHex(8)})
+		return
+	}
+	var body userDataBody
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&body); err != nil {
+		http.Error(w, "invalid body", http.StatusBadRequest)
+		return
+	}
+	if !db.ValidID(r.PathValue("itemId")) {
+		http.Error(w, "invalid item id", http.StatusBadRequest)
+		return
+	}
+	user, ok := s.userDataTarget(w, r)
+	if !ok {
+		return
+	}
+	s.changeUserData(w, r, user, func(user, item string) (bool, error) {
+		return playstate.SetUserData(r.Context(), s.Pool, user, item, playstate.UserDataUpdate{
+			Played: body.Played, Position: body.PlaybackPositionTicks, LastPlayed: body.LastPlayedDate, Favorite: body.IsFavorite})
+	})
+}
+
+// userDataTarget is the user a UserData write is for: the caller, or the one
+// ?userId= names. As in Jellyfin, only an administrator may name someone else,
+// a non-administrator is refused before the user is looked up, and an
+// administrator naming nobody known gets 404.
+func (s *Server) userDataTarget(w http.ResponseWriter, r *http.Request) (string, bool) {
+	caller := sessionOf(r).User
+	named := r.URL.Query().Get("userid")
+	if named == "" {
+		return caller.ID, true
+	}
+	if !db.ValidID(named) {
+		http.Error(w, "invalid user id", http.StatusBadRequest)
+		return "", false
+	}
+	if strings.EqualFold(db.CompactID(named), db.CompactID(caller.ID)) {
+		return caller.ID, true
+	}
+	if !caller.IsAdmin {
+		http.Error(w, "Error processing request.", http.StatusForbidden)
+		return "", false
+	}
+	var id string
+	err := s.Pool.QueryRow(r.Context(), `SELECT id::text FROM users WHERE id = $1::uuid`, named).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		http.NotFound(w, r)
+		return "", false
+	}
+	if err != nil {
+		s.fail(w, r, err)
+		return "", false
+	}
+	return id, true
 }

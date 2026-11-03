@@ -47,7 +47,7 @@ services:
     <<: *app
     command: [--roles=stream, --config=/etc/jellyscale/config.json]
 
-  # Routes /Videos/, /Items/*/Images/ and /Playback/BitrateTest to stream and the rest to api.
+  # Routes /Videos/, /Items/*/Images/, /Items/*/Download and /Playback/BitrateTest to stream and the rest to api.
   ingress:
     image: caddy:2-alpine
     volumes:

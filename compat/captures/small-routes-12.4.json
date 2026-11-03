@@ -1,0 +1,387 @@
+{
+ "about": "Captured from jellyfin/jellyfin:12.4 (server 12.4.0), one movie (a 10 s H.264/AAC MP4) in a Movies library, user 'bob' (not an administrator) driven by curl-like requests. Tokens, user and item ids are placeholders (TOKEN, USER, ADMIN, ITEM). Download bodies are not shown. Jellyfin 12.4 refused the X-Emby-Token header with 401 and took the token from Authorization or ?ApiKey (not ?api_key) on Download. Observed on 2026-11-02. Findings: UserData is a partial write (a field left out stays), stores PlaybackPositionTicks even lower or huge without limit, ignores PlayedPercentage (derived from the position), does not clear the position on Played, counts no play, and an older LastPlayedDate overwrites a newer one. ClientLog accepts at most 1,000,000 bytes (413 above) and a chunked body over it gave 500. A non-administrator who names another user in ?userId gets 403. Also observed 2026-11-02: GET /Items/{id} returns CanDownload true for a film for bob and the admin (the list omits it); the 415 entry was sent with Content-Type application/x-www-form-urlencoded, and no Content-Type also gives 415; Download with an unknown mediaSourceId returns 200 with the film. Also observed 2026-11-02 on UserData ?userId=: as an administrator, naming bob wrote bob's record and returned it; naming an unknown user gave 404; as bob, naming himself gave 200, and naming the administrator or an unknown user gave 403; a malformed id gave 400 for both. Download Content-Disposition for non-ASCII names: attachment; filename=\"Caf_ _n_ (2021).mp4\"; filename*=UTF-8''Caf%C3%A9%20%C3%9Cn%C3%AF%20%282021%29.mp4 (each non-ASCII character an underscore in filename), a double quote in the name is dropped from both forms, a backslash is written as \\\\ in filename and %5C in filename*, and $ + are left unescaped in filename* while ' ; , [ ] are escaped. Deliberate differences in jellyscale: HEAD on Download answers like GET; a far-future LastPlayedDate is held to now; a LastPlayedDate older than the stored one cannot undo a newer position or played state, and an undated write of position or played, or marking unplayed, moves the row's data_at, the time its state was last true, to now (DOMAINS invariant 49); every route accepts a valid token in every form compat.ParseAuth reads, where Jellyfin refused X-Emby-Token and api_key on these routes.",
+ "routes": {
+  "clientLog": [
+   {
+    "request": "POST /ClientLog/Document",
+    "status": 200,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "requestBody": "hello log",
+    "token": "valid",
+    "body": "{\"FileName\":\"upload_cap_1_<yyyyMMddHHmmss>_<32 hex>.log\"}"
+   },
+   {
+    "request": "POST /ClientLog/Document",
+    "status": 200,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "requestBody": "{\"a\":1}",
+    "token": "valid",
+    "body": "{\"FileName\":\"upload_cap_1_<yyyyMMddHHmmss>_<32 hex>.log\"}"
+   },
+   {
+    "request": "POST /ClientLog/Document",
+    "status": 200,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "requestBody": "",
+    "token": "valid",
+    "body": "{\"FileName\":\"upload_cap_1_<yyyyMMddHHmmss>_<32 hex>.log\"}"
+   },
+   {
+    "request": "POST /ClientLog/Document",
+    "status": 401,
+    "headers": {
+     "Content-Length": "0"
+    },
+    "requestBody": "hello",
+    "token": "none"
+   },
+   {
+    "request": "POST /ClientLog/Document (body of 1000000 bytes)",
+    "status": 200,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "token": "valid",
+    "body": "{\"FileName\":\"upload_cap_1_<yyyyMMddHHmmss>_<32 hex>.log\"}"
+   },
+   {
+    "request": "POST /ClientLog/Document (body of 1000001 bytes)",
+    "status": 413,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "token": "valid",
+    "body": "\"Payload must be less than 1,000,000 bytes\""
+   }
+  ],
+  "download": [
+   {
+    "request": "GET /Items/ITEM/Download",
+    "status": 200,
+    "headers": {
+     "Content-Length": "165363",
+     "Content-Type": "video/mp4",
+     "Accept-Ranges": "bytes",
+     "Content-Disposition": "attachment; filename=\"Test (2020).mp4\"; filename*=UTF-8''Test%20%282020%29.mp4"
+    },
+    "token": "valid"
+   },
+   {
+    "request": "GET /Items/ITEM/Download",
+    "status": 206,
+    "headers": {
+     "Content-Length": "100",
+     "Content-Type": "video/mp4",
+     "Accept-Ranges": "bytes",
+     "Content-Range": "bytes 0-99/165363",
+     "Content-Disposition": "attachment; filename=\"Test (2020).mp4\"; filename*=UTF-8''Test%20%282020%29.mp4"
+    },
+    "requestHeaders": {
+     "Range": "bytes=0-99"
+    },
+    "token": "valid"
+   },
+   {
+    "request": "GET /Items/ITEM/Download",
+    "status": 416,
+    "headers": {
+     "Content-Length": "0",
+     "Content-Type": "video/mp4",
+     "Accept-Ranges": "bytes",
+     "Content-Range": "bytes */165363",
+     "Content-Disposition": "attachment; filename=\"Test (2020).mp4\"; filename*=UTF-8''Test%20%282020%29.mp4"
+    },
+    "requestHeaders": {
+     "Range": "bytes=1000000-1000100"
+    },
+    "token": "valid"
+   },
+   {
+    "request": "HEAD /Items/ITEM/Download",
+    "status": 405,
+    "headers": {
+     "Allow": "GET"
+    },
+    "token": "valid"
+   },
+   {
+    "request": "GET /Items/ITEM/Download",
+    "status": 401,
+    "headers": {
+     "Content-Length": "0"
+    },
+    "token": "none"
+   },
+   {
+    "request": "GET /Items/ITEM/Download?ApiKey=TOKEN",
+    "status": 200,
+    "headers": {
+     "Content-Length": "165363",
+     "Content-Type": "video/mp4",
+     "Accept-Ranges": "bytes",
+     "Content-Disposition": "attachment; filename=\"Test (2020).mp4\"; filename*=UTF-8''Test%20%282020%29.mp4"
+    },
+    "token": "none"
+   },
+   {
+    "request": "GET /Items/ITEM/Download?api_key=TOKEN",
+    "status": 401,
+    "headers": {
+     "Content-Length": "0"
+    },
+    "token": "none"
+   },
+   {
+    "request": "GET /Items/00000000000000000000000000000001/Download",
+    "status": 404,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "token": "valid"
+   },
+   {
+    "request": "GET /Items/notanid/Download",
+    "status": 400,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "token": "valid"
+   },
+   {
+    "request": "GET /Items/ITEM/Download?mediaSourceId=00000000000000000000000000000001",
+    "status": 200,
+    "headers": {
+     "Content-Length": "165363",
+     "Content-Type": "video/mp4",
+     "Accept-Ranges": "bytes",
+     "Content-Disposition": "attachment; filename=\"Test (2020).mp4\"; filename*=UTF-8''Test%20%282020%29.mp4"
+    },
+    "token": "valid"
+   }
+  ],
+  "userData": [
+   {
+    "request": "POST /UserItems/ITEM/UserData",
+    "status": 200,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "requestBody": "{\"IsFavorite\":true}",
+    "token": "valid",
+    "body": "{\"PlaybackPositionTicks\":0,\"PlayCount\":0,\"IsFavorite\":true,\"Played\":false,\"Key\":\"<number>\",\"ItemId\":\"ITEM\"}"
+   },
+   {
+    "request": "POST /UserItems/ITEM/UserData",
+    "status": 200,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "requestBody": "{\"PlaybackPositionTicks\":30000000}",
+    "token": "valid",
+    "body": "{\"PlayedPercentage\":30,\"PlaybackPositionTicks\":30000000,\"PlayCount\":0,\"IsFavorite\":true,\"Played\":false,\"Key\":\"<number>\",\"ItemId\":\"ITEM\"}"
+   },
+   {
+    "request": "POST /UserItems/ITEM/UserData",
+    "status": 200,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "requestBody": "{\"Played\":true}",
+    "token": "valid",
+    "body": "{\"PlayedPercentage\":30,\"PlaybackPositionTicks\":30000000,\"PlayCount\":0,\"IsFavorite\":true,\"Played\":true,\"Key\":\"<number>\",\"ItemId\":\"ITEM\"}"
+   },
+   {
+    "request": "POST /UserItems/ITEM/UserData",
+    "status": 200,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "requestBody": "{\"PlaybackPositionTicks\":50000000,\"PlayedPercentage\":50,\"LastPlayedDate\":\"2020-01-01T00:00:00Z\"}",
+    "token": "valid",
+    "body": "{\"PlayedPercentage\":50,\"PlaybackPositionTicks\":50000000,\"PlayCount\":0,\"IsFavorite\":true,\"LastPlayedDate\":\"2020-01-01T00:00:00.0000000Z\",\"Played\":true,\"Key\":\"<number>\",\"ItemId\":\"ITEM\"}"
+   },
+   {
+    "request": "POST /UserItems/ITEM/UserData",
+    "status": 200,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "requestBody": "{\"PlaybackPositionTicks\":10000000}",
+    "token": "valid",
+    "body": "{\"PlayedPercentage\":10,\"PlaybackPositionTicks\":10000000,\"PlayCount\":0,\"IsFavorite\":true,\"LastPlayedDate\":\"2020-01-01T00:00:00.0000000Z\",\"Played\":true,\"Key\":\"<number>\",\"ItemId\":\"ITEM\"}"
+   },
+   {
+    "request": "POST /UserItems/ITEM/UserData",
+    "status": 200,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "requestBody": "{\"Played\":false}",
+    "token": "valid",
+    "body": "{\"PlayedPercentage\":10,\"PlaybackPositionTicks\":10000000,\"PlayCount\":0,\"IsFavorite\":true,\"LastPlayedDate\":\"2020-01-01T00:00:00.0000000Z\",\"Played\":false,\"Key\":\"<number>\",\"ItemId\":\"ITEM\"}"
+   },
+   {
+    "request": "POST /UserItems/ITEM/UserData",
+    "status": 200,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "requestBody": "{\"PlayCount\":5,\"Rating\":3,\"Likes\":true,\"PlaybackPositionTicks\":99999999999}",
+    "token": "valid",
+    "body": "{\"Rating\":3,\"PlayedPercentage\":99999.99999899999,\"PlaybackPositionTicks\":99999999999,\"PlayCount\":5,\"IsFavorite\":true,\"Likes\":false,\"LastPlayedDate\":\"2020-01-01T00:00:00.0000000Z\",\"Played\":false,\"Key\":\"<number>\",\"ItemId\":\"ITEM\"}"
+   },
+   {
+    "request": "POST /UserItems/ITEM/UserData",
+    "status": 200,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "requestBody": "{\"PlayedPercentage\":80}",
+    "token": "valid",
+    "body": "{\"Rating\":3,\"PlayedPercentage\":99999.99999899999,\"PlaybackPositionTicks\":99999999999,\"PlayCount\":5,\"IsFavorite\":true,\"Likes\":false,\"LastPlayedDate\":\"2020-01-01T00:00:00.0000000Z\",\"Played\":false,\"Key\":\"<number>\",\"ItemId\":\"ITEM\"}"
+   },
+   {
+    "request": "POST /UserItems/ITEM/UserData",
+    "status": 200,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "requestBody": "{\"LastPlayedDate\":\"2019-05-05T10:00:00Z\"}",
+    "token": "valid",
+    "body": "{\"Rating\":3,\"PlayedPercentage\":99999.99999899999,\"PlaybackPositionTicks\":99999999999,\"PlayCount\":5,\"IsFavorite\":true,\"Likes\":false,\"LastPlayedDate\":\"2019-05-05T10:00:00.0000000Z\",\"Played\":false,\"Key\":\"<number>\",\"ItemId\":\"ITEM\"}"
+   },
+   {
+    "request": "POST /UserItems/ITEM/UserData",
+    "status": 200,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "requestBody": "{}",
+    "token": "valid",
+    "body": "{\"Rating\":3,\"PlayedPercentage\":99999.99999899999,\"PlaybackPositionTicks\":99999999999,\"PlayCount\":5,\"IsFavorite\":true,\"Likes\":false,\"LastPlayedDate\":\"2019-05-05T10:00:00.0000000Z\",\"Played\":false,\"Key\":\"<number>\",\"ItemId\":\"ITEM\"}"
+   },
+   {
+    "request": "POST /UserItems/ITEM/UserData",
+    "status": 400,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "requestBody": "",
+    "token": "valid",
+    "body": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"\":[\"A non-empty request body is required.\"],\"userDataDto\":[\"The userDataDto field is required.\"]},\"traceId\":\"...\"}"
+   },
+   {
+    "request": "POST /UserItems/ITEM/UserData",
+    "status": 400,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "requestBody": "nonsense",
+    "token": "valid",
+    "body": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"$\":[\"\\u0027nonsense\\u0027 is an invalid JSON literal. Expected the literal \\u0027null\\u0027. Path: $ | LineNumber: 0 | BytePositionInLine: 1.\"],\"userDataDto\":[\"The userDataDto field is required.\"]},\"traceId\":\"...\"}"
+   },
+   {
+    "request": "POST /UserItems/ITEM/UserData",
+    "status": 400,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "requestBody": "{\"Played\":\"x\"}",
+    "token": "valid",
+    "body": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"$\":[\"The JSON value could not be converted to System.Boolean. Path: $ | LineNumber: 0 | BytePositionInLine: 3.\"],\"userDataDto\":[\"The userDataDto field is required.\"]},\"traceId\":\"...\"}"
+   },
+   {
+    "request": "POST /UserItems/00000000000000000000000000000001/UserData",
+    "status": 404,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "requestBody": "{\"IsFavorite\":true}",
+    "token": "valid",
+    "body": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.5\",\"title\":\"Not Found\",\"status\":404,\"traceId\":\"...\"}"
+   },
+   {
+    "request": "POST /UserItems/zzz/UserData",
+    "status": 400,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "requestBody": "{\"IsFavorite\":true}",
+    "token": "valid",
+    "body": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"itemId\":[\"The value \\u0027zzz\\u0027 is not valid.\"]},\"traceId\":\"...\"}"
+   },
+   {
+    "request": "POST /UserItems/ITEM/UserData",
+    "status": 401,
+    "headers": {
+     "Content-Length": "0"
+    },
+    "requestBody": "{\"IsFavorite\":true}",
+    "token": "none"
+   },
+   {
+    "request": "POST /UserItems/ITEM/UserData",
+    "status": 415,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "requestBody": "{\"IsFavorite\":true}",
+    "token": "valid",
+    "body": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.16\",\"title\":\"Unsupported Media Type\",\"status\":415,\"traceId\":\"...\"}"
+   },
+   {
+    "request": "GET /UserItems/ITEM/UserData",
+    "status": 200,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "token": "valid",
+    "body": "{\"Rating\":3,\"PlayedPercentage\":99999.99999899999,\"PlaybackPositionTicks\":99999999999,\"PlayCount\":5,\"IsFavorite\":true,\"Likes\":false,\"LastPlayedDate\":\"2019-05-05T10:00:00.0000000Z\",\"Played\":false,\"Key\":\"<number>\",\"ItemId\":\"ITEM\"}"
+   },
+   {
+    "request": "POST /UserItems/ITEM/UserData?userId=ADMIN",
+    "status": 403,
+    "headers": {
+     "Content-Type": "text/plain"
+    },
+    "requestBody": "{\"IsFavorite\":false}",
+    "token": "valid",
+    "body": "Error processing request."
+   }
+  ],
+  "artists": [
+   {
+    "request": "GET /Artists",
+    "status": 200,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "token": "valid",
+    "body": "{\"Items\":[],\"TotalRecordCount\":0,\"StartIndex\":0}"
+   },
+   {
+    "request": "GET /Artists",
+    "status": 401,
+    "headers": {
+     "Content-Length": "0"
+    },
+    "token": "none"
+   },
+   {
+    "request": "GET /Artists?searchTerm=x&limit=5",
+    "status": 200,
+    "headers": {
+     "Content-Type": "application/json; charset=utf-8"
+    },
+    "token": "valid",
+    "body": "{\"Items\":[],\"TotalRecordCount\":0,\"StartIndex\":0}"
+   }
+  ]
+ }
+}

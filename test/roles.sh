@@ -99,6 +99,22 @@ check "stream role doesn't serve the API" 404 "$(code -H "$header" "127.0.0.1:$s
 check "stream role direct-plays with a token in the query" 206 "$(code -r 0-99 "127.0.0.1:$stream/Videos/$id/stream?ApiKey=$token&Static=true")"
 check "stream role refuses media without a token" 401 "$(code "127.0.0.1:$stream/Videos/$id/stream")"
 check "api role doesn't serve media" 404 "$(code "127.0.0.1:$api1/Videos/$id/stream?ApiKey=$token")"
+# Download: the bytes saved are the file's own, whichever process serves them.
+name=$(curl -s -D - -o "$work/download.bin" "127.0.0.1:$stream/Items/$id/Download?ApiKey=$token" | tr -d '\r' | sed -n 's/^[Cc]ontent-[Dd]isposition: attachment; filename="\?\([^";]*\)"\?.*/\1/p')
+original=$(find "$work/media" -type f -name "$name" | head -1)
+check "a download is the file's own bytes" "same" "$([[ -n $original ]] && cmp -s "$original" "$work/download.bin" && echo same || echo "differs ($name)")"
+rm -f "$work/download.bin"
+check "stream role refuses a download without a token" 401 "$(code "127.0.0.1:$stream/Items/$id/Download")"
+check "api role doesn't serve downloads" 404 "$(code -H "Authorization: MediaBrowser Token=\"$token\"" "127.0.0.1:$api1/Items/$id/Download")"
+# The same download link through the e2e router, which carries the compose Caddyfile's rule.
+router=$(free)
+node "$repo/test/e2e/router.mjs" "$router" "$stream" "$api1,$api2" >>"$logs/roles.log" 2>&1 & pids+=($!)
+for _ in $(seq 1 50); do [[ $(code "127.0.0.1:$router/healthz") != 000 ]] && break; sleep 0.1; done
+check "the ingress sends a download to the stream role" "200 stream" "$(curl -s -o /dev/null -D - "127.0.0.1:$router/Items/$id/Download?ApiKey=$token" | tr -d '\r' | awk 'BEGIN{c=""} /^HTTP/{c=$2} tolower($1)=="x-routed-to:"{r=$2} END{print c, r}')"
+# UserData: written through one api replica, read through the other.
+curl -s -o /dev/null -X POST -H "Authorization: MediaBrowser Token=\"$token\"" -H 'Content-Type: application/json' -d '{"PlaybackPositionTicks":123000000,"IsFavorite":true}' "127.0.0.1:$api1/UserItems/$id/UserData"
+check "UserData written on one replica is read on another" "123000000 True" "$(curl -s -H "$header" "127.0.0.1:$api2/Items/$id" |
+  python3 -I -c 'import json,sys;d=json.load(sys.stdin)["UserData"];print(d["PlaybackPositionTicks"],d["IsFavorite"])')"
 check "wrong password is refused" 401 "$(code -X POST "127.0.0.1:$api1/Users/AuthenticateByName" -H 'Content-Type: application/json' -d '{"Username":"admin","Pw":"no"}')"
 check "invalid token is refused" 401 "$(code -H 'X-Emby-Token: nope' "127.0.0.1:$api1/Users/Me")"
 check "audio routes aren't served" 404 "$(code -H "$header" "127.0.0.1:$api1/Audio/$id/stream")"

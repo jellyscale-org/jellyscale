@@ -1,5 +1,5 @@
 // A small reverse proxy standing in for the production ingress.
-// Media and images go to the stream replica; everything else, WebSocket
+// Media, images and file downloads go to the stream replica; everything else, WebSocket
 // included, round-robins across the api replicas. Paths match case-insensitively.
 // Usage: node router.mjs <listen_port> <stream_port> <api_port>[,<api_port>...]
 import http from "node:http";
@@ -9,7 +9,7 @@ const [listenPort, streamPort, apiPorts] = process.argv.slice(2);
 const apis = apiPorts.split(",").map(Number);
 let next = 0;
 
-const isStreamPath = (url) => /^\/(videos\/|playback\/bitratetest(\?|$)|items\/[^/]+\/images(\/|\?|$))/i.test(url);
+const isStreamPath = (url) => /^\/(videos\/|playback\/bitratetest(\?|$)|items\/[^/]+\/(images(\/|\?|$)|download(\?|$)))/i.test(url);
 
 function pick(url) {
   if (isStreamPath(url)) return { port: Number(streamPort), name: "stream" };

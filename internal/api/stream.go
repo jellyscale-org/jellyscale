@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"path"
@@ -32,6 +33,20 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	s.serveFile(w, r, false)
+}
+
+// download sends an item's file to be saved, through the same path as direct
+// play. Jellyfin refuses HEAD here; this answers it like GET, harmlessly.
+func (s *Server) download(w http.ResponseWriter, r *http.Request) {
+	if !db.ValidID(r.PathValue("itemId")) {
+		http.Error(w, "invalid item id", http.StatusBadRequest)
+		return
+	}
+	s.serveFile(w, r, true)
+}
+
+func (s *Server) serveFile(w http.ResponseWriter, r *http.Request, attachment bool) {
 	itemID := r.PathValue("itemId")
 	sourceID := r.URL.Query().Get("mediasourceid")
 	if !db.ValidID(itemID) || (sourceID != "" && !db.ValidID(sourceID)) {
@@ -39,6 +54,11 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	source, found, err := s.Items.Source(r.Context(), itemID, sourceID)
+	if err == nil && !found && attachment && sourceID != "" {
+		// Jellyfin sends the item's own file when the source id matches none, and
+		// a saved-file link has no better answer than that.
+		source, found, err = s.Items.Source(r.Context(), itemID, "")
+	}
 	if err != nil {
 		s.fail(w, r, err)
 		return
@@ -52,7 +72,38 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
+	if attachment {
+		w.Header().Set("Content-Disposition", contentDisposition(path.Base(source.Key)))
+	}
 	s.serveSource(w, r, media, source)
+}
+
+// contentDisposition is Jellyfin's form: an ASCII fallback with each other
+// character as an underscore, and the real name percent-encoded after it.
+func contentDisposition(name string) string {
+	var fallback, encoded strings.Builder
+	for _, r := range name {
+		switch {
+		case r == '"':
+			// Jellyfin 12.4 drops it from both forms.
+			continue
+		case r > 0x7e || r < 0x20:
+			fallback.WriteByte('_')
+		case r == '\\':
+			fallback.WriteByte('\\')
+			fallback.WriteRune(r)
+		default:
+			fallback.WriteRune(r)
+		}
+		if r < 0x80 && (r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("!#$&+-.^_`|~", r)) {
+			encoded.WriteRune(r)
+			continue
+		}
+		for _, b := range []byte(string(r)) {
+			fmt.Fprintf(&encoded, "%%%02X", b)
+		}
+	}
+	return `attachment; filename="` + fallback.String() + `"; filename*=UTF-8''` + encoded.String()
 }
 
 // serveSource answers Range, If-Range and HEAD from the store. The reader
@@ -88,7 +139,7 @@ func (s *Server) serveSource(w http.ResponseWriter, r *http.Request, media store
 		if errors.Is(err, store.ErrNotFound) {
 			status = http.StatusNotFound
 		}
-		for _, name := range []string{"Content-Range", "Content-Length", "Accept-Ranges", "ETag", "Content-Type"} {
+		for _, name := range []string{"Content-Range", "Content-Length", "Accept-Ranges", "ETag", "Content-Type", "Content-Disposition"} {
 			w.Header().Del(name)
 		}
 		http.Error(lazy.ResponseWriter, http.StatusText(status), status)

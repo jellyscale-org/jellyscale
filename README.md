@@ -15,10 +15,10 @@ One binary, chosen with `--roles`:
 | Role | Serves |
 |---|---|
 | `api` | REST API, WebSocket |
-| `stream` | Images, direct-play media, HLS playlists and segments, subtitles |
+| `stream` | Images, direct-play media, file downloads, HLS playlists and segments, subtitles |
 | `worker` | Library scans, transcodes, subtitle extraction |
 
-`--roles=all` runs everything in one process. Paths under `/Videos/` and `/Items/*/Images/`, and `/Playback/BitrateTest` (case-insensitive), belong on `stream`, and everything else on `api`. [`deploy/compose/Caddyfile`](deploy/compose/Caddyfile) and `test/e2e/router.mjs` do this.
+`--roles=all` runs everything in one process. Paths under `/Videos/`, `/Items/*/Images/` and `/Items/*/Download`, and `/Playback/BitrateTest` (case-insensitive), belong on `stream`, and everything else on `api`. [`deploy/compose/Caddyfile`](deploy/compose/Caddyfile) and `test/e2e/router.mjs` do this.
 
 ## Transcoding
 
