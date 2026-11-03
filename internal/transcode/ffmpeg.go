@@ -95,7 +95,12 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		if err := os.WriteFile(filepath.Join(dir, "subtitles.ass"), []byte(subs.Delay(ass, base)), 0o644); err != nil {
 			return nil, err
 		}
-		subtitles = ",subtitles=subtitles.ass"
+		// The film's fonts, if the worker put any in fonts, draw the track as they
+		// do in the player; libass looks in the system's for the rest.
+		if err := os.MkdirAll(filepath.Join(dir, "fonts"), 0o755); err != nil {
+			return nil, err
+		}
+		subtitles = ",subtitles=subtitles.ass:fontsdir=fonts"
 	}
 	args = append(args,
 		// Frames the decoder marks interlaced are deinterlaced, since the output

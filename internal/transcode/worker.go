@@ -3,9 +3,12 @@ package transcode
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log/slog"
 	"math"
@@ -197,6 +200,9 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		return err
 	}
 	film := playback.Source{RunTimeTicks: source.RunTimeTicks, Streams: streams}
+	if job.Spec.Subtitle != nil && film.SubtitleFingerprint(*job.Spec.Subtitle) != job.Spec.SubtitleFingerprint {
+		return errors.New("the subtitle file has changed or is gone")
+	}
 	if job.Spec.Copy {
 		if film.Keyframes, film.VideoEnd, err = w.Items.Keyframes(ctx, source.ID); err != nil {
 			return err
@@ -226,9 +232,9 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	// The first burn of a track reads the whole file, here, before ffmpeg
 	// starts; it is cached for every job after.
 	var ass string
+	var assets store.Store
 	if job.Spec.Subtitle != nil {
-		assets, err := w.Media(source.AssetStoreURI)
-		if err != nil {
+		if assets, err = w.Media(source.AssetStoreURI); err != nil {
 			return err
 		}
 		if ass, err = w.extractSubtitle(ctx, job, log, source, assets); err != nil {
@@ -242,6 +248,18 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		return err
 	}
 	defer os.RemoveAll(dir)
+	// Only ASS and SSA name fonts; the others are drawn in the default one.
+	if job.Spec.Subtitle != nil && (film.SubtitleCodec(*job.Spec.Subtitle) == "ass" || film.SubtitleCodec(*job.Spec.Subtitle) == "ssa") {
+		// The segments are kept under a hash that doesn't name the fonts, so a
+		// burn drawn without them is what every viewer gets for 24 hours. Any
+		// failure here (a store error, a signal, a full disk, a lost lease, no
+		// worker) may pass, so it fails this job, to be asked for again. A film
+		// whose fonts can never be taken out is not a failure: the fonts job
+		// records it as having none (subtitles.FillFonts), and the burn goes on.
+		if err := w.putFonts(ctx, job, log, source, assets, filepath.Join(dir, "fonts")); err != nil {
+			return fmt.Errorf("fonts of the film: %w", err)
+		}
+	}
 	var cmd *exec.Cmd
 	var gather *gatherer
 	if job.Spec.Copy {
@@ -372,28 +390,31 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 }
 
 // extractSubtitle returns the job's subtitle track as ASS. Burning shares the
-// track's extraction with everyone who asks for it (see FetchSubtitle), which
-// can take minutes, so it keeps the lease alive meanwhile, and stops waiting
-// when the job is lost or nobody wants it, so it doesn't hold a slot for a
-// cancelled job.
+// track's extraction with everyone who asks for it (see FetchSubtitle).
 func (w *Worker) extractSubtitle(ctx context.Context, job claimed, log *slog.Logger, source items.Source, assets store.Store) (string, error) {
+	var track subtitles.Track
+	err := w.awaitJob(ctx, job, log, func(ctx context.Context) (err error) {
+		track, err = FetchSubtitle(ctx, w.Pool, w.Hub, assets, job.Spec.Item, source, *job.Spec.Subtitle)
+		return err
+	})
+	return track.ASS, err
+}
+
+// awaitJob runs fetch, which waits for a subtitle job (the track, or the film's
+// fonts), which can take minutes. It keeps the lease alive meanwhile, and stops
+// waiting when the job is lost or nobody wants it, so it doesn't hold a slot
+// for a cancelled job.
+func (w *Worker) awaitJob(ctx context.Context, job claimed, log *slog.Logger, fetch func(ctx context.Context) error) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	type result struct {
-		track subtitles.Track
-		err   error
-	}
-	done := make(chan result, 1)
-	go func() {
-		track, err := FetchSubtitle(ctx, w.Pool, w.Hub, assets, job.Spec.Item, source, *job.Spec.Subtitle)
-		done <- result{track, err}
-	}()
+	done := make(chan error, 1)
+	go func() { done <- fetch(ctx) }()
 	beat := time.NewTicker(w.heartbeat())
 	defer beat.Stop()
 	for {
 		select {
-		case r := <-done:
-			return r.track.ASS, r.err
+		case err := <-done:
+			return err
 		case <-beat.C:
 			alive, wanted, err := w.beat(ctx, job)
 			switch {
@@ -402,12 +423,12 @@ func (w *Worker) extractSubtitle(ctx context.Context, job claimed, log *slog.Log
 			case !alive:
 				cancel()
 				<-done
-				return "", fmt.Errorf("%w: %s", errInterrupted, w.lostReason(context.WithoutCancel(ctx), job))
+				return fmt.Errorf("%w: %s", errInterrupted, w.lostReason(context.WithoutCancel(ctx), job))
 			case !wanted:
 				cancel()
 				<-done
 				w.Pool.Exec(context.WithoutCancel(ctx), "UPDATE transcode_jobs SET state = 'cancelled' WHERE id = $1 AND state = 'running'", job.ID) //nolint:errcheck
-				return "", fmt.Errorf("%w: no viewer is watching", errInterrupted)
+				return fmt.Errorf("%w: no viewer is watching", errInterrupted)
 			}
 		}
 	}
@@ -619,5 +640,102 @@ func (w *Worker) deleteUnused(ctx context.Context, hash string, retention float6
 		}
 		w.Log.Info("deleted the segments of an unused spec", "spec", hash, "segments", len(objects))
 		return nil
+	})
+}
+
+// putFonts puts the fonts attached to the film in dir, for libass to draw a
+// burnt-in track with, as the player draws a track it renders itself. It waits
+// for the film's fonts job, which takes them out of the film once for everyone
+// (see FetchFonts); a film with none has none.
+func (w *Worker) putFonts(ctx context.Context, job claimed, log *slog.Logger, source items.Source, assets store.Store, dir string) error {
+	if len(subtitles.Fonts(source)) == 0 {
+		return nil
+	}
+	var hashes map[int]string
+	err := w.awaitJob(ctx, job, log, func(ctx context.Context) (err error) {
+		hashes, err = FetchFonts(ctx, w.Pool, w.Hub, assets, job.Spec.Item, source)
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	restored := false
+	for index, sum := range hashes {
+		path := filepath.Join(dir, strconv.Itoa(index))
+		err := copyFont(ctx, assets, sum, path)
+		if errors.Is(err, errBadFont) {
+			// Cut short or changed in the store. Taken out so the fonts job
+			// puts a whole one in its place instead of finding this one there.
+			if err := assets.Delete(ctx, subtitles.FontKey(sum)); err != nil {
+				return err
+			}
+			err = store.ErrNotFound
+		}
+		if errors.Is(err, store.ErrNotFound) && !restored {
+			// A burn-in viewer never asks for the font itself, so nobody else
+			// would put it back. Run the fonts job again and burn with what it
+			// restores; segments are kept for every viewer, so a burn without
+			// the font must not be served.
+			restored = true
+			if err := w.restoreFonts(ctx, job, log, source, assets); err != nil {
+				return err
+			}
+			fonts, _, readErr := subtitles.ReadFonts(ctx, assets, source)
+			if readErr != nil {
+				return readErr
+			}
+			sum, ok := fonts[index]
+			if !ok {
+				continue
+			}
+			err = copyFont(ctx, assets, sum, path)
+		}
+		if errors.Is(err, errBadFont) {
+			// Left for the next burn to restore; this one must not draw with it.
+			err = errors.Join(err, assets.Delete(ctx, subtitles.FontKey(sum)))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var errBadFont = errors.New("a font in the store does not match its hash")
+
+// copyFont copies the font stored under its SHA-256 sum to path, and fails with
+// errBadFont if the bytes read are not the ones the sum names.
+func copyFont(ctx context.Context, assets store.Store, sum, path string) error {
+	body, err := assets.Open(ctx, subtitles.FontKey(sum), 0)
+	if err != nil {
+		return err
+	}
+	defer body.Close()
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	hash := sha256.New()
+	_, err = io.Copy(io.MultiWriter(file, hash), body)
+	if err = errors.Join(err, file.Close()); err != nil {
+		return err
+	}
+	if hex.EncodeToString(hash.Sum(nil)) != sum {
+		return errBadFont
+	}
+	return nil
+}
+
+// restoreFonts runs the film's fonts job again, because a font it stored is
+// gone, and waits for it like putFonts waits for the first run.
+func (w *Worker) restoreFonts(ctx context.Context, job claimed, log *slog.Logger, source items.Source, assets store.Store) error {
+	if err := StartFonts(ctx, w.Pool, assets, job.Spec.Item, source, true); err != nil {
+		return err
+	}
+	return w.awaitJob(ctx, job, log, func(ctx context.Context) error {
+		return awaitJob(ctx, w.Pool, w.Hub, subtitleJob{Key: subtitles.FontsKey(source.ID, source.ETag), Kind: "fonts", Item: job.Spec.Item, Source: source.ID})
 	})
 }

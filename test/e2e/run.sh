@@ -146,6 +146,14 @@ sub="$work/media/transcode"
 "$work/putfile" "s3://e2e/media?$s3" "Chi Film (2038)/Chi Film (2038).mkv" "$sub/Sigma Film (2034)/Sigma Film (2034).mkv" || exit 1
 "$work/putfile" "s3://e2e/media?$s3" "Psi Film (2039)/Psi Film (2039).mkv" "$sub/Tau Film (2035)/Tau Film (2035).mkv" || exit 1
 "$work/putfile" "s3://e2e/media?$s3" "Omega Film (2040)/Omega Film (2040).mkv" "$sub/Phi Film (2037)/Phi Film (2037).mkv" || exit 1
+# And the films with their subtitles in files beside them: the files go to S3
+# too, where the scan finds them by listing.
+for pair in "Direct Sub Film (2060)|Beside Direct Film (2065)" "Transcode Sub Film (2061)|Beside Transcode Film (2066)" "Burn Sub Film (2062)|Beside Burn Film (2067)"; do
+  from=${pair%%|*} to=${pair##*|}
+  for ext in mkv en.srt ja.ass; do
+    "$work/putfile" "s3://e2e/media?$s3" "$to/$to.$ext" "$sub/$from/$from.$ext" || exit 1
+  done
+done
 
 free() { python3 -I -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])'; }
 export JELLYSCALE_DATABASE_URL="postgres://postgres:e2e@127.0.0.1:$port/postgres" JELLYSCALE_ADMIN_PASSWORD=e2e-pass
@@ -162,8 +170,9 @@ mkdir -p "$work/bin"
 speed="-readrate 2"
 [[ -n ${E2E_NO_SHIM:-} ]] && speed="-hide_banner"
 # Only the transcode (the one that writes HLS) is slowed; extracting a subtitle
-# track reads the whole file and would take as long as the film.
-printf '#!/bin/sh\necho "$(date +%%T) $*" >>%s\ncase "$*" in *"-f hls"*) exec %s %s "$@";; esac\nexec %s "$@"\n' "$logs/ffmpeg.log" "$(command -v ffmpeg)" "$speed" "$(command -v ffmpeg)" >"$work/bin/ffmpeg"
+# track reads the whole file and would take as long as the film. Taking the
+# fonts out of "Cracked Fonts Film" fails as a film ffmpeg rejects does.
+printf '#!/bin/sh\necho "$(date +%%T) $*" >>%s\ncase "$*" in *-dump_attachment*"Cracked Fonts"*) echo "Invalid data found when processing input" >&2; exit 1;; esac\ncase "$*" in *"-f hls"*) exec %s %s "$@";; esac\nexec %s "$@"\n' "$logs/ffmpeg.log" "$(command -v ffmpeg)" "$speed" "$(command -v ffmpeg)" >"$work/bin/ffmpeg"
 chmod +x "$work/bin/ffmpeg"
 PATH="$work/bin:$PATH" "$work/jellyscale" --roles=worker --config "$work/config-s3.json" >>"$logs/server.log" 2>&1 &
 pids+=($!)
@@ -193,7 +202,7 @@ for _ in $(seq 1 120); do [[ $(grep -c 'scan finished' "$logs/server.log") -ge 4
 base="http://127.0.0.1:$router"
 cp "$repo/test/e2e/browse.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/transcode.mjs" "$repo/test/e2e/subtitles.mjs" "$playwright/"
 result=0
-export E2E_SCRATCH="$work/scratch" E2E_MEDIA="$work/media/transcode" E2E_PG="$pg" E2E_LOG="$logs/server.log"
+export E2E_SCRATCH="$work/scratch" E2E_MEDIA="$work/media/transcode" E2E_ASSETS="$work/assets/transcode" E2E_PG="$pg" E2E_LOG="$logs/server.log"
 # The transcode gate ends by killing the worker, so subtitles run before it.
 for gate in ${E2E_GATES:-browse play subtitles transcode}; do
   echo "=== $gate"

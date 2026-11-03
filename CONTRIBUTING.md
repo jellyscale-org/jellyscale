@@ -19,6 +19,7 @@ These were each seen on a developer machine, have not recurred on demand, and ha
 
 - `ffmpeg made no segment in 30s` on the copied 1080p film. The e2e log also shows this message from a scenario that freezes ffmpeg on purpose; that one is expected.
 - `a bitrate cap re-encodes a film that would be copied` timed out in `leave()`. jellyfin-web sends no Stopped while changing stream, and the test now waits for the switch, but the failure was not reproduced, so that isn't shown to be the cause. `leave()` also waits for the player page now: going back before it is ready leaves the film playing and sends no Stopped, the same symptom. That failure can be forced by delaying the page's chunk, and a timeout reports where the page and video were.
+- `S3 burn-in of subtitle files beside the film` (test/e2e/subtitles.mjs) timed out once in three full runs at the seek to 30 s after choosing track 2; the server log showed that seek's job stopped as "no viewer is watching" and no later job started. Six runs of that scenario alone (`E2E_GATES=subtitles E2E_ONLY="S3 burn-in of subtitle files"`) and six of all four burn-in scenarios (`E2E_ONLY="burn-in"`) all passed, so it is not reproduced and its cause is unknown. Nothing was changed for it. If it recurs, keep `server.log` and `ffmpeg.log` from `$JELLYSCALE_LOG_DIR`.
 
 ## Rules
 

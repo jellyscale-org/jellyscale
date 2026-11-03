@@ -144,6 +144,15 @@ func (r *Repo) hydrate(ctx context.Context, ids []string, userID string, fields 
 		compact := db.CompactID(id)
 		dto["Id"] = compact
 		dto["ServerId"] = r.ServerID
+		// A font is listed only once it is stored (invariant 32), which takes a
+		// look in the asset store that a list of items or sessions can't afford.
+		// Item details and PlaybackInfo make that look and list the fonts.
+		sources, _ := dto["MediaSources"].([]any)
+		for _, entry := range sources {
+			if source, ok := entry.(map[string]any); ok {
+				source["MediaAttachments"] = []any{}
+			}
+		}
 		if fields != nil {
 			for key, enabledBy := range optional {
 				if enabledBy == "" || !fields[enabledBy] {

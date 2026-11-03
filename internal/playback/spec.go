@@ -63,10 +63,16 @@ func ParseParams(query url.Values, source Source) (Params, error) {
 	}
 	if raw := query.Get("subtitlestreamindex"); raw != "" && raw != "-1" {
 		index, err := strconv.Atoi(raw)
-		if err != nil || !source.TextSubtitle(index) {
+		switch {
+		case err == nil && source.Unreadable(index):
+			// A file a worker found it can't read, after this URL was made. The
+			// film plays without it, as it would for a client that asks again,
+			// rather than failing every segment for the rest of the session.
+		case err != nil || !source.TextSubtitle(index):
 			return p, errors.New("SubtitleStreamIndex is not a text subtitle stream")
+		default:
+			p.Subtitle = &index
 		}
-		p.Subtitle = &index
 	}
 	if raw := query.Get("audiostreamindex"); raw != "" {
 		index, err := strconv.Atoi(raw)
@@ -133,16 +139,19 @@ func isHex(s string) bool {
 // source's own size, and a bitrate estimated from its file, none of which
 // change the output; Copy does, so the two kinds never share segments.
 type Spec struct {
-	Item         string
-	Source       string
-	ETag         string
-	AudioIndex   int
-	Subtitle     *int // Drawn into the picture; nil for none
-	VideoBitrate int64
-	AudioBitrate int64
-	Width        int
-	Height       int
-	Copy         bool
+	Item       string
+	Source     string
+	ETag       string
+	AudioIndex int
+	Subtitle   *int // Drawn into the picture; nil for none
+	// SubtitleFingerprint is the fingerprint of the subtitle file when the track is one
+	// beside the film, so an edited file is drawn anew.
+	SubtitleFingerprint string
+	VideoBitrate        int64
+	AudioBitrate        int64
+	Width               int
+	Height              int
+	Copy                bool
 }
 
 // NewSpec turns validated parameters into the output they ask for.
@@ -165,9 +174,13 @@ func NewSpec(item string, p Params, source Source) (Spec, error) {
 		}, nil
 	}
 	width, height := outputSize(video, p.VideoBitrate)
+	subtitleFingerprint := ""
+	if p.Subtitle != nil {
+		subtitleFingerprint = source.SubtitleFingerprint(*p.Subtitle)
+	}
 	return Spec{
 		Item: strings.ReplaceAll(strings.ToLower(item), "-", ""), Source: p.SourceID, ETag: source.ETag,
-		AudioIndex: p.AudioIndex, Subtitle: p.Subtitle, AudioBitrate: p.AudioBitrate, Width: width, Height: height,
+		AudioIndex: p.AudioIndex, Subtitle: p.Subtitle, SubtitleFingerprint: subtitleFingerprint, AudioBitrate: p.AudioBitrate, Width: width, Height: height,
 		// Six bits per pixel per second is about what 8-bit H.264 needs at its
 		// worst, so a larger cap buys nothing.
 		VideoBitrate: min(p.VideoBitrate, int64(width)*int64(height)*6),
@@ -180,6 +193,11 @@ func (s Spec) Hash() string {
 		OutputVersion, s.Item, s.Source, s.ETag, s.AudioIndex, s.VideoBitrate, s.AudioBitrate, s.Width, s.Height, SegmentSeconds, Family)
 	if s.Subtitle != nil {
 		text += fmt.Sprintf("|sub%d", *s.Subtitle)
+		// Only a track beside the film has one, so the hash of a track inside
+		// it is what it was before these existed.
+		if s.SubtitleFingerprint != "" {
+			text += "|subfile" + s.SubtitleFingerprint
+		}
 	}
 	if s.Copy {
 		text += "|copy"

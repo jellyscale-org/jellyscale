@@ -67,9 +67,17 @@ func (s *Server) Routes() []Route {
 		{Method: "GET", Path: "/Videos/{itemId}/main.m3u8", Status: Implemented, Role: RoleStream, Handler: s.mainPlaylist},
 		// Jellyfin's pattern is hls1/{playlistId}/{segmentId}.{container}; the
 		// handler splits the file name, since patterns can't match part of one.
-		{Method: "GET", Path: "/Videos/{itemId}/hls1/{playlistId}/{segmentId}", Status: Implemented, Role: RoleStream, Handler: s.hlsSegment},
+		// The only playlist is main, and naming it keeps this pattern from
+		// overlapping the attachments one below, which Go's mux refuses.
+		{Method: "GET", Path: "/Videos/{itemId}/hls1/main/{segmentId}", Status: Implemented, Role: RoleStream, Handler: s.hlsSegment},
 		{Method: "DELETE", Path: "/Videos/ActiveEncodings", Status: Implemented, Role: RoleStream, Handler: s.deleteActiveEncodings},
 		{Method: "GET", Path: "/Videos/{itemId}/{sourceId}/Subtitles/{index}/{startPositionTicks}/{file}", Status: Implemented, Role: RoleStream, Handler: s.subtitleStream},
+		// Without a start offset the name is Stream.{format}, or subtitles.m3u8,
+		// the playlist of segments that are requests for Stream.vtt.
+		{Method: "GET", Path: "/Videos/{itemId}/{sourceId}/Subtitles/{index}/{file}", Status: Implemented, Role: RoleStream, Handler: s.subtitleStream},
+		// jellyfin-web fetches the fonts for ASS from the DeliveryUrl of a media
+		// source's attachment, which carries the token (Jellyfin's does not).
+		{Method: "GET", Path: "/Videos/{itemId}/{sourceId}/Attachments/{index}", Status: Implemented, Role: RoleStream, Handler: s.attachment},
 		{Method: "GET", Path: "/Videos/{itemId}/{file}", Status: Implemented, Role: RoleStream, Handler: s.stream},
 		{Method: "GET", Path: "/Items/{itemId}/PlaybackInfo", Status: Implemented, Role: RoleAPI, Handler: s.playbackInfo},
 		{Method: "POST", Path: "/Items/{itemId}/PlaybackInfo", Status: Implemented, Role: RoleAPI, Handler: s.playbackInfo},

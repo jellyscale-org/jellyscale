@@ -1,9 +1,11 @@
 // Phase 3 gate: unmodified jellyfin-web shows text subtitles, from POSIX and S3,
 // on direct play and on a transcode, and draws them into the picture when the
-// viewer's settings ask for it. Needs the stack test/e2e/run.sh starts.
+// viewer's settings ask for it. The tracks are in the film or in files beside
+// it, and ASS is drawn in the fonts attached to the film. Needs the stack test/e2e/run.sh starts.
 // Usage: E2E_SCRATCH=<worker scratch dir> E2E_PG=<postgres container> node subtitles.mjs <base_url> <user> <password>
 // Run from a directory with playwright-core installed.
 import { execFileSync } from "node:child_process";
+import { existsSync, readdirSync, rmSync, statSync, truncateSync } from "node:fs";
 import { createRequire } from "node:module";
 
 const require = createRequire(`${process.cwd()}/`);
@@ -21,6 +23,7 @@ const failures = [];
 
 const sql = (text) => execFileSync("docker", ["exec", process.env.E2E_PG, "psql", "-U", "postgres", "-Atc", text]).toString().trim();
 const jobCount = () => Number(sql("SELECT count(*) FROM transcode_jobs"));
+const subtitleJobCount = () => Number(sql("SELECT count(*) FROM subtitle_jobs"));
 
 // The worker's ffmpeg processes, read from the process table.
 function ffmpegRuns() {
@@ -45,7 +48,7 @@ async function login(page) {
 async function viewer() {
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const page = await context.newPage();
-  const seen = { infos: [], playlists: [], subtitles: [], configs: 0, deletes: [], errors: [] };
+  const seen = { infos: [], playlists: [], subtitles: [], attachments: [], configs: 0, deletes: [], errors: [] };
   page.on("pageerror", (error) => seen.errors.push(error.message));
   page.on("request", (request) => {
     if (request.method() === "DELETE" && /ActiveEncodings/i.test(request.url())) seen.deletes.push(request.url());
@@ -57,6 +60,9 @@ async function viewer() {
     if (/\.m3u8$/i.test(url.pathname)) seen.playlists.push(url.pathname + url.search);
     if (/\/Subtitles\//i.test(url.pathname)) {
       seen.subtitles.push({ status: response.status(), type: response.headers()["content-type"], path: url.pathname, index: Number(url.pathname.split("/")[5]) });
+    }
+    if (/\/Attachments\/\d+$/i.test(url.pathname)) {
+      seen.attachments.push({ status: response.status(), type: response.headers()["content-type"], path: url.pathname, bytes: (await response.body().catch(() => Buffer.alloc(0))).length });
     }
     if (/\/System\/Configuration\/encoding$/i.test(url.pathname) && response.status() === 200) seen.configs++;
     if (response.request().method() === "POST" && /\/PlaybackInfo$/i.test(url.pathname)) {
@@ -202,8 +208,12 @@ const assPixels = (page) => page.evaluate(() => {
 
 // SubRip and ASS tracks listed, picked and shown, with no new PlaybackInfo, no
 // job and no playlist request for the pick.
-function clientRendered(name, library, title, transcoded) {
+// With beside set the two tracks are files next to the film (an English SubRip
+// and a Japanese ASS file), which a worker converts when the player first asks:
+// one subtitle job each, and none for picking them again.
+function clientRendered(name, library, title, transcoded, beside = false) {
   return scenario(name, async ({ page, seen }) => {
+    const subtitleJobs0 = subtitleJobCount();
     await play(page, library, title);
     const source = seen.infos.at(-1).source;
     if (transcoded !== Boolean(source.TranscodingUrl)) throw new Error(`transcoded should be ${transcoded}: ${source.TranscodingUrl}`);
@@ -213,6 +223,9 @@ function clientRendered(name, library, title, transcoded) {
       !/^\/Videos\/[0-9a-f-]{36}\/[0-9a-f]{32}\/Subtitles\/2\/0\/Stream\.vtt\?ApiKey=\w+$/i.test(srt.DeliveryUrl) ||
       !/\/Subtitles\/3\/0\/Stream\.ass\?ApiKey=\w+$/i.test(ass.DeliveryUrl)) {
       throw new Error(`tracks: ${JSON.stringify(tracks)}`);
+    }
+    if (beside && (!srt.IsExternal || srt.Language !== "eng" || srt.DisplayTitle !== "English - SUBRIP - External" || !ass.IsExternal || ass.Language !== "jpn" || ass.DisplayTitle !== "Japanese - ASS - External")) {
+      throw new Error(`files beside the film: ${JSON.stringify([srt, ass])}`);
     }
     await advances(page, 3);
     await pickSubtitle(page, -1); // Whatever the client started with, begin from off.
@@ -237,6 +250,7 @@ function clientRendered(name, library, title, transcoded) {
     await seek(page, 18);
     await waitFor("ASS text gone between cues", async () => (await assPixels(page)) === 0);
 
+    if (beside && subtitleJobCount() - subtitleJobs0 !== 2) throw new Error(`two files should be two subtitle jobs, not ${subtitleJobCount() - subtitleJobs0}`);
     if (seen.infos.length !== infos || jobCount() !== jobs || seen.playlists.length !== playlists) {
       throw new Error(`picking subtitles caused work: ${seen.infos.length - infos} PlaybackInfo, ${jobCount() - jobs} jobs, ${seen.playlists.length - playlists} playlists`);
     }
@@ -250,6 +264,107 @@ await clientRendered("POSIX direct play: SubRip and ASS tracks show, and picking
 await clientRendered("POSIX transcode: SubRip and ASS tracks show, and picking makes no PlaybackInfo, job or playlist", "Transcode", "Tau Film", true);
 await clientRendered("S3 direct play: SubRip and ASS tracks show", "Cloud", "Chi Film", false);
 await clientRendered("S3 transcode: SubRip and ASS tracks show", "Cloud", "Psi Film", true);
+
+await clientRendered("POSIX direct play, subtitle files beside the film: SubRip and ASS tracks show, and picking makes no PlaybackInfo, job or playlist", "Transcode", "Direct Sub Film", false, true);
+await clientRendered("POSIX transcode, subtitle files beside the film: SubRip and ASS tracks show", "Transcode", "Transcode Sub Film", true, true);
+await clientRendered("S3 direct play, subtitle files beside the film: SubRip and ASS tracks show", "Cloud", "Beside Direct Film", false, true);
+await clientRendered("S3 transcode, subtitle files beside the film: SubRip and ASS tracks show", "Cloud", "Beside Transcode Film", true, true);
+
+// The ASS track names a font the renderer doesn't have. With the font attached
+// to the film, jellyfin-web fetches it from the DeliveryUrl in MediaAttachments
+// and the renderer draws the text in it; without, in its fallback, which is
+// wider or narrower, so the pixels it covers differ. A film's fonts are listed
+// once a worker has stored them, which PlaybackInfo starts, so the first play
+// of a film draws in the fallback.
+async function drawn(page, seen, title) {
+  const asked = seen.attachments.length;
+  await play(page, "Transcode", title);
+  await pickSubtitle(page, 2);
+  await seek(page, 5);
+  await waitFor("ASS text drawn", async () => (await assPixels(page)) > 100);
+  await new Promise((resolve) => setTimeout(resolve, 500)); // Fonts load after the first draw.
+  const pixels = await assPixels(page);
+  await leave(page);
+  return { pixels, fonts: seen.attachments.slice(asked) };
+}
+const fontsJobDone = (title) => waitFor(`the fonts job of ${title}`, async () =>
+  Number(sql(`SELECT count(*) FROM subtitle_jobs j JOIN items i ON replace(i.id::text, '-', '') = replace(j.item_id, '-', '') WHERE j.kind = 'fonts' AND j.state = 'done' AND i.name = '${title}'`)) === 1);
+// The fallback draws the same line to the pixel on every run and host (19058
+// here and in CI), but an attached serif may cover only 8% more or less than
+// it (DejaVu Serif on Ubuntu), so "the same" has to be close.
+const sameText = (a, b) => Math.abs(a - b) < 0.02 * b;
+let plain;
+
+await scenario("ASS is drawn in the fallback font on the first play of a film with fonts, and in the attached font after", async ({ page, seen }) => {
+  plain = (await drawn(page, seen, "Plain Film")).pixels;
+  const first = await drawn(page, seen, "Font Film");
+  if (first.fonts.length) throw new Error(`a font was listed before it was stored: ${JSON.stringify(first.fonts)}`);
+  if (!sameText(first.pixels, plain)) throw new Error(`the first play covers ${first.pixels} pixels, the fallback ${plain}`);
+  await fontsJobDone("Font Film");
+  const later = await drawn(page, seen, "Font Film");
+  const [font] = later.fonts;
+  if (later.fonts.length !== 1 || font.status !== 200 || font.type !== "font/ttf" || font.bytes < 10000) throw new Error(`the font: ${JSON.stringify(later.fonts)}`);
+  if (sameText(later.pixels, plain)) throw new Error(`the text covers ${plain} pixels without the font and ${later.pixels} with it`);
+  noErrors(seen);
+});
+
+await scenario("a film whose fonts job failed for good is never listed fonts, and ASS is drawn in the fallback", async ({ page, seen }) => {
+  const first = await drawn(page, seen, "Cracked Fonts Film");
+  await fontsJobDone("Cracked Fonts Film");
+  const later = await drawn(page, seen, "Cracked Fonts Film");
+  if (first.fonts.length || later.fonts.length) throw new Error(`fonts were listed: ${JSON.stringify([...first.fonts, ...later.fonts])}`);
+  if (!sameText(first.pixels, plain) || !sameText(later.pixels, plain)) throw new Error(`the text covers ${first.pixels} and ${later.pixels} pixels, the fallback ${plain}`);
+  noErrors(seen);
+});
+
+// The font's object is gone from the asset store while the film lists it. The
+// attachment is answered with an empty font, the track is drawn in the fallback, and the font
+// is put back for the next play.
+await scenario("a listed font gone from the store: ASS is still drawn, and the font comes back", async ({ page, seen }) => {
+  await drawn(page, seen, "Vanishing Fonts Film");
+  await fontsJobDone("Vanishing Fonts Film");
+  const held = await drawn(page, seen, "Vanishing Fonts Film");
+  if (held.fonts.length !== 1 || held.fonts[0].status !== 200) throw new Error(`the font: ${JSON.stringify(held.fonts)}`);
+  const objects = `${process.env.E2E_ASSETS}/fonts`;
+  const [name, ...others] = readdirSync(objects);
+  if (!name || others.length) throw new Error(`font objects: ${[name, ...others]}`);
+  rmSync(`${objects}/${name}`);
+  // A viewer who holds the font is told 304 without the store being read, so the
+  // lost font is met by one who doesn't: a browser with a cache of its own.
+  const other = await viewer();
+  let lost;
+  try {
+    lost = await drawn(other.page, other.seen, "Vanishing Fonts Film");
+  } finally {
+    await other.context.close().catch(() => {});
+  }
+  if (lost.fonts.length !== 1 || lost.fonts[0].status !== 200 || lost.fonts[0].bytes !== 0) throw new Error(`the lost font: ${JSON.stringify(lost.fonts)}`);
+  if (!sameText(lost.pixels, plain)) throw new Error(`the text covers ${lost.pixels} pixels, the fallback ${plain}`);
+  await waitFor("the font put back", async () => existsSync(`${objects}/${name}`));
+  const back = await drawn(page, seen, "Vanishing Fonts Film");
+  if (back.fonts.length !== 1 || back.fonts[0].status !== 200 || sameText(back.pixels, plain)) throw new Error(`after it came back: ${JSON.stringify(back.fonts)}, ${back.pixels} pixels`);
+  noErrors(seen);
+});
+
+// The store gives back half of the font, as an S3 that ends a body early does.
+// The route answers with the empty font of a lost one, not a cut font or an error.
+await scenario("a listed font cut short by the store: ASS is still drawn", async ({ page, seen }) => {
+  const objects = `${process.env.E2E_ASSETS}/fonts`;
+  const [name, ...others] = readdirSync(objects);
+  if (!name || others.length) throw new Error(`font objects: ${[name, ...others]}`);
+  truncateSync(`${objects}/${name}`, statSync(`${objects}/${name}`).size / 2);
+  // A fresh viewer: one who holds the font is told 304 without the store being read.
+  const other = await viewer();
+  let cut;
+  try {
+    cut = await drawn(other.page, other.seen, "Vanishing Fonts Film");
+  } finally {
+    await other.context.close().catch(() => {});
+  }
+  if (cut.fonts.length !== 1 || cut.fonts[0].status !== 200 || cut.fonts[0].bytes !== 0) throw new Error(`the cut font: ${JSON.stringify(cut.fonts)}`);
+  if (!sameText(cut.pixels, plain)) throw new Error(`the text covers ${cut.pixels} pixels, the fallback ${plain}`);
+  noErrors(seen);
+});
 
 await scenario("a film with only image subtitles plays as before and lists none", async ({ page, seen }) => {
   await play(page, "Transcode", "Upsilon Film");
@@ -333,6 +448,8 @@ function burnedIn(name, library, title) {
 
 await burnedIn("POSIX burn-in: text is in the picture at the right time, after far seeks and track changes", "Transcode", "Phi Film");
 await burnedIn("S3 burn-in: text is in the picture at the right time, after far seeks and track changes", "Cloud", "Omega Film");
+await burnedIn("POSIX burn-in of subtitle files beside the film: text is in the picture at the right time", "Transcode", "Burn Sub Film");
+await burnedIn("S3 burn-in of subtitle files beside the film: text is in the picture at the right time", "Cloud", "Beside Burn Film");
 
 await browser.close();
 if (failures.length) {
