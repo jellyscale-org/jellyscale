@@ -289,7 +289,10 @@ async function drawn(page, seen, title) {
 }
 const fontsJobDone = (title) => waitFor(`the fonts job of ${title}`, async () =>
   Number(sql(`SELECT count(*) FROM subtitle_jobs j JOIN items i ON replace(i.id::text, '-', '') = replace(j.item_id, '-', '') WHERE j.kind = 'fonts' AND j.state = 'done' AND i.name = '${title}'`)) === 1);
-const sameText = (a, b) => Math.abs(a - b) < 0.1 * b;
+// The fallback draws the same line to the pixel on every run and host (19058
+// here and in CI), but an attached serif may cover only 8% more or less than
+// it (DejaVu Serif on Ubuntu), so "the same" has to be close.
+const sameText = (a, b) => Math.abs(a - b) < 0.02 * b;
 let plain;
 
 await scenario("ASS is drawn in the fallback font on the first play of a film with fonts, and in the attached font after", async ({ page, seen }) => {
