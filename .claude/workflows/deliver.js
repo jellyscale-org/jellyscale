@@ -52,7 +52,7 @@ const SNAPSHOT = {
 // snapshot, not just this run's fixes.
 // designReview: false skips the review before building, for a fix pass on work
 // whose design has been reviewed.
-const { task, acceptance = [], tests = [], ux = false, maxRounds = 3, roleFiles = false, base: earlierBase, designReview = true } = args
+const { task, acceptance = [], tests = [], ux = false, maxRounds = 2, roleFiles = false, base: earlierBase, designReview = true } = args
 if (!task) throw new Error('deliver needs args.task')
 
 const criteria = acceptance.map((line) => `- ${line}`).join('\n')
@@ -67,9 +67,9 @@ const MODELS = {
   implementer: { model: 'sonnet' },
   'architecture-reviewer': { model: 'sonnet' },
   'adversarial-reviewer': { model: 'sonnet' },
-  qa: { model: 'haiku', effort: 'max' },
-  'product-reviewer': { model: 'haiku', effort: 'max' },
-  'ux-reviewer': { model: 'haiku', effort: 'max' },
+  qa: { model: 'haiku', effort: 'high' },
+  'product-reviewer': { model: 'haiku', effort: 'high' },
+  'ux-reviewer': { model: 'haiku', effort: 'high' },
 }
 const roleOptions = (role) => ({ agentType: roleFiles ? 'general-purpose' : role, ...MODELS[role] })
 const rolePrefix = (role) => (roleFiles
@@ -84,9 +84,15 @@ const snapshot = async (label) => {
   return result.tree
 }
 
+// What a review costs is mostly the context it rereads on every tool call, and
+// Haiku bills a prompt over 100K tokens at five times the rate. Long logs read
+// whole were most of the bill, so every reviewer keeps output out of its context.
+const economy = 'Keep your context small. Send command output to a file under your export and read it with grep or tail, never whole. Stop when each finding has its evidence. Report every blocker and major, and at most three minors.'
+
 // Reviewers get the task, the diff range and the docs. The implementer's report
 // is deliberately absent, and each reviewer runs without seeing the others.
-const reviewers = (base, head) => {
+// A later round reviews fixes, so QA reruns what the fixes touch, not everything.
+const reviewers = (base, head, round = 1) => {
   // The brief reads as instructions to implement, so say plainly that a reviewer
   // isn't to carry them out. Parallel reviewers share one working tree.
   const diff = `Someone else has already done the task above. You are reviewing it, not doing it: never edit, stash or mutate the working tree. Inspect the change with \`git diff ${base} ${head}\`, between two tree snapshots, so nothing is committed. To build, test or mutate, use your own export: \`git archive ${head} | tar -x -C <dir in your scratchpad>\`, plus a symlink to web-dist for the e2e test. /tmp has a small quota: use test media no larger than you need, and delete your export and media before you finish.`
@@ -94,13 +100,19 @@ const reviewers = (base, head) => {
     { key: 'architecture', agentType: 'architecture-reviewer', focus: 'Decide whether this is the right design, now that it is built.' },
     { key: 'adversarial-1', agentType: 'adversarial-reviewer', focus: 'Concentrate on failure: concurrency across replicas, partial failure, disconnects and resource leaks.' },
     { key: 'adversarial-2', agentType: 'adversarial-reviewer', focus: 'Concentrate on correctness and trust: client input, protocol behavior against the evidence in the task, security, and whether the tests can really fail. Also check this is the simplest code that does the job.' },
-    { key: 'qa', agentType: 'qa', focus: 'Run everything and check each acceptance criterion.' },
-    { key: 'product', agentType: 'product-reviewer', focus: 'Check the change against PRODUCT.md and the task.' },
+    {
+      key: 'qa',
+      agentType: 'qa',
+      focus: round === 1
+        ? 'Run the test commands once and check each acceptance criterion.'
+        : 'This round reviews fixes to work you saw before. Run the tests of the packages and gates the fixes touch, and recheck the criteria they affect; run a full suite only if the fixes reach across packages.',
+    },
+    { key: 'product', agentType: 'product-reviewer', focus: 'Check the change against PRODUCT.md and the task, by reading. Run no tests and no browser.' },
   ]
-  if (ux) roles.push({ key: 'ux', agentType: 'ux-reviewer', focus: 'Review what viewers and operators experience.' })
+  if (ux) roles.push({ key: 'ux', agentType: 'ux-reviewer', focus: 'Review what viewers and operators experience. Check the affected flow in jellyfin-web once if you need to see it; run no test suite.' })
   return roles.map((role) => ({
     ...role,
-    prompt: `${brief}\n\n${diff}\n\n${role.focus}`,
+    prompt: `${brief}\n\n${diff}\n\n${role.focus} ${economy}`,
   }))
 }
 
@@ -186,7 +198,7 @@ for (let round = 1; round <= maxRounds; round++) {
   // Architecture and both adversarial reviewers always return, so fix code gets
   // the same scrutiny as the original.
   const again = new Set(['qa', 'architecture', 'adversarial-1', 'adversarial-2', ...open.map((finding) => finding.reviewer), ...unreviewed])
-  roles = reviewers(base, head).filter((role) => again.has(role.key))
+  roles = reviewers(base, head, round + 1).filter((role) => again.has(role.key))
 }
 
 const minor = history.flatMap((round) => round.findings).filter((finding) => finding.severity === 'minor')
