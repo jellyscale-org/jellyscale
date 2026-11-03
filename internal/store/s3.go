@@ -123,15 +123,20 @@ func (w *whole) Read(p []byte) (int, error) {
 	return n, err
 }
 
-// Put buffers the body, because signing needs a seekable payload. Bodies are
+// Put sends the body. Signing needs a seekable payload, so a body that is one
+// (a font read from a file) is streamed, and any other is buffered: those are
 // images and segments, not media.
 func (s *S3) Put(ctx context.Context, key string, body io.Reader) error {
-	data, err := io.ReadAll(body)
-	if err != nil {
-		return err
+	seekable, ok := body.(io.ReadSeeker)
+	if !ok {
+		data, err := io.ReadAll(body)
+		if err != nil {
+			return err
+		}
+		seekable = bytes.NewReader(data)
 	}
 	objectKey := s.objectKey(key)
-	_, err = s.client.PutObject(ctx, &s3.PutObjectInput{Bucket: &s.bucket, Key: &objectKey, Body: bytes.NewReader(data)})
+	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{Bucket: &s.bucket, Key: &objectKey, Body: seekable})
 	if err != nil {
 		return fmt.Errorf("put %s: %w", key, err)
 	}

@@ -79,6 +79,11 @@ check() { # name want got
     bash "$repo/test/report.sh" fail test/roles.sh "${BASH_LINENO[0]}" "roles" "$1: want $2, got $3"
   fi
 }
+# The scans listed the subtitle files and fonts beside films, and converted and
+# extracted none of them: the runs counted are those of extractions, which write
+# track files, and the fonts' are the only ones that dump attachments.
+check "the scans ran no subtitle extraction or conversion" 0 "$(wc -l <"$work/bin/runs")"
+check "the scans took no font out of a film" 0 "$(grep -c -e '-dump_attachment' "$logs/ffmpeg.log")"
 code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 
 for pid in "${pids[@]}"; do kill -0 "$pid" 2>/dev/null || check "a process exited at startup" running exited; done
@@ -148,6 +153,32 @@ check "that was the other track, so a second extraction" 2 "$(wc -l <"$work/bin/
 check "no extension is not found" 404 "$(code "127.0.0.1:$counted1/Videos/$sigma/$sigma/Subtitles/3/0/Stream?ApiKey=$token")"
 check "subtitles need a token" 401 "$(code "127.0.0.1:$counted1/Videos/$sigma/$sigma/Subtitles/3/0/Stream.vtt")"
 check "the api role doesn't serve subtitles" 404 "$(code "127.0.0.1:$api1/Videos/$sigma/$sigma/Subtitles/3/0/Stream.vtt?ApiKey=$token")"
+
+# Subtitle files beside a film are converted, and the fonts attached to one taken
+# out, by a worker's job when somebody asks, once each. A stream replica with no
+# ffmpeg serves the results from the asset store.
+sql() { docker exec "$pg" psql -U postgres -Atc "$1"; }
+find_film() { curl -s -H "$header" "127.0.0.1:$api2/Items?Recursive=true&IncludeItemTypes=Movie&SearchTerm=$1" |
+  python3 -I -c 'import json,sys;print(json.load(sys.stdin)["Items"][0]["Id"])'; }
+beside=$(find_film "Direct%20Sub")
+fontfilm=$(find_film "Font%20Film")
+jobs_before=$(sql "SELECT count(*) FROM subtitle_jobs")
+runs_before_beside=$(wc -l <"$work/bin/runs")
+check "a subtitle file beside the film is served by a stream replica with no ffmpeg" "200 text/vtt 1" "$(curl -s -o "$work/beside.vtt" -w '%{http_code} %{content_type} ' "127.0.0.1:$counted1/Videos/$beside/$beside/Subtitles/2/0/Stream.vtt?ApiKey=$token"; grep -c '^English line 1$' "$work/beside.vtt")"
+check "its ASS file keeps its style" 1 "$(curl -s "127.0.0.1:$counted2/Videos/$beside/$beside/Subtitles/3/0/Stream.ass?ApiKey=$token" | grep -c 'Style: Loud,Arial,64,&H0000FF00')"
+check "each file was converted by one job" "$((jobs_before + 2))" "$(sql "SELECT count(*) FROM subtitle_jobs")"
+check "each was converted by one worker ffmpeg run" "$((runs_before_beside + 2))" "$(wc -l <"$work/bin/runs")"
+check "asked again, the file is served from the asset store" "200 $((jobs_before + 2)) $((runs_before_beside + 2))" "$(code "127.0.0.1:$counted2/Videos/$beside/$beside/Subtitles/2/0/Stream.vtt?ApiKey=$token") $(sql "SELECT count(*) FROM subtitle_jobs") $(wc -l <"$work/bin/runs")"
+listed() { curl -s -H "$header" "127.0.0.1:$api2/Items/$fontfilm" | python3 -I -c 'import json,sys;print(",".join(str(a["Index"]) for a in json.load(sys.stdin)["MediaSources"][0]["MediaAttachments"]))'; }
+check "a font is not listed before a worker has taken it out" "" "$(listed)"
+curl -s -o /dev/null -X POST -H "$header" -H 'Content-Type: application/json' -d '{}' "127.0.0.1:$api2/Items/$fontfilm/PlaybackInfo"
+for _ in $(seq 60); do attachment=$(listed); [[ -n $attachment ]] && break; sleep 0.5; done
+check "PlaybackInfo has a worker take the font out, and it is listed then" "yes" "$([[ -n $attachment ]] && echo yes)"
+check "the font needs a token" 401 "$(code "127.0.0.1:$counted1/Videos/$fontfilm/$fontfilm/Attachments/$attachment")"
+check "the font is served by a stream replica with no ffmpeg" "200 font/ttf same" "$(curl -s -o "$work/font.bin" -w '%{http_code} %{content_type} ' "127.0.0.1:$counted1/Videos/$fontfilm/$fontfilm/Attachments/$attachment?ApiKey=$token"; cmp -s "$work/font.bin" "$(fc-match -f '%{file}' serif)" && echo same || echo differs)"
+check "a worker took the fonts out of the film once" "1 1" "$(sql "SELECT count(*) FROM subtitle_jobs WHERE kind = 'fonts'") $(grep -c -e '-dump_attachment' "$logs/ffmpeg.log")"
+check "a stream that is no attachment is not found" 404 "$(code "127.0.0.1:$counted1/Videos/$fontfilm/$fontfilm/Attachments/0?ApiKey=$token")"
+check "the api role doesn't serve fonts" 404 "$(code "127.0.0.1:$api1/Videos/$fontfilm/$fontfilm/Attachments/$attachment?ApiKey=$token")"
 check "the api role serves the encoding configuration" 200 "$(code -H "$header" "127.0.0.1:$api1/System/Configuration/encoding")"
 
 # A worker killed outright in the middle of an extraction loses nothing: its
@@ -155,7 +186,6 @@ check "the api role serves the encoding configuration" 200 "$(code -H "$header" 
 # track for the request that is still waiting.
 tau=$(curl -s -H "$header" "127.0.0.1:$api2/Items?Recursive=true&IncludeItemTypes=Movie&SearchTerm=Tau" |
   python3 -I -c 'import json,sys;print(json.load(sys.stdin)["Items"][0]["Id"])')
-sql() { docker exec "$pg" psql -U postgres -Atc "$1"; }
 runs_before=$(wc -l <"$work/bin/runs")
 touch "$work/bin/hold"
 (curl -s -o "$work/tau.vtt" -w '%{http_code}' "127.0.0.1:$counted1/Videos/$tau/$tau/Subtitles/2/0/Stream.vtt?ApiKey=$token" >"$work/tau.code") &

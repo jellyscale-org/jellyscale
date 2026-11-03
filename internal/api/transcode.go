@@ -120,7 +120,7 @@ func (s *Server) hlsSegment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	n, valid := playback.ParseSegment(r.PathValue("segmentId"), req.layout.Count())
-	if r.PathValue("playlistId") != "main" || !valid {
+	if !valid {
 		http.NotFound(w, r)
 		return
 	}

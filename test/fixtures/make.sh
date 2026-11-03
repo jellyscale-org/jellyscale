@@ -78,3 +78,41 @@ if [[ ! -f $upsilon ]]; then
     -map 0:v -map 1:a -map 2 -c:v libx264 -preset ultrafast -c:a aac -c:s ass "$upsilon"
   LC_ALL=C sed -i 's/S_TEXT\/ASS/S_HDMV\/PGS/' "$upsilon"
 fi
+
+# Films whose subtitles are files beside them, named as Jellyfin reads them:
+# an English SubRip and a Japanese ASS file, which come out as streams 2 and 3.
+# Direct plays with AAC, transcodes with AC3, and the black one burn-in shows
+# against, as the films above.
+beside() { # name audio_codec picture srt ass
+  local dir="$root/transcode/$1" video="$root/transcode/$1/$1.mkv"
+  mkdir -p "$dir"
+  [[ -f $video ]] || ffmpeg -nostdin -v error -y -f lavfi -i "$3" -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=120" \
+    -map 0:v -map 1:a -c:v libx264 -preset ultrafast -crf 30 -g 48 -c:a "$2" -metadata:s:a:0 language=eng "$video"
+  cp "$4" "$dir/$1.en.srt"
+  cp "$5" "$dir/$1.ja.ass"
+}
+beside "Direct Sub Film (2060)" aac "$testsrc" "$tmp/lines.srt" "$tmp/lines.ass"
+beside "Transcode Sub Film (2061)" ac3 "$testsrc" "$tmp/lines.srt" "$tmp/lines.ass"
+beside "Burn Sub Film (2062)" aac "color=c=black:size=640x360:rate=24:duration=120" "$tmp/place.srt" "$tmp/place.ass"
+
+# Two films with the same ASS track in a font that jellyfin-web's renderer
+# doesn't have (the system's serif), one with the font attached and one without.
+font=$(fc-match -f '%{file}' serif)
+family=$(fc-match -f '%{family[0]}' serif)
+{
+  echo "${ass_head//Arial/$family}"
+  printf 'Dialogue: 0,0:00:01.00,0:00:24.00,Low,,0,0,0,,Wide Font Test MWmw\n'
+} >"$tmp/font.ass"
+fontfilm() { # name [output options]
+  local video="$root/transcode/$1/$1.mkv"
+  mkdir -p "$(dirname "$video")"
+  [[ -f $video ]] || ffmpeg -nostdin -v error -y -f lavfi -i "color=c=black:size=640x360:rate=24:duration=30" \
+    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=30" -i "$tmp/font.ass" \
+    -map 0:v -map 1:a -map 2 -c:v libx264 -preset ultrafast -g 48 -c:a aac -c:s ass -metadata:s:s:0 language=jpn "${@:2}" "$video"
+}
+fontfilm "Font Film (2063)" -attach "$font" -metadata:s:t:0 mimetype=font/ttf
+fontfilm "Plain Film (2064)"
+# The same film twice more: one whose fonts job the e2e worker's ffmpeg fails
+# for good (test/e2e/run.sh), and one whose font the gate takes from the store.
+fontfilm "Cracked Fonts Film (2068)" -attach "$font" -metadata:s:t:0 mimetype=font/ttf
+fontfilm "Vanishing Fonts Film (2069)" -attach "$font" -metadata:s:t:0 mimetype=font/ttf

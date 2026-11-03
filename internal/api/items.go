@@ -192,14 +192,26 @@ func (s *Server) getItem(w http.ResponseWriter, r *http.Request) {
 }
 
 // hideUndeliverable drops the text tracks from an item's DTO that no worker is
-// there to extract (invariant 32). The DTO lists the first source's streams
+// there to extract, and the fonts not stored yet (invariant 32). The DTO lists the first source's streams
 // twice, in MediaStreams and in MediaSources.
 func (s *Server) hideUndeliverable(ctx context.Context, itemID string, dto map[string]any) error {
 	sources, _ := dto["MediaSources"].([]any)
+	stored, _, err := s.Items.MediaSources(ctx, itemID)
+	if err != nil {
+		return err
+	}
 	for i, entry := range sources {
 		source, _ := entry.(map[string]any)
+		// The repo leaves no attachments in a DTO; the stored ones are the
+		// candidates for listFonts.
+		if k := slices.IndexFunc(stored, func(s map[string]any) bool { return s["Id"] == source["Id"] }); k >= 0 {
+			source["MediaAttachments"] = stored[k]["MediaAttachments"]
+		}
 		deliverable, err := s.deliverable(ctx, itemID, source)
 		if err != nil {
+			return err
+		}
+		if err := s.listFonts(ctx, itemID, source, false); err != nil {
 			return err
 		}
 		streams, _ := source["MediaStreams"].([]any)

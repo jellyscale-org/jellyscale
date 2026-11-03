@@ -5,6 +5,7 @@ package transcode
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"jellyscale/internal/playback"
@@ -131,5 +132,24 @@ func TestBurnedSubtitleIsAtTheRightTime(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// The filter that draws the track looks for fonts where the worker puts the
+// film's, which are kept per job.
+func TestBurnFilterLooksInTheFontsDirectory(t *testing.T) {
+	testenv.FFmpeg(t)
+	input := filepath.Join(t.TempDir(), "black.mkv")
+	run(t, "ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=black:size=640x360:rate=24:duration=2",
+		"-c:v", "libx264", "-preset", "ultrafast", input)
+	index := 2
+	spec := testSpec
+	spec.Subtitle = &index
+	cmd, err := Command(context.Background(), input, spec, 0, t.TempDir(), burnTrack)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if args := strings.Join(cmd.Args, " "); !strings.Contains(args, "subtitles=subtitles.ass:fontsdir=fonts") {
+		t.Errorf("the filter does not look in the fonts directory: %s", args)
 	}
 }

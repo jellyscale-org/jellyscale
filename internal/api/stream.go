@@ -262,6 +262,11 @@ func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
 		if source["MediaAttachments"] == nil {
 			source["MediaAttachments"] = []any{}
 		}
+		if err := s.listFonts(r.Context(), id, source, true); err != nil {
+			s.fail(w, r, err)
+			return
+		}
+		deliverAttachments(source, id, sessionOf(r).Token)
 		if source["Formats"] == nil {
 			source["Formats"] = []any{}
 		}
@@ -392,15 +397,19 @@ func offerTranscoding(source map[string]any, storedStreams []byte) error {
 	}
 	// The DTO's own entries are kept as they are: the stored ones carry what
 	// the decision needs and the item page never showed.
-	listed := map[int]any{}
+	type position struct {
+		kind  any
+		index int
+	}
+	listed := map[position]any{}
 	current, _ := source["MediaStreams"].([]any)
 	for _, entry := range current {
 		stream, _ := entry.(map[string]any)
-		listed[int(number(stream["Index"]))] = entry
+		listed[position{stream["Type"], int(number(stream["Index"]))}] = entry
 	}
 	streams := []any{}
 	for _, stream := range all {
-		if entry, ok := listed[int(number(stream["Index"]))]; ok {
+		if entry, ok := listed[position{stream["Type"], int(number(stream["Index"]))}]; ok {
 			streams = append(streams, entry)
 		} else if stream["Type"] == "Audio" {
 			streams = append(streams, stream)

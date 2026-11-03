@@ -124,6 +124,12 @@ type Stream struct {
 	// IsTextSubtitleStream is true for a subtitle track that can be extracted
 	// as text.
 	IsTextSubtitleStream bool
+	// Fingerprint identifies the version of the subtitle file beside the film
+	// that the track is; empty for a track inside the film.
+	Fingerprint string
+	// Unreadable is a subtitle file a worker found it cannot read, which stays
+	// so until the file changes.
+	Unreadable bool
 }
 
 // Source is what the decision knows about a file.
@@ -259,10 +265,42 @@ func (s Source) audio(index int) (Stream, bool) {
 func (s Source) TextSubtitle(index int) bool {
 	for _, stream := range s.Streams {
 		if stream.Type == "Subtitle" && stream.Index == index {
-			return stream.IsTextSubtitleStream
+			return stream.IsTextSubtitleStream && !stream.Unreadable
 		}
 	}
 	return false
+}
+
+// SubtitleCodec is the codec of subtitle track index, or "" if there is none.
+func (s Source) SubtitleCodec(index int) string {
+	for _, stream := range s.Streams {
+		if stream.Type == "Subtitle" && stream.Index == index {
+			return stream.Codec
+		}
+	}
+	return ""
+}
+
+// Unreadable says whether subtitle track index is a file that was found not to
+// be readable (see library.MarkUnreadable).
+func (s Source) Unreadable(index int) bool {
+	for _, stream := range s.Streams {
+		if stream.Type == "Subtitle" && stream.Index == index {
+			return stream.Unreadable
+		}
+	}
+	return false
+}
+
+// SubtitleFingerprint is the fingerprint of the file that subtitle track index
+// is, or "" for a track inside the film or one that can't be read.
+func (s Source) SubtitleFingerprint(index int) string {
+	for _, stream := range s.Streams {
+		if stream.Type == "Subtitle" && stream.Index == index && !stream.Unreadable {
+			return stream.Fingerprint
+		}
+	}
+	return ""
 }
 
 // Decision is how to play one source.

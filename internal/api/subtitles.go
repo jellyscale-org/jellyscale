@@ -1,8 +1,12 @@
 package api
 
 import (
+	"cmp"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"io"
 	"maps"
 	"net/http"
 	"net/url"
@@ -12,7 +16,9 @@ import (
 	"time"
 
 	"jellyscale/internal/db"
+	"jellyscale/internal/items"
 	"jellyscale/internal/playback"
+	"jellyscale/internal/store"
 	"jellyscale/internal/subtitles"
 	"jellyscale/internal/transcode"
 )
@@ -22,15 +28,40 @@ import (
 // whole file and waits for the result in the asset store (see
 // transcode.FetchSubtitle); this role runs no media tools.
 func (s *Server) subtitleStream(w http.ResponseWriter, r *http.Request) {
+	// Without a start offset in the path, the same name is also the playlist
+	// of segments, and the offset may come in the query.
+	playlist := r.PathValue("file") == "subtitles.m3u8" && r.PathValue("startPositionTicks") == ""
 	format, ok := strings.CutPrefix(r.PathValue("file"), "stream.")
 	// A zero Track renders nothing but still says whether it knows the format.
 	_, _, known := subtitles.Track{}.Render(format, 0)
+	// As Jellyfin 12.4 answers: a format it doesn't know is a bad request, a name
+	// that isn't Stream.* is not found, and the playlist is for GET alone.
+	switch {
+	case playlist && r.Method == http.MethodHead:
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "", http.StatusMethodNotAllowed)
+		return
+	case !playlist && ok && !known:
+		http.Error(w, "unknown subtitle format", http.StatusBadRequest)
+		return
+	}
 	index, indexErr := strconv.Atoi(r.PathValue("index"))
-	shift, shiftErr := strconv.ParseInt(r.PathValue("startPositionTicks"), 10, 64)
+	query := r.URL.Query()
+	startText := r.PathValue("startPositionTicks")
+	if startText == "" {
+		startText = cmp.Or(query.Get("startpositionticks"), "0")
+	}
+	shift, shiftErr := strconv.ParseInt(startText, 10, 64)
+	end, endErr := strconv.ParseInt(cmp.Or(query.Get("endpositionticks"), "0"), 10, 64)
 	itemID, sourceID := r.PathValue("itemId"), r.PathValue("sourceId")
-	if !ok || !known || indexErr != nil || shiftErr != nil || index < 0 || shift < 0 || shift > playback.MaxStartTicks ||
-		!db.ValidID(itemID) || !db.ValidID(sourceID) {
+	if !playlist && (!ok || !known) || indexErr != nil || shiftErr != nil || endErr != nil || index < 0 ||
+		shift < 0 || shift > playback.MaxStartTicks || end < 0 || end > playback.MaxStartTicks || !db.ValidID(itemID) || !db.ValidID(sourceID) {
 		http.NotFound(w, r)
+		return
+	}
+	segmentLength, segmentErr := strconv.ParseInt(query.Get("segmentlength"), 10, 64)
+	if playlist && (segmentErr != nil || segmentLength < 1 || segmentLength > playback.MaxStartTicks/ticksPerSecond) {
+		http.Error(w, "segmentLength is required", http.StatusBadRequest)
 		return
 	}
 	source, found, err := s.Items.Source(r.Context(), itemID, sourceID)
@@ -51,10 +82,18 @@ func (s *Server) subtitleStream(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	if playlist {
+		w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+		w.Write([]byte(subtitlePlaylist(segmentLength, source.RunTimeTicks, sessionOf(r).Token))) //nolint:errcheck // A client that goes away is not a fault.
+		return
+	}
 	assets, err := s.stores.Open(source.AssetStoreURI)
 	if err != nil {
 		s.fail(w, r, err)
 		return
+	}
+	if format == "ass" {
+		s.startFonts(r.Context(), itemID, source, assets, false)
 	}
 	track, err := transcode.FetchSubtitle(r.Context(), s.Pool, s.Hub, assets, itemID, source, index)
 	switch {
@@ -69,9 +108,206 @@ func (s *Server) subtitleStream(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "the subtitle track could not be read", http.StatusInternalServerError)
 		return
 	}
+	// A segment of the playlist asks for the cues in its window, which keep
+	// their times (CopyTimestamps) and say how they line up with the video;
+	// a client that asks for a window without that has them counted from its
+	// start.
+	if query.Has("startpositionticks") || query.Has("endpositionticks") {
+		track = track.Within(shift, end)
+	}
+	if query.Get("copytimestamps") == "true" {
+		shift = 0
+	}
 	body, contentType, _ := track.Render(format, shift)
+	if query.Get("addvtttimemap") == "true" && format == "vtt" {
+		body = subtitles.WithTimeMap(body)
+	}
 	w.Header().Set("Content-Type", contentType)
 	w.Write([]byte(body)) //nolint:errcheck // A client that goes away is not a fault.
+}
+
+// ticksPerSecond is the unit of every position in the API.
+const ticksPerSecond = 10_000_000
+
+// subtitlePlaylist is the VOD playlist of WebVTT segments that Jellyfin 12.4
+// answers for a track: one segment per segmentLength seconds of the film, each
+// a request for the cues in its window, with the caller's token. The last is
+// the rest of the film.
+func subtitlePlaylist(segmentLength, runtime int64, token string) string {
+	var list strings.Builder
+	list.WriteString("#EXTM3U\n#EXT-X-TARGETDURATION:" + strconv.FormatInt(segmentLength, 10) + "\n#EXT-X-VERSION:3\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-PLAYLIST-TYPE:VOD\n")
+	step := segmentLength * ticksPerSecond
+	for start := int64(0); start < runtime; start += step {
+		end := min(start+step, runtime)
+		list.WriteString("#EXTINF:" + strconv.FormatFloat(float64(end-start)/ticksPerSecond, 'f', -1, 64) + ",\n")
+		list.WriteString("stream.vtt?CopyTimestamps=true&AddVttTimeMap=true&StartPositionTicks=" + strconv.FormatInt(start, 10) +
+			"&EndPositionTicks=" + strconv.FormatInt(end, 10) + "&ApiKey=" + url.QueryEscape(token) + "\n")
+	}
+	list.WriteString("#EXT-X-ENDLIST\n")
+	return list.String()
+}
+
+// attachment serves a font attached to the film. Only fonts in the film's
+// fonts manifest are listed (listFonts), so this reads what a worker already
+// stored and runs no media tools. A listed font that can't be delivered, such
+// as one whose object is gone from the store, is answered with an empty font
+// (emptyFont), and for a gone object the fonts job is run again to put it back.
+func (s *Server) attachment(w http.ResponseWriter, r *http.Request) {
+	itemID, sourceID := r.PathValue("itemId"), r.PathValue("sourceId")
+	index, err := strconv.Atoi(r.PathValue("index"))
+	if err != nil || index < 0 || !db.ValidID(itemID) || !db.ValidID(sourceID) {
+		http.NotFound(w, r)
+		return
+	}
+	source, found, err := s.Items.Source(r.Context(), itemID, sourceID)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	mimeType, listed := subtitles.Fonts(source)[index]
+	if !found || !listed {
+		http.NotFound(w, r)
+		return
+	}
+	assets, err := s.stores.Open(source.AssetStoreURI)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	fonts, manifest, err := subtitles.ReadFonts(r.Context(), assets, source)
+	if err != nil {
+		s.emptyFont(w, r, "the fonts of the film could not be read", err, mimeType)
+		return
+	}
+	sum, kept := fonts[index]
+	if !manifest {
+		s.startFonts(r.Context(), itemID, source, assets, false)
+	}
+	if !kept { // The list went after it was listed, or the font was left out.
+		s.emptyFont(w, r, "a listed font is not in the film's fonts", nil, mimeType)
+		return
+	}
+	// The URL names an attachment index, not a font: the same index is another
+	// font when the film is replaced. So it is not cached unasked, and the font's
+	// hash is its ETag, which makes the client's check a 304 with no read of the font.
+	etag := `"` + sum + `"`
+	w.Header().Set("ETag", etag)
+	w.Header().Set("Cache-Control", "no-cache")
+	if r.Header.Get("If-None-Match") == etag {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+	body, err := assets.Open(r.Context(), subtitles.FontKey(sum), 0)
+	if errors.Is(err, store.ErrNotFound) {
+		s.startFonts(r.Context(), itemID, source, assets, true)
+	}
+	if err != nil {
+		w.Header().Del("ETag")
+		s.emptyFont(w, r, "a listed font could not be read", err, mimeType)
+		return
+	}
+	defer body.Close()
+	s.sendFont(w, r, body, sum, mimeType)
+}
+
+// emptyFont answers for a listed font that can't be delivered right now. A
+// client's renderer waits for every listed font and draws nothing if one fails
+// to load (an error status stalls it), but it draws with an empty one as it
+// does with none. No store, so no client keeps the empty body.
+func (s *Server) emptyFont(w http.ResponseWriter, r *http.Request, why string, err error, mimeType string) {
+	if r.Context().Err() != nil {
+		return
+	}
+	s.Log.Warn(why+", so an empty font is sent", "path", r.URL.Path, "error", err)
+	w.Header().Del("ETag")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", mimeType)
+}
+
+// startFonts asks a worker to take the film's fonts out of it, without waiting
+// (see transcode.StartFonts). A failure is only logged: the film plays without
+// its fonts, and the next request asks again.
+func (s *Server) startFonts(ctx context.Context, itemID string, source items.Source, assets store.Store, lost bool) {
+	if len(subtitles.Fonts(source)) == 0 {
+		return
+	}
+	if err := transcode.StartFonts(ctx, s.Pool, assets, itemID, source, lost); err != nil {
+		s.Log.Warn("fonts job not started", "item", itemID, "source", source.ID, "error", err)
+	}
+}
+
+// listFonts leaves in the MediaAttachments of a DTO source only the fonts that
+// can be delivered (invariant 32): those in the film's fonts manifest, which is
+// there once a worker has stored them. Until then the list is empty, and
+// jellyfin-web draws ASS in its fallback font. With start, the fonts job is
+// started if the manifest is missing, without waiting for it. A store that
+// can't be asked lists none.
+func (s *Server) listFonts(ctx context.Context, itemID string, source map[string]any, start bool) error {
+	attachments, _ := source["MediaAttachments"].([]any)
+	if len(attachments) == 0 {
+		return nil
+	}
+	source["MediaAttachments"] = []any{}
+	sourceID, _ := source["Id"].(string)
+	stored, found, err := s.Items.Source(ctx, itemID, sourceID)
+	if err != nil || !found {
+		return err
+	}
+	assets, err := s.stores.Open(stored.AssetStoreURI)
+	if err != nil {
+		s.Log.Warn("cannot check the stored fonts", "item", itemID, "error", err)
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, storeCheckTimeout)
+	defer cancel()
+	fonts, manifest, err := subtitles.ReadFonts(ctx, assets, stored)
+	if err != nil {
+		s.Log.Warn("cannot check the stored fonts", "item", itemID, "error", err)
+		return nil
+	}
+	if !manifest {
+		if start {
+			s.startFonts(ctx, itemID, stored, assets, false)
+		}
+		return nil
+	}
+	source["MediaAttachments"] = slices.DeleteFunc(attachments, func(entry any) bool {
+		attachment, _ := entry.(map[string]any)
+		return fonts[int(number(attachment["Index"]))] == ""
+	})
+	return nil
+}
+
+// sendFont reads the font whole (it is at most subtitles.MaxFont) before any
+// header goes out, and checks it against its hash, which names it in the store.
+// A font the store cut short, with an error or without, is answered as a font
+// that can't be delivered (emptyFont): ending the response cleanly would let a
+// client keep the cut font, and failing it would stop jellyfin-web drawing.
+func (s *Server) sendFont(w http.ResponseWriter, r *http.Request, body io.Reader, sum, mimeType string) {
+	font, err := io.ReadAll(io.LimitReader(body, subtitles.MaxFont+1))
+	if err == nil {
+		if got := sha256.Sum256(font); hex.EncodeToString(got[:]) != sum {
+			err = errors.New("the font read does not match its hash")
+		}
+	}
+	if err != nil {
+		s.emptyFont(w, r, "a listed font was cut short", err, mimeType)
+		return
+	}
+	w.Header().Set("Content-Type", mimeType)
+	w.Write(font) //nolint:errcheck // The client went away.
+}
+
+// deliverAttachments gives each attachment of a PlaybackInfo source the URL
+// to fetch it from, with the caller's token like a subtitle's: Jellyfin sends
+// none and allows the fetch without, and this server does not (DOMAINS 50).
+func deliverAttachments(source map[string]any, itemID, token string) {
+	attachments, _ := source["MediaAttachments"].([]any)
+	for _, entry := range attachments {
+		attachment, _ := entry.(map[string]any)
+		attachment["DeliveryUrl"] = "/Videos/" + db.DashedID(itemID) + "/" + source["Id"].(string) + "/Attachments/" +
+			strconv.Itoa(int(number(attachment["Index"]))) + "?ApiKey=" + url.QueryEscape(token)
+	}
 }
 
 // deliverSubtitles says how each text track of a PlaybackInfo source reaches

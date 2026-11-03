@@ -76,8 +76,10 @@ routes:
   - {method: GET, path: "/UserViews", status: implemented, role: api}
   - {method: GET, path: "/UserViews/GroupingOptions", status: stub, role: api}
   - {method: DELETE, path: "/Videos/ActiveEncodings", status: implemented, role: stream}
-  - {method: GET, path: "/Videos/{itemId}/hls1/{playlistId}/{segmentId}", status: implemented, role: stream}
+  - {method: GET, path: "/Videos/{itemId}/hls1/main/{segmentId}", status: implemented, role: stream}
   - {method: GET, path: "/Videos/{itemId}/main.m3u8", status: implemented, role: stream}
   - {method: GET, path: "/Videos/{itemId}/master.m3u8", status: implemented, role: stream}
   - {method: GET, path: "/Videos/{itemId}/{file}", status: implemented, role: stream}
+  - {method: GET, path: "/Videos/{itemId}/{sourceId}/Attachments/{index}", status: implemented, role: stream}
+  - {method: GET, path: "/Videos/{itemId}/{sourceId}/Subtitles/{index}/{file}", status: implemented, role: stream}
   - {method: GET, path: "/Videos/{itemId}/{sourceId}/Subtitles/{index}/{startPositionTicks}/{file}", status: implemented, role: stream}

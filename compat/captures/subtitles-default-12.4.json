@@ -1,0 +1,1864 @@
+{
+ "note": "POST /Items/{id}/PlaybackInfo?UserId=... on jellyfin/jellyfin:12.4 (12.4.0), body {}, with the user's SubtitleMode and SubtitleLanguagePreference set through POST /Users/{id}/Configuration. Films are 6 second Matroska files, audio as listed, embedded SubRip tracks flagged as listed, and subtitle files beside them (Film.<words>.srt). Index is Jellyfin's: files first, then the film's own streams. DefaultSubtitleStreamIndex null means the field was absent. A new user's configuration is SubtitleMode Default and SubtitleLanguagePreference empty.",
+ "films": {
+  "A1": {
+   "audio": "eng",
+   "subtitles": [
+    {
+     "Index": 0,
+     "Language": "deu",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": true
+    },
+    {
+     "Index": 1,
+     "Language": "eng",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": true
+    }
+   ],
+   "results": [
+    {
+     "mode": "Default",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Default",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 1
+    },
+    {
+     "mode": "Always",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 1
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Default",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    }
+   ]
+  },
+  "A2": {
+   "audio": "eng",
+   "subtitles": [
+    {
+     "Index": 0,
+     "Language": "deu",
+     "IsDefault": true,
+     "IsForced": false,
+     "IsExternal": true
+    },
+    {
+     "Index": 1,
+     "Language": "eng",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": true
+    }
+   ],
+   "results": [
+    {
+     "mode": "Default",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Default",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 1
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Default",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    }
+   ]
+  },
+  "A3": {
+   "audio": "eng",
+   "subtitles": [
+    {
+     "Index": 0,
+     "Language": "deu",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": true
+    },
+    {
+     "Index": 1,
+     "Language": "eng",
+     "IsDefault": false,
+     "IsForced": true,
+     "IsExternal": true
+    },
+    {
+     "Index": 2,
+     "Language": "eng",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": true
+    }
+   ],
+   "results": [
+    {
+     "mode": "Default",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 1
+    },
+    {
+     "mode": "None",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Default",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "Always",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 1
+    },
+    {
+     "mode": "None",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 1
+    },
+    {
+     "mode": "Default",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    }
+   ]
+  },
+  "A4": {
+   "audio": "eng",
+   "subtitles": [
+    {
+     "Index": 0,
+     "Language": "deu",
+     "IsDefault": false,
+     "IsForced": true,
+     "IsExternal": true
+    },
+    {
+     "Index": 1,
+     "Language": "deu",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": true
+    }
+   ],
+   "results": [
+    {
+     "mode": "Default",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 1
+    },
+    {
+     "mode": "Always",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 1
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "None",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 1
+    },
+    {
+     "mode": "Default",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Default",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 1
+    },
+    {
+     "mode": "Always",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 1
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "None",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 1
+    }
+   ]
+  },
+  "A5": {
+   "audio": "eng",
+   "subtitles": [
+    {
+     "Index": 0,
+     "Language": "fra",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": true
+    },
+    {
+     "Index": 3,
+     "Language": "eng",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": false
+    },
+    {
+     "Index": 4,
+     "Language": "deu",
+     "IsDefault": true,
+     "IsForced": false,
+     "IsExternal": false
+    }
+   ],
+   "results": [
+    {
+     "mode": "Default",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Default",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Default",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 4
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 4
+    }
+   ]
+  },
+  "A6": {
+   "audio": "eng",
+   "subtitles": [
+    {
+     "Index": 0,
+     "Language": "eng",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": true
+    },
+    {
+     "Index": 3,
+     "Language": "eng",
+     "IsDefault": false,
+     "IsForced": true,
+     "IsExternal": false
+    }
+   ],
+   "results": [
+    {
+     "mode": "Default",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "None",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Default",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "None",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "Default",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    }
+   ]
+  },
+  "A7": {
+   "audio": "jpn",
+   "subtitles": [
+    {
+     "Index": 0,
+     "Language": "eng",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": true
+    },
+    {
+     "Index": 1,
+     "Language": "jpn",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": true
+    }
+   ],
+   "results": [
+    {
+     "mode": "Default",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Default",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Default",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    }
+   ]
+  },
+  "A8": {
+   "audio": "eng",
+   "subtitles": [
+    {
+     "Index": 0,
+     "Language": "spa",
+     "IsDefault": true,
+     "IsForced": false,
+     "IsExternal": true
+    },
+    {
+     "Index": 1,
+     "Language": "spa",
+     "IsDefault": false,
+     "IsForced": true,
+     "IsExternal": true
+    }
+   ],
+   "results": [
+    {
+     "mode": "Default",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 1
+    },
+    {
+     "mode": "None",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Default",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Default",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    }
+   ]
+  },
+  "A9": {
+   "audio": "eng",
+   "subtitles": [
+    {
+     "Index": 0,
+     "Language": "eng",
+     "IsDefault": true,
+     "IsForced": false,
+     "IsExternal": true
+    },
+    {
+     "Index": 3,
+     "Language": "eng",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": false
+    },
+    {
+     "Index": 4,
+     "Language": "eng",
+     "IsDefault": true,
+     "IsForced": false,
+     "IsExternal": false
+    }
+   ],
+   "results": [
+    {
+     "mode": "Default",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Default",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Default",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    }
+   ]
+  },
+  "B1": {
+   "audio": "eng",
+   "subtitles": [
+    {
+     "Index": 2,
+     "Language": "eng",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": false
+    },
+    {
+     "Index": 3,
+     "Language": "deu",
+     "IsDefault": true,
+     "IsForced": false,
+     "IsExternal": false
+    }
+   ],
+   "results": [
+    {
+     "mode": "Default",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "Always",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "Default",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "Always",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Default",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "Always",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 3
+    }
+   ]
+  },
+  "B2": {
+   "audio": "eng",
+   "subtitles": [
+    {
+     "Index": 2,
+     "Language": "eng",
+     "IsDefault": true,
+     "IsForced": false,
+     "IsExternal": false
+    },
+    {
+     "Index": 3,
+     "Language": "deu",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": false
+    }
+   ],
+   "results": [
+    {
+     "mode": "Default",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "Always",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "Default",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "Always",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Default",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "Always",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 3
+    }
+   ]
+  },
+  "B3": {
+   "audio": "eng",
+   "subtitles": [
+    {
+     "Index": 2,
+     "Language": "eng",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": false
+    },
+    {
+     "Index": 3,
+     "Language": "deu",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": false
+    }
+   ],
+   "results": [
+    {
+     "mode": "Default",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Always",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "Default",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Always",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Default",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Always",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 3
+    }
+   ]
+  },
+  "B4": {
+   "audio": "eng",
+   "subtitles": [
+    {
+     "Index": 2,
+     "Language": "eng",
+     "IsDefault": false,
+     "IsForced": true,
+     "IsExternal": false
+    },
+    {
+     "Index": 3,
+     "Language": "eng",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": false
+    }
+   ],
+   "results": [
+    {
+     "mode": "Default",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "Always",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "None",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "Default",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "Always",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "None",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "Default",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "Always",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    }
+   ]
+  },
+  "C1": {
+   "audio": "eng",
+   "subtitles": [
+    {
+     "Index": 0,
+     "Language": "deu",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": true
+    },
+    {
+     "Index": 1,
+     "Language": "eng",
+     "IsDefault": true,
+     "IsForced": false,
+     "IsExternal": true
+    }
+   ],
+   "results": [
+    {
+     "mode": "Default",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 1
+    },
+    {
+     "mode": "Always",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 1
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 1
+    },
+    {
+     "mode": "Default",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 1
+    },
+    {
+     "mode": "Always",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 1
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Default",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 1
+    },
+    {
+     "mode": "Always",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    }
+   ]
+  },
+  "C2": {
+   "audio": "eng",
+   "subtitles": [
+    {
+     "Index": 0,
+     "Language": "eng",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": true
+    },
+    {
+     "Index": 3,
+     "Language": "eng",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": false
+    },
+    {
+     "Index": 4,
+     "Language": "deu",
+     "IsDefault": true,
+     "IsForced": false,
+     "IsExternal": false
+    }
+   ],
+   "results": [
+    {
+     "mode": "Default",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Default",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Default",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 4
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 4
+    }
+   ]
+  },
+  "C3": {
+   "audio": "eng",
+   "subtitles": [
+    {
+     "Index": 0,
+     "Language": "deu",
+     "IsDefault": false,
+     "IsForced": true,
+     "IsExternal": true
+    },
+    {
+     "Index": 1,
+     "Language": "eng",
+     "IsDefault": false,
+     "IsForced": true,
+     "IsExternal": true
+    },
+    {
+     "Index": 4,
+     "Language": "eng",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": false
+    }
+   ],
+   "results": [
+    {
+     "mode": "Default",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 4
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "None",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Default",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 1
+    },
+    {
+     "mode": "Always",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 4
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 1
+    },
+    {
+     "mode": "None",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 1
+    },
+    {
+     "mode": "Default",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "None",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    }
+   ]
+  },
+  "C4": {
+   "audio": "eng",
+   "subtitles": [
+    {
+     "Index": 0,
+     "Language": "deu",
+     "IsDefault": false,
+     "IsForced": false,
+     "IsExternal": true
+    },
+    {
+     "Index": 3,
+     "Language": "eng",
+     "IsDefault": false,
+     "IsForced": true,
+     "IsExternal": false
+    },
+    {
+     "Index": 4,
+     "Language": "deu",
+     "IsDefault": true,
+     "IsForced": false,
+     "IsExternal": false
+    }
+   ],
+   "results": [
+    {
+     "mode": "Default",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "None",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Default",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "None",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "Default",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    }
+   ]
+  },
+  "C5": {
+   "audio": "eng",
+   "subtitles": [
+    {
+     "Index": 0,
+     "Language": "deu",
+     "IsDefault": false,
+     "IsForced": true,
+     "IsExternal": true
+    }
+   ],
+   "results": [
+    {
+     "mode": "Default",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "None",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Default",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Default",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "Always",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    },
+    {
+     "mode": "None",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 0
+    }
+   ]
+  },
+  "C6": {
+   "audio": "eng",
+   "subtitles": [
+    {
+     "Index": 2,
+     "Language": "eng",
+     "IsDefault": true,
+     "IsForced": false,
+     "IsExternal": false
+    },
+    {
+     "Index": 3,
+     "Language": "eng",
+     "IsDefault": false,
+     "IsForced": true,
+     "IsExternal": false
+    }
+   ],
+   "results": [
+    {
+     "mode": "Default",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "Always",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "None",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "Default",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "Always",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "None",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "eng",
+     "DefaultSubtitleStreamIndex": 3
+    },
+    {
+     "mode": "Default",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": 2
+    },
+    {
+     "mode": "Always",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "OnlyForced",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "None",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    },
+    {
+     "mode": "Smart",
+     "language_preference": "deu",
+     "DefaultSubtitleStreamIndex": null
+    }
+   ]
+  }
+ }
+}

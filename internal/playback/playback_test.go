@@ -712,3 +712,59 @@ func mustQuery(raw string) url.Values {
 	}
 	return values
 }
+
+// A subtitle file beside the film has its own ETag in the hash, so segments
+// drawn from its old text are not served after it is edited; a track inside the
+// film hashes as it did before files could be tracks.
+func TestSubtitleFingerprintIsInTheSpec(t *testing.T) {
+	source := film("mkv", "h264", "aac")
+	inside, beside := stream("Subtitle", "subrip", 10), stream("Subtitle", "ass", 12)
+	inside.IsTextSubtitleStream, beside.IsTextSubtitleStream = true, true
+	beside.Fingerprint = "f1"
+	source.Streams = append(source.Streams, inside, beside)
+	spec := func(src Source, index string) Spec {
+		p, err := params(t, "mediasourceid="+sourceID+"&playsessionid=abc&audiostreamindex=1&subtitlestreamindex="+index, src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s, err := NewSpec("11111111-2222-3333-4444-555555555555", p, src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return s
+	}
+	a, b := spec(source, "12"), spec(source, "10")
+	if a.SubtitleFingerprint != "f1" || b.SubtitleFingerprint != "" {
+		t.Fatalf("ETags %q and %q", a.SubtitleFingerprint, b.SubtitleFingerprint)
+	}
+	edited := source
+	edited.Streams = append([]Stream(nil), source.Streams...)
+	edited.Streams[len(edited.Streams)-1].Fingerprint = "f2"
+	if spec(edited, "12").Hash() == a.Hash() {
+		t.Error("an edited subtitle file kept its spec hash")
+	}
+	if spec(edited, "10").Hash() != b.Hash() {
+		t.Error("editing another file moved the hash of a track inside the film")
+	}
+}
+
+// A burnt-in track that a worker has since found unreadable is dropped from the
+// request, so the film plays without it; a track that is no subtitle at all is
+// still refused.
+func TestBurntSubtitleThatBecameUnreadableIsDropped(t *testing.T) {
+	source := Source{Streams: []Stream{
+		{Index: 0, Type: "Video"}, {Index: 1, Type: "Audio"},
+		{Index: 2, Type: "Subtitle", Codec: "subrip", IsTextSubtitleStream: true, Fingerprint: "ab", Unreadable: true},
+	}}
+	got, err := params(t, "mediasourceid="+sourceID+"&playsessionid=abc&subtitlestreamindex=2", source)
+	if err != nil || got.Subtitle != nil {
+		t.Errorf("an unreadable file: %v %v", got.Subtitle, err)
+	}
+	if _, err := params(t, "mediasourceid="+sourceID+"&playsessionid=abc&subtitlestreamindex=1", source); err == nil {
+		t.Error("an audio stream was accepted as a subtitle")
+	}
+	source.Streams[2].Unreadable = false
+	if got, err := params(t, "mediasourceid="+sourceID+"&playsessionid=abc&subtitlestreamindex=2", source); err != nil || got.Subtitle == nil {
+		t.Errorf("a readable file: %v %v", got.Subtitle, err)
+	}
+}

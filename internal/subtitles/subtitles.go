@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -26,6 +27,11 @@ type Track struct {
 	VTT, SRT, ASS string
 }
 
+// ErrBadFile means ffmpeg or the checks before it rejected the file itself, so
+// reading the same file again gives the same answer. A failure that is not the
+// file's (a store that didn't answer, a timeout, no ffmpeg) is not this.
+var ErrBadFile = errors.New("the file can't be read as subtitles")
+
 // Extract reads stream index of input, a path or URL, and converts it.
 func Extract(ctx context.Context, input string, index int) (Track, error) {
 	dir, err := os.MkdirTemp("", "subtitles-")
@@ -33,7 +39,8 @@ func Extract(ctx context.Context, input string, index int) (Track, error) {
 		return Track{}, err
 	}
 	defer os.RemoveAll(dir)
-	args := []string{"-nostdin", "-v", "error", "-i", input}
+	args := []string{"-nostdin", "-v", "error"}
+	args = append(args, "-i", input)
 	for _, ext := range []string{"vtt", "srt", "ass"} {
 		args = append(args, "-map", "0:"+strconv.Itoa(index), filepath.Join(dir, "track."+ext))
 	}
@@ -47,7 +54,10 @@ func Extract(ctx context.Context, input string, index int) (Track, error) {
 	// read, so any output at all means the tracks can't be trusted.
 	out, err := cmd.CombinedOutput()
 	if err != nil || len(bytes.TrimSpace(out)) > 0 {
-		return Track{}, fmt.Errorf("ffmpeg: %v: %s", err, strings.TrimSpace(string(out)))
+		if !isBadFile(ctx, err, out) {
+			return Track{}, fmt.Errorf("ffmpeg: %v: %s", err, strings.TrimSpace(string(out)))
+		}
+		return Track{}, fmt.Errorf("%w: ffmpeg: %v: %s", ErrBadFile, err, strings.TrimSpace(string(out)))
 	}
 	var track Track
 	for ext, text := range map[string]*string{"vtt": &track.VTT, "srt": &track.SRT, "ass": &track.ASS} {
@@ -58,6 +68,21 @@ func Extract(ctx context.Context, input string, index int) (Track, error) {
 		*text = string(data)
 	}
 	return track, nil
+}
+
+// isBadFile says whether a failed ffmpeg run is the data's fault: it ran to the
+// end and said so, by an error exit status or by complaining and exiting 0. A
+// run that was cut short (the context, a signal such as the OOM killer's, no
+// ffmpeg) or that ran out of disk says nothing about the file.
+func isBadFile(ctx context.Context, err error, out []byte) bool {
+	if ctx.Err() != nil || bytes.Contains(out, []byte("No space left on device")) {
+		return false
+	}
+	var exited *exec.ExitError
+	if errors.As(err, &exited) {
+		return exited.ExitCode() > 0 // -1 when a signal killed it.
+	}
+	return err == nil
 }
 
 // Encode and Decode are how a Track is kept in a store: one object, so a
@@ -89,6 +114,43 @@ func (t Track) Render(format string, shift int64) (body, contentType string, ok 
 		return string(data), "application/json", true
 	}
 	return "", "", false
+}
+
+// Within is the track with only the cues that touch the window from start to
+// end ticks, both ends included as Jellyfin 12.4 does; end 0 is no end. The
+// ASS text, which only a burn-in reads, is left whole.
+func (t Track) Within(start, end int64) Track {
+	t.VTT, t.SRT = cuesWithin(t.VTT, start, end), cuesWithin(t.SRT, start, end)
+	return t
+}
+
+func cuesWithin(text string, start, end int64) string {
+	blocks := strings.Split(text, "\n\n")
+	kept := blocks[:0]
+	for _, block := range blocks {
+		for _, line := range strings.Split(block, "\n") {
+			times := clock.FindAllStringSubmatch(line, 2)
+			if !strings.Contains(line, "-->") || len(times) != 2 {
+				continue
+			}
+			from, ok1 := parseClock(times[0])
+			to, ok2 := parseClock(times[1])
+			if ok1 && ok2 && (to < start || end > 0 && from > end) {
+				block = ""
+			}
+			break
+		}
+		if block != "" {
+			kept = append(kept, block)
+		}
+	}
+	return strings.Join(kept, "\n\n")
+}
+
+// WithTimeMap adds to WebVTT the line that tells a player its times are the
+// video's, not counted from the start of the piece (what an HLS segment needs).
+func WithTimeMap(vtt string) string {
+	return strings.Replace(vtt, "WEBVTT\n", "WEBVTT\nX-TIMESTAMP-MAP=MPEGTS:900000,LOCAL:00:00:00.000\n", 1)
 }
 
 // Delay moves every cue of ASS text later by seconds.

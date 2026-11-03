@@ -252,7 +252,6 @@ func TestSubtitleRoutesAnswerAsCaptured(t *testing.T) {
 		}
 		for name, path := range map[string]string{
 			"no extension":          f.path(f.text, 2, 0, "Stream"),
-			"unknown extension":     f.path(f.text, 2, 0, "Stream.txt"),
 			"the video stream":      f.path(f.text, 0, 0, "Stream.vtt"),
 			"the audio stream":      f.path(f.text, 1, 0, "Stream.vtt"),
 			"a stream past the end": f.path(f.text, 9, 0, "Stream.vtt"),
@@ -263,6 +262,10 @@ func TestSubtitleRoutesAnswerAsCaptured(t *testing.T) {
 			if status, _, _ := f.get(t, 0, path); status != 404 {
 				t.Errorf("%s: %d, want 404", name, status)
 			}
+		}
+		// A format that Stream.* does not know is a bad request, as in Jellyfin 12.4.
+		if status, _, _ := f.get(t, 0, f.path(f.text, 2, 0, "Stream.txt")); status != 400 {
+			t.Errorf("unknown extension: %d, want 400", status)
 		}
 		wrongSource := fmt.Sprintf("/Videos/%s/%s/Subtitles/2/0/Stream.vtt", db.DashedID(f.text), db.CompactID(f.image))
 		if status, _, _ := f.get(t, 0, wrongSource); status != 404 {
@@ -278,6 +281,84 @@ func TestSubtitleRoutesAnswerAsCaptured(t *testing.T) {
 		}
 		if response, _ := f.do(t, 0, "GET", bare+"?ApiKey=nope", "", nil); response.StatusCode != 401 {
 			t.Errorf("a wrong token: %d", response.StatusCode)
+		}
+	})
+}
+
+// The playlist is Jellyfin 12.4's: a segment per segmentLength seconds, each
+// fetched from the route without a start offset, which gives the cues in its
+// window with their times kept.
+func TestSubtitlePlaylistAndWindows(t *testing.T) {
+	eachBackend(t, func(t *testing.T, f *subtitleFixture) {
+		base := fmt.Sprintf("/Videos/%s/%s/Subtitles/2/", db.DashedID(f.text), db.CompactID(f.text))
+		fetch := func(replica int, path string) (int, string, string) {
+			response, body := f.do(t, replica, "GET", path, "", nil)
+			return response.StatusCode, response.Header.Get("Content-Type"), string(body)
+		}
+		status, ctype, playlist := fetch(1, base+"subtitles.m3u8?segmentLength=3&ApiKey="+f.token)
+		if status != 200 || ctype != "application/vnd.apple.mpegurl" || !strings.HasPrefix(playlist, "#EXTM3U\n#EXT-X-TARGETDURATION:3\n") ||
+			!strings.HasSuffix(playlist, "#EXT-X-ENDLIST\n") || !strings.Contains(playlist, "&StartPositionTicks=0&EndPositionTicks=") {
+			t.Fatalf("playlist: %d %q\n%s", status, ctype, playlist)
+		}
+		var segments []string
+		for _, line := range strings.Split(playlist, "\n") {
+			if strings.HasPrefix(line, "stream.vtt?") {
+				segments = append(segments, line)
+			}
+		}
+		if len(segments) < 2 {
+			t.Fatalf("segments: %v", segments)
+		}
+		// The first segment holds the first cue (2 s to 30 s) with its own times,
+		// and says how they line up with the video.
+		status, ctype, body := fetch(0, base+segments[0])
+		if status != 200 || ctype != "text/vtt" || !strings.HasPrefix(body, "WEBVTT\nX-TIMESTAMP-MAP=MPEGTS:900000,LOCAL:00:00:00.000\n\n00:00:02.000 --> 00:00:30.000\nEnglish SRT line one") {
+			t.Errorf("segment: %d %q\n%s", status, ctype, body)
+		}
+		// Asked for another window, the cue that does not touch it is left out;
+		// without CopyTimestamps the times count from the window's start.
+		_, _, later := fetch(0, base+"stream.vtt?StartPositionTicks=400000000&EndPositionTicks=500000000&ApiKey="+f.token)
+		if !strings.Contains(later, "00:00:00.000 --> 00:00:40.000\nEnglish SRT line two") || strings.Contains(later, "line one") {
+			t.Errorf("a window later in the film:\n%s", later)
+		}
+		// The route without an offset is the one with offset 0.
+		_, _, plain := fetch(0, base+"Stream.vtt?ApiKey="+f.token)
+		_, _, zero := f.get(t, 0, f.path(f.text, 2, 0, "Stream.vtt"))
+		if plain != zero || !strings.Contains(plain, "English SRT line two") {
+			t.Errorf("no offset:\n%s\nwant\n%s", plain, zero)
+		}
+		for name, path := range map[string]string{
+			"no segmentLength":      base + "subtitles.m3u8?ApiKey=" + f.token,
+			"a segmentLength of 0":  base + "subtitles.m3u8?segmentLength=0&ApiKey=" + f.token,
+			"a negative length":     base + "subtitles.m3u8?segmentLength=-5&ApiKey=" + f.token,
+			"a length that is text": base + "subtitles.m3u8?segmentLength=abc&ApiKey=" + f.token,
+		} {
+			if status, _, _ := fetch(0, path); status != 400 {
+				t.Errorf("%s: %d, want 400", name, status)
+			}
+		}
+		// As Jellyfin 12.4: a format it doesn't know is 400, a name that isn't
+		// Stream.* is 404, and the playlist answers GET alone.
+		if status, _, _ := fetch(0, base+"Stream.xyz?ApiKey="+f.token); status != 400 {
+			t.Errorf("an unknown format: %d, want 400", status)
+		}
+		if status, _, _ := fetch(0, base+"other.vtt?ApiKey="+f.token); status != 404 {
+			t.Errorf("a name that isn't Stream.*: %d, want 404", status)
+		}
+		if response, _ := f.do(t, 0, "HEAD", base+"subtitles.m3u8?segmentLength=6", f.token, nil); response.StatusCode != 405 {
+			t.Errorf("HEAD of the playlist: %d, want 405", response.StatusCode)
+		}
+		for name, path := range map[string]string{
+			"an offset in the path": base + "0/subtitles.m3u8?segmentLength=6&ApiKey=" + f.token,
+			"a track past the end":  strings.Replace(base, "/2/", "/9/", 1) + "subtitles.m3u8?segmentLength=6&ApiKey=" + f.token,
+			"the audio stream":      strings.Replace(base, "/2/", "/1/", 1) + "subtitles.m3u8?segmentLength=6&ApiKey=" + f.token,
+		} {
+			if status, _, _ := fetch(0, path); status != 404 {
+				t.Errorf("%s: %d, want 404", name, status)
+			}
+		}
+		if status, _, _ := fetch(0, base+"subtitles.m3u8?segmentLength=6"); status != 401 {
+			t.Errorf("no token: %d", status)
 		}
 	})
 }

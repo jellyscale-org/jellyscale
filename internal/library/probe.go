@@ -116,6 +116,14 @@ func ProbeInput(ctx context.Context, input string) (Probe, error) {
 		Streams:      []map[string]any{},
 	}
 	for _, stream := range parsed.Streams {
+		if stream.CodecType == "attachment" {
+			// Fonts, mostly. The scan lists them; a worker takes them out when
+			// somebody asks (subtitles.FillFonts).
+			probe.Streams = append(probe.Streams, map[string]any{
+				"Index": stream.Index, "Type": "Attachment", "FileName": stream.Tags["filename"], "MimeType": stream.Tags["mimetype"],
+			})
+			continue
+		}
 		kind, ok := map[string]string{"video": "Video", "audio": "Audio", "subtitle": "Subtitle"}[stream.CodecType]
 		if !ok {
 			continue
