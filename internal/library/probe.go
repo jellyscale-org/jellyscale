@@ -153,7 +153,11 @@ func ProbeInput(ctx context.Context, input string) (Probe, error) {
 		if language := stream.Tags["language"]; language != "" && language != "und" {
 			entry["Language"] = language
 		}
-		if rate, err := strconv.ParseInt(stream.BitRate, 10, 64); err == nil {
+		// Matroska has no bit rate field; mkvmerge and MakeMKV write it as a BPS tag
+		// ("BPS-eng" when the track has a language), which ffprobe leaves in the
+		// tags. A copied audio track is counted against the bitrate cap by it.
+		bps := cmp.Or(stream.BitRate, stream.Tags["BPS"], stream.Tags["BPS-"+stream.Tags["language"]])
+		if rate, err := strconv.ParseInt(bps, 10, 64); err == nil && rate > 0 {
 			entry["BitRate"] = rate
 		}
 		switch kind {

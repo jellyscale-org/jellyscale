@@ -14,7 +14,7 @@ import (
 // hash includes them: bump OutputVersion with any change to the ffmpeg
 // settings, and old segments simply stop being found.
 const (
-	OutputVersion  = 2
+	OutputVersion  = 3
 	SegmentSeconds = 4
 	// Family is the encoder family; fMP4 can't splice across families.
 	Family = "x264"
@@ -24,7 +24,11 @@ const (
 
 	MinVideoBitrate = 50_000
 	MinAudioBitrate = 32_000
+	// MaxAudioBitrate caps what the AAC encoder is asked for.
 	MaxAudioBitrate = 640_000
+	// maxCopiedAudioBitrate is the most a URL may say a copied track takes:
+	// lossless 5.1 at high rates, with room.
+	maxCopiedAudioBitrate = 12_000_000
 
 	ticksPerSecond = 10_000_000
 	// MaxStartTicks is a century, far past any film.
@@ -40,6 +44,12 @@ type Params struct {
 	Subtitle     *int   // The text track drawn into the picture; nil for none
 	VideoBitrate int64
 	AudioBitrate int64
+	// AudioCodecs are the codecs the client takes in fMP4 HLS, from the
+	// matching TranscodingProfile (the URL's AudioCodec), and MaxAudioChannels
+	// its channel limit (TranscodingMaxAudioChannels). They decide whether the
+	// audio is copied (Source.copyAudio); a URL without them copies nothing.
+	AudioCodecs      []string
+	MaxAudioChannels int
 	// Copy: the video is copied from the source, not re-encoded. A client may
 	// ask for it, and the spec refuses it for a source that can't be copied.
 	Copy          bool
@@ -88,9 +98,11 @@ func ParseParams(query url.Values, source Source) (Params, error) {
 	if p.VideoBitrate, err = bitrate(query, "videobitrate", Unlimited-192_000, MinVideoBitrate, Unlimited); err != nil {
 		return p, err
 	}
-	if p.AudioBitrate, err = bitrate(query, "audiobitrate", 192_000, MinAudioBitrate, MaxAudioBitrate); err != nil {
+	if p.AudioBitrate, err = bitrate(query, "audiobitrate", 192_000, MinAudioBitrate, maxCopiedAudioBitrate); err != nil {
 		return p, err
 	}
+	p.AudioCodecs = AudioCodecList(query.Get("audiocodec"))
+	p.MaxAudioChannels = channels(query.Get("transcodingmaxaudiochannels"))
 	if raw := query.Get("starttimeticks"); raw != "" {
 		ticks, err := strconv.ParseInt(raw, 10, 64)
 		if err != nil || ticks < 0 || ticks > MaxStartTicks {
@@ -108,6 +120,16 @@ func ParseParams(query url.Values, source Source) (Params, error) {
 		return p, errors.New("invalid DeviceId")
 	}
 	return p, nil
+}
+
+// channels reads the channel limit; a missing, non-numeric or out-of-range
+// value is the default of 2, not a reason to refuse the stream.
+func channels(raw string) int {
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 1 || n > 8 {
+		return 2
+	}
+	return n
 }
 
 func bitrate(query url.Values, key string, fallback, low, high int64) (int64, error) {
@@ -152,6 +174,11 @@ type Spec struct {
 	Width               int
 	Height              int
 	Copy                bool
+	// AudioCopy is the codec of the audio when it is copied, not re-encoded,
+	// and "" when it is re-encoded to AAC. It is the codec's name so AC3 and
+	// E-AC3 never share segments. A copied video always has the audio
+	// re-encoded (CopyCommand), so Copy and AudioCopy are never both set.
+	AudioCopy string
 }
 
 // NewSpec turns validated parameters into the output they ask for.
@@ -169,7 +196,7 @@ func NewSpec(item string, p Params, source Source) (Spec, error) {
 		}
 		return Spec{
 			Item: strings.ReplaceAll(strings.ToLower(item), "-", ""), Source: p.SourceID, ETag: source.ETag,
-			AudioIndex: p.AudioIndex, AudioBitrate: p.AudioBitrate, Width: video.Width, Height: video.Height,
+			AudioIndex: p.AudioIndex, AudioBitrate: min(p.AudioBitrate, MaxAudioBitrate), Width: video.Width, Height: video.Height,
 			VideoBitrate: source.FileBitrate(), Copy: true,
 		}, nil
 	}
@@ -178,9 +205,16 @@ func NewSpec(item string, p Params, source Source) (Spec, error) {
 	if p.Subtitle != nil {
 		subtitleFingerprint = source.SubtitleFingerprint(*p.Subtitle)
 	}
+	// A copied track has the source's own bitrate (0 if the file doesn't say),
+	// whatever the URL says, so a change of cap that leaves the track alone
+	// doesn't make new segments.
+	audioBitrate, audioCopy := min(p.AudioBitrate, MaxAudioBitrate), ""
+	if stream, ok := source.copyAudio(p); ok {
+		audioBitrate, audioCopy = stream.Bitrate, stream.Codec
+	}
 	return Spec{
 		Item: strings.ReplaceAll(strings.ToLower(item), "-", ""), Source: p.SourceID, ETag: source.ETag,
-		AudioIndex: p.AudioIndex, Subtitle: p.Subtitle, SubtitleFingerprint: subtitleFingerprint, AudioBitrate: p.AudioBitrate, Width: width, Height: height,
+		AudioIndex: p.AudioIndex, Subtitle: p.Subtitle, SubtitleFingerprint: subtitleFingerprint, AudioBitrate: audioBitrate, AudioCopy: audioCopy, Width: width, Height: height,
 		// Six bits per pixel per second is about what 8-bit H.264 needs at its
 		// worst, so a larger cap buys nothing.
 		VideoBitrate: min(p.VideoBitrate, int64(width)*int64(height)*6),
@@ -201,6 +235,10 @@ func (s Spec) Hash() string {
 	}
 	if s.Copy {
 		text += "|copy"
+	}
+	// Only a copy has one, so the hash of a re-encoded track is what it was.
+	if s.AudioCopy != "" {
+		text += "|acopy" + s.AudioCopy
 	}
 	sum := sha256.Sum256([]byte(text))
 	return fmt.Sprintf("%x", sum[:16])
@@ -256,7 +294,7 @@ func videoCodec(p Params) string {
 // order. extra is appended as it is.
 func Query(p Params, apiKey, tag, extra string) string {
 	pairs := [][2]string{
-		{"DeviceId", p.DeviceID}, {"MediaSourceId", p.SourceID}, {"VideoCodec", videoCodec(p)}, {"AudioCodec", "aac"},
+		{"DeviceId", p.DeviceID}, {"MediaSourceId", p.SourceID}, {"VideoCodec", videoCodec(p)}, {"AudioCodec", strings.Join(p.AudioCodecs, ",")},
 		{"AudioStreamIndex", strconv.Itoa(p.AudioIndex)},
 	}
 	if p.Subtitle != nil {
@@ -266,14 +304,15 @@ func Query(p Params, apiKey, tag, extra string) string {
 		{"VideoBitrate", strconv.FormatInt(p.VideoBitrate, 10)},
 		{"AudioBitrate", strconv.FormatInt(p.AudioBitrate, 10)}, {"AudioSampleRate", "48000"},
 		{"SegmentContainer", "mp4"}, {"MinSegments", "1"}, {"PlaySessionId", p.PlaySessionID}, {"ApiKey", apiKey},
-		{"TranscodingMaxAudioChannels", "2"}, {"RequireAvc", "false"}, {"EnableAudioVbrEncoding", "true"}, {"Tag", tag},
+		{"TranscodingMaxAudioChannels", strconv.Itoa(max(p.MaxAudioChannels, 1))}, {"RequireAvc", "false"}, {"EnableAudioVbrEncoding", "true"}, {"Tag", tag},
 	}...)
 	var out strings.Builder
 	for i, pair := range pairs {
 		if i > 0 {
 			out.WriteByte('&')
 		}
-		out.WriteString(pair[0] + "=" + url.QueryEscape(pair[1]))
+		// Jellyfin writes the codec list with plain commas.
+		out.WriteString(pair[0] + "=" + strings.ReplaceAll(url.QueryEscape(pair[1]), "%2C", ","))
 	}
 	if p.StartTicks > 0 {
 		out.WriteString("&StartTimeTicks=" + strconv.FormatInt(p.StartTicks, 10))
@@ -305,13 +344,22 @@ func Master(spec Spec, source Source, query string) string {
 	if framerate := source.FrameRate(); framerate > 0 {
 		rate = ",FRAME-RATE=" + strconv.FormatFloat(framerate, 'f', 3, 64)
 	}
-	codecs := "avc1.640033"
+	codecs, audio := "avc1.640033", "mp4a.40.2"
 	if spec.Copy {
 		codecs = source.codecs()
 	}
-	bandwidth := spec.VideoBitrate + spec.AudioBitrate
-	return fmt.Sprintf("#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=%d,AVERAGE-BANDWIDTH=%d,VIDEO-RANGE=SDR,CODECS=\"%s,mp4a.40.2\",RESOLUTION=%dx%d%s\nmain.m3u8?%s\n",
-		bandwidth, bandwidth, codecs, spec.Width, spec.Height, rate, query)
+	if spec.AudioCopy != "" {
+		stream, _ := source.audio(spec.AudioIndex)
+		audio = audioCodecString(stream)
+	}
+	// A copied track whose file doesn't say its bitrate counts as Decide counted it.
+	audioBitrate := spec.AudioBitrate
+	if spec.AudioCopy != "" && audioBitrate <= 0 {
+		audioBitrate = unknownAudioBitrate
+	}
+	bandwidth := spec.VideoBitrate + audioBitrate
+	return fmt.Sprintf("#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=%d,AVERAGE-BANDWIDTH=%d,VIDEO-RANGE=SDR,CODECS=\"%s,%s\",RESOLUTION=%dx%d%s\nmain.m3u8?%s\n",
+		bandwidth, bandwidth, codecs, audio, spec.Width, spec.Height, rate, query)
 }
 
 // Main is the complete VOD playlist, known before any segment exists.

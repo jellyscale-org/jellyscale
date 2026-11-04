@@ -63,19 +63,34 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 	hasAudio := spec.AudioIndex >= 0
 	burn := spec.Subtitle != nil && image == nil
 	var base, frameDuration float64
-	if (start > 0 && hasAudio) || burn {
+	if start > 0 || burn {
 		var err error
 		if base, frameDuration, err = sourceTiming(ctx, input); err != nil {
 			return nil, err
 		}
 	}
-	var audioSeek float64
-	var drop string
-	if start > 0 && hasAudio {
-		keyframe, err := firstFrameAt(ctx, input, seek+base)
-		if err != nil {
+	// A restart's video has to begin at the first frame at or after the cut, as a
+	// run from zero's segment does. -ss drops the frames before its time, but
+	// ffmpeg 9 keeps a frame from its own time on and ffmpeg 6 from a half frame
+	// before it, so a cut that falls inside a frame gives ffmpeg 6 one frame more.
+	// A quarter frame before the first frame is read as that frame by both. (A
+	// negative start time doesn't move the cut, a positive one does.)
+	var keyframe float64
+	videoSeek := seek
+	if start > 0 {
+		var err error
+		if keyframe, err = firstFrameAt(ctx, input, seek+max(base, 0)); err != nil {
 			return nil, err
 		}
+		videoSeek = keyframe - max(base, 0) - frameDuration/4
+	}
+	var audioSeek float64
+	var drop string
+	copied := spec.AudioCopy != ""
+	if start > 0 && hasAudio && copied {
+		audioSeek, drop = copiedAudioCut(keyframe, seek, frameDuration)
+	}
+	if start > 0 && hasAudio && !copied {
 		firstFrame := max(int((seek+1e-9)/aacFrame)-warmupFrames, 0)
 		audioSeek = float64(firstFrame) * aacFrame
 		// The muxer cuts audio at the keyframe's DTS. x264 sees frame numbers,
@@ -89,7 +104,7 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		drop = fmt.Sprintf("noise=drop=lt(pts\\,%d)", threshold)
 	}
 
-	args := []string{"-nostdin", "-v", "warning", "-y", "-copyts", "-ss", seconds(seek)}
+	args := []string{"-nostdin", "-v", "warning", "-y", "-copyts", "-ss", seconds(videoSeek)}
 	if image != nil && image.Width > 0 && image.Height > 0 {
 		// The size the track's bitmaps are placed on, which its stream may not say.
 		args = append(args, "-canvas_size", fmt.Sprintf("%dx%d", image.Width, image.Height))
@@ -138,11 +153,14 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		"-x264-params", "bframes=2:b-adapt=0:open-gop=0:scenecut=0", "-forced-idr", "1",
 		"-force_key_frames", fmt.Sprintf("expr:gte(t,n_forced*%d)", playback.SegmentSeconds),
 	)
-	if hasAudio {
+	if hasAudio && copied {
+		// -strict -2 lets older ffmpegs write FLAC and Opus into MP4.
+		args = append(args, "-c:a", "copy", "-strict", "-2")
+	} else if hasAudio {
 		args = append(args, "-c:a", "aac", "-b:a", strconv.FormatInt(spec.AudioBitrate, 10), "-ac", "2", "-ar", strconv.Itoa(audioRate))
-		if drop != "" {
-			args = append(args, "-bsf:a", drop)
-		}
+	}
+	if drop != "" {
+		args = append(args, "-bsf:a", drop)
 	}
 	args = append(args,
 		"-output_ts_offset", strconv.Itoa(tsOffset),
@@ -159,6 +177,20 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		cmd.Dir = dir // Where the subtitle filter finds its file; dir is absolute.
 	}
 	return cmd, nil
+}
+
+// copiedAudioCut says where a restarted run reads copied audio from and which
+// packets it drops. The packets are the source's own, so no grid or warm-up is
+// needed: the run only has to start with the packet a run from zero puts first
+// in the segment, the first at or after the video's cut (the keyframe's DTS, as
+// in Command's AAC case), and drop what comes before. It reads from two seconds
+// earlier than the segment, more than a packet or the first keyframe's delay,
+// and the drop compares time in seconds so no timebase is needed.
+func copiedAudioCut(keyframe, seek, frameDuration float64) (audioSeek float64, drop string) {
+	cut := (math.Round(keyframe/frameDuration) - reorderFrames) * frameDuration
+	// A packet exactly at the cut stays; a microsecond of slack covers the
+	// product's rounding.
+	return max(seek-2, 0), fmt.Sprintf("noise=drop=lt(pts*tb\\,%s)", seconds(cut-1e-6))
 }
 
 // copyReadRate is how many times the film's speed a copy reads its input.

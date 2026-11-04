@@ -141,3 +141,43 @@ func TestProbeRecordsImageSubtitles(t *testing.T) {
 		}
 	}
 }
+
+// A Matroska file has no bit rate field for a track, but muxers write one as a
+// BPS tag; the probe reads it, since a copied audio track is counted against
+// the bitrate cap by it. A track with neither stays without a bitrate.
+func TestProbeRecordsAudioBitrate(t *testing.T) {
+	testenv.FFmpeg(t)
+	cases := []struct {
+		name string
+		args []string
+		want int64
+	}{
+		{"mp4", []string{"-c:a", "aac", "-b:a", "128k", "v.mp4"}, 128_000},
+		{"mkv with a BPS tag", []string{"-c:a", "aac", "-metadata:s:a:0", "BPS=123456", "v.mkv"}, 123456},
+		{"mkv with a BPS tag for the language", []string{"-c:a", "aac", "-metadata:s:a:0", "language=eng", "-metadata:s:a:0", "BPS-eng=234567", "v.mkv"}, 234567},
+		{"mkv with neither", []string{"-c:a", "flac", "-fflags", "+bitexact", "v.mkv"}, 0},
+	}
+	for _, c := range cases {
+		dir := t.TempDir()
+		args := append([]string{"-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=160x90:rate=10:duration=2",
+			"-f", "lavfi", "-i", "sine=frequency=440:duration=2", "-c:v", "libx264", "-preset", "ultrafast"}, c.args...)
+		args[len(args)-1] = filepath.Join(dir, args[len(args)-1])
+		if out, err := exec.Command("ffmpeg", args...).CombinedOutput(); err != nil {
+			t.Fatalf("%s: ffmpeg: %v: %s", c.name, err, out)
+		}
+		probe, err := ProbeInput(context.Background(), args[len(args)-1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got int64
+		for _, s := range probe.Streams {
+			if s["Type"] == "Audio" {
+				got, _ = s["BitRate"].(int64)
+			}
+		}
+		// mp4 reports what the encoder wrote, close to the asked-for rate.
+		if got < c.want*95/100 || got > c.want*105/100 {
+			t.Errorf("%s: BitRate %d, want %d", c.name, got, c.want)
+		}
+	}
+}

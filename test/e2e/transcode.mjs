@@ -542,6 +542,134 @@ for (const flavour of flavours) await scenario("switching audio plays the new tr
   await leave(page);
 });
 
+// ---- Copied audio under a re-encoded picture ----
+// The packets of an audio stream: time, then size and hash.
+function audioPacketsOf(file, stream) {
+  return execFileSync("ffprobe", ["-v", "error", "-select_streams", stream, "-show_entries", "packet=pts_time,size,data_hash", "-show_data_hash", "sha256", "-of", "csv=p=0", file]).toString()
+    .trim().split("\n").map((line) => { const f = line.split(","); return { time: parseFloat(f[0]), data: `${f[1]} ${f[2]}` }; });
+}
+
+// The film is interlaced, so its video is re-encoded; Chrome plays its AAC, so the
+// audio is copied (compat/captures/audio-copy-12.4.md). Through a far seek, which
+// starts a job in the middle, and a switch to the second track.
+await scenario("audio copy: an interlaced film re-encodes the picture and copies the AAC audio through a seek and a track switch", async ({ page, seen }) => {
+  const file = `${media}/Audio Copy Film (2090)/Audio Copy Film (2090).mkv`;
+  await play(page, "Transcode", "Audio Copy Film");
+  const source = seen.infos.at(-1).source;
+  const url = source.TranscodingUrl;
+  if (!/VideoCodec=h264/.test(url) || !/AudioCodec=aac,opus,flac&/.test(url) || !/TranscodingMaxAudioChannels=2/.test(url) || !/TranscodeReasons=InterlacedVideoNotSupported$/.test(url)) {
+    throw new Error(`not a re-encode with AAC to copy, and no audio reason: ${url}`);
+  }
+  const master = await (await fetch(new URL(url, base))).text();
+  if (!/CODECS="avc1\.[0-9A-F]+,mp4a\.40\.2"/.test(master)) throw new Error(`master: ${master}`);
+  const copying = (run, track) => /libx264/.test(run.line) && / -c:a copy /.test(run.line) && !/-c:a aac/.test(run.line) && run.audio === track;
+  const first = ffmpegRuns();
+  if (first.length !== 1 || !copying(first[0], "1")) throw new Error(`ffmpeg is not copying the audio: ${first.map((r) => r.line.slice(0, 500))}`);
+  await advances(page, 2);
+  noErrors(seen);
+
+  const total = await duration(page);
+  const target = total * 0.6;
+  await page.evaluate((t) => { document.querySelector("video").currentTime = t; }, target);
+  await waitFor("playback past the seek target", async () => (await time(page)) > target + 1.5, 60000);
+  const restarted = await waitFor("the job that started at the seek", async () => {
+    const runs = ffmpegRuns();
+    return runs.length === 1 && runs[0].start >= Math.floor(target / 4) - 2 ? runs[0] : null;
+  }, 20000);
+  // A job that starts in the middle copies the audio too, dropping what falls before its first segment.
+  if (!copying(restarted, "1") || !/-bsf:a noise=drop=lt\(pts\*tb/.test(restarted.line)) throw new Error(`the restart: ${restarted.line.slice(0, 600)}`);
+  noErrors(seen);
+
+  // The pointer has been still since the last menu, so it has to move to show the controls.
+  await page.mouse.move(300, 300);
+  await page.mouse.move(600, 400);
+  await page.click(".btnAudio");
+  await page.click('[data-id="2"]');
+  await waitFor("segments of the second track", async () => seen.hls.some((r) => r.query.get("AudioStreamIndex") === "2" && /\/hls1\/main\/\d+\.mp4$/i.test(r.path) && r.status === 200));
+  await advances(page);
+  const switched = await waitFor("only the second track's ffmpeg to be left", async () => {
+    const runs = ffmpegRuns();
+    return runs.length === 1 && runs[0].audio === "2" ? runs[0] : null;
+  }, 20000);
+  if (!copying(switched, "2")) throw new Error(`the second track is not copied: ${switched.line.slice(0, 500)}`);
+
+  // What the player was given is the file's own packets of that track, in order.
+  const served = seen.hls.filter((r) => r.query.get("AudioStreamIndex") === "2" && /\/hls1\/main\/\d+\.mp4$/i.test(r.path) && r.status === 200).at(-1);
+  const playlist = await playlistOf(transcodeUrl(seen));
+  const index = Number(/\/(\d+)\.mp4$/.exec(served.path)[1]);
+  const init = await bytesOf(playlist.init);
+  const body = await bytesOf(playlist.segments[index].url);
+  const dir = mkdtempSync(`${tmpdir()}/jellyscale-e2e-`);
+  writeFileSync(`${dir}/segment.mp4`, Buffer.concat([init, body]));
+  const got = audioPacketsOf(`${dir}/segment.mp4`, "a:0");
+  rmSync(dir, { recursive: true, force: true });
+  const original = audioPacketsOf(file, "a:1");
+  // Found by time, since a tone repeats its packets; the output's clock is the file's plus 100 s.
+  const at = original.findIndex((packet) => Math.abs(packet.time - (got[0].time - 100)) < 0.01);
+  if (at < 0 || got.some((packet, i) => packet.data !== original[at + i]?.data || Math.abs(packet.time - 100 - original[at + i].time) > 0.002)) throw new Error(`segment ${index} is not a run of the file's second track (${got.length} packets, first at ${at})`);
+  noErrors(seen);
+  await leave(page);
+});
+
+// Opus and FLAC are copied for Chrome, whose profile lists them: playing and seeking
+// show that its decoder takes the track as it is in fMP4.
+for (const [codec, title] of [["opus", "Audio Opus Film"], ["flac", "Audio Flac Film"]]) {
+  await scenario(`audio copy: an interlaced film re-encodes the picture and copies ${codec} audio, playing and seeking`, async ({ page, seen }) => {
+    await play(page, "Transcode", title);
+    const url = seen.infos.at(-1).source.TranscodingUrl;
+    if (!/VideoCodec=h264/.test(url) || !/AudioCodec=aac,opus,flac&/.test(url) || !/TranscodeReasons=InterlacedVideoNotSupported$/.test(url)) throw new Error(`not a re-encode: ${url}`);
+    const master = await (await fetch(new URL(url, base))).text();
+    const named = codec === "opus" ? "Opus" : "fLaC";
+    if (!master.includes(`,${named}"`)) throw new Error(`master: ${master}`);
+    const copying = (run) => /libx264/.test(run.line) && / -c:a copy /.test(run.line) && !/-c:a aac/.test(run.line);
+    const first = ffmpegRuns();
+    if (first.length !== 1 || !copying(first[0])) throw new Error(`ffmpeg is not copying the audio: ${first.map((r) => r.line.slice(0, 500))}`);
+    await advances(page, 2);
+    noErrors(seen);
+    const target = (await duration(page)) * 0.6;
+    await page.evaluate((t) => { document.querySelector("video").currentTime = t; }, target);
+    await waitFor("playback past the seek target", async () => (await time(page)) > target + 1.5, 60000);
+    const restarted = await waitFor("the job that started at the seek", async () => {
+      const runs = ffmpegRuns();
+      return runs.length === 1 && runs[0].start >= Math.floor(target / 4) - 2 ? runs[0] : null;
+    }, 20000);
+    if (!copying(restarted)) throw new Error(`the restart: ${restarted.line.slice(0, 600)}`);
+    await advances(page, 2);
+    noErrors(seen);
+    await leave(page);
+  });
+}
+
+// The copied track counts against the cap by its own bitrate (AAC at 128 kbps in
+// the MP4): a 720 kbps cap fits it, a 420 kbps one doesn't.
+await scenario("audio copy: a bitrate cap the track doesn't fit re-encodes the audio, and one it fits copies it", async ({ page, seen }) => {
+  await play(page, "Transcode", "Audio Cap Film");
+  const copying = (line) => / -c:a copy /.test(line);
+  const encoding = (line) => /-c:a aac/.test(line);
+  const only = (test) => async () => { const runs = ffmpegRuns(); return runs.length === 1 && test(runs[0].line); };
+  await waitFor("audio copied at Auto", only(copying), 20000);
+  const auto = transcodeUrl(seen);
+  if (!/AudioBitrate=1[0-9]{5}&/.test(auto) || !/VideoCodec=h264/.test(auto)) throw new Error(`Auto: ${auto}`);
+  const choose = async (id) => {
+    await page.mouse.move(600, 400);
+    await page.click(".btnVideoOsdSettings");
+    await page.click('[data-id="quality"]');
+    await page.click(`[data-id="${id}"]`);
+    const info = await waitFor(`a PlaybackInfo with the cap ${id}`, async () => seen.infos.find((i) => i.request.MaxStreamingBitrate === Number(id)));
+    return info.source.TranscodingUrl;
+  };
+  const low = await choose("420000");
+  if (!/AudioBitrate=84000&/.test(low)) throw new Error(`420 kbps: ${low}`);
+  await waitFor("the audio re-encoded under a 420 kbps cap", only(encoding), 30000);
+  await advances(page, 2);
+  const fits = await choose("720000");
+  if (!/AudioBitrate=1[0-9]{5}&/.test(fits)) throw new Error(`720 kbps: ${fits}`);
+  await waitFor("the audio copied under a 720 kbps cap", only(copying), 30000);
+  await advances(page, 2);
+  noErrors(seen);
+  await leave(page);
+});
+
 await scenario("closing the tab ends ffmpeg once the idle time passes", async ({ context, page, seen }) => {
   await play(page, "Transcode", "Iota Film");
   await advances(page);
