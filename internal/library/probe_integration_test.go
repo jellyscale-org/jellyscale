@@ -79,6 +79,32 @@ func TestProbeRecordsLevelFieldOrderAndRange(t *testing.T) {
 	}
 }
 
+// The bit depth comes from the pixel format, which is all ffprobe says of it
+// for most HEVC and AV1: the master playlist of an AV1 copy names it.
+func TestProbeRecordsBitDepth(t *testing.T) {
+	testenv.FFmpeg(t)
+	for _, c := range []struct {
+		pixFmt string
+		depth  int
+	}{{"yuv420p", 8}, {"yuv420p10le", 10}} {
+		file := filepath.Join(t.TempDir(), "v.mkv")
+		if out, err := exec.Command("ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=160x92:rate=10:duration=1",
+			"-c:v", "libx265", "-preset", "ultrafast", "-pix_fmt", c.pixFmt, file).CombinedOutput(); err != nil {
+			t.Fatalf("%s: ffmpeg: %v: %s", c.pixFmt, err, out)
+		}
+		probe, err := ProbeInput(context.Background(), file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := probe.Streams[0]["BitDepth"]; got != c.depth {
+			t.Errorf("%s: bit depth %v, want %d", c.pixFmt, got, c.depth)
+		}
+		if !probe.wantsKeyframes() {
+			t.Errorf("%s: an HEVC file in Matroska is not asked for an index", c.pixFmt)
+		}
+	}
+}
+
 // PGS, VobSub and DVB tracks are recorded as image tracks under the names
 // Jellyfin lists them by, and only PGS can be sent to the client as a file.
 func TestProbeRecordsImageSubtitles(t *testing.T) {

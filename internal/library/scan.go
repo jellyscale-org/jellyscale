@@ -94,7 +94,7 @@ type seenObject struct {
 	itemID *string
 	// unprobed: stored before the probe recorded level, field order and range,
 	// which transcode decisions need, or which subtitle tracks are text, or
-	// before keyframes were read from an H.264 file. A scan probes it again.
+	// before keyframes were read from a file in a codec that is copied. A scan probes it again.
 	unprobed bool
 	// sidecars is the fingerprint of the subtitle files read at the last scan,
 	// kept with the media source row; nil if the scan was before they were read,
@@ -256,8 +256,8 @@ func (s *Scanner) loadSeen(ctx context.Context, libraryID string) (map[string]se
 				OR jsonb_path_exists(m.streams, '$[*] ? (@.Type == "Subtitle" && @.IsTextSubtitleStream == false && !exists(@.IsImageSubtitleStream))'), false),
 			COALESCE(jsonb_path_exists(m.streams, '$[*] ? ((@.Type == "Video" && !exists(@.VideoRangeType)) || (@.Type == "Subtitle" && !exists(@.IsTextSubtitleStream)))')
 				OR (m.keyframes IS NULL AND m.container IN ('mkv', 'mp4')
-					AND jsonb_path_exists(m.streams, '$[*] ? (@.Type == "Video" && @.Codec == "h264")')), false)
-		FROM scan_objects o LEFT JOIN media_sources m ON m.item_id = o.item_id WHERE o.library_id = $1`, libraryID)
+					AND EXISTS (SELECT 1 FROM jsonb_array_elements(m.streams) v WHERE v->>'Type' = 'Video' AND v->>'Codec' = ANY($2))), false)
+		FROM scan_objects o LEFT JOIN media_sources m ON m.item_id = o.item_id WHERE o.library_id = $1`, libraryID, playback.CopyCodecs())
 	if err != nil {
 		return nil, err
 	}

@@ -12,7 +12,7 @@ test/e2e/run.sh <workdir> <playwright_dir>  # Real jellyfin-web in Chromium
 go run ./cmd/jellyscale --print-routes > compat/endpoints.yaml
 ```
 
-Tests that need ffmpeg, Postgres, S3 or a font live in `*_integration_test.go` files tagged `//go:build integration`; the integration tier needs Docker, ffmpeg with libx264, libx265 and libass, and a font. Go tests run through `go tool gotestsum`. `test/e2e` needs `web-dist` copied from the Jellyfin image and a directory with `playwright-core` installed; see the README.
+Tests that need ffmpeg, Postgres, S3 or a font live in `*_integration_test.go` files tagged `//go:build integration`; the integration tier needs Docker, ffmpeg with libx264, libx265, libsvtav1 and libass, and a font. Go tests run through `go tool gotestsum`. `test/e2e` needs `web-dist` copied from the Jellyfin image and a directory with `playwright-core` installed; see the README.
 
 ## Working rules
 

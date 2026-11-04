@@ -299,9 +299,9 @@ func keyframeCount(t *testing.T, pool *pgxpool.Pool) *int {
 	return scalar[*int](t, pool, "SELECT cardinality(keyframes) FROM media_sources")
 }
 
-// A scan reads the keyframe index of an H.264 file in Matroska or MP4; a file
-// with none to read is marked, so it isn't looked at again; one that is not
-// H.264 is never looked at.
+// A scan reads the keyframe index of an H.264, HEVC or AV1 file in Matroska or
+// MP4; a file with none to read is marked, so it isn't looked at again; one in
+// another codec is never looked at.
 func TestScanReadsTheKeyframeIndex(t *testing.T) {
 	f := setup(t, "movies")
 	var logged bytes.Buffer
@@ -345,18 +345,50 @@ func TestScanReadsTheKeyframeIndex(t *testing.T) {
 		t.Fatalf("%d sources still without an index after a scan", n)
 	}
 
-	// HEVC is never copied, so nothing is read.
-	hevc := filepath.Join(f.media, "Hevc Film (2022)", "Hevc Film (2022).mkv")
-	if err := os.MkdirAll(filepath.Dir(hevc), 0o755); err != nil {
+	// HEVC and AV1 are copied too, in either container, so their index is read.
+	// The films are made with the encoders' defaults, which cut open GOPs.
+	for _, c := range []struct{ name, container, encoder string }{
+		{"Hevc Mkv Film (2022)", "mkv", "libx265"}, {"Hevc Mp4 Film (2023)", "mp4", "libx265"},
+		{"Av1 Mkv Film (2024)", "mkv", "libsvtav1"}, {"Av1 Mp4 Film (2025)", "mp4", "libsvtav1"},
+	} {
+		file := filepath.Join(f.media, c.name, c.name+"."+c.container)
+		if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if out, err := exec.Command("ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=10:duration=2",
+			"-c:v", c.encoder, "-preset", map[string]string{"libx265": "ultrafast", "libsvtav1": "10"}[c.encoder], file).CombinedOutput(); err != nil {
+			t.Fatalf("this test needs ffmpeg with %s: %v: %s", c.encoder, err, out)
+		}
+	}
+	// A codec that is never copied is never looked at.
+	mpeg4 := filepath.Join(f.media, "Mpeg4 Film (2026)", "Mpeg4 Film (2026).mkv")
+	if err := os.MkdirAll(filepath.Dir(mpeg4), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if out, err := exec.Command("ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=10:duration=2",
-		"-c:v", "libx265", "-preset", "ultrafast", hevc).CombinedOutput(); err != nil {
-		t.Fatalf("this test needs ffmpeg with libx265: %v: %s", err, out)
+		"-c:v", "mpeg4", mpeg4).CombinedOutput(); err != nil {
+		t.Fatalf("ffmpeg: %v: %s", err, out)
 	}
 	f.scan(t)
-	if n := scalar[*int](t, f.pool, "SELECT cardinality(keyframes) FROM media_sources m JOIN items i ON i.id = m.item_id WHERE i.name = 'Hevc Film'"); n != nil {
-		t.Fatalf("an HEVC file has keyframes %v, want NULL", *n)
+	for _, name := range []string{"Hevc Mkv Film", "Hevc Mp4 Film", "Av1 Mkv Film", "Av1 Mp4 Film"} {
+		n := scalar[*int](t, f.pool, "SELECT cardinality(keyframes) FROM media_sources m JOIN items i ON i.id = m.item_id WHERE i.name = '"+name+"'")
+		if n == nil || *n == 0 {
+			t.Errorf("%s: keyframes %v, want an index", name, n)
+		}
+	}
+	if n := scalar[*int](t, f.pool, "SELECT cardinality(keyframes) FROM media_sources m JOIN items i ON i.id = m.item_id WHERE i.name = 'Mpeg4 Film'"); n != nil {
+		t.Fatalf("an MPEG-4 file has keyframes %v, want NULL", *n)
+	}
+	// A library scanned before these were copied has no index, and no bit depth
+	// in its streams; the next scan reads both without the file changing.
+	if _, err := f.pool.Exec(context.Background(), `UPDATE media_sources SET keyframes = NULL,
+		streams = (SELECT jsonb_agg(s - 'BitDepth') FROM jsonb_array_elements(streams) s) WHERE container IN ('mkv', 'mp4')`); err != nil {
+		t.Fatal(err)
+	}
+	f.scan(t)
+	if n := scalar[int](t, f.pool, `SELECT count(*) FROM media_sources m JOIN items i ON i.id = m.item_id
+		WHERE i.name IN ('Hevc Mkv Film', 'Hevc Mp4 Film', 'Av1 Mkv Film', 'Av1 Mp4 Film') AND (m.keyframes IS NULL OR NOT m.streams @> '[{"BitDepth": 8}]')`); n != 0 {
+		t.Fatalf("%d HEVC and AV1 films still without an index or bit depth after a scan", n)
 	}
 }
 

@@ -4,6 +4,8 @@
 # (SeaweedFS), two api replicas, a stream replica and a worker.
 # Usage: run.sh <workdir> <dir_with_playwright>
 # E2E_GATES picks which gates run, default "browse play subtitles transcode".
+# E2E_HEVC=1 says the browser plays HEVC (a machine with a hardware decoder); the
+# transcode gate then expects HEVC to direct play and copy. CI leaves it unset.
 # Expects jellyfin-web in ./web-dist: docker cp <jellyfin>:/jellyfin/jellyfin-web web-dist
 # Writes <workdir>/config.json (POSIX libraries only, from test/fixtures/posix.sh)
 # and <workdir>/config-s3.json (adds a library on S3 for media and assets).
@@ -83,6 +85,28 @@ if [[ ! -f $rho ]]; then
 fi
 qoppa="$work/media/transcode/Qoppa Film (2042)/Qoppa Film (2042).mp4"
 [[ -f $qoppa ]] || { mkdir -p "$(dirname "$qoppa")" && ffmpeg -nostdin -v error -y -i "$rho" -map 0 -c copy "$qoppa" || exit 1; }
+# AV1 and HEVC with the captured keyframes, which the encoders keep to when
+# their own interval is longer than the film (-g 2000, keyint=2000). Chrome plays
+# AV1 in software, so Sampi and San are copied and Heth plays as it is; it plays
+# HEVC only with a hardware decoder, which CI doesn't have (Yot, Lamed).
+# SVT-AV1 prints its configuration on stderr whatever -v says.
+codec_film() { # file container video_encoder_args audio_codec
+  local file="$work/media/transcode/$1/$1.$2"
+  [[ -f $file ]] && return
+  mkdir -p "$(dirname "$file")"
+  # shellcheck disable=SC2086
+  ffmpeg -nostdin -v error -y \
+    -f lavfi -i "testsrc2=size=640x360:rate=24000/1001:duration=90" \
+    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=90" \
+    -map 0:v -map 1:a $3 -force_key_frames "$keyframes" -c:a "$4" -metadata:s:a:0 language=eng "$file" 2>/dev/null || { echo "could not make $file" >&2; exit 1; }
+}
+av1="-c:v libsvtav1 -preset 10 -g 2000"
+hevc="-c:v libx265 -preset veryfast -x265-params keyint=2000:log-level=error"
+codec_film "Sampi Film (2080)" mkv "$av1" ac3
+codec_film "San Film (2081)" mp4 "$av1" ac3
+codec_film "Heth Film (2082)" mp4 "$av1" aac
+codec_film "Yot Film (2083)" mp4 "$hevc" aac
+codec_film "Lamed Film (2084)" mkv "$hevc" ac3
 # ffmpeg writes the Cues last, so cutting the file where they start leaves a
 # film with its duration and no Cues; the SeekHead still points to them.
 nocues="$work/media/transcode/Digamma Film (2045)/Digamma Film (2045).mkv"
@@ -144,6 +168,7 @@ export JELLYSCALE_S3_ACCESS_KEY=$seaweed_key JELLYSCALE_S3_SECRET_KEY=$seaweed_s
 "$work/putfile" "s3://e2e/media?$s3" "Heta Film (2043)/Heta Film (2043).mkv" "$rho" || exit 1
 "$work/putfile" "s3://e2e/media?$s3" "Koppa Film (2044)/Koppa Film (2044).mp4" "$qoppa" || exit 1
 "$work/putfile" "s3://e2e/media?$s3" "Heh Film (2049)/Heh Film (2049).mkv" "$big" || exit 1
+"$work/putfile" "s3://e2e/media?$s3" "Mem Film (2085)/Mem Film (2085).mkv" "$work/media/transcode/Sampi Film (2080)/Sampi Film (2080).mkv" || exit 1
 # The subtitle films again, on S3: one that direct plays, one that transcodes,
 # and the black one that burn-in shows against.
 sub="$work/media/transcode"

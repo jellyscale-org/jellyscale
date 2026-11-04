@@ -10,13 +10,13 @@ repo=$(cd "$(dirname "$0")/.." && pwd)
 missing=()
 for tool in docker ffmpeg ffprobe fc-list curl; do command -v "$tool" >/dev/null || missing+=("$tool"); done
 if [[ ${#missing[@]} -gt 0 ]]; then
-  echo "test/integration.sh needs ${missing[*]} on PATH (it needs docker and curl, ffmpeg and ffprobe built with libx264, libx265 and libass, and fontconfig with a font: fonts-dejavu-core, or font-dejavu on Alpine)" >&2
+  echo "test/integration.sh needs ${missing[*]} on PATH (it needs docker and curl, ffmpeg and ffprobe built with libx264, libx265, libsvtav1 and libass, and fontconfig with a font: fonts-dejavu-core, or font-dejavu on Alpine)" >&2
   exit 1
 fi
 docker info >/dev/null 2>&1 || { echo "test/integration.sh needs a running Docker daemon for Postgres, SeaweedFS and Garage" >&2; exit 1; }
 encoders=$(ffmpeg -hide_banner -encoders 2>/dev/null)
 filters=$(ffmpeg -hide_banner -filters 2>/dev/null)
-for want in libx264 libx265; do
+for want in libx264 libx265 libsvtav1; do
   grep -q " $want " <<<"$encoders" || { echo "test/integration.sh needs ffmpeg built with $want" >&2; exit 1; }
 done
 grep -q " subtitles " <<<"$filters" || { echo "test/integration.sh needs ffmpeg built with libass (the subtitles filter)" >&2; exit 1; }

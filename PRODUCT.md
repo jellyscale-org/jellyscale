@@ -66,7 +66,7 @@ Every viewer-visible and operator-visible feature in scope, in one list. Status 
 - Played state through `/UserPlayedItems`, `POST /UserItems/{itemId}/UserData` (a partial write of played, position, last played and favourite; a body whose `LastPlayedDate` is older than the stored one cannot undo a newer position or played state, `DOMAINS.md` invariant 49) and playback reporting: **done**.
 - Direct play from POSIX and S3-compatible stores, with ranges and HEAD: **done**.
 - Transcode to H.264 with audio track and bitrate choice, seeks, and text subtitles delivered or burnt in: **done**.
-- Video copy with audio re-encoded (H.264 in MKV and MP4): **done**.
+- Video copy with audio re-encoded (H.264, and SDR HEVC and AV1, in MKV and MP4): **done**.
 - Local accounts with bcrypt passwords and per-device tokens; the first administrator comes from configuration: **partial** (no user management, see `identity`).
 - Sessions list and playback reporting: **partial** (listing and progress done, no operator view of devices).
 - Items' multiple audio tracks: **done**.
@@ -74,7 +74,7 @@ Every viewer-visible and operator-visible feature in scope, in one list. Status 
 
 ### `phase3`
 
-- HEVC to clients that play it, copied or encoded; AV1: **not built**. In scope.
+- HEVC and AV1 to clients that play them: **done** as direct play and as a copy into fMP4 HLS (DOMAINS 45), for HEVC Main and Main 10 and AV1 profile 0 at 8 or 10 bits, SDR, when the client's DeviceProfile lists the codec. Anything else is re-encoded to H.264 as before. Not built: encoding to HEVC or AV1, and copying HDR (an HDR film behaves as it did, until tone mapping). CI's Chrome decodes AV1 but not HEVC, so a browser plays HEVC only on a machine with a hardware decoder (`E2E_HEVC=1`).
 - Copying audio while the video is re-encoded: **not built**. In scope.
 - HDR tone mapping to SDR: **not built**. In scope, because a viewer on an SDR display otherwise sees washed-out colour.
 - Image subtitles inside the file (PGS, VobSub, DVB): **done**. They are listed as Jellyfin lists them (`Codec` `PGSSUB`, `DVDSUB`, `DVBSUB`), and any other bitmap codec is not listed. jellyfin-web 12.4 draws PGS itself from the file when its viewer turns on PGS rendering (a setting that is off by default): the track is `External`, a worker copies it out of the film once (the whole film is read once for each PGS track) and `stream` sends it from the asset store. For every other viewer, and for VobSub and DVB always, choosing the track is a transcode with the track drawn into the picture, which a worker's ffmpeg reads from the film in the same pass as the video. A seek into the middle of a burnt PGS cue misses that cue until the next one (DOMAINS 51). Not built: VobSub as a file for the clients that draw it, external `.sup` and `.sub` files beside the film, and choosing a track by the viewer's subtitle mode (above).

@@ -307,7 +307,7 @@ func Master(spec Spec, source Source, query string) string {
 	}
 	codecs := "avc1.640033"
 	if spec.Copy {
-		codecs = source.avc1()
+		codecs = source.codecs()
 	}
 	bandwidth := spec.VideoBitrate + spec.AudioBitrate
 	return fmt.Sprintf("#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=%d,AVERAGE-BANDWIDTH=%d,VIDEO-RANGE=SDR,CODECS=\"%s,mp4a.40.2\",RESOLUTION=%dx%d%s\nmain.m3u8?%s\n",

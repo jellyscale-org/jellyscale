@@ -11,6 +11,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"jellyscale/internal/playback"
 )
 
 const ticksPerSecond = 10_000_000
@@ -44,15 +46,16 @@ type Probe struct {
 	VideoEnd int64
 }
 
-// wantsKeyframes: only H.264 is ever copied, and only these containers have
-// an index ReadKeyframes reads.
+// wantsKeyframes: only the codecs playback copies need an index, and only
+// these containers have one ReadKeyframes reads.
 func (p Probe) wantsKeyframes() bool {
 	if p.Container != "mkv" && p.Container != "mp4" {
 		return false
 	}
 	for _, stream := range p.Streams {
 		if stream["Type"] == "Video" {
-			return stream["Codec"] == "h264"
+			codec, _ := stream["Codec"].(string)
+			return playback.CopyCodec(codec)
 		}
 	}
 	return false
@@ -74,6 +77,7 @@ type ffprobeOutput struct {
 		CodecName   string            `json:"codec_name"`
 		Profile     string            `json:"profile"`
 		Level       int               `json:"level"`
+		PixFmt      string            `json:"pix_fmt"`
 		FieldOrder  string            `json:"field_order"`
 		Transfer    string            `json:"color_transfer"`
 		SideData    []sideData        `json:"side_data_list"`
@@ -160,6 +164,7 @@ func ProbeInput(ctx context.Context, input string) (Probe, error) {
 			entry["Level"] = max(stream.Level, 0)
 			entry["IsInterlaced"] = slices.Contains([]string{"tt", "bb", "tb", "bt"}, stream.FieldOrder)
 			entry["VideoRangeType"] = rangeType(stream.Transfer, stream.SideData)
+			entry["BitDepth"] = bitDepth(stream.PixFmt)
 			// The video can end before the audio does, and an HLS playlist
 			// has to stop where the video does. Matroska keeps the duration
 			// in a tag, as the end on the file's clock, so a video that
@@ -208,6 +213,18 @@ func ProbeInput(ctx context.Context, input string) (Probe, error) {
 		probe.Streams = append(probe.Streams, entry)
 	}
 	return probe, nil
+}
+
+// bitDepth reads the depth from ffprobe's pixel format name, "yuv420p10le"
+// for 10 bits and "yuv420p" for 8; ffprobe leaves bits_per_raw_sample out of
+// most HEVC and AV1 streams.
+func bitDepth(pixFmt string) int {
+	for _, depth := range []int{16, 14, 12, 10, 9} {
+		if strings.Contains(pixFmt, strconv.Itoa(depth)+"le") || strings.Contains(pixFmt, strconv.Itoa(depth)+"be") {
+			return depth
+		}
+	}
+	return 8
 }
 
 // rangeType is Jellyfin's VideoRangeType. HDR10+ looks like HDR10 here, and

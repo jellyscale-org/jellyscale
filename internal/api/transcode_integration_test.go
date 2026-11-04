@@ -728,3 +728,70 @@ func TestPlaybackInfoOffersACopy(t *testing.T) {
 		t.Errorf("the index could not be read: %d %s", response.StatusCode, failure)
 	}
 }
+
+// A profile from compat/captures/hevc-av1-12.4.json.
+func hevcAV1Profile(t *testing.T, name string) json.RawMessage {
+	t.Helper()
+	raw, err := os.ReadFile("../../compat/captures/hevc-av1-12.4.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var capture struct {
+		DeviceProfiles map[string]json.RawMessage `json:"deviceProfiles"`
+	}
+	if err := json.Unmarshal(raw, &capture); err != nil || capture.DeviceProfiles[name] == nil {
+		t.Fatalf("no profile %s in the capture: %v", name, err)
+	}
+	return capture.DeviceProfiles[name]
+}
+
+// An HEVC or AV1 film in AC3 is offered as a copy to a client whose profile
+// takes the codec in fMP4 HLS, with a master playlist that names it; to a client
+// whose HLS profile lists h264 only, to one with no HEVC, and for HDR or a
+// profile the playlist can't name it is re-encoded, with Jellyfin's reasons.
+func TestPlaybackInfoOffersACopyOfHEVCAndAV1(t *testing.T) {
+	for _, test := range []struct {
+		name, codec, profile, streamFields, client string
+		copied                                     bool
+		reasons, codecs                            string
+	}{
+		{"hevc", "hevc", "Main", `"Level":120,"BitDepth":8`, "hevc-client", true, "AudioCodecNotSupported", "hvc1.1.6.L120.B0"},
+		{"hevc main 10", "hevc", "Main 10", `"Level":153,"BitDepth":10`, "hevc-client", true, "AudioCodecNotSupported", "hvc1.2.4.L153.B0"},
+		{"av1", "av1", "Main", `"Level":8,"BitDepth":10`, "chrome", true, "AudioCodecNotSupported", "av01.0.08M.10"},
+		{"hevc for a client without it", "hevc", "Main", `"Level":120,"BitDepth":8`, "chrome", false, "VideoCodecNotSupported,AudioCodecNotSupported", ""},
+		{"hevc, hls lists h264 only", "hevc", "Main", `"Level":120,"BitDepth":8`, "hevc-direct-only", false, "VideoCodecNotSupported,AudioCodecNotSupported", ""},
+		{"hevc hdr10", "hevc", "Main 10", `"Level":153,"BitDepth":10,"VideoRangeType":"HDR10"`, "hevc-client", false, "AudioCodecNotSupported", ""},
+		{"hevc rext", "hevc", "Rext", `"Level":120,"BitDepth":12`, "hevc-client", false, "AudioCodecNotSupported,VideoProfileNotSupported", ""},
+		{"av1 with no bit depth stored", "av1", "Main", `"Level":8`, "chrome", false, "AudioCodecNotSupported,VideoProfileNotSupported", ""},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			e, _, source := transcodeEnv(t, test.codec, "ac3")
+			video := `{"Index":0,"Type":"Video","Codec":"` + test.codec + `","Profile":"` + test.profile + `","VideoRangeType":"SDR","Width":1280,"Height":720,"AverageFrameRate":24,` + test.streamFields + `}`
+			mustExec(t, e.pool, `UPDATE media_sources SET streams = jsonb_set(streams, '{0}', $1::jsonb || jsonb_build_object('VideoRangeType', coalesce($1::jsonb->>'VideoRangeType', 'SDR')))`, video)
+			mustExec(t, e.pool, "UPDATE media_sources SET keyframes = '{0,30000000,70000000,130000000,180000000,260000000,310000000,390000000,440000000,520000000,570000000,650000000,700000000,780000000,830000000}', video_end = 900000000, size = 25000000")
+			mustExec(t, e.pool, "UPDATE items SET run_time_ticks = 900000000")
+			body := map[string]any{"DeviceProfile": hevcAV1Profile(t, test.client), "MaxStreamingBitrate": 2147483647, "AudioStreamIndex": "1", "SubtitleStreamIndex": "-1", "MediaSourceId": source}
+			media := firstSource(e.playbackInfo(t, 0, e.item, body))
+			transcodingURL, _ := media["TranscodingUrl"].(string)
+			query := mustQuery(t, transcodingURL)
+			wantCodec := "h264"
+			if test.copied {
+				wantCodec = "copy"
+			}
+			if query.Get("VideoCodec") != wantCodec || query.Get("TranscodeReasons") != test.reasons {
+				t.Fatalf("query: %v", query)
+			}
+			if !test.copied {
+				return
+			}
+			_, master := e.do(t, 1, "GET", transcodingURL, "", nil)
+			if !strings.Contains(string(master), `CODECS="`+test.codecs+`,mp4a.40.2"`) {
+				t.Errorf("master:\n%s", master)
+			}
+			_, mainPlaylist := e.do(t, 0, "GET", strings.Replace(transcodingURL, "master.m3u8", "main.m3u8", 1), "", nil)
+			if n := strings.Count(string(mainPlaylist), "#EXTINF:"); n != 14 {
+				t.Errorf("%d segments in the copy's playlist, want 14 (the keyframes' cuts)", n)
+			}
+		})
+	}
+}

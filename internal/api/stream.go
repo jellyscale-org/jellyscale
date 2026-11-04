@@ -319,7 +319,7 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 		return false, err
 	}
 	media.Bitrate = int64(number(source["Bitrate"]))
-	if media.H264() {
+	if media.Copyable() {
 		if media.Keyframes, media.VideoEnd, err = s.Items.Keyframes(r.Context(), stored.ID); err != nil {
 			return false, err
 		}
