@@ -71,7 +71,14 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 	}
 	var audioSeek float64
 	var drop string
-	if start > 0 && hasAudio {
+	copied := spec.AudioCopy != ""
+	if start > 0 && hasAudio && copied {
+		var err error
+		if audioSeek, drop, err = copiedAudioCut(ctx, input, seek, base, frameDuration); err != nil {
+			return nil, err
+		}
+	}
+	if start > 0 && hasAudio && !copied {
 		keyframe, err := firstFrameAt(ctx, input, seek+base)
 		if err != nil {
 			return nil, err
@@ -138,11 +145,14 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		"-x264-params", "bframes=2:b-adapt=0:open-gop=0:scenecut=0", "-forced-idr", "1",
 		"-force_key_frames", fmt.Sprintf("expr:gte(t,n_forced*%d)", playback.SegmentSeconds),
 	)
-	if hasAudio {
+	if hasAudio && copied {
+		// -strict -2 lets older ffmpegs write FLAC and Opus into MP4.
+		args = append(args, "-c:a", "copy", "-strict", "-2")
+	} else if hasAudio {
 		args = append(args, "-c:a", "aac", "-b:a", strconv.FormatInt(spec.AudioBitrate, 10), "-ac", "2", "-ar", strconv.Itoa(audioRate))
-		if drop != "" {
-			args = append(args, "-bsf:a", drop)
-		}
+	}
+	if drop != "" {
+		args = append(args, "-bsf:a", drop)
 	}
 	args = append(args,
 		"-output_ts_offset", strconv.Itoa(tsOffset),
@@ -159,6 +169,24 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		cmd.Dir = dir // Where the subtitle filter finds its file; dir is absolute.
 	}
 	return cmd, nil
+}
+
+// copiedAudioCut says where a restarted run reads copied audio from and which
+// packets it drops. The packets are the source's own, so no grid or warm-up is
+// needed: the run only has to start with the packet a run from zero puts first
+// in the segment, the first at or after the video's cut (the keyframe's DTS, as
+// in Command's AAC case), and drop what comes before. It reads from two seconds
+// earlier than the segment, more than a packet or the first keyframe's delay,
+// and the drop compares time in seconds so no timebase is needed.
+func copiedAudioCut(ctx context.Context, input string, seek, base, frameDuration float64) (audioSeek float64, drop string, err error) {
+	keyframe, err := firstFrameAt(ctx, input, seek+base)
+	if err != nil {
+		return 0, "", err
+	}
+	cut := (math.Round(keyframe/frameDuration) - reorderFrames) * frameDuration
+	// A packet exactly at the cut stays; a microsecond of slack covers the
+	// product's rounding.
+	return max(seek-2, 0), fmt.Sprintf("noise=drop=lt(pts*tb\\,%s)", seconds(cut-1e-6)), nil
 }
 
 // copyReadRate is how many times the film's speed a copy reads its input.

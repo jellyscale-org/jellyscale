@@ -155,6 +155,35 @@ for interlaced in "Zeta Interlaced (2050)" "Theta Interlaced (2051)" "Mu Interla
     -map 0:v -map 1:a -map 2:a -vf interlace=scan=tff -c:v libx264 -preset ultrafast -flags +ilme+ildct -x264-params tff=1 -g 50 \
     -c:a:0 ac3 -c:a:1 aac -metadata:s:a:0 language=eng -metadata:s:a:1 language=spa "$file" || exit 1
 done
+# Interlaced H.264 whose audio Chrome plays: the video is re-encoded and the audio
+# copied. Two AAC tracks (440 and 880 Hz) to switch between; the MP4 has the
+# bitrate of its tracks, which the bitrate cap scenario counts the copy by.
+for copied in "Audio Copy Film (2090)" "Audio Cap Film (2091)"; do
+  ext=mkv; [[ $copied == "Audio Cap"* ]] && ext=mp4
+  file="$work/media/transcode/$copied/$copied.$ext"
+  [[ -f $file ]] && continue
+  mkdir -p "$(dirname "$file")"
+  ffmpeg -nostdin -v error -y \
+    -f lavfi -i "testsrc2=size=640x360:rate=25:duration=120" \
+    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=120" \
+    -f lavfi -i "sine=frequency=880:sample_rate=48000:duration=120" \
+    -map 0:v -map 1:a -map 2:a -vf interlace=scan=tff -c:v libx264 -preset ultrafast -flags +ilme+ildct -x264-params tff=1 -g 50 \
+    -c:a aac -b:a 128k -metadata:s:a:0 language=eng -metadata:s:a:1 language=spa "$file" || exit 1
+done
+# Interlaced H.264 with Opus or FLAC audio, both listed in Chrome's profile: the
+# video is re-encoded and the audio copied.
+for codec in opus flac; do
+  name="Audio ${codec^} Film ($([[ $codec == opus ]] && echo 2092 || echo 2093))"
+  file="$work/media/transcode/$name/$name.mkv"
+  [[ -f $file ]] && continue
+  mkdir -p "$(dirname "$file")"
+  encoder=$([[ $codec == opus ]] && echo libopus || echo flac)
+  ffmpeg -nostdin -v error -y \
+    -f lavfi -i "testsrc2=size=640x360:rate=25:duration=120" \
+    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=120" \
+    -map 0:v -map 1:a -vf interlace=scan=tff -c:v libx264 -preset ultrafast -flags +ilme+ildct -x264-params tff=1 -g 50 \
+    -c:a "$encoder" -ac 2 "$file" || exit 1
+done
 # A 1080p film for measuring what a copy saves: noisy, so the encode has work to do.
 big="$work/media/transcode/Stigma Film (2047)/Stigma Film (2047).mkv"
 if [[ ! -f $big ]]; then

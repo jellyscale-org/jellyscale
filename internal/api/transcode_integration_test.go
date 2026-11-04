@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -793,5 +794,67 @@ func TestPlaybackInfoOffersACopyOfHEVCAndAV1(t *testing.T) {
 				t.Errorf("%d segments in the copy's playlist, want 14 (the keyframes' cuts)", n)
 			}
 		})
+	}
+}
+
+// An interlaced film is re-encoded, and its audio is copied when the profile's
+// fMP4 HLS audio list has the codec, the channels fit and the track fits the
+// cap (compat/captures/audio-copy-12.4.md). The URL carries the list, the
+// master playlist names the copied codec, and a client that edits the URL can
+// only ask for what the file is.
+func TestPlaybackInfoOffersACopyOfTheAudio(t *testing.T) {
+	e, _, source := transcodeEnv(t, "h264", "flac")
+	mustExec(t, e.pool, `UPDATE media_sources SET streams = '[{"Index":0,"Type":"Video","Codec":"h264","Profile":"High","Level":41,"VideoRangeType":"SDR","Width":1280,"Height":720,"AverageFrameRate":24,"IsInterlaced":true},
+		{"Index":1,"Type":"Audio","Codec":"flac","IsDefault":true,"Channels":2,"BitRate":960000},
+		{"Index":2,"Type":"Audio","Codec":"ac3","Channels":6,"BitRate":448000}]'`)
+	profile := capturedProfile(t)
+	info := func(extra map[string]any) string {
+		b := map[string]any{"DeviceProfile": profile, "MaxStreamingBitrate": 2147483647, "AudioStreamIndex": "1", "SubtitleStreamIndex": "-1", "MediaSourceId": source}
+		for k, v := range extra {
+			b[k] = v
+		}
+		return firstSource(e.playbackInfo(t, 0, e.item, b))["TranscodingUrl"].(string)
+	}
+	audioOf := func(transcodingURL string) string {
+		_, master := e.do(t, 1, "GET", transcodingURL, "", nil)
+		return regexp.MustCompile(`CODECS="[^,]*,([^"]*)"`).FindStringSubmatch(string(master))[1]
+	}
+
+	url := info(nil)
+	query := mustQuery(t, url)
+	if query.Get("VideoCodec") != "h264" || query.Get("AudioCodec") != "aac,opus,flac" || query.Get("TranscodingMaxAudioChannels") != "2" ||
+		query.Get("TranscodeReasons") != "InterlacedVideoNotSupported" || query.Get("AudioBitrate") != "960000" || query.Get("VideoBitrate") != "2146523647" {
+		t.Fatalf("query: %v", query)
+	}
+	if got := audioOf(url); got != "fLaC" {
+		t.Errorf("the master names %s for copied FLAC", got)
+	}
+	hash := specHash(t, e, lowerKeys(mustQuery(t, url)))
+
+	// A cap the track doesn't fit in re-encodes it, and that is another spec.
+	capped := info(map[string]any{"MaxStreamingBitrate": 3000000})
+	if got := audioOf(capped); got != "mp4a.40.2" || specHash(t, e, lowerKeys(mustQuery(t, capped))) == hash {
+		t.Errorf("a 3 Mbps cap: the master names %s", got)
+	}
+	// So does a track the profile doesn't list: AC3 5.1.
+	if got := audioOf(info(map[string]any{"AudioStreamIndex": 2})); got != "mp4a.40.2" {
+		t.Errorf("AC3 under Chrome's profile: %s", got)
+	}
+
+	// Edited URLs: a codec the file isn't, a channel limit below its channels, and a
+	// list that leaves its codec out, all give the AAC the master names.
+	edit := func(key, value string) string {
+		q := mustQuery(t, url)
+		q.Set(key, value)
+		return strings.Split(url, "?")[0] + "?" + q.Encode()
+	}
+	for name, edited := range map[string]string{
+		"another codec":  edit("AudioCodec", "ac3"),
+		"no channels":    edit("TranscodingMaxAudioChannels", "1"),
+		"a hostile list": edit("AudioCodec", "flac;-i /etc/passwd"),
+	} {
+		if got := audioOf(edited); got != "mp4a.40.2" {
+			t.Errorf("%s: the master names %s", name, got)
+		}
 	}
 }

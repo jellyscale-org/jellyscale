@@ -88,6 +88,8 @@ type TranscodingProfile struct {
 	VideoCodec string
 	AudioCodec string
 	Protocol   string
+	// MaxAudioChannels is a string in Jellyfin's profiles ("2"); 0 if absent.
+	MaxAudioChannels Number
 }
 
 // CodecProfile limits a codec the client otherwise plays.
@@ -129,9 +131,12 @@ type Stream struct {
 	// then pass their conditions, so direct play continues until a rescan.
 	VideoRangeType string
 	// BitDepth is 8, 10 or 12, or 0 on a source scanned before it was recorded.
-	BitDepth         int
-	Width, Height    int
-	Channels         int
+	BitDepth      int
+	Width, Height int
+	Channels      int
+	// Bitrate is the stream's own bits per second, or 0 when the file doesn't
+	// say. A copied track is counted against the bitrate cap by it.
+	Bitrate          int64 `json:"BitRate"`
 	IsDefault        bool
 	AverageFrameRate float64
 	// DurationTicks is how long the video stream runs; 0 if the probe didn't
@@ -266,6 +271,68 @@ func (s Source) codecs() string {
 		return fmt.Sprintf("av01.0.%02dM.%02d", level, video.BitDepth)
 	}
 	return ""
+}
+
+// audioCodecString is the RFC 6381 name of an audio stream's codec in fMP4,
+// which players use to tell whether they can decode it, or "" for a stream that
+// is not copied: a codec we have no name for, or an AAC profile other than LC
+// and the two HE ones.
+func audioCodecString(audio Stream) string {
+	switch audio.Codec {
+	case "aac":
+		return map[string]string{"lc": "mp4a.40.2", "he-aac": "mp4a.40.5", "he-aacv2": "mp4a.40.29"}[strings.ToLower(audio.Profile)]
+	case "mp3":
+		return "mp4a.6B"
+	case "ac3":
+		return "ac-3"
+	case "eac3":
+		return "ec-3"
+	case "opus":
+		return "Opus"
+	case "flac":
+		return "fLaC"
+	}
+	return ""
+}
+
+// AudioCodecList keeps the entries of a comma-separated codec list that can be
+// copied, lower case and in order. A client's URL is the list's source, so
+// nothing else gets through.
+func AudioCodecList(list string) []string {
+	var codecs []string
+	for _, entry := range strings.Split(strings.ToLower(list), ",") {
+		entry = strings.TrimSpace(entry)
+		if audioCodecString(Stream{Codec: entry, Profile: "LC"}) != "" && !slices.Contains(codecs, entry) {
+			codecs = append(codecs, entry)
+		}
+	}
+	return codecs
+}
+
+// unknownAudioBitrate is what a track whose file doesn't say its bitrate is
+// counted as: about the most a lossless 5.1 track takes. It is copied only
+// under a cap this size times four, so at Auto and under no realistic quality
+// menu choice.
+const unknownAudioBitrate = 6_000_000
+
+// copyAudio says whether a re-encode copies the audio the URL selects, and
+// returns that stream. The decision is made from the URL's own values and the
+// source, so every request for a segment reaches the same answer. The track is
+// copied when the client takes its codec (AudioCodecs), it has no more channels
+// than the client's limit, ffmpeg can name it in the master playlist, and it
+// takes no more than a quarter of the bitrate cap and than the URL can say (maxCopiedAudioBitrate), which is the sum of the
+// URL's video and audio bitrates. A copied video has its audio re-encoded.
+func (s Source) copyAudio(p Params) (Stream, bool) {
+	stream, ok := s.audio(p.AudioIndex)
+	if !ok || p.Copy || !slices.Contains(p.AudioCodecs, stream.Codec) || audioCodecString(stream) == "" ||
+		stream.Channels < 1 || stream.Channels > p.MaxAudioChannels || stream.Bitrate > maxCopiedAudioBitrate {
+		return Stream{}, false
+	}
+	bitrate := stream.Bitrate
+	if bitrate <= 0 {
+		bitrate = unknownAudioBitrate
+	}
+	return stream, bitrate <= (p.VideoBitrate+p.AudioBitrate)/4
 }
 
 // Ticks is how long a transcode of this source runs: to the end of the video,
@@ -420,6 +487,10 @@ type Decision struct {
 	Subtitle *int
 	// The split of the bitrate cap, set when transcoding.
 	VideoBitrate, AudioBitrate int64
+	// AudioCodecs and MaxAudioChannels go in the URL; a re-encode copies the
+	// audio when they and the cap allow it (Source.copyAudio).
+	AudioCodecs      []string
+	MaxAudioChannels int
 	// Copy: the video goes to the client as it is, and only the audio is
 	// re-encoded.
 	Copy bool
@@ -446,6 +517,7 @@ func Decide(request Request, source Source, canTranscode bool) Decision {
 		limit = int64(*request.MaxStreamingBitrate)
 	}
 	reasons := profile.reasons(source, video, audio)
+	audioStream, _ := source.audio(audio)
 	if limit > 0 && source.Bitrate > limit {
 		reasons = append(reasons, "ContainerBitrateExceedsLimit")
 	}
@@ -475,6 +547,18 @@ func Decide(request Request, source Source, canTranscode bool) Decision {
 		}
 		reasons = slices.Insert(reasons, at, "VideoCodecNotSupported")
 	}
+	// Jellyfin names the channel limit of the transcoding profile when it
+	// transcodes anyway (a 5.1 track in a Chrome that lists two) and the
+	// profile lists the codec, and before the bitrate reason
+	// (compat/captures/audio-copy-12.4.md).
+	if hls, _ := profile.hlsProfile("h264"); len(reasons) > 0 && hls.MaxAudioChannels > 0 && int(hls.MaxAudioChannels) < audioStream.Channels &&
+		!slices.Contains(reasons, "AudioChannelsNotSupported") && listHas(hls.AudioCodec, audioStream.Codec) {
+		at := len(reasons)
+		if i := slices.Index(reasons, "ContainerBitrateExceedsLimit"); i >= 0 {
+			at = i
+		}
+		reasons = slices.Insert(reasons, at, "AudioChannelsNotSupported")
+	}
 	// A file over the cap is re-encoded to fit it. A cap of 0 or Unlimited
 	// is no cap, whatever the file.
 	fits := !slices.Contains(reasons, "ContainerBitrateExceedsLimit") && (limit <= 0 || limit >= Unlimited || source.Bitrate > 0)
@@ -491,9 +575,31 @@ func Decide(request Request, source Source, canTranscode bool) Decision {
 	}
 	// The video is copied when the client takes it as it is, whatever its
 	// container, and only the audio or the container forced the stream.
-	audioStream, _ := source.audio(audio)
 	decision.Copy = fits && decision.Subtitle == nil && source.CanCopy() && profile.hlsMP4(video.Codec) &&
 		len(profile.limits("Video", video.Codec, video, audioStream)) == 0
+	// The audio is copied by the same test the spec makes, from the same values
+	// the URL will carry, so that the cap is split as the spec will see it.
+	hls, _ := profile.hlsProfile("h264")
+	decision.AudioCodecs, decision.MaxAudioChannels = AudioCodecList(hls.AudioCodec), 2
+	if hls.MaxAudioChannels > 0 {
+		decision.MaxAudioChannels = int(min(hls.MaxAudioChannels, 8))
+	}
+	if audioStream.Codec != "" && len(profile.limits("VideoAudio", audioStream.Codec, video, audioStream)) > 0 {
+		decision.AudioCodecs = slices.DeleteFunc(decision.AudioCodecs, func(c string) bool { return c == audioStream.Codec })
+	}
+	params := Params{AudioIndex: audio, AudioCodecs: decision.AudioCodecs, MaxAudioChannels: decision.MaxAudioChannels,
+		VideoBitrate: videoBitrate, AudioBitrate: audioBitrate, Copy: decision.Copy}
+	if copied, ok := source.copyAudio(params); ok {
+		// A track that doesn't say its bitrate takes out of the cap what
+		// copyAudio assumed for it, and the URL's value stays within what
+		// ParseParams accepts, so a very low-rate track counts as the floor.
+		audio := copied.Bitrate
+		if audio <= 0 {
+			audio = unknownAudioBitrate
+		}
+		decision.AudioBitrate = min(max(audio, MinAudioBitrate), maxCopiedAudioBitrate)
+		decision.VideoBitrate = min(max(limit-decision.AudioBitrate, MinVideoBitrate), Unlimited)
+	}
 	// An SDR HEVC or AV1 film whose profile can't be named is re-encoded for
 	// that, which the client's own CodecProfiles may not have said.
 	if !decision.Copy && source.Copyable() && source.codecs() == "" && video.VideoRangeType == "SDR" && profile.hlsMP4(video.Codec) &&
@@ -518,13 +624,20 @@ func (p DeviceProfile) canTranscode() bool { return p.hlsMP4("h264") }
 // hlsMP4 reports whether the client takes this video codec, with AAC, in fMP4
 // HLS. A copy needs it as a re-encode does.
 func (p DeviceProfile) hlsMP4(codec string) bool {
+	_, ok := p.hlsProfile(codec)
+	return ok
+}
+
+// hlsProfile is the transcoding profile hlsMP4 matched. Its audio list and
+// channel limit are what the audio of this stream is held to.
+func (p DeviceProfile) hlsProfile(codec string) (TranscodingProfile, bool) {
 	for _, t := range p.TranscodingProfiles {
 		if strings.EqualFold(t.Type, "Video") && strings.EqualFold(t.Protocol, "hls") &&
 			strings.EqualFold(t.Container, "mp4") && listHas(t.VideoCodec, codec) && listHas(t.AudioCodec, "aac") {
-			return true
+			return t, true
 		}
 	}
-	return false
+	return TranscodingProfile{}, false
 }
 
 // reasons names what stops the client playing the file as it is, apart from

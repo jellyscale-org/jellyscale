@@ -1,0 +1,2182 @@
+{
+ "server": "jellyfin/jellyfin:12.4 (jellyfin-ffmpeg)",
+ "deviceProfiles": {
+  "chrome": {
+   "MaxStreamingBitrate": 120000000,
+   "MaxStaticBitrate": 100000000,
+   "MusicStreamingTranscodingBitrate": 384000,
+   "DirectPlayProfiles": [
+    {
+     "Container": "webm",
+     "Type": "Video",
+     "VideoCodec": "vp8,vp9,av1",
+     "AudioCodec": "vorbis,opus"
+    },
+    {
+     "Container": "mp4,m4v",
+     "Type": "Video",
+     "VideoCodec": "h264,vp9,av1",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "mkv",
+     "Type": "Video",
+     "VideoCodec": "h264,vp9,av1",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "mov",
+     "Type": "Video",
+     "VideoCodec": "h264",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webm",
+     "AudioCodec": "opus",
+     "Type": "Audio"
+    },
+    {
+     "Container": "ts",
+     "AudioCodec": "mp3",
+     "Type": "Audio"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio"
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "m4a",
+     "AudioCodec": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "m4b",
+     "AudioCodec": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "flac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webma",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webm",
+     "AudioCodec": "webma",
+     "Type": "Audio"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio"
+    },
+    {
+     "Container": "ogg",
+     "Type": "Audio"
+    },
+    {
+     "Container": "hls",
+     "Type": "Video",
+     "VideoCodec": "av1,h264,vp9",
+     "AudioCodec": "aac,mp2,opus,flac"
+    },
+    {
+     "Container": "hls",
+     "Type": "Video",
+     "VideoCodec": "h264",
+     "AudioCodec": "aac,mp3,mp2"
+    }
+   ],
+   "TranscodingProfiles": [
+    {
+     "Container": "mp4",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false,
+     "EnableAudioVbrEncoding": true
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio",
+     "AudioCodec": "mp3",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio",
+     "AudioCodec": "opus",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio",
+     "AudioCodec": "wav",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio",
+     "AudioCodec": "opus",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio",
+     "AudioCodec": "mp3",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio",
+     "AudioCodec": "wav",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp4",
+     "Type": "Video",
+     "AudioCodec": "aac,mp2,opus,flac",
+     "VideoCodec": "av1,h264,vp9",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false
+    },
+    {
+     "Container": "ts",
+     "Type": "Video",
+     "AudioCodec": "aac,mp3,mp2",
+     "VideoCodec": "h264",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false
+    }
+   ],
+   "ContainerProfiles": [],
+   "CodecProfiles": [
+    {
+     "Type": "VideoAudio",
+     "Codec": "aac",
+     "Conditions": [
+      {
+       "Condition": "Equals",
+       "Property": "IsSecondaryAudio",
+       "Value": "false",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "VideoAudio",
+     "Conditions": [
+      {
+       "Condition": "Equals",
+       "Property": "IsSecondaryAudio",
+       "Value": "false",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "h264",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "high|main|baseline|constrained baseline|high 10",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "52",
+       "IsRequired": false
+      },
+      {
+       "Condition": "NotEquals",
+       "Property": "IsInterlaced",
+       "Value": "true",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "hevc",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "main",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "120",
+       "IsRequired": false
+      },
+      {
+       "Condition": "NotEquals",
+       "Property": "IsInterlaced",
+       "Value": "true",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "vp9",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "av1",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "main",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "19",
+       "IsRequired": false
+      }
+     ]
+    }
+   ],
+   "SubtitleProfiles": [
+    {
+     "Format": "vtt",
+     "Method": "External"
+    },
+    {
+     "Format": "ass",
+     "Method": "External"
+    },
+    {
+     "Format": "ssa",
+     "Method": "External"
+    }
+   ],
+   "ResponseProfiles": [
+    {
+     "Type": "Video",
+     "Container": "m4v",
+     "MimeType": "video/mp4"
+    }
+   ]
+  },
+  "surround": {
+   "MaxStreamingBitrate": 120000000,
+   "MaxStaticBitrate": 100000000,
+   "MusicStreamingTranscodingBitrate": 384000,
+   "DirectPlayProfiles": [
+    {
+     "Container": "webm",
+     "Type": "Video",
+     "VideoCodec": "vp8,vp9,av1",
+     "AudioCodec": "vorbis,opus"
+    },
+    {
+     "Container": "mp4,m4v",
+     "Type": "Video",
+     "VideoCodec": "h264,vp9,av1",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "mkv",
+     "Type": "Video",
+     "VideoCodec": "h264,vp9,av1",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "mov",
+     "Type": "Video",
+     "VideoCodec": "h264",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webm",
+     "AudioCodec": "opus",
+     "Type": "Audio"
+    },
+    {
+     "Container": "ts",
+     "AudioCodec": "mp3",
+     "Type": "Audio"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio"
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "m4a",
+     "AudioCodec": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "m4b",
+     "AudioCodec": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "flac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webma",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webm",
+     "AudioCodec": "webma",
+     "Type": "Audio"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio"
+    },
+    {
+     "Container": "ogg",
+     "Type": "Audio"
+    },
+    {
+     "Container": "hls",
+     "Type": "Video",
+     "VideoCodec": "av1,h264,vp9",
+     "AudioCodec": "aac,mp2,opus,flac"
+    },
+    {
+     "Container": "hls",
+     "Type": "Video",
+     "VideoCodec": "h264",
+     "AudioCodec": "aac,mp3,mp2"
+    }
+   ],
+   "TranscodingProfiles": [
+    {
+     "Container": "mp4",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false,
+     "EnableAudioVbrEncoding": true
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio",
+     "AudioCodec": "mp3",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio",
+     "AudioCodec": "opus",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio",
+     "AudioCodec": "wav",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio",
+     "AudioCodec": "opus",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio",
+     "AudioCodec": "mp3",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio",
+     "AudioCodec": "wav",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp4",
+     "Type": "Video",
+     "AudioCodec": "aac,mp3,ac3,eac3,flac,opus",
+     "VideoCodec": "av1,h264,vp9",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "6",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false
+    },
+    {
+     "Container": "ts",
+     "Type": "Video",
+     "AudioCodec": "aac,mp3,mp2",
+     "VideoCodec": "h264",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false
+    }
+   ],
+   "ContainerProfiles": [],
+   "CodecProfiles": [
+    {
+     "Type": "VideoAudio",
+     "Codec": "aac",
+     "Conditions": [
+      {
+       "Condition": "Equals",
+       "Property": "IsSecondaryAudio",
+       "Value": "false",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "VideoAudio",
+     "Conditions": [
+      {
+       "Condition": "Equals",
+       "Property": "IsSecondaryAudio",
+       "Value": "false",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "h264",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "high|main|baseline|constrained baseline|high 10",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "52",
+       "IsRequired": false
+      },
+      {
+       "Condition": "NotEquals",
+       "Property": "IsInterlaced",
+       "Value": "true",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "hevc",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "main",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "120",
+       "IsRequired": false
+      },
+      {
+       "Condition": "NotEquals",
+       "Property": "IsInterlaced",
+       "Value": "true",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "vp9",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "av1",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "main",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "19",
+       "IsRequired": false
+      }
+     ]
+    }
+   ],
+   "SubtitleProfiles": [
+    {
+     "Format": "vtt",
+     "Method": "External"
+    },
+    {
+     "Format": "ass",
+     "Method": "External"
+    },
+    {
+     "Format": "ssa",
+     "Method": "External"
+    }
+   ],
+   "ResponseProfiles": [
+    {
+     "Type": "Video",
+     "Container": "m4v",
+     "MimeType": "video/mp4"
+    }
+   ]
+  },
+  "ac3-max2": {
+   "MaxStreamingBitrate": 120000000,
+   "MaxStaticBitrate": 100000000,
+   "MusicStreamingTranscodingBitrate": 384000,
+   "DirectPlayProfiles": [
+    {
+     "Container": "webm",
+     "Type": "Video",
+     "VideoCodec": "vp8,vp9,av1",
+     "AudioCodec": "vorbis,opus"
+    },
+    {
+     "Container": "mp4,m4v",
+     "Type": "Video",
+     "VideoCodec": "h264,vp9,av1",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "mkv",
+     "Type": "Video",
+     "VideoCodec": "h264,vp9,av1",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "mov",
+     "Type": "Video",
+     "VideoCodec": "h264",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webm",
+     "AudioCodec": "opus",
+     "Type": "Audio"
+    },
+    {
+     "Container": "ts",
+     "AudioCodec": "mp3",
+     "Type": "Audio"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio"
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "m4a",
+     "AudioCodec": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "m4b",
+     "AudioCodec": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "flac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webma",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webm",
+     "AudioCodec": "webma",
+     "Type": "Audio"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio"
+    },
+    {
+     "Container": "ogg",
+     "Type": "Audio"
+    },
+    {
+     "Container": "hls",
+     "Type": "Video",
+     "VideoCodec": "av1,h264,vp9",
+     "AudioCodec": "aac,mp2,opus,flac"
+    },
+    {
+     "Container": "hls",
+     "Type": "Video",
+     "VideoCodec": "h264",
+     "AudioCodec": "aac,mp3,mp2"
+    }
+   ],
+   "TranscodingProfiles": [
+    {
+     "Container": "mp4",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false,
+     "EnableAudioVbrEncoding": true
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio",
+     "AudioCodec": "mp3",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio",
+     "AudioCodec": "opus",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio",
+     "AudioCodec": "wav",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio",
+     "AudioCodec": "opus",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio",
+     "AudioCodec": "mp3",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio",
+     "AudioCodec": "wav",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp4",
+     "Type": "Video",
+     "AudioCodec": "aac,mp3,ac3,eac3,flac,opus",
+     "VideoCodec": "av1,h264,vp9",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false
+    },
+    {
+     "Container": "ts",
+     "Type": "Video",
+     "AudioCodec": "aac,mp3,mp2",
+     "VideoCodec": "h264",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false
+    }
+   ],
+   "ContainerProfiles": [],
+   "CodecProfiles": [
+    {
+     "Type": "VideoAudio",
+     "Codec": "aac",
+     "Conditions": [
+      {
+       "Condition": "Equals",
+       "Property": "IsSecondaryAudio",
+       "Value": "false",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "VideoAudio",
+     "Conditions": [
+      {
+       "Condition": "Equals",
+       "Property": "IsSecondaryAudio",
+       "Value": "false",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "h264",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "high|main|baseline|constrained baseline|high 10",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "52",
+       "IsRequired": false
+      },
+      {
+       "Condition": "NotEquals",
+       "Property": "IsInterlaced",
+       "Value": "true",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "hevc",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "main",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "120",
+       "IsRequired": false
+      },
+      {
+       "Condition": "NotEquals",
+       "Property": "IsInterlaced",
+       "Value": "true",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "vp9",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "av1",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "main",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "19",
+       "IsRequired": false
+      }
+     ]
+    }
+   ],
+   "SubtitleProfiles": [
+    {
+     "Format": "vtt",
+     "Method": "External"
+    },
+    {
+     "Format": "ass",
+     "Method": "External"
+    },
+    {
+     "Format": "ssa",
+     "Method": "External"
+    }
+   ],
+   "ResponseProfiles": [
+    {
+     "Type": "Video",
+     "Container": "m4v",
+     "MimeType": "video/mp4"
+    }
+   ]
+  }
+ },
+ "results": {
+  "Aac2 Mkv (3004).mkv": {
+   "chrome@1440987881": {
+    "audio": {
+     "Codec": "aac",
+     "Channels": 2,
+     "BitRate": 192000,
+     "SampleRate": 48000,
+     "Profile": "LC"
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "aac",
+    "AudioBitrate": "192000",
+    "VideoBitrate": "1440795881",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3089755,
+    "TranscodingUrl": "/videos/9c802b27-f24e-f9a8-1b7d-c59c6c03c0bd/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac&AudioStreamIndex=1&VideoBitrate=1440795881&AudioBitrate=192000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&aac-profile=lc&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   },
+   "chrome@1500000": {
+    "audio": {
+     "Codec": "aac",
+     "Channels": 2,
+     "BitRate": 192000,
+     "SampleRate": 48000,
+     "Profile": "LC"
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "aac",
+    "AudioBitrate": "192000",
+    "VideoBitrate": "1308000",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 1308000,
+    "TranscodingUrl": "/videos/9c802b27-f24e-f9a8-1b7d-c59c6c03c0bd/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac&AudioStreamIndex=1&VideoBitrate=1308000&AudioBitrate=192000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&aac-profile=lc&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   },
+   "chrome@720000": {
+    "audio": {
+     "Codec": "aac",
+     "Channels": 2,
+     "BitRate": 192000,
+     "SampleRate": 48000,
+     "Profile": "LC"
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "ContainerBitrateExceedsLimit",
+    "AudioCodecInUrl": "aac,opus,flac",
+    "AudioBitrate": "192000",
+    "VideoBitrate": "528000",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 528000,
+    "TranscodingUrl": "/videos/9c802b27-f24e-f9a8-1b7d-c59c6c03c0bd/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,opus,flac&AudioStreamIndex=1&VideoBitrate=528000&AudioBitrate=192000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=ContainerBitrateExceedsLimit"
+   },
+   "surround@1440987881": {
+    "audio": {
+     "Codec": "aac",
+     "Channels": 2,
+     "BitRate": 192000,
+     "SampleRate": 48000,
+     "Profile": "LC"
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "aac",
+    "AudioBitrate": "192000",
+    "VideoBitrate": "1440795881",
+    "TranscodingMaxAudioChannels": "6",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3089755,
+    "TranscodingUrl": "/videos/9c802b27-f24e-f9a8-1b7d-c59c6c03c0bd/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac&AudioStreamIndex=1&VideoBitrate=1440795881&AudioBitrate=192000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=6&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&aac-profile=lc&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   },
+   "surround@1500000": {
+    "audio": {
+     "Codec": "aac",
+     "Channels": 2,
+     "BitRate": 192000,
+     "SampleRate": 48000,
+     "Profile": "LC"
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "aac",
+    "AudioBitrate": "192000",
+    "VideoBitrate": "1308000",
+    "TranscodingMaxAudioChannels": "6",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 1308000,
+    "TranscodingUrl": "/videos/9c802b27-f24e-f9a8-1b7d-c59c6c03c0bd/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac&AudioStreamIndex=1&VideoBitrate=1308000&AudioBitrate=192000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=6&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&aac-profile=lc&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   },
+   "ac3-max2@1440987881": {
+    "audio": {
+     "Codec": "aac",
+     "Channels": 2,
+     "BitRate": 192000,
+     "SampleRate": 48000,
+     "Profile": "LC"
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "aac",
+    "AudioBitrate": "192000",
+    "VideoBitrate": "1440795881",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3089755,
+    "TranscodingUrl": "/videos/9c802b27-f24e-f9a8-1b7d-c59c6c03c0bd/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac&AudioStreamIndex=1&VideoBitrate=1440795881&AudioBitrate=192000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&aac-profile=lc&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   }
+  },
+  "Aac51 Mkv (3001).mkv": {
+   "chrome@1440987881": {
+    "audio": {
+     "Codec": "aac",
+     "Channels": 2,
+     "BitRate": 320000,
+     "SampleRate": 48000,
+     "Profile": "LC"
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported,AudioChannelsNotSupported",
+    "AudioCodecInUrl": "aac,opus,flac",
+    "AudioBitrate": "320000",
+    "VideoBitrate": "1440667881",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000 -af \"volume=2\"",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3410135,
+    "TranscodingUrl": "/videos/c7d67bc7-fd4a-a5d0-21e7-fd0117d236e6/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,opus,flac&AudioStreamIndex=1&VideoBitrate=1440667881&AudioBitrate=320000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported,AudioChannelsNotSupported"
+   },
+   "chrome@1500000": {
+    "audio": {
+     "Codec": "aac",
+     "Channels": 2,
+     "BitRate": 320000,
+     "SampleRate": 48000,
+     "Profile": "LC"
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "AudioChannelsNotSupported,ContainerBitrateExceedsLimit",
+    "AudioCodecInUrl": "aac,opus,flac",
+    "AudioBitrate": "320000",
+    "VideoBitrate": "1180000",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000 -af \"volume=2\"",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 1180000,
+    "TranscodingUrl": "/videos/c7d67bc7-fd4a-a5d0-21e7-fd0117d236e6/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,opus,flac&AudioStreamIndex=1&VideoBitrate=1180000&AudioBitrate=320000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioChannelsNotSupported,ContainerBitrateExceedsLimit"
+   },
+   "chrome@720000": {
+    "audio": {
+     "Codec": "aac",
+     "Channels": 2,
+     "BitRate": 320000,
+     "SampleRate": 48000,
+     "Profile": "LC"
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "AudioChannelsNotSupported,ContainerBitrateExceedsLimit",
+    "AudioCodecInUrl": "aac,opus,flac",
+    "AudioBitrate": "320000",
+    "VideoBitrate": "400000",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000 -af \"volume=2\"",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 400000,
+    "TranscodingUrl": "/videos/c7d67bc7-fd4a-a5d0-21e7-fd0117d236e6/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,opus,flac&AudioStreamIndex=1&VideoBitrate=400000&AudioBitrate=320000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioChannelsNotSupported,ContainerBitrateExceedsLimit"
+   },
+   "surround@1440987881": {
+    "audio": {
+     "Codec": "aac",
+     "Channels": 6,
+     "BitRate": 320000,
+     "SampleRate": 48000,
+     "Profile": "LC"
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "aac",
+    "AudioBitrate": "320000",
+    "VideoBitrate": "1440667881",
+    "TranscodingMaxAudioChannels": "6",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3410135,
+    "TranscodingUrl": "/videos/c7d67bc7-fd4a-a5d0-21e7-fd0117d236e6/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac&AudioStreamIndex=1&VideoBitrate=1440667881&AudioBitrate=320000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=6&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=6&aac-profile=lc&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   },
+   "surround@1500000": {
+    "audio": {
+     "Codec": "aac",
+     "Channels": 6,
+     "BitRate": 320000,
+     "SampleRate": 48000,
+     "Profile": "LC"
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "ContainerBitrateExceedsLimit",
+    "AudioCodecInUrl": "aac,mp3,ac3,eac3,flac,opus",
+    "AudioBitrate": "320000",
+    "VideoBitrate": "1180000",
+    "TranscodingMaxAudioChannels": "6",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 1180000,
+    "TranscodingUrl": "/videos/c7d67bc7-fd4a-a5d0-21e7-fd0117d236e6/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,mp3,ac3,eac3,flac,opus&AudioStreamIndex=1&VideoBitrate=1180000&AudioBitrate=320000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=6&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=ContainerBitrateExceedsLimit"
+   },
+   "ac3-max2@1440987881": {
+    "audio": {
+     "Codec": "aac",
+     "Channels": 2,
+     "BitRate": 320000,
+     "SampleRate": 48000,
+     "Profile": "LC"
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported,AudioChannelsNotSupported",
+    "AudioCodecInUrl": "aac,mp3,ac3,eac3,flac,opus",
+    "AudioBitrate": "320000",
+    "VideoBitrate": "1440667881",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000 -af \"volume=2\"",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3410135,
+    "TranscodingUrl": "/videos/c7d67bc7-fd4a-a5d0-21e7-fd0117d236e6/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,mp3,ac3,eac3,flac,opus&AudioStreamIndex=1&VideoBitrate=1440667881&AudioBitrate=320000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported,AudioChannelsNotSupported"
+   }
+  },
+  "Aac51 Mp4 (3002).mp4": {
+   "chrome@1440987881": {
+    "audio": {
+     "Codec": "aac",
+     "Channels": 2,
+     "BitRate": 384205,
+     "SampleRate": 48000,
+     "Profile": "LC"
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported,AudioChannelsNotSupported",
+    "AudioCodecInUrl": "aac,opus,flac",
+    "AudioBitrate": "384205",
+    "VideoBitrate": "1440603676",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000 -af \"volume=2\"",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3243788,
+    "TranscodingUrl": "/videos/f1071cf8-b1a7-cfce-c84c-ccf79c4a85cb/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,opus,flac&AudioStreamIndex=1&VideoBitrate=1440603676&AudioBitrate=384205&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported,AudioChannelsNotSupported"
+   },
+   "chrome@1500000": {
+    "audio": {
+     "Codec": "aac",
+     "Channels": 2,
+     "BitRate": 384205,
+     "SampleRate": 48000,
+     "Profile": "LC"
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "AudioChannelsNotSupported,ContainerBitrateExceedsLimit",
+    "AudioCodecInUrl": "aac,opus,flac",
+    "AudioBitrate": "384000",
+    "VideoBitrate": "1116000",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000 -af \"volume=2\"",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 1116000,
+    "TranscodingUrl": "/videos/f1071cf8-b1a7-cfce-c84c-ccf79c4a85cb/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,opus,flac&AudioStreamIndex=1&VideoBitrate=1116000&AudioBitrate=384000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioChannelsNotSupported,ContainerBitrateExceedsLimit"
+   },
+   "chrome@720000": {
+    "audio": {
+     "Codec": "aac",
+     "Channels": 2,
+     "BitRate": 384205,
+     "SampleRate": 48000,
+     "Profile": "LC"
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "AudioChannelsNotSupported,ContainerBitrateExceedsLimit",
+    "AudioCodecInUrl": "aac,opus,flac",
+    "AudioBitrate": "384000",
+    "VideoBitrate": "336000",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000 -af \"volume=2\"",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 336000,
+    "TranscodingUrl": "/videos/f1071cf8-b1a7-cfce-c84c-ccf79c4a85cb/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,opus,flac&AudioStreamIndex=1&VideoBitrate=336000&AudioBitrate=384000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioChannelsNotSupported,ContainerBitrateExceedsLimit"
+   },
+   "surround@1440987881": {
+    "audio": {
+     "Codec": "aac",
+     "Channels": 6,
+     "BitRate": 384205,
+     "SampleRate": 48000,
+     "Profile": "LC"
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "aac",
+    "AudioBitrate": "384205",
+    "VideoBitrate": "1440603676",
+    "TranscodingMaxAudioChannels": "6",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3243788,
+    "TranscodingUrl": "/videos/f1071cf8-b1a7-cfce-c84c-ccf79c4a85cb/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac&AudioStreamIndex=1&VideoBitrate=1440603676&AudioBitrate=384205&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=6&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=6&aac-profile=lc&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   },
+   "surround@1500000": {
+    "audio": {
+     "Codec": "aac",
+     "Channels": 6,
+     "BitRate": 384205,
+     "SampleRate": 48000,
+     "Profile": "LC"
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "ContainerBitrateExceedsLimit",
+    "AudioCodecInUrl": "aac,mp3,ac3,eac3,flac,opus",
+    "AudioBitrate": "384000",
+    "VideoBitrate": "1116000",
+    "TranscodingMaxAudioChannels": "6",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 6 -ab 384000",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 1116000,
+    "TranscodingUrl": "/videos/f1071cf8-b1a7-cfce-c84c-ccf79c4a85cb/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,mp3,ac3,eac3,flac,opus&AudioStreamIndex=1&VideoBitrate=1116000&AudioBitrate=384000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=6&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=ContainerBitrateExceedsLimit"
+   },
+   "ac3-max2@1440987881": {
+    "audio": {
+     "Codec": "aac",
+     "Channels": 2,
+     "BitRate": 384205,
+     "SampleRate": 48000,
+     "Profile": "LC"
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported,AudioChannelsNotSupported",
+    "AudioCodecInUrl": "aac,mp3,ac3,eac3,flac,opus",
+    "AudioBitrate": "384205",
+    "VideoBitrate": "1440603676",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000 -af \"volume=2\"",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3243788,
+    "TranscodingUrl": "/videos/f1071cf8-b1a7-cfce-c84c-ccf79c4a85cb/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,mp3,ac3,eac3,flac,opus&AudioStreamIndex=1&VideoBitrate=1440603676&AudioBitrate=384205&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported,AudioChannelsNotSupported"
+   }
+  },
+  "Ac32 Mkv (3008).mkv": {
+   "chrome@1440987881": {
+    "audio": {
+     "Codec": "ac3",
+     "Channels": 2,
+     "BitRate": 192000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "AudioCodecNotSupported,InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "aac,opus,flac",
+    "AudioBitrate": "384000",
+    "VideoBitrate": "1440603881",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3250802,
+    "TranscodingUrl": "/videos/cf6a7812-39c7-2c85-37b8-480ac4677df3/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,opus,flac&AudioStreamIndex=1&VideoBitrate=1440603881&AudioBitrate=384000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,InterlacedVideoNotSupported"
+   },
+   "chrome@1500000": {
+    "audio": {
+     "Codec": "ac3",
+     "Channels": 2,
+     "BitRate": 192000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "AudioCodecNotSupported,InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "aac,opus,flac",
+    "AudioBitrate": "384000",
+    "VideoBitrate": "1116000",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 1116000,
+    "TranscodingUrl": "/videos/cf6a7812-39c7-2c85-37b8-480ac4677df3/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,opus,flac&AudioStreamIndex=1&VideoBitrate=1116000&AudioBitrate=384000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,InterlacedVideoNotSupported"
+   },
+   "chrome@720000": {
+    "audio": {
+     "Codec": "ac3",
+     "Channels": 2,
+     "BitRate": 192000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "AudioCodecNotSupported,ContainerBitrateExceedsLimit",
+    "AudioCodecInUrl": "aac,opus,flac",
+    "AudioBitrate": "384000",
+    "VideoBitrate": "336000",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 336000,
+    "TranscodingUrl": "/videos/cf6a7812-39c7-2c85-37b8-480ac4677df3/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,opus,flac&AudioStreamIndex=1&VideoBitrate=336000&AudioBitrate=384000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,ContainerBitrateExceedsLimit"
+   },
+   "surround@1440987881": {
+    "audio": {
+     "Codec": "ac3",
+     "Channels": 2,
+     "BitRate": 192000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "AudioCodecNotSupported,InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "ac3",
+    "AudioBitrate": "192000",
+    "VideoBitrate": "1440795881",
+    "TranscodingMaxAudioChannels": "6",
+    "masterCodecs": "avc1.4D4016,ac-3",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3250802,
+    "TranscodingUrl": "/videos/cf6a7812-39c7-2c85-37b8-480ac4677df3/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=ac3&AudioStreamIndex=1&VideoBitrate=1440795881&AudioBitrate=192000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=6&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,InterlacedVideoNotSupported"
+   },
+   "surround@1500000": {
+    "audio": {
+     "Codec": "ac3",
+     "Channels": 2,
+     "BitRate": 192000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "AudioCodecNotSupported,InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "ac3",
+    "AudioBitrate": "192000",
+    "VideoBitrate": "1308000",
+    "TranscodingMaxAudioChannels": "6",
+    "masterCodecs": "avc1.4D4016,ac-3",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 1308000,
+    "TranscodingUrl": "/videos/cf6a7812-39c7-2c85-37b8-480ac4677df3/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=ac3&AudioStreamIndex=1&VideoBitrate=1308000&AudioBitrate=192000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=6&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,InterlacedVideoNotSupported"
+   },
+   "ac3-max2@1440987881": {
+    "audio": {
+     "Codec": "ac3",
+     "Channels": 2,
+     "BitRate": 192000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "AudioCodecNotSupported,InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "ac3",
+    "AudioBitrate": "192000",
+    "VideoBitrate": "1440795881",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,ac-3",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3250802,
+    "TranscodingUrl": "/videos/cf6a7812-39c7-2c85-37b8-480ac4677df3/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=ac3&AudioStreamIndex=1&VideoBitrate=1440795881&AudioBitrate=192000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,InterlacedVideoNotSupported"
+   }
+  },
+  "Ac351 Mkv (3003).mkv": {
+   "chrome@1440987881": {
+    "audio": {
+     "Codec": "ac3",
+     "Channels": 6,
+     "BitRate": 448000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "AudioCodecNotSupported,InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "aac,opus,flac",
+    "AudioBitrate": "384000",
+    "VideoBitrate": "1440603881",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000 -af \"volume=2\"",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3250802,
+    "TranscodingUrl": "/videos/0a675c67-fb2d-22d6-6ed2-da9fcb339cdc/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,opus,flac&AudioStreamIndex=1&VideoBitrate=1440603881&AudioBitrate=384000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,InterlacedVideoNotSupported"
+   },
+   "chrome@1500000": {
+    "audio": {
+     "Codec": "ac3",
+     "Channels": 6,
+     "BitRate": 448000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "AudioCodecNotSupported,ContainerBitrateExceedsLimit",
+    "AudioCodecInUrl": "aac,opus,flac",
+    "AudioBitrate": "384000",
+    "VideoBitrate": "1116000",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000 -af \"volume=2\"",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 1116000,
+    "TranscodingUrl": "/videos/0a675c67-fb2d-22d6-6ed2-da9fcb339cdc/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,opus,flac&AudioStreamIndex=1&VideoBitrate=1116000&AudioBitrate=384000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,ContainerBitrateExceedsLimit"
+   },
+   "chrome@720000": {
+    "audio": {
+     "Codec": "ac3",
+     "Channels": 6,
+     "BitRate": 448000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "AudioCodecNotSupported,ContainerBitrateExceedsLimit",
+    "AudioCodecInUrl": "aac,opus,flac",
+    "AudioBitrate": "384000",
+    "VideoBitrate": "336000",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000 -af \"volume=2\"",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 336000,
+    "TranscodingUrl": "/videos/0a675c67-fb2d-22d6-6ed2-da9fcb339cdc/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,opus,flac&AudioStreamIndex=1&VideoBitrate=336000&AudioBitrate=384000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,ContainerBitrateExceedsLimit"
+   },
+   "surround@1440987881": {
+    "audio": {
+     "Codec": "ac3",
+     "Channels": 6,
+     "BitRate": 448000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "AudioCodecNotSupported,InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "ac3",
+    "AudioBitrate": "448000",
+    "VideoBitrate": "1440539881",
+    "TranscodingMaxAudioChannels": "6",
+    "masterCodecs": "avc1.4D4016,ac-3",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3250802,
+    "TranscodingUrl": "/videos/0a675c67-fb2d-22d6-6ed2-da9fcb339cdc/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=ac3&AudioStreamIndex=1&VideoBitrate=1440539881&AudioBitrate=448000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=6&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=6&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,InterlacedVideoNotSupported"
+   },
+   "surround@1500000": {
+    "audio": {
+     "Codec": "ac3",
+     "Channels": 6,
+     "BitRate": 448000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "ContainerBitrateExceedsLimit",
+    "AudioCodecInUrl": "aac,mp3,ac3,eac3,flac,opus",
+    "AudioBitrate": "384000",
+    "VideoBitrate": "1116000",
+    "TranscodingMaxAudioChannels": "6",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 6 -ab 384000",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 1116000,
+    "TranscodingUrl": "/videos/0a675c67-fb2d-22d6-6ed2-da9fcb339cdc/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,mp3,ac3,eac3,flac,opus&AudioStreamIndex=1&VideoBitrate=1116000&AudioBitrate=384000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=6&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=ContainerBitrateExceedsLimit"
+   },
+   "ac3-max2@1440987881": {
+    "audio": {
+     "Codec": "ac3",
+     "Channels": 2,
+     "BitRate": 448000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "AudioCodecNotSupported,InterlacedVideoNotSupported,AudioChannelsNotSupported",
+    "AudioCodecInUrl": "aac,mp3,ac3,eac3,flac,opus",
+    "AudioBitrate": "448000",
+    "VideoBitrate": "1440539881",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000 -af \"volume=2\"",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3250802,
+    "TranscodingUrl": "/videos/0a675c67-fb2d-22d6-6ed2-da9fcb339cdc/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,mp3,ac3,eac3,flac,opus&AudioStreamIndex=1&VideoBitrate=1440539881&AudioBitrate=448000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,InterlacedVideoNotSupported,AudioChannelsNotSupported"
+   }
+  },
+  "Eac351 Mkv (3009).mkv": {
+   "chrome@1440987881": {
+    "audio": {
+     "Codec": "eac3",
+     "Channels": 6,
+     "BitRate": 448000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "AudioCodecNotSupported,InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "aac,opus,flac",
+    "AudioBitrate": "384000",
+    "VideoBitrate": "1440603881",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000 -af \"volume=2\"",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3250805,
+    "TranscodingUrl": "/videos/4e4cbac8-3416-00c6-1096-f6c42418aff5/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,opus,flac&AudioStreamIndex=1&VideoBitrate=1440603881&AudioBitrate=384000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,InterlacedVideoNotSupported"
+   },
+   "chrome@1500000": {
+    "audio": {
+     "Codec": "eac3",
+     "Channels": 6,
+     "BitRate": 448000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "AudioCodecNotSupported,ContainerBitrateExceedsLimit",
+    "AudioCodecInUrl": "aac,opus,flac",
+    "AudioBitrate": "384000",
+    "VideoBitrate": "1116000",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000 -af \"volume=2\"",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 1116000,
+    "TranscodingUrl": "/videos/4e4cbac8-3416-00c6-1096-f6c42418aff5/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,opus,flac&AudioStreamIndex=1&VideoBitrate=1116000&AudioBitrate=384000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,ContainerBitrateExceedsLimit"
+   },
+   "chrome@720000": {
+    "audio": {
+     "Codec": "eac3",
+     "Channels": 6,
+     "BitRate": 448000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "AudioCodecNotSupported,ContainerBitrateExceedsLimit",
+    "AudioCodecInUrl": "aac,opus,flac",
+    "AudioBitrate": "384000",
+    "VideoBitrate": "336000",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000 -af \"volume=2\"",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 336000,
+    "TranscodingUrl": "/videos/4e4cbac8-3416-00c6-1096-f6c42418aff5/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,opus,flac&AudioStreamIndex=1&VideoBitrate=336000&AudioBitrate=384000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,ContainerBitrateExceedsLimit"
+   },
+   "surround@1440987881": {
+    "audio": {
+     "Codec": "eac3",
+     "Channels": 6,
+     "BitRate": 448000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "AudioCodecNotSupported,InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "eac3",
+    "AudioBitrate": "448000",
+    "VideoBitrate": "1440539881",
+    "TranscodingMaxAudioChannels": "6",
+    "masterCodecs": "avc1.4D4016,ec-3",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3250805,
+    "TranscodingUrl": "/videos/4e4cbac8-3416-00c6-1096-f6c42418aff5/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=eac3&AudioStreamIndex=1&VideoBitrate=1440539881&AudioBitrate=448000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=6&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=6&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,InterlacedVideoNotSupported"
+   },
+   "surround@1500000": {
+    "audio": {
+     "Codec": "eac3",
+     "Channels": 6,
+     "BitRate": 448000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "ContainerBitrateExceedsLimit",
+    "AudioCodecInUrl": "aac,mp3,ac3,eac3,flac,opus",
+    "AudioBitrate": "384000",
+    "VideoBitrate": "1116000",
+    "TranscodingMaxAudioChannels": "6",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 6 -ab 384000",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 1116000,
+    "TranscodingUrl": "/videos/4e4cbac8-3416-00c6-1096-f6c42418aff5/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,mp3,ac3,eac3,flac,opus&AudioStreamIndex=1&VideoBitrate=1116000&AudioBitrate=384000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=6&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=ContainerBitrateExceedsLimit"
+   },
+   "ac3-max2@1440987881": {
+    "audio": {
+     "Codec": "eac3",
+     "Channels": 2,
+     "BitRate": 448000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "AudioCodecNotSupported,InterlacedVideoNotSupported,AudioChannelsNotSupported",
+    "AudioCodecInUrl": "aac,mp3,ac3,eac3,flac,opus",
+    "AudioBitrate": "448000",
+    "VideoBitrate": "1440539881",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000 -af \"volume=2\"",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3250805,
+    "TranscodingUrl": "/videos/4e4cbac8-3416-00c6-1096-f6c42418aff5/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,mp3,ac3,eac3,flac,opus&AudioStreamIndex=1&VideoBitrate=1440539881&AudioBitrate=448000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,InterlacedVideoNotSupported,AudioChannelsNotSupported"
+   }
+  },
+  "Flac2 Mkv (3006).mkv": {
+   "chrome@1440987881": {
+    "audio": {
+     "Codec": "flac",
+     "Channels": 2,
+     "BitRate": 960000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "flac",
+    "AudioBitrate": "960000",
+    "VideoBitrate": "1440027881",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,fLaC",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 2989800,
+    "TranscodingUrl": "/videos/6fa5f077-fa4c-5131-da7e-604c6cf851dd/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=flac&AudioStreamIndex=1&VideoBitrate=1440027881&AudioBitrate=960000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   },
+   "chrome@1500000": {
+    "audio": {
+     "Codec": "flac",
+     "Channels": 2,
+     "BitRate": 960000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "flac",
+    "AudioBitrate": "384000",
+    "VideoBitrate": "1116000",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000 -ar 48000",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 1116000,
+    "TranscodingUrl": "/videos/6fa5f077-fa4c-5131-da7e-604c6cf851dd/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=flac&AudioStreamIndex=1&VideoBitrate=1116000&AudioBitrate=384000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   },
+   "chrome@720000": {
+    "audio": {
+     "Codec": "flac",
+     "Channels": 2,
+     "BitRate": 960000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "ContainerBitrateExceedsLimit",
+    "AudioCodecInUrl": "aac,opus,flac",
+    "AudioBitrate": "384000",
+    "VideoBitrate": "336000",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.2",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 336000,
+    "TranscodingUrl": "/videos/6fa5f077-fa4c-5131-da7e-604c6cf851dd/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,opus,flac&AudioStreamIndex=1&VideoBitrate=336000&AudioBitrate=384000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=ContainerBitrateExceedsLimit"
+   },
+   "surround@1440987881": {
+    "audio": {
+     "Codec": "flac",
+     "Channels": 2,
+     "BitRate": 960000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "flac",
+    "AudioBitrate": "960000",
+    "VideoBitrate": "1440027881",
+    "TranscodingMaxAudioChannels": "6",
+    "masterCodecs": "avc1.4D4016,fLaC",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 2989800,
+    "TranscodingUrl": "/videos/6fa5f077-fa4c-5131-da7e-604c6cf851dd/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=flac&AudioStreamIndex=1&VideoBitrate=1440027881&AudioBitrate=960000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=6&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   },
+   "surround@1500000": {
+    "audio": {
+     "Codec": "flac",
+     "Channels": 2,
+     "BitRate": 960000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "flac",
+    "AudioBitrate": "384000",
+    "VideoBitrate": "1116000",
+    "TranscodingMaxAudioChannels": "6",
+    "masterCodecs": "avc1.4D4016",
+    "ffmpegAudio": "-codec:a:0 libfdk_aac -ac 2 -ab 256000 -ar 48000",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 1116000,
+    "TranscodingUrl": "/videos/6fa5f077-fa4c-5131-da7e-604c6cf851dd/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=flac&AudioStreamIndex=1&VideoBitrate=1116000&AudioBitrate=384000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=6&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   },
+   "ac3-max2@1440987881": {
+    "audio": {
+     "Codec": "flac",
+     "Channels": 2,
+     "BitRate": 960000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "flac",
+    "AudioBitrate": "960000",
+    "VideoBitrate": "1440027881",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,fLaC",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 2989800,
+    "TranscodingUrl": "/videos/6fa5f077-fa4c-5131-da7e-604c6cf851dd/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=flac&AudioStreamIndex=1&VideoBitrate=1440027881&AudioBitrate=960000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   }
+  },
+  "Mp3 Mkv (3007).mkv": {
+   "chrome@1440987881": {
+    "audio": {
+     "Codec": "mp3",
+     "Channels": 2,
+     "BitRate": 192000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "mp3",
+    "AudioBitrate": "192000",
+    "VideoBitrate": "1440795881",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.34",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "mpegts",
+    "ffmpegMaxrate": 3248970,
+    "TranscodingUrl": "/videos/5b290a52-a23e-372b-c48a-d1de760f1613/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=h264&AudioCodec=mp3&AudioStreamIndex=1&VideoBitrate=1440795881&AudioBitrate=192000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=ts&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   },
+   "chrome@1500000": {
+    "audio": {
+     "Codec": "mp3",
+     "Channels": 2,
+     "BitRate": 192000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "mp3",
+    "AudioBitrate": "192000",
+    "VideoBitrate": "1308000",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.34",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "mpegts",
+    "ffmpegMaxrate": 1308000,
+    "TranscodingUrl": "/videos/5b290a52-a23e-372b-c48a-d1de760f1613/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=h264&AudioCodec=mp3&AudioStreamIndex=1&VideoBitrate=1308000&AudioBitrate=192000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=ts&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   },
+   "chrome@720000": {
+    "audio": {
+     "Codec": "mp3",
+     "Channels": 2,
+     "BitRate": 192000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "ContainerBitrateExceedsLimit",
+    "AudioCodecInUrl": "aac,mp3",
+    "AudioBitrate": "192000",
+    "VideoBitrate": "528000",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.34",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "mpegts",
+    "ffmpegMaxrate": 528000,
+    "TranscodingUrl": "/videos/5b290a52-a23e-372b-c48a-d1de760f1613/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=h264&AudioCodec=aac,mp3&AudioStreamIndex=1&VideoBitrate=528000&AudioBitrate=192000&MaxFramerate=12&SegmentContainer=ts&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=ContainerBitrateExceedsLimit"
+   },
+   "surround@1440987881": {
+    "audio": {
+     "Codec": "mp3",
+     "Channels": 2,
+     "BitRate": 192000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "mp3",
+    "AudioBitrate": "192000",
+    "VideoBitrate": "1440795881",
+    "TranscodingMaxAudioChannels": "6",
+    "masterCodecs": "avc1.4D4016,mp4a.40.34",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3248970,
+    "TranscodingUrl": "/videos/5b290a52-a23e-372b-c48a-d1de760f1613/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=mp3&AudioStreamIndex=1&VideoBitrate=1440795881&AudioBitrate=192000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=6&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   },
+   "surround@1500000": {
+    "audio": {
+     "Codec": "mp3",
+     "Channels": 2,
+     "BitRate": 192000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "mp3",
+    "AudioBitrate": "192000",
+    "VideoBitrate": "1308000",
+    "TranscodingMaxAudioChannels": "6",
+    "masterCodecs": "avc1.4D4016,mp4a.40.34",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 1308000,
+    "TranscodingUrl": "/videos/5b290a52-a23e-372b-c48a-d1de760f1613/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=mp3&AudioStreamIndex=1&VideoBitrate=1308000&AudioBitrate=192000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=6&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   },
+   "ac3-max2@1440987881": {
+    "audio": {
+     "Codec": "mp3",
+     "Channels": 2,
+     "BitRate": 192000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "mp3",
+    "AudioBitrate": "192000",
+    "VideoBitrate": "1440795881",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,mp4a.40.34",
+    "ffmpegAudio": "-codec:a:0 copy",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3248970,
+    "TranscodingUrl": "/videos/5b290a52-a23e-372b-c48a-d1de760f1613/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=mp3&AudioStreamIndex=1&VideoBitrate=1440795881&AudioBitrate=192000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   }
+  },
+  "Opus2 Mkv (3005).mkv": {
+   "chrome@1440987881": {
+    "audio": {
+     "Codec": "opus",
+     "Channels": 2,
+     "BitRate": 128000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "opus",
+    "AudioBitrate": "128000",
+    "VideoBitrate": "1440859881",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,Opus",
+    "ffmpegAudio": "-codec:a:0 copy -strict -2",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3303620,
+    "TranscodingUrl": "/videos/2ed8b7a9-3bf5-c2ab-3314-70b8bcfc7757/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=opus&AudioStreamIndex=1&VideoBitrate=1440859881&AudioBitrate=128000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   },
+   "chrome@1500000": {
+    "audio": {
+     "Codec": "opus",
+     "Channels": 2,
+     "BitRate": 128000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "opus",
+    "AudioBitrate": "128000",
+    "VideoBitrate": "1372000",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,Opus",
+    "ffmpegAudio": "-codec:a:0 copy -strict -2",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 1372000,
+    "TranscodingUrl": "/videos/2ed8b7a9-3bf5-c2ab-3314-70b8bcfc7757/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=opus&AudioStreamIndex=1&VideoBitrate=1372000&AudioBitrate=128000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   },
+   "chrome@720000": {
+    "audio": {
+     "Codec": "opus",
+     "Channels": 2,
+     "BitRate": 128000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "ContainerBitrateExceedsLimit",
+    "AudioCodecInUrl": "aac,opus,flac",
+    "AudioBitrate": "128000",
+    "VideoBitrate": "592000",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,Opus",
+    "ffmpegAudio": "-codec:a:0 copy -strict -2",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 592000,
+    "TranscodingUrl": "/videos/2ed8b7a9-3bf5-c2ab-3314-70b8bcfc7757/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=aac,opus,flac&AudioStreamIndex=1&VideoBitrate=592000&AudioBitrate=128000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=ContainerBitrateExceedsLimit"
+   },
+   "surround@1440987881": {
+    "audio": {
+     "Codec": "opus",
+     "Channels": 2,
+     "BitRate": 128000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "opus",
+    "AudioBitrate": "128000",
+    "VideoBitrate": "1440859881",
+    "TranscodingMaxAudioChannels": "6",
+    "masterCodecs": "avc1.4D4016,Opus",
+    "ffmpegAudio": "-codec:a:0 copy -strict -2",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3303620,
+    "TranscodingUrl": "/videos/2ed8b7a9-3bf5-c2ab-3314-70b8bcfc7757/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=opus&AudioStreamIndex=1&VideoBitrate=1440859881&AudioBitrate=128000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=6&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   },
+   "surround@1500000": {
+    "audio": {
+     "Codec": "opus",
+     "Channels": 2,
+     "BitRate": 128000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "opus",
+    "AudioBitrate": "128000",
+    "VideoBitrate": "1372000",
+    "TranscodingMaxAudioChannels": "6",
+    "masterCodecs": "avc1.4D4016,Opus",
+    "ffmpegAudio": "-codec:a:0 copy -strict -2",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 1372000,
+    "TranscodingUrl": "/videos/2ed8b7a9-3bf5-c2ab-3314-70b8bcfc7757/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=opus&AudioStreamIndex=1&VideoBitrate=1372000&AudioBitrate=128000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=6&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   },
+   "ac3-max2@1440987881": {
+    "audio": {
+     "Codec": "opus",
+     "Channels": 2,
+     "BitRate": 128000,
+     "SampleRate": 48000,
+     "Profile": null
+    },
+    "SupportsDirectPlay": false,
+    "TranscodeReasons": "InterlacedVideoNotSupported",
+    "AudioCodecInUrl": "opus",
+    "AudioBitrate": "128000",
+    "VideoBitrate": "1440859881",
+    "TranscodingMaxAudioChannels": "2",
+    "masterCodecs": "avc1.4D4016,Opus",
+    "ffmpegAudio": "-codec:a:0 copy -strict -2",
+    "ffmpegSegments": "fmp4",
+    "ffmpegMaxrate": 3303620,
+    "TranscodingUrl": "/videos/2ed8b7a9-3bf5-c2ab-3314-70b8bcfc7757/master.m3u8?DeviceId=obs1&MediaSourceId=<source>&VideoCodec=av1,h264,vp9&AudioCodec=opus&AudioStreamIndex=1&VideoBitrate=1440859881&AudioBitrate=128000&AudioSampleRate=48000&MaxFramerate=12&SegmentContainer=mp4&MinSegments=1&PlaySessionId=<session>&ApiKey=<token>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=<etag>&SubtitleMethod=Encode&h264-level=22&h264-videobitdepth=8&h264-profile=main&h264-audiochannels=2&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=InterlacedVideoNotSupported"
+   }
+  }
+ },
+ "progressiveSurroundAac": {
+  "chrome": {
+   "SupportsDirectPlay": true,
+   "note": "progressive H.264 with AAC 5.1, MKV and MP4: direct play, no TranscodeReasons"
+  }
+ },
+ "sourceAudio": {
+  "Aac2 Mkv (3004).mkv": {
+   "Codec": "aac",
+   "Channels": 2,
+   "BitRateApprox": 128000,
+   "Profile": "LC"
+  },
+  "Aac51 Mkv (3001).mkv": {
+   "Codec": "aac",
+   "Channels": 6,
+   "BitRateApprox": 384000,
+   "Profile": "LC"
+  },
+  "Aac51 Mp4 (3002).mp4": {
+   "Codec": "aac",
+   "Channels": 6,
+   "BitRateApprox": 384205,
+   "Profile": "LC"
+  },
+  "Ac32 Mkv (3008).mkv": {
+   "Codec": "ac3",
+   "Channels": 2,
+   "BitRateApprox": 192000,
+   "Profile": null
+  },
+  "Ac351 Mkv (3003).mkv": {
+   "Codec": "ac3",
+   "Channels": 6,
+   "BitRateApprox": 448000,
+   "Profile": null
+  },
+  "Eac351 Mkv (3009).mkv": {
+   "Codec": "eac3",
+   "Channels": 6,
+   "BitRateApprox": 448000,
+   "Profile": null
+  },
+  "Flac2 Mkv (3006).mkv": {
+   "Codec": "flac",
+   "Channels": 2,
+   "BitRateApprox": 960000,
+   "Profile": null
+  },
+  "Mp3 Mkv (3007).mkv": {
+   "Codec": "mp3",
+   "Channels": 2,
+   "BitRateApprox": 192000,
+   "Profile": null
+  },
+  "Opus2 Mkv (3005).mkv": {
+   "Codec": "opus",
+   "Channels": 2,
+   "BitRateApprox": 128000,
+   "Profile": null
+  }
+ },
+ "note": "results[file][profile@MaxStreamingBitrate]. audio is the stream as the PlaybackInfo reply lists it, which reports the channels it will deliver (2 for 5.1 under chrome); sourceAudio has the file's own. All files: 20 s, 640x360 interlaced (tff) H.264, keyframe every 72 frames. MKV files carry no per-track bitrate; the 128000/192000 are what Jellyfin reports (it measures)."
+}

@@ -333,6 +333,7 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 	}
 	user := sessionOf(r)
 	params := playback.Params{SourceID: media.ID, AudioIndex: decision.AudioIndex, Subtitle: decision.Subtitle, VideoBitrate: decision.VideoBitrate,
+		AudioCodecs: decision.AudioCodecs, MaxAudioChannels: decision.MaxAudioChannels,
 		AudioBitrate: decision.AudioBitrate, Copy: decision.Copy, PlaySessionID: playSession, DeviceID: user.DeviceID}
 	if request.StartTimeTicks != nil {
 		params.StartTicks = min(max(int64(*request.StartTimeTicks), 0), playback.MaxStartTicks)
