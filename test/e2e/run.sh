@@ -11,7 +11,8 @@
 # and <workdir>/config-s3.json (adds a library on S3 for media and assets).
 # Logs (server.log with every role's output, whose errors carry the end of
 # ffmpeg's stderr, and ffmpeg.log with each command line the worker ran) go to
-# $JELLYSCALE_LOG_DIR, default <workdir>/logs.
+# $JELLYSCALE_LOG_DIR, default <workdir>/logs, whole and, for what each gate
+# wrote, in <gate>/server.log and <gate>/ffmpeg.log.
 # In CI ($GITHUB_ACTIONS set) each gate's failures go to the job summary and
 # become annotations (test/report.sh); locally the output stays as it is.
 set -uo pipefail
@@ -89,7 +90,7 @@ qoppa="$work/media/transcode/Qoppa Film (2042)/Qoppa Film (2042).mp4"
 # their own interval is longer than the film (-g 2000, keyint=2000). Chrome plays
 # AV1 in software, so Sampi and San are copied and Heth plays as it is; it plays
 # HEVC only with a hardware decoder, which CI doesn't have (Yot, Lamed).
-# SVT-AV1 prints its configuration on stderr whatever -v says.
+# x265 and SVT-AV1 print their configuration on stderr whatever -v says.
 codec_film() { # file container video_encoder_args audio_codec
   local file="$work/media/transcode/$1/$1.$2"
   [[ -f $file ]] && return
@@ -100,11 +101,37 @@ codec_film() { # file container video_encoder_args audio_codec
     -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=90" \
     -map 0:v -map 1:a $3 -force_key_frames "$keyframes" -c:a "$4" -metadata:s:a:0 language=eng "$file" 2>/dev/null || { echo "could not make $file" >&2; exit 1; }
 }
-av1="-c:v libsvtav1 -preset 10 -g 2000"
+# SVT-AV1 in ffmpeg 6.1 (Ubuntu 24.04, which CI runs) ignores -force_key_frames and
+# keeps the first frame's keyframe alone, which is a film with no index to cut a
+# copy on. So the video is encoded in pieces that each start at a keyframe time
+# and joined: any ffmpeg then gives the same keyframes.
+av1_video="$work/media/av1-video.mkv"
+if [[ ! -f $av1_video ]]; then
+  parts=$(mktemp -d)
+  from=0
+  : >"$parts/list"
+  after_first=${keyframes#0,}
+  for t in ${after_first//,/ } 90; do # The film ends at 90 s, the last piece's end.
+    to=$(( (t * 24000 + 1000) / 1001 )) # The first frame at or after t seconds.
+    ffmpeg -nostdin -v error -y -f lavfi -i "testsrc2=size=640x360:rate=24000/1001:duration=90" \
+      -vf "trim=start_frame=$from:end_frame=$to,setpts=PTS-STARTPTS" -c:v libsvtav1 -preset 10 -g 2000 "$parts/$from.mkv" 2>/dev/null || { echo "could not encode AV1" >&2; exit 1; }
+    echo "file '$parts/$from.mkv'" >>"$parts/list"
+    from=$to
+  done
+  ffmpeg -nostdin -v error -y -f concat -safe 0 -i "$parts/list" -c copy "$av1_video" || exit 1
+  rm -rf "$parts"
+fi
+av1_film() { # file container audio_codec
+  local file="$work/media/transcode/$1/$1.$2"
+  [[ -f $file ]] && return
+  mkdir -p "$(dirname "$file")"
+  ffmpeg -nostdin -v error -y -i "$av1_video" -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=90" \
+    -map 0:v -map 1:a -c:v copy -c:a "$3" -metadata:s:a:0 language=eng "$file" || { echo "could not make $file" >&2; exit 1; }
+}
 hevc="-c:v libx265 -preset veryfast -x265-params keyint=2000:log-level=error"
-codec_film "Sampi Film (2080)" mkv "$av1" ac3
-codec_film "San Film (2081)" mp4 "$av1" ac3
-codec_film "Heth Film (2082)" mp4 "$av1" aac
+av1_film "Sampi Film (2080)" mkv ac3
+av1_film "San Film (2081)" mp4 ac3
+av1_film "Heth Film (2082)" mp4 aac
 codec_film "Yot Film (2083)" mp4 "$hevc" aac
 codec_film "Lamed Film (2084)" mkv "$hevc" ac3
 # ffmpeg writes the Cues last, so cutting the file where they start leaves a
@@ -192,6 +219,7 @@ free() { python3 -I -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));
 export JELLYSCALE_DATABASE_URL="postgres://postgres:e2e@127.0.0.1:$port/postgres" JELLYSCALE_ADMIN_PASSWORD=e2e-pass
 api1=$(free) api2=$(free) stream=$(free) router=$(free)
 : >"$logs/server.log"
+: >"$logs/ffmpeg.log"
 # api and stream run with no ffmpeg on their PATH (an empty directory): only
 # workers run media tools, and anything else that tried would fail.
 mkdir -p "$work/nobin"
@@ -261,6 +289,8 @@ export E2E_SCRATCH="$work/scratch" E2E_MEDIA="$work/media/transcode" E2E_ASSETS=
 # The transcode gate ends by killing the worker, so subtitles run before it.
 for gate in ${E2E_GATES:-browse play subtitles transcode}; do
   echo "=== $gate"
+  # One stack serves every gate, so what a gate wrote is the log from here on.
+  server_from=$(stat -c %s "$logs/server.log") ffmpeg_from=$(stat -c %s "$logs/ffmpeg.log")
   if [[ -n ${GITHUB_ACTIONS:-} ]]; then
     (cd "$playwright" && timeout 900 node $gate.mjs "$base" admin e2e-pass) 2>&1 | bash "$repo/test/report.sh" lines "test/e2e/$gate.mjs" "e2e $gate"
     status=${PIPESTATUS[0]}
@@ -271,6 +301,9 @@ for gate in ${E2E_GATES:-browse play subtitles transcode}; do
   else
     (cd "$playwright" && timeout 900 node $gate.mjs "$base" admin e2e-pass) || result=1
   fi
+  mkdir -p "$logs/$gate"
+  tail -c +$((server_from + 1)) "$logs/server.log" >"$logs/$gate/server.log"
+  tail -c +$((ffmpeg_from + 1)) "$logs/ffmpeg.log" >"$logs/$gate/ffmpeg.log"
 done
 # For poking at the stack by hand: E2E_HOLD=600 keeps it up for ten minutes.
 [[ -n ${E2E_HOLD:-} ]] && { echo "holding $base"; sleep "$E2E_HOLD"; }

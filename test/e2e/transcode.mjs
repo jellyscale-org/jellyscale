@@ -267,9 +267,13 @@ function span(init, body) {
 async function copiedFilm({ page, seen }, library, title, sourceFile, where, codecs = /^avc1\./) {
   await play(page, library, title);
   const source = seen.infos.at(-1).source;
-  const master = await (await fetch(new URL(source.TranscodingUrl, base))).text();
-  if (!codecs.test(/CODECS="([^,"]+),/.exec(master)?.[1] ?? "")) throw new Error(`the master playlist names the wrong codec:\n${master}`);
+  // The decision first: a re-encode would otherwise be reported as a playlist
+  // naming the wrong codec.
   if (!/VideoCodec=copy/.test(source.TranscodingUrl) || !/TranscodeReasons=AudioCodecNotSupported/.test(source.TranscodingUrl)) throw new Error(`not a copy: ${source.TranscodingUrl}`);
+  const answer = await fetch(new URL(source.TranscodingUrl, base));
+  const master = await answer.text();
+  if (!answer.ok) throw new Error(`the master playlist answered ${answer.status}: ${JSON.stringify(master)}`);
+  if (!codecs.test(/CODECS="([^,"]+),/.exec(master)?.[1] ?? "")) throw new Error(`the master playlist names the wrong codec: ${JSON.stringify(master)}`);
   if (source.SupportsDirectPlay !== false || source.TranscodingSubProtocol !== "hls" || source.TranscodingContainer !== "mp4") throw new Error("the reply fields are not the capture's");
   const runs = ffmpegRuns();
   if (runs.length !== 1 || !runs[0].copy || /libx264/.test(runs[0].line)) throw new Error(`ffmpeg is not copying the video: ${runs.map((r) => r.line.slice(0, 300))}`);
