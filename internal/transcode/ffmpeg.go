@@ -176,6 +176,8 @@ var copyReadRate = "5"
 // for the video and once for the audio, so ten times the film's bitrate is read
 // while the job runs (twice the film's, per film), until the film ends or the job is stopped.
 //
+// codec is the source's video codec.
+//
 // video and audio say where in the source's clock (seconds) to begin, or are
 // negative to begin at the start of the file. A run for segment N begins at
 // the keyframe before it and its audio two seconds early, on the same AAC
@@ -183,7 +185,7 @@ var copyReadRate = "5"
 // keyframe as it would in a run from the start, with the same decode time,
 // and the audio is warm and whole by then, with no need to know which packet
 // the muxer will cut at. What comes before segment N is dropped.
-func CopyCommand(ctx context.Context, input string, spec playback.Spec, video, audio float64, dir string) (*exec.Cmd, error) {
+func CopyCommand(ctx context.Context, input string, spec playback.Spec, codec string, video, audio float64, dir string) (*exec.Cmd, error) {
 	hasAudio := spec.AudioIndex >= 0
 	var base float64
 	if video >= 0 {
@@ -207,6 +209,12 @@ func CopyCommand(ctx context.Context, input string, spec playback.Spec, video, a
 		args = append(args, "-readrate", copyReadRate, "-i", input)
 	}
 	args = append(args, "-map", "0:v:0", "-c:v", "copy")
+	if codec == "hevc" {
+		// The muxer writes hvc1 or hev1 by the ffmpeg version and the input's
+		// container, which would give workers different init segments. hvc1 is
+		// what the master playlist's CODECS says and what Chrome and Safari take.
+		args = append(args, "-tag:v", "hvc1")
+	}
 	if hasAudio {
 		args = append(args, "-map", "1:"+strconv.Itoa(spec.AudioIndex),
 			"-c:a", "aac", "-b:a", strconv.FormatInt(spec.AudioBitrate, 10), "-ac", "2", "-ar", strconv.Itoa(audioRate))

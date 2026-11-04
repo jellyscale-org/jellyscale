@@ -264,10 +264,16 @@ function span(init, body) {
   return { start, end };
 }
 
-async function copiedFilm({ page, seen }, library, title, sourceFile, where) {
+async function copiedFilm({ page, seen }, library, title, sourceFile, where, codecs = /^avc1\./) {
   await play(page, library, title);
   const source = seen.infos.at(-1).source;
+  // The decision first: a re-encode would otherwise be reported as a playlist
+  // naming the wrong codec.
   if (!/VideoCodec=copy/.test(source.TranscodingUrl) || !/TranscodeReasons=AudioCodecNotSupported/.test(source.TranscodingUrl)) throw new Error(`not a copy: ${source.TranscodingUrl}`);
+  const answer = await fetch(new URL(source.TranscodingUrl, base));
+  const master = await answer.text();
+  if (!answer.ok) throw new Error(`the master playlist answered ${answer.status}: ${JSON.stringify(master)}`);
+  if (!codecs.test(/CODECS="([^,"]+),/.exec(master)?.[1] ?? "")) throw new Error(`the master playlist names the wrong codec: ${JSON.stringify(master)}`);
   if (source.SupportsDirectPlay !== false || source.TranscodingSubProtocol !== "hls" || source.TranscodingContainer !== "mp4") throw new Error("the reply fields are not the capture's");
   const runs = ffmpegRuns();
   if (runs.length !== 1 || !runs[0].copy || /libx264/.test(runs[0].line)) throw new Error(`ffmpeg is not copying the video: ${runs.map((r) => r.line.slice(0, 300))}`);
@@ -336,6 +342,69 @@ await scenario("copy, POSIX, MP4: the playlist is exact where Jellyfin's lies", 
 await scenario("copy, S3, Matroska", (v) => copiedFilm(v, "Cloud", "Heta Film", `${media}/Rho Film (2041)/Rho Film (2041).mkv`, "S3 mkv"));
 await scenario("copy, S3, MP4", (v) => copiedFilm(v, "Cloud", "Koppa Film", `${media}/Qoppa Film (2042)/Qoppa Film (2042).mp4`, "S3 mp4"));
 
+// AV1 is decoded in software by Chrome, so CI plays it: direct play, and a copy
+// through HLS, in either container and from S3, cut where the playlist says.
+await scenario("copy, POSIX, Matroska: AV1 and AC3 plays with the video copied", (v) => copiedFilm(v, "Transcode", "Sampi Film", `${media}/Sampi Film (2080)/Sampi Film (2080).mkv`, "POSIX AV1 mkv", /^av01\.0\.\d\dM\.08$/));
+await scenario("copy, S3, Matroska: AV1", (v) => copiedFilm(v, "Cloud", "Mem Film", `${media}/Sampi Film (2080)/Sampi Film (2080).mkv`, "S3 AV1 mkv", /^av01\.0\.\d\dM\.08$/));
+await scenario("an AV1 film in MP4 that the client plays direct plays", async ({ page, seen }) => {
+  await play(page, "Transcode", "Heth Film");
+  const source = seen.infos.at(-1).source;
+  if (source.SupportsDirectPlay !== true || source.TranscodingUrl) throw new Error(`not direct play: ${JSON.stringify(source)}`);
+  if (ffmpegRuns().length) throw new Error("ffmpeg is running for a direct play");
+  await advances(page, 2);
+  await page.evaluate(() => { document.querySelector("video").currentTime = 60; });
+  await waitFor("playback past 61 s", async () => (await time(page)) > 61, 40000);
+  const shown = await page.evaluate(() => ({ frames: document.querySelector("video").getVideoPlaybackQuality().totalVideoFrames, width: document.querySelector("video").videoWidth }));
+  if (shown.frames < 10 || shown.width !== 640) throw new Error(`the AV1 picture did not decode: ${JSON.stringify(shown)}`);
+  noErrors(seen);
+  await leave(page);
+});
+await scenario("copy, POSIX, MP4: AV1 resumes mid-film from a copy", async ({ page, seen }) => {
+  const { firstFrameMs, starts } = await resume(page, "Transcode", "San Film", 40);
+  const source = seen.infos.at(-1).source;
+  if (!/VideoCodec=copy/.test(source.TranscodingUrl)) throw new Error(`not a copy: ${source.TranscodingUrl}`);
+  console.log(`      AV1 copied from MP4: time to first frame on resume at 40 s: ${firstFrameMs} ms; ffmpeg started at ${starts}`);
+  noErrors(seen);
+  await leave(page);
+});
+
+// What Chrome plays decides HEVC, and CI's Chrome has no hardware decoder, so
+// it sends no HEVC in its profile and the film is re-encoded to H.264, with the
+// reasons Jellyfin gives (compat/captures/hevc-av1-12.4.md). A machine with one
+// is run with E2E_HEVC=1, which says what to expect: the runner chooses, the
+// test never asks the browser.
+const hevcPlays = process.env.E2E_HEVC === "1";
+await scenario("HEVC in MP4 with AAC audio" + `: ${hevcPlays ? "direct plays (E2E_HEVC=1)" : "re-encoded to H.264"}`, async ({ page, seen }) => {
+  await play(page, "Transcode", "Yot Film");
+  const source = seen.infos.at(-1).source;
+  console.log("      Chrome says: " + JSON.stringify(await page.evaluate(() => ({
+    hevc: MediaSource.isTypeSupported('video/mp4; codecs="hvc1.1.6.L120.B0"'), av1: MediaSource.isTypeSupported('video/mp4; codecs="av01.0.08M.08"'),
+  }))));
+  if (hevcPlays) {
+    if (source.SupportsDirectPlay !== true || source.TranscodingUrl) throw new Error(`not direct play: ${JSON.stringify(source)}`);
+  } else {
+    const query = new URL(source.TranscodingUrl, base).searchParams;
+    if (query.get("VideoCodec") !== "h264" || query.get("TranscodeReasons") !== "VideoCodecNotSupported") throw new Error(`not a re-encode for the video codec: ${source.TranscodingUrl}`);
+  }
+  await advances(page, 2);
+  noErrors(seen);
+  await leave(page);
+});
+await scenario("HEVC in Matroska with AC3 audio" + `: ${hevcPlays ? "copied (E2E_HEVC=1)" : "re-encoded to H.264"}`, async ({ page, seen }) => {
+  await play(page, "Transcode", "Lamed Film");
+  const source = seen.infos.at(-1).source;
+  const query = new URL(source.TranscodingUrl, base).searchParams;
+  if (hevcPlays) {
+    if (query.get("VideoCodec") !== "copy" || query.get("TranscodeReasons") !== "AudioCodecNotSupported") throw new Error(`not a copy: ${source.TranscodingUrl}`);
+    if (!ffmpegRuns().every((r) => r.copy)) throw new Error("ffmpeg is not copying the video");
+  } else if (query.get("VideoCodec") !== "h264" || query.get("TranscodeReasons") !== "VideoCodecNotSupported,AudioCodecNotSupported") {
+    throw new Error(`not a re-encode for the video and audio codecs: ${source.TranscodingUrl}`);
+  }
+  await advances(page, 2);
+  noErrors(seen);
+  await leave(page);
+});
+
 await scenario("a Matroska with no Cues has no index and is re-encoded", async ({ page, seen }) => {
   await play(page, "Transcode", "Digamma Film");
   const url = seen.infos.at(-1).source.TranscodingUrl;
@@ -390,10 +459,11 @@ async function cpuPerSegment(page, seen, title, segments, quality) {
     await page.click(`[data-id="${quality}"]`);
     await waitFor("the new stream", async () => seen.infos.length >= 2, 20000);
   }
-  // This stream's own job. Any running job would count the previous stream's,
-  // whose segments are already there: the wait then ends at once and the viewer
-  // leaves, measuring 0.11 CPU s of re-encode where a real one takes 18.
-  const stored = () => Number(sql(`SELECT COALESCE(max(next_segment), 0) FROM transcode_jobs WHERE owner = '${seen.infos.at(-1).session}'`));
+  // The segments this stream's own jobs made. Any running job would count the
+  // previous stream's, and a job's next_segment is a position in the film, so a
+  // job that starts past 0 would count segments it never made: either way the
+  // wait ends at once, measuring 0.11 CPU s of re-encode where a real one takes 18.
+  const stored = () => Number(sql(`SELECT COALESCE(sum(next_segment - start_segment), 0) FROM transcode_jobs WHERE owner = '${seen.infos.at(-1).session}'`));
   await waitFor(`${segments} segments`, async () => stored() >= segments, 120000);
   await leave(page);
   await waitFor("ffmpeg to exit", async () => ffmpegRuns().length === 0, 30000);

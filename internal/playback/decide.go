@@ -127,7 +127,9 @@ type Stream struct {
 	// VideoRangeType is SDR, HDR10, HLG or DOVI. It is empty on a source
 	// scanned before the scanner recorded it; the level, field order and range
 	// then pass their conditions, so direct play continues until a rescan.
-	VideoRangeType   string
+	VideoRangeType string
+	// BitDepth is 8, 10 or 12, or 0 on a source scanned before it was recorded.
+	BitDepth         int
 	Width, Height    int
 	Channels         int
 	IsDefault        bool
@@ -181,17 +183,42 @@ func (s Source) copyLayout() (Layout, bool) {
 	return CopyLayout(s.Keyframes, s.VideoEnd-s.Keyframes[0])
 }
 
-// H264 reports whether the video is H.264, the only codec that is copied.
-func (s Source) H264() bool {
+// copyCodecs are the video codecs that are copied into fMP4 HLS, and so the
+// ones the scan reads a keyframe index for.
+var copyCodecs = []string{"h264", "hevc", "av1"}
+
+// CopyCodecs lists the codecs CopyCodec accepts, for a query that selects
+// the films a scan reads an index for.
+func CopyCodecs() []string { return slices.Clone(copyCodecs) }
+
+// CopyCodec reports whether a video codec (ffprobe's name) can be copied.
+func CopyCodec(name string) bool { return slices.Contains(copyCodecs, name) }
+
+// Copyable reports whether the video is in a codec that is copied.
+func (s Source) Copyable() bool {
 	video, ok := s.video()
-	return ok && video.Codec == "h264"
+	return ok && CopyCodec(video.Codec)
 }
 
-// CanCopy reports whether the video can go to the client as it is: H.264, and
-// keyframes that make a playlist.
+// VideoCodec is the codec of the video, or "".
+func (s Source) VideoCodec() string {
+	video, _ := s.video()
+	return video.Codec
+}
+
+// CanCopy reports whether the video can go to the client as it is: a codec
+// that is copied, keyframes that make a playlist, and for HEVC and AV1 an
+// SDR picture whose master playlist can name its profile (codecs). HDR is not
+// copied because the master playlist labels a copy SDR; it is re-encoded as
+// before, and a source scanned before the range was recorded counts as HDR
+// until a rescan fills it in.
 func (s Source) CanCopy() bool {
+	video, _ := s.video()
 	_, cut := s.copyLayout()
-	return s.H264() && cut
+	if !s.Copyable() || !cut || s.codecs() == "" {
+		return false
+	}
+	return video.Codec == "h264" || video.VideoRangeType == "SDR"
 }
 
 // FileBitrate is the file's average bitrate, audio included, which is close
@@ -203,20 +230,42 @@ func (s Source) FileBitrate() int64 {
 	return 0
 }
 
-// avc1 is the RFC 6381 name of the video's H.264 profile and level, which
-// players use to tell whether they can decode it.
-func (s Source) avc1() string {
+// codecs is the RFC 6381 name of the video's codec, profile and level, which
+// players use to tell whether they can decode it. It is empty for a profile
+// we can't name from what ffprobe says: HEVC other than Main and Main 10, and
+// AV1 other than profile 0 at 8 or 10 bits. Those are re-encoded.
+func (s Source) codecs() string {
 	video, _ := s.video()
-	profile, ok := map[string]string{"constrained baseline": "42E0", "baseline": "4200", "main": "4D00", "high": "6400",
-		"high 10": "6E00", "high 4:2:2": "7A00", "high 4:4:4 predictive": "F400"}[strings.ToLower(video.Profile)]
-	if !ok {
-		profile = "6400"
-	}
 	level := video.Level
-	if level <= 0 {
-		level = 51
+	profile := strings.ToLower(video.Profile)
+	switch video.Codec {
+	case "h264":
+		code, ok := map[string]string{"constrained baseline": "42E0", "baseline": "4200", "main": "4D00", "high": "6400",
+			"high 10": "6E00", "high 4:2:2": "7A00", "high 4:4:4 predictive": "F400"}[profile]
+		if !ok {
+			code = "6400"
+		}
+		if level <= 0 {
+			level = 51
+		}
+		return fmt.Sprintf("avc1.%s%02X", code, level)
+	case "hevc":
+		// Main and Main 10 as ffmpeg writes them: profile, compatibility flags,
+		// level (ffprobe's number is the stream's general_level_idc) and no
+		// constraint flags. The track carries the hvc1 tag (CopyCommand).
+		code, ok := map[string]string{"main": "1.6", "main 10": "2.4"}[profile]
+		if !ok || level <= 0 {
+			return ""
+		}
+		return fmt.Sprintf("hvc1.%s.L%d.B0", code, level)
+	case "av1":
+		// Main tier; ffprobe does not report the tier.
+		if profile != "main" || level < 0 || (video.BitDepth != 8 && video.BitDepth != 10) {
+			return ""
+		}
+		return fmt.Sprintf("av01.0.%02dM.%02d", level, video.BitDepth)
 	}
-	return fmt.Sprintf("avc1.%s%02X", profile, level)
+	return ""
 }
 
 // Ticks is how long a transcode of this source runs: to the end of the video,
@@ -417,6 +466,15 @@ func Decide(request Request, source Source, canTranscode bool) Decision {
 	if len(reasons) == 0 && audio == source.DefaultAudio() {
 		return direct
 	}
+	// A codec the client plays from a file but its HLS profile doesn't take
+	// can't be copied, which Jellyfin reports as the video codec not supported.
+	if !profile.hlsMP4(video.Codec) && !slices.Contains(reasons, "VideoCodecNotSupported") {
+		at := 0
+		if len(reasons) > 0 && reasons[0] == "ContainerNotSupported" {
+			at = 1
+		}
+		reasons = slices.Insert(reasons, at, "VideoCodecNotSupported")
+	}
 	// A file over the cap is re-encoded to fit it. A cap of 0 or Unlimited
 	// is no cap, whatever the file.
 	fits := !slices.Contains(reasons, "ContainerBitrateExceedsLimit") && (limit <= 0 || limit >= Unlimited || source.Bitrate > 0)
@@ -434,7 +492,14 @@ func Decide(request Request, source Source, canTranscode bool) Decision {
 	// The video is copied when the client takes it as it is, whatever its
 	// container, and only the audio or the container forced the stream.
 	audioStream, _ := source.audio(audio)
-	decision.Copy = fits && decision.Subtitle == nil && source.CanCopy() && len(profile.limits("Video", video.Codec, video, audioStream)) == 0
+	decision.Copy = fits && decision.Subtitle == nil && source.CanCopy() && profile.hlsMP4(video.Codec) &&
+		len(profile.limits("Video", video.Codec, video, audioStream)) == 0
+	// An SDR HEVC or AV1 film whose profile can't be named is re-encoded for
+	// that, which the client's own CodecProfiles may not have said.
+	if !decision.Copy && source.Copyable() && source.codecs() == "" && video.VideoRangeType == "SDR" && profile.hlsMP4(video.Codec) &&
+		!slices.Contains(decision.Reasons, "VideoProfileNotSupported") {
+		decision.Reasons = append(decision.Reasons, "VideoProfileNotSupported")
+	}
 	return decision
 }
 
@@ -446,12 +511,16 @@ func SplitBitrate(limit int64) (video, audio int64) {
 	return max(limit-audio, MinVideoBitrate), audio
 }
 
-// canTranscode reports whether the client accepts what this server produces:
-// fMP4 HLS carrying H.264 and AAC.
-func (p DeviceProfile) canTranscode() bool {
+// canTranscode reports whether the client accepts what this server produces
+// when it re-encodes: fMP4 HLS carrying H.264 and AAC.
+func (p DeviceProfile) canTranscode() bool { return p.hlsMP4("h264") }
+
+// hlsMP4 reports whether the client takes this video codec, with AAC, in fMP4
+// HLS. A copy needs it as a re-encode does.
+func (p DeviceProfile) hlsMP4(codec string) bool {
 	for _, t := range p.TranscodingProfiles {
 		if strings.EqualFold(t.Type, "Video") && strings.EqualFold(t.Protocol, "hls") &&
-			strings.EqualFold(t.Container, "mp4") && listHas(t.VideoCodec, "h264") && listHas(t.AudioCodec, "aac") {
+			strings.EqualFold(t.Container, "mp4") && listHas(t.VideoCodec, codec) && listHas(t.AudioCodec, "aac") {
 			return true
 		}
 	}

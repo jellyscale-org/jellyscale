@@ -270,7 +270,7 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	var gather *gatherer
 	if job.Spec.Copy {
 		video, audio := copyStart(film.Keyframes, layout, job.Start)
-		cmd, err = CopyCommand(ctx, input, job.Spec, video, audio, dir)
+		cmd, err = CopyCommand(ctx, input, job.Spec, film.VideoCodec(), video, audio, dir)
 		gather = newGatherer(dir, layout, film.Keyframes[0])
 	} else {
 		cmd, err = Command(ctx, input, job.Spec, job.Start, dir, ass, image)

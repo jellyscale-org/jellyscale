@@ -11,6 +11,7 @@ import (
 	"math"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"testing"
 	"time"
@@ -49,6 +50,22 @@ type delays struct{ videoStart, audioStart, video, audio float64 }
 // delayedSource is copySource with streams that start late or end early, as
 // the index and the scan read them.
 func delayedSource(t *testing.T, name string, d delays, extra ...string) (path string, source playback.Source) {
+	return codecSource(t, name, h264Fixture, d, extra...)
+}
+
+// h264Fixture, hevcFixture and av1Fixture are the video encodes of a test film.
+// The H.264 one has the captured irregular keyframes. The others take the
+// encoders' defaults for what a real film has: x265 cuts open GOPs (CRA frames
+// with leading pictures) and SVT-AV1 forward keyframes, a keyframe every 72
+// frames instead of the captured times, because forcing one makes an IDR.
+var (
+	h264Fixture = []string{"-c:v", "libx264", "-preset", "veryfast", "-x264-params", "bframes=2:scenecut=0", "-force_key_frames", capturedKeyframes}
+	hevcFixture = []string{"-c:v", "libx265", "-preset", "veryfast", "-x265-params", "log-level=error:keyint=72"}
+	av1Fixture  = []string{"-c:v", "libsvtav1", "-preset", "10", "-g", "72"}
+)
+
+// codecSource is delayedSource with the video encoded by video.
+func codecSource(t *testing.T, name string, video []string, d delays, extra ...string) (path string, source playback.Source) {
 	t.Helper()
 	testenv.FFmpeg(t)
 	dir := t.TempDir()
@@ -57,9 +74,7 @@ func delayedSource(t *testing.T, name string, d delays, extra ...string) (path s
 	run(t, "ffmpeg", append([]string{"-nostdin", "-v", "error", "-y",
 		"-itsoffset", seconds(d.videoStart), "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=24000/1001:duration=" + seconds(d.video),
 		"-itsoffset", seconds(d.audioStart), "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=" + seconds(d.audio),
-		"-map", "0:v", "-map", "1:a",
-		"-c:v", "libx264", "-preset", "veryfast", "-x264-params", "bframes=2:scenecut=0", "-force_key_frames", capturedKeyframes,
-		"-c:a", "ac3"}, append(extra, path)...)...)
+		"-map", "0:v", "-map", "1:a"}, slices.Concat(video, []string{"-c:a", "ac3"}, extra, []string{path})...)...)
 	container := strings.TrimPrefix(filepath.Ext(name), ".")
 	keyframes, err := library.ReadKeyframes(context.Background(), store.NewPosix(dir), name, 1<<40, container)
 	if err != nil {
@@ -90,7 +105,7 @@ func copySegments(t *testing.T, input string, source playback.Source, start int)
 	layout := source.Layout(true)
 	dir := t.TempDir()
 	video, audio := copyStart(source.Keyframes, layout, start)
-	cmd, err := CopyCommand(context.Background(), input, copySpec, video, audio, dir)
+	cmd, err := CopyCommand(context.Background(), input, copySpec, source.VideoCodec(), video, audio, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,13 +163,25 @@ func audioDifference(t *testing.T, a, b string, limit float64) (worst, at float6
 // (the encoder's bytes differ, since it starts warm instead of continuing, and
 // audioDifference measures by how much).
 func TestCopiedRestartSplicesWithEarlierSegments(t *testing.T) {
-	for _, name := range []string{"film.mkv", "film.mp4"} {
-		t.Run(name, func(t *testing.T) {
-			input, source := copySource(t, name)
+	for _, c := range copiedFilms {
+		t.Run(c.codec+" "+c.name, func(t *testing.T) {
+			input, source := codecSource(t, c.name, c.video, delays{video: 90, audio: 90}, c.extra...)
+			if got := source.VideoCodec(); got != c.codec {
+				t.Fatalf("the fixture is %s, want %s", got, c.codec)
+			}
 			whole, layout := copySegments(t, input, source, 0)
 			count := layout.Count()
-			if count != 14 {
+			if c.codec == "h264" && count != 14 {
 				t.Fatalf("%d segments for the captured keyframes, want 14 (7 6 5 8 5 8 5 8 5 8 5 8 5 7)", count)
+			}
+			if count < 10 {
+				t.Fatalf("%d segments, want enough to restart at 1, 4, 8 and the last", count)
+			}
+			// The sample entry is pinned: hev1 and hvc1 differ in the init
+			// segment, and the one ffmpeg writes depends on its version and the
+			// input's tag, so workers would not splice.
+			if init := readFile(t, filepath.Join(whole, "init.mp4")); c.codec == "hevc" && (!bytes.Contains(init, []byte("hvc1")) || bytes.Contains(init, []byte("hev1"))) {
+				t.Errorf("the init segment of an HEVC copy is not hvc1")
 			}
 			full := join(t, filepath.Join(whole, "init.mp4"), segmentFiles(whole, 0, count)...)
 			last, _ := layout.Segment(count - 1)
@@ -197,6 +224,22 @@ func TestCopiedRestartSplicesWithEarlierSegments(t *testing.T) {
 	}
 }
 
+// copiedFilms are the films whose copies must splice: each codec in each
+// container. The HEVC MP4 carries the hev1 tag, which a copy would keep without
+// the pin.
+var copiedFilms = []struct {
+	name, codec string
+	video       []string
+	extra       []string
+}{
+	{"film.mkv", "h264", h264Fixture, nil},
+	{"film.mp4", "h264", h264Fixture, nil},
+	{"film.mkv", "hevc", hevcFixture, nil},
+	{"film.mp4", "hevc", hevcFixture, []string{"-tag:v", "hev1"}},
+	{"film.mkv", "av1", av1Fixture, nil},
+	{"film.mp4", "av1", av1Fixture, nil},
+}
+
 // However the streams are placed in time, the playlist's last entry is the
 // length of the real last segment, to within a frame: neither the container's
 // duration, nor its tags, nor the audio, say where the video ends.
@@ -236,7 +279,7 @@ func TestCopyReadsAtFiveTimesTheFilmsSpeed(t *testing.T) {
 	dir := t.TempDir()
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	cmd, err := CopyCommand(ctx, input, copySpec, -1, -1, dir)
+	cmd, err := CopyCommand(ctx, input, copySpec, source.VideoCodec(), -1, -1, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,5 +291,48 @@ func TestCopyReadsAtFiveTimesTheFilmsSpeed(t *testing.T) {
 	// 3 s at 5x is 15 s of film, which is 5 of the fixture's 15 keyframes.
 	if done := pieces[len(pieces)-1].end; done > 40*ticksPerSecond {
 		t.Errorf("ffmpeg copied %.0f s of film in 3 s", float64(done)/ticksPerSecond)
+	}
+}
+
+// Every entry of the index of an HEVC or AV1 film is a packet the encoder
+// marked as a random access point (an IDR or CRA, a key frame), and a decoder
+// that starts at it decodes without error. The fixtures are made with the
+// encoders' defaults, which cut open GOPs: a CRA has leading pictures that
+// refer to the group before it, and an AV1 forward keyframe follows frames
+// that are shown after it.
+func TestIndexedKeyframesOfOpenGOPFilmsAreRandomAccessPoints(t *testing.T) {
+	for _, c := range copiedFilms {
+		if c.codec == "h264" {
+			continue
+		}
+		t.Run(c.codec+" "+c.name, func(t *testing.T) {
+			input, source := codecSource(t, c.name, c.video, delays{video: 90, audio: 90}, c.extra...)
+			if len(source.Keyframes) < 10 {
+				t.Fatalf("%d keyframes in the index", len(source.Keyframes))
+			}
+			// Packets whose flags say key frame.
+			out := run(t, "ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "packet=pts_time,flags", "-of", "csv=p=0", input)
+			var key []float64
+			for _, line := range strings.Fields(out) {
+				if time, flags, ok := strings.Cut(line, ","); ok && strings.HasPrefix(flags, "K") {
+					v, _ := strconv.ParseFloat(time, 64)
+					key = append(key, v)
+				}
+			}
+			for _, k := range source.Keyframes {
+				at := float64(k) / ticksPerSecond
+				if !slices.ContainsFunc(key, func(v float64) bool { return math.Abs(v-at) < 0.002 }) {
+					t.Errorf("the index lists %.3f s, which is not a key packet (key packets: %.3f)", at, key)
+				}
+			}
+			// Decoding from each cut: -ss seeks to the keyframe at or before
+			// the time, as the copy's run for a segment does.
+			for _, k := range source.Keyframes[1:min(len(source.Keyframes), 6)] {
+				at := strconv.FormatFloat(float64(k)/ticksPerSecond+0.005, 'f', 3, 64)
+				if out := run(t, "ffmpeg", "-nostdin", "-v", "error", "-ss", at, "-i", input, "-map", "0:v:0", "-frames:v", "48", "-f", "null", "-"); strings.TrimSpace(out) != "" {
+					t.Errorf("decoding from the keyframe at %s s: %s", at, out)
+				}
+			}
+		})
 	}
 }
