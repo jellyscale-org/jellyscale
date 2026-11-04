@@ -292,6 +292,20 @@ func TestScanProbesAgainWhatWasStoredWithoutRange(t *testing.T) {
 	if n := f.count(t, "Movie"); n != 1 {
 		t.Fatalf("%d movies after probing again", n)
 	}
+	// One that has the range but not the transfer function, which tone mapping
+	// follows, is probed again too.
+	const transfer = "SELECT streams @> '[{\"ColorTransfer\": \"\"}]' FROM media_sources"
+	if !scalar[bool](t, f.pool, transfer) {
+		t.Fatal("a fresh scan didn't record the transfer function")
+	}
+	if _, err := f.pool.Exec(context.Background(),
+		`UPDATE media_sources SET streams = '[{"Index":0,"Type":"Video","Codec":"h264","VideoRangeType":"SDR"}]'`); err != nil {
+		t.Fatal(err)
+	}
+	f.scan(t)
+	if !scalar[bool](t, f.pool, transfer) {
+		t.Fatal("the scan left streams without a transfer function alone")
+	}
 }
 
 func keyframeCount(t *testing.T, pool *pgxpool.Pool) *int {

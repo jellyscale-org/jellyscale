@@ -29,4 +29,5 @@ One binary, chosen with `--roles`, run as separate Deployments. Roles version to
 ## Known departures
 
 - A burnt-in PGS cue that began before a transcode job's restart point is not drawn by that job until the next cue, though a job from zero draws it, so a segment's picture depends on which job made it where a cue spans a restart (DOMAINS 51). Text cues are exact, because their track is a whole file. Opening the track's input earlier would cost another read of the film for as long as the job, so it is accepted until a measurement says otherwise.
+- A worker from before a release that adds a spec field (tone mapping, copied audio) stores segments made without it under the new hash if it takes a job with the field, so workers roll first and roll back last (README, Tone mapping). The general fix, workers reporting their `OutputVersion` and the api offering only specs every live worker supports, belongs to the upgrades item in `phase6-k8s` (PRODUCT.md).
 - A copy job has no read-ahead limit (DOMAINS 48): it reads to the end of the film or until 60 seconds after the last request. That cost has to be bounded in a later slice.
