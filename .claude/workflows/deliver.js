@@ -163,14 +163,11 @@ let roles = reviewers(base, head)
 const history = []
 let open = []
 let unreviewed = []
+let treeChanged = null
 
 for (let round = 1; round <= maxRounds; round++) {
   phase('Review')
   const results = await runReviews(roles, round)
-  if (roleFiles) {
-    const after = await snapshot(`check round ${round}`)
-    if (after !== head) throw new Error(`the tree changed during review round ${round}: ${head} to ${after}`)
-  }
   const answered = results.filter((entry) => entry && entry.result)
   unreviewed = roles.map((role) => role.key).filter((key) => !answered.some((entry) => entry.role.key === key))
   const findings = answered.flatMap((entry) =>
@@ -178,6 +175,17 @@ for (let round = 1; round <= maxRounds; round++) {
   history.push({ round, reviewed: roles.map((role) => role.key), findings })
   open = findings.filter((finding) => finding.severity !== 'minor')
   log(`Round ${round}: ${findings.length} finding(s), ${open.length} blocking`)
+  // A reviewer who changed the tree may have reviewed its own edit, so the run
+  // stops. It keeps the round's reviews: git diff of the two trees shows what
+  // changed, and the run can go on from there.
+  if (roleFiles) {
+    const after = await snapshot(`check round ${round}`)
+    if (after !== head) {
+      log(`The tree changed during review round ${round}: stopping, with the reviews kept`)
+      treeChanged = { round, before: head, after }
+      break
+    }
+  }
   if (!open.length && !unreviewed.length) break
   if (round === maxRounds) break
 
@@ -203,7 +211,8 @@ for (let round = 1; round <= maxRounds; round++) {
 
 const minor = history.flatMap((round) => round.findings).filter((finding) => finding.severity === 'minor')
 return {
-  clean: open.length === 0 && unreviewed.length === 0,
+  clean: open.length === 0 && unreviewed.length === 0 && !treeChanged,
+  treeChanged,
   rounds: history.length,
   base,
   head,

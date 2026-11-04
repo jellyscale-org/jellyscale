@@ -33,3 +33,5 @@ Non-trivial work goes through the `deliver` workflow in `.claude/workflows/deliv
 Blind means a reviewer sees the task, the diff and these docs, never the implementer's reasoning or another reviewer's findings. Keep it that way when changing the workflow.
 
 After fixes, the architecture reviewer, both adversarial reviewers, QA, and every other reviewer who raised a blocking finding run again.
+
+Keep a slice small enough to converge in one or two review rounds: one capability, and its tests and docs. Skip the design review only for a fix pass on work whose design has been reviewed; a slice that touches the scan, a store or job semantics always gets one. A run that stops because the tree changed returns its reviews and both tree hashes; look at the change before going on.
