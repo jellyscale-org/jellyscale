@@ -4,6 +4,7 @@ package library
 
 import (
 	"context"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -74,6 +75,43 @@ func TestProbeRecordsLevelFieldOrderAndRange(t *testing.T) {
 		video := probe.Streams[0]
 		if (video["Level"] != c.level && c.level >= 0) || video["IsInterlaced"] != c.interlace || video["VideoRangeType"] != c.rangeType {
 			t.Errorf("%s: level %v interlaced %v range %v, want %d %v %s", c.name, video["Level"], video["IsInterlaced"], video["VideoRangeType"], c.level, c.interlace, c.rangeType)
+		}
+	}
+}
+
+// PGS, VobSub and DVB tracks are recorded as image tracks under the names
+// Jellyfin lists them by, and only PGS can be sent to the client as a file.
+func TestProbeRecordsImageSubtitles(t *testing.T) {
+	testenv.FFmpeg(t)
+	dir := t.TempDir()
+	sup := filepath.Join(dir, "track.sup")
+	if err := os.WriteFile(sup, testenv.PGS(1920, 1080, testenv.Cue{Start: 0.2, End: 0.8, X: 10, Y: 10, W: 100, H: 40}), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(dir, "film.mkv")
+	if out, err := exec.Command("ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=160x90:rate=10:duration=1",
+		"-fix_sub_duration", "-i", sup, "-map", "0:v", "-map", "1", "-map", "1", "-map", "1", "-c:v", "libx264", "-preset", "ultrafast",
+		"-c:s:0", "copy", "-c:s:1", "dvdsub", "-c:s:2", "dvbsub", "-metadata:s:s:0", "language=eng", "-disposition:s:0", "default+forced", file).CombinedOutput(); err != nil {
+		t.Fatalf("ffmpeg: %v: %s", err, out)
+	}
+	probe, err := ProbeInput(context.Background(), file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for index, want := range map[int]map[string]any{
+		1: {"Codec": "PGSSUB", "DisplayTitle": "eng - Default - Forced - PGSSUB", "Language": "eng", "Width": 1920, "Height": 1080, "SupportsExternalStream": true},
+		2: {"Codec": "DVDSUB", "DisplayTitle": "DVDSUB", "Width": 1920, "Height": 1080, "SupportsExternalStream": false},
+		3: {"Codec": "DVBSUB", "DisplayTitle": "DVBSUB", "SupportsExternalStream": false},
+	} {
+		got := probe.Streams[index]
+		want["Index"], want["Type"], want["IsTextSubtitleStream"], want["IsImageSubtitleStream"] = index, "Subtitle", false, true
+		for key, value := range want {
+			if got[key] != value {
+				t.Errorf("stream %d: %s is %v, want %v (%v)", index, key, got[key], value, got)
+			}
+		}
+		if _, has := got["Width"]; index == 3 && has {
+			t.Errorf("stream 3: DVB says no size, and Width is %v", got["Width"])
 		}
 	}
 }

@@ -68,8 +68,8 @@ func ParseParams(query url.Values, source Source) (Params, error) {
 			// A file a worker found it can't read, after this URL was made. The
 			// film plays without it, as it would for a client that asks again,
 			// rather than failing every segment for the rest of the session.
-		case err != nil || !source.TextSubtitle(index):
-			return p, errors.New("SubtitleStreamIndex is not a text subtitle stream")
+		case err != nil || !source.Burnable(index):
+			return p, errors.New("SubtitleStreamIndex is not a subtitle stream that can be drawn")
 		default:
 			p.Subtitle = &index
 		}

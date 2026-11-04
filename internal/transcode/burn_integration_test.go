@@ -71,7 +71,7 @@ func TestBurnedSubtitleIsAtTheRightTime(t *testing.T) {
 	burnt.Subtitle = &index
 	build := func(input string, spec playback.Spec, start int) string {
 		dir := t.TempDir()
-		cmd, err := Command(context.Background(), input, spec, start, dir, burnTrack)
+		cmd, err := Command(context.Background(), input, spec, start, dir, burnTrack, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -145,7 +145,7 @@ func TestBurnFilterLooksInTheFontsDirectory(t *testing.T) {
 	index := 2
 	spec := testSpec
 	spec.Subtitle = &index
-	cmd, err := Command(context.Background(), input, spec, 0, t.TempDir(), burnTrack)
+	cmd, err := Command(context.Background(), input, spec, 0, t.TempDir(), burnTrack, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

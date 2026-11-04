@@ -229,11 +229,17 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	if err := os.MkdirAll(scratch, 0o755); err != nil {
 		return err
 	}
-	// The first burn of a track reads the whole file, here, before ffmpeg
+	// An image track is read by the transcode itself, in the same pass as the
+	// video, so there is nothing to extract first.
+	var image *playback.Stream
+	if job.Spec.Subtitle != nil && film.ImageSubtitle(*job.Spec.Subtitle) {
+		image = film.Stream(*job.Spec.Subtitle)
+	}
+	// The first burn of a text track reads the whole file, here, before ffmpeg
 	// starts; it is cached for every job after.
 	var ass string
 	var assets store.Store
-	if job.Spec.Subtitle != nil {
+	if job.Spec.Subtitle != nil && image == nil {
 		if assets, err = w.Media(source.AssetStoreURI); err != nil {
 			return err
 		}
@@ -267,7 +273,7 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		cmd, err = CopyCommand(ctx, input, job.Spec, video, audio, dir)
 		gather = newGatherer(dir, layout, film.Keyframes[0])
 	} else {
-		cmd, err = Command(ctx, input, job.Spec, job.Start, dir, ass)
+		cmd, err = Command(ctx, input, job.Spec, job.Start, dir, ass, image)
 	}
 	if err != nil {
 		return err

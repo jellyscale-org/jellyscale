@@ -1,0 +1,757 @@
+{
+ "about": {
+  "server": "jellyfin/jellyfin:12.4 (12.4.0)",
+  "observed": "2026-11-03",
+  "films": {
+   "pgs": "Pgs Film (2070)",
+   "vobsub": "Vob Film (2071)",
+   "dvb": "Dvb Film (2072)",
+   "mixed": "Mixed Film (2073)"
+  },
+  "note": "Black H.264 and AAC films in Matroska, 640x360, with the tracks named. PGS is a hand-written .sup (test/fixtures/pgs) muxed with -c:s copy; VobSub and DVB are ffmpeg's dvdsub and dvbsub encoders fed from it. Ids and the token are placeholders. The Mixed film has a SubRip track (2), a PGS track (3) and a forced, default French PGS track (4)."
+ },
+ "itemSubtitleStreams": {
+  "pgs": [
+   {
+    "Codec": "PGSSUB",
+    "Language": "eng",
+    "TimeBase": "1/1000",
+    "VideoRange": "Unknown",
+    "VideoRangeType": "Unknown",
+    "AudioSpatialFormat": "None",
+    "DisplayTitle": "English - PGSSUB",
+    "IsInterlaced": false,
+    "IsDefault": false,
+    "IsForced": false,
+    "IsHearingImpaired": false,
+    "IsOriginal": false,
+    "Height": 1080,
+    "Width": 1920,
+    "Type": "Subtitle",
+    "Index": 2,
+    "IsExternal": false,
+    "IsTextSubtitleStream": false,
+    "SupportsExternalStream": true
+   }
+  ],
+  "vobsub": [
+   {
+    "Codec": "DVDSUB",
+    "Language": "fra",
+    "TimeBase": "1/1000",
+    "VideoRange": "Unknown",
+    "VideoRangeType": "Unknown",
+    "AudioSpatialFormat": "None",
+    "DisplayTitle": "French - DVDSUB",
+    "IsInterlaced": false,
+    "IsDefault": false,
+    "IsForced": false,
+    "IsHearingImpaired": false,
+    "IsOriginal": false,
+    "Height": 1080,
+    "Width": 1920,
+    "Type": "Subtitle",
+    "Index": 1,
+    "IsExternal": false,
+    "IsTextSubtitleStream": false,
+    "SupportsExternalStream": true
+   }
+  ],
+  "dvb": [
+   {
+    "Codec": "DVBSUB",
+    "TimeBase": "1/1000",
+    "VideoRange": "Unknown",
+    "VideoRangeType": "Unknown",
+    "AudioSpatialFormat": "None",
+    "DisplayTitle": "Undefined - DVBSUB",
+    "IsInterlaced": false,
+    "IsDefault": false,
+    "IsForced": false,
+    "IsHearingImpaired": false,
+    "IsOriginal": false,
+    "Type": "Subtitle",
+    "Index": 1,
+    "IsExternal": false,
+    "IsTextSubtitleStream": false,
+    "SupportsExternalStream": false
+   }
+  ],
+  "mixed": [
+   {
+    "Codec": "subrip",
+    "Language": "eng",
+    "TimeBase": "1/1000",
+    "VideoRange": "Unknown",
+    "VideoRangeType": "Unknown",
+    "AudioSpatialFormat": "None",
+    "DisplayTitle": "English - SUBRIP",
+    "IsInterlaced": false,
+    "IsDefault": false,
+    "IsForced": false,
+    "IsHearingImpaired": false,
+    "IsOriginal": false,
+    "Type": "Subtitle",
+    "Index": 2,
+    "IsExternal": false,
+    "IsTextSubtitleStream": true,
+    "SupportsExternalStream": true
+   },
+   {
+    "Codec": "PGSSUB",
+    "Language": "eng",
+    "TimeBase": "1/1000",
+    "VideoRange": "Unknown",
+    "VideoRangeType": "Unknown",
+    "AudioSpatialFormat": "None",
+    "DisplayTitle": "English - PGSSUB",
+    "IsInterlaced": false,
+    "IsDefault": false,
+    "IsForced": false,
+    "IsHearingImpaired": false,
+    "IsOriginal": false,
+    "Height": 1080,
+    "Width": 1920,
+    "Type": "Subtitle",
+    "Index": 3,
+    "IsExternal": false,
+    "IsTextSubtitleStream": false,
+    "SupportsExternalStream": true
+   },
+   {
+    "Codec": "PGSSUB",
+    "Language": "fra",
+    "TimeBase": "1/1000",
+    "VideoRange": "Unknown",
+    "VideoRangeType": "Unknown",
+    "AudioSpatialFormat": "None",
+    "DisplayTitle": "French - Default - Forced - PGSSUB",
+    "IsInterlaced": false,
+    "IsDefault": true,
+    "IsForced": true,
+    "IsHearingImpaired": false,
+    "IsOriginal": false,
+    "Height": 720,
+    "Width": 1280,
+    "Type": "Subtitle",
+    "Index": 4,
+    "Score": 122211,
+    "IsExternal": false,
+    "IsTextSubtitleStream": false,
+    "SupportsExternalStream": true
+   }
+  ]
+ },
+ "playbackInfo": {
+  "pgs / chrome / SubtitleStreamIndex=absent": {
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsTranscoding": true,
+   "DefaultSubtitleStreamIndex": 2,
+   "TranscodingUrlQuery": {
+    "AudioStreamIndex": "1",
+    "SubtitleStreamIndex": "2",
+    "SubtitleMethod": "Encode",
+    "TranscodeReasons": "SubtitleCodecNotSupported"
+   },
+   "subtitleStreams": [
+    {
+     "Index": 2,
+     "Codec": "PGSSUB",
+     "DeliveryMethod": "Encode",
+     "SupportsExternalStream": true,
+     "IsTextSubtitleStream": false
+    }
+   ]
+  },
+  "pgs / chrome / SubtitleStreamIndex=2": {
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsTranscoding": true,
+   "DefaultSubtitleStreamIndex": 2,
+   "TranscodingUrlQuery": {
+    "AudioStreamIndex": "1",
+    "SubtitleStreamIndex": "2",
+    "SubtitleMethod": "Encode",
+    "TranscodeReasons": "SubtitleCodecNotSupported"
+   },
+   "subtitleStreams": [
+    {
+     "Index": 2,
+     "Codec": "PGSSUB",
+     "DeliveryMethod": "Encode",
+     "SupportsExternalStream": true,
+     "IsTextSubtitleStream": false
+    }
+   ]
+  },
+  "pgs / chromeWithPgsAndVobSubExternal / SubtitleStreamIndex=absent": {
+   "SupportsDirectPlay": true,
+   "SupportsDirectStream": true,
+   "SupportsTranscoding": true,
+   "DefaultSubtitleStreamIndex": 2,
+   "TranscodingUrlQuery": null,
+   "subtitleStreams": [
+    {
+     "Index": 2,
+     "Codec": "PGSSUB",
+     "DeliveryMethod": "External",
+     "DeliveryUrl": "/Videos/<pgs-dashed-id>/<pgs-id>/Subtitles/2/0/Stream.pgssub?ApiKey=<token>",
+     "IsExternalUrl": false,
+     "SupportsExternalStream": true,
+     "IsTextSubtitleStream": false
+    }
+   ]
+  },
+  "pgs / chromeWithPgsAndVobSubExternal / SubtitleStreamIndex=2": {
+   "SupportsDirectPlay": true,
+   "SupportsDirectStream": true,
+   "SupportsTranscoding": true,
+   "DefaultSubtitleStreamIndex": 2,
+   "TranscodingUrlQuery": null,
+   "subtitleStreams": [
+    {
+     "Index": 2,
+     "Codec": "PGSSUB",
+     "DeliveryMethod": "External",
+     "DeliveryUrl": "/Videos/<pgs-dashed-id>/<pgs-id>/Subtitles/2/0/Stream.pgssub?ApiKey=<token>",
+     "IsExternalUrl": false,
+     "SupportsExternalStream": true,
+     "IsTextSubtitleStream": false
+    }
+   ]
+  },
+  "vobsub / chrome / SubtitleStreamIndex=absent": {
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsTranscoding": true,
+   "DefaultSubtitleStreamIndex": 1,
+   "TranscodingUrlQuery": {
+    "SubtitleStreamIndex": "1",
+    "SubtitleMethod": "Encode",
+    "TranscodeReasons": "SubtitleCodecNotSupported"
+   },
+   "subtitleStreams": [
+    {
+     "Index": 1,
+     "Codec": "DVDSUB",
+     "DeliveryMethod": "Encode",
+     "SupportsExternalStream": true,
+     "IsTextSubtitleStream": false
+    }
+   ]
+  },
+  "vobsub / chrome / SubtitleStreamIndex=1": {
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsTranscoding": true,
+   "DefaultSubtitleStreamIndex": 1,
+   "TranscodingUrlQuery": {
+    "SubtitleStreamIndex": "1",
+    "SubtitleMethod": "Encode",
+    "TranscodeReasons": "SubtitleCodecNotSupported"
+   },
+   "subtitleStreams": [
+    {
+     "Index": 1,
+     "Codec": "DVDSUB",
+     "DeliveryMethod": "Encode",
+     "SupportsExternalStream": true,
+     "IsTextSubtitleStream": false
+    }
+   ]
+  },
+  "vobsub / chromeWithPgsAndVobSubExternal / SubtitleStreamIndex=absent": {
+   "SupportsDirectPlay": true,
+   "SupportsDirectStream": true,
+   "SupportsTranscoding": true,
+   "DefaultSubtitleStreamIndex": 1,
+   "TranscodingUrlQuery": null,
+   "subtitleStreams": [
+    {
+     "Index": 1,
+     "Codec": "DVDSUB",
+     "DeliveryMethod": "External",
+     "DeliveryUrl": "/Videos/<vobsub-dashed-id>/<vobsub-id>/Subtitles/1/0/Stream.vobsub?ApiKey=<token>",
+     "IsExternalUrl": false,
+     "SupportsExternalStream": true,
+     "IsTextSubtitleStream": false
+    }
+   ]
+  },
+  "vobsub / chromeWithPgsAndVobSubExternal / SubtitleStreamIndex=1": {
+   "SupportsDirectPlay": true,
+   "SupportsDirectStream": true,
+   "SupportsTranscoding": true,
+   "DefaultSubtitleStreamIndex": 1,
+   "TranscodingUrlQuery": null,
+   "subtitleStreams": [
+    {
+     "Index": 1,
+     "Codec": "DVDSUB",
+     "DeliveryMethod": "External",
+     "DeliveryUrl": "/Videos/<vobsub-dashed-id>/<vobsub-id>/Subtitles/1/0/Stream.vobsub?ApiKey=<token>",
+     "IsExternalUrl": false,
+     "SupportsExternalStream": true,
+     "IsTextSubtitleStream": false
+    }
+   ]
+  },
+  "dvb / chrome / SubtitleStreamIndex=absent": {
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsTranscoding": true,
+   "DefaultSubtitleStreamIndex": 1,
+   "TranscodingUrlQuery": {
+    "SubtitleStreamIndex": "1",
+    "SubtitleMethod": "Encode",
+    "TranscodeReasons": "SubtitleCodecNotSupported"
+   },
+   "subtitleStreams": [
+    {
+     "Index": 1,
+     "Codec": "DVBSUB",
+     "DeliveryMethod": "Encode",
+     "SupportsExternalStream": false,
+     "IsTextSubtitleStream": false
+    }
+   ]
+  },
+  "dvb / chrome / SubtitleStreamIndex=1": {
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsTranscoding": true,
+   "DefaultSubtitleStreamIndex": 1,
+   "TranscodingUrlQuery": {
+    "SubtitleStreamIndex": "1",
+    "SubtitleMethod": "Encode",
+    "TranscodeReasons": "SubtitleCodecNotSupported"
+   },
+   "subtitleStreams": [
+    {
+     "Index": 1,
+     "Codec": "DVBSUB",
+     "DeliveryMethod": "Encode",
+     "SupportsExternalStream": false,
+     "IsTextSubtitleStream": false
+    }
+   ]
+  },
+  "dvb / chromeWithPgsAndVobSubExternal / SubtitleStreamIndex=absent": {
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsTranscoding": true,
+   "DefaultSubtitleStreamIndex": 1,
+   "TranscodingUrlQuery": {
+    "SubtitleStreamIndex": "1",
+    "SubtitleMethod": "Encode",
+    "TranscodeReasons": "SubtitleCodecNotSupported"
+   },
+   "subtitleStreams": [
+    {
+     "Index": 1,
+     "Codec": "DVBSUB",
+     "DeliveryMethod": "Encode",
+     "SupportsExternalStream": false,
+     "IsTextSubtitleStream": false
+    }
+   ]
+  },
+  "dvb / chromeWithPgsAndVobSubExternal / SubtitleStreamIndex=1": {
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsTranscoding": true,
+   "DefaultSubtitleStreamIndex": 1,
+   "TranscodingUrlQuery": {
+    "SubtitleStreamIndex": "1",
+    "SubtitleMethod": "Encode",
+    "TranscodeReasons": "SubtitleCodecNotSupported"
+   },
+   "subtitleStreams": [
+    {
+     "Index": 1,
+     "Codec": "DVBSUB",
+     "DeliveryMethod": "Encode",
+     "SupportsExternalStream": false,
+     "IsTextSubtitleStream": false
+    }
+   ]
+  },
+  "mixed / chrome / SubtitleStreamIndex=absent": {
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsTranscoding": true,
+   "DefaultSubtitleStreamIndex": 4,
+   "TranscodingUrlQuery": {
+    "AudioStreamIndex": "1",
+    "SubtitleStreamIndex": "4",
+    "SubtitleMethod": "Encode",
+    "TranscodeReasons": "SubtitleCodecNotSupported"
+   },
+   "subtitleStreams": [
+    {
+     "Index": 2,
+     "Codec": "subrip",
+     "DeliveryMethod": "External",
+     "DeliveryUrl": "/Videos/<mixed-dashed-id>/<mixed-id>/Subtitles/2/0/Stream.vtt?ApiKey=<token>",
+     "IsExternalUrl": false,
+     "SupportsExternalStream": true,
+     "IsTextSubtitleStream": true
+    },
+    {
+     "Index": 3,
+     "Codec": "PGSSUB",
+     "DeliveryMethod": "Encode",
+     "SupportsExternalStream": true,
+     "IsTextSubtitleStream": false
+    },
+    {
+     "Index": 4,
+     "Codec": "PGSSUB",
+     "DeliveryMethod": "Encode",
+     "SupportsExternalStream": true,
+     "IsTextSubtitleStream": false
+    }
+   ]
+  },
+  "mixed / chrome / SubtitleStreamIndex=3": {
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsTranscoding": true,
+   "DefaultSubtitleStreamIndex": 3,
+   "TranscodingUrlQuery": {
+    "AudioStreamIndex": "1",
+    "SubtitleStreamIndex": "3",
+    "SubtitleMethod": "Encode",
+    "TranscodeReasons": "SubtitleCodecNotSupported"
+   },
+   "subtitleStreams": [
+    {
+     "Index": 2,
+     "Codec": "subrip",
+     "DeliveryMethod": "External",
+     "DeliveryUrl": "/Videos/<mixed-dashed-id>/<mixed-id>/Subtitles/2/0/Stream.vtt?ApiKey=<token>",
+     "IsExternalUrl": false,
+     "SupportsExternalStream": true,
+     "IsTextSubtitleStream": true
+    },
+    {
+     "Index": 3,
+     "Codec": "PGSSUB",
+     "DeliveryMethod": "Encode",
+     "SupportsExternalStream": true,
+     "IsTextSubtitleStream": false
+    },
+    {
+     "Index": 4,
+     "Codec": "PGSSUB",
+     "DeliveryMethod": "Encode",
+     "SupportsExternalStream": true,
+     "IsTextSubtitleStream": false
+    }
+   ]
+  },
+  "mixed / chromeWithPgsAndVobSubExternal / SubtitleStreamIndex=absent": {
+   "SupportsDirectPlay": true,
+   "SupportsDirectStream": true,
+   "SupportsTranscoding": true,
+   "DefaultSubtitleStreamIndex": 4,
+   "TranscodingUrlQuery": null,
+   "subtitleStreams": [
+    {
+     "Index": 2,
+     "Codec": "subrip",
+     "DeliveryMethod": "External",
+     "DeliveryUrl": "/Videos/<mixed-dashed-id>/<mixed-id>/Subtitles/2/0/Stream.vtt?ApiKey=<token>",
+     "IsExternalUrl": false,
+     "SupportsExternalStream": true,
+     "IsTextSubtitleStream": true
+    },
+    {
+     "Index": 3,
+     "Codec": "PGSSUB",
+     "DeliveryMethod": "External",
+     "DeliveryUrl": "/Videos/<mixed-dashed-id>/<mixed-id>/Subtitles/3/0/Stream.pgssub?ApiKey=<token>",
+     "IsExternalUrl": false,
+     "SupportsExternalStream": true,
+     "IsTextSubtitleStream": false
+    },
+    {
+     "Index": 4,
+     "Codec": "PGSSUB",
+     "DeliveryMethod": "External",
+     "DeliveryUrl": "/Videos/<mixed-dashed-id>/<mixed-id>/Subtitles/4/0/Stream.pgssub?ApiKey=<token>",
+     "IsExternalUrl": false,
+     "SupportsExternalStream": true,
+     "IsTextSubtitleStream": false
+    }
+   ]
+  },
+  "mixed / chromeWithPgsAndVobSubExternal / SubtitleStreamIndex=3": {
+   "SupportsDirectPlay": true,
+   "SupportsDirectStream": true,
+   "SupportsTranscoding": true,
+   "DefaultSubtitleStreamIndex": 3,
+   "TranscodingUrlQuery": null,
+   "subtitleStreams": [
+    {
+     "Index": 2,
+     "Codec": "subrip",
+     "DeliveryMethod": "External",
+     "DeliveryUrl": "/Videos/<mixed-dashed-id>/<mixed-id>/Subtitles/2/0/Stream.vtt?ApiKey=<token>",
+     "IsExternalUrl": false,
+     "SupportsExternalStream": true,
+     "IsTextSubtitleStream": true
+    },
+    {
+     "Index": 3,
+     "Codec": "PGSSUB",
+     "DeliveryMethod": "External",
+     "DeliveryUrl": "/Videos/<mixed-dashed-id>/<mixed-id>/Subtitles/3/0/Stream.pgssub?ApiKey=<token>",
+     "IsExternalUrl": false,
+     "SupportsExternalStream": true,
+     "IsTextSubtitleStream": false
+    },
+    {
+     "Index": 4,
+     "Codec": "PGSSUB",
+     "DeliveryMethod": "External",
+     "DeliveryUrl": "/Videos/<mixed-dashed-id>/<mixed-id>/Subtitles/4/0/Stream.pgssub?ApiKey=<token>",
+     "IsExternalUrl": false,
+     "SupportsExternalStream": true,
+     "IsTextSubtitleStream": false
+    }
+   ]
+  }
+ },
+ "routes": {
+  "pgs .pgssub": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/2/0/Stream.pgssub",
+   "status": 200,
+   "contentType": "application/octet-stream",
+   "contentLength": "2700",
+   "contentRange": null,
+   "acceptRanges": "bytes",
+   "bodyStart": "PG (the file's first segment header)"
+  },
+  "pgs .sup": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/2/0/Stream.sup",
+   "status": 200,
+   "contentType": "application/octet-stream",
+   "contentLength": "2700",
+   "contentRange": null,
+   "acceptRanges": "bytes",
+   "bodyStart": "PG (the file's first segment header)"
+  },
+  "pgs .pgssub, a start offset": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/2/0/Stream.pgssub?StartPositionTicks=100000000",
+   "status": 200,
+   "contentType": "application/octet-stream",
+   "contentLength": "2700",
+   "contentRange": null,
+   "acceptRanges": "bytes",
+   "bodyStart": "PG (the file's first segment header)"
+  },
+  "pgs .pgssub, no start offset in the path": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/3/Stream.pgssub",
+   "status": 200,
+   "contentType": "application/octet-stream",
+   "contentLength": "2700",
+   "contentRange": null,
+   "acceptRanges": "bytes",
+   "bodyStart": "PG (the file's first segment header)"
+  },
+  "pgs range 0-0": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/3/0/Stream.pgssub (Range: bytes=0-0)",
+   "status": 206,
+   "contentType": "application/octet-stream",
+   "contentLength": "1",
+   "contentRange": "bytes 0-0/2700",
+   "acceptRanges": "bytes",
+   "bodyStart": null
+  },
+  "pgs range 100-": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/3/0/Stream.pgssub (Range: bytes=100-)",
+   "status": 206,
+   "contentType": "application/octet-stream",
+   "contentLength": "2600",
+   "contentRange": "bytes 100-2699/2700",
+   "acceptRanges": "bytes",
+   "bodyStart": null
+  },
+  "pgs HEAD": {
+   "request": "HEAD /Videos/<id>/<id>/Subtitles/3/0/Stream.pgssub",
+   "status": 405,
+   "contentType": null,
+   "contentLength": null,
+   "contentRange": null,
+   "acceptRanges": null,
+   "bodyStart": null
+  },
+  "pgs .vtt": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/3/0/Stream.vtt",
+   "status": 400,
+   "contentType": "text/plain",
+   "contentLength": null,
+   "contentRange": null,
+   "acceptRanges": null,
+   "bodyStart": "Error processing request."
+  },
+  "pgs .srt": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/3/0/Stream.srt",
+   "status": 400,
+   "contentType": "text/plain",
+   "contentLength": null,
+   "contentRange": null,
+   "acceptRanges": null,
+   "bodyStart": "Error processing request."
+  },
+  "pgs .ass": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/3/0/Stream.ass",
+   "status": 400,
+   "contentType": "text/plain",
+   "contentLength": null,
+   "contentRange": null,
+   "acceptRanges": null,
+   "bodyStart": "Error processing request."
+  },
+  "pgs .js": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/3/0/Stream.js",
+   "status": 400,
+   "contentType": "text/plain",
+   "contentLength": null,
+   "contentRange": null,
+   "acceptRanges": null,
+   "bodyStart": "Error processing request."
+  },
+  "pgs subtitles.m3u8": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/3/0/subtitles.m3u8?segmentLength=6",
+   "status": 404,
+   "contentType": null,
+   "contentLength": "0",
+   "contentRange": null,
+   "acceptRanges": null,
+   "bodyStart": null
+  },
+  "text track as .pgssub": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/2/0/Stream.pgssub",
+   "status": 400,
+   "contentType": "text/plain",
+   "contentLength": null,
+   "contentRange": null,
+   "acceptRanges": null,
+   "bodyStart": "Error processing request."
+  },
+  "text track as .sup": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/2/0/Stream.sup",
+   "status": 400,
+   "contentType": "text/plain",
+   "contentLength": null,
+   "contentRange": null,
+   "acceptRanges": null,
+   "bodyStart": "Error processing request."
+  },
+  "index past the end, .pgssub": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/9/0/Stream.pgssub",
+   "status": 500,
+   "contentType": "text/plain",
+   "contentLength": null,
+   "contentRange": null,
+   "acceptRanges": null,
+   "bodyStart": "Error processing request."
+  },
+  "vobsub .vobsub": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/1/0/Stream.vobsub",
+   "status": 200,
+   "contentType": "video/x-matroska",
+   "contentLength": "1640",
+   "contentRange": null,
+   "acceptRanges": "bytes",
+   "bodyStart": null
+  },
+  "vobsub .mks": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/1/0/Stream.mks",
+   "status": 200,
+   "contentType": "video/x-matroska",
+   "contentLength": "1640",
+   "contentRange": null,
+   "acceptRanges": null,
+   "bodyStart": null
+  },
+  "vobsub .sub": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/1/0/Stream.sub",
+   "status": 400,
+   "contentType": "text/plain",
+   "contentLength": null,
+   "contentRange": null,
+   "acceptRanges": null,
+   "bodyStart": "Error processing request."
+  },
+  "vobsub .sup": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/1/0/Stream.sup",
+   "status": 200,
+   "contentType": "video/x-matroska",
+   "contentLength": "1640",
+   "contentRange": null,
+   "acceptRanges": "bytes",
+   "bodyStart": null
+  },
+  "vobsub .vtt": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/1/0/Stream.vtt",
+   "status": 400,
+   "contentType": "text/plain",
+   "contentLength": null,
+   "contentRange": null,
+   "acceptRanges": null,
+   "bodyStart": "Error processing request."
+  },
+  "vobsub range 0-0": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/1/0/Stream.vobsub (Range: bytes=0-0)",
+   "status": 206,
+   "contentType": "video/x-matroska",
+   "contentLength": "1",
+   "contentRange": "bytes 0-0/1640",
+   "acceptRanges": "bytes",
+   "bodyStart": null
+  },
+  "dvb .vtt": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/1/0/Stream.vtt",
+   "status": 404,
+   "contentType": "text/plain",
+   "contentLength": null,
+   "contentRange": null,
+   "acceptRanges": null,
+   "bodyStart": "Error processing request."
+  },
+  "dvb .dvbsub": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/1/0/Stream.dvbsub",
+   "status": 404,
+   "contentType": "text/plain",
+   "contentLength": null,
+   "contentRange": null,
+   "acceptRanges": null,
+   "bodyStart": "Error processing request."
+  },
+  "dvb .sup": {
+   "request": "GET /Videos/<id>/<id>/Subtitles/1/0/Stream.sup",
+   "status": 404,
+   "contentType": "text/plain",
+   "contentLength": null,
+   "contentRange": null,
+   "acceptRanges": null,
+   "bodyStart": "Error processing request."
+  }
+ },
+ "ffmpegCommandLinesFromServerLogs": {
+  "Dvb Film (2072)": "/usr/lib/jellyfin-ffmpeg/ffmpeg -analyzeduration 200M -probesize 1G  -i file:\"<film>\" -map_metadata -1 -map_chapters -1 -threads 0 -map 0:0 -map -0:a -map -0:0 -codec:v:0 libx264 -preset veryfast -crf 23 -maxrate 60568 -bufsize 121136 -profile:v:0 baseline -level 30 -x264opts:0 subme=0:me_range=16:rc_lookahead=10:me=hex:open_gop=0 -force_key_frames:0 \"expr:gte(t,n_forced*3)\" -sc_threshold:v:0 0 -filter_complex \"[0:1]scale,scale=-1:360:fast_bilinear,crop,pad=max(640\\,iw):max(360\\,ih):(ow-iw)/2:(oh-ih)/2:black@0,crop=640:360[sub];[0:0]setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,scale=trunc(min(max(iw\\,ih*a)\\,min(640\\,360*a))/2)*2:trunc(min(max(iw/a\\,ih)\\,min(640/a\\,360))/2)*2,format=yuv420p[main];[main][sub]overlay=eof_action=pass:repeatlast=0\" -start_at_zero  -copyts -avoid_negative_ts disabled -max_muxing_queue_size 2048 -f hls -max_delay 5000000 -hls_time 3 -hls_segment_type fmp4 \u2026",
+  "Vob Film (2071)": "/usr/lib/jellyfin-ffmpeg/ffmpeg -analyzeduration 200M -probesize 1G  -canvas_size 1920x1080 -i file:\"<film>\" -map_metadata -1 -map_chapters -1 -threads 0 -map 0:0 -map -0:a -map -0:0 -codec:v:0 libx264 -preset veryfast -crf 23 -maxrate 63420 -bufsize 126840 -profile:v:0 baseline -level 30 -x264opts:0 subme=0:me_range=16:rc_lookahead=10:me=hex:open_gop=0 -force_key_frames:0 \"expr:gte(t,n_forced*3)\" -sc_threshold:v:0 0 -filter_complex \"[0:1]scale,scale=640:360:fast_bilinear[sub];[0:0]setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,scale=trunc(min(max(iw\\,ih*a)\\,min(640\\,360*a))/2)*2:trunc(min(max(iw/a\\,ih)\\,min(640/a\\,360))/2)*2,format=yuv420p[main];[main][sub]overlay=eof_action=pass:repeatlast=0\" -start_at_zero  -copyts -avoid_negative_ts disabled -max_muxing_queue_size 2048 -f hls -max_delay 5000000 -hls_time 3 -hls_segment_type fmp4 \u2026",
+  "Pgs Film (2070)": "/usr/lib/jellyfin-ffmpeg/ffmpeg -analyzeduration 200M -probesize 1G  -canvas_size 1920x1080 -i file:\"<film>\" -map_metadata -1 -map_chapters -1 -threads 0 -map 0:0 -map 0:1 -map -0:0 -codec:v:0 libx264 -preset veryfast -crf 23 -maxrate 400000000 -bufsize 800000000 -profile:v:0 baseline -level 30 -x264opts:0 subme=0:me_range=16:rc_lookahead=10:me=hex:open_gop=0 -force_key_frames:0 \"expr:gte(t,n_forced*3)\" -sc_threshold:v:0 0 -filter_complex \"[0:2]scale,scale=640:360:fast_bilinear[sub];[0:0]setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709,format=yuv420p[main];[main][sub]overlay=eof_action=pass:repeatlast=0\" -start_at_zero -codec:a:0 copy -copyts -avoid_negative_ts disabled -max_muxing_queue_size 2048 -f hls -max_delay 5000000 -hls_time 3 -hls_segment_type fmp4 \u2026"
+ },
+ "jellyfinWeb": {
+  "version": "jellyfin-web 12.4.0 in Chrome 154, driven by playwright",
+  "profile": "SubtitleProfiles is [vtt External, ass External, ssa External] by default. When the viewer sets localStorage subtitlerenderpgs to \"true\" (and the page has a 2d canvas, and the burn-in setting is not all, allcomplexformats or onlyimageformats) it adds {Format: pgssub, Method: External} and {Format: vobsub, Container: mks, Method: External}.",
+  "defaultSettings": "A PGS or VobSub track picked is a PlaybackInfo with SubtitleStreamIndex, which Jellyfin answers with a TranscodingUrl (SubtitleMethod=Encode, SubtitleStreamIndex=N) that burns it in. jellyfin-web fetches nothing from /Subtitles/. The first PlaybackInfo of the PGS film already named the track (SubtitleStreamIndex 2): it was the only subtitle track.",
+  "pgsRendering": "With the setting on, the same pick on a direct play makes no PlaybackInfo and no transcode: jellyfin-web (libbitsub, WebGL, a 1280x720 canvas over the video) fetches the track's DeliveryUrl, Stream.pgssub, first with Range: bytes=0-0 (answered 206, Content-Range bytes 0-0/N) and then with no Range (200, the whole file), and draws the cues on its canvas as the video's time reaches them.",
+  "vobsubRendering": "The same for VobSub: it fetched Stream.vobsub as video/x-matroska (a Matroska file holding only the track, 1640 bytes for 3 cues), with the same 0-0 probe. jellyscale does not send VobSub as a file (DOMAINS 51)."
+ }
+}

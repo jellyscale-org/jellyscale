@@ -289,7 +289,7 @@ func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
 			s.fail(w, r, err)
 			return
 		}
-		deliverSubtitles(source, id, sessionOf(r).Token, burn, deliverable)
+		deliverSubtitles(source, id, sessionOf(r).Token, request, burn, deliverable)
 		if index, ok := defaultAudio(source); ok {
 			source["DefaultAudioStreamIndex"] = index
 		}

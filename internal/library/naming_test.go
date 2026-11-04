@@ -1,6 +1,9 @@
 package library
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 func TestParseMovie(t *testing.T) {
 	cases := []struct {
@@ -93,5 +96,23 @@ func TestPlayableStreams(t *testing.T) {
 	}
 	if got := playableStreams([]map[string]any{video, first, flagged}); got[1]["IsDefault"] != true {
 		t.Error("kept the wrong audio stream")
+	}
+}
+
+// Subtitle tracks are listed when something delivers them: text ones, and the
+// image ones a transcode draws. Any other bitmap codec stays out.
+func TestPlayableStreamsListsTheImageTracksThatAreDelivered(t *testing.T) {
+	text := map[string]any{"Type": "Subtitle", "Index": 1, "IsTextSubtitleStream": true, "IsImageSubtitleStream": false}
+	pgs := map[string]any{"Type": "Subtitle", "Index": 2, "Codec": "PGSSUB", "IsTextSubtitleStream": false, "IsImageSubtitleStream": true}
+	dvb := map[string]any{"Type": "Subtitle", "Index": 3, "Codec": "DVBSUB", "IsTextSubtitleStream": false, "IsImageSubtitleStream": true}
+	other := map[string]any{"Type": "Subtitle", "Index": 4, "Codec": "hdmv_text_subtitle", "IsTextSubtitleStream": false, "IsImageSubtitleStream": false}
+	// Stored by a version that didn't know image tracks.
+	old := map[string]any{"Type": "Subtitle", "Index": 5, "Codec": "hdmv_pgs_subtitle", "IsTextSubtitleStream": false}
+	var listed []int
+	for _, stream := range playableStreams([]map[string]any{text, pgs, dvb, other, old}) {
+		listed = append(listed, stream["Index"].(int))
+	}
+	if !slices.Equal(listed, []int{1, 2, 3}) {
+		t.Errorf("listed tracks %v, want 1, 2 and 3", listed)
 	}
 }

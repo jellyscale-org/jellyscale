@@ -2,6 +2,7 @@ package library
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -20,6 +21,11 @@ const maxDuration = 100 * 365 * 86400
 // textSubtitleCodecs are the ffprobe names of the subtitle codecs that hold
 // text.
 var textSubtitleCodecs = []string{"subrip", "ass", "ssa", "webvtt", "mov_text"}
+
+// imageSubtitleCodecs are the ffprobe names of the image codecs that can be
+// drawn into a transcode (PGS, VobSub, DVB), with the names Jellyfin lists them
+// under. Any other bitmap codec stays out of the listing: nothing delivers it.
+var imageSubtitleCodecs = map[string]string{"hdmv_pgs_subtitle": "PGSSUB", "dvd_subtitle": "DVDSUB", "dvb_subtitle": "DVBSUB"}
 
 // Probe is what a media file says about itself.
 type Probe struct {
@@ -183,11 +189,21 @@ func ProbeInput(ctx context.Context, input string) (Probe, error) {
 				entry["SampleRate"] = rate
 			}
 		case "Subtitle":
-			entry["DisplayTitle"] = displaySubtitle(stream.Tags["language"], stream.CodecName, stream.Disposition.Default == 1, stream.Disposition.Forced == 1)
-			// Only text tracks can be extracted and delivered; image ones
-			// (PGS, VobSub, DVB) stay in media_sources.streams alone.
 			text := slices.Contains(textSubtitleCodecs, stream.CodecName)
-			entry["IsTextSubtitleStream"], entry["SupportsExternalStream"] = text, text
+			name, image := imageSubtitleCodecs[stream.CodecName]
+			if image {
+				entry["Codec"] = name
+				// The canvas the bitmaps are placed on, which burning needs.
+				if stream.Width > 0 && stream.Height > 0 {
+					entry["Width"], entry["Height"] = stream.Width, stream.Height
+				}
+			}
+			entry["DisplayTitle"] = displaySubtitle(stream.Tags["language"], cmp.Or(name, stream.CodecName), stream.Disposition.Default == 1, stream.Disposition.Forced == 1)
+			// Text tracks are extracted and PGS ones copied out for the client;
+			// VobSub and DVB are only drawn into a transcode, and every other
+			// image codec stays in media_sources.streams alone.
+			entry["IsTextSubtitleStream"], entry["IsImageSubtitleStream"] = text, image
+			entry["SupportsExternalStream"] = text || stream.CodecName == "hdmv_pgs_subtitle"
 		}
 		probe.Streams = append(probe.Streams, entry)
 	}

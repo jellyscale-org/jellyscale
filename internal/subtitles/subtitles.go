@@ -44,6 +44,22 @@ func Extract(ctx context.Context, input string, index int) (Track, error) {
 	for _, ext := range []string{"vtt", "srt", "ass"} {
 		args = append(args, "-map", "0:"+strconv.Itoa(index), filepath.Join(dir, "track."+ext))
 	}
+	if err := runFFmpeg(ctx, args); err != nil {
+		return Track{}, err
+	}
+	var track Track
+	for ext, text := range map[string]*string{"vtt": &track.VTT, "srt": &track.SRT, "ass": &track.ASS} {
+		data, err := os.ReadFile(filepath.Join(dir, "track."+ext))
+		if err != nil {
+			return Track{}, err
+		}
+		*text = string(data)
+	}
+	return track, nil
+}
+
+// runFFmpeg runs ffmpeg and says whether it did what it was asked.
+func runFFmpeg(ctx context.Context, args []string) error {
 	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
 	// Pdeathsig fires when the thread that started ffmpeg exits, so this
 	// goroutine keeps its thread until ffmpeg is done.
@@ -55,19 +71,11 @@ func Extract(ctx context.Context, input string, index int) (Track, error) {
 	out, err := cmd.CombinedOutput()
 	if err != nil || len(bytes.TrimSpace(out)) > 0 {
 		if !isBadFile(ctx, err, out) {
-			return Track{}, fmt.Errorf("ffmpeg: %v: %s", err, strings.TrimSpace(string(out)))
+			return fmt.Errorf("ffmpeg: %v: %s", err, strings.TrimSpace(string(out)))
 		}
-		return Track{}, fmt.Errorf("%w: ffmpeg: %v: %s", ErrBadFile, err, strings.TrimSpace(string(out)))
+		return fmt.Errorf("%w: ffmpeg: %v: %s", ErrBadFile, err, strings.TrimSpace(string(out)))
 	}
-	var track Track
-	for ext, text := range map[string]*string{"vtt": &track.VTT, "srt": &track.SRT, "ass": &track.ASS} {
-		data, err := os.ReadFile(filepath.Join(dir, "track."+ext))
-		if err != nil {
-			return Track{}, err
-		}
-		*text = string(data)
-	}
-	return track, nil
+	return nil
 }
 
 // isBadFile says whether a failed ffmpeg run is the data's fault: it ran to the

@@ -42,7 +42,7 @@ func TestHostileQueryCannotShapeFFmpegArguments(t *testing.T) {
 		if err != nil {
 			return nil, err
 		}
-		cmd, err := Command(context.Background(), "/media/film.mkv", spec, 0, "/scratch/job", "")
+		cmd, err := Command(context.Background(), "/media/film.mkv", spec, 0, "/scratch/job", "", nil)
 		if err != nil {
 			return nil, err
 		}

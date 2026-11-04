@@ -413,3 +413,62 @@ func TestMigrationMakesStoredVideosDownloadable(t *testing.T) {
 		t.Fatal("the stored film is still not downloadable")
 	}
 }
+
+// pgsClip writes a two second film with one PGS track, as a Blu-ray remux has.
+func pgsClip(t *testing.T, file string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	sup := filepath.Join(t.TempDir(), "track.sup")
+	if err := os.WriteFile(sup, testenv.PGS(1920, 1080, testenv.Cue{Start: 0.5, End: 1.5, X: 100, Y: 100, W: 200, H: 50}), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := exec.Command("ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=10:duration=2",
+		"-i", sup, "-map", "0:v", "-map", "1", "-c:v", "libx264", "-preset", "ultrafast", "-c:s", "copy", "-metadata:s:s:0", "language=eng", file).CombinedOutput()
+	if err != nil {
+		t.Fatalf("ffmpeg: %v: %s", err, out)
+	}
+}
+
+// A PGS track is listed as Jellyfin lists it, and the track of a film stored
+// before image tracks were listed is listed by the next scan, without reading
+// the film's keyframes again.
+func TestScanListsImageSubtitles(t *testing.T) {
+	f := setup(t, "movies")
+	pgsClip(t, filepath.Join(f.media, "Disc Film (2020)", "Disc Film (2020).mkv"))
+	f.scan(t)
+	const listed = `SELECT dto->'MediaStreams' @> '[{"Type":"Subtitle","Codec":"PGSSUB","Language":"eng","DisplayTitle":"eng - PGSSUB","Index":1,"Width":1920,"Height":1080,"SupportsExternalStream":true,"IsTextSubtitleStream":false}]' FROM items WHERE type = 'Movie'`
+	if !scalar[bool](t, f.pool, listed) {
+		t.Fatalf("the track is not listed: %s", scalar[string](t, f.pool, "SELECT dto->'MediaStreams' FROM items WHERE type = 'Movie'"))
+	}
+	if !scalar[bool](t, f.pool, `SELECT streams @> '[{"Type":"Subtitle","IsImageSubtitleStream":true}]' FROM media_sources`) {
+		t.Fatal("the stored track is not marked as an image one")
+	}
+
+	// As an earlier version stored it: not listed, and with no word that it is an image track.
+	mustExec := func(sql string) {
+		t.Helper()
+		if _, err := f.pool.Exec(context.Background(), sql); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mustExec(`UPDATE media_sources SET keyframes = '{7}', streams = (SELECT jsonb_agg(s - 'IsImageSubtitleStream') FROM jsonb_array_elements(streams) s)`)
+	mustExec(`UPDATE items SET dto = jsonb_set(jsonb_set(dto, '{MediaStreams}', (SELECT jsonb_agg(s) FROM jsonb_array_elements(dto->'MediaStreams') s WHERE s->>'Type' <> 'Subtitle')), '{MediaSources,0,MediaStreams}', (SELECT jsonb_agg(s) FROM jsonb_array_elements(dto->'MediaStreams') s WHERE s->>'Type' <> 'Subtitle'))`)
+	if scalar[bool](t, f.pool, listed) {
+		t.Fatal("the test did not hide the track")
+	}
+	f.scan(t)
+	if !scalar[bool](t, f.pool, listed) || !scalar[bool](t, f.pool, `SELECT dto->'MediaSources'->0->'MediaStreams' @> '[{"Codec":"PGSSUB"}]' FROM items WHERE type = 'Movie'`) {
+		t.Fatal("the scan left the old track unlisted")
+	}
+	if got := scalar[string](t, f.pool, "SELECT keyframes::text FROM media_sources"); got != "{7}" {
+		t.Fatalf("the film's keyframes were read again: %s", got)
+	}
+	// Listed, so it is left alone from now on.
+	mustExec(`UPDATE media_sources SET keyframes = '{8}'`)
+	f.scan(t)
+	if got := scalar[string](t, f.pool, "SELECT keyframes::text FROM media_sources"); got != "{8}" {
+		t.Fatalf("a film with a listed image track was probed again: %s", got)
+	}
+}

@@ -10,6 +10,7 @@ import (
 	"maps"
 	"net/http"
 	"net/url"
+	"path"
 	"slices"
 	"strconv"
 	"strings"
@@ -34,6 +35,10 @@ func (s *Server) subtitleStream(w http.ResponseWriter, r *http.Request) {
 	format, ok := strings.CutPrefix(r.PathValue("file"), "stream.")
 	// A zero Track renders nothing but still says whether it knows the format.
 	_, _, known := subtitles.Track{}.Render(format, 0)
+	// PGS goes to the client as the file it is, under either name (Jellyfin 12.4
+	// answers both).
+	sup := format == "sup" || format == "pgssub"
+	known = known || sup
 	// As Jellyfin 12.4 answers: a format it doesn't know is a bad request, a name
 	// that isn't Stream.* is not found, and the playlist is for GET alone.
 	switch {
@@ -78,7 +83,16 @@ func (s *Server) subtitleStream(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
-	if !media.TextSubtitle(index) {
+	// As Jellyfin 12.4 answers: a track asked for in a format it doesn't have is a
+	// bad request.
+	switch {
+	case sup && media.SubtitleCodec(index) == "PGSSUB":
+		s.supStream(w, r, itemID, source, index)
+		return
+	case sup && media.Burnable(index), !playlist && media.ImageSubtitle(index):
+		http.Error(w, "the track is not in that format", http.StatusBadRequest)
+		return
+	case !media.TextSubtitle(index):
 		http.NotFound(w, r)
 		return
 	}
@@ -96,16 +110,7 @@ func (s *Server) subtitleStream(w http.ResponseWriter, r *http.Request) {
 		s.startFonts(r.Context(), itemID, source, assets, false)
 	}
 	track, err := transcode.FetchSubtitle(r.Context(), s.Pool, s.Hub, assets, itemID, source, index)
-	switch {
-	case errors.Is(err, context.Canceled):
-		return
-	case errors.Is(err, transcode.ErrNoSubtitleWorker):
-		s.Log.Error("subtitle track not extracted", "item", itemID, "source", sourceID, "index", index, "error", err)
-		http.Error(w, "subtitles can't be extracted right now", http.StatusServiceUnavailable)
-		return
-	case err != nil:
-		s.Log.Error("subtitle extraction failed", "item", itemID, "source", sourceID, "index", index, "error", err)
-		http.Error(w, "the subtitle track could not be read", http.StatusInternalServerError)
+	if s.extractionFailed(w, r, err, itemID, source, index) {
 		return
 	}
 	// A segment of the playlist asks for the cues in its window, which keep
@@ -124,6 +129,49 @@ func (s *Server) subtitleStream(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", contentType)
 	w.Write([]byte(body)) //nolint:errcheck // A client that goes away is not a fault.
+}
+
+// extractionFailed answers a request whose subtitle job ended badly, and says
+// whether it did.
+func (s *Server) extractionFailed(w http.ResponseWriter, r *http.Request, err error, itemID string, source items.Source, index int) bool {
+	switch {
+	case err == nil:
+		return false
+	case errors.Is(err, context.Canceled):
+	case errors.Is(err, transcode.ErrNoSubtitleWorker):
+		s.Log.Error("subtitle track not extracted", "item", itemID, "source", source.ID, "index", index, "error", err)
+		http.Error(w, "subtitles can't be extracted right now", http.StatusServiceUnavailable)
+	default:
+		s.Log.Error("subtitle extraction failed", "item", itemID, "source", source.ID, "index", index, "error", err)
+		http.Error(w, "the subtitle track could not be read", http.StatusInternalServerError)
+	}
+	return true
+}
+
+// supStream sends a PGS track as the .sup file a worker copied out of the film,
+// answering ranges as jellyfin-web asks (it probes with bytes=0-0). The bytes
+// go from the asset store to the client as they are; this role runs no media
+// tools and holds none of the file in memory.
+func (s *Server) supStream(w http.ResponseWriter, r *http.Request, itemID string, source items.Source, index int) {
+	assets, err := s.stores.Open(source.AssetStoreURI)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	key, err := transcode.FetchSup(r.Context(), s.Pool, s.Hub, assets, itemID, source, index)
+	if s.extractionFailed(w, r, err, itemID, source, index) {
+		return
+	}
+	// The object's size and ETag, which the client's ranges and caches need, from
+	// the listing of the film's tracks: a store lists directories, not one key.
+	objects, err := assets.List(r.Context(), path.Dir(key))
+	i := slices.IndexFunc(objects, func(o store.Object) bool { return o.Key == key })
+	if err != nil || i < 0 {
+		s.Log.Error("the copied PGS track is not in the asset store", "item", itemID, "index", index, "error", err)
+		http.Error(w, "the subtitle track could not be read", http.StatusInternalServerError)
+		return
+	}
+	s.serveSource(w, r, assets, items.Source{Key: key, Size: objects[i].Size, ETag: objects[i].ETag})
 }
 
 // ticksPerSecond is the unit of every position in the API.
@@ -310,34 +358,45 @@ func deliverAttachments(source map[string]any, itemID, token string) {
 	}
 }
 
-// deliverSubtitles says how each text track of a PlaybackInfo source reaches
-// the client. Normally the client fetches it from the stream role. When it is
-// to be drawn into the picture it is not offered for download, and if this
-// server can't transcode, it is not offered at all, because no track may be
-// listed that can't be delivered. deliverable says whether a track can be
-// fetched (see s.deliverable).
-func deliverSubtitles(source map[string]any, itemID, token string, burn bool, deliverable func(index int) bool) {
+// deliverSubtitles says how each subtitle track of a PlaybackInfo source reaches
+// the client. Normally the client fetches it from the stream role: a text track
+// as cues, a PGS track as the file, if the client draws PGS itself. When it is
+// to be drawn into the picture, or is an image track the client can't draw
+// (VobSub, DVB, or PGS for a client that doesn't render it), it is not offered
+// for download, and if this server can't transcode, it is not offered at all,
+// because no track may be listed that can't be delivered. deliverable says
+// whether a track can be fetched (see s.deliverable).
+func deliverSubtitles(source map[string]any, itemID, token string, request playback.Request, burn bool, deliverable func(index int) bool) {
 	streams, _ := source["MediaStreams"].([]any)
 	kept := make([]any, 0, len(streams))
 	for _, entry := range streams {
 		stream, _ := entry.(map[string]any)
+		index := int(number(stream["Index"]))
+		codec, _ := stream["Codec"].(string)
+		fetched := !burn && (stream["IsImageSubtitleStream"] != true || codec == "PGSSUB" && request.ShowsPgs())
+		// A request with no profile is never given a transcode (playback.Decide).
+		canBurn := source["SupportsTranscoding"] == true && request.DeviceProfile != nil
 		switch {
 		case stream["Type"] != "Subtitle":
-		case burn && source["SupportsTranscoding"] != true, !burn && !deliverable(int(number(stream["Index"]))):
+		case !fetched && !canBurn, fetched && !deliverable(index):
 			continue
-		case burn:
+		case !fetched:
 			stream["DeliveryMethod"] = "Encode"
 		default:
 			// ass and ssa keep their styles in the one format jellyfin-web
-			// renders them from; everything else is plain cues.
+			// renders them from, PGS is the file, and everything else is plain
+			// cues.
 			format := "vtt"
-			if codec, _ := stream["Codec"].(string); codec == "ass" || codec == "ssa" {
+			switch {
+			case codec == "ass" || codec == "ssa":
 				format = "ass"
+			case codec == "PGSSUB":
+				format = "pgssub"
 			}
 			stream["DeliveryMethod"] = "External"
 			stream["IsExternalUrl"] = false
 			stream["DeliveryUrl"] = "/Videos/" + db.DashedID(itemID) + "/" + source["Id"].(string) + "/Subtitles/" +
-				strconv.Itoa(int(number(stream["Index"]))) + "/0/Stream." + format + "?ApiKey=" + url.QueryEscape(token)
+				strconv.Itoa(index) + "/0/Stream." + format + "?ApiKey=" + url.QueryEscape(token)
 		}
 		kept = append(kept, entry)
 	}
@@ -377,8 +436,16 @@ func (s *Server) deliverable(ctx context.Context, itemID string, source map[stri
 	checked := map[int]bool{}
 	for _, entry := range streams {
 		stream, _ := entry.(map[string]any)
-		if stream["Type"] == "Subtitle" {
-			index := int(number(stream["Index"]))
+		if stream["Type"] != "Subtitle" {
+			continue
+		}
+		index := int(number(stream["Index"]))
+		switch codec, _ := stream["Codec"].(string); {
+		case codec == "PGSSUB":
+			checked[index] = subtitles.Exists(ctx, assets, subtitles.SupKey(stored, index))
+		case stream["IsImageSubtitleStream"] == true:
+			// Only a transcode draws it, and with no worker none can run.
+		default:
 			checked[index] = subtitles.Exists(ctx, assets, subtitles.Key(stored, index))
 		}
 	}
