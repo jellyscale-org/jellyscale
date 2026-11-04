@@ -405,6 +405,50 @@ await scenario("HEVC in Matroska with AC3 audio" + `: ${hevcPlays ? "copied (E2E
   await leave(page);
 });
 
+// An HDR film is re-encoded to H.264 with its picture tone mapped to SDR BT.709
+// (compat/captures/hdr-tonemap-12.4.md), whatever the client plays: HEVC in PQ and
+// HLG, and 10-bit H.264 in PQ, which would otherwise be copied washed out. The
+// tone-mapped picture is checked in the integration tier (tonemap_integration_test.go);
+// here jellyfin-web plays it, the reasons are Jellyfin's, and ffmpeg is run with the filter.
+// The expectation comes from the client's profile, which the runner states with
+// E2E_HEVC: a profile that plays HEVC HDR direct plays the MP4 film (its container
+// and audio fit), and every other case is the tone-mapped transcode. Resh's
+// Matroska and AC3 never direct play, and an HDR film is never copied, so it is a
+// transcode either way; its reasons are only checked for the profile without HEVC.
+for (const [title, name, reasons, directWithHevc] of [
+  ["Resh Film", "HDR10 HEVC in Matroska", "VideoCodecNotSupported,AudioCodecNotSupported", false],
+  ["Shin Film", "HLG HEVC in MP4", "VideoCodecNotSupported", true],
+  ["Tav Film", "HDR10 H.264 in Matroska", "VideoRangeTypeNotSupported", false],
+]) {
+  const direct = hevcPlays && directWithHevc;
+  await scenario(`${name} ${direct ? "direct plays (E2E_HEVC=1)" : "plays through a tone-mapped transcode"}`, async ({ page, seen }) => {
+    await play(page, "Transcode", title);
+    const source = seen.infos.at(-1).source;
+    if (direct) {
+      if (source.SupportsDirectPlay !== true || source.TranscodingUrl) throw new Error(`not direct play: ${JSON.stringify(source)}`);
+      await advances(page, 2);
+      noErrors(seen);
+      await leave(page);
+      return;
+    }
+    const query = new URL(source.TranscodingUrl, base).searchParams;
+    if (query.get("VideoCodec") !== "h264") throw new Error(`not a re-encode: ${source.TranscodingUrl}`);
+    if ((!hevcPlays || title === "Tav Film") && query.get("TranscodeReasons") !== reasons) throw new Error(`reasons ${query.get("TranscodeReasons")}, want ${reasons}`);
+    const runs = ffmpegRuns();
+    if (runs.length !== 1 || runs[0].copy || !/tonemap=tonemap=hable/.test(runs[0].line) || !/-color_primaries bt709/.test(runs[0].line)) {
+      throw new Error(`ffmpeg is not tone mapping: ${runs.map((r) => r.line.slice(0, 400))}`);
+    }
+    await advances(page, 4);
+    const shown = await page.evaluate(() => {
+      const v = document.querySelector("video");
+      return { frames: v.getVideoPlaybackQuality().totalVideoFrames, width: v.videoWidth };
+    });
+    if (shown.frames < 20) throw new Error(`the picture did not decode: ${JSON.stringify(shown)}`);
+    noErrors(seen);
+    await leave(page);
+  });
+}
+
 await scenario("a Matroska with no Cues has no index and is re-encoded", async ({ page, seen }) => {
   await play(page, "Transcode", "Digamma Film");
   const url = seen.infos.at(-1).source.TranscodingUrl;
@@ -450,6 +494,15 @@ function workerCpu() {
   return (Number(fields[13]) + Number(fields[14])) / 100; // cutime and cstime, in clock ticks.
 }
 
+// A zombie child still counts: pgrep -P matches on the parent alone.
+function workerChildren() {
+  try {
+    return execFileSync("pgrep", ["-P", process.env.E2E_WORKER_PID]).toString().trim().split("\n").filter(Boolean).length;
+  } catch {
+    return 0; // pgrep exits 1 when nothing matches.
+  }
+}
+
 async function cpuPerSegment(page, seen, title, segments, quality) {
   await play(page, "Transcode", title);
   if (quality) {
@@ -467,6 +520,10 @@ async function cpuPerSegment(page, seen, title, segments, quality) {
   await waitFor(`${segments} segments`, async () => stored() >= segments, 120000);
   await leave(page);
   await waitFor("ffmpeg to exit", async () => ffmpegRuns().length === 0, 30000);
+  // pgrep stops seeing a killed ffmpeg as soon as it is a zombie (its command
+  // line is gone), but the kernel adds its CPU time to the worker's cutime only
+  // when the worker reaps it. Reading before then measured a 22 s re-encode as 0.11.
+  await waitFor("the worker to reap its ffmpeg", async () => workerChildren() === 0, 30000);
 }
 
 await scenario("a copied 1080p film costs a fraction of the CPU of the re-encode", async ({ page, seen }) => {

@@ -174,6 +174,11 @@ type Spec struct {
 	Width               int
 	Height              int
 	Copy                bool
+	// ToneMap is the transfer function (PQ or HLG) of an HDR source that the
+	// encode maps to SDR BT.709, or "" for a picture left as it is. It comes from
+	// the source and never from the URL. A copy has none: it sends the picture
+	// as it is.
+	ToneMap string
 	// AudioCopy is the codec of the audio when it is copied, not re-encoded,
 	// and "" when it is re-encoded to AAC. It is the codec's name so AC3 and
 	// E-AC3 never share segments. A copied video always has the audio
@@ -188,7 +193,7 @@ func NewSpec(item string, p Params, source Source) (Spec, error) {
 		return Spec{}, errors.New("source has no video to transcode")
 	}
 	if p.Copy {
-		if !source.CanCopy() {
+		if !source.canServeCopy() {
 			return Spec{}, errors.New("source can't be copied")
 		}
 		if p.Subtitle != nil {
@@ -218,6 +223,7 @@ func NewSpec(item string, p Params, source Source) (Spec, error) {
 		// Six bits per pixel per second is about what 8-bit H.264 needs at its
 		// worst, so a larger cap buys nothing.
 		VideoBitrate: min(p.VideoBitrate, int64(width)*int64(height)*6),
+		ToneMap:      source.ToneMap(),
 	}, nil
 }
 
@@ -235,6 +241,10 @@ func (s Spec) Hash() string {
 	}
 	if s.Copy {
 		text += "|copy"
+	}
+	// Only an HDR source has one, so the hash of an SDR film is what it was.
+	if s.ToneMap != "" {
+		text += "|tonemap" + s.ToneMap
 	}
 	// Only a copy has one, so the hash of a re-encoded track is what it was.
 	if s.AudioCopy != "" {

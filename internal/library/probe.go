@@ -63,6 +63,9 @@ func (p Probe) wantsKeyframes() bool {
 
 type sideData struct {
 	Type string `json:"side_data_type"`
+	// BlCompatibility is a Dolby Vision file's dv_bl_signal_compatibility_id:
+	// 0 for a base layer that is no HDR10, HLG or SDR picture (profile 5).
+	BlCompatibility int `json:"dv_bl_signal_compatibility_id"`
 }
 
 type ffprobeOutput struct {
@@ -168,6 +171,11 @@ func ProbeInput(ctx context.Context, input string) (Probe, error) {
 			entry["Level"] = max(stream.Level, 0)
 			entry["IsInterlaced"] = slices.Contains([]string{"tt", "bb", "tb", "bt"}, stream.FieldOrder)
 			entry["VideoRangeType"] = rangeType(stream.Transfer, stream.SideData)
+			// Always set, empty or not, so a source scanned before it was recorded is found.
+			entry["ColorTransfer"] = stream.Transfer
+			if bl, ok := dolbyVisionBlCompatibility(stream.SideData); ok {
+				entry["DolbyVisionBlCompatibility"] = bl
+			}
 			entry["BitDepth"] = bitDepth(stream.PixFmt)
 			// The video can end before the audio does, and an HLS playlist
 			// has to stop where the video does. Matroska keeps the duration
@@ -246,6 +254,17 @@ func rangeType(transfer string, sideData []sideData) string {
 		return "HLG"
 	}
 	return "SDR"
+}
+
+// dolbyVisionBlCompatibility is the base layer's signal compatibility of a
+// Dolby Vision stream, and false for any other.
+func dolbyVisionBlCompatibility(sideData []sideData) (int, bool) {
+	for _, d := range sideData {
+		if strings.Contains(d.Type, "DOVI") || strings.Contains(d.Type, "Dolby Vision") {
+			return d.BlCompatibility, true
+		}
+	}
+	return 0, false
 }
 
 // streamTicks reads a stream's duration from ffprobe's "12.5" or a Matroska

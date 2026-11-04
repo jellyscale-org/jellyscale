@@ -54,12 +54,13 @@ func TestProbeRecordsLevelFieldOrderAndRange(t *testing.T) {
 		level     int
 		interlace bool
 		rangeType string
+		transfer  string
 	}{
-		{"plain", nil, 10, false, "SDR"},
-		{"level", []string{"-level", "5.2"}, 52, false, "SDR"},
-		{"interlaced", []string{"-vf", "interlace=scan=tff", "-flags", "+ilme+ildct"}, -1, true, "SDR"},
-		{"hdr", []string{"-x264-params", "colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc"}, 10, false, "HDR10"},
-		{"hlg", []string{"-x264-params", "colorprim=bt2020:transfer=arib-std-b67:colormatrix=bt2020nc"}, 10, false, "HLG"},
+		{"plain", nil, 10, false, "SDR", ""},
+		{"level", []string{"-level", "5.2"}, 52, false, "SDR", ""},
+		{"interlaced", []string{"-vf", "interlace=scan=tff", "-flags", "+ilme+ildct"}, -1, true, "SDR", ""},
+		{"hdr", []string{"-x264-params", "colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc"}, 10, false, "HDR10", "smpte2084"},
+		{"hlg", []string{"-x264-params", "colorprim=bt2020:transfer=arib-std-b67:colormatrix=bt2020nc"}, 10, false, "HLG", "arib-std-b67"},
 	}
 	for _, c := range cases {
 		file := filepath.Join(t.TempDir(), "v.mkv")
@@ -73,6 +74,10 @@ func TestProbeRecordsLevelFieldOrderAndRange(t *testing.T) {
 			t.Fatal(err)
 		}
 		video := probe.Streams[0]
+		// Always recorded, even empty, so a scan can tell a film that was never asked.
+		if transfer, ok := video["ColorTransfer"]; !ok || transfer != c.transfer {
+			t.Errorf("%s: ColorTransfer %v (set %v), want %q", c.name, transfer, ok, c.transfer)
+		}
 		if (video["Level"] != c.level && c.level >= 0) || video["IsInterlaced"] != c.interlace || video["VideoRangeType"] != c.rangeType {
 			t.Errorf("%s: level %v interlaced %v range %v, want %d %v %s", c.name, video["Level"], video["IsInterlaced"], video["VideoRangeType"], c.level, c.interlace, c.rangeType)
 		}

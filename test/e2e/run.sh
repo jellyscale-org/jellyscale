@@ -134,6 +134,13 @@ av1_film "San Film (2081)" mp4 ac3
 av1_film "Heth Film (2082)" mp4 aac
 codec_film "Yot Film (2083)" mp4 "$hevc" aac
 codec_film "Lamed Film (2084)" mkv "$hevc" ac3
+# HDR: 10-bit HEVC in PQ (Resh) and HLG (Shin), and H.264 in PQ (Tav), which a
+# copy would send to the client as washed-out SDR. All are re-encoded to SDR
+# BT.709 by a tone-mapping transcode, whatever Chrome plays.
+hdr="-pix_fmt yuv420p10le -x265-params keyint=2000:log-level=error:colorprim=bt2020:colormatrix=bt2020nc"
+codec_film "Resh Film (2085)" mkv "-c:v libx265 -preset veryfast $hdr:transfer=smpte2084" ac3
+codec_film "Shin Film (2086)" mp4 "-c:v libx265 -preset veryfast $hdr:transfer=arib-std-b67" aac
+codec_film "Tav Film (2087)" mkv "-pix_fmt yuv420p10le -c:v libx264 -preset veryfast -x264-params colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc" aac
 # ffmpeg writes the Cues last, so cutting the file where they start leaves a
 # film with its duration and no Cues; the SeekHead still points to them.
 nocues="$work/media/transcode/Digamma Film (2045)/Digamma Film (2045).mkv"

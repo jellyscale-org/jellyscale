@@ -130,6 +130,14 @@ type Stream struct {
 	// scanned before the scanner recorded it; the level, field order and range
 	// then pass their conditions, so direct play continues until a rescan.
 	VideoRangeType string
+	// ColorTransfer is ffprobe's name for the transfer function: smpte2084 for
+	// PQ, arib-std-b67 for HLG. It is empty when the file doesn't say, and on a
+	// source scanned before it was recorded, which is never tone mapped.
+	ColorTransfer string
+	// DolbyVisionBlCompatibility is the base layer's signal compatibility of a
+	// Dolby Vision stream: 0 means there is no HDR10 or HLG picture to show
+	// (profile 5).
+	DolbyVisionBlCompatibility int
 	// BitDepth is 8, 10 or 12, or 0 on a source scanned before it was recorded.
 	BitDepth      int
 	Width, Height int
@@ -211,19 +219,51 @@ func (s Source) VideoCodec() string {
 	return video.Codec
 }
 
-// CanCopy reports whether the video can go to the client as it is: a codec
-// that is copied, keyframes that make a playlist, and for HEVC and AV1 an
-// SDR picture whose master playlist can name its profile (codecs). HDR is not
-// copied because the master playlist labels a copy SDR; it is re-encoded as
-// before, and a source scanned before the range was recorded counts as HDR
-// until a rescan fills it in.
+// CanCopy reports whether Decide may offer the video as it is: a copyable
+// stream (canServeCopy) whose picture is SDR. HDR is not offered because the
+// master playlist labels a copy SDR; it is re-encoded and tone mapped
+// (Source.ToneMap), and a source scanned before the range was recorded counts
+// as HDR until a rescan fills it in. That includes H.264, which 10-bit PQ and
+// HLG films can be.
 func (s Source) CanCopy() bool {
+	video, _ := s.video()
+	return s.canServeCopy() && video.VideoRangeType == "SDR"
+}
+
+// canServeCopy is what a stream replica honours when a master URL asks for a
+// copy: a codec that is copied, keyframes that make a playlist, and for HEVC
+// and AV1 an SDR picture whose master playlist can name its profile (codecs).
+// H.264 passes in any range, so an older api replica's copy of an HDR film
+// keeps playing during an upgrade; the new api never offers one.
+func (s Source) canServeCopy() bool {
 	video, _ := s.video()
 	_, cut := s.copyLayout()
 	if !s.Copyable() || !cut || s.codecs() == "" {
 		return false
 	}
 	return video.Codec == "h264" || video.VideoRangeType == "SDR"
+}
+
+// Transfer functions ToneMap reports, which are also what the filter is given.
+const (
+	PQ  = "smpte2084"
+	HLG = "arib-std-b67"
+)
+
+// ToneMap is the transfer function of an HDR picture that a re-encode maps to
+// SDR, or "" for a picture that is left as it is. It follows the transfer the
+// file declares and not the range label alone: a Dolby Vision profile 5 file
+// has a base layer that is neither HDR10 nor HLG, and mapping it as PQ gives
+// green and purple. A profile 8.4 file has an HLG base and is mapped as HLG.
+func (s Source) ToneMap() string {
+	video, _ := s.video()
+	if video.VideoRangeType == "DOVI" && video.DolbyVisionBlCompatibility == 0 {
+		return ""
+	}
+	if video.ColorTransfer == PQ || video.ColorTransfer == HLG {
+		return video.ColorTransfer
+	}
+	return ""
 }
 
 // FileBitrate is the file's average bitrate, audio included, which is close
