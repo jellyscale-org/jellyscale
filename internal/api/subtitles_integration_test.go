@@ -83,36 +83,35 @@ func ffmpegRun(t *testing.T, args ...string) {
 }
 
 // subtitleFilm makes a short H.264 and FLAC film with a SubRip track (stream 2,
-// the default) and an ASS track (3). With image set, it has only a track that
-// says it is PGS, which is all the probe looks at.
+// the default) and an ASS track (3). With image set it has instead three image
+// tracks, all the same cue: PGS (2), VobSub (3) and DVB (4).
 func subtitleFilm(t *testing.T, image bool, srt string) []byte {
 	t.Helper()
 	testenv.FFmpeg(t)
 	// Not AAC: its negative start moves cues 23 ms on ffmpeg 6 (invariant 43).
 	dir := t.TempDir()
-	must := func(name, text string) string {
+	must := func(name string, data []byte) string {
 		path := filepath.Join(dir, name)
-		if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
+		if err := os.WriteFile(path, data, 0o644); err != nil {
 			t.Fatal(err)
 		}
 		return path
 	}
-	a, b := must("a.srt", srt), must("b.ass", testASS)
 	film := filepath.Join(dir, "film.mkv")
 	input := []string{"-f", "lavfi", "-i", "testsrc2=size=160x90:rate=10:duration=3", "-f", "lavfi", "-i", "sine=frequency=440:duration=3"}
 	codecs := []string{"-c:v", "libx264", "-preset", "ultrafast", "-c:a", "flac", "-metadata:s:a:0", "language=eng"}
 	if image {
-		ffmpegRun(t, append(append(input, "-i", b, "-map", "0", "-map", "1", "-map", "2", "-c:s", "ass"), append(codecs, film)...)...)
+		sup := must("track.sup", testenv.PGS(1920, 1080, testenv.Cue{Start: 0.5, End: 2.5, X: 660, Y: 860, W: 600, H: 120}))
+		ffmpegRun(t, append(append(input, "-fix_sub_duration", "-i", sup, "-map", "0", "-map", "1", "-map", "2", "-map", "2", "-map", "2",
+			"-c:s:0", "copy", "-c:s:1", "dvdsub", "-c:s:2", "dvbsub", "-metadata:s:s:0", "language=eng"), append(codecs, film)...)...)
 	} else {
+		a, b := must("a.srt", []byte(srt)), must("b.ass", []byte(testASS))
 		ffmpegRun(t, append(append(input, "-i", a, "-i", b, "-map", "0", "-map", "1", "-map", "2", "-map", "3", "-c:s:0", "srt", "-c:s:1", "ass",
 			"-metadata:s:s:0", "language=eng", "-metadata:s:s:1", "language=jpn", "-disposition:s:0", "default"), append(codecs, film)...)...)
 	}
 	data, err := os.ReadFile(film)
 	if err != nil {
 		t.Fatal(err)
-	}
-	if image {
-		data = bytes.ReplaceAll(data, []byte("S_TEXT/ASS"), []byte("S_HDMV/PGS"))
 	}
 	return data
 }
@@ -462,8 +461,8 @@ func (f *subtitleFixture) enableTranscoding(t *testing.T) {
 	}
 }
 
-// Text tracks are listed in the item and in PlaybackInfo as the capture shows,
-// and image tracks are listed nowhere.
+// Text tracks are listed in the item and in PlaybackInfo as the capture shows
+// (image tracks are in TestImageSubtitlesAreListedAndDelivered).
 func TestSubtitlesAreListedAsCaptured(t *testing.T) {
 	f := subtitleEnv(t, "")
 	f.enableTranscoding(t)
@@ -482,15 +481,6 @@ func TestSubtitlesAreListedAsCaptured(t *testing.T) {
 	}
 	if !listed["Subtitlesubrip"] || !listed["Subtitleass"] || len(item.MediaStreams) != 4 {
 		t.Errorf("item streams: %v", item.MediaStreams)
-	}
-	response, raw = f.do(t, 0, "GET", "/Items/"+f.image, f.token, nil)
-	if err := json.Unmarshal(raw, &item); err != nil || response.StatusCode != 200 {
-		t.Fatalf("image item: %d %s", response.StatusCode, raw)
-	}
-	for _, s := range item.MediaStreams {
-		if s["Type"] == "Subtitle" {
-			t.Errorf("an image track is listed: %v", s)
-		}
 	}
 
 	profile := map[string]any{}
@@ -536,10 +526,6 @@ func TestSubtitlesAreListedAsCaptured(t *testing.T) {
 	checkExternal("transcode", capped)
 	if capped["DefaultSubtitleStreamIndex"] != float64(2) {
 		t.Errorf("the chosen track isn't echoed: %v", capped["DefaultSubtitleStreamIndex"])
-	}
-	// The image film plays as before: no track, nothing else changed.
-	if image := info(f.image, profile, nil); len(subtitleTracks(image)) != 0 || image["SupportsDirectPlay"] != true {
-		t.Errorf("image film: %v", image)
 	}
 
 	// Burn-in: a profile with no subtitle formats, or the viewer's setting.

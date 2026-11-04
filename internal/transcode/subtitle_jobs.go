@@ -86,6 +86,24 @@ func FetchSubtitle(ctx context.Context, pool *pgxpool.Pool, hub *Hub, assets sto
 	return track, err
 }
 
+// FetchSup makes sure PGS track index of src is in the asset store as a .sup
+// file (see subtitles.SupKey), asking a worker to copy it out of the film if
+// not, and returns the object's key. As for a text track, one job serves
+// everyone who asks.
+func FetchSup(ctx context.Context, pool *pgxpool.Pool, hub *Hub, assets store.Store, itemID string, src items.Source, index int) (string, error) {
+	key := subtitles.SupKey(src, index)
+	if subtitles.Exists(ctx, assets, key) {
+		return key, nil
+	}
+	if err := awaitJob(ctx, pool, hub, subtitleJob{Key: key, Kind: "sup", Item: itemID, Source: src.ID, Index: index}); err != nil {
+		return "", err
+	}
+	if !subtitles.Exists(ctx, assets, key) {
+		return "", fmt.Errorf("%w: its result is missing", ErrUnreadable)
+	}
+	return key, nil
+}
+
 // FetchFonts returns the hash of each font attached to src by attachment index
 // (see subtitles.FontKey), asking a worker to take them out of the film if they
 // are not in the asset store. One job serves the whole film, however many fonts
@@ -360,6 +378,12 @@ func (w *Worker) extractTrack(ctx context.Context, job subtitleJob, log *slog.Lo
 			return errors.New("the source file has changed or is gone")
 		}
 		return subtitles.FillFonts(ctx, source, media, assets, w.SubtitleTimeout, log)
+	}
+	if job.Kind == "sup" {
+		if subtitles.SupKey(source, job.Index) != job.Key {
+			return errors.New("the source file has changed or is gone")
+		}
+		return subtitles.FillSup(ctx, source, media, assets, job.Index, w.SubtitleTimeout, log)
 	}
 	if subtitles.Key(source, job.Index) != job.Key {
 		return errors.New("the source file has changed or is gone")

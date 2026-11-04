@@ -371,11 +371,60 @@ func TestMasterURLIsJellyfinShaped(t *testing.T) {
 	}
 }
 
+// withSubtitles adds a text track (10), a bitmap one that nothing draws (11), and
+// the image tracks a transcode can draw: PGS (12) and VobSub (13).
 func withSubtitles(source Source) Source {
-	text, image := stream("Subtitle", "subrip", 10), stream("Subtitle", "hdmv_pgs_subtitle", 11)
+	text, unlisted := stream("Subtitle", "subrip", 10), stream("Subtitle", "hdmv_text_subtitle", 11)
+	pgs, vobsub := stream("Subtitle", "PGSSUB", 12), stream("Subtitle", "DVDSUB", 13)
 	text.IsTextSubtitleStream = true
-	source.Streams = append(source.Streams, text, image)
+	pgs.IsImageSubtitleStream, vobsub.IsImageSubtitleStream = true, true
+	source.Streams = append(source.Streams, text, unlisted, pgs, vobsub)
 	return source
+}
+
+// An image track is drawn into a transcode unless the client draws it: only
+// PGS, and only for a client whose profile says it renders PGS.
+func TestDecideBurnsInImageSubtitles(t *testing.T) {
+	source := withSubtitles(film("mkv", "h264", "aac"))
+	renders := func(body string) Request {
+		r := request(t, body)
+		r.DeviceProfile.SubtitleProfiles = append(r.DeviceProfile.SubtitleProfiles,
+			SubtitleProfile{Format: "pgssub", Method: "External"}, SubtitleProfile{Format: "vobsub", Method: "External"})
+		return r
+	}
+	burnt := func(name string, r Request, index int) {
+		t.Helper()
+		d := Decide(r, source, true)
+		if d.DirectPlay || d.Subtitle == nil || *d.Subtitle != index || !reflect.DeepEqual(d.Reasons, []string{"SubtitleCodecNotSupported"}) {
+			t.Errorf("%s: %+v", name, d)
+		}
+	}
+	burnt("PGS for a client that doesn't render it", request(t, `{"SubtitleStreamIndex": 12}`), 12)
+	burnt("VobSub for a client that doesn't render it", request(t, `{"SubtitleStreamIndex": "13"}`), 13)
+	// Jellyscale sends VobSub as nothing but a picture, whatever the profile says.
+	burnt("VobSub for a client that renders it", renders(`{"SubtitleStreamIndex": 13}`), 13)
+	if d := Decide(renders(`{"SubtitleStreamIndex": 12}`), source, true); !d.DirectPlay || d.Subtitle != nil {
+		t.Errorf("PGS for a client that renders it: %+v", d)
+	}
+	// A client that renders PGS gets it drawn in when the viewer's setting says so
+	// and the film is transcoded anyway.
+	always := renders(`{"SubtitleStreamIndex": 12, "MaxStreamingBitrate": 1000000, "AlwaysBurnInSubtitleWhenTranscoding": true}`)
+	if d := Decide(always, source, true); d.DirectPlay || d.Subtitle == nil || *d.Subtitle != 12 {
+		t.Errorf("always burn, PGS: %+v", d)
+	}
+	// With no subtitle profile at all it is drawn in, as a text track is.
+	none := request(t, `{"SubtitleStreamIndex": 12}`)
+	none.DeviceProfile.SubtitleProfiles = nil
+	burnt("PGS for a client with no subtitle profile", none, 12)
+	// A bitmap codec that isn't listed has nothing to draw it with.
+	if d := Decide(request(t, `{"SubtitleStreamIndex": 11}`), source, true); !d.DirectPlay || d.Subtitle != nil {
+		t.Errorf("an unlisted bitmap codec: %+v", d)
+	}
+	// A chosen image track forces a re-encode even when the client plays the video.
+	copied := withSubtitles(copyable("mkv", "ac3"))
+	if d := Decide(request(t, `{"SubtitleStreamIndex": 12}`), copied, true); d.Copy || d.Subtitle == nil {
+		t.Errorf("a copied stream can't have a track drawn in: %+v", d)
+	}
 }
 
 func TestDecideBurnsInSubtitlesOnlyWhenTheClientCantShowThem(t *testing.T) {
@@ -444,8 +493,14 @@ func TestSubtitleIsInTheSpecAndTheURL(t *testing.T) {
 	}
 	for _, query := range []string{"subtitlestreamindex=11", "subtitlestreamindex=1", "subtitlestreamindex=99", "subtitlestreamindex=x"} {
 		if _, _, err := spec(query); err == nil {
-			t.Errorf("%s accepted: only a text subtitle track can be drawn", query)
+			t.Errorf("%s accepted: only a text or listed image subtitle track can be drawn", query)
 		}
+	}
+	// An image track is another picture from the text one, and from the other image track.
+	pgs, _, err := spec("audiostreamindex=1&subtitlestreamindex=12")
+	vobsub, _, err2 := spec("audiostreamindex=1&subtitlestreamindex=13")
+	if err != nil || err2 != nil || pgs.Subtitle == nil || *pgs.Subtitle != 12 || pgs.Hash() == burnt.Hash() || pgs.Hash() == vobsub.Hash() || pgs.Hash() == plain.Hash() {
+		t.Errorf("image tracks: %v %v %+v", err, err2, pgs)
 	}
 }
 

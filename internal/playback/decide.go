@@ -49,13 +49,27 @@ func (r Request) NoSubtitleProfiles() bool {
 	return r.DeviceProfile != nil && len(r.DeviceProfile.SubtitleProfiles) == 0
 }
 
+// ShowsPgs is true when the client renders PGS itself from the file, as
+// jellyfin-web does once its viewer has turned that on.
+func (r Request) ShowsPgs() bool {
+	return r.DeviceProfile != nil && slices.ContainsFunc(r.DeviceProfile.SubtitleProfiles, func(p SubtitleProfile) bool {
+		return strings.EqualFold(p.Format, "pgssub") && strings.EqualFold(p.Method, "External")
+	})
+}
+
 // DeviceProfile is what a client says it can play.
 type DeviceProfile struct {
 	MaxStreamingBitrate Number
 	DirectPlayProfiles  []DirectPlayProfile
 	TranscodingProfiles []TranscodingProfile
 	CodecProfiles       []CodecProfile
-	SubtitleProfiles    []struct{} // Only whether there are any matters.
+	SubtitleProfiles    []SubtitleProfile
+}
+
+// SubtitleProfile is a subtitle format the client shows itself.
+type SubtitleProfile struct {
+	Format string
+	Method string
 }
 
 // DirectPlayProfile lists containers and codecs the client plays as they are.
@@ -124,6 +138,9 @@ type Stream struct {
 	// IsTextSubtitleStream is true for a subtitle track that can be extracted
 	// as text.
 	IsTextSubtitleStream bool
+	// IsImageSubtitleStream is true for a bitmap track that can be drawn into a
+	// transcode (PGS, VobSub, DVB), and so is listed.
+	IsImageSubtitleStream bool
 	// Fingerprint identifies the version of the subtitle file beside the film
 	// that the track is; empty for a track inside the film.
 	Fingerprint string
@@ -261,12 +278,52 @@ func (s Source) audio(index int) (Stream, bool) {
 	return Stream{}, false
 }
 
-// TextSubtitle reports whether index is a subtitle track we can deliver.
+// TextSubtitle reports whether index is a subtitle track we can extract as text.
 func (s Source) TextSubtitle(index int) bool {
 	for _, stream := range s.Streams {
 		if stream.Type == "Subtitle" && stream.Index == index {
 			return stream.IsTextSubtitleStream && !stream.Unreadable
 		}
+	}
+	return false
+}
+
+// Stream returns the stream with this index, or nil.
+func (s Source) Stream(index int) *Stream {
+	for i := range s.Streams {
+		if s.Streams[i].Index == index {
+			return &s.Streams[i]
+		}
+	}
+	return nil
+}
+
+// ImageSubtitle reports whether index is a bitmap track that a transcode can draw.
+func (s Source) ImageSubtitle(index int) bool {
+	for _, stream := range s.Streams {
+		if stream.Type == "Subtitle" && stream.Index == index {
+			return stream.IsImageSubtitleStream
+		}
+	}
+	return false
+}
+
+// Burnable reports whether a transcode can draw subtitle track index into the
+// picture: a text track, or an image one.
+func (s Source) Burnable(index int) bool {
+	return s.TextSubtitle(index) || s.ImageSubtitle(index)
+}
+
+// clientShows says whether a client with this request shows subtitle track
+// index itself, so a transcode need not draw it. A client with no subtitle
+// profile shows none, one that renders PGS shows that, and no client shows the
+// other image codecs, which jellyscale doesn't send it.
+func (r Request) clientShows(source Source, index int) bool {
+	switch {
+	case source.TextSubtitle(index):
+		return !r.NoSubtitleProfiles()
+	case source.SubtitleCodec(index) == "PGSSUB":
+		return r.ShowsPgs()
 	}
 	return false
 }
@@ -348,10 +405,11 @@ func Decide(request Request, source Source, canTranscode bool) Decision {
 	// does show them is burnt into only when it transcodes anyway and the
 	// viewer asked for it.
 	var chosen *int
-	if request.SubtitleStreamIndex != nil && source.TextSubtitle(int(*request.SubtitleStreamIndex)) {
+	shown := true
+	if request.SubtitleStreamIndex != nil && source.Burnable(int(*request.SubtitleStreamIndex)) {
 		index := int(*request.SubtitleStreamIndex)
 		chosen = &index
-		if request.NoSubtitleProfiles() {
+		if shown = request.clientShows(source, index); !shown {
 			reasons = append(reasons, "SubtitleCodecNotSupported")
 		}
 	}
@@ -367,7 +425,7 @@ func Decide(request Request, source Source, canTranscode bool) Decision {
 	}
 	videoBitrate, audioBitrate := SplitBitrate(limit)
 	decision := Decision{Reasons: reasons, AudioIndex: audio, VideoBitrate: videoBitrate, AudioBitrate: audioBitrate}
-	if chosen != nil && (request.NoSubtitleProfiles() || request.AlwaysBurnInSubtitleWhenTranscoding) {
+	if chosen != nil && (!shown || request.AlwaysBurnInSubtitleWhenTranscoding) {
 		decision.Subtitle = chosen
 		if !slices.Contains(reasons, "SubtitleCodecNotSupported") {
 			decision.Reasons = append(reasons, "SubtitleCodecNotSupported")

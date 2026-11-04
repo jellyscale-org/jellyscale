@@ -68,16 +68,28 @@ subtitled "$root/transcode/Sigma Film (2034)/Sigma Film (2034).mkv" aac "$testsr
 subtitled "$root/transcode/Tau Film (2035)/Tau Film (2035).mkv" ac3 "$testsrc" "$tmp/lines.srt" "$tmp/lines.ass"
 subtitled "$root/transcode/Phi Film (2037)/Phi Film (2037).mkv" aac "color=c=black:size=640x360:rate=24:duration=120" "$tmp/place.srt" "$tmp/place.ass"
 
-# A film whose only subtitle track is an image one. The probe reads only the
-# codec's name, so the track is an ASS one renamed to PGS in the file.
-upsilon="$root/transcode/Upsilon Film (2036)/Upsilon Film (2036).mkv"
-if [[ ! -f $upsilon ]]; then
-  mkdir -p "$(dirname "$upsilon")"
-  ffmpeg -nostdin -v error -y -f lavfi -i "testsrc2=size=640x360:rate=24:duration=20" \
-    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=20" -i "$tmp/lines.ass" \
-    -map 0:v -map 1:a -map 2 -c:v libx264 -preset ultrafast -c:a aac -c:s ass "$upsilon"
-  LC_ALL=C sed -i 's/S_TEXT\/ASS/S_HDMV\/PGS/' "$upsilon"
-fi
+# Films whose subtitles are images, which ffmpeg can't write from text: a PGS
+# stream (test/fixtures/pgs) is muxed as it is, and made into VobSub and DVB.
+# The film is black, with a yellow bar on the 1920x1080 canvas of a 640x360
+# picture: near the top from 20 to 26 seconds, near the bottom from 60 to 66 and
+# in the middle from 100 to 106, so where the bar is on screen says which cue it
+# is. Keyframes are two seconds apart.
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+(cd "$here" && go build -o "$tmp/pgs" ./pgs) || exit 1
+"$tmp/pgs" "$tmp/image.sup" 1920 1080 20,26,660,100,600,120 60,66,660,860,600,120 100,106,660,480,600,120 || exit 1
+imagefilm() { # name audio_codec subtitle_codec
+  local video="$root/transcode/$1/$1.mkv"
+  mkdir -p "$(dirname "$video")"
+  [[ -f $video ]] || ffmpeg -nostdin -v error -y -f lavfi -i "color=c=black:size=640x360:rate=24:duration=120" \
+    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=120" -fix_sub_duration -i "$tmp/image.sup" \
+    -map 0:v -map 1:a -map 2 -c:v libx264 -preset ultrafast -g 48 -c:a "$2" -c:s "$3" \
+    -metadata:s:a:0 language=eng -metadata:s:s:0 language=eng -disposition:a:0 default -disposition:s:0 0 -default_mode passthrough "$video"
+}
+imagefilm "Pgs Film (2070)" aac copy
+imagefilm "Vobsub Film (2071)" aac dvdsub
+# AC3 makes Chrome transcode it whatever the subtitle.
+imagefilm "Pgs Transcode Film (2072)" ac3 copy
+imagefilm "Dvb Film (2073)" aac dvbsub
 
 # Films whose subtitles are files beside them, named as Jellyfin reads them:
 # an English SubRip and a Japanese ASS file, which come out as streams 2 and 3.

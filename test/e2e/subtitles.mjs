@@ -1,11 +1,14 @@
 // Phase 3 gate: unmodified jellyfin-web shows text subtitles, from POSIX and S3,
 // on direct play and on a transcode, and draws them into the picture when the
 // viewer's settings ask for it. The tracks are in the film or in files beside
-// it, and ASS is drawn in the fonts attached to the film. Needs the stack test/e2e/run.sh starts.
+// it, and ASS is drawn in the fonts attached to the film. PGS tracks are drawn by
+// jellyfin-web from the file when its viewer has that on, and into the picture
+// by a transcode otherwise, as VobSub always is. Needs the stack test/e2e/run.sh starts.
 // Usage: E2E_SCRATCH=<worker scratch dir> E2E_PG=<postgres container> node subtitles.mjs <base_url> <user> <password>
 // Run from a directory with playwright-core installed.
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, rmSync, statSync, truncateSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, rmSync, statSync, truncateSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
 
 const require = createRequire(`${process.cwd()}/`);
@@ -29,11 +32,15 @@ const subtitleJobCount = () => Number(sql("SELECT count(*) FROM subtitle_jobs"))
 function ffmpegRuns() {
   try {
     return execFileSync("pgrep", ["-af", `ffmpeg.*${scratch}`]).toString().trim().split("\n").filter(Boolean)
-      .map((line) => ({ line, start: Number(/-start_number (\d+)/.exec(line)?.[1]), burns: /subtitles=subtitles\.ass/.test(line) }));
+      .map((line) => ({ line, start: Number(/-start_number (\d+)/.exec(line)?.[1]), burns: /subtitles=subtitles\.ass|overlay=eof_action/.test(line) }));
   } catch {
     return []; // pgrep exits 1 when nothing matches.
   }
 }
+
+// Every ffmpeg command line the worker has run, from the shim's log beside the
+// server's.
+const ffmpegLines = () => readFileSync(join(dirname(process.env.E2E_LOG), "ffmpeg.log"), "utf8").split("\n").filter(Boolean);
 
 async function login(page) {
   await page.goto(`${base}/web/`, { waitUntil: "domcontentloaded" });
@@ -103,7 +110,7 @@ async function advances(page, seconds = 1.5) {
 
 function noErrors(seen) {
   if (seen.errors.length) throw new Error(`errors: ${seen.errors.join("; ")}`);
-  const bad = seen.subtitles.filter((r) => r.status !== 200);
+  const bad = seen.subtitles.filter((r) => r.status !== 200 && r.status !== 206); // 206: jellyfin-web probes a PGS file for ranges.
   if (bad.length) throw new Error(`subtitle requests failed: ${JSON.stringify(bad.slice(0, 3))}`);
 }
 
@@ -161,12 +168,13 @@ async function seek(page, seconds) {
   }, seconds), 60000);
 }
 
-// How many bright pixels the picture has in its top, middle and bottom third,
-// read from the paused frame. The burn-in film is black, so only text counts.
-async function brightThirds(page) {
+// How many lit pixels the picture has in its top, middle and bottom third, read
+// from the paused frame. The burn-in films are black, so only the subtitle
+// counts: white text, or with yellow set the yellow bars of an image track.
+async function brightThirds(page, yellow = false) {
   await page.evaluate(() => document.querySelector("video").pause());
   await new Promise((resolve) => setTimeout(resolve, 400));
-  const thirds = await page.evaluate(() => {
+  const thirds = await page.evaluate((yellow) => {
     const canvas = document.createElement("canvas");
     canvas.width = 320;
     canvas.height = 180;
@@ -175,12 +183,34 @@ async function brightThirds(page) {
     const data = context.getImageData(0, 0, 320, 180).data;
     const counts = [0, 0, 0];
     for (let i = 0; i < data.length; i += 4) {
-      if (data[i] > 128 && data[i + 1] > 128 && data[i + 2] > 128) counts[Math.floor(i / 4 / 320 / 60)]++;
+      if (data[i] > 128 && data[i + 1] > 128 && (yellow ? data[i + 2] < 100 : data[i + 2] > 128)) counts[Math.floor(i / 4 / 320 / 60)]++;
     }
     return counts;
-  });
+  }, yellow);
   await page.evaluate(() => document.querySelector("video").play());
   return thirds;
+}
+
+// The same count for what the page shows on screen, the picture and what
+// jellyfin-web draws over it, which is how a PGS track the client draws is seen.
+async function screenThirds(page) {
+  const png = (await page.screenshot()).toString("base64");
+  return page.evaluate(async (png) => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${png}`;
+    await image.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = 320;
+    canvas.height = 180;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    context.drawImage(image, 0, 0, 320, 180);
+    const data = context.getImageData(0, 0, 320, 180).data;
+    const counts = [0, 0, 0];
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i] > 128 && data[i + 1] > 128 && data[i + 2] < 100) counts[Math.floor(i / 4 / 320 / 60)]++;
+    }
+    return counts;
+  }, png);
 }
 
 // Where the text should be at a second of the black film: top, middle or
@@ -366,16 +396,133 @@ await scenario("a listed font cut short by the store: ASS is still drawn", async
   noErrors(seen);
 });
 
-await scenario("a film with only image subtitles plays as before and lists none", async ({ page, seen }) => {
-  await play(page, "Transcode", "Upsilon Film");
-  const streams = seen.infos.at(-1).source.MediaStreams;
-  if (streams.some((s) => s.Type === "Subtitle")) throw new Error(`listed: ${JSON.stringify(streams.filter((s) => s.Type === "Subtitle"))}`);
-  if (!(await page.evaluate(() => document.querySelector(".btnSubtitles").classList.contains("hide")))) throw new Error("the subtitle button is offered");
-  await advances(page);
-  if (seen.subtitles.length) throw new Error("subtitles were requested");
-  noErrors(seen);
-  await leave(page);
-});
+// The films with image tracks are black, with a yellow bar on the track's
+// 1920x1080 canvas: at the top from 20 to 26 seconds, at the bottom from 60 to 66
+// and in the middle from 100 to 106. A cue is looked at a few seconds in, after
+// a seek to before it, so the run a transcode restarts at starts before the cue
+// and reads it (a restart inside a cue draws it only from the next, DOMAINS 48).
+async function seeCue(page, from, until, where, thirds) {
+  await seek(page, from);
+  await waitFor(`playback past ${until}`, async () => (await time(page)) >= until, 60000);
+  expectBright(await thirds(), where);
+}
+const cues = [[18, 22, "top"], [50, 52, null], [58, 62, "bottom"], [98, 102, "middle"]];
+
+// A PGS track listed as Jellyfin lists it, fetched as the file it is by a
+// jellyfin-web whose viewer has PGS rendering on, and drawn on screen where and
+// when its cues say, with no PlaybackInfo, transcode job or playlist for the
+// pick and nothing drawn into the picture. The film plays as it is or, with
+// transcoded, is transcoded anyway (its audio is AC3) and the track is still
+// the client's to draw.
+function pgsDrawnByTheClient(name, library, title, transcoded) {
+  return scenario(name, async ({ page, seen }) => {
+    await page.evaluate(() => localStorage.setItem("subtitlerenderpgs", "true"));
+    const supJobs = Number(sql("SELECT count(*) FROM subtitle_jobs WHERE kind = 'sup'"));
+    await play(page, library, title);
+    const first = seen.infos.at(-1);
+    if (!first.request.DeviceProfile.SubtitleProfiles.some((p) => p.Format === "pgssub" && p.Method === "External")) throw new Error("the viewer's setting didn't reach the profile");
+    if (transcoded !== Boolean(first.source.TranscodingUrl)) throw new Error(`transcoded should be ${transcoded}: ${first.source.TranscodingUrl}`);
+    if (first.source.TranscodingUrl && /SubtitleStreamIndex/.test(first.source.TranscodingUrl)) throw new Error(`the transcode was told to draw it: ${first.source.TranscodingUrl}`);
+    const tracks = first.source.MediaStreams.filter((s) => s.Type === "Subtitle");
+    const [pgs] = tracks;
+    if (tracks.length !== 1 || pgs.Index !== 2 || pgs.Codec !== "PGSSUB" || pgs.DeliveryMethod !== "External" || pgs.IsExternalUrl !== false || pgs.IsTextSubtitleStream !== false ||
+      pgs.SupportsExternalStream !== true || pgs.Language !== "eng" || pgs.Width !== 1920 || pgs.Height !== 1080 ||
+      !/^\/Videos\/[0-9a-f-]{36}\/[0-9a-f]{32}\/Subtitles\/2\/0\/Stream\.pgssub\?ApiKey=\w+$/i.test(pgs.DeliveryUrl)) {
+      throw new Error(`tracks: ${JSON.stringify(tracks)}`);
+    }
+    await advances(page, 3);
+    await pickSubtitle(page, -1); // Whatever the client started with, begin from off.
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    expectBright(await screenThirds(page), null);
+    const infos = seen.infos.length, jobs = jobCount(), playlists = seen.playlists.length;
+
+    await pickSubtitle(page, 2);
+    await waitFor("the PGS file", async () => seen.subtitles.some((r) => r.index === 2 && r.status === 200));
+    const files = seen.subtitles.filter((r) => r.index === 2);
+    if (files.some((r) => !/Stream\.pgssub$/i.test(r.path) || r.type !== "application/octet-stream") || !files.some((r) => r.status === 206)) {
+      throw new Error(`the PGS file was fetched as ${JSON.stringify(files)}`);
+    }
+    for (const [from, until, where] of cues) await seeCue(page, from, until, where, () => screenThirds(page));
+
+    if (seen.infos.length !== infos || jobCount() !== jobs || seen.playlists.length !== playlists) {
+      throw new Error(`picking the track caused work: ${seen.infos.length - infos} PlaybackInfo, ${jobCount() - jobs} jobs, ${seen.playlists.length - playlists} playlists`);
+    }
+    if (Number(sql("SELECT count(*) FROM subtitle_jobs WHERE kind = 'sup'")) - supJobs !== 1) throw new Error("the file was not copied out of the film by one job");
+    if (ffmpegRuns().some((r) => r.burns)) throw new Error(`a transcode draws a track the client draws: ${JSON.stringify(ffmpegRuns())}`);
+    if (!transcoded && ffmpegRuns().length) throw new Error("ffmpeg ran for a direct play");
+    noErrors(seen);
+    await leave(page);
+  });
+}
+
+await pgsDrawnByTheClient("POSIX direct play of PGS: jellyfin-web draws the track from the file where its cues say", "Transcode", "Pgs Film", false);
+await pgsDrawnByTheClient("POSIX transcode with PGS: jellyfin-web draws the track from the file, and the transcode doesn't", "Transcode", "Pgs Transcode Film", true);
+await pgsDrawnByTheClient("S3 direct play of PGS: jellyfin-web draws the track from the file where its cues say", "Cloud", "Pgs Cloud Film", false);
+
+// An image track that the client doesn't draw is drawn into the picture by the
+// transcode: PGS with the viewer's default settings, and VobSub whatever they
+// are. It is read from the film by the transcode itself, so no subtitle job is
+// made, and no file is fetched. The bar is in the picture at the cue's time
+// after far seeks, which restart the job part-way in.
+function imageBurnedIn(name, library, title, codec, renderPgs = false) {
+  return scenario(name, async ({ page, seen }) => {
+    if (renderPgs) await page.evaluate(() => localStorage.setItem("subtitlerenderpgs", "true"));
+    const subtitleJobs = subtitleJobCount();
+    const logged = ffmpegLines().length;
+    await play(page, library, title);
+    const first = seen.infos.at(-1);
+    const [track, ...others] = first.source.MediaStreams.filter((s) => s.Type === "Subtitle");
+    if (others.length || track.Index !== 2 || track.Codec !== codec || track.DeliveryMethod !== "Encode" || track.DeliveryUrl !== undefined || track.IsTextSubtitleStream !== false) {
+      throw new Error(`tracks: ${JSON.stringify(first.source.MediaStreams.filter((s) => s.Type === "Subtitle"))}`);
+    }
+    if (first.source.TranscodingUrl) throw new Error(`transcoding for no subtitle: ${first.source.TranscodingUrl}`);
+
+    await chooseBurn(page, seen, 2);
+    if (!ffmpegRuns().some((r) => r.burns)) throw new Error(`no ffmpeg draws the subtitle: ${JSON.stringify(ffmpegRuns())}`);
+    for (const [from, until, where] of cues) await seeCue(page, from, until, where, () => brightThirds(page, true));
+    // A seek to before the first cue made a run that begins between the film's
+    // start and that cue, and reads the cue itself.
+    const starts = ffmpegLines().slice(logged).filter((line) => /overlay=eof_action/.test(line)).map((line) => Number(/-start_number (\d+)/.exec(line)?.[1]));
+    if (!starts.some((n) => n > 0 && n < 5)) throw new Error(`the seeks didn't restart the job before the first cue: runs from segments ${starts}`);
+
+    await chooseBurn(page, seen, -1);
+    await seek(page, 60);
+    expectBright(await brightThirds(page, true), null);
+    await waitFor("no ffmpeg to draw a subtitle with them off", async () => !ffmpegRuns().some((r) => r.burns), 20000);
+    if (seen.subtitles.length) throw new Error("subtitle files were fetched while burning in");
+    if (subtitleJobCount() !== subtitleJobs) throw new Error(`${subtitleJobCount() - subtitleJobs} subtitle jobs for a track the transcode reads itself`);
+    noErrors(seen);
+    await leave(page);
+  });
+}
+
+await imageBurnedIn("POSIX burn-in of PGS for a viewer whose client doesn't draw it: the bar is in the picture at the right time, after far seeks", "Transcode", "Pgs Film", "PGSSUB");
+await imageBurnedIn("S3 burn-in of PGS for a viewer whose client doesn't draw it: the bar is in the picture at the right time, after far seeks", "Cloud", "Pgs Cloud Film", "PGSSUB");
+await imageBurnedIn("POSIX burn-in of VobSub: the bar is in the picture at the right time, after far seeks", "Transcode", "Vobsub Film", "DVDSUB");
+await imageBurnedIn("POSIX burn-in of VobSub for a viewer whose client draws PGS and VobSub: it is still burnt in", "Transcode", "Vobsub Render Film", "DVDSUB", true);
+await imageBurnedIn("S3 burn-in of VobSub: the bar is in the picture at the right time, after far seeks", "Cloud", "Vobsub Cloud Film", "DVDSUB");
+await imageBurnedIn("POSIX burn-in of DVB: the bar is in the picture at the right time, after far seeks", "Transcode", "Dvb Film", "DVBSUB");
+
+// Choosing a track to draw into the picture replaces the stream: PlaybackInfo,
+// DELETE, a new master. Returns the PlaybackInfo.
+async function chooseBurn(page, seen, index) {
+  const count = seen.infos.length, deletes = seen.deletes.length, playlists = seen.playlists.length;
+  const replaces = Boolean(seen.infos.at(-1).source.TranscodingUrl); // A direct play has nothing to delete.
+  await pickSubtitle(page, index);
+  const info = await waitFor(`a PlaybackInfo for track ${index}`, async () => seen.infos.length > count && seen.infos.at(-1));
+  if (Number(info.request.SubtitleStreamIndex) !== index) throw new Error(`asked for ${info.request.SubtitleStreamIndex}`);
+  const url = info.source.TranscodingUrl;
+  const query = url ? new URL(url, base).searchParams : null;
+  if (index >= 0) {
+    if (query?.get("SubtitleStreamIndex") !== String(index) || !/SubtitleCodecNotSupported/.test(query.get("TranscodeReasons") ?? "")) throw new Error(`TranscodingUrl: ${url}`);
+  } else if (query?.has("SubtitleStreamIndex")) {
+    throw new Error(`off still names a subtitle: ${url}`);
+  }
+  if (replaces) await waitFor("DELETE ActiveEncodings", async () => seen.deletes.length > deletes);
+  if (url) await waitFor("a new master playlist", async () => seen.playlists.length > playlists);
+  await advances(page, 2);
+  return info;
+}
 
 // Burn-in, with the settings of the capture: "Burn subtitles" set to all, which
 // sends no subtitle profile, and "Always burn in subtitle when transcoding".
@@ -394,25 +541,7 @@ function burnedIn(name, library, title) {
     const marked = first.source.MediaStreams.filter((s) => s.Type === "Subtitle");
     if (marked.length !== 2 || marked.some((s) => s.DeliveryMethod !== "Encode" || s.DeliveryUrl !== undefined)) throw new Error(`tracks: ${JSON.stringify(marked)}`);
 
-    // Choosing a track replaces the stream: PlaybackInfo, DELETE, a new master.
-    const choose = async (index) => {
-      const count = seen.infos.length, deletes = seen.deletes.length, playlists = seen.playlists.length;
-      const replaces = Boolean(seen.infos.at(-1).source.TranscodingUrl); // A direct play has nothing to delete.
-      await pickSubtitle(page, index);
-      const info = await waitFor(`a PlaybackInfo for track ${index}`, async () => seen.infos.length > count && seen.infos.at(-1));
-      if (Number(info.request.SubtitleStreamIndex) !== index) throw new Error(`asked for ${info.request.SubtitleStreamIndex}`);
-      const url = info.source.TranscodingUrl;
-      const query = url ? new URL(url, base).searchParams : null;
-      if (index >= 0) {
-        if (query?.get("SubtitleStreamIndex") !== String(index) || !/SubtitleCodecNotSupported/.test(query.get("TranscodeReasons") ?? "")) throw new Error(`TranscodingUrl: ${url}`);
-      } else if (query?.has("SubtitleStreamIndex")) {
-        throw new Error(`off still names a subtitle: ${url}`);
-      }
-      if (replaces) await waitFor("DELETE ActiveEncodings", async () => seen.deletes.length > deletes);
-      if (url) await waitFor("a new master playlist", async () => seen.playlists.length > playlists);
-      await advances(page, 2);
-      return info;
-    };
+    const choose = (index) => chooseBurn(page, seen, index);
 
     await choose(3);
     if (!ffmpegRuns().some((r) => r.burns)) throw new Error(`no ffmpeg draws the subtitle: ${JSON.stringify(ffmpegRuns())}`);

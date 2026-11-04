@@ -146,7 +146,7 @@ func TestReEncodedPlaylistOfAFilmThatStartsLate(t *testing.T) {
 
 				out := filepath.Join(dir, "out")
 				os.Mkdir(out, 0o755)
-				cmd, err := Command(context.Background(), file, playback.Spec{AudioIndex: 1, AudioBitrate: 128_000, VideoBitrate: 1_000_000, Width: 160, Height: 90}, 0, out, "")
+				cmd, err := Command(context.Background(), file, playback.Spec{AudioIndex: 1, AudioBitrate: 128_000, VideoBitrate: 1_000_000, Width: 160, Height: 90}, 0, out, "", nil)
 				if err != nil {
 					t.Fatal(err)
 				}

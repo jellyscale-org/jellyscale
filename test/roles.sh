@@ -40,16 +40,18 @@ start() { "$work/jellyscale" "$@" --config "$work/config.json" 2>>"$logs/roles.l
 : >"$logs/roles.log"
 # The workers' ffmpeg reads at twice the film's speed, so it is still running
 # when the checks below look for it. It also counts each subtitle extraction (the
-# run that writes track files), and waits while $work/bin/hold exists, noting
+# run that writes track files) and each copy of a PGS track out of a film, and waits while $work/bin/hold exists, noting
 # in $work/bin/held that it has begun.
 mkdir -p "$work/bin"
 : >"$work/bin/runs"
+: >"$work/bin/sups"
 rm -f "$work/bin/hold" "$work/bin/held"
 cat >"$work/bin/ffmpeg" <<E2
 #!/bin/sh
 echo "\$(date +%T) \$*" >>$logs/ffmpeg.log
 case "\$*" in
 *"-f hls"*) exec $(command -v ffmpeg) -readrate 2 "\$@";;
+*"-f sup"*) echo run >>"$work/bin/sups";;
 *track.vtt*)
   echo run >>"$work/bin/runs"
   if [ -e "$work/bin/hold" ]; then touch "$work/bin/held"; while [ -e "$work/bin/hold" ]; do sleep 0.1 >/dev/null 2>&1; done; fi;;
@@ -181,6 +183,47 @@ check "a stream that is no attachment is not found" 404 "$(code "127.0.0.1:$coun
 check "the api role doesn't serve fonts" 404 "$(code "127.0.0.1:$api1/Videos/$fontfilm/$fontfilm/Attachments/$attachment?ApiKey=$token")"
 check "the api role serves the encoding configuration" 200 "$(code -H "$header" "127.0.0.1:$api1/System/Configuration/encoding")"
 
+profile=$(python3 -I -c 'import json,sys;print(json.dumps(json.load(open(sys.argv[1]))["deviceProfile"]))' "$repo/compat/captures/transcode-12.4.json")
+# Image subtitles. A PGS track is copied out of the film by one worker job,
+# however many ask, and a stream replica with no ffmpeg sends the file. VobSub is
+# drawn into a transcode by the worker's own ffmpeg run, with no subtitle job,
+# and the api and stream roles that serve it have no ffmpeg either.
+pgs=$(find_film "Pgs%20Film")
+vobsub=$(find_film "Vobsub%20Film")
+check "the PGS track is listed as Jellyfin lists it" "PGSSUB 1920x1080 True" "$(curl -s -H "$header" "127.0.0.1:$api2/Items/$pgs" |
+  python3 -I -c 'import json,sys;s=[s for s in json.load(sys.stdin)["MediaStreams"] if s["Type"] == "Subtitle"][0];print(s["Codec"], "%dx%d" % (s["Width"], s["Height"]), s["SupportsExternalStream"])')"
+check "so are the VobSub track and its codec's name" "DVDSUB False" "$(curl -s -H "$header" "127.0.0.1:$api2/Items/$vobsub" |
+  python3 -I -c 'import json,sys;s=[s for s in json.load(sys.stdin)["MediaStreams"] if s["Type"] == "Subtitle"][0];print(s["Codec"], s["SupportsExternalStream"])')"
+sups_before=$(wc -l <"$work/bin/sups")
+supjobs_before=$(sql "SELECT count(*) FROM subtitle_jobs WHERE kind = 'sup'")
+rm -f "$work/pgs".* "$work/pgs.codes"
+requests=()
+for i in $(seq 1 12); do
+  p=$counted1; [[ $((i % 2)) -eq 0 ]] && p=$counted2
+  curl -s -o "$work/pgs.$i" -w '%{http_code} %{content_type}\n' "127.0.0.1:$p/Videos/$pgs/$pgs/Subtitles/2/0/Stream.pgssub?ApiKey=$token" >>"$work/pgs.codes" &
+  requests+=($!)
+done
+wait "${requests[@]}"
+check "twelve requests across two replicas with no ffmpeg all get the PGS file" "12" "$(grep -c '^200 application/octet-stream' "$work/pgs.codes")"
+check "they all get the same bytes, which are a PGS stream" "1 PG" "$(md5sum "$work"/pgs.[0-9]* | cut -d' ' -f1 | sort -u | wc -l) $(head -c 2 "$work/pgs.1")"
+check "one worker job copied it, with one ffmpeg run" "1 1" "$(($(sql "SELECT count(*) FROM subtitle_jobs WHERE kind = 'sup'") - supjobs_before)) $(($(wc -l <"$work/bin/sups") - sups_before))"
+check "the file comes in ranges, as jellyfin-web asks for it" "206 bytes 0-0/$(wc -c <"$work/pgs.1") P" "$(curl -s -D "$work/pgs.head" -o "$work/pgs.range" -r 0-0 -w '%{http_code}' "127.0.0.1:$counted1/Videos/$pgs/$pgs/Subtitles/2/0/Stream.pgssub?ApiKey=$token") $(tr -d '\r' <"$work/pgs.head" | sed -n 's/^[Cc]ontent-[Rr]ange: //p') $(cat "$work/pgs.range")"
+check "PGS asked for as WebVTT is a bad request" 400 "$(code "127.0.0.1:$counted1/Videos/$pgs/$pgs/Subtitles/2/0/Stream.vtt?ApiKey=$token")"
+check "VobSub has no file to ask for" 400 "$(code "127.0.0.1:$counted1/Videos/$vobsub/$vobsub/Subtitles/2/0/Stream.sup?ApiKey=$token")"
+subtitle_jobs_before=$(sql "SELECT count(*) FROM subtitle_jobs")
+overlays_before=$(grep -c 'overlay=eof_action' "$logs/ffmpeg.log")
+info=$(curl -s -X POST -H "$header" -H 'Content-Type: application/json' "127.0.0.1:$api1/Items/$vobsub/PlaybackInfo" \
+  -d "{\"DeviceProfile\":$profile,\"MaxStreamingBitrate\":2147483647,\"AudioStreamIndex\":\"1\",\"SubtitleStreamIndex\":\"2\",\"MediaSourceId\":\"$vobsub\"}")
+url=$(echo "$info" | python3 -I -c 'import json,sys;print(json.load(sys.stdin)["MediaSources"][0]["TranscodingUrl"])')
+check "a chosen VobSub track is a transcode that draws it" "SubtitleCodecNotSupported 2" "$(echo "$url" | sed -n 's/.*TranscodeReasons=\([A-Za-z,]*\).*/\1/p') $(echo "$url" | sed -n 's/.*SubtitleStreamIndex=\([0-9]*\).*/\1/p')"
+base=${url%%/master.m3u8*}
+main=$(curl -s "127.0.0.1:$stream$url" | sed -n 's/^\(main.m3u8.*\)$/\1/p')
+playlist=$(curl -s "127.0.0.1:$stream$base/$main")
+check "the stream role with no ffmpeg serves a segment with the track drawn in" "styp" "$(curl -s "127.0.0.1:$stream$base/$(echo "$playlist" | grep -m1 '^hls1/main/5.mp4')" | head -c 8 | tail -c 4)"
+check "a worker's ffmpeg overlaid it, on its own" "1 $subtitle_jobs_before" "$(($(grep -c 'overlay=eof_action' "$logs/ffmpeg.log") - overlays_before)) $(sql "SELECT count(*) FROM subtitle_jobs")"
+curl -s -o /dev/null -X DELETE -H "$header" "127.0.0.1:$stream/Videos/ActiveEncodings?deviceId=i&PlaySessionId=$(echo "$info" | python3 -I -c 'import json,sys;print(json.load(sys.stdin)["PlaySessionId"])')"
+for _ in $(seq 1 40); do [[ $(pgrep -f "ffmpeg.*$work/scratch" | wc -l) -eq 0 ]] && break; sleep 0.5; done
+
 # A worker killed outright in the middle of an extraction loses nothing: its
 # ffmpeg dies with it, the lease runs out, and the other worker finishes the
 # track for the request that is still waiting.
@@ -203,7 +246,6 @@ check "the killed worker's ffmpeg started and the survivor's finished" 2 "$(($(w
 
 # Transcoding across processes: the stream role serves HLS, a worker process
 # makes the segments, and no ffmpeg outlives the DELETE that ends the session.
-profile=$(python3 -I -c 'import json,sys;print(json.dumps(json.load(open(sys.argv[1]))["deviceProfile"]))' "$repo/compat/captures/transcode-12.4.json")
 zeta=$(curl -s -H "$header" "127.0.0.1:$api2/Items?Recursive=true&IncludeItemTypes=Movie&SearchTerm=Zeta" |
   python3 -I -c 'import json,sys;print(json.load(sys.stdin)["Items"][0]["Id"])')
 info=$(curl -s -X POST -H "$header" -H 'Content-Type: application/json' "127.0.0.1:$api1/Items/$zeta/PlaybackInfo" \

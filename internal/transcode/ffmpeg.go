@@ -48,10 +48,20 @@ const (
 // the track's file has them, counted from the source's start time. It is drawn
 // into the picture after the scale, so it is sharp at the output size, and
 // from a file in dir, so no client text reaches the filter's arguments.
-func Command(ctx context.Context, input string, spec playback.Spec, start int, dir, ass string) (*exec.Cmd, error) {
+//
+// An image track (PGS, VobSub, DVB) is image, a stream of the same input as the
+// video, and ass is empty. It is scaled to the output's size and overlaid after
+// the video is, so its bitmaps are as sharp as the picture and need no file. The
+// track has few packets, and the overlay waits for the next one, but ffmpeg tells
+// it the video's time as the video advances, so a gap between cues doesn't hold
+// the video back (unless the input is read with -readrate, which waits for the
+// track). A restart at start > 0 opens the film at the keyframe before the cut,
+// so a cue whose packet came before that is missing from that run though a run
+// from zero draws it (DOMAINS 51).
+func Command(ctx context.Context, input string, spec playback.Spec, start int, dir, ass string, image *playback.Stream) (*exec.Cmd, error) {
 	seek := float64(start * playback.SegmentSeconds)
 	hasAudio := spec.AudioIndex >= 0
-	burn := spec.Subtitle != nil
+	burn := spec.Subtitle != nil && image == nil
 	var base, frameDuration float64
 	if (start > 0 && hasAudio) || burn {
 		var err error
@@ -79,11 +89,18 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		drop = fmt.Sprintf("noise=drop=lt(pts\\,%d)", threshold)
 	}
 
-	args := []string{"-nostdin", "-v", "warning", "-y", "-copyts", "-ss", seconds(seek), "-i", input}
+	args := []string{"-nostdin", "-v", "warning", "-y", "-copyts", "-ss", seconds(seek)}
+	if image != nil && image.Width > 0 && image.Height > 0 {
+		// The size the track's bitmaps are placed on, which its stream may not say.
+		args = append(args, "-canvas_size", fmt.Sprintf("%dx%d", image.Width, image.Height))
+	}
+	args = append(args, "-i", input)
 	if hasAudio {
 		args = append(args, "-ss", seconds(audioSeek), "-i", input)
 	}
-	args = append(args, "-map", "0:v:0")
+	if image == nil {
+		args = append(args, "-map", "0:v:0")
+	}
 	if hasAudio {
 		args = append(args, "-map", "1:"+strconv.Itoa(spec.AudioIndex))
 	}
@@ -102,11 +119,19 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		}
 		subtitles = ",subtitles=subtitles.ass:fontsdir=fonts"
 	}
+	// Frames the decoder marks interlaced are deinterlaced, since the output
+	// is progressive; the rest pass through untouched. The captured profile
+	// asks for progressive H.264.
+	picture := fmt.Sprintf("yadif=mode=send_frame:parity=auto:deint=interlaced,scale=%d:%d:flags=bicubic", spec.Width, spec.Height)
+	if image == nil {
+		args = append(args, "-vf", picture+subtitles+",format=yuv420p")
+	} else {
+		// eof_action=pass lets the video go on when the track's packets end,
+		// as they do before the film does.
+		args = append(args, "-filter_complex", fmt.Sprintf("[0:v:0]%s[v];[0:%d]scale=%d:%d[s];[v][s]overlay=eof_action=pass:repeatlast=0,format=yuv420p[o]",
+			picture, *spec.Subtitle, spec.Width, spec.Height), "-map", "[o]")
+	}
 	args = append(args,
-		// Frames the decoder marks interlaced are deinterlaced, since the output
-		// is progressive; the rest pass through untouched. The captured profile
-		// asks for progressive H.264.
-		"-vf", fmt.Sprintf("yadif=mode=send_frame:parity=auto:deint=interlaced,scale=%d:%d:flags=bicubic%s,format=yuv420p", spec.Width, spec.Height, subtitles),
 		"-c:v", "libx264", "-preset", "veryfast", "-profile:v", "high", "-level", "51",
 		"-crf", "23", "-maxrate", vb, "-bufsize", strconv.FormatInt(2*spec.VideoBitrate, 10),
 		// Fixed B-frames and a closed GOP, so a restart makes the same frames.

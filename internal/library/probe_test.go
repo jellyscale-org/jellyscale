@@ -14,6 +14,7 @@ func TestSubtitleLabelsTellTracksApart(t *testing.T) {
 		{"eng", "subrip", true, false, "eng - Default - SUBRIP"},
 		{"eng", "subrip", false, true, "eng - Forced - SUBRIP"},
 		{"", "ass", false, false, "ASS"},
+		{"fra", "PGSSUB", true, true, "fra - Default - Forced - PGSSUB"},
 	} {
 		if got := displaySubtitle(c.language, c.codec, c.isDefault, c.isForced); got != c.want {
 			t.Errorf("%+v: %q, want %q", c, got, c.want)

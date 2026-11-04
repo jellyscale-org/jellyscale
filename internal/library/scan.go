@@ -101,8 +101,10 @@ type seenObject struct {
 	// or an older version's scan has rewritten the row since.
 	sidecars *string
 	// attachmentsUnread: a Matroska film stored before its attachments were
-	// listed (sidecars is NULL), the only container whose attachments matter.
-	// Its probe is repeated, but its keyframe index and video end are kept.
+	// listed (sidecars is NULL), the only container whose attachments matter, or
+	// one whose image subtitle tracks were stored before they were listed
+	// (IsImageSubtitleStream is missing). Its probe is repeated, but its
+	// keyframe index and video end are kept.
 	attachmentsUnread bool
 }
 
@@ -248,8 +250,10 @@ func (s *Scanner) loadSeen(ctx context.Context, libraryID string) (map[string]se
 	// A Matroska film scanned before its subtitle files and attachments were
 	// listed (sidecars is NULL) is probed again to list the attachments; any
 	// other container only has its subtitle files listed, which needs no probe.
+	// So is a film with an image subtitle track stored before they were listed.
 	rows, err := s.Pool.Query(ctx, `SELECT o.key, o.size, o.etag, o.item_id::text, m.sidecars,
-			COALESCE(m.sidecars IS NULL AND m.container = 'mkv', false),
+			COALESCE(m.sidecars IS NULL AND m.container = 'mkv'
+				OR jsonb_path_exists(m.streams, '$[*] ? (@.Type == "Subtitle" && @.IsTextSubtitleStream == false && !exists(@.IsImageSubtitleStream))'), false),
 			COALESCE(jsonb_path_exists(m.streams, '$[*] ? ((@.Type == "Video" && !exists(@.VideoRangeType)) || (@.Type == "Subtitle" && !exists(@.IsTextSubtitleStream)))')
 				OR (m.keyframes IS NULL AND m.container IN ('mkv', 'mp4')
 					AND jsonb_path_exists(m.streams, '$[*] ? (@.Type == "Video" && @.Codec == "h264")')), false)
@@ -715,10 +719,11 @@ func (s *Scanner) refreshSidecars(ctx context.Context, libraryID string, object 
 	})
 }
 
-// playableStreams is what direct play can deliver: the video, the default audio
-// track, or else the first, and the text subtitle tracks, which are extracted
-// on request. Image subtitles can't be delivered yet. Clients build their
-// track menus from this, so anything else would be a dead choice.
+// playableStreams is what can be delivered: the video, the default audio
+// track, or else the first, the text subtitle tracks, which are extracted on
+// request, and the image ones that are copied out or drawn into a transcode
+// (imageSubtitleCodecs). Clients build their track menus from this, so anything
+// else would be a dead choice.
 // media_sources.streams keeps the full list, and the probe's fields for
 // transcode decisions, which the DTO leaves out so direct play replies stay as
 // they were.
@@ -749,7 +754,8 @@ func playableStreams(streams []map[string]any) []map[string]any {
 			stream = maps.Clone(stream)
 			delete(stream, "Fingerprint")
 		}
-		if stream["Type"] == "Video" || i == audio || (stream["Type"] == "Subtitle" && stream["IsTextSubtitleStream"] == true && stream["Unreadable"] != true) {
+		listed := stream["IsTextSubtitleStream"] == true || stream["IsImageSubtitleStream"] == true
+		if stream["Type"] == "Video" || i == audio || (stream["Type"] == "Subtitle" && listed && stream["Unreadable"] != true) {
 			playable = append(playable, stream)
 		}
 	}

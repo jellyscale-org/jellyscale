@@ -46,6 +46,10 @@ zeta="$work/media/transcode/Zeta Film (2023)/Zeta Film (2023).mkv"
 for copy in "Theta Film (2025)" "Iota Film (2026)" "Kappa Film (2027)" "Lambda Film (2028)" "Mu Film (2029)" "Omicron Film (2032)" "Pi Film (2033)"; do
   [[ -f "$work/media/transcode/$copy/$copy.mkv" ]] || { mkdir -p "$work/media/transcode/$copy" && ln "$zeta" "$work/media/transcode/$copy/$copy.mkv"; }
 done
+# The VobSub film again, for the scenario that burns it in for a viewer who draws PGS:
+# the segments of a spec are kept, so it needs a film of its own.
+vobsub="$work/media/transcode/Vobsub Film (2071)/Vobsub Film (2071).mkv"
+[[ -f "$work/media/transcode/Vobsub Render Film (2076)/Vobsub Render Film (2076).mkv" ]] || { mkdir -p "$work/media/transcode/Vobsub Render Film (2076)" && ln "$vobsub" "$work/media/transcode/Vobsub Render Film (2076)/Vobsub Render Film (2076).mkv"; }
 # The failure scenario cuts this copy short, so every run makes it again.
 mkdir -p "$work/media/transcode/Xi Film (2031)" && cp "$zeta" "$work/media/transcode/Xi Film (2031)/Xi Film (2031).mkv"
 
@@ -155,6 +159,10 @@ for pair in "Direct Sub Film (2060)|Beside Direct Film (2065)" "Transcode Sub Fi
   done
 done
 
+# And two with image tracks, a PGS one and a VobSub one.
+"$work/putfile" "s3://e2e/media?$s3" "Pgs Cloud Film (2074)/Pgs Cloud Film (2074).mkv" "$sub/Pgs Film (2070)/Pgs Film (2070).mkv" || exit 1
+"$work/putfile" "s3://e2e/media?$s3" "Vobsub Cloud Film (2075)/Vobsub Cloud Film (2075).mkv" "$sub/Vobsub Film (2071)/Vobsub Film (2071).mkv" || exit 1
+
 free() { python3 -I -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])'; }
 export JELLYSCALE_DATABASE_URL="postgres://postgres:e2e@127.0.0.1:$port/postgres" JELLYSCALE_ADMIN_PASSWORD=e2e-pass
 api1=$(free) api2=$(free) stream=$(free) router=$(free)
@@ -172,7 +180,29 @@ speed="-readrate 2"
 # Only the transcode (the one that writes HLS) is slowed; extracting a subtitle
 # track reads the whole file and would take as long as the film. Taking the
 # fonts out of "Cracked Fonts Film" fails as a film ffmpeg rejects does.
-printf '#!/bin/sh\necho "$(date +%%T) $*" >>%s\ncase "$*" in *-dump_attachment*"Cracked Fonts"*) echo "Invalid data found when processing input" >&2; exit 1;; esac\ncase "$*" in *"-f hls"*) exec %s %s "$@";; esac\nexec %s "$@"\n' "$logs/ffmpeg.log" "$(command -v ffmpeg)" "$speed" "$(command -v ffmpeg)" >"$work/bin/ffmpeg"
+# A run that draws an image track reads the track from the film's first input,
+# and ffmpeg's -readrate waits on a stream with few packets, so the video there
+# would be held back for the length of a gap between cues (ffmpeg reads with no
+# limit in production, where the same film's segments come as fast as it is
+# read). Its throttle goes on the second input, the audio, which paces the run
+# as well.
+cat >"$work/bin/ffmpeg" <<E2
+#!/bin/sh
+echo "\$(date +%T) \$*" >>"$logs/ffmpeg.log"
+case "\$*" in *-dump_attachment*"Cracked Fonts"*) echo "Invalid data found when processing input" >&2; exit 1;; esac
+case "\$*" in
+*overlay=eof_action*)
+  inputs=0
+  for arg; do
+    shift
+    if [ "\$arg" = -i ]; then inputs=\$((inputs + 1)); [ "\$inputs" = 2 ] && set -- "\$@" $speed; fi
+    set -- "\$@" "\$arg"
+  done
+  exec $(command -v ffmpeg) "\$@";;
+*"-f hls"*) exec $(command -v ffmpeg) $speed "\$@";;
+esac
+exec $(command -v ffmpeg) "\$@"
+E2
 chmod +x "$work/bin/ffmpeg"
 PATH="$work/bin:$PATH" "$work/jellyscale" --roles=worker --config "$work/config-s3.json" >>"$logs/server.log" 2>&1 &
 pids+=($!)
