@@ -44,3 +44,38 @@ func TestDolbyVisionBaseLayerCompatibility(t *testing.T) {
 		t.Error("a file without Dolby Vision side data has a base layer compatibility")
 	}
 }
+
+// Chapters read as Jellyfin's DTO has them: titled as the file says, "Chapter N"
+// (N counting from 1 over the file's list) when it says nothing, in time order,
+// and never with an ImageTag.
+func TestChaptersAreNamedAndOrdered(t *testing.T) {
+	var parsed ffprobeOutput
+	raw := `{"chapters":[
+		{"start_time":"20.000000","tags":{"title":"Middle"}},
+		{"start_time":"0.000000","tags":{"title":"  Opening "}},
+		{"start_time":"45.500000","tags":{"title":" "}},
+		{"start_time":"N/A","tags":{"title":"Broken"}},
+		{"start_time":"50.000000"}]}`
+	if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
+		t.Fatal(err)
+	}
+	got := chaptersOf(parsed)
+	want := []struct {
+		name  string
+		ticks int64
+	}{{"Opening", 0}, {"Middle", 200_000_000}, {"Chapter 3", 455_000_000}, {"Chapter 5", 500_000_000}}
+	if len(got) != len(want) {
+		t.Fatalf("%v", got)
+	}
+	for i, w := range want {
+		if got[i]["Name"] != w.name || got[i]["StartPositionTicks"] != w.ticks {
+			t.Errorf("chapter %d: %v, want %s at %d", i, got[i], w.name, w.ticks)
+		}
+		if _, ok := got[i]["ImageTag"]; ok {
+			t.Errorf("chapter %d has an ImageTag", i)
+		}
+	}
+	if none := chaptersOf(ffprobeOutput{}); none == nil || len(none) != 0 {
+		t.Errorf("no chapters: %#v", none)
+	}
+}

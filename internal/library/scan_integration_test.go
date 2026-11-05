@@ -5,6 +5,8 @@ package library_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -516,5 +518,115 @@ func TestScanListsImageSubtitles(t *testing.T) {
 	f.scan(t)
 	if got := scalar[string](t, f.pool, "SELECT keyframes::text FROM media_sources"); got != "{8}" {
 		t.Fatalf("a film with a listed image track was probed again: %s", got)
+	}
+}
+
+// chapterClip makes a film with chapters at the given start seconds, titled
+// "Part N" (N from 1) and the last untitled.
+func chapterClip(t *testing.T, file string, starts ...int) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	meta := ";FFMETADATA1\n"
+	for i, start := range starts {
+		end := 60
+		if i+1 < len(starts) {
+			end = starts[i+1]
+		}
+		meta += fmt.Sprintf("[CHAPTER]\nTIMEBASE=1/1\nSTART=%d\nEND=%d\n", start, end)
+		if i+1 < len(starts) {
+			meta += fmt.Sprintf("title=Part %d\n", i+1)
+		}
+	}
+	metaFile := filepath.Join(t.TempDir(), "meta.txt")
+	if err := os.WriteFile(metaFile, []byte(meta), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := exec.Command("ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=10:duration=60", "-i", metaFile,
+		"-map", "0:v", "-map_metadata", "1", "-map_chapters", "1", "-c:v", "libx264", "-preset", "ultrafast", file).CombinedOutput()
+	if err != nil {
+		t.Fatalf("ffmpeg: %v: %s", err, out)
+	}
+}
+
+const chapterNames = "SELECT dto->'Chapters' FROM items WHERE type = 'Movie' AND name = $1"
+
+// A scan stores a film's chapters in its item and in the media source; a film
+// with none is stored with an empty list, so it is not read again; a film
+// stored before chapters were read is probed again without its keyframe index;
+// and a file that changes gets its new chapters.
+func TestScanStoresChapters(t *testing.T) {
+	f := setup(t, "movies")
+	chaptered := filepath.Join(f.media, "Chaptered Film (2020)", "Chaptered Film (2020).mkv")
+	chapterClip(t, chaptered, 0, 20, 45)
+	clip(t, filepath.Join(f.media, "Plain Film (2021)", "Plain Film (2021).mkv"))
+	f.scan(t)
+
+	var chapters []map[string]any
+	if err := json.Unmarshal(scalar[[]byte](t, f.pool, chapterNames, "Chaptered Film"), &chapters); err != nil {
+		t.Fatal(err)
+	}
+	if len(chapters) != 3 || chapters[0]["Name"] != "Part 1" || chapters[1]["StartPositionTicks"] != float64(200_000_000) || chapters[2]["Name"] != "Chapter 3" {
+		t.Fatalf("the item's chapters: %v", chapters)
+	}
+	for _, chapter := range chapters {
+		if _, ok := chapter["ImageTag"]; ok {
+			t.Errorf("a chapter has an ImageTag: %v", chapter)
+		}
+	}
+	if n := scalar[int](t, f.pool, "SELECT jsonb_array_length(m.chapters) FROM media_sources m JOIN items i ON i.id = m.item_id WHERE i.name = 'Chaptered Film'"); n != 3 {
+		t.Errorf("the media source has %d chapters", n)
+	}
+	if got := scalar[string](t, f.pool, chapterNames, "Plain Film"); got != "[]" {
+		t.Errorf("a film without chapters: %s", got)
+	}
+	if n := scalar[int](t, f.pool, "SELECT count(*) FROM media_sources WHERE chapters IS NULL"); n != 0 {
+		t.Fatalf("%d films stored with chapters unread", n)
+	}
+
+	// A film with none is not probed again (a probe would reset its name) and
+	// neither is one with chapters.
+	if _, err := f.pool.Exec(context.Background(), "UPDATE items SET name = name || ' kept' WHERE type = 'Movie'"); err != nil {
+		t.Fatal(err)
+	}
+	f.scan(t)
+	if n := scalar[int](t, f.pool, "SELECT count(*) FROM items WHERE type = 'Movie' AND name LIKE '% kept'"); n != 2 {
+		t.Fatalf("a scan with nothing new probed %d of 2 films again", 2-n)
+	}
+
+	// Stored before chapters were read: the dto has the empty list every one
+	// had, and the column is NULL. The scan reads the chapters, keeps the
+	// keyframe index it has (a value a read would not write) and the item.
+	id := scalar[string](t, f.pool, "SELECT id::text FROM items WHERE name = 'Chaptered Film kept'")
+	if _, err := f.pool.Exec(context.Background(), `UPDATE media_sources SET chapters = NULL, keyframes = ARRAY[12345]::bigint[];
+		UPDATE items SET dto = jsonb_set(dto, '{Chapters}', '[]')`); err != nil {
+		t.Fatal(err)
+	}
+	f.scan(t)
+	if got := scalar[string](t, f.pool, "SELECT name FROM items WHERE id = $1", id); got != "Chaptered Film" {
+		t.Fatalf("the film was not probed again: %q", got)
+	}
+	if n := scalar[int](t, f.pool, "SELECT jsonb_array_length(dto->'Chapters') FROM items WHERE id = $1", id); n != 3 {
+		t.Errorf("%d chapters read for the film stored without", n)
+	}
+	if first := scalar[*int64](t, f.pool, "SELECT keyframes[1] FROM media_sources WHERE item_id = $1", id); first == nil || *first != 12345 {
+		t.Errorf("the keyframe index was read again: %v", first)
+	}
+	if n := scalar[int](t, f.pool, "SELECT count(*) FROM media_sources WHERE chapters IS NULL"); n != 0 {
+		t.Errorf("%d films still without chapters read", n)
+	}
+
+	// The file is replaced with other chapters: the next scan notices.
+	chapterClip(t, chaptered, 0, 30)
+	f.scan(t)
+	if err := json.Unmarshal(scalar[[]byte](t, f.pool, chapterNames, "Chaptered Film"), &chapters); err != nil {
+		t.Fatal(err)
+	}
+	if len(chapters) != 2 || chapters[1]["StartPositionTicks"] != float64(300_000_000) {
+		t.Errorf("a changed file's chapters: %v", chapters)
+	}
+	if got := scalar[string](t, f.pool, "SELECT id::text FROM items WHERE name = 'Chaptered Film'"); got != id {
+		t.Errorf("the item changed its id")
 	}
 }

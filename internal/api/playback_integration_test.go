@@ -1011,3 +1011,42 @@ func (b *blockingStore) Open(ctx context.Context, _ string, _ int64) (io.ReadClo
 	close(b.canceled)
 	return nil, ctx.Err()
 }
+
+// A film's chapters are in its details and in a list that asks for them, and
+// not in a list that doesn't, as Jellyfin 12.4 has it (compat/captures/chapters-12.4.md).
+// None carries an ImageTag, which is what keeps jellyfin-web from asking for a picture.
+func TestChaptersAreInTheDetailsAndInListsThatAskForThem(t *testing.T) {
+	e := newEnv(t)
+	mustExec(t, e.pool, `UPDATE items SET dto = dto || '{"Chapters":[
+		{"StartPositionTicks":0,"Name":"Opening","ImageDateModified":"0001-01-01T00:00:00.0000000Z"},
+		{"StartPositionTicks":200000000,"Name":"Chapter 2","ImageDateModified":"0001-01-01T00:00:00.0000000Z"}]}'`)
+	chapters := func(path string) []any {
+		t.Helper()
+		_, raw := e.do(t, 0, "GET", path, e.token, nil)
+		var found struct {
+			Chapters []any
+			Items    []struct{ Chapters []any }
+		}
+		if err := json.Unmarshal(raw, &found); err != nil {
+			t.Fatalf("%s: %s", path, raw)
+		}
+		if len(found.Items) > 0 {
+			return found.Items[0].Chapters
+		}
+		return found.Chapters
+	}
+	for _, path := range []string{"/Items/" + e.item + "?userId=" + e.user, "/Items?Recursive=true&Fields=Chapters"} {
+		got := chapters(path)
+		if len(got) != 2 {
+			t.Fatalf("%s: chapters %v", path, got)
+		}
+		for _, chapter := range got {
+			if _, ok := chapter.(map[string]any)["ImageTag"]; ok {
+				t.Errorf("%s: a chapter has an ImageTag: %v", path, chapter)
+			}
+		}
+	}
+	if got := chapters("/Items?Recursive=true"); got != nil {
+		t.Errorf("a list that didn't ask for chapters has them: %v", got)
+	}
+}

@@ -1,0 +1,274 @@
+{
+ "about": "jellyfin/jellyfin:12.4. Fixtures: 60 s, 640x360, three chapters at 0 s ('Opening'), 20 s ('Middle Part') and 45.5 s (no title), made by ffmpeg from an ffmetadata file. Ids are Jellyfin's; ImagePath and tags are the server's own.",
+ "items": {
+  "mkv, chapter images extracted": {
+   "Container": "mkv",
+   "RunTimeTicks": 600210000,
+   "Chapters": [
+    {
+     "StartPositionTicks": 0,
+     "Name": "Opening",
+     "ImagePath": "/config/metadata/library/14/14df0235c9e8f3087191f37779644bd2/chapters/639294891987949436_0.jpg",
+     "ImageDateModified": "2026-11-05T15:27:52.5932887Z",
+     "ImageTag": "c244be38edafd2e210e2d3e40956c0d1"
+    },
+    {
+     "StartPositionTicks": 200000000,
+     "Name": "Middle Part",
+     "ImagePath": "/config/metadata/library/14/14df0235c9e8f3087191f37779644bd2/chapters/639294891987949436_200000000.jpg",
+     "ImageDateModified": "2026-11-05T15:27:52.6291942Z",
+     "ImageTag": "dcecc8b56be94f5bb1fa5de1c87369c0"
+    },
+    {
+     "StartPositionTicks": 455000000,
+     "Name": "Chapter 3",
+     "ImagePath": "/config/metadata/library/14/14df0235c9e8f3087191f37779644bd2/chapters/639294891987949436_455000000.jpg",
+     "ImageDateModified": "2026-11-05T15:27:52.6657352Z",
+     "ImageTag": "92da875ebc20bf5277e94f324488ddb8"
+    }
+   ]
+  },
+  "mp4, chapter images extracted": {
+   "Container": "mov,mp4,m4a,3gp,3g2,mj2",
+   "RunTimeTicks": 600000000,
+   "Chapters": [
+    {
+     "StartPositionTicks": 0,
+     "Name": "Opening",
+     "ImagePath": "/config/metadata/library/ca/cac0e63d8d58b73c77b2c8a7f539e671/chapters/639294891995329670_0.jpg",
+     "ImageDateModified": "2026-11-05T15:27:52.9377817Z",
+     "ImageTag": "a842b094af5e854f91666e08fd6da81a"
+    },
+    {
+     "StartPositionTicks": 200000000,
+     "Name": "Middle Part",
+     "ImagePath": "/config/metadata/library/ca/cac0e63d8d58b73c77b2c8a7f539e671/chapters/639294891995329670_200000000.jpg",
+     "ImageDateModified": "2026-11-05T15:27:52.9698752Z",
+     "ImageTag": "157253a409041c98fdb6bab48b41b4d7"
+    },
+    {
+     "StartPositionTicks": 455000000,
+     "Name": "Chapter 3",
+     "ImagePath": "/config/metadata/library/ca/cac0e63d8d58b73c77b2c8a7f539e671/chapters/639294891995329670_455000000.jpg",
+     "ImageDateModified": "2026-11-05T15:27:53.0207814Z",
+     "ImageTag": "4ce97933b960774d4185b3ef4fdec274"
+    }
+   ]
+  },
+  "mp4, no images": {
+   "Container": "mov,mp4,m4a,3gp,3g2,mj2",
+   "RunTimeTicks": 600000000,
+   "Chapters": [
+    {
+     "StartPositionTicks": 0,
+     "Name": "Opening",
+     "ImageDateModified": "0001-01-01T00:00:00.0000000Z"
+    },
+    {
+     "StartPositionTicks": 200000000,
+     "Name": "Middle Part",
+     "ImageDateModified": "0001-01-01T00:00:00.0000000Z"
+    },
+    {
+     "StartPositionTicks": 455000000,
+     "Name": "Chapter 3",
+     "ImageDateModified": "0001-01-01T00:00:00.0000000Z"
+    }
+   ]
+  },
+  "mkv, no images": {
+   "Container": "mkv",
+   "RunTimeTicks": 600210000,
+   "Chapters": [
+    {
+     "StartPositionTicks": 0,
+     "Name": "Opening",
+     "ImageDateModified": "0001-01-01T00:00:00.0000000Z"
+    },
+    {
+     "StartPositionTicks": 200000000,
+     "Name": "Middle Part",
+     "ImageDateModified": "0001-01-01T00:00:00.0000000Z"
+    },
+    {
+     "StartPositionTicks": 455000000,
+     "Name": "Chapter 3",
+     "ImageDateModified": "0001-01-01T00:00:00.0000000Z"
+    }
+   ]
+  },
+  "mkv, no images, streams start 2 s late": {
+   "Container": "mkv",
+   "RunTimeTicks": 620210000,
+   "Chapters": [
+    {
+     "StartPositionTicks": 0,
+     "Name": "Opening",
+     "ImageDateModified": "0001-01-01T00:00:00.0000000Z"
+    },
+    {
+     "StartPositionTicks": 200000000,
+     "Name": "Middle Part",
+     "ImageDateModified": "0001-01-01T00:00:00.0000000Z"
+    },
+    {
+     "StartPositionTicks": 455000000,
+     "Name": "Chapter 3",
+     "ImageDateModified": "0001-01-01T00:00:00.0000000Z"
+    }
+   ]
+  }
+ },
+ "playbackInfoMediaSourceKeys": [
+  "Bitrate",
+  "Container",
+  "DefaultAudioStreamIndex",
+  "DefaultSubtitleStreamIndex",
+  "ETag",
+  "Formats",
+  "GenPtsInput",
+  "HasSegments",
+  "Id",
+  "IgnoreDts",
+  "IgnoreIndex",
+  "IsInfiniteStream",
+  "IsRemote",
+  "MediaAttachments",
+  "MediaStreams",
+  "Name",
+  "Path",
+  "Protocol",
+  "ReadAtNativeFramerate",
+  "RequiredHttpHeaders",
+  "RequiresClosing",
+  "RequiresLooping",
+  "RequiresOpening",
+  "RunTimeTicks",
+  "Size",
+  "SupportsDirectPlay",
+  "SupportsDirectStream",
+  "SupportsProbing",
+  "SupportsTranscoding",
+  "TranscodingSubProtocol",
+  "Type",
+  "UseMostCompatibleTranscodingProfile",
+  "VideoType"
+ ],
+ "listWithoutFields": null,
+ "web": [
+  {
+   "item": "mp4, no images",
+   "detailsPageChapterSection": {
+    "exists": true,
+    "hidden": true,
+    "cards": 0
+   },
+   "osd": {
+    "next": "btnNextChapter autoSize paper-icon-button-light",
+    "prev": "btnPreviousChapter autoSize paper-icon-button-light",
+    "markers": [
+     "sliderMarkerContainer",
+     "sliderMarker watched",
+     "sliderMarker unwatched",
+     "sliderMarker unwatched"
+    ]
+   },
+   "playerSecondsBeforeNextChapter": 2.0,
+   "afterNextChapter+8s": 27.9,
+   "afterSecondNextChapter+8s": 53.4,
+   "chapterImageRequests": []
+  },
+  {
+   "item": "mp4, chapter images extracted",
+   "detailsPageChapterSection": {
+    "exists": true,
+    "hidden": false,
+    "cards": 3
+   },
+   "osd": {
+    "next": "btnNextChapter autoSize paper-icon-button-light",
+    "prev": "btnPreviousChapter autoSize paper-icon-button-light",
+    "markers": [
+     "sliderMarkerContainer",
+     "sliderMarker watched",
+     "sliderMarker unwatched",
+     "sliderMarker unwatched"
+    ]
+   },
+   "playerSecondsBeforeNextChapter": 2.0,
+   "afterNextChapter+8s": 27.9,
+   "afterSecondNextChapter+8s": 53.4,
+   "chapterImageRequests": [
+    "/Items/cac0e63d8d58b73c77b2c8a7f539e671/Images/Chapter/0?maxWidth=400&tag=a842b094af5e854f91666e08fd6da81a&quality=9",
+    "/Items/cac0e63d8d58b73c77b2c8a7f539e671/Images/Chapter/1?maxWidth=400&tag=157253a409041c98fdb6bab48b41b4d7&quality=9",
+    "/Items/cac0e63d8d58b73c77b2c8a7f539e671/Images/Chapter/2?maxWidth=400&tag=4ce97933b960774d4185b3ef4fdec274&quality=9"
+   ]
+  },
+  {
+   "item": "mkv, no images, streams start 2 s late",
+   "detailsPageChapterSection": {
+    "exists": true,
+    "hidden": true,
+    "cards": 0
+   },
+   "osd": {
+    "next": "btnNextChapter autoSize paper-icon-button-light",
+    "prev": "btnPreviousChapter autoSize paper-icon-button-light",
+    "markers": [
+     "sliderMarkerContainer",
+     "sliderMarker watched",
+     "sliderMarker unwatched",
+     "sliderMarker unwatched"
+    ]
+   },
+   "playerSecondsBeforeNextChapter": 2.0,
+   "afterNextChapter+8s": 27.9,
+   "afterSecondNextChapter+8s": 53.4,
+   "chapterImageRequests": []
+  },
+  {
+   "item": "mkv/AC3, no offset, transcoded",
+   "detailsPageChapterSection": {
+    "exists": true,
+    "hidden": true,
+    "cards": 0
+   },
+   "osd": {
+    "next": "btnNextChapter autoSize paper-icon-button-light",
+    "prev": "btnPreviousChapter autoSize paper-icon-button-light",
+    "markers": [
+     "sliderMarkerContainer",
+     "sliderMarker watched",
+     "sliderMarker unwatched",
+     "sliderMarker unwatched"
+    ]
+   },
+   "playerSecondsBeforeNextChapter": 2.0,
+   "afterNextChapter+8s": 27.9,
+   "afterSecondNextChapter+8s": 53.4,
+   "chapterImageRequests": []
+  },
+  {
+   "item": "mkv/AC3, streams start 2 s late, transcoded",
+   "detailsPageChapterSection": {
+    "exists": true,
+    "hidden": true,
+    "cards": 0
+   },
+   "osd": {
+    "next": "btnNextChapter autoSize paper-icon-button-light",
+    "prev": "btnPreviousChapter autoSize paper-icon-button-light",
+    "markers": [
+     "sliderMarkerContainer",
+     "sliderMarker watched",
+     "sliderMarker unwatched",
+     "sliderMarker unwatched"
+    ]
+   },
+   "playerSecondsBeforeNextChapter": 2.0,
+   "afterNextChapter+8s": 27.9,
+   "afterSecondNextChapter+8s": 53.4,
+   "chapterImageRequests": []
+  }
+ ]
+}

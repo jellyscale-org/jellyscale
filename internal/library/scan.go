@@ -106,6 +106,9 @@ type seenObject struct {
 	// (IsImageSubtitleStream is missing). Its probe is repeated, but its
 	// keyframe index and video end are kept.
 	attachmentsUnread bool
+	// chaptersUnread: stored before chapters were read (media_sources.chapters
+	// is NULL). Probed again like attachmentsUnread, keeping the index.
+	chaptersUnread bool
 }
 
 // Scan lists the store and applies the difference. A session advisory lock
@@ -165,7 +168,7 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 		switch {
 		case !ok || old.etag != object.ETag || old.size != object.Size || old.unprobed:
 			changed = append(changed, object)
-		case old.attachmentsUnread:
+		case old.attachmentsUnread || old.chaptersUnread:
 			changed = append(changed, object)
 			attachmentsOnly[object.Key] = true
 		case old.itemID != nil && (old.sidecars == nil || *old.sidecars != found.fingerprint):
@@ -182,7 +185,7 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 	// Each film is stored as its probe finishes, so a long first scan shows
 	// progress and a restart keeps the films done.
 	if len(changed) > 0 {
-		s.Log.Info("probing films", "library", lib.Name, "films", len(changed), "attachments only", len(attachmentsOnly))
+		s.Log.Info("probing films", "library", lib.Name, "films", len(changed), "index kept", len(attachmentsOnly))
 	}
 	stored := 0
 	for result := range s.probeAll(ctx, lib, changed, attachmentsOnly) {
@@ -250,13 +253,15 @@ func (s *Scanner) loadSeen(ctx context.Context, libraryID string) (map[string]se
 	// A Matroska film scanned before its subtitle files and attachments were
 	// listed (sidecars is NULL) is probed again to list the attachments; any
 	// other container only has its subtitle files listed, which needs no probe.
-	// So is a film with an image subtitle track stored before they were listed.
+	// So is a film with an image subtitle track stored before they were listed,
+	// and a film stored before its chapters were read.
 	rows, err := s.Pool.Query(ctx, `SELECT o.key, o.size, o.etag, o.item_id::text, m.sidecars,
 			COALESCE(m.sidecars IS NULL AND m.container = 'mkv'
 				OR jsonb_path_exists(m.streams, '$[*] ? (@.Type == "Subtitle" && @.IsTextSubtitleStream == false && !exists(@.IsImageSubtitleStream))'), false),
 			COALESCE(jsonb_path_exists(m.streams, '$[*] ? ((@.Type == "Video" && (!exists(@.VideoRangeType) || !exists(@.ColorTransfer))) || (@.Type == "Subtitle" && !exists(@.IsTextSubtitleStream)))')
 				OR (m.keyframes IS NULL AND m.container IN ('mkv', 'mp4')
-					AND EXISTS (SELECT 1 FROM jsonb_array_elements(m.streams) v WHERE v->>'Type' = 'Video' AND v->>'Codec' = ANY($2))), false)
+					AND EXISTS (SELECT 1 FROM jsonb_array_elements(m.streams) v WHERE v->>'Type' = 'Video' AND v->>'Codec' = ANY($2))), false),
+			COALESCE(m.item_id IS NOT NULL AND m.chapters IS NULL, false)
 		FROM scan_objects o LEFT JOIN media_sources m ON m.item_id = o.item_id WHERE o.library_id = $1`, libraryID, playback.CopyCodecs())
 	if err != nil {
 		return nil, err
@@ -266,7 +271,7 @@ func (s *Scanner) loadSeen(ctx context.Context, libraryID string) (map[string]se
 	for rows.Next() {
 		var key string
 		var old seenObject
-		if err := rows.Scan(&key, &old.size, &old.etag, &old.itemID, &old.sidecars, &old.attachmentsUnread, &old.unprobed); err != nil {
+		if err := rows.Scan(&key, &old.size, &old.etag, &old.itemID, &old.sidecars, &old.attachmentsUnread, &old.unprobed, &old.chaptersUnread); err != nil {
 			return nil, err
 		}
 		seen[key] = old
@@ -447,12 +452,16 @@ func (s *Scanner) upsert(ctx context.Context, lib Library, object store.Object, 
 		if err != nil {
 			return err
 		}
+		chapters, err := json.Marshal(probe.Chapters)
+		if err != nil {
+			return err
+		}
 		if _, err := tx.Exec(ctx, "DELETE FROM media_sources WHERE item_id = $1", stored); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO media_sources (id, item_id, store_key, size, object_etag, container, streams, keyframes, video_end, next_index, sidecars)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-			stored, stored, object.Key, object.Size, object.ETag, probe.Container, streams, probe.Keyframes, probe.VideoEnd, next, subtitleFiles.fingerprint); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO media_sources (id, item_id, store_key, size, object_etag, container, streams, keyframes, video_end, next_index, sidecars, chapters)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+			stored, stored, object.Key, object.Size, object.ETag, probe.Container, streams, probe.Keyframes, probe.VideoEnd, next, subtitleFiles.fingerprint, chapters); err != nil {
 			return err
 		}
 		_, err = tx.Exec(ctx, `INSERT INTO scan_objects (library_id, key, size, etag, item_id) VALUES ($1, $2, $3, $4, $5)
@@ -672,7 +681,7 @@ func videoDTO(item record, object store.Object, probe Probe) map[string]any {
 	dto["Etag"] = etag(object.ETag)
 	dto["MediaSources"] = sources
 	dto["MediaStreams"] = streams
-	dto["Chapters"] = []string{}
+	dto["Chapters"] = probe.Chapters
 	dto["Trickplay"] = map[string]any{}
 	return dto
 }

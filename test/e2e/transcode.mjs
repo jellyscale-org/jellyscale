@@ -342,6 +342,85 @@ await scenario("copy, POSIX, MP4: the playlist is exact where Jellyfin's lies", 
 await scenario("copy, S3, Matroska", (v) => copiedFilm(v, "Cloud", "Heta Film", `${media}/Rho Film (2041)/Rho Film (2041).mkv`, "S3 mkv"));
 await scenario("copy, S3, MP4", (v) => copiedFilm(v, "Cloud", "Koppa Film", `${media}/Qoppa Film (2042)/Qoppa Film (2042).mp4`, "S3 mp4"));
 
+// Chapters: the details page lists none while there are no chapter images, as in
+// Jellyfin 12.4 (compat/captures/chapters-12.4.md), and the player knows them:
+// its seek bar has a marker for each and its next and previous chapter buttons
+// show. Next chapter seeks to the next one's start, which the transcodes' clock
+// (the file's, 2 s late in these two) leaves where the file says.
+// The chapters of these films, by start in seconds.
+const chapters = [["Opening", 0], ["Middle Part", 20], ["Chapter 3", 45.5]];
+// The video's position when the seek that `act` starts is done, before playing
+// moves it on: a seek that lands 2 s off shows here, which polling for a window
+// of several seconds would not see.
+async function seekedAfter(page, act) {
+  await page.evaluate(() => {
+    window.seekedAt = null;
+    document.querySelector("video").addEventListener("seeked", (e) => { window.seekedAt ??= e.target.currentTime; }, { once: true });
+  });
+  await act();
+  await waitFor("the seek to finish", async () => await page.evaluate(() => window.seekedAt !== null), 60000);
+  return await page.evaluate(() => window.seekedAt);
+}
+async function chapterSeek({ page, seen }, title, how) {
+  const imageRequests = [];
+  page.on("request", (r) => { if (/\/Images\/Chapter\//i.test(r.url())) imageRequests.push(r.url()); });
+  await page.goto(`${base}/web/`);
+  await page.waitForSelector(".card", { timeout: 30000 });
+  await page.locator(".card:visible", { hasText: "Transcode" }).first().click();
+  await page.locator(".cardText a:visible", { hasText: title }).first().click();
+  await page.locator(".btnPlay:visible").first().waitFor({ timeout: 30000 });
+  await page.waitForTimeout(1500);
+  const section = await page.evaluate(() => document.querySelector("#scenesCollapsible")?.classList.contains("hide") ?? true);
+  if (!section) throw new Error("the details page lists chapters without any picture to show");
+  await page.locator(".btnPlay:visible").first().click();
+  await waitFor("video to start", async () => (await time(page)) > 0.5, 60000);
+  const source = seen.infos.at(-1).source;
+  if (how === "direct" && (source.SupportsDirectPlay !== true || source.TranscodingUrl)) throw new Error(`not direct play: ${JSON.stringify(source).slice(0, 300)}`);
+  if (how === "copy" && !/VideoCodec=copy/.test(source.TranscodingUrl ?? "")) throw new Error(`not a copy: ${source.TranscodingUrl}`);
+  if (how === "encode" && !/VideoCodec=h264/i.test(source.TranscodingUrl ?? "")) throw new Error(`not re-encoded: ${source.TranscodingUrl}`);
+
+  // What the player was given: the chapters, named as the file and Jellyfin do, without an image.
+  const given = await page.evaluate(async () => {
+    const client = window.ApiClient;
+    const id = new URLSearchParams(location.hash.split("?")[1]).get("id") ?? (await client.getJSON(client.getUrl("Sessions"))).find((s) => s.NowPlayingItem)?.NowPlayingItem.Id;
+    return (await client.getItem(client.getCurrentUserId(), id)).Chapters;
+  });
+  if (JSON.stringify(given.map((c) => [c.Name, c.StartPositionTicks / 1e7])) !== JSON.stringify(chapters)) throw new Error(`chapters: ${JSON.stringify(given)}`);
+  if (given.some((c) => "ImageTag" in c)) throw new Error(`a chapter has an ImageTag: ${JSON.stringify(given)}`);
+  await page.mouse.move(600, 400);
+  const osd = await page.evaluate(() => ({
+    markers: document.querySelectorAll(".sliderMarkerContainer .sliderMarker").length,
+    next: !document.querySelector(".btnNextChapter")?.classList.contains("hide"),
+    previous: !document.querySelector(".btnPreviousChapter")?.classList.contains("hide"),
+  }));
+  if (osd.markers !== chapters.length || !osd.next || !osd.previous) throw new Error(`the player's chapter controls: ${JSON.stringify(osd)}`);
+
+  for (const [name, start] of chapters.slice(1)) {
+    const seeked = Date.now();
+    await page.mouse.move(600, 400);
+    const landed = await seekedAfter(page, () => page.click(".btnNextChapter"));
+    if (landed < start - 0.5 || landed > start + 1) throw new Error(`${name}: the seek landed at ${landed} s, not ${start} s`);
+    if (how !== "direct") {
+      // The segment asked for is the one at the chapter on the playlist's clock.
+      const segment = await waitFor(`a segment at ${start} s`, async () => seen.hls.find((r) => r.at > seeked && r.status === 200 && /\/\d+\.mp4$/i.test(r.path)
+        && Math.abs(Number(r.path.match(/\/(\d+)\.mp4$/i)[1]) - Math.floor(start / 4)) <= 1), 60000);
+      console.log(`      ${name}: segment ${segment.path.match(/\/(\d+)\.mp4$/i)[1]} for ${start} s`);
+    }
+    await advances(page, 1.5);
+  }
+  // Ten seconds into the last chapter, previous goes back to the middle one.
+  await page.mouse.move(600, 400);
+  const back = await seekedAfter(page, () => page.click(".btnPreviousChapter"));
+  if (back < 19.5 || back > 21) throw new Error(`previous chapter landed at ${back} s, not 20 s`);
+  noErrors(seen);
+  if (imageRequests.length) throw new Error(`the page asked for chapter images: ${imageRequests.join(" ")}`);
+  await leave(page);
+}
+await scenario("chapters, direct play, Matroska: the player's chapter buttons seek to each chapter", (v) => chapterSeek(v, "Chapters Direct", "direct"));
+await scenario("chapters, direct play, MP4: the player's chapter buttons seek to each chapter", (v) => chapterSeek(v, "Chapters Mp4", "direct"));
+await scenario("chapters, transcode with the video copied and the stream starting late", (v) => chapterSeek(v, "Chapters Copy", "copy"));
+await scenario("chapters, transcode with the video re-encoded and the stream starting late", (v) => chapterSeek(v, "Chapters Encode", "encode"));
+
 // AV1 is decoded in software by Chrome, so CI plays it: direct play, and a copy
 // through HLS, in either container and from S3, cut where the playlist says.
 await scenario("copy, POSIX, Matroska: AV1 and AC3 plays with the video copied", (v) => copiedFilm(v, "Transcode", "Sampi Film", `${media}/Sampi Film (2080)/Sampi Film (2080).mkv`, "POSIX AV1 mkv", /^av01\.0\.\d\dM\.08$/));
