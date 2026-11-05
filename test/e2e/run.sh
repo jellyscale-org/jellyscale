@@ -191,6 +191,44 @@ for codec in opus flac; do
     -map 0:v -map 1:a -vf interlace=scan=tff -c:v libx264 -preset ultrafast -flags +ilme+ildct -x264-params tff=1 -g 50 \
     -c:a "$encoder" -ac 2 "$file" || exit 1
 done
+# Films with chapters (Opening at 0 s, Middle Part at 20 s, and one untitled at
+# 45.5 s, which Jellyfin names "Chapter 3"). Chrome plays the first two as they are.
+# The other two are transcoded, the audio of one needs it (AC3, so its video is
+# copied) and the other's video does (interlaced), and their streams start 2 s
+# late: chapters are on the file's clock, which a transcode keeps (-copyts), so a
+# chapter seek must land where the file says, not 2 s early or late.
+chapters="$work/chapters.txt"
+cat >"$chapters" <<'E3'
+;FFMETADATA1
+[CHAPTER]
+TIMEBASE=1/1000
+START=0
+END=20000
+title=Opening
+[CHAPTER]
+TIMEBASE=1/1000
+START=20000
+END=45500
+title=Middle Part
+[CHAPTER]
+TIMEBASE=1/1000
+START=45500
+END=90000
+E3
+chaptered() { # name container offset_seconds video_args audio_codec
+  local file="$work/media/transcode/$1/$1.$2"
+  [[ -f $file ]] && return
+  mkdir -p "$(dirname "$file")"
+  # shellcheck disable=SC2086
+  ffmpeg -nostdin -v error -y \
+    -itsoffset "$3" -f lavfi -i "testsrc2=size=640x360:rate=24:duration=90" \
+    -itsoffset "$3" -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=90" \
+    -i "$chapters" -map 0:v -map 1:a -map_metadata 2 -map_chapters 2 $4 -c:a "$5" -metadata:s:a:0 language=eng "$file" || { echo "could not make $file" >&2; exit 1; }
+}
+chaptered "Chapters Direct (2095)" mkv 0 "-c:v libx264 -preset ultrafast -g 48" aac
+chaptered "Chapters Mp4 (2096)" mp4 0 "-c:v libx264 -preset ultrafast -g 48" aac
+chaptered "Chapters Copy (2097)" mkv 2 "-c:v libx264 -preset ultrafast -g 48" ac3
+chaptered "Chapters Encode (2098)" mkv 2 "-vf interlace=scan=tff -c:v libx264 -preset ultrafast -flags +ilme+ildct -x264-params tff=1 -g 48" aac
 # A 1080p film for measuring what a copy saves: noisy, so the encode has work to do.
 big="$work/media/transcode/Stigma Film (2047)/Stigma Film (2047).mkv"
 if [[ ! -f $big ]]; then

@@ -37,6 +37,9 @@ type Probe struct {
 	Width        int
 	Height       int
 	Streams      []map[string]any
+	// Chapters are the file's, as the item DTO lists them. Never nil once
+	// probed: an empty list means the file has none.
+	Chapters []map[string]any
 	// Keyframes are the video's keyframe times, from ReadKeyframes. Nil: not
 	// looked for, or it failed and a later scan tries again. Empty: the file
 	// has no index to read.
@@ -98,12 +101,16 @@ type ffprobeOutput struct {
 			Forced  int `json:"forced"`
 		} `json:"disposition"`
 	} `json:"streams"`
+	Chapters []struct {
+		StartTime string            `json:"start_time"`
+		Tags      map[string]string `json:"tags"`
+	} `json:"chapters"`
 }
 
 // ProbeInput runs ffprobe on a path or URL.
 func ProbeInput(ctx context.Context, input string) (Probe, error) {
 	var out, errOut bytes.Buffer
-	cmd := exec.CommandContext(ctx, "ffprobe", "-v", "error", "-show_format", "-show_streams",
+	cmd := exec.CommandContext(ctx, "ffprobe", "-v", "error", "-show_format", "-show_streams", "-show_chapters",
 		"-of", "json", "--", input)
 	cmd.Stdout, cmd.Stderr = &out, &errOut
 	if err := cmd.Run(); err != nil {
@@ -127,6 +134,7 @@ func ProbeInput(ctx context.Context, input string) (Probe, error) {
 		RunTimeTicks: int64(duration * ticksPerSecond),
 		Bitrate:      bitrate,
 		Streams:      []map[string]any{},
+		Chapters:     chaptersOf(parsed),
 	}
 	for _, stream := range parsed.Streams {
 		if stream.CodecType == "attachment" {
@@ -225,6 +233,34 @@ func ProbeInput(ctx context.Context, input string) (Probe, error) {
 		probe.Streams = append(probe.Streams, entry)
 	}
 	return probe, nil
+}
+
+// chaptersOf lists the chapters as Jellyfin's item DTO does: start positions in
+// ticks on the file's own clock, which is the clock transcodes keep (-copyts),
+// and a name, "Chapter 3" for one the file leaves untitled. ImageTag is
+// absent, which is how jellyfin-web knows there is no picture to ask for;
+// ImageDateModified is Jellyfin's "never" for a chapter with none.
+func chaptersOf(parsed ffprobeOutput) []map[string]any {
+	chapters := []map[string]any{}
+	for i, chapter := range parsed.Chapters {
+		start, err := strconv.ParseFloat(chapter.StartTime, 64)
+		if err != nil || !(start >= 0) {
+			continue
+		}
+		name := strings.TrimSpace(chapter.Tags["title"])
+		if name == "" {
+			name = fmt.Sprintf("Chapter %d", i+1)
+		}
+		chapters = append(chapters, map[string]any{
+			"StartPositionTicks": int64(min(start, maxDuration) * ticksPerSecond),
+			"Name":               name,
+			"ImageDateModified":  "0001-01-01T00:00:00.0000000Z",
+		})
+	}
+	slices.SortStableFunc(chapters, func(a, b map[string]any) int {
+		return cmp.Compare(a["StartPositionTicks"].(int64), b["StartPositionTicks"].(int64))
+	})
+	return chapters
 }
 
 // bitDepth reads the depth from ffprobe's pixel format name, "yuv420p10le"
