@@ -162,6 +162,12 @@ for interlaced in "Zeta Interlaced (2050)" "Theta Interlaced (2051)" "Mu Interla
     -map 0:v -map 1:a -map 2:a -vf interlace=scan=tff -c:v libx264 -preset ultrafast -flags +ilme+ildct -x264-params tff=1 -g 50 \
     -c:a:0 ac3 -c:a:1 aac -metadata:s:a:0 language=eng -metadata:s:a:1 language=spa "$file" || exit 1
 done
+# Two more of Zeta and of its interlaced twin, for the scenario that checks how far a
+# job runs ahead of the viewer: it needs segments nobody has made yet.
+for lead in "Lead Copy Film (2094):Zeta Film (2023)" "Lead Encode Film (2095):Zeta Interlaced (2050)"; do
+  to=${lead%%:*} from=${lead#*:}
+  [[ -f "$work/media/transcode/$to/$to.mkv" ]] || { mkdir -p "$work/media/transcode/$to" && ln "$work/media/transcode/$from/$from.mkv" "$work/media/transcode/$to/$to.mkv"; }
+done
 # Interlaced H.264 whose audio Chrome plays: the video is re-encoded and the audio
 # copied. Two AAC tracks (440 and 880 Hz) to switch between; the MP4 has the
 # bitrate of its tracks, which the bitrate cap scenario counts the copy by.
@@ -265,7 +271,7 @@ s3="endpoint=http://127.0.0.1:$seaweed_port&region=us-east-1"
 # them on S3, so the transcode store is exercised on both.
 cat >"$work/config-s3.json" <<E2
 {"name": "e2e", "adminUser": "admin", "webDir": "$repo/web-dist", "scanInterval": "1h",
- "transcodeStore": "s3://e2e/segments?$s3", "transcodeScratch": "$work/scratch", "transcodeIdle": "10s", "libraries": [
+ "transcodeStore": "s3://e2e/segments?$s3", "transcodeScratch": "$work/scratch", "transcodeIdle": "10s", "transcodeLead": "20s", "libraries": [
   {"name": "Movies", "kind": "movies", "media": "file://$work/media/movies", "assets": "file://$work/assets/movies"},
   {"name": "Shows", "kind": "tvshows", "media": "file://$work/media/shows", "assets": "file://$work/assets/shows"},
   {"name": "Transcode", "kind": "movies", "media": "file://$work/media/transcode", "assets": "file://$work/assets/transcode"},
@@ -373,19 +379,21 @@ cp "$repo/test/e2e/browse.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/transco
 result=0
 export E2E_SCRATCH="$work/scratch" E2E_MEDIA="$work/media/transcode" E2E_ASSETS="$work/assets/transcode" E2E_PG="$pg" E2E_LOG="$logs/server.log"
 # The transcode gate ends by killing the worker, so subtitles run before it.
+# Each gate has 1500 s; transcode took 818 s on main before the read-ahead
+# scenarios and over 900 s after.
 for gate in ${E2E_GATES:-browse play subtitles transcode}; do
   echo "=== $gate"
   # One stack serves every gate, so what a gate wrote is the log from here on.
   server_from=$(stat -c %s "$logs/server.log") ffmpeg_from=$(stat -c %s "$logs/ffmpeg.log")
   if [[ -n ${GITHUB_ACTIONS:-} ]]; then
-    (cd "$playwright" && timeout 900 node $gate.mjs "$base" admin e2e-pass) 2>&1 | bash "$repo/test/report.sh" lines "test/e2e/$gate.mjs" "e2e $gate"
+    (cd "$playwright" && timeout 1500 node $gate.mjs "$base" admin e2e-pass) 2>&1 | bash "$repo/test/report.sh" lines "test/e2e/$gate.mjs" "e2e $gate"
     status=${PIPESTATUS[0]}
     if [[ $status -ne 0 ]]; then
       result=1
-      bash "$repo/test/report.sh" fail "test/e2e/$gate.mjs" 1 "e2e $gate" "the gate exited $status (124 is its 900 s limit)"
+      bash "$repo/test/report.sh" fail "test/e2e/$gate.mjs" 1 "e2e $gate" "the gate exited $status (124 is its 1500 s limit)"
     fi
   else
-    (cd "$playwright" && timeout 900 node $gate.mjs "$base" admin e2e-pass) || result=1
+    (cd "$playwright" && timeout 1500 node $gate.mjs "$base" admin e2e-pass) || result=1
   fi
   mkdir -p "$logs/$gate"
   tail -c +$((server_from + 1)) "$logs/server.log" >"$logs/$gate/server.log"

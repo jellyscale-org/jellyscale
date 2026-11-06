@@ -74,7 +74,13 @@ func (s *Server) hlsRequestFor(w http.ResponseWriter, r *http.Request) (hlsReque
 	req.hash = req.spec.Hash()
 	req.layout = req.media.Layout(req.spec.Copy)
 	req.viewer = transcode.Viewer{PlaySessionID: req.params.PlaySessionID, DeviceID: req.params.DeviceID, UserID: sessionOf(r).User.ID, Item: req.spec.Item}
-	if err := s.Transcode.Watch(r.Context(), req.viewer, req.hash); err != nil {
+	// The segment rides on the write every request makes, for the worker to
+	// bound the job by.
+	segment := -1
+	if n, valid := playback.ParseSegment(r.PathValue("segmentId"), req.layout.Count()); valid {
+		segment = n
+	}
+	if err := s.Transcode.Watch(r.Context(), req.viewer, req.hash, segment); err != nil {
 		if errors.Is(err, transcode.ErrStopped) {
 			http.Error(w, err.Error(), http.StatusGone)
 		} else {

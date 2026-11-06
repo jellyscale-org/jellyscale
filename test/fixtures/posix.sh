@@ -29,7 +29,7 @@ fi
 # transcode store is exercised on both. Idle is short so closing a tab shows.
 cat >"$work/config.json" <<E2
 {"name": "e2e", "adminUser": "admin", "webDir": "$repo/web-dist", "scanInterval": "1h",
- "transcodeStore": "file://$work/segments", "transcodeScratch": "$work/scratch", "transcodeIdle": "10s", "libraries": [
+ "transcodeStore": "file://$work/segments", "transcodeScratch": "$work/scratch", "transcodeIdle": "10s", "transcodeLead": "20s", "libraries": [
   {"name": "Movies", "kind": "movies", "media": "file://$work/media/movies", "assets": "file://$work/assets/movies"},
   {"name": "Shows", "kind": "tvshows", "media": "file://$work/media/shows", "assets": "file://$work/assets/shows"},
   {"name": "Transcode", "kind": "movies", "media": "file://$work/media/transcode", "assets": "file://$work/assets/transcode"}

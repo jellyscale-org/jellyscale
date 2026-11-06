@@ -6,13 +6,17 @@ import (
 	"errors"
 	"io"
 	"math"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
+	"testing/iotest"
 	"time"
 )
 
@@ -458,5 +462,44 @@ func TestOpenRefusesCredentials(t *testing.T) {
 		if parsed, err := url.Parse(uri); err != nil || refuseCredentials(parsed) != nil {
 			t.Errorf("%s was refused", uri)
 		}
+	}
+}
+
+// resetStore serves bodies that a proxy resets after cut bytes, as it may a
+// GET nobody reads while ffmpeg is paused.
+type resetStore struct {
+	Store
+	cut, opens int
+}
+
+func (s *resetStore) Open(ctx context.Context, key string, offset int64) (io.ReadCloser, error) {
+	s.opens++
+	body, err := s.Store.Open(ctx, key, offset)
+	if err != nil {
+		return nil, err
+	}
+	reset := &net.OpError{Op: "read", Net: "tcp", Err: os.NewSyscallError("read", syscall.ECONNRESET)}
+	return struct {
+		io.Reader
+		io.Closer
+	}{io.MultiReader(io.LimitReader(body, int64(s.cut)), iotest.ErrReader(reset)), body}, nil
+}
+
+func TestReaderResumesAfterAReset(t *testing.T) {
+	ctx := context.Background()
+	inner := NewPosix(t.TempDir())
+	body := bytes.Repeat([]byte("0123456789"), 100)
+	if err := inner.Put(ctx, "k", bytes.NewReader(body)); err != nil {
+		t.Fatal(err)
+	}
+	reset := &resetStore{Store: inner, cut: 300}
+	got, err := io.ReadAll(NewReader(ctx, reset, "k", int64(len(body))))
+	if err != nil || !bytes.Equal(got, body) || reset.opens != 4 {
+		t.Fatalf("read %d of %d bytes in %d opens, err %v", len(got), len(body), reset.opens, err)
+	}
+	// One that resets before delivering anything fails after the same few tries.
+	reset = &resetStore{Store: inner}
+	if _, err := io.ReadAll(NewReader(ctx, reset, "k", int64(len(body)))); !errors.Is(err, syscall.ECONNRESET) || reset.opens != maxResumes+1 {
+		t.Fatalf("%d opens, err %v", reset.opens, err)
 	}
 }
