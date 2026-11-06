@@ -318,6 +318,9 @@ func chapterFrame(ctx context.Context, input string, start int64, toneMap string
 		"-q:v", "3", "-f", "image2pipe", "-c:v", "mjpeg", "-")
 	var out, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &stderr
+	// Wait returns soon after the kill even if something still holds ffmpeg's
+	// output open.
+	cmd.WaitDelay = 5 * time.Second
 	// Pdeathsig fires when the thread that started ffmpeg exits (see subtitles).
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()

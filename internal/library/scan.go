@@ -185,6 +185,13 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 			gone[key] = old
 		}
 	}
+	// A store that lists no video at all, for a library that has some, is far
+	// more likely an empty mount point (a volume that isn't mounted under a
+	// directory that is still there) than a library emptied on purpose: keep
+	// the films and their watch state, and say so.
+	if len(videos) == 0 && len(seen) > 0 {
+		return fmt.Errorf("library %s: the media store lists no videos, but %d are stored; not removing them (is the volume mounted?)", lib.Name, len(seen))
+	}
 
 	// Each film is stored as its probe finishes, so a long first scan shows
 	// progress and a restart keeps the films done.

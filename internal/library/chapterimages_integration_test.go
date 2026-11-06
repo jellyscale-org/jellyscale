@@ -759,6 +759,9 @@ func TestARemovedSourceLeavesNothing(t *testing.T) {
 			f, assets := chapterFixtureAt(t, true, uri)
 			film := filepath.Join(f.media, "Stepped Film (2020)", "Stepped Film (2020).mkv")
 			steppedClip(t, film, 0, 20)
+			// Another film, with no chapters, so the library isn't left empty,
+			// which a scan refuses to take for a removal.
+			steppedClip(t, filepath.Join(f.media, "Other Film (2021)", "Other Film (2021).mkv"))
 			f.scan(t)
 			id := filmID(t, f)
 			mustSync(t, f, id)
@@ -770,8 +773,8 @@ func TestARemovedSourceLeavesNothing(t *testing.T) {
 				t.Fatal(err)
 			}
 			f.scan(t)
-			if n := scalar[int](t, f.pool, "SELECT count(*) FROM media_sources"); n != 0 {
-				t.Fatalf("%d sources left by the scan", n)
+			if n := scalar[int](t, f.pool, "SELECT count(*) FROM media_sources"); n != 1 {
+				t.Fatalf("%d sources left by the scan, want the other film's", n)
 			}
 			if n := scalar[int](t, f.pool, "SELECT count(*) FROM chapter_images"); n != 1 {
 				t.Fatalf("%d rows after the removal, want the one that outlives the source", n)
@@ -1148,6 +1151,27 @@ func TestAScanOfAMissingMediaRootKeepsItsItems(t *testing.T) {
 	defer os.Rename(f.media+".unmounted", f.media)
 	if err := f.scanner.Scan(context.Background(), f.lib); err == nil {
 		t.Error("a scan of a missing media root succeeded")
+	}
+	if n := scalar[int](t, f.pool, "SELECT count(*) FROM media_sources"); n != 1 {
+		t.Fatalf("%d media sources after the scan, want the 1 kept", n)
+	}
+}
+
+// An empty mount point (a volume unmounted under a directory still there)
+// lists as an empty library; the scan keeps the films rather than remove them.
+func TestAScanOfAnEmptyMountPointKeepsItsItems(t *testing.T) {
+	f, _ := chapterFixture(t, false)
+	steppedClip(t, filepath.Join(f.media, "Stepped Film (2020)", "Stepped Film (2020).mkv"), 0, 20)
+	f.scan(t)
+	if err := os.Rename(f.media, f.media+".unmounted"); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { os.RemoveAll(f.media); os.Rename(f.media+".unmounted", f.media) }()
+	if err := os.Mkdir(f.media, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.scanner.Scan(context.Background(), f.lib); err == nil {
+		t.Error("a scan of an empty mount point succeeded")
 	}
 	if n := scalar[int](t, f.pool, "SELECT count(*) FROM media_sources"); n != 1 {
 		t.Fatalf("%d media sources after the scan, want the 1 kept", n)
