@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"math"
+	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -58,6 +59,10 @@ type Jobs struct {
 	// QueueTimeout is how long a job may wait for a worker. WaitTimeout bounds
 	// a request. Zero means the defaults, 6 and 90 seconds.
 	QueueTimeout, WaitTimeout time.Duration
+
+	Log *slog.Logger // Optional.
+
+	reaped atomic.Int64 // When this replica last looked for dead workers.
 }
 
 // queueTimeout is the default for a job's wait in the queue, which workers
@@ -178,6 +183,12 @@ const failureMemory = 30 * time.Second
 // A viewer's own jobs don't count as busy: jellyfin-web asks for the new stream
 // before it deletes the old one, which is about to free its slot.
 func (j *Jobs) Unavailable(ctx context.Context, hash, userID, deviceID string) (reason string, err error) {
+	// At most once a second per replica: a dead worker's slots stop counting
+	// even when no live worker is left to reap it, and a burst of PlaybackInfo
+	// does not scan pg_locks once each. Without it the 10 s lease still holds.
+	if err := j.reap(ctx); err != nil && j.Log != nil {
+		j.Log.Warn("looking for dead transcode workers failed", "error", err)
+	}
 	if err := expireQueued(ctx, j.Pool, orDefault(j.QueueTimeout, queueTimeout)); err != nil {
 		return "", err
 	}

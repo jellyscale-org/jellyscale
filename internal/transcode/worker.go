@@ -62,11 +62,20 @@ type Worker struct {
 	Stall time.Duration
 	// SubtitleTimeout bounds one subtitle extraction; zero is an hour.
 	SubtitleTimeout time.Duration
+	// LivenessConfig connects the liveness lock (Present). It defaults to the
+	// pool's own, which is right except in a test that wants the lock's
+	// connection to go through something else.
+	LivenessConfig *pgx.ConnConfig
 
 	idOnce sync.Once
+	// held ends when the liveness lock is lost, and is nil while it is not held.
+	heldMu sync.Mutex
+	held   context.Context
 }
 
 // Run claims and runs jobs until ctx ends, then waits for ffmpeg to be gone.
+// It claims only while Present holds the liveness lock, and a job runs in a
+// context that ends when the lock is lost.
 func (w *Worker) Run(ctx context.Context) {
 	w.setID()
 	slots := make(chan struct{}, max(w.Slots, 1))
@@ -81,6 +90,11 @@ func (w *Worker) Run(ctx context.Context) {
 	for {
 		select {
 		case slots <- struct{}{}:
+			jobCtx, held := w.jobContext()
+			if !held {
+				<-slots
+				break
+			}
 			job, ok, err := w.claim(ctx)
 			if err != nil && ctx.Err() == nil {
 				w.Log.Error("claiming a transcode job failed", "error", err)
@@ -90,7 +104,7 @@ func (w *Worker) Run(ctx context.Context) {
 				go func() {
 					defer running.Done()
 					defer func() { <-slots }()
-					w.run(ctx, job)
+					w.run(jobCtx, job)
 				}()
 				continue // There may be more queued.
 			}
@@ -164,6 +178,15 @@ func (w *Worker) furthest(ctx context.Context, job claimed, next int) (n int, se
 	return max(n, job.Start), n >= 0, free, err
 }
 
+// registeredAs is SQL true while the worker's row is in transcode_nodes. Reap
+// deletes the row of a worker whose liveness lock is gone, and the worker puts
+// it back only once it holds the lock again, so a worker without its row may
+// not claim a job, renew a lease or store a segment: the cheap check that
+// keeps a reaped worker from extending the grace Reap gave its jobs.
+func registeredAs(idExpr string) string {
+	return `EXISTS (SELECT 1 FROM transcode_nodes WHERE id = ` + idExpr + `)`
+}
+
 // startup is extra lease for a claimed job, which is not heartbeating until
 // ffmpeg is running.
 const startup = 20 * time.Second
@@ -173,7 +196,7 @@ func (w *Worker) claim(ctx context.Context) (claimed, bool, error) {
 	var raw []byte
 	err := w.Pool.QueryRow(ctx, `UPDATE transcode_jobs SET state = 'running', worker = $1,
 			lease_expires_at = now() + make_interval(secs => $2)
-		WHERE id = (SELECT id FROM transcode_jobs WHERE state = 'queued'
+		WHERE `+registeredAs("$1")+` AND id = (SELECT id FROM transcode_jobs WHERE state = 'queued'
 			AND created_at > now() - make_interval(secs => $3) ORDER BY id FOR UPDATE SKIP LOCKED LIMIT 1)
 		RETURNING id, spec_hash, spec, start_segment`, w.ID, (w.lease()+startup).Seconds(), orDefault(w.QueueTimeout, queueTimeout).Seconds()).Scan(&job.ID, &job.Hash, &raw, &job.Start)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -525,8 +548,12 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 				return nil
 			}
 		case <-ctx.Done():
-			stop("worker is shutting down")
-			return fmt.Errorf("%w: worker shut down", errInterrupted)
+			reason := "worker is shutting down"
+			if errors.Is(context.Cause(ctx), errLockLost) {
+				reason = errLockLost.Error()
+			}
+			stop(reason)
+			return fmt.Errorf("%w: %s", errInterrupted, reason)
 		}
 	}
 }
@@ -584,6 +611,9 @@ func (w *Worker) lostReason(ctx context.Context, job claimed) string {
 	if state == "cancelled" {
 		return "a newer job replaced this one, or it was cancelled"
 	}
+	if state == "running" {
+		return "the worker was taken for dead: its liveness lock and row are gone"
+	}
 	return "lease lost: the job is " + state
 }
 
@@ -616,7 +646,7 @@ func checkLast(dir string, n int, layout playback.Layout) error {
 // run; wanted is false when no viewer has asked for the spec lately.
 func (w *Worker) beat(ctx context.Context, job claimed) (alive, wanted bool, err error) {
 	err = w.Pool.QueryRow(ctx, `UPDATE transcode_jobs j SET lease_expires_at = now() + make_interval(secs => $3)
-		WHERE j.id = $1 AND j.worker = $2 AND j.state = 'running'
+		WHERE j.id = $1 AND j.worker = $2 AND j.state = 'running' AND `+registeredAs("$2")+`
 		RETURNING EXISTS (SELECT 1 FROM transcode_viewers v WHERE v.spec_hash = j.spec_hash AND NOT v.stopped
 			AND v.last_seen_at > now() - make_interval(secs => $4))`,
 		job.ID, w.ID, w.lease().Seconds(), w.idle().Seconds()).Scan(&wanted)
@@ -630,6 +660,25 @@ func (w *Worker) beat(ctx context.Context, job claimed) (alive, wanted bool, err
 // job's first. Contents depend on the spec and number only, so a repeat is
 // harmless.
 func (w *Worker) upload(ctx context.Context, job claimed, n int, name string) error {
+	// A put overwrites, and the update below comes after it, so this is what
+	// keeps a worker whose lease is gone (stopped for longer than the lease, cut
+	// off from Postgres, reaped while its connection stood) from overwriting
+	// what the job's new owner stored. The replacement's first segment is
+	// seconds away when this passes; only a put slower than that can overlap.
+	// A database that does not answer is the same as a lease that is gone.
+	fenced, cancel := context.WithTimeout(ctx, w.lease()/2)
+	var owned bool
+	err := w.Pool.QueryRow(fenced, `SELECT EXISTS (SELECT 1 FROM transcode_jobs
+		WHERE id = $1 AND worker = $2 AND state = 'running' AND lease_expires_at > now() AND `+registeredAs("$2")+`)`, job.ID, w.ID).Scan(&owned)
+	cancel()
+	if err != nil {
+		// Unknown is not failed: the job is cut short and restarted, and the
+		// spec is not refused for a database that was slow.
+		return fmt.Errorf("%w: checking the job is still ours: %v", errInterrupted, err)
+	}
+	if !owned {
+		return fmt.Errorf("%w: %s", errInterrupted, w.lostReason(ctx, job))
+	}
 	if n == job.Start {
 		if err := w.put(ctx, SegmentKey(job.Hash, -1), filepath.Join(filepath.Dir(name), "init.mp4")); err != nil {
 			return err

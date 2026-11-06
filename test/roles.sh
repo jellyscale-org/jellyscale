@@ -283,12 +283,20 @@ check "ffmpeg runs for the second session" 1 "$(pgrep -f "ffmpeg.*$work/scratch"
 kill -9 "${pids[0]}" "${pids[1]}" 2>/dev/null
 for _ in $(seq 1 20); do [[ $(pgrep -f "ffmpeg.*$work/scratch" | wc -l) -eq 0 ]] && break; sleep 0.25; done
 check "ffmpeg dies with a worker that was killed" 0 "$(pgrep -f "ffmpeg.*$work/scratch" | wc -l)"
+# Their locks went with them, so the first look for dead workers forgets them, where
+# their rows alone would count them for ten seconds. A PlaybackInfo for a spec with no
+# live job looks (the killed workers' job is live until their leases run out).
+nodes() { docker exec "$pg" psql -U postgres -Atc "select count(*) from transcode_nodes where slots > 0"; }
+curl -s -o /dev/null -X POST -H "$header" -H 'Content-Type: application/json' "127.0.0.1:$api1/Items/$zeta/PlaybackInfo" \
+  -d "{\"DeviceProfile\":$profile,\"MaxStreamingBitrate\":1200000}"
+check "killed workers stop counting at once" 0 "$(nodes)"
 
 # Rolling restart: a worker stops gracefully and its replacement arrives a few
 # seconds later. The request that comes in between waits for it, where it used
 # to be answered 503 at once.
 PATH="$work/bin:$PATH" start --roles=worker
 old=${pids[-1]}
+for _ in $(seq 1 60); do [[ $(nodes) -ge 1 ]] && break; sleep 0.5; done
 info=$(curl -s -X POST -H "$header" -H 'Content-Type: application/json' "127.0.0.1:$api1/Items/$zeta/PlaybackInfo" \
   -d "{\"DeviceProfile\":$profile,\"MaxStreamingBitrate\":1500000}")
 url=$(echo "$info" | python3 -I -c 'import json,sys;print(json.load(sys.stdin)["MediaSources"][0]["TranscodingUrl"])')

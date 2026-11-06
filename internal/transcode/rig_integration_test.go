@@ -35,6 +35,10 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	if id := os.Getenv("JELLYSCALE_TEST_WORKER"); id != "" {
+		workerProcess(id) // A worker of its own, for tests that kill or stop one.
+		return
+	}
 	code := m.Run()
 	if filmDir != "" {
 		os.RemoveAll(filmDir)
@@ -154,7 +158,8 @@ func (r *rig) worker(t *testing.T, change func(*Worker)) (stop func()) {
 		registered.Add(1)
 		go func() {
 			defer registered.Done()
-			Register(ctx, pool, r.log, w.ID, "worker", r.storeURI, w.Slots, 200*time.Millisecond)
+			// A test that sets a heartbeat registers at it, as main does.
+			w.Present(ctx, "worker", r.storeURI, orDefault(w.Heartbeat, 200*time.Millisecond))
 		}()
 		subtitlesDone := make(chan struct{})
 		go func() {

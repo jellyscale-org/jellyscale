@@ -235,11 +235,6 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 		slots = cmp.Or(cfg.TranscodeSlots, 2)
 	}
 	var running sync.WaitGroup
-	running.Add(1)
-	go func() {
-		defer running.Done()
-		transcode.Register(ctx, pool, log, id, strings.Join(roles, ","), cfg.TranscodeStore, slots, 3*time.Second)
-	}()
 	// Called once nothing more will be added to running.
 	finish := func() {
 		go func() {
@@ -261,6 +256,17 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 		ID: id, Pool: pool, Items: &items.Repo{Pool: pool, ServerID: serverID}, Segments: segments, Hub: result.hub, Log: log,
 		Media: media.Open, Scratch: scratch, Slots: slots, Idle: idle, Lead: lead, Retention: retention,
 	}
+	// A worker proves it is alive with a lock of its own, so that a replica
+	// notices its death in a second; the others need no more than the row.
+	running.Add(1)
+	go func() {
+		defer running.Done()
+		if worker {
+			w.Present(ctx, strings.Join(roles, ","), cfg.TranscodeStore, 3*time.Second)
+		} else {
+			transcode.Register(ctx, pool, log, id, strings.Join(roles, ","), cfg.TranscodeStore, slots, 3*time.Second)
+		}
+	}()
 	if worker {
 		// Subtitle extraction needs no transcode store.
 		running.Add(1)
@@ -278,7 +284,7 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 		finish()
 		return result, nil
 	}
-	result.jobs = &transcode.Jobs{Pool: pool, Segments: segments, Hub: result.hub}
+	result.jobs = &transcode.Jobs{Pool: pool, Segments: segments, Hub: result.hub, Log: log}
 	if !worker {
 		finish()
 		return result, nil
