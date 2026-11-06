@@ -1177,3 +1177,21 @@ func TestAScanOfAnEmptyMountPointKeepsItsItems(t *testing.T) {
 		t.Fatalf("%d media sources after the scan, want the 1 kept", n)
 	}
 }
+
+// A frame whose ffmpeg leaves a child holding its output open is still ended
+// by the frame's deadline: the job skips the chapter instead of waiting for it.
+func TestAFrameWithAChildHoldingItsOutputIsBounded(t *testing.T) {
+	f, _ := chapterFixture(t, true)
+	steppedClip(t, filepath.Join(f.media, "Stepped Film (2020)", "Stepped Film (2020).mkv"), 0, 20)
+	f.scan(t)
+	defer library.SetChapterFrameTimeout(time.Second)()
+	fakeFfmpeg(t, `case " $* " in *" -ss 20.000 "*) sleep 30 & exec sleep 30;; esac`)
+	began := time.Now()
+	mustSync(t, f, filmID(t, f))
+	if took := time.Since(began); took > 15*time.Second {
+		t.Fatalf("the job took %s, held by the child's open output", took)
+	}
+	if keys := chapterKeys(t, f); len(keys) != 2 || keys[0] == "" || keys[1] != "" {
+		t.Fatalf("keys %q, want a picture and a skip", keys)
+	}
+}

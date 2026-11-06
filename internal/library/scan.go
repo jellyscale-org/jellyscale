@@ -190,7 +190,7 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 	// directory that is still there) than a library emptied on purpose: keep
 	// the films and their watch state, and say so.
 	if len(videos) == 0 && len(seen) > 0 {
-		return fmt.Errorf("library %s: the media store lists no videos, but %d are stored; not removing them (is the volume mounted?)", lib.Name, len(seen))
+		return fmt.Errorf("library %s: the media store lists no video, but the library has %d stored; keeping them (is the volume mounted?)", lib.Name, len(seen))
 	}
 
 	// Each film is stored as its probe finishes, so a long first scan shows

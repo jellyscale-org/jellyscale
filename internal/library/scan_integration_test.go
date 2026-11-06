@@ -169,8 +169,11 @@ func TestDeletionPrunesEmptyParents(t *testing.T) {
 	second := filepath.Join(f.media, "Show", "Season 02", "Show S02E01.mkv")
 	clip(t, first)
 	clip(t, second)
+	// Another show stays, as a scan refuses to take an empty library for one
+	// whose films were all removed.
+	clip(t, filepath.Join(f.media, "Other", "Season 01", "Other S01E01.mkv"))
 	f.scan(t)
-	if s, se, e := f.count(t, "Series"), f.count(t, "Season"), f.count(t, "Episode"); s != 1 || se != 2 || e != 2 {
+	if s, se, e := f.count(t, "Series"), f.count(t, "Season"), f.count(t, "Episode"); s != 2 || se != 3 || e != 3 {
 		t.Fatalf("got series=%d seasons=%d episodes=%d", s, se, e)
 	}
 
@@ -178,7 +181,7 @@ func TestDeletionPrunesEmptyParents(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.scan(t)
-	if s, se, e := f.count(t, "Series"), f.count(t, "Season"), f.count(t, "Episode"); s != 1 || se != 1 || e != 1 {
+	if s, se, e := f.count(t, "Series"), f.count(t, "Season"), f.count(t, "Episode"); s != 2 || se != 2 || e != 2 {
 		t.Fatalf("after one removal: series=%d seasons=%d episodes=%d", s, se, e)
 	}
 
@@ -186,7 +189,7 @@ func TestDeletionPrunesEmptyParents(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.scan(t)
-	if s, se, e := f.count(t, "Series"), f.count(t, "Season"), f.count(t, "Episode"); s != 0 || se != 0 || e != 0 {
+	if s, se, e := f.count(t, "Series"), f.count(t, "Season"), f.count(t, "Episode"); s != 1 || se != 1 || e != 1 {
 		t.Fatalf("after all removals: series=%d seasons=%d episodes=%d", s, se, e)
 	}
 }
