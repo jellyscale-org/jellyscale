@@ -297,14 +297,32 @@ func (s *Server) themeMedia(w http.ResponseWriter, r *http.Request) {
 
 // itemImage serves the stored image. Clients fetch these from <img> tags, which
 // can't send headers, so the route is public; item IDs aren't guessable.
+// Pictures are served as stored: maxWidth and quality are ignored, because
+// resizing needs ffmpeg or a decoder and this role has neither.
 func (s *Server) itemImage(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("itemId")
-	kind := r.PathValue("imageType")
-	if !db.ValidID(id) || !slices.Contains([]string{"primary", "thumb"}, kind) {
+	kind := strings.ToLower(r.PathValue("imageType"))
+	if !db.ValidID(id) || !slices.Contains([]string{"primary", "thumb", "chapter"}, kind) {
 		http.NotFound(w, r)
 		return
 	}
-	uri, key, found, err := s.Items.Image(r.Context(), id)
+	var uri, key string
+	var found bool
+	var err error
+	if kind == "chapter" {
+		// Jellyfin answers a bare /Images/Chapter with the first one, and the tag
+		// it is given isn't checked, only used for caching.
+		n := 0
+		if index := r.PathValue("imageIndex"); index != "" {
+			if n, err = strconv.Atoi(index); err != nil || n < 0 {
+				http.NotFound(w, r)
+				return
+			}
+		}
+		uri, key, found, err = s.Items.ChapterImage(r.Context(), id, n)
+	} else {
+		uri, key, found, err = s.Items.Image(r.Context(), id)
+	}
 	if err != nil {
 		s.fail(w, r, err)
 		return
@@ -328,8 +346,14 @@ func (s *Server) itemImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer reader.Close()
-	// The key is a content hash, so a changed image gets a new tag and URL.
+	// The key is a content hash (a chapter's has the file's ETag in it), so a
+	// changed image gets a new tag and URL. A chapter asked for with no tag
+	// can't be told from the next file's, so it isn't kept, as Jellyfin has it;
+	// nor is one asked for with a tag that isn't this picture's (a stale DTO).
 	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	if kind == "chapter" && r.URL.Query().Get("tag") != items.ChapterTag(key) {
+		w.Header().Set("Cache-Control", "public")
+	}
 	w.Header().Set("Content-Type", "image/jpeg")
 	io.Copy(w, reader) //nolint:errcheck
 }

@@ -229,6 +229,17 @@ chaptered "Chapters Direct (2095)" mkv 0 "-c:v libx264 -preset ultrafast -g 48" 
 chaptered "Chapters Mp4 (2096)" mp4 0 "-c:v libx264 -preset ultrafast -g 48" aac
 chaptered "Chapters Copy (2097)" mkv 2 "-c:v libx264 -preset ultrafast -g 48" ac3
 chaptered "Chapters Encode (2098)" mkv 2 "-vf interlace=scan=tff -c:v libx264 -preset ultrafast -flags +ilme+ildct -x264-params tff=1 -g 48" aac
+# The same four again in a library with chapter pictures on, where the details
+# page lists the chapters. The other library has them off, as Jellyfin does by default.
+scene() { # title chapters_film container
+  local from="$work/media/transcode/$2/$2.$3" to="$work/media/scenes/$1/$1.$3"
+  [[ -f $to ]] && return
+  mkdir -p "$(dirname "$to")" && ln "$from" "$to"
+}
+scene "Scenes Direct (2105)" "Chapters Direct (2095)" mkv
+scene "Scenes Mp4 (2106)" "Chapters Mp4 (2096)" mp4
+scene "Scenes Copy (2107)" "Chapters Copy (2097)" mkv
+scene "Scenes Encode (2108)" "Chapters Encode (2098)" mkv
 # A 1080p film for measuring what a copy saves: noisy, so the encode has work to do.
 big="$work/media/transcode/Stigma Film (2047)/Stigma Film (2047).mkv"
 if [[ ! -f $big ]]; then
@@ -258,6 +269,7 @@ cat >"$work/config-s3.json" <<E2
   {"name": "Movies", "kind": "movies", "media": "file://$work/media/movies", "assets": "file://$work/assets/movies"},
   {"name": "Shows", "kind": "tvshows", "media": "file://$work/media/shows", "assets": "file://$work/assets/shows"},
   {"name": "Transcode", "kind": "movies", "media": "file://$work/media/transcode", "assets": "file://$work/assets/transcode"},
+  {"name": "Scenes", "kind": "movies", "media": "file://$work/media/scenes", "assets": "file://$work/assets/scenes", "chapterImages": true},
   {"name": "Cloud", "kind": "movies", "media": "s3://e2e/media?$s3", "assets": "s3://e2e/assets?$s3"}
 ]}
 E2
@@ -354,7 +366,7 @@ export E2E_BASE_NOSTORE="http://127.0.0.1:$norouter"
 for p in $api1 $api2 $stream; do
   for _ in $(seq 1 60); do curl -fs -o /dev/null "http://127.0.0.1:$p/healthz" && break; sleep 0.25; done
 done
-for _ in $(seq 1 120); do [[ $(grep -c 'scan finished' "$logs/server.log") -ge 4 ]] && break; sleep 0.5; done
+for _ in $(seq 1 120); do [[ $(grep -c 'scan finished' "$logs/server.log") -ge 5 ]] && break; sleep 0.5; done
 
 base="http://127.0.0.1:$router"
 cp "$repo/test/e2e/browse.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/transcode.mjs" "$repo/test/e2e/subtitles.mjs" "$playwright/"

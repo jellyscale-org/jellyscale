@@ -1,0 +1,39 @@
+{
+  "about": "jellyfin/jellyfin:12.4, disposable container, observed 2026-11-05. Fixture: a 60 s 640x360 Matroska film with three chapters (Opening 0 s, Middle Part 20 s, one untitled at 45.5 s), the same file in a library per option setting. Values are as the server answered; tags and paths are of that run.",
+  "libraryOptionDefaults": {
+    "EnableChapterImageExtraction": false,
+    "ExtractChapterImagesDuringLibraryScan": false
+  },
+  "scheduledTask": {
+    "Key": "RefreshChapterImages",
+    "Name": "Extract Chapter Images",
+    "Category": "Library",
+    "Triggers": [{"Type": "DailyTrigger", "TimeOfDayTicks": 72000000000, "MaxRuntimeTicks": 144000000000}],
+    "note": "daily at 20:00, for at most 4 hours"
+  },
+  "whenMade": {
+    "EnableChapterImageExtraction=true, ExtractChapterImagesDuringLibraryScan=true": "ImageTag on every chapter when the library scan had finished (about 40 s after creating the library)",
+    "EnableChapterImageExtraction=true only": "no ImageTag after the scan; after POST /ScheduledTasks/Running/{RefreshChapterImages id} (204), ImageTag on every chapter within 15 s",
+    "neither": "no ImageTag, ImageDateModified 0001-01-01T00:00:00.0000000Z"
+  },
+  "chapterWithImage": {
+    "StartPositionTicks": 0,
+    "Name": "Opening",
+    "ImagePath": "/config/metadata/library/b9/b927c4a261c3b8ae72ce41c52dca6c66/chapters/639295007238997042_0.jpg",
+    "ImageDateModified": "2026-11-05T18:39:46.681116Z",
+    "ImageTag": "55a49511580744eb5c4c6ddbd27e174a"
+  },
+  "storedFiles": ["chapters/639295007238997042_0.jpg", "chapters/639295007238997042_200000000.jpg", "chapters/639295007238997042_455000000.jpg"],
+  "storedPictureSize": "640x360, the film's own; no resizing at extraction",
+  "imageRoute": {
+    "GET /Items/{id}/Images/Chapter/0": {"status": 200, "Content-Type": "image/jpeg", "Cache-Control": "public", "Content-Length": 19495, "size": "640x360"},
+    "GET /Items/{id}/Images/Chapter/0?maxWidth=400&tag={tag}&quality=90": {"status": 200, "Content-Type": "image/jpeg", "Cache-Control": "public, max-age=31536000, immutable", "ETag": "\"{tag}\"", "Content-Length": 14118, "size": "400x225"},
+    "GET /Items/{id}/Images/Chapter/0?maxWidth=100&tag={tag}": {"status": 200, "Content-Length": 4635, "Cache-Control": "public, max-age=31536000, immutable"},
+    "GET /Items/{id}/Images/Chapter/0?tag=bogus": {"status": 200, "ETag": "\"bogus\"", "note": "the tag is not checked against the picture; it is only echoed and makes the response cacheable"},
+    "GET /Items/{id}/Images/Chapter": {"status": 200, "note": "the first picture, no index needed"},
+    "GET /Items/{id}/Images/Chapter/5": {"status": 404, "Content-Type": "application/json; charset=utf-8"},
+    "GET /Items/{id}/Images/Chapter/-1": {"status": 404},
+    "GET /Items/{id}/Images/Chapter/0 of a film without pictures": {"status": 404}
+  },
+  "jellyfinWeb": "the details page lists chapter cards only when Chapters[0].ImageTag is set; each card asks for /Items/{id}/Images/Chapter/{n}?maxWidth=400&tag={tag}; a card is a button with data-positionticks and starts playback there (see chapters-12.4.json for the page and the player)"
+}

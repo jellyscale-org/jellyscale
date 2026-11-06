@@ -14,7 +14,7 @@ One binary, chosen with `--roles`, run as separate Deployments. Roles version to
 |---|---|---|---|---|
 | `api` | REST, WebSocket, PlaybackInfo | Connections | CPU, connections | Postgres, and the asset store to see which subtitles are cached while no worker runs |
 | `stream` | Sends bytes: direct play, playlists, segments, images, subtitles | None | Bandwidth | Postgres, stores |
-| `worker` | Runs media tools: transcodes, burn-in, subtitle extraction, scans, probes | Scratch only | Slots, queue depth | Postgres, stores, ffmpeg |
+| `worker` | Runs media tools: transcodes, burn-in, subtitle extraction, chapter pictures, scans, probes | Scratch only | Slots, queue depth | Postgres, stores, ffmpeg |
 
 ## Rules
 

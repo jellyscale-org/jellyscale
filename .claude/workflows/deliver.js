@@ -52,8 +52,10 @@ const SNAPSHOT = {
 // snapshot, not just this run's fixes.
 // designReview: false skips the review before building, for a fix pass on work
 // whose design has been reviewed.
-const { task, acceptance = [], tests = [], ux = false, maxRounds = 2, roleFiles = false, base: earlierBase, designReview = true } = args
+const { task, acceptance = [], tests = [], ux = false, maxRounds = 2, roleFiles = false, base: earlierBase, designReview = true, reviewOnly = false } = args
 if (!task) throw new Error('deliver needs args.task')
+// reviewOnly reviews what is already in the tree (fixes the lead made by hand) without an implementer run.
+if (reviewOnly && !earlierBase) throw new Error('reviewOnly needs args.base')
 
 const criteria = acceptance.map((line) => `- ${line}`).join('\n')
 const commands = tests.map((line) => `- ${line}`).join('\n')
@@ -150,7 +152,7 @@ if (designReview) {
 
 phase('Implement')
 const base = earlierBase ?? await snapshot('snapshot before')
-let implementation = await agent(`${rolePrefix('implementer')}${brief}\n\nImplement this. Don't commit.`, {
+let implementation = reviewOnly ? { summary: 'Already in the working tree; nothing implemented by this run.' } : await agent(`${rolePrefix('implementer')}${brief}\n\nImplement this. Don't commit.`, {
   label: 'implement',
   phase: 'Implement',
   ...roleOptions('implementer'),

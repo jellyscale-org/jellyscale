@@ -57,6 +57,11 @@ func TestConformance(t *testing.T) {
 				t.Fatalf("prefix listing: %+v", scoped)
 			}
 
+			// A prefix with nothing under it lists nothing, on every backend.
+			if none, err := s.List(ctx, "nothing/here/"); err != nil || len(none) != 0 {
+				t.Fatalf("listing an empty prefix: %+v %v", none, err)
+			}
+
 			stream, err := s.Open(ctx, "b/two.bin", 9995)
 			if err != nil {
 				t.Fatal(err)

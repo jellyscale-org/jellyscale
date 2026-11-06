@@ -65,6 +65,17 @@ func (p *Posix) List(ctx context.Context, prefix string) ([]Object, error) {
 		})
 		return nil
 	})
+	if errors.Is(err, fs.ErrNotExist) && root != p.root {
+		// A prefix with nothing under it lists nothing, as on S3, but only
+		// under a root that is there (a missing root, an unmounted volume, is
+		// an error, or a scan would take it for an empty library), and only
+		// when the prefix itself is missing, not a directory that vanished
+		// during the walk.
+		_, rootErr := os.Stat(p.root)
+		if _, prefixErr := os.Stat(root); rootErr == nil && errors.Is(prefixErr, fs.ErrNotExist) {
+			return nil, nil
+		}
+	}
 	if err != nil {
 		return nil, fmt.Errorf("list %s: %w", root, err)
 	}

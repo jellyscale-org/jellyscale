@@ -3,12 +3,14 @@
 package main
 
 import (
+	"bytes"
 	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -54,6 +56,22 @@ type config struct {
 	TranscodeRetention string `json:"transcodeRetention"`
 }
 
+// parseConfig refuses a key it doesn't know, so a mistyped option is an error
+// at startup and not an option silently left off.
+func parseConfig(raw []byte) (config, error) {
+	var cfg config
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&cfg); err != nil {
+		return cfg, err
+	}
+	// Anything after the config, such as a second object pasted in, is refused too.
+	if _, err := decoder.Token(); err != io.EOF {
+		return cfg, errors.New("unexpected data after the config")
+	}
+	return cfg, nil
+}
+
 func main() {
 	roles := flag.String("roles", "all", "comma-separated roles: api, stream, worker, or all")
 	listen := flag.String("listen", ":8096", "HTTP listen address")
@@ -87,7 +105,7 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 		if err != nil {
 			return err
 		}
-		if err := json.Unmarshal(raw, &cfg); err != nil {
+		if cfg, err = parseConfig(raw); err != nil {
 			return fmt.Errorf("parse config: %w", err)
 		}
 	}
@@ -241,6 +259,11 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 		go func() {
 			defer running.Done()
 			w.RunSubtitles(ctx)
+		}()
+		running.Add(1)
+		go func() {
+			defer running.Done()
+			w.RunChapterImages(ctx)
 		}()
 	}
 	if segments == nil {

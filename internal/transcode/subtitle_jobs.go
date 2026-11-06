@@ -37,6 +37,11 @@ const (
 	// subtitleSlots is how many extractions a worker runs at once, so a burst
 	// of tracks can't use up CPU, connections or the object store.
 	subtitleSlots = 4
+	// chapterSlots is how many films' chapter pictures a worker makes at once.
+	// They are background work, a seek into the file for every chapter, so they
+	// take no subtitle slot: a library full of them must not hold up a viewer's
+	// track.
+	chapterSlots = 2
 )
 
 var (
@@ -175,7 +180,7 @@ func awaitJob(ctx context.Context, pool *pgxpool.Pool, hub *Hub, job subtitleJob
 		// A running job whose lease has lapsed is as good as queued.
 		err := pool.QueryRow(ctx, `SELECT COALESCE(j.state, ''), COALESCE(j.error, ''), COALESCE(j.permanent, false), `+workerAliveSQL+`,
 				COALESCE(j.state = 'queued' OR (j.state = 'running' AND j.lease_expires_at < now()), false),
-				EXISTS (SELECT 1 FROM subtitle_jobs WHERE state = 'running' AND lease_expires_at > now())
+				EXISTS (SELECT 1 FROM subtitle_jobs WHERE state = 'running' AND lease_expires_at > now() AND kind <> 'chapters')
 			FROM (SELECT 1) one LEFT JOIN subtitle_jobs j ON j.key = $2`, workerAlive.Seconds(), job.Key).Scan(&state, &reason, &permanent, &alive, &unclaimed, &extracting)
 		if err != nil {
 			return err
@@ -218,8 +223,19 @@ type subtitleJob struct {
 // RunSubtitles claims subtitle jobs until ctx ends, up to four at a time,
 // separately from the transcode slots, and waits for its extractions to end.
 func (w *Worker) RunSubtitles(ctx context.Context) {
+	w.runJobs(ctx, false, subtitleSlots)
+}
+
+// RunChapterImages claims chapter-image jobs until ctx ends, two at a time, on
+// slots of their own, and waits for them to end.
+func (w *Worker) RunChapterImages(ctx context.Context) {
+	w.runJobs(ctx, true, chapterSlots)
+}
+
+// runJobs claims the jobs of one queue, chapter images or the rest.
+func (w *Worker) runJobs(ctx context.Context, chapters bool, n int) {
 	w.setID()
-	slots := make(chan struct{}, subtitleSlots)
+	slots := make(chan struct{}, n)
 	var running sync.WaitGroup
 	defer running.Wait()
 	wake, unsubscribe := w.Hub.Subscribe(subtitleHint)
@@ -229,7 +245,7 @@ func (w *Worker) RunSubtitles(ctx context.Context) {
 	for {
 		select {
 		case slots <- struct{}{}:
-			job, ok, err := w.claimSubtitle(ctx)
+			job, ok, err := w.claimSubtitle(ctx, chapters)
 			if err != nil && ctx.Err() == nil {
 				w.Log.Error("claiming a subtitle job failed", "error", err)
 			}
@@ -266,8 +282,9 @@ func (w *Worker) setID() {
 
 // claimSubtitle takes a queued job, or one whose worker stopped renewing its
 // lease. A job whose lease has been lost subtitleAttempts times is failed
-// instead, since whatever it does is killing its workers.
-func (w *Worker) claimSubtitle(ctx context.Context) (subtitleJob, bool, error) {
+// instead, since whatever it does is killing its workers. Chapter-image jobs
+// and the others are claimed apart, so neither waits behind the other.
+func (w *Worker) claimSubtitle(ctx context.Context, chapters bool) (subtitleJob, bool, error) {
 	if _, err := w.Pool.Exec(ctx, `UPDATE subtitle_jobs SET state = 'failed', permanent = true, error = 'the worker stopped renewing its lease', ended_at = now()
 		WHERE state = 'running' AND lease_expires_at < now() AND attempts >= $1`, subtitleAttempts); err != nil {
 		return subtitleJob{}, false, err
@@ -275,9 +292,10 @@ func (w *Worker) claimSubtitle(ctx context.Context) (subtitleJob, bool, error) {
 	var job subtitleJob
 	err := w.Pool.QueryRow(ctx, `UPDATE subtitle_jobs SET state = 'running', worker = $1, attempts = attempts + 1,
 			lease_expires_at = now() + make_interval(secs => $2)
-		WHERE key = (SELECT key FROM subtitle_jobs WHERE state = 'queued' OR (state = 'running' AND lease_expires_at < now())
+		WHERE key = (SELECT key FROM subtitle_jobs WHERE (state = 'queued' OR (state = 'running' AND lease_expires_at < now()))
+				AND (kind = 'chapters') = $3
 			ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1)
-		RETURNING key, kind, item_id, source_id, idx`, w.ID, w.lease().Seconds()).Scan(&job.Key, &job.Kind, &job.Item, &job.Source, &job.Index)
+		RETURNING key, kind, item_id, source_id, idx`, w.ID, w.lease().Seconds(), chapters).Scan(&job.Key, &job.Kind, &job.Item, &job.Source, &job.Index)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return job, false, nil
 	}
@@ -339,6 +357,9 @@ wait:
 	case ctx.Err() != nil:
 		// The worker is going away, which isn't the track's fault.
 		state = "queued"
+	case job.Kind == "chapters":
+		log.Error("chapter image job failed", "item", job.Item, "error", err)
+		state, reason = "failed", err.Error()
 	default:
 		log.Error("subtitle extraction failed", "error", err)
 		state, reason = "failed", err.Error()
@@ -358,6 +379,11 @@ wait:
 // so that it costs one job and not one for every request and every scan; any
 // other failure, a store that didn't answer or a timeout, is only the job's.
 func (w *Worker) extractTrack(ctx context.Context, job subtitleJob, log *slog.Logger) error {
+	if job.Kind == "chapters" {
+		// Before the source is looked up: a removed source has no row, and its
+		// pictures are still to be deleted.
+		return library.SyncChapterImages(ctx, w.Pool, job.Source, w.Media, log)
+	}
 	source, found, err := w.Items.Source(ctx, job.Item, job.Source)
 	if err != nil {
 		return err
