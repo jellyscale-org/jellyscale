@@ -164,7 +164,8 @@ for interlaced in "Zeta Interlaced (2050)" "Theta Interlaced (2051)" "Mu Interla
 done
 # Two more of Zeta and of its interlaced twin, for the scenario that checks how far a
 # job runs ahead of the viewer: it needs segments nobody has made yet.
-for lead in "Lead Copy Film (2094):Zeta Film (2023)" "Lead Encode Film (2095):Zeta Interlaced (2050)"; do
+# The same twice more for the scenarios that kill the worker playing a film.
+for lead in "Lead Copy Film (2094):Zeta Film (2023)" "Lead Encode Film (2095):Zeta Interlaced (2050)" "Failover Copy Film (2110):Zeta Film (2023)" "Failover Encode Film (2111):Zeta Interlaced (2050)"; do
   to=${lead%%:*} from=${lead#*:}
   [[ -f "$work/media/transcode/$to/$to.mkv" ]] || { mkdir -p "$work/media/transcode/$to" && ln "$work/media/transcode/$from/$from.mkv" "$work/media/transcode/$to/$to.mkv"; }
 done
@@ -369,6 +370,12 @@ export E2E_NOSTORE="$work/bin/nostore"
 node "$repo/test/e2e/router.mjs" "$norouter" "$nostream" "$api1,$api2" >>"$logs/server.log" 2>&1 &
 pids+=($!)
 export E2E_BASE_NOSTORE="http://127.0.0.1:$norouter"
+# More workers for the scenarios that kill one with another to take over. A
+# scenario starts them and stops the main worker meanwhile, so they get the jobs.
+printf '#!/bin/sh\nPATH="%s:%s" exec "%s" --roles=worker --config "%s" >>"%s" 2>&1\n' \
+  "$work/bin" "$PATH" "$work/jellyscale" "$work/config-s3.json" "$logs/server.log" >"$work/bin/worker"
+chmod +x "$work/bin/worker"
+export E2E_WORKER="$work/bin/worker"
 for p in $api1 $api2 $stream; do
   for _ in $(seq 1 60); do curl -fs -o /dev/null "http://127.0.0.1:$p/healthz" && break; sleep 0.25; done
 done

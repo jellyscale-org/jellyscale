@@ -1063,6 +1063,60 @@ await scenario("a stream replica without transcodeStore: the dialog, and the log
   }
 });
 
+// A worker killed while it serves a playing film. Two other workers run, and the
+// main one is stopped for the scenario so that it takes no job: the film is
+// served by one of the two, which is then killed with SIGKILL. The other takes
+// the job over at the first missing segment, and the picture goes on: no dialog,
+// no failed request, and no freeze near the ten seconds after which hls.js gives
+// up on a request.
+function parentOf(pid) {
+  return Number(execFileSync("ps", ["-o", "ppid=", "-p", String(pid)]).toString().trim());
+}
+
+for (const flavour of [{ name: "re-encoded", film: "Failover Encode Film", copy: false }, { name: "copied", film: "Failover Copy Film", copy: true }]) await scenario("a worker killed mid-film is replaced by another and the film plays on" + `: ${flavour.name}`, async ({ page, seen }) => {
+  const launch = process.env.E2E_WORKER;
+  if (!launch) throw new Error("the failover scenarios need E2E_WORKER (test/e2e/run.sh sets it)");
+  process.kill(workerPid, "SIGSTOP");
+  const workers = [];
+  try {
+    for (let i = 0; i < 2; i++) workers.push(spawn(launch, [], { stdio: "ignore" }));
+    // Rows of workers killed by the scenario before are forgotten at the next look for dead ones, so count only the rows whose lock is held.
+    await waitFor("both workers to hold their locks", async () => sql(`SELECT count(*) FROM transcode_nodes n WHERE slots > 0 AND locked AND EXISTS (SELECT 1 FROM pg_locks l
+      WHERE l.locktype = 'advisory' AND l.classid = 27219 AND l.objsubid = 2 AND l.objid::bigint = hashtext(n.id)::bigint & 4294967295)`) === "3", 60000);
+    await play(page, "Transcode", flavour.film);
+    await advances(page, 1);
+    const runs = ffmpegRuns();
+    if (runs.length !== 1 || runs[0].copy !== flavour.copy) throw new Error(`expected one ${flavour.name} ffmpeg, saw ${JSON.stringify(runs.map((r) => r.line.slice(0, 200)))}`);
+    const owner = parentOf(runs[0].line.split(" ")[0]);
+    const victim = workers.find((w) => w.pid === owner);
+    const survivor = workers.find((w) => w !== victim);
+    if (!victim) throw new Error(`ffmpeg belongs to process ${owner}, not one of the two workers`);
+    const before = await time(page);
+    const killed = Date.now();
+    victim.kill("SIGKILL");
+    // currentTime must go on, and must not stand still for long: hls.js abandons a request after ten seconds. Killed about a second into playback the buffer is smallest, so this is the worst case: a re-encode stood still 2.5 to 2.8 s, a copy 0.3 s (it had read ahead). The bound leaves CI a little over a second of slack, no more, so a slower takeover fails here.
+    let last = before, moved = Date.now(), freeze = 0, taken = null;
+    while (last < before + 30) {
+      if (Date.now() - killed > 120000) throw new Error(`the film reached ${last.toFixed(1)} s, killed at ${before.toFixed(1)} s`);
+      if (await page.getByText("Playback Error").count()) throw new Error("the viewer got a Playback Error dialog");
+      const now = await time(page);
+      if (now > last + 0.05) { freeze = Math.max(freeze, Date.now() - moved); moved = Date.now(); last = now; }
+      if (Date.now() - moved > 5000) throw new Error(`the picture stood still for ${Date.now() - moved} ms after the kill`);
+      if (!taken && ffmpegRuns().some((r) => parentOf(r.line.split(" ")[0]) === survivor.pid)) taken = Date.now() - killed;
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    freeze = Math.max(freeze, Date.now() - moved);
+    console.log(`      SIGKILL at ${before.toFixed(1)} s: the other worker's ffmpeg started ${taken} ms after it, the longest stand-still was ${freeze} ms`);
+    if (taken === null) throw new Error("the other worker never started an ffmpeg");
+    noErrors(seen);
+    await leave(page);
+    await waitFor("ffmpeg to exit after Stopped", async () => ffmpegRuns().length === 0, 30000);
+  } finally {
+    for (const w of workers) w.kill("SIGKILL");
+    process.kill(workerPid, "SIGCONT");
+  }
+});
+
 // Last, because it stops the worker. A viewer whose transcode can't start must
 // be told, not left to jellyfin-web's retries, which never end on their own.
 if (!process.env.E2E_ONLY || /no worker/i.test(process.env.E2E_ONLY)) {
@@ -1084,7 +1138,7 @@ if (!process.env.E2E_ONLY || /no worker/i.test(process.env.E2E_ONLY)) {
     const asked = [seen.hls.length, seen.infos.length];
     await new Promise((resolve) => setTimeout(resolve, 12000));
     if (seen.hls.length !== asked[0] || seen.infos.length !== asked[1]) throw new Error("the client kept asking after the refusal");
-    // The dead worker still counts as a worker for 10 seconds, so the log may say its slots were busy.
+    // A killed worker's lock is gone, so it counts at once for nothing.
     if (!/a transcode job found (no worker|every slot busy)/.test(readFileSync(process.env.E2E_LOG, "utf8"))) throw new Error("the log doesn't say why the job found no worker");
   });
 
