@@ -33,6 +33,31 @@ func (s *Server) userViews(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, items.Result{Items: views, TotalRecordCount: len(views)})
 }
 
+// videoTypes are the item types with a MediaType, which is Video; a folder,
+// series or season has none, as in Jellyfin.
+var videoTypes = []string{"Movie", "Episode"}
+
+// mediaTypeFilter turns a mediaTypes list into the item types it allows,
+// narrowing include. false means nothing can match.
+func mediaTypeFilter(mediaTypes, include []string) ([]string, bool) {
+	if len(mediaTypes) == 0 {
+		return include, true
+	}
+	if !slices.ContainsFunc(mediaTypes, func(t string) bool { return strings.EqualFold(t, "Video") }) {
+		return nil, false
+	}
+	if len(include) == 0 {
+		return videoTypes, true
+	}
+	var kept []string
+	for _, t := range include {
+		if slices.ContainsFunc(videoTypes, func(v string) bool { return strings.EqualFold(v, t) }) {
+			kept = append(kept, t)
+		}
+	}
+	return kept, len(kept) > 0
+}
+
 // itemQuery reads the shared /Items parameters. A false result means the
 // request names something that can't match, such as a malformed ID.
 func (s *Server) itemQuery(r *http.Request) (items.Query, bool, error) {
@@ -52,6 +77,13 @@ func (s *Server) itemQuery(r *http.Request) (items.Query, bool, error) {
 		Start:        queryInt(r, "startindex"),
 		Limit:        queryInt(r, "limit"),
 	}
+	// jellyfin-web's home asks Resume for Video, Audio and Book in turn, one
+	// row each; ignoring this put films under Continue Reading.
+	types, ok := mediaTypeFilter(queryList(r, "mediatypes"), q.IncludeTypes)
+	if !ok {
+		return q, false, nil
+	}
+	q.IncludeTypes = types
 	for _, id := range queryList(r, "ids") {
 		if !db.ValidID(id) {
 			return q, false, nil

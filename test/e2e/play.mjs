@@ -155,6 +155,15 @@ await step("positions persisted and films are under Continue Watching", async ()
       return !!section && [...section.querySelectorAll(".cardText")].some((e) => e.textContent.includes(title));
     }, film.title));
   }
+  // The home asks Resume once per media type, Video, Audio and Book; a film is only a video.
+  // Once the page is quiet every row has its answer. An empty row keeps its heading, hidden, so look for cards.
+  await page.waitForLoadState("networkidle", { timeout: 30000 });
+  const misplaced = await page.evaluate(() => [...document.querySelectorAll(".sectionTitle")]
+    .filter((e) => /continue (reading|listening)/i.test(e.textContent))
+    .map((e) => [e.textContent.trim(), [...e.closest(".verticalSection").querySelectorAll(".cardText")].map((c) => c.textContent)])
+    .filter(([, cards]) => cards.length)
+    .map(([row, cards]) => `${row}: ${cards.join(", ")}`));
+  if (misplaced.length) throw new Error(`films shown in other rows: ${misplaced.join("; ")}`);
 });
 await second.context.close();
 await browser.close();
