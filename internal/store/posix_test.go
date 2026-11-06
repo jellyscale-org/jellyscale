@@ -92,3 +92,14 @@ func TestPosixDeleteKeepsTheRoot(t *testing.T) {
 		t.Fatalf("deleting the last file removed the root: %v", err)
 	}
 }
+
+// A missing root is an error, never an empty listing: the scan would take an
+// unmounted volume for a library with nothing in it and delete its items.
+func TestPosixListOfAMissingRootFails(t *testing.T) {
+	s := NewPosix(filepath.Join(t.TempDir(), "unmounted"))
+	for _, prefix := range []string{"", "chapters/x/"} {
+		if objects, err := s.List(context.Background(), prefix); err == nil {
+			t.Errorf("List(%q) of a missing root: %v and no error", prefix, objects)
+		}
+	}
+}

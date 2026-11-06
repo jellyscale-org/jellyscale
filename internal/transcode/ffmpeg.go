@@ -142,7 +142,7 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 	// work of a 4K one, and before the subtitles, which would otherwise be dimmed
 	// with it.
 	if spec.ToneMap != "" {
-		picture += "," + toneMap(spec.ToneMap)
+		picture += "," + playback.ToneMapFilter(spec.ToneMap)
 	}
 	if image == nil {
 		args = append(args, "-vf", picture+subtitles+",format=yuv420p")
@@ -188,20 +188,6 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		cmd.Dir = dir // Where the subtitle filter finds its file; dir is absolute.
 	}
 	return cmd, nil
-}
-
-// toneMap is the filter chain that turns a PQ or HLG picture into SDR BT.709,
-// in software, with filters every ffmpeg build has (zscale needs libzimg,
-// tonemap is ffmpeg's own). libplacebo would be faster but needs a Vulkan
-// device, which a worker pod may not have. The input is declared BT.2020 as
-// HDR10 and HLG are, since zscale refuses a file that leaves its primaries
-// unsaid. hable keeps no state between frames, so a restarted run makes the
-// frames an earlier one did; desat=0 and peak left to the frame's own side data
-// do the same. npl=100 puts SDR white at 100 nits, and keeps an HLG picture's
-// levels as they are (compat/captures/hdr-tonemap-12.4.md).
-func toneMap(transfer string) string {
-	return "zscale=tin=" + transfer + ":min=bt2020nc:pin=bt2020:rin=tv:t=linear:m=bt2020nc:p=bt2020:npl=100," +
-		"format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p"
 }
 
 // copiedAudioCut says where a restarted run reads copied audio from and which

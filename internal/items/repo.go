@@ -2,6 +2,8 @@ package items
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"strings"
 	"time"
@@ -116,9 +118,12 @@ func (r *Repo) hydrate(ctx context.Context, ids []string, userID string, fields 
 		return hydrated, nil
 	}
 	rows, err := r.Pool.Query(ctx, `SELECT i.id::text, i.dto, COALESCE(d.played, false), COALESCE(d.favorite, false),
-			COALESCE(d.play_count, 0), COALESCE(d.position_ticks, 0), i.run_time_ticks, d.last_played_at
+			COALESCE(d.play_count, 0), COALESCE(d.position_ticks, 0), i.run_time_ticks, d.last_played_at, c.keys
 		FROM items i
 		LEFT JOIN user_item_data d ON d.item_id = i.id AND d.user_id = $2::uuid
+		LEFT JOIN media_sources m ON m.id = i.id
+		LEFT JOIN chapter_images c ON c.source_id = m.id AND c.state = 'done' AND c.etag = m.object_etag
+			AND (SELECT chapter_images FROM libraries WHERE id = i.library_id)
 		WHERE i.id = ANY($1::uuid[])`, ids, nullable(userID))
 	if err != nil {
 		return nil, err
@@ -134,7 +139,8 @@ func (r *Repo) hydrate(ctx context.Context, ids []string, userID string, fields 
 		var position int64
 		var runtime *int64
 		var lastPlayed *time.Time
-		if err := rows.Scan(&id, &raw, &played, &favorite, &playCount, &position, &runtime, &lastPlayed); err != nil {
+		var chapterKeys []string
+		if err := rows.Scan(&id, &raw, &played, &favorite, &playCount, &position, &runtime, &lastPlayed, &chapterKeys); err != nil {
 			return nil, err
 		}
 		var dto map[string]any
@@ -160,6 +166,7 @@ func (r *Repo) hydrate(ctx context.Context, ids []string, userID string, fields 
 				}
 			}
 		}
+		tagChapters(dto, chapterKeys)
 		dto["UserData"] = UserDataDTO(id, UserData{position, runtime, playCount, favorite, played, lastPlayed})
 		byID[compact] = dto
 	}
@@ -172,6 +179,30 @@ func (r *Repo) hydrate(ctx context.Context, ids []string, userID string, fields 
 		}
 	}
 	return hydrated, nil
+}
+
+// ChapterTag is the ImageTag of the chapter picture stored at key. The key has
+// the file's ETag in it, so a changed file's pictures get new tags.
+func ChapterTag(key string) string {
+	sum := md5.Sum([]byte(key))
+	return hex.EncodeToString(sum[:])
+}
+
+// tagChapters gives each chapter whose picture exists its ImageTag. keys is
+// what is stored for the film's current file in a library that has the option
+// on, nil otherwise, and is read when the DTO is made, not stored in it: a
+// scan rewrites the DTO, and turning the option off must stop the tags at once.
+// A different count means the chapters changed since, and nothing is tagged.
+func tagChapters(dto map[string]any, keys []string) {
+	chapters, _ := dto["Chapters"].([]any)
+	if len(chapters) == 0 || len(chapters) != len(keys) {
+		return
+	}
+	for i, entry := range chapters {
+		if chapter, ok := entry.(map[string]any); ok && keys[i] != "" {
+			chapter["ImageTag"] = ChapterTag(keys[i])
+		}
+	}
 }
 
 // Library is a library as clients see it: a folder at the root of their views.
@@ -265,6 +296,26 @@ func (r *Repo) Image(ctx context.Context, id string) (assetURI, key string, foun
 		return "", "", false, err
 	}
 	return assetURI, *imageKey, true, nil
+}
+
+// ChapterImage locates the picture of chapter n (from 0) of an item's current
+// file. It is not found when the library's option is off, which stops serving
+// at once, when the chapter has no picture, or when the pictures are of a file
+// the item no longer has.
+func (r *Repo) ChapterImage(ctx context.Context, id string, n int) (assetURI, key string, found bool, err error) {
+	var keys []string
+	err = r.Pool.QueryRow(ctx, `SELECT l.asset_store_uri, c.keys
+		FROM media_sources m JOIN items i ON i.id = m.item_id JOIN libraries l ON l.id = i.library_id
+		JOIN chapter_images c ON c.source_id = m.id AND c.state = 'done' AND c.etag = m.object_etag
+		WHERE m.item_id = $1::uuid AND l.chapter_images`, id).Scan(&assetURI, &keys)
+	if err == pgx.ErrNoRows {
+		return "", "", false, nil
+	}
+	// Indexed here and not in SQL, where a large n would overflow.
+	if err != nil || n < 0 || n >= len(keys) || keys[n] == "" {
+		return "", "", false, err
+	}
+	return assetURI, keys[n], true, nil
 }
 
 // UserData is one user's state for one item.

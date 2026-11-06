@@ -41,6 +41,10 @@ type Config struct {
 	Kind   string `json:"kind"`
 	Media  string `json:"media"`
 	Assets string `json:"assets"`
+	// ChapterImages makes a picture of each chapter of the library's films and
+	// episodes (a worker does, after the scan). Off by default: it reads a frame
+	// at every chapter, which seeks into every file in the store.
+	ChapterImages bool `json:"chapterImages"`
 }
 
 // Library is a configured library with its stores opened.
@@ -70,10 +74,10 @@ func Sync(ctx context.Context, pool *pgxpool.Pool, configs []Config) ([]Library,
 		}
 		digest := md5.Sum([]byte("library:" + config.Name))
 		id := uuid.UUID(digest).String()
-		_, err = pool.Exec(ctx, `INSERT INTO libraries (id, name, kind, media_store_uri, asset_store_uri)
-			VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT (id) DO UPDATE SET kind = $3, media_store_uri = $4, asset_store_uri = $5`,
-			id, config.Name, config.Kind, config.Media, config.Assets)
+		_, err = pool.Exec(ctx, `INSERT INTO libraries (id, name, kind, media_store_uri, asset_store_uri, chapter_images)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			ON CONFLICT (id) DO UPDATE SET kind = $3, media_store_uri = $4, asset_store_uri = $5, chapter_images = $6`,
+			id, config.Name, config.Kind, config.Media, config.Assets, config.ChapterImages)
 		if err != nil {
 			return nil, err
 		}
@@ -181,6 +185,13 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 			gone[key] = old
 		}
 	}
+	// A store that lists no video at all, for a library that has some, is far
+	// more likely an empty mount point (a volume that isn't mounted under a
+	// directory that is still there) than a library emptied on purpose: keep
+	// the films and their watch state, and say so.
+	if len(videos) == 0 && len(seen) > 0 {
+		return fmt.Errorf("library %s: the media store lists no video, but the library has %d stored; keeping them (is the volume mounted?)", lib.Name, len(seen))
+	}
 
 	// Each film is stored as its probe finishes, so a long first scan shows
 	// progress and a restart keeps the films done.
@@ -243,6 +254,11 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 	}
 	if _, err := s.Pool.Exec(ctx, `DELETE FROM items parent WHERE library_id = $1 AND type = 'Series'
 		AND NOT EXISTS (SELECT 1 FROM items child WHERE child.parent_id = parent.id)`, lib.ID); err != nil {
+		return err
+	}
+	// Only jobs are queued here; a worker makes the pictures and deletes the
+	// ones not wanted, whether the option is on or off.
+	if err := EnqueueChapterImages(ctx, s.Pool, lib.ID); err != nil {
 		return err
 	}
 	s.Log.Info("scan finished", "library", lib.Name, "videos", len(current), "changed", len(changed), "sidecars", len(refreshed), "removed", len(gone))
