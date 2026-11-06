@@ -25,7 +25,10 @@ const browser = await chromium.launch({
 const failures = [];
 
 const sql = (text) => execFileSync("docker", ["exec", process.env.E2E_PG, "psql", "-U", "postgres", "-Atc", text]).toString().trim();
-const jobCount = () => Number(sql("SELECT count(*) FROM transcode_jobs"));
+// Specs with a job, not jobs: a seek past what the job has made (transcodeLead)
+// starts another job of the same spec, whereas picking a track that is drawn into
+// the picture would be another spec.
+const jobCount = () => Number(sql("SELECT count(DISTINCT spec_hash) FROM transcode_jobs"));
 const subtitleJobCount = () => Number(sql("SELECT count(*) FROM subtitle_jobs"));
 
 // The worker's ffmpeg processes, read from the process table.

@@ -139,7 +139,9 @@ func (r *rig) worker(t *testing.T, change func(*Worker)) (stop func()) {
 	}
 	var media store.Cache
 	w := &Worker{ID: uuid.NewString(), Pool: pool, Items: &items.Repo{Pool: pool, ServerID: "srv"}, Segments: r.segments, Log: r.log, Media: media.Open,
-		Scratch: r.scratch, Slots: 2, Idle: 60 * time.Second, Lease: 3 * time.Second, Heartbeat: 200 * time.Millisecond}
+		Scratch: r.scratch, Slots: 2, Idle: 60 * time.Second, Lease: 3 * time.Second, Heartbeat: 200 * time.Millisecond,
+		// A whole film's lead, so a job runs to the end unless a test bounds it.
+		Lead: time.Hour}
 	if change != nil {
 		change(w)
 	}
@@ -214,7 +216,7 @@ func (r *rig) fetchAt(t *testing.T, j *Jobs, psid string, n, startAt int) ([]byt
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	if err := j.Watch(ctx, r.viewer(psid), r.hash); err != nil {
+	if err := j.Watch(ctx, r.viewer(psid), r.hash, n); err != nil {
 		return nil, err
 	}
 	return j.Segment(ctx, r.spec, r.hash, r.viewer(psid), n, startAt)

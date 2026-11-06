@@ -143,13 +143,17 @@ func SegmentKey(hash string, n int) string {
 
 // Watch records that the viewer asked for something on the spec. It returns
 // ErrStopped if the viewer was stopped, so a request still in flight when
-// playback ended can't start work again.
-func (j *Jobs) Watch(ctx context.Context, v Viewer, hash string) error {
-	tag, err := j.Pool.Exec(ctx, `INSERT INTO transcode_viewers (play_session_id, spec_hash, user_id, device_id, item_id)
-		VALUES ($1, $2, $3::uuid, $4, $5)
-		ON CONFLICT (play_session_id, spec_hash) DO UPDATE SET last_seen_at = now()
+// playback ended can't start work again. segment is the one asked for, or
+// negative for a request that names none (a playlist, the init segment, or a
+// wait that goes on); the worker bounds a job by the segment each viewer asked
+// for last, so it rides on the write that was made anyway.
+func (j *Jobs) Watch(ctx context.Context, v Viewer, hash string, segment int) error {
+	tag, err := j.Pool.Exec(ctx, `INSERT INTO transcode_viewers (play_session_id, spec_hash, user_id, device_id, item_id, segment)
+		VALUES ($1, $2, $3::uuid, $4, $5, $6)
+		ON CONFLICT (play_session_id, spec_hash) DO UPDATE SET last_seen_at = now(),
+			segment = CASE WHEN EXCLUDED.segment >= 0 THEN EXCLUDED.segment ELSE transcode_viewers.segment END
 			WHERE NOT transcode_viewers.stopped AND transcode_viewers.user_id = EXCLUDED.user_id`,
-		v.PlaySessionID, hash, v.UserID, v.DeviceID, v.Item)
+		v.PlaySessionID, hash, v.UserID, v.DeviceID, v.Item, segment)
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrStopped
 	}
@@ -268,7 +272,7 @@ func (j *Jobs) Segment(ctx context.Context, spec playback.Spec, hash string, vie
 			return nil, err
 		}
 		if job == 0 {
-			if err := j.Watch(ctx, viewer, hash); err != nil {
+			if err := j.Watch(ctx, viewer, hash, -1); err != nil {
 				return nil, err
 			}
 			if starts++; starts > maxRestarts+1 {
@@ -313,7 +317,7 @@ func (j *Jobs) Segment(ctx context.Context, spec playback.Spec, hash string, vie
 		// A viewer waiting on a slow start is still watching, and the job
 		// must not be stopped for want of requests.
 		if time.Since(watched) > time.Second {
-			if err := j.Watch(ctx, viewer, hash); err != nil {
+			if err := j.Watch(ctx, viewer, hash, -1); err != nil {
 				return nil, err
 			}
 			watched = time.Now()

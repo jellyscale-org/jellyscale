@@ -228,3 +228,14 @@ func copyStart(keyframes []int64, layout playback.Layout, n int) (video, audio f
 	i, _ := slices.BinarySearch(keyframes, at)
 	return float64(keyframes[max(i-1, 0)]) / ticksPerSecond, float64(at)/ticksPerSecond - 2
 }
+
+// reached reports whether ffmpeg has written fragments up to the end of
+// segment n, which gather can then build.
+func (g *gatherer) reached(ctx context.Context, n int) (bool, error) {
+	pieces, err := g.pieces(ctx)
+	if err != nil || len(pieces) == 0 {
+		return false, err
+	}
+	start, length := g.layout.Segment(n)
+	return pieces[len(pieces)-1].end >= start+length-tolerance, nil
+}

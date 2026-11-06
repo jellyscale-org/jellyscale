@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -59,14 +60,16 @@ func (r *Reader) Read(p []byte) (int, error) {
 		if err == io.EOF && r.pos < r.size && r.size != math.MaxInt64 {
 			err = io.ErrUnexpectedEOF
 		}
-		if err != io.ErrUnexpectedEOF || r.pos >= r.size {
+		cut := errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, syscall.ECONNRESET)
+		if !cut || r.pos >= r.size {
 			return n, err
 		}
 		// SeaweedFS cuts a GET when another GET of the object is dropped, and
-		// S3.Open reports that as ErrUnexpectedEOF: carry on from here.
+		// S3.Open reports that as ErrUnexpectedEOF. A proxy resets one that
+		// nobody reads for a while, as when ffmpeg is paused. Carry on from here.
 		r.closeStream()
 		if r.resumes++; r.resumes > maxResumes {
-			return n, io.ErrUnexpectedEOF
+			return n, err
 		}
 		if n > 0 {
 			return n, nil

@@ -166,7 +166,7 @@ func TestKillPathsEndFFmpeg(t *testing.T) {
 			waitFor(t, "ffmpeg to exit", 15*time.Second, func() bool { return len(r.ffmpegProcesses()) == 0 })
 			// A stopped viewer's late request must not start work again.
 			if name == "stop from the player" {
-				if err := j.Watch(context.Background(), r.viewer(psid(0)), r.hash); !errors.Is(err, ErrStopped) {
+				if err := j.Watch(context.Background(), r.viewer(psid(0)), r.hash, -1); !errors.Is(err, ErrStopped) {
 					t.Fatalf("late request from a stopped viewer: %v", err)
 				}
 			}
@@ -345,7 +345,7 @@ func TestSlotsBoundConcurrentTranscodes(t *testing.T) {
 	other.AudioBitrate = 64_000
 	otherHash := other.Hash()
 	ctx := context.Background()
-	if err := j.Watch(ctx, r.viewer(psid(1)), otherHash); err != nil {
+	if err := j.Watch(ctx, r.viewer(psid(1)), otherHash, -1); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := j.ensure(ctx, other, otherHash, psid(1), 0, 0); err != nil {
@@ -375,7 +375,7 @@ func TestStopRacingAnInsertLeavesNoJob(t *testing.T) {
 	ctx := context.Background()
 	for i := range 200 {
 		session := psid(i)
-		if err := j.Watch(ctx, r.viewer(session), r.hash); err != nil {
+		if err := j.Watch(ctx, r.viewer(session), r.hash, -1); err != nil {
 			t.Fatal(err)
 		}
 		done := make(chan error, 1)

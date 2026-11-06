@@ -374,7 +374,7 @@ func TestSeekLeavesAJobAnotherViewerJoined(t *testing.T) {
 	ctx := context.Background()
 	ensure := func(session string, n int) int64 {
 		t.Helper()
-		if err := j.Watch(ctx, r.viewer(session), r.hash); err != nil {
+		if err := j.Watch(ctx, r.viewer(session), r.hash, -1); err != nil {
 			t.Fatal(err)
 		}
 		id, err := j.ensure(ctx, r.spec, r.hash, session, n, n)
@@ -468,7 +468,7 @@ func TestAJobEndsWhenNobodyIsWatchingIt(t *testing.T) {
 	j := r.jobs(t)
 	ctx := context.Background()
 	for i := range 2 {
-		if err := j.Watch(ctx, r.viewer(psid(i)), r.hash); err != nil {
+		if err := j.Watch(ctx, r.viewer(psid(i)), r.hash, -1); err != nil {
 			t.Fatal(err)
 		}
 	}

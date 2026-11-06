@@ -48,12 +48,16 @@ type config struct {
 	TranscodeStore string `json:"transcodeStore"`
 	// TranscodeScratch is where a worker's ffmpeg writes before uploading.
 	TranscodeScratch string `json:"transcodeScratch"`
-	// TranscodeSlots bounds concurrent ffmpeg processes per worker.
+	// TranscodeSlots bounds concurrent transcode jobs per worker, paused ones
+	// included.
 	TranscodeSlots int `json:"transcodeSlots"`
 	// TranscodeIdle is how long a spec may go without a request before its
 	// ffmpeg stops, and TranscodeRetention how long its segments stay after.
 	TranscodeIdle      string `json:"transcodeIdle"`
 	TranscodeRetention string `json:"transcodeRetention"`
+	// TranscodeLead is how far, in film time, a job may get ahead of the
+	// furthest segment a viewer has asked for before its ffmpeg pauses.
+	TranscodeLead string `json:"transcodeLead"`
 }
 
 // parseConfig refuses a key it doesn't know, so a mistyped option is an error
@@ -216,6 +220,10 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 	if err != nil {
 		return result, err
 	}
+	lead, err := optionalDuration(cfg.TranscodeLead, "transcodeLead")
+	if err != nil {
+		return result, err
+	}
 	retention, err := optionalDuration(cfg.TranscodeRetention, "transcodeRetention")
 	if err != nil {
 		return result, err
@@ -251,7 +259,7 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 	var media store.Cache
 	w := &transcode.Worker{
 		ID: id, Pool: pool, Items: &items.Repo{Pool: pool, ServerID: serverID}, Segments: segments, Hub: result.hub, Log: log,
-		Media: media.Open, Scratch: scratch, Slots: slots, Idle: idle, Retention: retention,
+		Media: media.Open, Scratch: scratch, Slots: slots, Idle: idle, Lead: lead, Retention: retention,
 	}
 	if worker {
 		// Subtitle extraction needs no transcode store.

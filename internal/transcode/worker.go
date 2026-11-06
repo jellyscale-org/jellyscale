@@ -44,6 +44,10 @@ type Worker struct {
 	Slots   int
 	// Idle is how long a spec may go without a request before its jobs stop.
 	Idle time.Duration
+	// Lead is how far, in film time, a job may get ahead of the furthest
+	// segment a viewer has asked for (default 60 seconds). It then pauses its
+	// ffmpeg until requests come within the lead again.
+	Lead time.Duration
 	// Retention is how long a spec's segments stay after its last request.
 	Retention time.Duration
 	// ID names this worker in transcode_nodes and on the jobs it claims. It
@@ -113,6 +117,52 @@ type claimed struct {
 func (w *Worker) lease() time.Duration     { return orDefault(w.Lease, 10*time.Second) }
 func (w *Worker) heartbeat() time.Duration { return orDefault(w.Heartbeat, 3*time.Second) }
 func (w *Worker) idle() time.Duration      { return orDefault(w.Idle, defaultIdle) }
+func (w *Worker) lead() time.Duration      { return orDefault(w.Lead, defaultLead) }
+
+// defaultLead is 15 segments of 4 seconds. The bound is the furthest segment
+// asked for plus the lead, not the playback position, so whatever the player
+// asks for is always inside it, and the player's own buffer does not enter. The
+// lead only has to cover what a resume takes: the worker's look every
+// leadCheck, ffmpeg making the next segment (a re-encode slower than real time
+// makes a 4 second one in over 4), and the beat of a viewer that asks one
+// segment at a time.
+const defaultLead = 60 * time.Second
+
+// leadCheck is how often a job at its limit asks the database whether the
+// viewers have moved on. A job well short of its limit does not ask.
+const leadCheck = 500 * time.Millisecond
+
+// limitFor is the first segment a job may not store yet: the first that starts
+// lead or more of film after segment from. It is the layout's count if the
+// film ends sooner.
+func limitFor(layout playback.Layout, from int, lead time.Duration) int {
+	start, _ := layout.Segment(from)
+	for n := from + 1; n < layout.Count(); n++ {
+		if at, _ := layout.Segment(n); at-start >= int64(lead.Seconds()*ticksPerSecond) {
+			return n
+		}
+	}
+	return layout.Count()
+}
+
+// furthest is the segment the viewers a job serves asked for last, the furthest
+// of them, or the job's start if none did; served says whether any did. A viewer's own segment counts if it
+// is one the job has made or is about to (the window ensure joins a job by); a
+// viewer far past it has its own job, and one before its start is not served by
+// it, so neither holds this job open. free is true if a viewer of the spec has
+// asked for no segment at all: an api or stream replica from before the column
+// writes none, and the job then runs unbounded, as it did before the bound
+// existed, rather than stop for good where no request can move it. A viewer
+// that has only fetched a playlist does the same until its first segment.
+func (w *Worker) furthest(ctx context.Context, job claimed, next int) (n int, served, free bool, err error) {
+	err = w.Pool.QueryRow(ctx, `SELECT
+			COALESCE(max(segment) FILTER (WHERE segment >= $3 AND segment < $4), -1),
+			COALESCE(bool_or(segment < 0), false)
+		FROM transcode_viewers
+		WHERE spec_hash = $1 AND NOT stopped AND last_seen_at > now() - make_interval(secs => $2)`,
+		job.Hash, w.idle().Seconds(), job.Start, next+catchUpSegments).Scan(&n, &free)
+	return max(n, job.Start), n >= 0, free, err
+}
 
 // startup is extra lease for a claimed job, which is not heartbeating until
 // ffmpeg is running.
@@ -290,6 +340,16 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	go func() { exited <- cmd.Wait() }()
 
 	next := job.Start
+	// limit is the first segment this job may not store yet, and paused says
+	// whether ffmpeg is stopped at it.
+	limit, paused := limitFor(layout, job.Start, w.lead()), false
+	// freed is set while a viewer that has asked for no segment lifts the
+	// limit, which is looked at again until it is gone.
+	freed := false
+	// unbounded is set when the film ends within the lead, or ffmpeg can't be
+	// paused here.
+	unbounded := limit >= layout.Count()
+	limitAt := time.Now()
 	stop := func(reason string) {
 		log.Info("stopping ffmpeg", "reason", reason)
 		cmd.Process.Kill() //nolint:errcheck
@@ -302,6 +362,9 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		for {
 			if next >= layout.Count() {
 				return false, nil // A copied run has fragments past the end.
+			}
+			if !final && next >= limit {
+				return false, nil // Made, for when the viewers come to it.
 			}
 			name := filepath.Join(dir, strconv.Itoa(next)+".m4s")
 			if gather != nil {
@@ -331,6 +394,64 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	defer beat.Stop()
 	lastBeat := time.Now()
 	progressed, progressAt := next, time.Now()
+	// gate pauses ffmpeg once everything below the limit is made, so what it
+	// reads past the limit is what it reads before the next look, and lets it
+	// go on when the limit has moved.
+	// It reports false when the job is paused and none of its viewers is
+	// within its window any more: they have seeked past it or gone, and its
+	// slot is better given back than held for them.
+	gate := func() bool {
+		if unbounded {
+			return true
+		}
+		// Segment limit-1 is made when it is in scratch (a copy: when its
+		// fragments are), or already stored.
+		made := func() bool {
+			if next >= limit {
+				return true
+			}
+			if gather != nil {
+				ok, _ := gather.reached(ctx, limit-1)
+				return ok
+			}
+			_, err := os.Stat(filepath.Join(dir, strconv.Itoa(limit-1)+".m4s"))
+			return err == nil
+		}
+		wait := limit < layout.Count() && made()
+		if (wait || paused || freed) && time.Since(limitAt) >= leadCheck {
+			limitAt = time.Now()
+			at, served, free, err := w.furthest(ctx, job, next)
+			switch {
+			case err != nil:
+				log.Warn("reading the viewers' segments failed", "error", err)
+			case free:
+				limit, freed = layout.Count(), true
+			case paused && !served:
+				return false
+			default:
+				limit, freed = limitFor(layout, at, w.lead()), false
+			}
+			wait = limit < layout.Count() && made()
+		}
+		switch {
+		case wait && !paused:
+			if err := pauseProcess(cmd.Process, true); err != nil {
+				log.Warn("ffmpeg cannot be paused here, so this job runs without a lead limit", "error", err)
+				limit, unbounded = layout.Count(), true
+				return true
+			}
+			paused = true
+			log.Debug("pausing ffmpeg at its lead", "limit", limit)
+		case !wait && paused:
+			if err := pauseProcess(cmd.Process, false); err != nil {
+				log.Error("resuming ffmpeg failed", "error", err)
+				return true
+			}
+			paused = false
+			log.Debug("resuming ffmpeg", "limit", limit)
+		}
+		return true
+	}
 	for {
 		select {
 		case err := <-exited:
@@ -360,6 +481,13 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 				stop("caught up with stored segments")
 				return nil
 			}
+			if !gate() {
+				// What it made stays stored, and a viewer who comes back to
+				// the rest starts a job there.
+				w.Pool.Exec(context.WithoutCancel(ctx), "UPDATE transcode_jobs SET state = 'cancelled' WHERE id = $1 AND state = 'running'", job.ID) //nolint:errcheck
+				stop("its viewers have left it behind")
+				return nil
+			}
 		case <-beat.C:
 			alive, wanted, err := w.beat(ctx, job)
 			switch {
@@ -376,6 +504,14 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 				reason := w.lostReason(ctx, job)
 				stop(reason)
 				return fmt.Errorf("%w: %s", errInterrupted, reason)
+			}
+			if paused {
+				// A stopped ffmpeg makes no segment and writes nothing, which
+				// the stall check and the scratch sweep would both read as
+				// a hang.
+				now := time.Now()
+				progressAt = now
+				os.Chtimes(dir, now, now) //nolint:errcheck
 			}
 			if next != progressed {
 				progressed, progressAt = next, time.Now()

@@ -715,6 +715,44 @@ for (const flavour of flavours) await scenario("switching audio plays the new tr
   await leave(page);
 });
 
+// ---- How far a job runs ahead of the viewer ----
+// The config sets transcodeLead to 20 s, 5 segments. The job stops its ffmpeg
+// (SIGSTOP) once it has made that much beyond the furthest segment the player
+// asked for, and goes on as the player asks for more.
+function stoppedFfmpeg() {
+  const runs = ffmpegRuns();
+  if (runs.length !== 1) return false;
+  const pid = runs[0].line.split(" ")[0];
+  try {
+    return readFileSync(`/proc/${pid}/stat`, "utf8").replace(/^.*\) /, "")[0] === "T";
+  } catch {
+    return false;
+  }
+}
+
+for (const flavour of [{ name: "copied", film: "Lead Copy Film" }, { name: "re-encoded", film: "Lead Encode Film" }]) await scenario("the job stops its ffmpeg five segments past what the player asked for, and the film still plays and seeks" + `: ${flavour.name}`, async ({ page, seen }) => {
+  await play(page, "Transcode", flavour.film);
+  await advances(page, 4);
+  await waitFor("ffmpeg to stop at its lead", async () => stoppedFfmpeg(), 60000);
+  const segmentOf = (r) => Number(r.path.match(/\/(\d+)\.mp4$/i)?.[1]);
+  const next = Number(sql("SELECT max(next_segment) FROM transcode_jobs WHERE state = 'running'"));
+  const asked = Math.max(...seen.hls.filter((r) => r.status === 200 && Number.isFinite(segmentOf(r))).map(segmentOf));
+  const count = Math.ceil((await duration(page)) / 4);
+  console.log(`      the job stored ${next} segments, the player asked for up to ${asked}, the film has ${count}`);
+  if (next > asked + 5) throw new Error(`the job stored ${next} segments, more than 5 past the ${asked} the player asked for`);
+  if (next >= count - 1) throw new Error("the job ran to the end of the film, so nothing was bounded");
+  // It goes on as the player plays, and a seek past the lead restarts the job there.
+  const played = await time(page);
+  await waitFor("playback to go on through several leads", async () => (await time(page)) > played + 25, 90000);
+  const total = await duration(page);
+  const target = total * 0.8;
+  await page.evaluate((t) => { document.querySelector("video").currentTime = t; }, target);
+  await waitFor("playback past the seek target", async () => (await time(page)) > target + 1.5, 60000);
+  noErrors(seen);
+  await leave(page);
+  await waitFor("ffmpeg to exit after Stopped", async () => ffmpegRuns().length === 0, 20000);
+});
+
 // ---- Copied audio under a re-encoded picture ----
 // The packets of an audio stream: time, then size and hash.
 function audioPacketsOf(file, stream) {

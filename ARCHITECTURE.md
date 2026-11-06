@@ -20,7 +20,7 @@ One binary, chosen with `--roles`, run as separate Deployments. Roles version to
 
 1. **Only workers run media tools.** `api` and `stream` move bytes and coordinate. A viewer waiting for a result doesn't put the work in the role answering the request: segments and subtitle extraction both work this way. `test/roles.sh` and `test/e2e/run.sh` run `api` and `stream` with no `ffmpeg` on their PATH, so an `api` and `stream` image can leave ffmpeg out; the Dockerfile has not been split yet.
 2. **Roles never call each other.** Work goes through Postgres and results through the store, so either side can be replaced or scaled alone.
-3. **Work is pulled.** A worker takes a job only when it has a free slot, so overload is a queue, and the queue is the autoscaling signal.
+3. **Work is pulled.** A worker takes a job only when it has a free slot, so overload is a queue, and the queue is the autoscaling signal. A transcode job paused at its lead holds a slot with almost no CPU, so the signal counts viewers, not load; the autoscaler in `phase6-k8s` has to weigh that.
 4. **Workers are replaceable.** Jobs are leased, and a segment's video and timing depend on the spec, not on which worker made it. Encoded audio can differ in its bytes after a restart, inaudibly (DOMAINS 48).
 5. **No required service beyond Postgres.** Anything added must earn its place against a measurement.
 6. **Cost is more than CPU.** A design states its network, storage and database cost at the target scale. Copying a film is cheap in CPU and expensive in S3 reads, for example.
@@ -30,4 +30,3 @@ One binary, chosen with `--roles`, run as separate Deployments. Roles version to
 
 - A burnt-in PGS cue that began before a transcode job's restart point is not drawn by that job until the next cue, though a job from zero draws it, so a segment's picture depends on which job made it where a cue spans a restart (DOMAINS 51). Text cues are exact, because their track is a whole file. Opening the track's input earlier would cost another read of the film for as long as the job, so it is accepted until a measurement says otherwise.
 - A worker from before a release that adds a spec field (tone mapping, copied audio) stores segments made without it under the new hash if it takes a job with the field, so workers roll first and roll back last (README, Tone mapping). The general fix, workers reporting their `OutputVersion` and the api offering only specs every live worker supports, belongs to the upgrades item in `phase6-k8s` (PRODUCT.md).
-- A copy job has no read-ahead limit (DOMAINS 48): it reads to the end of the film or until 60 seconds after the last request. That cost has to be bounded in a later slice.
