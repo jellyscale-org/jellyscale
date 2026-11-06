@@ -379,19 +379,21 @@ cp "$repo/test/e2e/browse.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/transco
 result=0
 export E2E_SCRATCH="$work/scratch" E2E_MEDIA="$work/media/transcode" E2E_ASSETS="$work/assets/transcode" E2E_PG="$pg" E2E_LOG="$logs/server.log"
 # The transcode gate ends by killing the worker, so subtitles run before it.
+# Each gate has 1500 s; transcode took 818 s on main before the read-ahead
+# scenarios and over 900 s after.
 for gate in ${E2E_GATES:-browse play subtitles transcode}; do
   echo "=== $gate"
   # One stack serves every gate, so what a gate wrote is the log from here on.
   server_from=$(stat -c %s "$logs/server.log") ffmpeg_from=$(stat -c %s "$logs/ffmpeg.log")
   if [[ -n ${GITHUB_ACTIONS:-} ]]; then
-    (cd "$playwright" && timeout 900 node $gate.mjs "$base" admin e2e-pass) 2>&1 | bash "$repo/test/report.sh" lines "test/e2e/$gate.mjs" "e2e $gate"
+    (cd "$playwright" && timeout 1500 node $gate.mjs "$base" admin e2e-pass) 2>&1 | bash "$repo/test/report.sh" lines "test/e2e/$gate.mjs" "e2e $gate"
     status=${PIPESTATUS[0]}
     if [[ $status -ne 0 ]]; then
       result=1
-      bash "$repo/test/report.sh" fail "test/e2e/$gate.mjs" 1 "e2e $gate" "the gate exited $status (124 is its 900 s limit)"
+      bash "$repo/test/report.sh" fail "test/e2e/$gate.mjs" 1 "e2e $gate" "the gate exited $status (124 is its 1500 s limit)"
     fi
   else
-    (cd "$playwright" && timeout 900 node $gate.mjs "$base" admin e2e-pass) || result=1
+    (cd "$playwright" && timeout 1500 node $gate.mjs "$base" admin e2e-pass) || result=1
   fi
   mkdir -p "$logs/$gate"
   tail -c +$((server_from + 1)) "$logs/server.log" >"$logs/$gate/server.log"
