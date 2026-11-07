@@ -391,20 +391,22 @@
     {
       "id": "JS-023",
       "phase": "P3",
-      "title": "Dolby Vision and HDR labels like Jellyfin 12.4",
-      "description": "Report VideoRange and VideoRangeType as Jellyfin 12.4 does (DOVI for P5, DOVIWithEL for P7, DOVIWithHDR10 for P8.1, DOVIWithHLG, DOVIWithSDR) and stop stripping them from client DTOs.",
+      "title": "Dolby Vision and HDR labels and the decisions that follow from them",
+      "description": "Report VideoRange and VideoRangeType as Jellyfin 12.4 does (DOVI for P5, DOVIWithEL for P7, DOVIWithHDR10, DOVIWithHLG and DOVIWithSDR for P8 by base-layer compatibility, HDR10Plus and the DOVI-with-HDR10+ variants), stop stripping them from client DTOs, and use them in the playback decision: a client whose profile allows HDR10 (or HLG, or SDR) but not Dolby Vision plays a DV file whose base layer it supports, instead of a re-encode.",
       "acceptanceCriteria": [
-        "Observed against a real Jellyfin 12.4 first, capture in compat/captures",
-        "The scan records the DV profile and compatibility id",
-        "Item and PlaybackInfo DTOs carry VideoRange and VideoRangeType for HDR10, HLG and each DV profile",
-        "Clients that gate on them (Infuse, Moonfin) are checked on the dogfood"
+        "Observed against a real Jellyfin 12.4 first (synthetic DV fixtures in a disposable jellyfin/jellyfin:12.4 container): item DTOs, PlaybackInfo decisions and the master playlist's codec tag for P5, P7 and P8.1; capture in compat/captures",
+        "The scan records the DV profile, base-layer compatibility id and HDR10+ presence",
+        "Item and PlaybackInfo DTOs carry VideoRange and VideoRangeType for SDR, HDR10, HDR10Plus, HLG and each DV variant",
+        "A profile that allows HDR10 but no DOVI type direct plays or copies a P8.1 file as HDR10; one that allows nothing HDR re-encodes with tone mapping as today; P5 (no compatible base layer) is never sent to a client without DV",
+        "The decision table tests cover every VideoRangeType against jellyfin-web's own profile conditions",
+        "Checked on the dogfood with a P8.1 film and a P7 film in jellyfin-web and one TV client"
       ],
       "priority": 3,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
       "source": "work queue 4; internal/library/scan.go strips them today",
-      "notes": ""
+      "notes": "Found while preparing the task (2026-11-07): Jellyfin's labels drive decisions, not only display. jellyfin-web sends CodecProfiles conditions on VideoRangeType, and Jellyfin copies a DOVIWithHDR10 stream to an HDR10-only client (tagging it db1p in the master playlist). jellyscale reports every DV file as plain DOVI, so those films are re-encoded in software today."
     },
     {
       "id": "JS-024",
