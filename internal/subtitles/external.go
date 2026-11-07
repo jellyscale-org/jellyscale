@@ -76,7 +76,7 @@ func ExtractFile(ctx context.Context, body io.Reader, ext, language string) (Tra
 // dropControl removes NUL, VT, FF and ESC, which are never subtitle text:
 // ffmpeg refuses a file that starts with NUL or ESC and drops the cues from a
 // NUL on. No legacy multi-byte set this server reads has them as a trail byte.
-// ISO-2022 uses ESC and so is not read (README: known limits).
+// ISO-2022 uses ESC and so is not read (docs/subtitles.md: known limits).
 func dropControl(data []byte) []byte {
 	out := make([]byte, 0, len(data))
 	for _, b := range data {

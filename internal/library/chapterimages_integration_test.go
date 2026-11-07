@@ -952,7 +952,7 @@ func TestJobsCutOffAfterTakingAnAttemptUseUpTheCap(t *testing.T) {
 
 // A first chapter whose frame errors or hangs is skipped like any other: the
 // job is done and the other chapters keep their pictures. (jellyfin-web then
-// lists no chapters, as it needs the first one's picture; README says so.)
+// lists no chapters, as it needs the first one's picture; docs/chapters.md says so.)
 func TestAFirstChapterWithoutAPictureIsSkippedLikeAnyOther(t *testing.T) {
 	for name, script := range map[string]string{
 		"error": `case " $* " in *" -ss 0.000 "*) echo boom >&2; exit 1;; esac`,

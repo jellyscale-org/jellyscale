@@ -26,7 +26,7 @@ const tieMargin = 10
 // a file unreadable; ffmpeg copes with them as it does in UTF-8.
 //
 // This is a guess, and chardet is wrong for some files; the remedy is to
-// convert the file to UTF-8 (README: Subtitle files and fonts beside the film).
+// convert the file to UTF-8 (docs/subtitles.md: Subtitle files and fonts beside the film).
 func legacyText(data []byte, language string) (text []byte, ok bool) {
 	ranked, err := chardet.NewTextDetector().DetectAll(data)
 	if err != nil {
