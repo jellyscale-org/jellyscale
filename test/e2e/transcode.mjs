@@ -64,8 +64,15 @@ async function viewer() {
   const seen = { infos: [], hls: [], deletes: [], errors: [], console: [] };
   page.on("pageerror", (error) => seen.errors.push(error.message));
   page.on("console", (message) => { if (/hls|playback/i.test(message.text())) seen.console.push(message.text().slice(0, 200)); });
+  // The player's playback requests, for a failure to show what it did and when.
+  const start = Date.now();
+  page.timeline = [];
   page.on("request", (request) => {
     if (request.method() === "DELETE" && /ActiveEncodings/i.test(request.url())) seen.deletes.push(request.url());
+    const url = new URL(request.url());
+    if (/PlaybackInfo|Sessions\/Playing|ActiveEncodings|master\.m3u8|main\.m3u8/i.test(url.pathname)) {
+      page.timeline.push(`${Date.now() - start} ms ${request.method()} ${url.pathname.replace(/^.*\/(?=[^/]+\/?[^/]*$)/, "")} ${url.searchParams.get("PlaySessionId") ?? ""}`);
+    }
   });
   page.on("response", async (response) => {
     const url = new URL(response.url());
@@ -155,6 +162,7 @@ const leave = async (page) => {
   // the position, so going back any sooner leaves the film playing.
   await page.waitForFunction(() => location.hash.startsWith("#/video") && document.querySelector(".osdPositionText")?.textContent, null, { timeout: 15000 });
   const stopped = page.waitForResponse((r) => /\/Sessions\/Playing\/Stopped/i.test(r.url()), { timeout: 15000 });
+  page.timeline?.push("back");
   await page.evaluate(() => window.history.back());
   const response = await stopped.catch(async () => {
     // jellyfin-web sends nothing if it thinks the stream is changing, or if its
@@ -163,7 +171,7 @@ const leave = async (page) => {
       const v = document.querySelector("video");
       return v ? `a video at ${v.currentTime} s, paused ${v.paused}` : "no video";
     });
-    throw new Error(`no Stopped within 15 s of going back: the page is ${new URL(page.url()).hash} with ${video}`);
+    throw new Error(`no Stopped within 15 s of going back: the page is ${new URL(page.url()).hash} with ${video}; the player's last requests: ${page.timeline.slice(-12).join("; ")}`);
   });
   if (response.status() !== 204) throw new Error(`Stopped answered ${response.status()}`);
   await response.finished();
@@ -870,11 +878,17 @@ await scenario("audio copy: a bitrate cap the track doesn't fit re-encodes the a
   const auto = transcodeUrl(seen);
   if (!/AudioBitrate=1[0-9]{5}&/.test(auto) || !/VideoCodec=h264/.test(auto)) throw new Error(`Auto: ${auto}`);
   const choose = async (id) => {
+    const previous = seen.infos.at(-1).session;
+    const deletes = () => seen.deletes.filter((url) => url.includes(previous)).length;
+    const before = deletes();
     await page.mouse.move(600, 400);
     await page.click(".btnVideoOsdSettings");
     await page.click('[data-id="quality"]');
     await page.click(`[data-id="${id}"]`);
     const info = await waitFor(`a PlaybackInfo with the cap ${id}`, async () => seen.infos.find((i) => i.request.MaxStreamingBitrate === Number(id)));
+    // jellyfin-web ends the old encoding once as it changes the stream and again
+    // when the new one plays; until then it sends no Stopped on leaving.
+    await waitFor("the player to finish changing the stream", async () => deletes() >= before + 2, 30000);
     return info.source.TranscodingUrl;
   };
   const low = await choose("420000");
