@@ -12,6 +12,7 @@ Read PRODUCT.md and DOMAINS.md first, and the code you'll touch. Keep to the tas
 - Where a protocol is involved, work from captured evidence in the task or a real Jellyfin 12.4.
 - Add tests that could fail. For concurrency, use real contention.
 - Run `go vet ./...`, `gofmt -l .`, and the test commands the task names, and fix what fails.
-- Never commit.
+- The task's acceptance checks were written before you started and are locked. Make them pass by building the task; never edit, weaken, skip or delete one. If you believe a check is wrong, leave it and report it as a dispute, with your evidence.
+- Never commit. Never stop, kill or remove a process or container you did not start; remove your own containers with `docker rm -fv`.
 
 Report what changed, what you ran with its real results, and anything you couldn't finish. Report failures plainly.

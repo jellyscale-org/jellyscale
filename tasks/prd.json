@@ -4,7 +4,7 @@
   "conventions": {
     "status": "done | in_progress | todo; passes is true only when done",
     "priority": "1 is next; done tasks have none",
-    "delivery": "each task is a slice through the deliver workflow (.claude/workflows/deliver.js): design review, implement, blind reviews, QA; then PR, CI, merge, redeploy the dogfood"
+    "delivery": "each task goes through the build workflow (.claude/workflows/build.js): checks written first and locked, one implementer until they pass, QA and one blind adversarial review with evidence-gated findings, one fix round; then PR, CI, merge, redeploy the dogfood"
   },
   "phases": [
     {
