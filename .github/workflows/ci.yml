@@ -12,7 +12,35 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Three checks are required by branch protection: lint-and-unit, integration and
+# e2e. They report on every pull request. integration and e2e are the last jobs
+# of a fan-out: their shards (the "integration shard" and "e2e shard" jobs) run
+# the tests side by side, and the job named integration or e2e fails if any shard
+# failed or was cancelled, or if the shards did not add up to every test and
+# scenario (test/check-shards.sh). A pull request that changes only Markdown in
+# the root or under docs/ skips the media jobs (test/changes.sh); a push to main
+# always runs everything.
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          code=true
+          if [ "$GITHUB_EVENT_NAME" = pull_request ] && [ "$(bash test/changes.sh "$BASE...$HEAD")" = docs-only ]; then
+            code=false
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "code changed: $code"
+
   lint-and-unit:
     runs-on: ubuntu-latest
     steps:
@@ -20,6 +48,9 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
       - name: gofmt
         run: test -z "$(gofmt -l cmd internal test)"
       - run: go vet ./...
@@ -31,6 +62,8 @@ jobs:
         run: bash test/unit.sh
         env:
           JELLYSCALE_LOG_DIR: ${{ runner.temp }}/logs
+      - name: Tests of the test scripts (shards, fixture cache, results)
+        run: bash test/scripts_test.sh
       - name: Route manifest is current
         run: |
           go run ./cmd/jellyscale --print-routes > /tmp/endpoints.yaml
@@ -42,11 +75,40 @@ jobs:
           path: ${{ runner.temp }}/logs
           if-no-files-found: ignore
 
+  # How many tests the integration tier has, from the compiler, for the job
+  # that checks the shards ran them all.
+  integration-total:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      total: ${{ steps.count.outputs.total }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - id: count
+        run: echo "total=$(go test -tags integration -list '.*' ./... 2>/dev/null | grep -cE '^(Test|Example|Fuzz)')" >> "$GITHUB_OUTPUT"
+
   # Everything the integration tier needs is installed here, so a test that
   # can't run fails, and test/report.sh fails the job if any test is skipped.
-  integration:
+  # internal/transcode holds most of the time and is dealt out in three; the
+  # fourth shard is every other package (test/shard.sh).
+  integration-shard:
+    name: integration shard (${{ matrix.name }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30 # The tests' own limit is 20, set in test/integration.sh.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: 0of3, shard: 0/3 }
+          - { name: 1of3, shard: 1/3 }
+          - { name: 2of3, shard: 2/3 }
+          - { name: rest, shard: rest }
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -56,15 +118,52 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg fontconfig fonts-dejavu-core
       - run: bash test/integration.sh
         env:
+          INTEGRATION_SHARD: ${{ matrix.shard }}
           JELLYSCALE_LOG_DIR: ${{ runner.temp }}/logs
+      - uses: actions/upload-artifact@v7
+        with:
+          name: integration-shard-${{ matrix.name }}
+          path: ${{ runner.temp }}/logs/shard-*.txt
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: integration-logs
+          name: integration-logs-${{ matrix.name }}
           path: ${{ runner.temp }}/logs
+
+  # The required check "integration". It passes when every shard passed and
+  # they ran every test between them, or when a docs-only pull request skipped them.
+  integration:
+    needs: [changes, integration-total, integration-shard]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - id: decide
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          CODE: ${{ needs.changes.outputs.code }}
+          TOTAL: ${{ needs.integration-total.result }}
+          SHARDS: ${{ needs.integration-shard.result }}
+        run: |
+          if [ "$CHANGES" != success ]; then echo "the changes job: $CHANGES"; exit 1; fi
+          if [ "$CODE" = false ]; then echo "docs-only pull request: the integration shards were skipped"; echo run=false >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ "$TOTAL" != success ]; then echo "counting the tests: $TOTAL"; exit 1; fi
+          if [ "$SHARDS" != success ]; then echo "the integration shards: $SHARDS"; exit 1; fi
+          echo run=true >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        if: steps.decide.outputs.run == 'true'
+      - uses: actions/download-artifact@v8
+        if: steps.decide.outputs.run == 'true'
+        with:
+          pattern: integration-shard-*
+          merge-multiple: true
+          path: shards
+      - if: steps.decide.outputs.run == 'true'
+        run: bash test/check-shards.sh integration shards ${{ needs.integration-total.outputs.total }}
 
   # Each role as its own process, against Postgres, with real ffmpeg.
   roles:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -82,8 +181,27 @@ jobs:
           name: roles-logs
           path: ${{ runner.temp }}/logs
 
-  e2e:
+  # Each shard is E2E_GATES and E2E_SHARD for test/e2e/run.sh. browse and play
+  # are one sequence of steps, so they go to one job; subtitles and transcode are
+  # dealt out by scenario. The transcode scenarios that stop the worker run last
+  # on its last shard, which is why that shard holds the fewest others.
+  e2e-shard:
+    name: e2e shard (${{ matrix.name }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: browse-play-subtitles-0of2, gates: browse play subtitles, shard: 0/2 }
+          - { name: subtitles-1of2, gates: subtitles, shard: 1/2 }
+          - { name: transcode-0of3, gates: transcode, shard: 0/3 }
+          - { name: transcode-1of3, gates: transcode, shard: 1/3 }
+          - { name: transcode-2of3, gates: transcode, shard: 2/3 }
+    env:
+      E2E_FIXTURE_CACHE: /home/runner/e2e-fixtures
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -93,6 +211,15 @@ jobs:
         with:
           node-version: lts/*
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      # The films ffmpeg makes take minutes and are the same on every run, so
+      # they are cached under the key test/fixtures/key.sh gives (the recipes and
+      # ffmpeg's version), the same one test/e2e/run.sh looks them up by.
+      - id: fixtures
+        run: echo "key=$(bash test/fixtures/key.sh)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: /home/runner/e2e-fixtures
+          key: e2e-fixtures-${{ steps.fixtures.outputs.key }}
       - name: Fetch jellyfin-web from the baseline image
         run: |
           docker create --name jf jellyfin/jellyfin:12.4
@@ -107,9 +234,45 @@ jobs:
       - run: bash test/e2e/run.sh /tmp/e2e /tmp/pw
         env:
           CHROMIUM_PATH: /usr/bin/google-chrome
+          E2E_GATES: ${{ matrix.gates }}
+          E2E_SHARD: ${{ matrix.shard }}
           JELLYSCALE_LOG_DIR: ${{ runner.temp }}/logs
+      # What each gate of this shard ran: gate, shard, ran and total.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: e2e-shard-${{ matrix.name }}
+          path: ${{ runner.temp }}/logs/shard-*.txt
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: e2e-logs
+          name: e2e-logs-${{ matrix.name }}
           path: ${{ runner.temp }}/logs
+
+  # The required check "e2e". It passes when every shard passed and, for each
+  # gate, they ran every scenario once between them, or when a docs-only pull
+  # request skipped them.
+  e2e:
+    needs: [changes, e2e-shard]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - id: decide
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          CODE: ${{ needs.changes.outputs.code }}
+          SHARDS: ${{ needs.e2e-shard.result }}
+        run: |
+          if [ "$CHANGES" != success ]; then echo "the changes job: $CHANGES"; exit 1; fi
+          if [ "$CODE" = false ]; then echo "docs-only pull request: the e2e shards were skipped"; echo run=false >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ "$SHARDS" != success ]; then echo "the e2e shards: $SHARDS"; exit 1; fi
+          echo run=true >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        if: steps.decide.outputs.run == 'true'
+      - uses: actions/download-artifact@v8
+        if: steps.decide.outputs.run == 'true'
+        with:
+          pattern: e2e-shard-*
+          merge-multiple: true
+          path: shards
+      - if: steps.decide.outputs.run == 'true'
+        run: bash test/check-shards.sh e2e shards "browse play subtitles transcode"

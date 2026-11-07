@@ -4,6 +4,7 @@
 // Usage: node play.mjs <base_url> <user> <password>
 // Run from a directory with playwright-core installed.
 import { createRequire } from "node:module";
+import { wholeLine } from "./shard.mjs";
 
 const require = createRequire(`${process.cwd()}/`);
 const { chromium } = require("playwright-core");
@@ -49,7 +50,9 @@ async function login(page) {
   await page.waitForSelector(".card", { timeout: 30000 });
 }
 
+let steps = 0;
 async function step(name, action) {
+  steps++;
   try {
     await action();
     console.log(`ok    ${name}`);
@@ -171,6 +174,8 @@ await browser.close();
 if (failures.length) {
   console.log("\nFAILED");
   for (const failure of failures) console.log(`  - ${failure}`);
+  wholeLine(steps);
   process.exit(1);
 }
 console.log("\nPASS");
+wholeLine(steps);

@@ -8,6 +8,7 @@ import { randomBytes } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { createRequire } from "node:module";
+import { runLater, schedule, shardLine } from "./shard.mjs";
 
 const require = createRequire(`${process.cwd()}/`);
 const { chromium } = require("playwright-core");
@@ -121,27 +122,31 @@ const transcodeUrl = (seen) => seen.infos.map((i) => i.source.TranscodingUrl).fi
 // E2E_ONLY="audio" runs just the scenarios whose name matches. A name is a quoted
 // literal, with any part known only at run time after ": ", so that test/report.sh
 // can annotate the scenario at its own line.
-async function scenario(name, run) {
-  if (process.env.E2E_ONLY && !new RegExp(process.env.E2E_ONLY, "i").test(name)) return;
-  const v = await viewer();
-  let passed = false;
-  try {
-    await run(v);
-    passed = true;
-  } catch (error) {
-    failures.push(`${name}: ${error.message.split("\n")[0]}`);
-    console.log(`FAIL  ${name}: ${error.message.split("\n")[0]}`);
-    await v.page.screenshot({ path: `${process.env.TMPDIR ?? "/tmp"}/jellyscale-e2e-transcode.png` }).catch(() => {});
-  } finally {
-    await v.context.close().catch(() => {});
-  }
-  // Nothing may be left running for the next scenario.
-  await waitFor("ffmpeg to exit between scenarios", async () => ffmpegRuns().length === 0, 60000).catch(() => {
-    failures.push(`${name}: ffmpeg still running afterwards`);
-    console.log(`FAIL  ${name}: ffmpeg still running afterwards`);
-    passed = false;
+// E2E_SHARD (see shard.mjs) picks the scenarios by call order, so a scenario that
+// stops the worker or needs it gone is marked { stopsWorker: true } at its call
+// and runs last, on the last shard.
+function scenario(name, run, options = {}) {
+  return schedule(name, options, async () => {
+    const v = await viewer();
+    let passed = false;
+    try {
+      await run(v);
+      passed = true;
+    } catch (error) {
+      failures.push(`${name}: ${error.message.split("\n")[0]}`);
+      console.log(`FAIL  ${name}: ${error.message.split("\n")[0]}`);
+      await v.page.screenshot({ path: `${process.env.TMPDIR ?? "/tmp"}/jellyscale-e2e-transcode.png` }).catch(() => {});
+    } finally {
+      await v.context.close().catch(() => {});
+    }
+    // Nothing may be left running for the next scenario.
+    await waitFor("ffmpeg to exit between scenarios", async () => ffmpegRuns().length === 0, 60000).catch(() => {
+      failures.push(`${name}: ffmpeg still running afterwards`);
+      console.log(`FAIL  ${name}: ffmpeg still running afterwards`);
+      passed = false;
+    });
+    if (passed) console.log(`ok    ${name}`);
   });
-  if (passed) console.log(`ok    ${name}`);
 }
 
 const leave = async (page) => {
@@ -908,9 +913,8 @@ await scenario("DELETE ActiveEncodings ends ffmpeg", async ({ page, seen }) => {
 });
 
 // Two viewers on one spec share a job, and stopping one leaves the other.
-const twoViewers = "two viewers share a job and stopping one leaves the other playing";
-if (!process.env.E2E_ONLY) {
-  const a = await viewer();
+// The scenario's own viewer is the second one's browser context, so it opens one more.
+await scenario("two viewers share a job and stopping one leaves the other playing", async (a) => {
   const b = await viewer();
   try {
     await play(a.page, "Transcode", "Lambda Film");
@@ -926,15 +930,10 @@ if (!process.env.E2E_ONLY) {
     noErrors(b.seen);
     await leave(b.page);
     await waitFor("ffmpeg to end once both left", async () => ffmpegRuns().length === 0, 20000);
-    console.log(`ok    ${twoViewers}`);
-  } catch (error) {
-    failures.push(`${twoViewers}: ${error.message.split("\n")[0]}`);
-    console.log(`FAIL  ${twoViewers}: ${error.message.split("\n")[0]}`);
   } finally {
-    await a.context.close().catch(() => {});
     await b.context.close().catch(() => {});
   }
-}
+});
 
 // Reports a position as a player leaving would, then opens the film from its
 // details page and presses Resume. Returns how long the first frame took.
@@ -1115,71 +1114,71 @@ for (const flavour of [{ name: "re-encoded", film: "Failover Encode Film", copy:
     for (const w of workers) w.kill("SIGKILL");
     process.kill(workerPid, "SIGCONT");
   }
-});
+}, { stopsWorker: true });
 
-// Last, because it stops the worker. A viewer whose transcode can't start must
+// These stop the worker or need it gone, so they are marked and run last, on the
+// last shard (test/e2e/shard.mjs). A viewer whose transcode can't start must
 // be told, not left to jellyfin-web's retries, which never end on their own.
-if (!process.env.E2E_ONLY || /no worker/i.test(process.env.E2E_ONLY)) {
-  // The worker goes away while a film plays. The player abandons a request
-  // after ten seconds, so a server that answers later leaves it asking for
-  // ever; it must answer sooner. jellyfin-web shows no dialog for an error
-  // after playback began: it drops the stream, so the picture stops and the
-  // client asks for nothing more. The log has to say why.
-  await scenario("worker lost mid-film: the player gets an answer in time and stops asking", async ({ page, seen }) => {
-    await play(page, "Transcode", "Pi Film");
-    await advances(page);
-    process.kill(workerPid, "SIGKILL");
-    const target = (await duration(page)) * 0.8;
-    const seeked = Date.now();
-    await page.evaluate((t) => { document.querySelector("video").currentTime = t; }, target);
-    const answer = await waitFor("an error answer to the segment", async () => seen.hls.find((r) => r.status >= 500 && /\/hls1\/main\/\d+\.mp4$/i.test(r.path)), 30000);
-    console.log(`      worker killed, far seek: the segment request was answered ${answer.status} after ${answer.at - seeked} ms`);
-    if (answer.at - seeked > 9000) throw new Error(`the answer took ${answer.at - seeked} ms, and the player gives up at 10000`);
-    const asked = [seen.hls.length, seen.infos.length];
-    await new Promise((resolve) => setTimeout(resolve, 12000));
-    if (seen.hls.length !== asked[0] || seen.infos.length !== asked[1]) throw new Error("the client kept asking after the refusal");
-    // A killed worker's lock is gone, so it counts at once for nothing.
-    if (!/a transcode job found (no worker|every slot busy)/.test(readFileSync(process.env.E2E_LOG, "utf8"))) throw new Error("the log doesn't say why the job found no worker");
-  });
+// The worker goes away while a film plays. The player abandons a request
+// after ten seconds, so a server that answers later leaves it asking for
+// ever; it must answer sooner. jellyfin-web shows no dialog for an error
+// after playback began: it drops the stream, so the picture stops and the
+// client asks for nothing more. The log has to say why.
+await scenario("worker lost mid-film: the player gets an answer in time and stops asking", async ({ page, seen }) => {
+  await play(page, "Transcode", "Pi Film");
+  await advances(page);
+  process.kill(workerPid, "SIGKILL");
+  const target = (await duration(page)) * 0.8;
+  const seeked = Date.now();
+  await page.evaluate((t) => { document.querySelector("video").currentTime = t; }, target);
+  const answer = await waitFor("an error answer to the segment", async () => seen.hls.find((r) => r.status >= 500 && /\/hls1\/main\/\d+\.mp4$/i.test(r.path)), 30000);
+  console.log(`      worker killed, far seek: the segment request was answered ${answer.status} after ${answer.at - seeked} ms`);
+  if (answer.at - seeked > 9000) throw new Error(`the answer took ${answer.at - seeked} ms, and the player gives up at 10000`);
+  const asked = [seen.hls.length, seen.infos.length];
+  await new Promise((resolve) => setTimeout(resolve, 12000));
+  if (seen.hls.length !== asked[0] || seen.infos.length !== asked[1]) throw new Error("the client kept asking after the refusal");
+  // A killed worker's lock is gone, so it counts at once for nothing.
+  if (!/a transcode job found (no worker|every slot busy)/.test(readFileSync(process.env.E2E_LOG, "utf8"))) throw new Error("the log doesn't say why the job found no worker");
+}, { stopsWorker: true });
 
-  await scenario("no worker: the viewer gets a playback error dialog, and the client stops asking", async ({ page, seen }) => {
-    try { process.kill(workerPid, "SIGTERM"); } catch {} // Already gone after the scenario above.
-    await new Promise((resolve) => setTimeout(resolve, 11000)); // The server forgets a worker after 10 s.
-    await page.goto(`${base}/web/`);
-    await page.waitForSelector(".card", { timeout: 30000 });
-    await page.locator(".card:visible", { hasText: "Transcode" }).first().click();
-    await page.locator(".cardText a:visible", { hasText: "Theta Film" }).first().click();
-    await page.locator(".btnPlay:visible").first().click();
-    await page.getByText("Playback Error").first().waitFor({ timeout: 20000 });
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    if (seen.infos.length > 2) throw new Error(`the client asked ${seen.infos.length} times`);
-    if (seen.hls.length) throw new Error("the client got a stream it could not play");
-  });
-}
+await scenario("no worker: the viewer gets a playback error dialog, and the client stops asking", async ({ page, seen }) => {
+  try { process.kill(workerPid, "SIGTERM"); } catch {} // Already gone after the scenario above.
+  await new Promise((resolve) => setTimeout(resolve, 11000)); // The server forgets a worker after 10 s.
+  await page.goto(`${base}/web/`);
+  await page.waitForSelector(".card", { timeout: 30000 });
+  await page.locator(".card:visible", { hasText: "Transcode" }).first().click();
+  await page.locator(".cardText a:visible", { hasText: "Theta Film" }).first().click();
+  await page.locator(".btnPlay:visible").first().click();
+  await page.getByText("Playback Error").first().waitFor({ timeout: 20000 });
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+  if (seen.infos.length > 2) throw new Error(`the client asked ${seen.infos.length} times`);
+  if (seen.hls.length) throw new Error("the client got a stream it could not play");
+}, { stopsWorker: true });
 
 // Still without a worker: a film that direct plays keeps playing when the
 // viewer picks its other audio track, which would have needed a transcode.
-if (!process.env.E2E_ONLY || /no worker/i.test(process.env.E2E_ONLY)) {
-  await scenario("no worker: switching audio on a direct play film keeps it playing", async ({ page, seen }) => {
-    await play(page, "Transcode", "Nu Film");
-    if (seen.infos.at(-1).source.TranscodingUrl !== undefined) throw new Error("Nu Film should direct play");
-    await advances(page);
-    await page.mouse.move(600, 400);
-    await page.click(".btnAudio");
-    await page.click('[data-id="2"]');
-    await waitFor("a PlaybackInfo for track 2", async () => seen.infos.find((i) => Number(i.request.AudioStreamIndex) === 2));
-    if (await page.getByText("Playback Error").count()) throw new Error("the viewer got an error dialog");
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-    await advances(page, 2);
-    if (seen.infos.length > 3) throw new Error(`the client asked ${seen.infos.length} times`);
-    await leave(page);
-  });
-}
+await scenario("no worker: switching audio on a direct play film keeps it playing", async ({ page, seen }) => {
+  await play(page, "Transcode", "Nu Film");
+  if (seen.infos.at(-1).source.TranscodingUrl !== undefined) throw new Error("Nu Film should direct play");
+  await advances(page);
+  await page.mouse.move(600, 400);
+  await page.click(".btnAudio");
+  await page.click('[data-id="2"]');
+  await waitFor("a PlaybackInfo for track 2", async () => seen.infos.find((i) => Number(i.request.AudioStreamIndex) === 2));
+  if (await page.getByText("Playback Error").count()) throw new Error("the viewer got an error dialog");
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+  await advances(page, 2);
+  if (seen.infos.length > 3) throw new Error(`the client asked ${seen.infos.length} times`);
+  await leave(page);
+}, { stopsWorker: true });
 
+await runLater();
 await browser.close();
 if (failures.length) {
   console.log("\nFAILED");
   for (const failure of failures) console.log(`  - ${failure}`);
+  shardLine();
   process.exit(1);
 }
 console.log("\nPASS");
+shardLine();
