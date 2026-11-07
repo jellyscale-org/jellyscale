@@ -1,17 +1,17 @@
 # jellyscale
 
-A video server that speaks the Jellyfin client API and scales out. Unmodified Jellyfin clients log in, browse and play (jellyfin-web is tested on every change; other clients are being dogfooded), while each part of the server runs as many copies as it needs. Not affiliated with the Jellyfin project.
+A video server that speaks the Jellyfin client API and scales out. Unmodified Jellyfin clients log in, browse and play (jellyfin-web is tested on every change), while each part of the server runs as many copies as it needs. Not affiliated with the Jellyfin project.
 
 ## Why
 
-Jellyfin is one process: it scans, serves, transcodes and holds the sessions. That is simple, but it means one machine does everything, and when it is busy or down, so is everyone's film. jellyscale keeps Jellyfin's clients and splits the server into roles that scale on their own:
+Jellyfin is one process: it scans, serves, transcodes and holds the sessions. That is simple, but it means one machine does everything, and when it is busy or down, so is everyone's film. jellyscale keeps Jellyfin's clients and splits the server into three roles that scale on their own, all in one binary (`--roles`): `api` answers the REST API and WebSockets, `stream` serves media, segments and images, and `worker` scans libraries and transcodes. So:
 
-- **More viewers:** add `stream` replicas. They serve segments, files and images, and hold no state.
-- **More transcodes:** add workers, on any machine with CPU to spare. A worker killed mid-film is replaced within seconds, and the viewer's picture goes on.
+- **More viewers:** add `stream` replicas. They keep no state of their own (it is in Postgres and the stores).
+- **More transcodes:** add workers, on any machine with CPU to spare. When a worker is killed mid-film, another worker with a free slot takes over within seconds and the viewer's picture goes on (the API replica half of failover is not built yet; see Status).
 - **Storage where you have it:** each library lives on a filesystem or on S3-compatible object storage.
 - **One thing to keep safe:** Postgres is the only service jellyscale needs besides its storage. Replicas and workers coordinate through it, and the video itself never passes through it.
 
-What makes failover cheap is that transcoded segments are deterministic: segment *n* of a film at a given quality is the same whichever worker makes it, so a stream started by one worker can be continued by another and the pieces splice. The design and its trade-offs are in [ARCHITECTURE.md](ARCHITECTURE.md), the rules it keeps in [DOMAINS.md](DOMAINS.md), and what is in and out of scope in [PRODUCT.md](PRODUCT.md).
+What makes failover cheap is that the video and timing of transcoded segments are deterministic: segment *n* of a film at a given quality has the same picture and cuts whichever worker makes it, so a stream started by one worker can be continued by another and the pieces splice. The design and its trade-offs are in [ARCHITECTURE.md](ARCHITECTURE.md), the rules it keeps in [DOMAINS.md](DOMAINS.md), and what is in and out of scope in [PRODUCT.md](PRODUCT.md).
 
 ## Status
 
