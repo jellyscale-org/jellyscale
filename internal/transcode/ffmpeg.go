@@ -104,7 +104,7 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		drop = fmt.Sprintf("noise=drop=lt(pts\\,%d)", threshold)
 	}
 
-	args := []string{"-nostdin", "-v", "warning", "-y", "-copyts", "-ss", seconds(videoSeek)}
+	args := []string{"-nostdin", "-v", "warning", "-progress", "pipe:1", "-nostats", "-y", "-copyts", "-ss", seconds(videoSeek)}
 	if image != nil && image.Width > 0 && image.Height > 0 {
 		// The size the track's bitmaps are placed on, which its stream may not say.
 		args = append(args, "-canvas_size", fmt.Sprintf("%dx%d", image.Width, image.Height))
@@ -238,7 +238,7 @@ func CopyCommand(ctx context.Context, input string, spec playback.Spec, codec st
 		}
 	}
 	// Errors only: -readrate logs a warning each time it lets ffmpeg read again.
-	args := []string{"-nostdin", "-v", "error", "-y", "-copyts"}
+	args := []string{"-nostdin", "-v", "error", "-progress", "pipe:1", "-nostats", "-y", "-copyts"}
 	if video >= 0 {
 		// A little past the keyframe: the seek goes to the last one at or before
 		// the time, and the file's own times are exact to a millisecond.

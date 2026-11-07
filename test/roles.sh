@@ -46,7 +46,12 @@ mkdir -p "$work/nobin"
 export JELLYSCALE_DATABASE_URL="postgres://postgres:r@127.0.0.1:$port/postgres" JELLYSCALE_ADMIN_PASSWORD=r-pass
 free() { python3 -I -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])'; }
 api1=$(free) api2=$(free) stream=$(free)
-start() { "$work/jellyscale" "$@" --config "$work/config.json" 2>>"$logs/roles.log" & pids+=($!); }
+# CONFIG picks another config file, as the processes with a metrics port have.
+start() { "$work/jellyscale" "$@" --config "${CONFIG:-$work/config.json}" 2>>"$logs/roles.log" & pids+=($!); }
+# Three of the processes serve /metrics, each at an address of its own.
+worker_metrics=$(free) worker2_metrics=$(free) stream_metrics=$(free)
+with_metrics() { python3 -I -c 'import json,sys;c=json.load(open(sys.argv[1]));c["metricsListen"]="127.0.0.1:"+sys.argv[2];json.dump(c,open(sys.argv[3],"w"))' "$work/config.json" "$1" "$work/config-metrics-$1.json"; }
+with_metrics "$worker_metrics"; with_metrics "$worker2_metrics"; with_metrics "$stream_metrics"
 : >"$logs/roles.log"
 # The workers' ffmpeg reads at twice the film's speed, so it is still running
 # when the checks below look for it. It also counts each subtitle extraction (the
@@ -69,11 +74,11 @@ esac
 exec $(command -v ffmpeg) "\$@"
 E2
 chmod +x "$work/bin/ffmpeg"
-PATH="$work/bin:$PATH" start --roles=worker
-PATH="$work/bin:$PATH" start --roles=worker
+CONFIG="$work/config-metrics-$worker_metrics.json" PATH="$work/bin:$PATH" start --roles=worker
+CONFIG="$work/config-metrics-$worker2_metrics.json" PATH="$work/bin:$PATH" start --roles=worker
 PATH="$work/nobin" start --roles=api --listen "127.0.0.1:$api1"
 PATH="$work/nobin" start --roles=api --listen "127.0.0.1:$api2"
-PATH="$work/nobin" start --roles=stream --listen "127.0.0.1:$stream"
+CONFIG="$work/config-metrics-$stream_metrics.json" PATH="$work/nobin" start --roles=stream --listen "127.0.0.1:$stream"
 
 for _ in $(seq 1 60); do
   curl -fs -o /dev/null "127.0.0.1:$api1/healthz" && curl -fs -o /dev/null "127.0.0.1:$api2/healthz" &&
@@ -276,9 +281,27 @@ check "init segment comes from a worker's output" "ftyp" "$(curl -s "127.0.0.1:$
 check "first segment comes from a worker's output" "styp" "$(curl -s "127.0.0.1:$stream$base/$segment" | head -c 8 | tail -c 4)"
 workers=$(pgrep -f "ffmpeg.*$work/scratch" | wc -l)
 check "a worker is running ffmpeg for it" 1 "$workers"
+# Both workers are scraped while the job runs: the one with it shows its speed
+# and a busy slot, and the stream role shows the wait for the segments.
+scrape() { curl -s "127.0.0.1:$1/metrics"; }
+speed=""
+for _ in $(seq 1 40); do
+  speed=$(scrape "$worker_metrics"; scrape "$worker2_metrics")
+  echo "$speed" | grep -q '^jellyscale_transcode_job_speed_ratio{' && break
+  sleep 0.5
+done
+check "a running job's speed is on a worker" 1 "$(echo "$speed" | grep -c '^jellyscale_transcode_job_speed_ratio{')"
+check "a worker has a busy slot of its 2" "1 2" "$(echo "$speed" | awk '/^jellyscale_transcode_slots_busy / {b+=$2} /^jellyscale_transcode_slots / {t=$2} END {print b, t}')"
+check "the job is counted by kind (the AC3 film is a copy)" "1 0" "$(echo "$speed" | awk '/^jellyscale_transcode_jobs_running\{kind="copy"\}/ {c+=$2} /^jellyscale_transcode_jobs_running\{kind="reencode"\}/ {r+=$2} END {print c, r}')"
+check "the stream role counts the waits for segments" "yes" "$(scrape "$stream_metrics" | grep -q '^jellyscale_segment_wait_seconds_count{kind="reencode",outcome="ok",source="started"} [1-9]' && echo yes)"
+check "the public port has no /metrics" 404 "$(code "127.0.0.1:$stream/metrics")"
+echo "--- /metrics of the worker running the job, trimmed:" >&2
+echo "$speed" | grep -E '^jellyscale_transcode_(job_speed_ratio|slots|slots_busy|jobs_running|queue_depth)' >&2
+scrape "$stream_metrics" | grep -E '^jellyscale_segment_wait_seconds_(count|sum)' >&2
 check "DELETE ActiveEncodings answers 204" 204 "$(code -X DELETE -H "$header" "127.0.0.1:$stream/Videos/ActiveEncodings?deviceId=i&PlaySessionId=$session")"
 for _ in $(seq 1 40); do [[ $(pgrep -f "ffmpeg.*$work/scratch" | wc -l) -eq 0 ]] && break; sleep 0.5; done
 check "no ffmpeg outlives the session" 0 "$(pgrep -f "ffmpeg.*$work/scratch" | wc -l)"
+check "the speed series ends with the job" 0 "$( (scrape "$worker_metrics"; scrape "$worker2_metrics") | grep -c '^jellyscale_transcode_job_speed_ratio{')"
 check "a stopped session is refused" 410 "$(code "127.0.0.1:$stream$base/$segment")"
 
 # A worker killed outright takes its ffmpeg with it.

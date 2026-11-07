@@ -348,7 +348,7 @@ func TestSlotsBoundConcurrentTranscodes(t *testing.T) {
 	if err := j.Watch(ctx, r.viewer(psid(1)), otherHash, -1); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := j.ensure(ctx, other, otherHash, psid(1), 0, 0); err != nil {
+	if _, _, err := j.ensure(ctx, other, otherHash, psid(1), 0, 0); err != nil {
 		t.Fatal(err)
 	}
 	Notify(ctx, j.Pool, jobHint)
@@ -380,7 +380,7 @@ func TestStopRacingAnInsertLeavesNoJob(t *testing.T) {
 		}
 		done := make(chan error, 1)
 		go func() { done <- j.Stop(ctx, r.user, session, "", "") }()
-		if _, err := j.ensure(ctx, r.spec, r.hash, session, 0, 0); err != nil && !errors.Is(err, ErrStopped) {
+		if _, _, err := j.ensure(ctx, r.spec, r.hash, session, 0, 0); err != nil && !errors.Is(err, ErrStopped) {
 			t.Fatal(err)
 		}
 		if err := <-done; err != nil {

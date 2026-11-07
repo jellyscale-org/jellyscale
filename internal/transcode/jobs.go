@@ -160,7 +160,7 @@ func (j *Jobs) Watch(ctx context.Context, v Viewer, hash string, segment int) er
 			WHERE NOT transcode_viewers.stopped AND transcode_viewers.user_id = EXCLUDED.user_id`,
 		v.PlaySessionID, hash, v.UserID, v.DeviceID, v.Item, segment)
 	if err == nil && tag.RowsAffected() == 0 {
-		return ErrStopped
+		return refusedAsStopped()
 	}
 	return err
 }
@@ -264,6 +264,16 @@ func readSegment(ctx context.Context, s store.Store, key string) ([]byte, error)
 // the init joins a live job, or starts one at startAt, where the viewer
 // starts.
 func (j *Jobs) Segment(ctx context.Context, spec playback.Spec, hash string, viewer Viewer, n, startAt int) ([]byte, error) {
+	began := time.Now()
+	var source string
+	body, err := j.segment(ctx, spec, hash, viewer, n, startAt, &source)
+	observeSegment(began, spec.Copy, source, err)
+	return body, err
+}
+
+// segment is Segment. source says where the segment came from: the store, a job
+// that was running, or a job this request started; the first of them to apply.
+func (j *Jobs) segment(ctx context.Context, spec playback.Spec, hash string, viewer Viewer, n, startAt int, source *string) ([]byte, error) {
 	wake, unsubscribe := j.Hub.Subscribe(segmentHint(hash))
 	defer unsubscribe()
 	ticker := time.NewTicker(pollInterval)
@@ -277,6 +287,9 @@ func (j *Jobs) Segment(ctx context.Context, spec playback.Spec, hash string, vie
 	for {
 		body, err := readSegment(ctx, j.Segments, SegmentKey(hash, n))
 		if err == nil {
+			if *source == "" {
+				*source = "store"
+			}
 			return body, nil
 		}
 		if !errors.Is(err, store.ErrNotFound) {
@@ -293,8 +306,15 @@ func (j *Jobs) Segment(ctx context.Context, spec playback.Spec, hash string, vie
 			if n < 0 {
 				start = startAt
 			}
-			if job, err = j.ensure(ctx, spec, hash, viewer.PlaySessionID, n, start); err != nil {
+			var created bool
+			if job, created, err = j.ensure(ctx, spec, hash, viewer.PlaySessionID, n, start); err != nil {
 				return nil, err
+			}
+			if *source == "" {
+				*source = "waited"
+				if created {
+					*source = "started"
+				}
 			}
 		} else {
 			state, err := j.state(ctx, job)
@@ -382,13 +402,13 @@ func orDefault(d, fallback time.Duration) time.Duration {
 // request replaces the same viewer's previous job, whether it joins another
 // viewer's job or starts its own; that one stops at its next heartbeat. Other
 // viewers' jobs, and any a viewer has lately used, are left running.
-func (j *Jobs) ensure(ctx context.Context, spec playback.Spec, hash, owner string, n, start int) (int64, error) {
+func (j *Jobs) ensure(ctx context.Context, spec playback.Spec, hash, owner string, n, start int) (int64, bool, error) {
 	raw, err := json.Marshal(spec)
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 	if err := expireQueued(ctx, j.Pool, orDefault(j.QueueTimeout, queueTimeout)); err != nil {
-		return 0, err
+		return 0, false, err
 	}
 	var id int64
 	var failure string
@@ -405,7 +425,7 @@ func (j *Jobs) ensure(ctx context.Context, spec playback.Spec, hash, owner strin
 			return err
 		}
 		if stopped {
-			return ErrStopped
+			return refusedAsStopped()
 		}
 		// The init segment (n < 0) comes with any job's first segment, so any
 		// live job will do.
@@ -447,13 +467,13 @@ func (j *Jobs) ensure(ctx context.Context, spec playback.Spec, hash, owner strin
 			VALUES ($1, $2, $3, $4, $4) RETURNING id`, hash, raw, owner, start).Scan(&id)
 	})
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 	if created {
 		Notify(ctx, j.Pool, jobHint)
 	}
 	_, err = j.Pool.Exec(ctx, "UPDATE transcode_viewers SET job_id = $3 WHERE play_session_id = $1 AND spec_hash = $2", owner, hash, id)
-	return id, err
+	return id, created, err
 }
 
 type jobState struct {

@@ -327,9 +327,9 @@
         "No title, path or unbounded value in any label",
         "docs/running.md documents it and reading it with kubectl port-forward"
       ],
-      "priority": 1,
-      "status": "in_progress",
-      "passes": false,
+      "priority": null,
+      "status": "done",
+      "passes": true,
       "dependsOn": [],
       "source": "PRODUCT.md phase6-k8s (pulled forward); work queue 3b",
       "notes": "Option A chosen 2026-11-07: read /metrics directly; a small Prometheus beside jellyscale only if history is needed."
@@ -344,7 +344,7 @@
         "The ceiling is stated in streams per Postgres primary in ARCHITECTURE.md",
         "A recommendation on whether NATS JetStream for ephemeral state is worth considering after the MVP"
       ],
-      "priority": 3,
+      "priority": 2,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -363,7 +363,7 @@
         "Exported over OTLP to any backend; off by default",
         "A failover shows the dead worker's span end and the replacement's begin in one trace"
       ],
-      "priority": 47,
+      "priority": 46,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -381,7 +381,7 @@
         "Each request and job log line carries ids that link them",
         "Levels and noise reviewed against the dogfood"
       ],
-      "priority": 48,
+      "priority": 47,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -401,7 +401,7 @@
         "The decision table tests cover every VideoRangeType against jellyfin-web's own profile conditions",
         "Checked on the dogfood with a P8.1 film and a P7 film in jellyfin-web and one TV client"
       ],
-      "priority": 4,
+      "priority": 3,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -421,7 +421,7 @@
         "Helpers never take the last free slot from a new viewer",
         "Measured speedup with 1, 2 and 3 workers in the PR"
       ],
-      "priority": 5,
+      "priority": 4,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -440,7 +440,7 @@
         "jellyfin-web plays a 4K HDR film with TrueHD audio from a copy on a 4-core worker without stalls",
         "Tone mapping stays for clients that cannot show HDR"
       ],
-      "priority": 6,
+      "priority": 5,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -458,7 +458,7 @@
         "Video and audio both copied, segments splice after a restart",
         "Played and sought in jellyfin-web"
       ],
-      "priority": 7,
+      "priority": 6,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -474,7 +474,7 @@
         "Listed like Jellyfin 12.4",
         "Drawn into a transcode; PGS sent to jellyfin-web when its setting is on"
       ],
-      "priority": 8,
+      "priority": 7,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -490,7 +490,7 @@
         "One ffmpeg run per film for all text tracks",
         "S3 reads drop accordingly"
       ],
-      "priority": 9,
+      "priority": 8,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -506,7 +506,7 @@
         "A Postgres restart or switchover under load does not restart transcodes whose rows survived",
         "No job is ever owned by two workers (invariant 25)"
       ],
-      "priority": 10,
+      "priority": 9,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -525,7 +525,7 @@
         "A claim racing a re-lock cannot cancel a job",
         "Rollback note for the liveness change"
       ],
-      "priority": 11,
+      "priority": 10,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -541,7 +541,7 @@
         "Kill an api replica during playback in the e2e tier: playback continues, progress persists, the socket reconnects",
         "Session ownership (sessions.ws_replica) moves to a live replica"
       ],
-      "priority": 13,
+      "priority": 12,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -557,7 +557,7 @@
         "POST /Sessions/{id}/Playing, /Command, /Message, /System, /Viewing, /Capabilities work across replicas",
         "jellyfin-web's remote control drives another session"
       ],
-      "priority": 14,
+      "priority": 13,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -575,7 +575,7 @@
         "POST /Users/New, DELETE /Users/{id}, /Users/{id}/Policy, /Password, /Configuration as Jellyfin 12.4",
         "jellyfin-web's admin user pages work"
       ],
-      "priority": 16,
+      "priority": 15,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -591,7 +591,7 @@
         "No plain token in the database",
         "API keys created and revoked through jellyfin-web"
       ],
-      "priority": 17,
+      "priority": 16,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -608,7 +608,7 @@
         "Last use time and address recorded",
         "Streamystats works with a read-only key and no extra user account"
       ],
-      "priority": 18,
+      "priority": 17,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -625,7 +625,7 @@
       "acceptanceCriteria": [
         "Enforced on every item route"
       ],
-      "priority": 19,
+      "priority": 18,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -643,7 +643,7 @@
         "Observed against Jellyfin 12.4 first",
         "Moonfin on the Shield and Findroid sign in with a code approved from jellyfin-web"
       ],
-      "priority": 20,
+      "priority": 19,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -658,7 +658,7 @@
       "acceptanceCriteria": [
         "Answer shape as Jellyfin 12.4"
       ],
-      "priority": 21,
+      "priority": 20,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -674,7 +674,7 @@
         "Sign in with an OIDC provider in jellyfin-web",
         "OIDC users reach TV apps through Quick Connect"
       ],
-      "priority": 22,
+      "priority": 21,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -692,7 +692,7 @@
         "No viewer token in any playlist or segment URL",
         "Kodi's TranscodingUrl editing still works"
       ],
-      "priority": 23,
+      "priority": 22,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -707,7 +707,7 @@
       "acceptanceCriteria": [
         "Each mode matches a Jellyfin 12.4 capture"
       ],
-      "priority": 24,
+      "priority": 23,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -722,7 +722,7 @@
       "acceptanceCriteria": [
         "Revoked device's token stops working"
       ],
-      "priority": 25,
+      "priority": 24,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -737,7 +737,7 @@
       "acceptanceCriteria": [
         "jellyfin-web's dashboard lists entries"
       ],
-      "priority": 26,
+      "priority": 25,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -752,7 +752,7 @@
       "acceptanceCriteria": [
         "jellyfin-web shows and changes avatars"
       ],
-      "priority": 27,
+      "priority": 26,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -768,7 +768,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 28,
+      "priority": 27,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -784,7 +784,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 29,
+      "priority": 28,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -800,7 +800,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 30,
+      "priority": 29,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -816,7 +816,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 31,
+      "priority": 30,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -832,7 +832,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 32,
+      "priority": 31,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -848,7 +848,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 33,
+      "priority": 32,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -864,7 +864,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 34,
+      "priority": 33,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -880,7 +880,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 35,
+      "priority": 34,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -896,7 +896,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 36,
+      "priority": 35,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -912,7 +912,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 37,
+      "priority": 36,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -928,7 +928,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 38,
+      "priority": 37,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -944,7 +944,7 @@
         "Installs on a fresh cluster",
         "Readiness and liveness probes per role"
       ],
-      "priority": 39,
+      "priority": 38,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -959,7 +959,7 @@
       "acceptanceCriteria": [
         "Workers scale up under queued jobs and down when idle"
       ],
-      "priority": 40,
+      "priority": 39,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -976,7 +976,7 @@
       "acceptanceCriteria": [
         "A rolling upgrade under playback loses no picture"
       ],
-      "priority": 41,
+      "priority": 40,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -993,7 +993,7 @@
       "acceptanceCriteria": [
         "Restore tested from a backup"
       ],
-      "priority": 42,
+      "priority": 41,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1008,7 +1008,7 @@
       "acceptanceCriteria": [
         "Viewers keep their history; users set a password or use OIDC"
       ],
-      "priority": 43,
+      "priority": 42,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1024,7 +1024,7 @@
         "Observe its calls on Jellyfin first",
         "Its dashboards fill from jellyscale"
       ],
-      "priority": 44,
+      "priority": 43,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1042,7 +1042,7 @@
       "acceptanceCriteria": [
         "200 mixed streams with stated rebuffer ratio and p95s"
       ],
-      "priority": 45,
+      "priority": 44,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1060,7 +1060,7 @@
         "Two viewers on different api replicas stay in sync in jellyfin-web",
         "compat/coverage-12.4.tsv phase7-syncplay routes built (23)"
       ],
-      "priority": 46,
+      "priority": 45,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1082,7 +1082,7 @@
         "Runs in CI (sharded if needed) and locally; docs/testing.md explains adding a route",
         "Later compatibility tasks can state acceptance as 'route X matches, apart from the allowlist'"
       ],
-      "priority": 2,
+      "priority": 1,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1102,7 +1102,7 @@
         "Replays run in CI and fail on a response a client would reject (status, missing field, wrong shape)",
         "No titles or paths from a real library in the captures (synthetic fixtures only)"
       ],
-      "priority": 15,
+      "priority": 14,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1121,7 +1121,7 @@
         "Randomized schedules with a printed seed that reproduces a failure",
         "A soak mode (many repetitions) documented in docs/testing.md and run before failover changes merge"
       ],
-      "priority": 12,
+      "priority": 11,
       "status": "todo",
       "passes": false,
       "dependsOn": [],

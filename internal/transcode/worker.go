@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -67,6 +68,11 @@ type Worker struct {
 	// connection to go through something else.
 	LivenessConfig *pgx.ConnConfig
 
+	// live is what the worker runs now, for /metrics.
+	liveMu    sync.Mutex
+	live      map[int64]liveJob
+	slotCount atomic.Int64
+
 	idOnce sync.Once
 	// held ends when the liveness lock is lost, and is nil while it is not held.
 	heldMu sync.Mutex
@@ -79,6 +85,7 @@ type Worker struct {
 func (w *Worker) Run(ctx context.Context) {
 	w.setID()
 	slots := make(chan struct{}, max(w.Slots, 1))
+	w.slotCount.Store(int64(cap(slots)))
 	var running sync.WaitGroup
 	defer running.Wait()
 	go w.sweepLoop(ctx)
@@ -100,10 +107,12 @@ func (w *Worker) Run(ctx context.Context) {
 				w.Log.Error("claiming a transcode job failed", "error", err)
 			}
 			if ok {
+				job.progress = w.track(job)
 				running.Add(1)
 				go func() {
 					defer running.Done()
 					defer func() { <-slots }()
+					defer w.untrack(job.ID)
 					w.run(jobCtx, job)
 				}()
 				continue // There may be more queued.
@@ -126,6 +135,8 @@ type claimed struct {
 	Hash  string
 	Spec  playback.Spec
 	Start int
+
+	progress *progress // How fast ffmpeg goes; set by Run.
 }
 
 func (w *Worker) lease() time.Duration     { return orDefault(w.Lease, 10*time.Second) }
@@ -219,6 +230,7 @@ func (w *Worker) run(ctx context.Context, job claimed) {
 	log := w.Log.With("job", job.ID, "spec", job.Hash, "item", job.Spec.Item, "start", job.Start)
 	log.Info("transcode started", "copy", job.Spec.Copy)
 	began := time.Now()
+	jobsStarted.Inc()
 	err := w.encode(ctx, job, log)
 	// Only this error says the index is wrong; a cancelled or failed run says
 	// nothing of it. The next PlaybackInfo re-encodes the film.
@@ -234,13 +246,16 @@ func (w *Worker) run(ctx context.Context, job claimed) {
 	state, reason := "done", ""
 	switch {
 	case err == nil:
+		jobsEnded.WithLabelValues("done").Inc()
 		log.Info("transcode ended", "elapsed", time.Since(began).Round(time.Millisecond))
 	case ctx.Err() != nil || errors.Is(err, errInterrupted):
 		// Cut short, not failed: viewers restart it, and the spec isn't refused.
 		state, reason = "cancelled", err.Error()
+		jobsEnded.WithLabelValues("interrupted").Inc()
 		log.Info("transcode interrupted", "reason", reason)
 	default:
 		state, reason = "failed", err.Error()
+		jobsEnded.WithLabelValues("failed").Inc()
 		log.Error("transcode failed", "error", err)
 	}
 	// A fresh context: ctx may be why we stopped.
@@ -355,6 +370,7 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	// backstop, so no path leaves ffmpeg running.
 	var stderr tail
 	cmd.Stderr = &stderr
+	cmd.Stdout = job.progress
 	subtitles.DieWithParent(cmd)
 	if err := cmd.Start(); err != nil {
 		return err
@@ -464,6 +480,7 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 				return true
 			}
 			paused = true
+			job.progress.pause(true)
 			log.Debug("pausing ffmpeg at its lead", "limit", limit)
 		case !wait && paused:
 			if err := pauseProcess(cmd.Process, false); err != nil {
@@ -471,6 +488,7 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 				return true
 			}
 			paused = false
+			job.progress.pause(false)
 			log.Debug("resuming ffmpeg", "limit", limit)
 		}
 		return true

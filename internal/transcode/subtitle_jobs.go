@@ -238,6 +238,10 @@ func (w *Worker) runJobs(ctx context.Context, chapters bool, n int) {
 	slots := make(chan struct{}, n)
 	var running sync.WaitGroup
 	defer running.Wait()
+	kind := "subtitles"
+	if chapters {
+		kind = "chapter_images"
+	}
 	wake, unsubscribe := w.Hub.Subscribe(subtitleHint)
 	defer unsubscribe()
 	ticker := time.NewTicker(time.Second)
@@ -254,6 +258,8 @@ func (w *Worker) runJobs(ctx context.Context, chapters bool, n int) {
 				go func() {
 					defer running.Done()
 					defer func() { <-slots }()
+					extractions.WithLabelValues(kind).Inc()
+					defer extractions.WithLabelValues(kind).Dec()
 					w.runSubtitle(ctx, job)
 				}()
 				continue
