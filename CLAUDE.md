@@ -34,10 +34,16 @@ Tests that need ffmpeg, Postgres, S3 or a font live in `*_integration_test.go` f
 
 ## Delivery
 
-Non-trivial work goes through the `deliver` workflow in `.claude/workflows/deliver.js`: an architecture review of the design, implement, then a blind architecture review, two blind adversarial reviews, QA, Product, and UX when a change affects what viewers or operators experience. Role definitions are in `.claude/agents/`, and the intended design is in [ARCHITECTURE.md](ARCHITECTURE.md).
+Each task in [tasks/prd.json](tasks/prd.json) goes through the `build` workflow in `.claude/workflows/build.js`, highest priority first. Its shape follows the evidence that agents converge when they loop against checks that can fail, and that reviewer comments are mostly noise unless they come with evidence:
 
-Blind means a reviewer sees the task, the diff and these docs, never the implementer's reasoning or another reviewer's findings. Keep it that way when changing the workflow.
+1. **Spec.** A spec writer turns the acceptance criteria into executable checks (tests, e2e scenarios, capture-based tests) and shows each fails today. Protocol behaviour is observed on a real Jellyfin 12.4 first.
+2. **Check.** An architecture reviewer reviews the design and whether the checks would catch a wrong build. A blocker sends it back to Spec once.
+3. **Build.** One implementer works until the checks and the tiers pass. The checks are locked: changing one, or disputing it, stops the run.
+4. **Verify.** QA runs it; one blind adversarial reviewer tries to break it where the checks don't look; architecture reviews it again only for changes to the scan, a store or job semantics (`core: true`); UX when viewers or operators would notice (`ux: true`). A blocker or major needs executable evidence (a failing test, a command and its output, a capture diff), or it counts as minor. Environment failures are reported apart.
+5. **Fix.** One round for evidenced findings, then Verify again. Evidenced findings left after that send the task back to Spec: the checks missed something. Minors never start a fix round; they go to a backlog the lead triages.
 
-After fixes, the architecture reviewer, both adversarial reviewers, QA, and every other reviewer who raised a blocking finding run again.
+Blind means a reviewer sees the task, the checks, the diff and these docs, never the implementer's reasoning or another reviewer's findings. Keep it that way when changing the workflow. Role definitions are in `.claude/agents/`, and the intended design is in [ARCHITECTURE.md](ARCHITECTURE.md).
 
-Keep a slice small enough to converge in one or two review rounds: one capability, and its tests and docs. Skip the design review only for a fix pass on work whose design has been reviewed; a slice that touches the scan, a store or job semantics always gets one. A run that stops because the tree changed returns its reviews and both tree hashes; look at the change before going on.
+After each task, record what the run found in `.results/tasks.jsonl` (gitignored): the task id, minutes and tokens per phase, each finding with whether it was real, its evidence kind and whether it was fixed, and later any defect that escaped to CI, the dogfood or a user, with the task it came from. Then mark the task done in `tasks/prd.json`, consider what the whole application now needs, and amend `tasks/prd.json` by pull request with the reason.
+
+Keep a task small enough to converge in one build and one fix round: one capability, its checks and docs.

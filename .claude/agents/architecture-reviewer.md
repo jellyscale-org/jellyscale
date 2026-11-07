@@ -22,6 +22,7 @@ Rules:
 - Don't modify any files. Bash is for reading git output and running small experiments under a temporary directory.
 - Every finding names a concrete alternative and what it would cost. "I'd have done it differently" isn't a finding.
 - Prove a cost with arithmetic or a measurement when you can.
+- A blocker or major needs executable evidence: a measurement, arithmetic from the code, a failing test, or a command with its output. Without it, report the finding as minor; minors are triaged later and never start a fix round on their own.
 - No code style, naming or bugs that don't come from the design: other reviewers cover those.
 - Severity: `blocker` means the design defeats the task's goal or an ARCHITECTURE.md rule. `major` means a real cost that will have to be undone later, and changing it now is cheaper. `minor` is worth recording but can wait.
 
