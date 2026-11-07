@@ -89,7 +89,7 @@ func TestLegacyTextLanguageOnlyBreaksTies(t *testing.T) {
 
 // Windows-1250 is what chardet reads as Windows-1252 (Polish, Czech) or
 // Windows-1254 (Serbian Latin), and Thai (Windows-874) as a CJK set, and the
-// file's name does not help, as the results are not close. README (Subtitle files and fonts beside the film) lists this as a limit, with
+// file's name does not help, as the results are not close. docs/subtitles.md (Subtitle files and fonts beside the film) lists this as a limit, with
 // the remedy of converting the file to UTF-8; this test pins the behaviour so a
 // change of the detector shows.
 func TestLegacyTextKnownLimit(t *testing.T) {
@@ -104,7 +104,7 @@ func TestLegacyTextKnownLimit(t *testing.T) {
 		}
 		got, ok := legacyText(subtitleFile(t, enc, c.text), c.language)
 		if !ok || strings.Contains(string(got), c.text) {
-			t.Errorf("%s is now read correctly, update README: %v\n%s", name, ok, got)
+			t.Errorf("%s is now read correctly, update docs/subtitles.md: %v\n%s", name, ok, got)
 		}
 	}
 }

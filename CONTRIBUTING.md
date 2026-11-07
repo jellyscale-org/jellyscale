@@ -4,7 +4,7 @@ Thanks for helping. Read [PRODUCT.md](PRODUCT.md) for what's in scope and [DOMAI
 
 ## Setup
 
-You need Go. Docker, and ffmpeg with libx264, libx265 and libass (and a font), are for the integration tier. See the README for running the stack and the test suites.
+You need Go. Docker, and ffmpeg with libx264, libx265 and libass (and a font), are for the integration tier. See [docs/running.md](docs/running.md) for running the stack and [docs/testing.md](docs/testing.md) for the test suites.
 
 ```sh
 go test ./...        # Tests that need nothing outside Go
