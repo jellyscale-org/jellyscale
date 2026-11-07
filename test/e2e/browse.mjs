@@ -2,6 +2,7 @@
 // Usage: node browse.mjs <base_url> <user> <password>
 // Run from a directory with playwright-core installed.
 import { createRequire } from "node:module";
+import { wholeLine } from "./shard.mjs";
 import { tmpdir } from "node:os";
 
 const require = createRequire(`${process.cwd()}/`);
@@ -24,7 +25,9 @@ page.on("response", (response) => {
   }
 });
 
+let steps = 0;
 async function step(name, action) {
+  steps++;
   try {
     await action();
     console.log(`ok    ${name}`);
@@ -101,11 +104,21 @@ await step("images load", async () => {
   if (response.status !== 200 || response.size < 1000) throw new Error(JSON.stringify(response));
 });
 
+// Shows E2E_REPEAT reporting a scenario that passes only some of the time: this
+// fails on odd iterations. It runs only when E2E_FLAKY_DEMO is set, never in CI.
+if (process.env.E2E_FLAKY_DEMO) {
+  await step("flaky demo: fails on odd iterations", async () => {
+    if (Number(process.env.E2E_ITERATION) % 2 === 1) throw new Error("odd iteration");
+  });
+}
+
 await browser.close();
 console.log("\nunknown routes:", notFound.size ? [...notFound].map(([k, v]) => `${k} x${v}`).join(", ") : "none");
 if (failures.length) {
   console.log("\nFAILED");
   for (const failure of failures) console.log(`  - ${failure}`);
+  wholeLine(steps);
   process.exit(1);
 }
 console.log("\nPASS");
+wholeLine(steps);

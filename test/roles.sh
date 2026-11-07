@@ -8,20 +8,30 @@
 # with each command line a worker ran.
 # In CI ($GITHUB_ACTIONS set) failed checks go to the job summary and become
 # annotations (test/report.sh); locally the output stays as it is.
+# Temp files go to a short dir under /tmp/jellyscale-test (TMPDIR) and are removed at exit (test/lib.sh), and a run
+# that passes records its result under .results.
 set -uo pipefail
+source "$(dirname "$0")/lib.sh"
 for tool in docker ffmpeg go curl python3; do
   command -v "$tool" >/dev/null || { echo "test/roles.sh needs $tool on PATH" >&2; exit 1; }
 done
-mkdir -p "$1"
-work=$(cd "$1" && pwd)
-repo=$(cd "$(dirname "$0")/.." && pwd)
+make_work roles "$1" || exit 1
 logs=${JELLYSCALE_LOG_DIR:-$work/logs}
 mkdir -p "$logs"
 logs=$(cd "$logs" && pwd)
 pg=jellyscale-roles-pg-$$
 pids=()
-cleanup() { [[ ${#pids[@]} -gt 0 ]] && kill "${pids[@]}" 2>/dev/null; docker rm -f "$pg" >/dev/null 2>&1; }
+cleanup() {
+  local status=$?
+  [[ ${#pids[@]} -gt 0 ]] && kill "${pids[@]}" 2>/dev/null
+  docker rm -fv "$pg" >/dev/null 2>&1
+  result_finish $status
+  rm -rf "$tmp_base" "$work/t"
+}
 trap cleanup EXIT
+result_start
+result_name=roles
+result_log=$logs
 bash "$repo/test/fixtures/posix.sh" "$work" || exit 1
 docker run -d --rm --name "$pg" -e POSTGRES_PASSWORD=r -p 127.0.0.1::5432 postgres:18-alpine >/dev/null || exit 1
 port=$(docker port "$pg" 5432/tcp | head -1 | sed 's/.*://')
@@ -326,5 +336,6 @@ check "the refusal comes within ten seconds" 1 "$(( SECONDS - began <= 10 ))"
 subtitles() { curl -s -H "$header" "127.0.0.1:$api2/Items/$1" | python3 -I -c 'import json,sys;print(sum(s["Type"] == "Subtitle" for s in json.load(sys.stdin)["MediaStreams"]))'; }
 check "the uncached film lists no subtitle track" 0 "$(subtitles "$phi")"
 check "the cached film lists both of its tracks" 2 "$(subtitles "$sigma")"
+result_summary="roles: $passed passed, $failures failed"
 bash "$repo/test/report.sh" totals roles "$passed" "$failures"
 exit $failed

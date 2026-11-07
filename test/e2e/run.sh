@@ -1,14 +1,32 @@
 #!/usr/bin/env bash
-# Runs the browse and play gates against disposable infrastructure, with each
-# role as its own process behind a router, as in production: Postgres, S3
-# (SeaweedFS), two api replicas, a stream replica and a worker.
+# Runs the browse, play, subtitles and transcode gates against disposable
+# infrastructure, with each role as its own process behind a router, as in
+# production: Postgres, S3 (SeaweedFS), two api replicas, a stream replica and a worker.
 # Usage: run.sh <workdir> <dir_with_playwright>
 # E2E_GATES picks which gates run, default "browse play subtitles transcode".
+# E2E_SHARD=i/n runs every n-th scenario of the subtitles and transcode gates,
+# starting at the i-th (test/e2e/shard.mjs): CI runs the shards side by side.
+# The scenarios that stop the worker run last, on the last shard. browse and play
+# are one sequence of steps and always run whole, so give them to one job (E2E_GATES).
+# Every gate ends with "shard i/n: ran k of T"; a gate without that line, or with
+# k = 0, fails the run. <logs>/shard-<gate>-<i>of<n>.txt holds "gate i n k T" for
+# test/check-shards.sh, which checks that the shards added up to every scenario.
+# E2E_ONLY="regex" runs the scenarios whose name matches (subtitles, transcode).
+# E2E_REPEAT=n runs the gates n times on one stack, to hunt a flake, and reports
+# "passed p of n" for each scenario. Between iterations it clears the segments
+# directory, the scratch directory and the S3 segments, resets the transcode
+# jobs and restarts the worker, and keeps the fixtures. Nothing else is reset:
+# the scan, the subtitles and fonts already made, and users stay, so these are
+# warm reruns. A scenario that needs a first play of a film's subtitles or fonts
+# can fail from the second iteration on.
+# E2E_FIXTURE_CACHE is where the films are cached between runs (test/fixtures/cached.sh).
 # E2E_HEVC=1 says the browser plays HEVC (a machine with a hardware decoder); the
 # transcode gate then expects HEVC to direct play and copy. CI leaves it unset.
 # Expects jellyfin-web in ./web-dist: docker cp <jellyfin>:/jellyfin/jellyfin-web web-dist
 # Writes <workdir>/config.json (POSIX libraries only, from test/fixtures/posix.sh)
 # and <workdir>/config-s3.json (adds a library on S3 for media and assets).
+# Temp files go to a short dir under /tmp/jellyscale-test (TMPDIR) and are removed at exit (test/lib.sh). A gate run
+# whole (no E2E_ONLY, no E2E_REPEAT) records its result under .results.
 # Logs (server.log with every role's output, whose errors carry the end of
 # ffmpeg's stderr, and ffmpeg.log with each command line the worker ran) go to
 # $JELLYSCALE_LOG_DIR, default <workdir>/logs, whole and, for what each gate
@@ -16,250 +34,89 @@
 # In CI ($GITHUB_ACTIONS set) each gate's failures go to the job summary and
 # become annotations (test/report.sh); locally the output stays as it is.
 set -uo pipefail
-work=$1
-playwright=$2
 repo=$(cd "$(dirname "$0")/../.." && pwd)
+# First, before any trap, fixture or container: without it every scenario fails as a login timeout.
+if [[ ! -f $repo/web-dist/index.html ]]; then
+  cat >&2 <<E1
+test/e2e/run.sh needs jellyfin-web in $repo/web-dist (a git worktree has none of its own). Copy it from the baseline image:
+  docker create --name jf jellyfin/jellyfin:12.4
+  docker cp jf:/jellyfin/jellyfin-web $repo/web-dist && docker rm -v jf
+E1
+  exit 1
+fi
+repeat=${E2E_REPEAT:-1}
+[[ $repeat =~ ^[1-9][0-9]*$ ]] || { echo "E2E_REPEAT must be a whole number of runs, 1 or more; it is '$repeat'" >&2; exit 2; }
+source "$repo/test/lib.sh"
+[[ $# -eq 2 ]] || { echo "usage: test/e2e/run.sh <workdir> <dir_with_playwright>" >&2; exit 2; }
+playwright=$2
 pg=jellyscale-e2e-pg-$$ sw=jellyscale-e2e-sw-$$
 pids=()
-mkdir -p "$work"
-work=$(cd "$work" && pwd)
+make_work e2e "$1" || exit 1
 logs=${JELLYSCALE_LOG_DIR:-$work/logs}
 mkdir -p "$logs"
 logs=$(cd "$logs" && pwd)
 
+gate_results=() # name|exit status|summary|log of each gate that ran whole
+leaked=0
 cleanup() {
   [[ ${#pids[@]} -gt 0 ]] && kill "${pids[@]}" 2>/dev/null
-  docker rm -f "$pg" "$sw" >/dev/null 2>&1
+  docker rm -fv "$pg" "$sw" >/dev/null 2>&1
+  local entry name gate_status summary log
+  for entry in "${gate_results[@]}"; do
+    IFS='|' read -r name gate_status summary log <<<"$entry"
+    result_write "$name" $((gate_status || leaked)) "$summary" "$log"
+  done
+  # A failing scenario's screenshot is the one thing in the temp dir worth keeping.
+  mv "$TMPDIR"/jellyscale-e2e*.png "$logs/" 2>/dev/null
+  rm -rf "$tmp_base" "$work/t"
 }
 trap cleanup EXIT
-cleanup
+result_start
 source "$repo/test/s3-lib.sh"
 
+# The films come from the cache (or are made into it) under one key, so a run
+# makes no fixture of its own that an earlier run made: test/fixtures/cached.sh.
+bash "$repo/test/fixtures/cached.sh" "$work" || exit 1
 bash "$repo/test/fixtures/posix.sh" "$work" || exit 1
-epsilon="$work/Epsilon Film (2022).mkv"
-[[ -f $epsilon ]] || ffmpeg -nostdin -v error -y \
-  -f lavfi -i "testsrc2=size=1280x720:rate=24000/1001:duration=30" \
-  -f lavfi -i "sine=frequency=660:sample_rate=48000:duration=30" \
-  -c:v libx264 -preset ultrafast -c:a aac -metadata:s:a:0 language=eng "$epsilon" || exit 1
-
-# Films the captured Chrome profile can't direct-play (Zeta, from posix.sh, has
-# AC3 audio). Each scenario gets its own item, with its own segments, and a hard
-# link is enough because no scenario rewrites these files, which keeps the media small.
+epsilon="$work/media/sources/Epsilon Film (2022).mkv"
 zeta="$work/media/transcode/Zeta Film (2023)/Zeta Film (2023).mkv"
+rho="$work/media/transcode/Rho Film (2041)/Rho Film (2041).mkv"
+qoppa="$work/media/transcode/Qoppa Film (2042)/Qoppa Film (2042).mp4"
+big="$work/media/transcode/Stigma Film (2047)/Stigma Film (2047).mkv"
+
+# What a run does with the cached films, none of it cached: hard links and copies.
+# link <from> <to>: a hard link to a film under media/, which is enough where no
+# scenario rewrites the file, and keeps the media small.
+link() {
+  mkdir -p "$(dirname "$work/media/$2")" && ln "$work/media/$1" "$work/media/$2" || exit 1
+}
+t=transcode
+# Films the captured Chrome profile can't direct-play (Zeta, from posix.sh, has
+# AC3 audio). Each scenario gets its own item, with its own segments.
 for copy in "Theta Film (2025)" "Iota Film (2026)" "Kappa Film (2027)" "Lambda Film (2028)" "Mu Film (2029)" "Omicron Film (2032)" "Pi Film (2033)"; do
-  [[ -f "$work/media/transcode/$copy/$copy.mkv" ]] || { mkdir -p "$work/media/transcode/$copy" && ln "$zeta" "$work/media/transcode/$copy/$copy.mkv"; }
+  link "$t/Zeta Film (2023)/Zeta Film (2023).mkv" "$t/$copy/$copy.mkv"
 done
 # The VobSub film again, for the scenario that burns it in for a viewer who draws PGS:
 # the segments of a spec are kept, so it needs a film of its own.
-vobsub="$work/media/transcode/Vobsub Film (2071)/Vobsub Film (2071).mkv"
-[[ -f "$work/media/transcode/Vobsub Render Film (2076)/Vobsub Render Film (2076).mkv" ]] || { mkdir -p "$work/media/transcode/Vobsub Render Film (2076)" && ln "$vobsub" "$work/media/transcode/Vobsub Render Film (2076)/Vobsub Render Film (2076).mkv"; }
-# The failure scenario cuts this copy short, so every run makes it again.
-mkdir -p "$work/media/transcode/Xi Film (2031)" && cp "$zeta" "$work/media/transcode/Xi Film (2031)/Xi Film (2031).mkv"
-
-# Plays as it is, with a second audio track: switching to it asks for a transcode.
-nu="$work/media/transcode/Nu Film (2030)/Nu Film (2030).mkv"
-if [[ ! -f $nu ]]; then
-  mkdir -p "$(dirname "$nu")"
-  ffmpeg -nostdin -v error -y \
-    -f lavfi -i "testsrc2=size=1280x720:rate=24:duration=60" \
-    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=60" \
-    -f lavfi -i "sine=frequency=880:sample_rate=48000:duration=60" \
-    -map 0:v -map 1:a -map 2:a -c:v libx264 -preset ultrafast -crf 26 -g 48 -c:a aac \
-    -metadata:s:a:0 language=eng -metadata:s:a:1 language=spa "$nu" || exit 1
-fi
-
-# Films whose video Chrome plays and whose audio it doesn't, with keyframes at
-# the irregular times of the captured fixture (compat/captures/transcode-12.4.md),
-# so a copied stream's playlist is no fixed grid: Matroska and MP4 (moov at the
-# end, with an edit list, as ffmpeg writes it), and a Matroska with no Cues,
-# which has no index to cut on and is re-encoded.
-keyframes=0,3,7,13,18,26,31,39,44,52,57,65,70,78,83
-rho="$work/media/transcode/Rho Film (2041)/Rho Film (2041).mkv"
-if [[ ! -f $rho ]]; then
-  mkdir -p "$(dirname "$rho")"
-  ffmpeg -nostdin -v error -y \
-    -f lavfi -i "testsrc2=size=640x360:rate=24000/1001:duration=90" \
-    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=90" \
-    -f lavfi -i "sine=frequency=880:sample_rate=48000:duration=90" \
-    -map 0:v -map 1:a -map 2:a -c:v libx264 -preset veryfast -x264-params bframes=2:scenecut=0 -force_key_frames "$keyframes" \
-    -c:a:0 ac3 -c:a:1 aac -metadata:s:a:0 language=eng -metadata:s:a:1 language=spa "$rho" || exit 1
-fi
-qoppa="$work/media/transcode/Qoppa Film (2042)/Qoppa Film (2042).mp4"
-[[ -f $qoppa ]] || { mkdir -p "$(dirname "$qoppa")" && ffmpeg -nostdin -v error -y -i "$rho" -map 0 -c copy "$qoppa" || exit 1; }
-# AV1 and HEVC with the captured keyframes, which the encoders keep to when
-# their own interval is longer than the film (-g 2000, keyint=2000). Chrome plays
-# AV1 in software, so Sampi and San are copied and Heth plays as it is; it plays
-# HEVC only with a hardware decoder, which CI doesn't have (Yot, Lamed).
-# x265 and SVT-AV1 print their configuration on stderr whatever -v says.
-codec_film() { # file container video_encoder_args audio_codec
-  local file="$work/media/transcode/$1/$1.$2"
-  [[ -f $file ]] && return
-  mkdir -p "$(dirname "$file")"
-  # shellcheck disable=SC2086
-  ffmpeg -nostdin -v error -y \
-    -f lavfi -i "testsrc2=size=640x360:rate=24000/1001:duration=90" \
-    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=90" \
-    -map 0:v -map 1:a $3 -force_key_frames "$keyframes" -c:a "$4" -metadata:s:a:0 language=eng "$file" 2>/dev/null || { echo "could not make $file" >&2; exit 1; }
-}
-# SVT-AV1 in ffmpeg 6.1 (Ubuntu 24.04, which CI runs) ignores -force_key_frames and
-# keeps the first frame's keyframe alone, which is a film with no index to cut a
-# copy on. So the video is encoded in pieces that each start at a keyframe time
-# and joined: any ffmpeg then gives the same keyframes.
-av1_video="$work/media/av1-video.mkv"
-if [[ ! -f $av1_video ]]; then
-  parts=$(mktemp -d)
-  from=0
-  : >"$parts/list"
-  after_first=${keyframes#0,}
-  for t in ${after_first//,/ } 90; do # The film ends at 90 s, the last piece's end.
-    to=$(( (t * 24000 + 1000) / 1001 )) # The first frame at or after t seconds.
-    ffmpeg -nostdin -v error -y -f lavfi -i "testsrc2=size=640x360:rate=24000/1001:duration=90" \
-      -vf "trim=start_frame=$from:end_frame=$to,setpts=PTS-STARTPTS" -c:v libsvtav1 -preset 10 -g 2000 "$parts/$from.mkv" 2>/dev/null || { echo "could not encode AV1" >&2; exit 1; }
-    echo "file '$parts/$from.mkv'" >>"$parts/list"
-    from=$to
-  done
-  ffmpeg -nostdin -v error -y -f concat -safe 0 -i "$parts/list" -c copy "$av1_video" || exit 1
-  rm -rf "$parts"
-fi
-av1_film() { # file container audio_codec
-  local file="$work/media/transcode/$1/$1.$2"
-  [[ -f $file ]] && return
-  mkdir -p "$(dirname "$file")"
-  ffmpeg -nostdin -v error -y -i "$av1_video" -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=90" \
-    -map 0:v -map 1:a -c:v copy -c:a "$3" -metadata:s:a:0 language=eng "$file" || { echo "could not make $file" >&2; exit 1; }
-}
-hevc="-c:v libx265 -preset veryfast -x265-params keyint=2000:log-level=error"
-av1_film "Sampi Film (2080)" mkv ac3
-av1_film "San Film (2081)" mp4 ac3
-av1_film "Heth Film (2082)" mp4 aac
-codec_film "Yot Film (2083)" mp4 "$hevc" aac
-codec_film "Lamed Film (2084)" mkv "$hevc" ac3
-# HDR: 10-bit HEVC in PQ (Resh) and HLG (Shin), and H.264 in PQ (Tav), which a
-# copy would send to the client as washed-out SDR. All are re-encoded to SDR
-# BT.709 by a tone-mapping transcode, whatever Chrome plays.
-hdr="-pix_fmt yuv420p10le -x265-params keyint=2000:log-level=error:colorprim=bt2020:colormatrix=bt2020nc"
-codec_film "Resh Film (2085)" mkv "-c:v libx265 -preset veryfast $hdr:transfer=smpte2084" ac3
-codec_film "Shin Film (2086)" mp4 "-c:v libx265 -preset veryfast $hdr:transfer=arib-std-b67" aac
-codec_film "Tav Film (2087)" mkv "-pix_fmt yuv420p10le -c:v libx264 -preset veryfast -x264-params colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc" aac
-# ffmpeg writes the Cues last, so cutting the file where they start leaves a
-# film with its duration and no Cues; the SeekHead still points to them.
-nocues="$work/media/transcode/Digamma Film (2045)/Digamma Film (2045).mkv"
-if [[ ! -f $nocues ]]; then
-  mkdir -p "$(dirname "$nocues")"
-  python3 -I -c 'import sys; d = open(sys.argv[1], "rb").read(); i = d.rfind(bytes.fromhex("1c53bb6b")); assert i > len(d) * 0.9; open(sys.argv[2], "wb").write(d[:i])' "$rho" "$nocues" || exit 1
-fi
-# H.264 that has to be re-encoded, because it is interlaced, with the same
-# structure as Zeta (two audio tracks, a keyframe every two seconds): what the
-# scenarios that follow Zeta, Theta and Mu run on, to show re-encoding works.
-for interlaced in "Zeta Interlaced (2050)" "Theta Interlaced (2051)" "Mu Interlaced (2052)"; do
-  file="$work/media/transcode/$interlaced/$interlaced.mkv"
-  [[ -f $file ]] && continue
-  mkdir -p "$(dirname "$file")"
-  ffmpeg -nostdin -v error -y \
-    -f lavfi -i "testsrc2=size=640x360:rate=25:duration=180" \
-    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=180" \
-    -f lavfi -i "sine=frequency=880:sample_rate=48000:duration=180" \
-    -map 0:v -map 1:a -map 2:a -vf interlace=scan=tff -c:v libx264 -preset ultrafast -flags +ilme+ildct -x264-params tff=1 -g 50 \
-    -c:a:0 ac3 -c:a:1 aac -metadata:s:a:0 language=eng -metadata:s:a:1 language=spa "$file" || exit 1
-done
+link "$t/Vobsub Film (2071)/Vobsub Film (2071).mkv" "$t/Vobsub Render Film (2076)/Vobsub Render Film (2076).mkv"
+# The failure scenario cuts this copy short, so it is a copy and not a link.
+mkdir -p "$work/media/$t/Xi Film (2031)" && cp "$zeta" "$work/media/$t/Xi Film (2031)/Xi Film (2031).mkv" || exit 1
 # Two more of Zeta and of its interlaced twin, for the scenario that checks how far a
 # job runs ahead of the viewer: it needs segments nobody has made yet.
 # The same twice more for the scenarios that kill the worker playing a film.
-for lead in "Lead Copy Film (2094):Zeta Film (2023)" "Lead Encode Film (2095):Zeta Interlaced (2050)" "Failover Copy Film (2110):Zeta Film (2023)" "Failover Encode Film (2111):Zeta Interlaced (2050)"; do
-  to=${lead%%:*} from=${lead#*:}
-  [[ -f "$work/media/transcode/$to/$to.mkv" ]] || { mkdir -p "$work/media/transcode/$to" && ln "$work/media/transcode/$from/$from.mkv" "$work/media/transcode/$to/$to.mkv"; }
+for pair in "Lead Copy Film (2094):Zeta Film (2023)" "Lead Encode Film (2095):Zeta Interlaced (2050)" "Failover Copy Film (2110):Zeta Film (2023)" "Failover Encode Film (2111):Zeta Interlaced (2050)"; do
+  to=${pair%%:*} from=${pair#*:}
+  link "$t/$from/$from.mkv" "$t/$to/$to.mkv"
 done
-# Interlaced H.264 whose audio Chrome plays: the video is re-encoded and the audio
-# copied. Two AAC tracks (440 and 880 Hz) to switch between; the MP4 has the
-# bitrate of its tracks, which the bitrate cap scenario counts the copy by.
-for copied in "Audio Copy Film (2090)" "Audio Cap Film (2091)"; do
-  ext=mkv; [[ $copied == "Audio Cap"* ]] && ext=mp4
-  file="$work/media/transcode/$copied/$copied.$ext"
-  [[ -f $file ]] && continue
-  mkdir -p "$(dirname "$file")"
-  ffmpeg -nostdin -v error -y \
-    -f lavfi -i "testsrc2=size=640x360:rate=25:duration=120" \
-    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=120" \
-    -f lavfi -i "sine=frequency=880:sample_rate=48000:duration=120" \
-    -map 0:v -map 1:a -map 2:a -vf interlace=scan=tff -c:v libx264 -preset ultrafast -flags +ilme+ildct -x264-params tff=1 -g 50 \
-    -c:a aac -b:a 128k -metadata:s:a:0 language=eng -metadata:s:a:1 language=spa "$file" || exit 1
-done
-# Interlaced H.264 with Opus or FLAC audio, both listed in Chrome's profile: the
-# video is re-encoded and the audio copied.
-for codec in opus flac; do
-  name="Audio ${codec^} Film ($([[ $codec == opus ]] && echo 2092 || echo 2093))"
-  file="$work/media/transcode/$name/$name.mkv"
-  [[ -f $file ]] && continue
-  mkdir -p "$(dirname "$file")"
-  encoder=$([[ $codec == opus ]] && echo libopus || echo flac)
-  ffmpeg -nostdin -v error -y \
-    -f lavfi -i "testsrc2=size=640x360:rate=25:duration=120" \
-    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=120" \
-    -map 0:v -map 1:a -vf interlace=scan=tff -c:v libx264 -preset ultrafast -flags +ilme+ildct -x264-params tff=1 -g 50 \
-    -c:a "$encoder" -ac 2 "$file" || exit 1
-done
-# Films with chapters (Opening at 0 s, Middle Part at 20 s, and one untitled at
-# 45.5 s, which Jellyfin names "Chapter 3"). Chrome plays the first two as they are.
-# The other two are transcoded, the audio of one needs it (AC3, so its video is
-# copied) and the other's video does (interlaced), and their streams start 2 s
-# late: chapters are on the file's clock, which a transcode keeps (-copyts), so a
-# chapter seek must land where the file says, not 2 s early or late.
-chapters="$work/chapters.txt"
-cat >"$chapters" <<'E3'
-;FFMETADATA1
-[CHAPTER]
-TIMEBASE=1/1000
-START=0
-END=20000
-title=Opening
-[CHAPTER]
-TIMEBASE=1/1000
-START=20000
-END=45500
-title=Middle Part
-[CHAPTER]
-TIMEBASE=1/1000
-START=45500
-END=90000
-E3
-chaptered() { # name container offset_seconds video_args audio_codec
-  local file="$work/media/transcode/$1/$1.$2"
-  [[ -f $file ]] && return
-  mkdir -p "$(dirname "$file")"
-  # shellcheck disable=SC2086
-  ffmpeg -nostdin -v error -y \
-    -itsoffset "$3" -f lavfi -i "testsrc2=size=640x360:rate=24:duration=90" \
-    -itsoffset "$3" -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=90" \
-    -i "$chapters" -map 0:v -map 1:a -map_metadata 2 -map_chapters 2 $4 -c:a "$5" -metadata:s:a:0 language=eng "$file" || { echo "could not make $file" >&2; exit 1; }
-}
-chaptered "Chapters Direct (2095)" mkv 0 "-c:v libx264 -preset ultrafast -g 48" aac
-chaptered "Chapters Mp4 (2096)" mp4 0 "-c:v libx264 -preset ultrafast -g 48" aac
-chaptered "Chapters Copy (2097)" mkv 2 "-c:v libx264 -preset ultrafast -g 48" ac3
-chaptered "Chapters Encode (2098)" mkv 2 "-vf interlace=scan=tff -c:v libx264 -preset ultrafast -flags +ilme+ildct -x264-params tff=1 -g 48" aac
-# The same four again in a library with chapter pictures on, where the details
-# page lists the chapters. The other library has them off, as Jellyfin does by default.
-scene() { # title chapters_film container
-  local from="$work/media/transcode/$2/$2.$3" to="$work/media/scenes/$1/$1.$3"
-  [[ -f $to ]] && return
-  mkdir -p "$(dirname "$to")" && ln "$from" "$to"
-}
-scene "Scenes Direct (2105)" "Chapters Direct (2095)" mkv
-scene "Scenes Mp4 (2106)" "Chapters Mp4 (2096)" mp4
-scene "Scenes Copy (2107)" "Chapters Copy (2097)" mkv
-scene "Scenes Encode (2108)" "Chapters Encode (2098)" mkv
-# A 1080p film for measuring what a copy saves: noisy, so the encode has work to do.
-big="$work/media/transcode/Stigma Film (2047)/Stigma Film (2047).mkv"
-if [[ ! -f $big ]]; then
-  mkdir -p "$(dirname "$big")"
-  ffmpeg -nostdin -v error -y \
-    -f lavfi -i "testsrc2=size=1920x1080:rate=24:duration=60" \
-    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=60" \
-    -vf "noise=alls=20:allf=t" -c:v libx264 -preset veryfast -b:v 8M -maxrate 8M -bufsize 16M -g 48 -c:a ac3 "$big" || exit 1
-fi
+# The same four chapter films again in a library with chapter pictures on, where
+# the details page lists the chapters. The other library has them off, as Jellyfin does by default.
+link "$t/Chapters Direct (2095)/Chapters Direct (2095).mkv" "scenes/Scenes Direct (2105)/Scenes Direct (2105).mkv"
+link "$t/Chapters Mp4 (2096)/Chapters Mp4 (2096).mp4" "scenes/Scenes Mp4 (2106)/Scenes Mp4 (2106).mp4"
+link "$t/Chapters Copy (2097)/Chapters Copy (2097).mkv" "scenes/Scenes Copy (2107)/Scenes Copy (2107).mkv"
+link "$t/Chapters Encode (2098)/Chapters Encode (2098).mkv" "scenes/Scenes Encode (2108)/Scenes Encode (2108).mkv"
+# The 1080p film twice more, so resuming it finds nothing made: each item has its own segments.
+link "$t/Stigma Film (2047)/Stigma Film (2047).mkv" "$t/Sho Film (2048)/Sho Film (2048).mkv"
 
-# The same film twice more, so resuming it finds nothing made: each item has its own segments.
-sho="$work/media/transcode/Sho Film (2048)/Sho Film (2048).mkv"
-[[ -f $sho ]] || { mkdir -p "$(dirname "$sho")" && ln "$big" "$sho"; }
 
 docker run -d --rm --name "$pg" -e POSTGRES_PASSWORD=e2e -p 127.0.0.1::5432 postgres:18-alpine >/dev/null || exit 1
 port=$(docker port "$pg" 5432/tcp | head -1 | sed 's/.*://')
@@ -350,9 +207,12 @@ esac
 exec $(command -v ffmpeg) "\$@"
 E2
 chmod +x "$work/bin/ffmpeg"
-PATH="$work/bin:$PATH" "$work/jellyscale" --roles=worker --config "$work/config-s3.json" >>"$logs/server.log" 2>&1 &
-pids+=($!)
-export E2E_WORKER_PID=$!
+start_worker() {
+  PATH="$work/bin:$PATH" "$work/jellyscale" --roles=worker --config "$work/config-s3.json" >>"$logs/server.log" 2>&1 &
+  pids+=($!)
+  export E2E_WORKER_PID=$!
+}
+start_worker
 start --roles=api --listen "127.0.0.1:$api1"
 start --roles=api --listen "127.0.0.1:$api2"
 start --roles=stream --listen "127.0.0.1:$stream"
@@ -382,36 +242,127 @@ done
 for _ in $(seq 1 120); do [[ $(grep -c 'scan finished' "$logs/server.log") -ge 5 ]] && break; sleep 0.5; done
 
 base="http://127.0.0.1:$router"
-cp "$repo/test/e2e/browse.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/transcode.mjs" "$repo/test/e2e/subtitles.mjs" "$playwright/"
+cp "$repo/test/e2e/shard.mjs" "$repo/test/e2e/browse.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/transcode.mjs" "$repo/test/e2e/subtitles.mjs" "$playwright/"
 result=0
 export E2E_SCRATCH="$work/scratch" E2E_MEDIA="$work/media/transcode" E2E_ASSETS="$work/assets/transcode" E2E_PG="$pg" E2E_LOG="$logs/server.log"
-# The transcode gate ends by killing the worker, so subtitles run before it.
-# Each gate has 1500 s; transcode took 818 s on main before the read-ahead
-# scenarios and over 900 s after.
-for gate in ${E2E_GATES:-browse play subtitles transcode}; do
-  echo "=== $gate"
+# Only a whole, ordinary run says what the tree does: a selection, a repeat, a
+# browser that plays HEVC or a worker at full speed is none of that.
+whole=1
+[[ -n ${E2E_ONLY:-} || -n ${E2E_REPEAT:-} || -n ${E2E_HEVC:-} || -n ${E2E_NO_SHIM:-} || -n ${E2E_FLAKY_DEMO:-} ]] && whole=0
+
+# Runs one gate once, leaving its output in $out, and checks its last line.
+# Sets gate_status, and gate_summary for the record.
+run_gate() { # gate out_dir
+  local gate=$1 dir=$2 out=$2/out.txt status record
+  mkdir -p "$dir"
   # One stack serves every gate, so what a gate wrote is the log from here on.
+  local server_from ffmpeg_from
   server_from=$(stat -c %s "$logs/server.log") ffmpeg_from=$(stat -c %s "$logs/ffmpeg.log")
+  # The transcode gate ends by killing the worker, so subtitles run before it.
+  # Each gate has 1500 s; the transcode gate, whole, took 818 s on main before the
+  # read-ahead scenarios and over 900 s after. A shard has a part of that.
   if [[ -n ${GITHUB_ACTIONS:-} ]]; then
-    (cd "$playwright" && timeout 1500 node $gate.mjs "$base" admin e2e-pass) 2>&1 | bash "$repo/test/report.sh" lines "test/e2e/$gate.mjs" "e2e $gate"
+    (cd "$playwright" && timeout 1500 node $gate.mjs "$base" admin e2e-pass) 2>&1 | tee "$out" | bash "$repo/test/report.sh" lines "test/e2e/$gate.mjs" "e2e $gate"
     status=${PIPESTATUS[0]}
     if [[ $status -ne 0 ]]; then
-      result=1
       bash "$repo/test/report.sh" fail "test/e2e/$gate.mjs" 1 "e2e $gate" "the gate exited $status (124 is its 1500 s limit)"
     fi
   else
-    (cd "$playwright" && timeout 1500 node $gate.mjs "$base" admin e2e-pass) || result=1
+    (cd "$playwright" && timeout 1500 node $gate.mjs "$base" admin e2e-pass) 2>&1 | tee "$out"
+    status=${PIPESTATUS[0]}
   fi
-  mkdir -p "$logs/$gate"
-  tail -c +$((server_from + 1)) "$logs/server.log" >"$logs/$gate/server.log"
-  tail -c +$((ffmpeg_from + 1)) "$logs/ffmpeg.log" >"$logs/$gate/ffmpeg.log"
+  tail -c +$((server_from + 1)) "$logs/server.log" >"$dir/server.log"
+  tail -c +$((ffmpeg_from + 1)) "$logs/ffmpeg.log" >"$dir/ffmpeg.log"
+  # The last line says how many scenarios this shard ran of how many there are.
+  gate_summary="$gate: $(grep -c '^ok  ' "$out") ok, $(grep -c '^FAIL  ' "$out") failed"
+  gate_name=e2e-$gate
+  if record=$(bash "$repo/test/check-shards.sh" line "$out"); then
+    local i n k total
+    read -r i n k total <<<"$record"
+    gate_summary+=", shard $i/$n: ran $k of $total"
+    echo "$gate $i $n $k $total" >"$logs/shard-$gate-${i}of$n.txt"
+    (( n > 1 )) && gate_name+=-${i}of$n
+  else
+    status=1 gate_name= # which shard it was is unknown, so nothing is recorded
+    bash "$repo/test/report.sh" fail "test/e2e/$gate.mjs" 1 "e2e $gate" "the gate stopped partway or ran no scenario (see the line above)"
+  fi
+  gate_status=$status
+}
+
+# Between E2E_REPEAT iterations: what the last one left in the worker's way goes,
+# the fixtures and the scan stay (a warm rerun).
+reset_state() {
+  echo "=== reset: worker, segments, scratch, jobs"
+  kill "$E2E_WORKER_PID" 2>/dev/null
+  # Its ffmpeg belongs to this workdir alone.
+  pkill -f "ffmpeg.*$work/scratch" 2>/dev/null
+  for _ in $(seq 1 40); do pgrep -f "ffmpeg.*$work/scratch" >/dev/null || break; sleep 0.25; done
+  rm -rf "$work/segments" "$work/scratch"
+  "$work/putfile" -delete "s3://e2e/segments?$s3" || result=1
+  docker exec "$pg" psql -U postgres -Atc 'TRUNCATE transcode_viewers, transcode_jobs' >/dev/null || result=1
+  start_worker
+  # A worker counts once its lock is held; the killed one's row has no lock.
+  for _ in $(seq 1 60); do
+    [[ $(docker exec "$pg" psql -U postgres -Atc "SELECT count(*) FROM transcode_nodes n WHERE locked AND EXISTS (SELECT 1 FROM pg_locks l
+      WHERE l.locktype = 'advisory' AND l.classid = 27219 AND l.objsubid = 2 AND l.objid::bigint = hashtext(n.id)::bigint & 4294967295)" 2>/dev/null) == 1 ]] && break
+    sleep 0.5
+  done
+}
+
+repeat_outs=()
+for ((iteration = 1; iteration <= repeat; iteration++)); do
+  export E2E_ITERATION=$iteration
+  [[ $iteration -gt 1 ]] && reset_state
+  for gate in ${E2E_GATES:-browse play subtitles transcode}; do
+    echo "=== $gate${E2E_REPEAT:+ (iteration $iteration of $repeat)}"
+    dir=$logs/$gate; [[ $repeat -gt 1 ]] && dir=$logs/$gate-$iteration
+    run_gate "$gate" "$dir"
+    repeat_outs+=("$dir/out.txt")
+    [[ $gate_status -ne 0 ]] && result=1
+    [[ $whole -eq 1 && -n $gate_name ]] && gate_results+=("$gate_name|$gate_status|$gate_summary|$dir")
+  done
 done
+
+# What each scenario did in each iteration. A name is what follows "ok  " or
+# "FAIL  ", up to the reason: the name of a passed scenario is known, and a failure
+# is matched to it; one that never passed is listed as it was printed.
+if [[ $repeat -gt 1 ]]; then
+  echo "--- passed p of $repeat, per scenario"
+  cat "${repeat_outs[@]}" | python3 -I -c '
+import sys
+repeat = int(sys.argv[1])
+passed, failed, known = {}, [], set()
+for line in sys.stdin:
+    line = line.rstrip("\n")
+    if line.startswith("run   "):
+        known.add(line[6:].strip())
+    elif line.startswith("ok  "):
+        name = line[4:].strip()
+        passed[name] = passed.get(name, 0) + 1
+    elif line.startswith("FAIL  "):
+        failed.append(line[6:])
+# A failure belongs to the scenario name it starts with, and the longest one wins.
+counts = dict(passed)
+for text in failed:
+    owners = [name for name in known | set(passed) if text == name or text.startswith(name + ": ")]
+    if owners:
+        counts.setdefault(max(owners, key=len), 0)
+    else:
+        # Never passed: the name is what comes before the reason.
+        counts.setdefault(text.split(": ", 1)[0], 0)
+bad = 0
+for name, p in counts.items():
+    print(f"passed {p} of {repeat}  {name}")
+    bad += p < repeat
+sys.exit(1 if bad else 0)
+' "$repeat" || result=1
+fi
 # For poking at the stack by hand: E2E_HOLD=600 keeps it up for ten minutes.
 [[ -n ${E2E_HOLD:-} ]] && { echo "holding $base"; sleep "$E2E_HOLD"; }
 echo "--- server warnings"
 grep -E 'level=(WARN|ERROR)' "$logs/server.log" | sed -E 's/^time=[^ ]+ //' | sort | uniq -c | sort -rn | head -20
 if grep -q "$seaweed_secret" "$logs/server.log"; then
-  echo "FAIL  the S3 secret appears in the log"; result=1
+  echo "FAIL  the S3 secret appears in the log"; result=1; leaked=1
   bash "$repo/test/report.sh" fail test/e2e/run.sh "$LINENO" "e2e" "the S3 secret appears in the log"
 fi
 exit $result

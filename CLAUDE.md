@@ -7,10 +7,16 @@ A horizontally scalable, Jellyfin-compatible video server in Go. Read [PRODUCT.m
 ```sh
 go test ./...                               # Tests that need nothing outside Go
 test/integration.sh                         # Every test, with Postgres, SeaweedFS, Garage and real ffmpeg
+INTEGRATION_SHARD=0/3 test/integration.sh   # A slice of it: i/3 of internal/transcode, or rest (CI runs the four side by side)
 test/roles.sh <workdir>                     # Each role as its own process
 test/e2e/run.sh <workdir> <playwright_dir>  # Real jellyfin-web in Chromium
+E2E_GATES=transcode E2E_SHARD=1/3 test/e2e/run.sh ...  # A slice of a gate; E2E_ONLY=regex picks scenarios
+E2E_REPEAT=5 test/e2e/run.sh ...            # Warm reruns on one stack, "passed p of n" per scenario (a flake hunt)
+test/scripts_test.sh                        # Tests of the test scripts
 go run ./cmd/jellyscale --print-routes > compat/endpoints.yaml
 ```
+
+The scripts keep their temp files in the workdir you give them (else under `/tmp/jellyscale-test`) and clean up after themselves, and after killed runs, cache the e2e films (`E2E_FIXTURE_CACHE`), and record each whole run in `.results/<tree>/` for QA to reuse (see README's Test section). `test/e2e/run.sh` needs `web-dist` in the checkout it runs from, and says so at once if it is missing.
 
 Tests that need ffmpeg, Postgres, S3 or a font live in `*_integration_test.go` files tagged `//go:build integration`; the integration tier needs Docker, ffmpeg with libx264, libx265, libsvtav1 and libass, and a font. Go tests run through `go tool gotestsum`. `test/e2e` needs `web-dist` copied from the Jellyfin image and a directory with `playwright-core` installed; see the README.
 

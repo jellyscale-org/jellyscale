@@ -1,0 +1,214 @@
+#!/usr/bin/env bash
+# Tests of the test scripts themselves, which need nothing but Go, node, git and
+# bash: how the shards divide the work and are checked, what counts as a
+# docs-only change, the fixture cache with a stand-in ffmpeg, and the results
+# and temp dirs the scripts leave. Run by CI beside test/unit.sh.
+set -uo pipefail
+repo=$(cd "$(dirname "$0")/.." && pwd)
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+fails=0
+check() { # name want got
+  if [[ $2 == "$3" ]]; then echo "ok    $1"; else echo "FAIL  $1: want '$2', got '$3'"; fails=$((fails + 1)); fi
+}
+fails_with() { # name command...: the command must exit non-zero
+  local name=$1; shift
+  if "$@" >"$tmp/out" 2>&1; then echo "FAIL  $name: succeeded"; fails=$((fails + 1)); else echo "ok    $name"; fi
+}
+
+# --- shard.sh: every test of the tier lands in one shard, and only one.
+cd "$repo" || exit 1
+all=$(go test -tags integration -list '.*' ./... | grep -E '^(Test|Example|Fuzz)' | sort)
+dealt=$(for i in 0 1 2; do bash test/shard.sh args "$i/3" | sed -n 2p | sed 's/^\^(//; s/)\$$//' | tr '|' '\n'; done | sort)
+rest_packages=$(bash test/shard.sh args rest)
+rest=$(go test -tags integration -list '.*' $rest_packages | grep -E '^(Test|Example|Fuzz)' | sort)
+check "the transcode shards and rest hold every test once" "$all" "$(printf '%s\n%s\n' "$dealt" "$rest" | sort)"
+check "no transcode test is dealt twice" "" "$(echo "$dealt" | uniq -d)"
+check "rest leaves out internal/transcode" "0" "$(echo "$rest_packages" | grep -c '/internal/transcode$')"
+counts=$(( $(bash test/shard.sh count 0/3) + $(bash test/shard.sh count 1/3) + $(bash test/shard.sh count 2/3) + $(bash test/shard.sh count rest) ))
+check "the shards' counts add up to the tier" "$(echo "$all" | wc -l | tr -d ' ')" "$counts"
+fails_with "a shard past n is refused" bash test/shard.sh count 3/3
+
+# --- shard.mjs: each scenario runs once, a worker-stopper last on the last shard.
+for i in 0 1 2; do E2E_SHARD=$i/3 node test/e2e/shard_test.mjs >"$tmp/shard$i" 2>&1; done
+check "shard 0 runs every third scenario" "run   s1 ran s1 run   s4 ran s4 run   s7 ran s7 shard 0/3: ran 3 of 11" "$(tr '\n' ' ' <"$tmp/shard0" | sed 's/ $//')"
+check "shard 2 runs its share, then the worker-stoppers in call order" "run   s3 ran s3 run   s6 ran s6 run   s9 ran s9 run   kill A ran kill A run   kill B ran kill B shard 2/3: ran 5 of 11" "$(tr '\n' ' ' <"$tmp/shard2" | sed 's/ $//')"
+check "every scenario ran once over the three shards" "$(printf 'kill A\nkill B\ns1\ns2\ns3\ns4\ns5\ns6\ns7\ns8\ns9\n')" "$(cat "$tmp"/shard? | sed -n 's/^ran //p' | sort)"
+check "E2E_ONLY filters after the count" "run   s4 ran s4 shard 0/3: ran 1 of 11" "$(E2E_SHARD=0/3 E2E_ONLY='^s4$' node test/e2e/shard_test.mjs | tr '\n' ' ' | sed 's/ $//')"
+fails_with "a shard past n is refused by the gate" env E2E_SHARD=3/3 node test/e2e/shard_test.mjs
+
+# --- check-shards.sh
+records="$tmp/records"
+mkdir "$records"
+echo "integration 0/3 40"  >"$records/a.txt"; echo "integration 1/3 40" >"$records/b.txt"
+echo "integration 2/3 40"  >"$records/c.txt"; echo "integration rest 30" >"$records/d.txt"
+bash test/check-shards.sh integration "$records" 150 >/dev/null 2>&1; check "integration shards that add up pass" 0 $?
+fails_with "a test no shard ran fails" bash test/check-shards.sh integration "$records" 151
+rm "$records/d.txt"
+fails_with "a missing shard fails" bash test/check-shards.sh integration "$records" 150
+echo "integration rest 0" >"$records/d.txt"
+fails_with "a shard that ran nothing fails" bash test/check-shards.sh integration "$records" 120
+rm -r "$records"; mkdir "$records"
+printf 'browse 0 1 7 7\n' >"$records/a.txt"; printf 'transcode 0 2 20 41\n' >"$records/b.txt"; printf 'transcode 1 2 21 41\n' >"$records/c.txt"
+bash test/check-shards.sh e2e "$records" "browse transcode" >/dev/null 2>&1; check "e2e shards that add up pass" 0 $?
+printf 'transcode 1 2 20 41\n' >"$records/c.txt"
+fails_with "a scenario no shard ran fails" bash test/check-shards.sh e2e "$records" "browse transcode"
+printf 'transcode 1 2 21 42\n' >"$records/c.txt"
+fails_with "shards that disagree on the total fail" bash test/check-shards.sh e2e "$records" "browse transcode"
+printf 'transcode 0 2 41 41\n' >"$records/b.txt"; printf 'transcode 1 2 0 41\n' >"$records/c.txt"
+fails_with "a shard that ran nothing fails" bash test/check-shards.sh e2e "$records" "browse transcode"
+rm "$records/c.txt"
+fails_with "a shard with no record fails" bash test/check-shards.sh e2e "$records" "browse transcode"
+fails_with "an empty directory fails" bash test/check-shards.sh e2e "$tmp" "browse"
+printf 'browse 0 1 7 7\n' >"$records/a.txt"; printf 'transcode 0 1 41 41\n' >"$records/b.txt"; rm -f "$records/c.txt"
+bash test/check-shards.sh e2e "$records" "browse transcode" >/dev/null 2>&1; check "every expected gate present passes" 0 $?
+fails_with "a whole gate that no shard ran fails" bash test/check-shards.sh e2e "$records" "browse play transcode"
+printf 'browse 0 1 7 7\n\n' >"$records/a.txt"
+fails_with "a blank or malformed record line fails" bash test/check-shards.sh e2e "$records" "browse transcode"
+
+# --- a gate's last line, as run.sh checks it.
+printf 'ok    a\n\nPASS\nshard 1/3: ran 4 of 12\n' >"$tmp/gate"
+check "a gate's shard line is read" "1 3 4 12" "$(bash test/check-shards.sh line "$tmp/gate")"
+printf 'ok    a\n\nPASS\n' >"$tmp/gate"
+fails_with "a gate that printed no shard line fails" bash test/check-shards.sh line "$tmp/gate"
+printf 'FAILED\nshard 0/3: ran 0 of 12\n' >"$tmp/gate"
+fails_with "a shard that ran nothing fails" bash test/check-shards.sh line "$tmp/gate"
+check "with E2E_ONLY, a gate where nothing matched passes" "0 3 0 12" "$(E2E_ONLY=x bash test/check-shards.sh line "$tmp/gate")"
+printf 'shard 0/3: ran 2 of 12\nmore output\n' >"$tmp/gate"
+fails_with "a shard line that is not the last line fails" bash test/check-shards.sh line "$tmp/gate"
+fails_with "a missing file fails" bash test/check-shards.sh line "$tmp/none"
+
+# --- changes.sh: docs-only means Markdown in the root or under docs/, nothing else.
+g="$tmp/git"
+git init -q "$g" && cd "$g" || exit 1
+git config user.email t@t && git config user.name t
+mkdir -p docs .claude/agents compat src && echo 1 >README.md && echo 1 >docs/a.md && echo 1 >docs/a.txt && echo 1 >src/a.go && echo 1 >.claude/agents/qa.md && echo 1 >compat/x.md
+git add -A && git commit -qm base
+changed() { git add -A && git commit -qm change && bash "$repo/test/changes.sh" HEAD~1 HEAD; }
+echo 2 >>README.md; echo 2 >>docs/a.md
+check "a root .md and docs/*.md are docs-only" docs-only "$(changed)"
+echo 2 >>docs/a.txt
+check "a file under docs/ that is not Markdown is code" code "$(changed)"
+echo 2 >>README.md; echo 2 >>src/a.go
+check "a Go file with a doc is code" code "$(changed)"
+echo 2 >>.claude/agents/qa.md
+check ".claude is code even for a .md" code "$(changed)"
+echo 2 >>compat/x.md
+check "compat is code even for a .md" code "$(changed)"
+git mv src/a.go docs/b.md
+check "code renamed into docs/ is code" code "$(changed)"
+git mv README.md moved.txt
+check "a renamed .md is code" code "$(changed)"
+check "an empty diff is code" code "$(bash "$repo/test/changes.sh" HEAD HEAD)"
+check "an unreadable diff is code" code "$(bash "$repo/test/changes.sh" nosuchbase...HEAD)"
+cd "$repo" || exit 1
+
+# --- fixtures: cached.sh with a stand-in ffmpeg that writes a file and logs the call.
+shim="$tmp/shim"
+mkdir "$shim"
+cat >"$shim/ffmpeg" <<'E1'
+#!/bin/sh
+[ "$1" = -version ] && { echo "ffmpeg version stand-in"; exit 0; }
+# FAKE_FFMPEG_FAIL_AFTER=n makes the n+1st call and the ones after fail, as a killed run would stop.
+[ -n "$FAKE_FFMPEG_FAIL_AFTER" ] && [ "$(wc -l <"$FAKE_FFMPEG_LOG")" -ge "$FAKE_FFMPEG_FAIL_AFTER" ] && exit 1
+[ -n "$FAKE_FFMPEG_HANG" ] && [ "$(wc -l <"$FAKE_FFMPEG_LOG")" -ge "$FAKE_FFMPEG_HANG" ] && exec sleep 5
+echo "$*" >>"$FAKE_FFMPEG_LOG"
+for last; do :; done
+# The bytes the Cues recipe cuts at, near the end.
+printf 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\034S\273kzz' >"$last"
+E1
+echo font >"$tmp/stand-in.ttf"
+printf '#!/bin/sh\necho %s\n' "$tmp/stand-in.ttf" >"$shim/fc-match"
+chmod +x "$shim"/*
+export FAKE_FFMPEG_FAIL_AFTER= FAKE_FFMPEG_LOG="$tmp/ffmpeg.log" E2E_FIXTURE_CACHE="$tmp/cache" TMPDIR="$tmp"
+: >"$FAKE_FFMPEG_LOG"
+FAKE_FFMPEG_FAIL_AFTER=3 PATH="$shim:$PATH" bash test/fixtures/cached.sh "$tmp/w0" >/dev/null 2>&1
+check "a run that stops partway fails" 1 "$([[ $? -ne 0 ]] && echo 1 || echo 0)"
+check "and leaves nothing in the cache" "" "$(ls -A "$tmp/cache")"
+: >"$FAKE_FFMPEG_LOG"
+FAKE_FFMPEG_HANG=2 PATH="$shim:$PATH" bash test/fixtures/cached.sh "$tmp/wk" >/dev/null 2>&1 &
+hung=$!
+for _ in $(seq 50); do [[ $(wc -l <"$FAKE_FFMPEG_LOG") -ge 2 ]] && break; sleep 0.1; done
+kill -9 $hung; wait $hung 2>/dev/null
+check "a run killed during generation leaves nothing in the cache" "" "$(ls -A "$tmp/cache")"
+mkdir "$tmp/cache/.tmp.old" && touch -d '5 hours ago' "$tmp/cache/.tmp.old"
+: >"$FAKE_FFMPEG_LOG"
+FAKE_FFMPEG_FAIL_AFTER= PATH="$shim:$PATH" bash test/fixtures/cached.sh "$tmp/w1" >/dev/null 2>&1; check "the first run makes the fixtures" 0 $?
+first=$(wc -l <"$FAKE_FFMPEG_LOG")
+check "the first run called ffmpeg" 1 "$(( first > 0 ))"
+check "the films reach the workdir" 1 "$([[ -f "$tmp/w1/media/transcode/Zeta Interlaced (2050)/Zeta Interlaced (2050).mkv" && -f "$tmp/w1/media/sources/Epsilon Film (2022).mkv" ]] && echo 1 || echo 0)"
+PATH="$shim:$PATH" bash test/fixtures/cached.sh "$tmp/w2" >/dev/null 2>&1; check "the second run succeeds" 0 $?
+check "the second run makes no ffmpeg call" "$first" "$(wc -l <"$FAKE_FFMPEG_LOG")"
+check "the second run's workdir has the films" "$(cd "$tmp/w1/media" && find . -type f | sort | md5sum)" "$(cd "$tmp/w2/media" && find . -type f | sort | md5sum)"
+check "a stale half entry is swept" 0 "$([[ -e $tmp/cache/.tmp.old ]] && echo 1 || echo 0)"
+check "the cache holds the one entry, whole" "$(PATH="$shim:$PATH" bash test/fixtures/key.sh)" "$(ls -A "$tmp/cache")"
+key=$(PATH="$shim:$PATH" bash test/fixtures/key.sh)
+mkdir "$tmp/cache/oldkey" && touch -d '20 days ago' "$tmp/cache/oldkey" "$tmp/cache/$key"
+: >"$FAKE_FFMPEG_LOG"
+PATH="$shim:$PATH" bash test/fixtures/cached.sh "$tmp/w3" >/dev/null 2>&1
+check "an old entry for the current key (as CI restores it) is used, not swept" 0 "$(wc -l <"$FAKE_FFMPEG_LOG")"
+check "an old entry for another key is swept" "$key" "$(ls -A "$tmp/cache")"
+mkdir -p "$tmp/copy/test" "$tmp/copy/internal" && cp -r test/fixtures "$tmp/copy/test/" && cp -r internal/testenv "$tmp/copy/internal/"
+check "a copy of the recipes has the same key" "$key" "$(PATH="$shim:$PATH" bash "$tmp/copy/test/fixtures/key.sh")"
+echo "# changed" >>"$tmp/copy/test/fixtures/make.sh"
+check "editing a recipe changes the key" 1 "$([[ $(PATH="$shim:$PATH" bash "$tmp/copy/test/fixtures/key.sh") != "$key" ]] && echo 1 || echo 0)"
+echo other >"$tmp/stand-in.ttf"
+check "another font changes the key" 1 "$([[ $(PATH="$shim:$PATH" bash test/fixtures/key.sh) != "$key" ]] && echo 1 || echo 0)"
+echo font >"$tmp/stand-in.ttf"
+printf '#!/bin/sh\necho "ffmpeg version other"\n' >"$tmp/ffmpeg2"; mkdir "$tmp/shim2"; mv "$tmp/ffmpeg2" "$tmp/shim2/ffmpeg"; chmod +x "$tmp/shim2/ffmpeg"
+check "another ffmpeg changes the key" 1 "$([[ $(PATH="$tmp/shim2:$PATH" bash test/fixtures/key.sh) != "$key" ]] && echo 1 || echo 0)"
+unset E2E_FIXTURE_CACHE TMPDIR
+
+# --- lib.sh: results, the work dir and the sweep, in a repo of their own.
+lab="$tmp/lab"
+mkdir -p "$lab/test" "$lab/tools"
+cp test/lib.sh "$lab/test/" && cp tools/snapshot.sh "$lab/tools/"
+git init -q "$lab" && printf '/.results/\n' >"$lab/.gitignore" && echo 1 >"$lab/f"
+(
+  cd "$lab" || exit 1
+  export JELLYSCALE_TEST_ROOT="$tmp/root"
+  source test/lib.sh
+  sleep 60 & alive=$!; echo $alive >"$tmp/alive"
+  mkdir -p "$tmp/root/x.999999999.dead" "$tmp/root/y.$alive.live" "$tmp/root/other" "$tmp/deadwork/t"
+  echo junk >"$tmp/deadwork/t/junk" && ln -s "$tmp/deadwork/t" "$tmp/root/x.999999999.dead/t"
+  make_work demo
+  echo "$TMPDIR $work" >"$tmp/make_work.out"
+  make_work given "$tmp/a/very/long/work/dir/that/someone/passed"
+  echo "$TMPDIR $work" >"$tmp/make_work_given.out"
+  make_work short "$tmp/short"
+  echo "$TMPDIR" >"$tmp/make_work_short.out"
+  ls "$tmp/root" >"$tmp/root.ls"
+  kill $alive
+  result_start; result_name=full result_summary="3 passed" result_log=/some/log
+  result_finish 0
+  result_name=failing; result_finish 1
+  result_name=changed; echo 2 >>f; result_finish 0
+  result_name=; result_finish 0
+)
+read -r tmpdir workdir <"$tmp/make_work.out"
+check "TMPDIR is the work dir's t" "$workdir/t" "$tmpdir"
+read -r tmpdir workdir <"$tmp/make_work_given.out"
+check "TMPDIR stays short when the work dir is long" "$tmp/root" "$(dirname "$(dirname "$tmpdir")")"
+check "and it leads into the given dir, so a killed run leaves its files there" "$workdir/t" "$(readlink "$tmpdir")"
+check "a short given dir gets the same link" "$tmp/short/t" "$(readlink "$(cat "$tmp/make_work_short.out")")"
+check "the sweep removes a dead run's temp files in its given work dir" 0 "$([[ -e $tmp/deadwork/t ]] && echo 1 || echo 0)"
+check "and the work dir is the one given" "$tmp/a/very/long/work/dir/that/someone/passed" "$workdir"
+check "the sweep removes the dir of an exited script and keeps a live one's" "other y.$(cat "$tmp/alive").live" "$(grep -v '^\(demo\|given\|short\)\.' "$tmp/root.ls" | tr '\n' ' ' | sed 's/ $//')"
+out=$(ls "$lab/.results"/*/ | sort | tr '\n' ' ')
+check "results: a pass and a fail are written; a changed tree and no name write nothing" "failing full " "$out"
+check "a pass says so, with its log" "status=pass log=/some/log" "$(cd "$lab/.results"/*/ && sed -n 's/^\(status\|log\)=/\1=/p' full | tr '\n' ' ' | sed 's/ $//')"
+check "a fail says so" "status=fail" "$(grep '^status=' "$lab/.results"/*/failing)"
+check "writing .results leaves the tree alone" 0 "$(cd "$lab" && git stash list | wc -l)"
+
+# --- putfile -delete empties a store.
+mkdir "$tmp/store"
+go build -o "$tmp/putfile" ./test/e2e/putfile || fails=$((fails + 1))
+echo hi >"$tmp/obj"
+"$tmp/putfile" "file://$tmp/store" "a/b.txt" "$tmp/obj" && "$tmp/putfile" "file://$tmp/store" "c.txt" "$tmp/obj"
+check "putfile stored two objects" 2 "$(find "$tmp/store" -type f | wc -l)"
+"$tmp/putfile" -delete "file://$tmp/store"
+check "putfile -delete removes them all" 0 "$(find "$tmp/store" -type f | wc -l)"
+
+echo
+[[ $fails -eq 0 ]] && echo "scripts: all passed" || echo "scripts: $fails failed"
+exit $((fails > 0))

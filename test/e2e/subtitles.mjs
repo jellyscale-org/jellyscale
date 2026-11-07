@@ -10,6 +10,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, rmSync, statSync, truncateSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
+import { runLater, schedule, shardLine } from "./shard.mjs";
 
 const require = createRequire(`${process.cwd()}/`);
 const { chromium } = require("playwright-core");
@@ -117,27 +118,29 @@ function noErrors(seen) {
   if (bad.length) throw new Error(`subtitle requests failed: ${JSON.stringify(bad.slice(0, 3))}`);
 }
 
-async function scenario(name, run) {
-  if (process.env.E2E_ONLY && !new RegExp(process.env.E2E_ONLY, "i").test(name)) return;
-  const v = await viewer();
-  let passed = false;
-  try {
-    await run(v);
-    passed = true;
-  } catch (error) {
-    const why = error.message.split("\n").filter(Boolean).slice(0, 3).join(" / ");
-    failures.push(`${name}: ${why}`);
-    console.log(`FAIL  ${name}: ${why}`);
-    await v.page.screenshot({ path: `${process.env.TMPDIR ?? "/tmp"}/jellyscale-e2e-subtitles.png` }).catch(() => {});
-  } finally {
-    await v.context.close().catch(() => {});
-  }
-  await waitFor("ffmpeg to exit between scenarios", async () => ffmpegRuns().length === 0, 90000).catch(() => {
-    failures.push(`${name}: ffmpeg still running afterwards`);
-    console.log(`FAIL  ${name}: ffmpeg still running afterwards`);
-    passed = false;
+// E2E_ONLY picks scenarios by name and E2E_SHARD by call order (see shard.mjs).
+function scenario(name, run, options = {}) {
+  return schedule(name, options, async () => {
+    const v = await viewer();
+    let passed = false;
+    try {
+      await run(v);
+      passed = true;
+    } catch (error) {
+      const why = error.message.split("\n").filter(Boolean).slice(0, 3).join(" / ");
+      failures.push(`${name}: ${why}`);
+      console.log(`FAIL  ${name}: ${why}`);
+      await v.page.screenshot({ path: `${process.env.TMPDIR ?? "/tmp"}/jellyscale-e2e-subtitles.png` }).catch(() => {});
+    } finally {
+      await v.context.close().catch(() => {});
+    }
+    await waitFor("ffmpeg to exit between scenarios", async () => ffmpegRuns().length === 0, 90000).catch(() => {
+      failures.push(`${name}: ffmpeg still running afterwards`);
+      console.log(`FAIL  ${name}: ffmpeg still running afterwards`);
+      passed = false;
+    });
+    if (passed) console.log(`ok    ${name}`);
   });
-  if (passed) console.log(`ok    ${name}`);
 }
 
 const leave = async (page) => {
@@ -326,10 +329,13 @@ const fontsJobDone = (title) => waitFor(`the fonts job of ${title}`, async () =>
 // here and in CI), but an attached serif may cover only 8% more or less than
 // it (DejaVu Serif on Ubuntu), so "the same" has to be close.
 const sameText = (a, b) => Math.abs(a - b) < 0.02 * b;
-let plain;
+// The fallback's pixels, which these scenarios compare with, measured by whichever
+// of them runs first on this shard: they run in any order, on any shard.
+let measured;
+const fallbackPixels = async (page, seen) => (measured ??= (await drawn(page, seen, "Plain Film")).pixels);
 
 await scenario("ASS is drawn in the fallback font on the first play of a film with fonts, and in the attached font after", async ({ page, seen }) => {
-  plain = (await drawn(page, seen, "Plain Film")).pixels;
+  const plain = await fallbackPixels(page, seen);
   const first = await drawn(page, seen, "Font Film");
   if (first.fonts.length) throw new Error(`a font was listed before it was stored: ${JSON.stringify(first.fonts)}`);
   if (!sameText(first.pixels, plain)) throw new Error(`the first play covers ${first.pixels} pixels, the fallback ${plain}`);
@@ -342,6 +348,7 @@ await scenario("ASS is drawn in the fallback font on the first play of a film wi
 });
 
 await scenario("a film whose fonts job failed for good is never listed fonts, and ASS is drawn in the fallback", async ({ page, seen }) => {
+  const plain = await fallbackPixels(page, seen);
   const first = await drawn(page, seen, "Cracked Fonts Film");
   await fontsJobDone("Cracked Fonts Film");
   const later = await drawn(page, seen, "Cracked Fonts Film");
@@ -354,6 +361,7 @@ await scenario("a film whose fonts job failed for good is never listed fonts, an
 // attachment is answered with an empty font, the track is drawn in the fallback, and the font
 // is put back for the next play.
 await scenario("a listed font gone from the store: ASS is still drawn, and the font comes back", async ({ page, seen }) => {
+  const plain = await fallbackPixels(page, seen);
   await drawn(page, seen, "Vanishing Fonts Film");
   await fontsJobDone("Vanishing Fonts Film");
   const held = await drawn(page, seen, "Vanishing Fonts Film");
@@ -382,6 +390,10 @@ await scenario("a listed font gone from the store: ASS is still drawn, and the f
 // The store gives back half of the font, as an S3 that ends a body early does.
 // The route answers with the empty font of a lost one, not a cut font or an error.
 await scenario("a listed font cut short by the store: ASS is still drawn", async ({ page, seen }) => {
+  const plain = await fallbackPixels(page, seen);
+  // The font is stored by the first play of the film; the scenario above may not have run on this shard.
+  await drawn(page, seen, "Vanishing Fonts Film");
+  await fontsJobDone("Vanishing Fonts Film");
   const objects = `${process.env.E2E_ASSETS}/fonts`;
   const [name, ...others] = readdirSync(objects);
   if (!name || others.length) throw new Error(`font objects: ${[name, ...others]}`);
@@ -583,10 +595,13 @@ await burnedIn("S3 burn-in: text is in the picture at the right time, after far 
 await burnedIn("POSIX burn-in of subtitle files beside the film: text is in the picture at the right time", "Transcode", "Burn Sub Film");
 await burnedIn("S3 burn-in of subtitle files beside the film: text is in the picture at the right time", "Cloud", "Beside Burn Film");
 
+await runLater();
 await browser.close();
 if (failures.length) {
   console.log("\nFAILED");
   for (const failure of failures) console.log(`  - ${failure}`);
+  shardLine();
   process.exit(1);
 }
 console.log("\nPASS");
+shardLine();

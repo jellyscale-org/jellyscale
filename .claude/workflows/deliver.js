@@ -44,8 +44,8 @@ const IMPLEMENTED = {
 
 const SNAPSHOT = {
   type: 'object',
-  properties: { tree: { type: 'string' } },
-  required: ['tree'],
+  properties: { tree: { type: 'string' }, root: { type: 'string', description: 'Absolute path of the repository root' } },
+  required: ['tree', 'root'],
 }
 
 // base continues earlier work: reviewers then see the whole change since that
@@ -78,11 +78,13 @@ const rolePrefix = (role) => (roleFiles
   ? `First read .claude/agents/${role}.md. It defines your role and its limits, and you must follow it exactly.\n\n`
   : '')
 
+let repoRoot = null // set by the first snapshot; QA is told where .results is
 const snapshot = async (label) => {
   const result = await agent(
-    'Run `bash tools/snapshot.sh` from the repository root and return the printed tree hash. Do nothing else.',
+    'Run `bash tools/snapshot.sh` from the repository root and return the printed tree hash, and the absolute path of the repository root (`pwd`). Do nothing else.',
     { label, phase: 'Implement', schema: SNAPSHOT, model: 'haiku', effort: 'low' })
   if (!result) throw new Error(`snapshot failed: ${label}`)
+  repoRoot = result.root
   return result.tree
 }
 
@@ -112,9 +114,14 @@ const reviewers = (base, head, round = 1) => {
     { key: 'product', agentType: 'product-reviewer', focus: 'Check the change against PRODUCT.md and the task, by reading. Run no tests and no browser.' },
   ]
   if (ux) roles.push({ key: 'ux', agentType: 'ux-reviewer', focus: 'Review what viewers and operators experience. Check the affected flow in jellyfin-web once if you need to see it; run no test suite.' })
+  // QA is told which tree is the head and where the test scripts recorded their
+  // full runs of it (test/lib.sh), and nothing else of the implementer's: it
+  // reuses a pass for an identical tree and reruns the rest (.claude/agents/qa.md).
+  // The other reviewers get no results, so they stay blind.
+  const recorded = `Head tree: ${head}\nRecorded results: ${repoRoot}/.results/${head} (read-only; .claude/agents/qa.md says how to use them)`
   return roles.map((role) => ({
     ...role,
-    prompt: `${brief}\n\n${diff}\n\n${role.focus} ${economy}`,
+    prompt: `${brief}\n\n${diff}\n\n${role.key === 'qa' ? `${recorded}\n\n` : ''}${role.focus} ${economy}`,
   }))
 }
 
