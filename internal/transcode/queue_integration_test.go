@@ -49,7 +49,7 @@ func TestStaleQueuedJobsAreDead(t *testing.T) {
 	r := newRig(t, nil)
 	j := r.jobs(t)
 	ctx := context.Background()
-	if _, err := j.ensure(ctx, r.spec, r.hash, psid(0), 0, 0); err != nil {
+	if _, _, err := j.ensure(ctx, r.spec, r.hash, psid(0), 0, 0); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := r.pool.Exec(ctx, "INSERT INTO transcode_nodes (id, slots) VALUES ('gone', 2)"); err != nil {
@@ -112,7 +112,7 @@ func TestStoreMismatchIsFoundInTheNodes(t *testing.T) {
 		!strings.Contains(reason, "api") || !strings.Contains(reason, "worker") {
 		t.Fatalf("got %q %v", reason, err)
 	}
-	if _, err := j.ensure(ctx, r.spec, r.hash, psid(0), 0, 0); err != nil {
+	if _, _, err := j.ensure(ctx, r.spec, r.hash, psid(0), 0, 0); err != nil {
 		t.Fatal(err)
 	}
 	if reason, err := j.Unavailable(ctx, r.hash, "", ""); err != nil || reason != "" {
@@ -377,7 +377,7 @@ func TestSeekLeavesAJobAnotherViewerJoined(t *testing.T) {
 		if err := j.Watch(ctx, r.viewer(session), r.hash, -1); err != nil {
 			t.Fatal(err)
 		}
-		id, err := j.ensure(ctx, r.spec, r.hash, session, n, n)
+		id, _, err := j.ensure(ctx, r.spec, r.hash, session, n, n)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -432,7 +432,7 @@ func TestSweepingADeadWorkersJobDoesNotRefuseTheSpec(t *testing.T) {
 	if reason, err := j.Unavailable(ctx, r.hash, "", ""); err != nil || reason != "" {
 		t.Fatalf("PlaybackInfo refuses the spec: %q %v", reason, err)
 	}
-	if _, err := j.ensure(ctx, r.spec, r.hash, psid(0), 0, 0); err != nil {
+	if _, _, err := j.ensure(ctx, r.spec, r.hash, psid(0), 0, 0); err != nil {
 		t.Fatalf("a viewer's request is refused: %v", err)
 	}
 }
@@ -472,15 +472,15 @@ func TestAJobEndsWhenNobodyIsWatchingIt(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	first, err := j.ensure(ctx, r.spec, r.hash, psid(0), 0, 0)
+	first, _, err := j.ensure(ctx, r.spec, r.hash, psid(0), 0, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	joined, err := j.ensure(ctx, r.spec, r.hash, psid(1), 1, 0)
+	joined, _, err := j.ensure(ctx, r.spec, r.hash, psid(1), 1, 0)
 	if err != nil || joined != first {
 		t.Fatalf("the second viewer started job %d, not %d: %v", joined, first, err)
 	}
-	far, err := j.ensure(ctx, r.spec, r.hash, psid(1), 300, 300)
+	far, _, err := j.ensure(ctx, r.spec, r.hash, psid(1), 300, 300)
 	if err != nil || far == first {
 		t.Fatalf("a far seek joined job %d: %v", far, err)
 	}

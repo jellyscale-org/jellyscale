@@ -115,8 +115,13 @@ type seenObject struct {
 	chaptersUnread bool
 }
 
+// ErrElsewhere is what Scan returns when another replica is scanning the
+// library: nothing was scanned here.
+var ErrElsewhere = errors.New("the library is being scanned by another replica")
+
 // Scan lists the store and applies the difference. A session advisory lock
-// keeps one scan per library across all worker replicas.
+// keeps one scan per library across all worker replicas; the one that loses
+// gets ErrElsewhere.
 func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 	conn, err := s.Pool.Acquire(ctx)
 	if err != nil {
@@ -129,7 +134,7 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 	}
 	if !locked {
 		s.Log.Info("scan already running elsewhere", "library", lib.Name)
-		return nil
+		return ErrElsewhere
 	}
 	defer conn.Exec(context.Background(), "SELECT pg_advisory_unlock(hashtextextended($1, 0))", "scan:"+lib.ID) //nolint:errcheck
 

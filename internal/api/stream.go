@@ -307,6 +307,7 @@ func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
 // refused is true when the source needs a transcode that can't start now.
 func (s *Server) planPlayback(r *http.Request, itemID, playSession string, request playback.Request, source map[string]any) (refused bool, err error) {
 	if s.Transcode == nil && request.DeviceProfile == nil {
+		playbackDecisions.WithLabelValues("direct_play").Inc()
 		return false, nil
 	}
 	sourceID, _ := source["Id"].(string)
@@ -329,6 +330,9 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 		err = offerTranscoding(source, stored.Streams)
 	}
 	if err != nil || decision.DirectPlay {
+		if err == nil {
+			playbackDecisions.WithLabelValues("direct_play").Inc()
+		}
 		return false, err
 	}
 	user := sessionOf(r)
@@ -359,6 +363,7 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 		reason, err = s.Transcode.Unavailable(r.Context(), spec.Hash(), user.User.ID, user.DeviceID)
 	default: // A replica with no transcodeStore asks only whether the stores differ.
 		if reason, err = transcode.StoreMismatch(r.Context(), s.Pool); err == nil && reason == "" {
+			playbackDecisions.WithLabelValues("direct_play").Inc()
 			return false, nil // No worker anywhere: transcoding is simply off.
 		}
 	}
@@ -374,10 +379,17 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 			s.Log.Warn("cannot switch audio tracks or burn in subtitles, so the default plays on", "item", spec.Item, "reason", reason)
 			// So no subtitle is listed that only a transcode could draw.
 			source["SupportsTranscoding"] = false
+			playbackDecisions.WithLabelValues("direct_play").Inc()
 			return false, nil
 		}
 		s.Log.Error("refusing to offer a transcode: "+reason, "item", spec.Item, "spec", spec.Hash())
+		playbackRefusals.Inc()
 		return true, nil
+	}
+	if decision.Copy {
+		playbackDecisions.WithLabelValues("copy").Inc()
+	} else {
+		playbackDecisions.WithLabelValues("reencode").Inc()
 	}
 	source["SupportsDirectPlay"] = false
 	source["SupportsDirectStream"] = false

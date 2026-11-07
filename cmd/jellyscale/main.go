@@ -23,11 +23,13 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"jellyscale/internal/api"
 	"jellyscale/internal/db"
 	"jellyscale/internal/items"
 	"jellyscale/internal/library"
+	"jellyscale/internal/metrics"
 	"jellyscale/internal/store"
 	"jellyscale/internal/transcode"
 )
@@ -58,6 +60,10 @@ type config struct {
 	// TranscodeLead is how far, in film time, a job may get ahead of the
 	// furthest segment a viewer has asked for before its ffmpeg pauses.
 	TranscodeLead string `json:"transcodeLead"`
+
+	// MetricsListen is where /metrics is served, such as ":9090", by every role
+	// in the process and apart from the public port. Empty serves none.
+	MetricsListen string `json:"metricsListen"`
 }
 
 // parseConfig refuses a key it doesn't know, so a mistyped option is an error
@@ -153,6 +159,15 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	if cfg.MetricsListen != "" {
+		// Before the worker-only return below: a worker is where most of them are.
+		collectors := append([]prometheus.Collector{metrics.Pool{Pool: pool}, scanDuration, scanOK, scanTime}, api.Collectors()...)
+		collectors = append(collectors, transcode.Collectors()...)
+		collectors = append(collectors, transcodes.collectors...)
+		if _, err := metrics.Serve(ctx, cfg.MetricsListen, log, collectors...); err != nil {
+			return fmt.Errorf("metricsListen: %w", err)
+		}
+	}
 	if slices.Contains(enabled, roleWorker) {
 		interval := 15 * time.Minute
 		if cfg.ScanInterval != "" {
@@ -194,6 +209,8 @@ type transcoding struct {
 	// stopped closes once the process has left transcode_nodes and the worker,
 	// if any, has ended every ffmpeg.
 	stopped chan struct{}
+	// collectors report on what this process runs.
+	collectors []prometheus.Collector
 }
 
 // openTranscoding registers this process in transcode_nodes, where the other
@@ -230,6 +247,12 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 	}
 
 	id := fmt.Sprintf("%d-%d", os.Getpid(), time.Now().UnixNano())
+	if worker {
+		// The id is what transcode_nodes and transcode_jobs name a worker by; the
+		// hostname (a pod's name) says where it runs.
+		host, _ := os.Hostname()
+		log.Info("worker started", "worker", id, "host", host)
+	}
 	slots := 0
 	if worker && segments != nil {
 		slots = cmp.Or(cfg.TranscodeSlots, 2)
@@ -255,6 +278,9 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 	w := &transcode.Worker{
 		ID: id, Pool: pool, Items: &items.Repo{Pool: pool, ServerID: serverID}, Segments: segments, Hub: result.hub, Log: log,
 		Media: media.Open, Scratch: scratch, Slots: slots, Idle: idle, Lead: lead, Retention: retention,
+	}
+	if worker {
+		result.collectors = []prometheus.Collector{w}
 	}
 	// A worker proves it is alive with a lock of its own, so that a replica
 	// notices its death in a second; the others need no more than the row.
@@ -320,15 +346,38 @@ func parseRoles(value string) []string {
 	return roles
 }
 
+// The last scan this process ran of each library, by library ID. Only the
+// replica that wins a library's lock has its series, and a replica that loses
+// it leaves its series as they were: scanTime says how old they are. The
+// libraries are fixed at startup, so no series outlives its library.
+var (
+	scanTime = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "jellyscale_scan_last_timestamp_seconds", Help: "When this process's last scan of the library ended, in seconds since the epoch."}, []string{"library"})
+	scanDuration = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "jellyscale_scan_last_duration_seconds", Help: "How long this process's last scan of the library took."}, []string{"library"})
+	scanOK = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "jellyscale_scan_last_success", Help: "1 if this process's last scan of the library succeeded, 0 if it failed."}, []string{"library"})
+)
+
 func scanLoop(ctx context.Context, pool *pgxpool.Pool, libraries []library.Library, interval time.Duration, log *slog.Logger) {
 	scanner := &library.Scanner{Pool: pool, Log: log}
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
 		for _, lib := range libraries {
-			if err := scanner.Scan(ctx, lib); err != nil && ctx.Err() == nil {
-				log.Error("scan failed", "library", lib.Name, "error", err)
+			began := time.Now()
+			err := scanner.Scan(ctx, lib)
+			if errors.Is(err, library.ErrElsewhere) || ctx.Err() != nil {
+				continue // Another replica's scan is the one to report.
 			}
+			scanDuration.WithLabelValues(lib.ID).Set(time.Since(began).Seconds())
+			scanTime.WithLabelValues(lib.ID).SetToCurrentTime()
+			result := 1.0
+			if err != nil {
+				log.Error("scan failed", "library", lib.Name, "error", err)
+				result = 0
+			}
+			scanOK.WithLabelValues(lib.ID).Set(result)
 		}
 		select {
 		case <-ctx.Done():

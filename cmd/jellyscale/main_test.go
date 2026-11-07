@@ -90,3 +90,14 @@ func TestShippedConfigsLoad(t *testing.T) {
 		t.Fatalf("%+v: %v", cfg, err)
 	}
 }
+
+// metricsListen is a config key, and off when it is left out.
+func TestConfigMetricsListen(t *testing.T) {
+	cfg, err := parseConfig([]byte(`{"metricsListen": ":9090"}`))
+	if err != nil || cfg.MetricsListen != ":9090" {
+		t.Fatalf("%+v: %v", cfg, err)
+	}
+	if cfg, err = parseConfig([]byte(`{}`)); err != nil || cfg.MetricsListen != "" {
+		t.Fatalf("%+v: %v", cfg, err)
+	}
+}

@@ -138,6 +138,7 @@ func Reap(ctx context.Context, pool *pgxpool.Pool, self string) (workers []strin
 
 // logReaped says what Reap did, when it did anything.
 func logReaped(log *slog.Logger, workers []string, jobs []int64) {
+	countReaped(workers, jobs)
 	if len(workers) > 0 && log != nil {
 		log.Warn("workers whose liveness lock is gone were forgotten, and their jobs given a second to end before a live worker takes them",
 			"workers", workers, "jobs", jobs)
@@ -270,6 +271,7 @@ func (w *Worker) lookForTheDead(held context.Context) bool {
 	case slices.Contains(workers, w.ID):
 		// Open, yet not in pg_locks: the server's end of the connection is not
 		// the one that took the lock. That is what a pooler in transaction mode does.
+		countReaped(workers, jobs)
 		w.Log.Error("the liveness connection is open but Postgres does not show its lock; is the database URL behind a transaction-mode pooler? It must be a direct, session-mode connection", "jobs", jobs)
 		return true
 	case !here:

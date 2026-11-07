@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -202,7 +203,8 @@ func TestConcurrentScansDoNotDuplicate(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := f.scanner.Scan(context.Background(), f.lib); err != nil {
+			// The scans that lose the lock say so.
+			if err := f.scanner.Scan(context.Background(), f.lib); err != nil && !errors.Is(err, library.ErrElsewhere) {
 				t.Error(err)
 			}
 		}()
