@@ -1,0 +1,1071 @@
+{
+  "project": "jellyscale",
+  "description": "A horizontally scalable, Jellyfin-compatible video server in Go. Every task below comes from PRODUCT.md (features and roadmap), the project plan, compat/coverage-12.4.tsv and the agreed work queue. PRODUCT.md stays the source of truth for status; update this file when a slice merges.",
+  "conventions": {
+    "status": "done | in_progress | todo; passes is true only when done",
+    "priority": "1 is next; done tasks have none",
+    "delivery": "each task is a slice through the deliver workflow (.claude/workflows/deliver.js): design review, implement, blind reviews, QA; then PR, CI, merge, redeploy the dogfood"
+  },
+  "phases": [
+    {
+      "id": "P0",
+      "name": "Spike",
+      "goal": "Evidence before building: hidden routes, client captures, segment seams, redirects, S3 costs, NOTIFY load.",
+      "status": "done",
+      "source": "spikes/README.md"
+    },
+    {
+      "id": "P1",
+      "name": "Read-only",
+      "goal": "jellyfin-web logs in and browses.",
+      "status": "done",
+      "source": "PRODUCT.md Built"
+    },
+    {
+      "id": "P2",
+      "name": "Direct play",
+      "goal": "Plays from POSIX and S3; progress persists across replicas.",
+      "status": "done",
+      "source": "PRODUCT.md Built"
+    },
+    {
+      "id": "P3",
+      "name": "Transcode",
+      "goal": "Web transcodes, seeks, switches audio; subtitles; video copy; tone mapping; chapters.",
+      "status": "in_progress",
+      "source": "PRODUCT.md phase3"
+    },
+    {
+      "id": "P4",
+      "name": "High availability",
+      "goal": "A worker and an API replica killed mid-film recover without losing picture or resume position.",
+      "status": "in_progress",
+      "source": "PRODUCT.md phase4-ha and its gate"
+    },
+    {
+      "id": "ID",
+      "name": "Identity",
+      "goal": "User management, hashed tokens, Quick Connect, OIDC, scoped keys.",
+      "status": "todo",
+      "source": "PRODUCT.md identity"
+    },
+    {
+      "id": "P5",
+      "name": "Library and metadata",
+      "goal": "Daily-driver parity for video: metadata from files, Next Up, collections, trickplay, GPU.",
+      "status": "todo",
+      "source": "PRODUCT.md phase5-library"
+    },
+    {
+      "id": "P6",
+      "name": "Kubernetes and operations",
+      "goal": "Helm, CNPG, KEDA, metrics, upgrades, migration from Jellyfin; 200 mixed streams on a real cluster.",
+      "status": "todo",
+      "source": "PRODUCT.md phase6-k8s"
+    },
+    {
+      "id": "P7",
+      "name": "SyncPlay",
+      "goal": "Group playback across replicas.",
+      "status": "todo",
+      "source": "PRODUCT.md phase7-syncplay"
+    },
+    {
+      "id": "OPS",
+      "name": "Engineering and observability",
+      "goal": "Test speed, docs, metrics, tracing, load tests: what keeps the project fast to change and the dogfood diagnosable.",
+      "status": "in_progress",
+      "source": "work queue"
+    }
+  ],
+  "userStories": [
+    {
+      "id": "JS-001",
+      "phase": "P0",
+      "title": "Phase 0 spikes with a go/no-go report",
+      "description": "Built and tested; see the source.",
+      "acceptanceCriteria": [],
+      "priority": null,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "spikes/README.md",
+      "notes": ""
+    },
+    {
+      "id": "JS-002",
+      "phase": "P1",
+      "title": "Auth, System/Info, users, POSIX scan, /Items, images, /web",
+      "description": "Built and tested; see the source.",
+      "acceptanceCriteria": [],
+      "priority": null,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "PRODUCT.md Built",
+      "notes": ""
+    },
+    {
+      "id": "JS-003",
+      "phase": "P1",
+      "title": "Search by term through GET /Items",
+      "description": "Built and tested; see the source.",
+      "acceptanceCriteria": [],
+      "priority": null,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "PRODUCT.md Built",
+      "notes": ""
+    },
+    {
+      "id": "JS-004",
+      "phase": "P2",
+      "title": "PlaybackInfo, /stream direct play from POSIX and S3 with ranges and HEAD",
+      "description": "Built and tested; see the source.",
+      "acceptanceCriteria": [],
+      "priority": null,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "PRODUCT.md Built",
+      "notes": ""
+    },
+    {
+      "id": "JS-005",
+      "phase": "P2",
+      "title": "Sessions, playback reporting, resume, played state, favourites, Continue Watching",
+      "description": "Built and tested; see the source.",
+      "acceptanceCriteria": [],
+      "priority": null,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "PRODUCT.md Built",
+      "notes": ""
+    },
+    {
+      "id": "JS-006",
+      "phase": "P2",
+      "title": "File download",
+      "description": "Built and tested; see the source.",
+      "acceptanceCriteria": [],
+      "priority": null,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase3",
+      "notes": ""
+    },
+    {
+      "id": "JS-007",
+      "phase": "P3",
+      "title": "HLS re-encode to H.264 with audio and bitrate choice, seeks",
+      "description": "Built and tested; see the source.",
+      "acceptanceCriteria": [],
+      "priority": null,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "PRODUCT.md Built",
+      "notes": ""
+    },
+    {
+      "id": "JS-008",
+      "phase": "P3",
+      "title": "Video copy with audio re-encoded (H.264, HEVC, AV1 in MKV and MP4)",
+      "description": "Built and tested; see the source.",
+      "acceptanceCriteria": [],
+      "priority": null,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "PRODUCT.md Built",
+      "notes": ""
+    },
+    {
+      "id": "JS-009",
+      "phase": "P3",
+      "title": "HEVC and AV1 direct play and copy to clients that list them",
+      "description": "Built and tested; see the source.",
+      "acceptanceCriteria": [],
+      "priority": null,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase3",
+      "notes": ""
+    },
+    {
+      "id": "JS-010",
+      "phase": "P3",
+      "title": "Audio copy while the video is re-encoded (AAC, Opus, FLAC played; AC3, E-AC3, MP3 checked with ffmpeg)",
+      "description": "Built and tested; see the source.",
+      "acceptanceCriteria": [],
+      "priority": null,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase3",
+      "notes": ""
+    },
+    {
+      "id": "JS-011",
+      "phase": "P3",
+      "title": "HDR10 and HLG tone mapping to SDR in re-encodes",
+      "description": "Built and tested; see the source.",
+      "acceptanceCriteria": [],
+      "priority": null,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase3, DOMAINS 53",
+      "notes": ""
+    },
+    {
+      "id": "JS-012",
+      "phase": "P3",
+      "title": "Text and image subtitles inside the file, delivered or burnt in",
+      "description": "Built and tested; see the source.",
+      "acceptanceCriteria": [],
+      "priority": null,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase3",
+      "notes": ""
+    },
+    {
+      "id": "JS-013",
+      "phase": "P3",
+      "title": "External subtitle files and Matroska font attachments",
+      "description": "Built and tested; see the source.",
+      "acceptanceCriteria": [],
+      "priority": null,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase3",
+      "notes": ""
+    },
+    {
+      "id": "JS-014",
+      "phase": "P3",
+      "title": "Chapters and opt-in chapter pictures",
+      "description": "Built and tested; see the source.",
+      "acceptanceCriteria": [],
+      "priority": null,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase3, DOMAINS 54-55",
+      "notes": ""
+    },
+    {
+      "id": "JS-015",
+      "phase": "P3",
+      "title": "Read-ahead bound (transcodeLead)",
+      "description": "Built and tested; see the source.",
+      "acceptanceCriteria": [],
+      "priority": null,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase3, DOMAINS 57",
+      "notes": ""
+    },
+    {
+      "id": "JS-016",
+      "phase": "P4",
+      "title": "Worker failover: a killed worker is replaced within seconds (PR #31)",
+      "description": "Built and tested; see the source.",
+      "acceptanceCriteria": [],
+      "priority": null,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase4-ha gate",
+      "notes": ""
+    },
+    {
+      "id": "JS-017",
+      "phase": "OPS",
+      "title": "Faster tests: CI 33 to 9 min with shards, fixture cache, E2E_REPEAT, recorded results (PR #33)",
+      "description": "Built and tested; see the source.",
+      "acceptanceCriteria": [],
+      "priority": null,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "docs/testing.md",
+      "notes": ""
+    },
+    {
+      "id": "JS-018",
+      "phase": "OPS",
+      "title": "README split into an overview and docs/ topic pages (PR #34)",
+      "description": "Built and tested; see the source.",
+      "acceptanceCriteria": [],
+      "priority": null,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "README.md",
+      "notes": ""
+    },
+    {
+      "id": "JS-019",
+      "phase": "OPS",
+      "title": "Metrics endpoint",
+      "description": "A Prometheus-format /metrics on an opt-in listener (metricsListen), read directly from the dogfood pod; no Prometheus server for now.",
+      "acceptanceCriteria": [
+        "Every role serves /metrics on metricsListen; nothing listens when unset; the public port has none",
+        "Encode speed per running job, busy/total slots, jobs by kind, queue depth on workers",
+        "Segment wait histogram by source and play kind, stalls over 5 s, on stream",
+        "PlaybackInfo decisions by play method and refusals on api",
+        "Reaps, job outcomes, scan duration, Postgres pool stats",
+        "No title, path or unbounded value in any label",
+        "docs/running.md documents it and reading it with kubectl port-forward"
+      ],
+      "priority": 1,
+      "status": "in_progress",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase6-k8s (pulled forward); work queue 3b",
+      "notes": "Option A chosen 2026-11-07: read /metrics directly; a small Prometheus beside jellyscale only if history is needed."
+    },
+    {
+      "id": "JS-020",
+      "phase": "OPS",
+      "title": "Control-plane stress test",
+      "description": "Simulate N viewers' and workers' Postgres traffic (viewer updates per segment request, heartbeats, claims, reaps, NOTIFY) with no video against a disposable Postgres, and find where latency climbs.",
+      "acceptanceCriteria": [
+        "A script runs the load at rising N and reports p50/p99 latency per operation and the N where it degrades",
+        "The ceiling is stated in streams per Postgres primary in ARCHITECTURE.md",
+        "A recommendation on whether NATS JetStream for ephemeral state is worth considering after the MVP"
+      ],
+      "priority": 2,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-019"
+      ],
+      "source": "work queue 3c",
+      "notes": "The MVP stays Postgres-only (user decision 2026-11-07)."
+    },
+    {
+      "id": "JS-021",
+      "phase": "OPS",
+      "title": "OpenTelemetry tracing of a stream end to end",
+      "description": "One trace per playback: PlaybackInfo, decision, job queued, claim, ffmpeg start, each segment's wait, upload and serve, continuing across a worker failover.",
+      "acceptanceCriteria": [
+        "Trace context is carried in the transcode job row across the Postgres handoff",
+        "Exported over OTLP to any backend; off by default",
+        "A failover shows the dead worker's span end and the replacement's begin in one trace"
+      ],
+      "priority": 44,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-019"
+      ],
+      "source": "work queue (later)",
+      "notes": "Needs a design review; the homelab has no tracing backend yet (Tempo suggested)."
+    },
+    {
+      "id": "JS-022",
+      "phase": "OPS",
+      "title": "Logging slice",
+      "description": "Consistent, structured logs per role with request and job ids, so an operator can follow one playback.",
+      "acceptanceCriteria": [
+        "Each request and job log line carries ids that link them",
+        "Levels and noise reviewed against the dogfood"
+      ],
+      "priority": 45,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "work queue (later)",
+      "notes": ""
+    },
+    {
+      "id": "JS-023",
+      "phase": "P3",
+      "title": "Dolby Vision and HDR labels like Jellyfin 12.4",
+      "description": "Report VideoRange and VideoRangeType as Jellyfin 12.4 does (DOVI for P5, DOVIWithEL for P7, DOVIWithHDR10 for P8.1, DOVIWithHLG, DOVIWithSDR) and stop stripping them from client DTOs.",
+      "acceptanceCriteria": [
+        "Observed against a real Jellyfin 12.4 first, capture in compat/captures",
+        "The scan records the DV profile and compatibility id",
+        "Item and PlaybackInfo DTOs carry VideoRange and VideoRangeType for HDR10, HLG and each DV profile",
+        "Clients that gate on them (Infuse, Moonfin) are checked on the dogfood"
+      ],
+      "priority": 3,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "work queue 4; internal/library/scan.go strips them today",
+      "notes": ""
+    },
+    {
+      "id": "JS-024",
+      "phase": "P3",
+      "title": "Parallel transcoding of one stream across workers",
+      "description": "When a job runs below about 1.2x real time, helper jobs on other workers encode later chunks of the same film, so CPU on every node serves one viewer. Deterministic segments let the chunks splice.",
+      "acceptanceCriteria": [
+        "Design reviewed before building (chunk boundaries, slots, cancellation, read-ahead, failover of a helper)",
+        "Three worker processes encode one film in chunks; the assembled segments equal a single worker's video byte for byte",
+        "hls.js plays through and seeks across chunk boundaries with no stall or discontinuity",
+        "A helper killed mid-chunk is replaced and the viewer keeps playing",
+        "Helpers never take the last free slot from a new viewer",
+        "Measured speedup with 1, 2 and 3 workers in the PR"
+      ],
+      "priority": 4,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-019"
+      ],
+      "source": "work queue 5",
+      "notes": "The user's idea: use CPU on all nodes rather than relying on a GPU. 'Gotta test sharding streams.'"
+    },
+    {
+      "id": "JS-025",
+      "phase": "P3",
+      "title": "Copy HDR video and re-encode only the audio",
+      "description": "A client that plays the HDR video but not its audio (TrueHD, DTS in jellyfin-web) gets the video copied and the audio re-encoded, instead of a full 4K software re-encode with tone mapping.",
+      "acceptanceCriteria": [
+        "HDR10, HLG and DV (with a compatible base layer) copy when the client's profile allows",
+        "jellyfin-web plays a 4K HDR film with TrueHD audio from a copy on a 4-core worker without stalls",
+        "Tone mapping stays for clients that cannot show HDR"
+      ],
+      "priority": 5,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-023"
+      ],
+      "source": "work queue 6; PRODUCT.md phase3 (HDR direct play and copy not built)",
+      "notes": ""
+    },
+    {
+      "id": "JS-026",
+      "phase": "P3",
+      "title": "Copy both video and audio",
+      "description": "Remux into HLS without re-encoding either stream when the client plays both but not the container.",
+      "acceptanceCriteria": [
+        "Video and audio both copied, segments splice after a restart",
+        "Played and sought in jellyfin-web"
+      ],
+      "priority": 6,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase3 (not built)",
+      "notes": ""
+    },
+    {
+      "id": "JS-027",
+      "phase": "P3",
+      "title": "External image subtitle files (.sup, .sub/.idx) and VobSub as a file",
+      "description": "List and draw external PGS and VobSub files like the embedded ones.",
+      "acceptanceCriteria": [
+        "Listed like Jellyfin 12.4",
+        "Drawn into a transcode; PGS sent to jellyfin-web when its setting is on"
+      ],
+      "priority": 7,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase3 (not built)",
+      "notes": ""
+    },
+    {
+      "id": "JS-028",
+      "phase": "P3",
+      "title": "Extract all subtitle tracks of a film in one pass",
+      "description": "One worker read of the file extracts every text track, instead of one job per track.",
+      "acceptanceCriteria": [
+        "One ffmpeg run per film for all text tracks",
+        "S3 reads drop accordingly"
+      ],
+      "priority": 8,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "work queue (later)",
+      "notes": ""
+    },
+    {
+      "id": "JS-029",
+      "phase": "P4",
+      "title": "Keep transcodes through a Postgres failover",
+      "description": "A CNPG switchover ends every worker's lock connection; today every transcode restarts. Re-lock first, then check the worker's own row: if it is present nobody touched its jobs and they continue.",
+      "acceptanceCriteria": [
+        "A Postgres restart or switchover under load does not restart transcodes whose rows survived",
+        "No job is ever owned by two workers (invariant 25)"
+      ],
+      "priority": 9,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "work queue follow-ups",
+      "notes": ""
+    },
+    {
+      "id": "JS-030",
+      "phase": "P4",
+      "title": "Failover follow-ups",
+      "description": "Smaller items from the failover reviews.",
+      "acceptanceCriteria": [
+        "A separate --liveness-database-url so workers can pool their other queries",
+        "One reaper per cluster past about 50 workers",
+        "Subtitle-extraction leases reaped like transcode leases",
+        "A claim racing a re-lock cannot cancel a job",
+        "Rollback note for the liveness change"
+      ],
+      "priority": 10,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "work queue follow-ups",
+      "notes": ""
+    },
+    {
+      "id": "JS-031",
+      "phase": "P4",
+      "title": "API replica failover",
+      "description": "An api replica killed mid-film loses neither the picture nor the resume position; WebSockets reconnect to any replica.",
+      "acceptanceCriteria": [
+        "Kill an api replica during playback in the e2e tier: playback continues, progress persists, the socket reconnects",
+        "Session ownership (sessions.ws_replica) moves to a live replica"
+      ],
+      "priority": 11,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase4-ha gate (not built)",
+      "notes": ""
+    },
+    {
+      "id": "JS-032",
+      "phase": "P4",
+      "title": "Remote control of sessions",
+      "description": "Play on another device, send messages and commands, routed to the replica holding the target's socket.",
+      "acceptanceCriteria": [
+        "POST /Sessions/{id}/Playing, /Command, /Message, /System, /Viewing, /Capabilities work across replicas",
+        "jellyfin-web's remote control drives another session"
+      ],
+      "priority": 12,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-031"
+      ],
+      "source": "PRODUCT.md phase4-ha; compat/coverage-12.4.tsv phase4-ha (10 routes)",
+      "notes": ""
+    },
+    {
+      "id": "JS-033",
+      "phase": "ID",
+      "title": "User management",
+      "description": "Create, delete, disable users; change passwords; preferences and configuration.",
+      "acceptanceCriteria": [
+        "POST /Users/New, DELETE /Users/{id}, /Users/{id}/Policy, /Password, /Configuration as Jellyfin 12.4",
+        "jellyfin-web's admin user pages work"
+      ],
+      "priority": 13,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md identity",
+      "notes": ""
+    },
+    {
+      "id": "JS-034",
+      "phase": "ID",
+      "title": "Hashed tokens at rest and operator API keys",
+      "description": "Tokens stored hashed; GET/POST/DELETE /Auth/Keys.",
+      "acceptanceCriteria": [
+        "No plain token in the database",
+        "API keys created and revoked through jellyfin-web"
+      ],
+      "priority": 14,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md identity",
+      "notes": ""
+    },
+    {
+      "id": "JS-035",
+      "phase": "ID",
+      "title": "Scoped integration keys",
+      "description": "Named, revocable keys that are not user accounts, with scopes (for example read-only stats), sent like any Jellyfin token, declared in config.",
+      "acceptanceCriteria": [
+        "A key outside its scope gets 401/403",
+        "Last use time and address recorded",
+        "Streamystats works with a read-only key and no extra user account"
+      ],
+      "priority": 15,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-034"
+      ],
+      "source": "user request 2026-11-07",
+      "notes": "Jellyfin offers only per-user tokens or all-powerful admin keys, so people create throwaway accounts for integrations."
+    },
+    {
+      "id": "JS-036",
+      "phase": "ID",
+      "title": "Per-user library access",
+      "description": "Users see only the libraries their policy allows.",
+      "acceptanceCriteria": [
+        "Enforced on every item route"
+      ],
+      "priority": 16,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-033"
+      ],
+      "source": "PRODUCT.md identity",
+      "notes": ""
+    },
+    {
+      "id": "JS-037",
+      "phase": "ID",
+      "title": "Quick Connect",
+      "description": "Initiate, Connect, Authorize, AuthenticateWithQuickConnect; pending codes in Postgres with a short expiry so any api replica answers.",
+      "acceptanceCriteria": [
+        "Observed against Jellyfin 12.4 first",
+        "Moonfin on the Shield and Findroid sign in with a code approved from jellyfin-web"
+      ],
+      "priority": 17,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md identity",
+      "notes": ""
+    },
+    {
+      "id": "JS-038",
+      "phase": "ID",
+      "title": "Forgot password answers ContactAdmin",
+      "description": "POST /Users/ForgotPassword says the operator resets passwords.",
+      "acceptanceCriteria": [
+        "Answer shape as Jellyfin 12.4"
+      ],
+      "priority": 18,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md identity",
+      "notes": ""
+    },
+    {
+      "id": "JS-039",
+      "phase": "ID",
+      "title": "OIDC beside local accounts",
+      "description": "A login link on jellyfin-web's login page (branding disclaimer); apps and TVs use Quick Connect.",
+      "acceptanceCriteria": [
+        "Sign in with an OIDC provider in jellyfin-web",
+        "OIDC users reach TV apps through Quick Connect"
+      ],
+      "priority": 19,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-037"
+      ],
+      "source": "PRODUCT.md identity",
+      "notes": ""
+    },
+    {
+      "id": "JS-040",
+      "phase": "ID",
+      "title": "Signed URLs inside playlists",
+      "description": "Playlists stop carrying the viewer's token as ApiKey (DOMAINS 17).",
+      "acceptanceCriteria": [
+        "No viewer token in any playlist or segment URL",
+        "Kodi's TranscodingUrl editing still works"
+      ],
+      "priority": 20,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md identity",
+      "notes": ""
+    },
+    {
+      "id": "JS-041",
+      "phase": "ID",
+      "title": "Default subtitle by the viewer's subtitle mode",
+      "description": "SubtitleMode and SubtitleLanguagePreference pick DefaultSubtitleStreamIndex as Jellyfin does.",
+      "acceptanceCriteria": [
+        "Each mode matches a Jellyfin 12.4 capture"
+      ],
+      "priority": 21,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md identity",
+      "notes": ""
+    },
+    {
+      "id": "JS-042",
+      "phase": "ID",
+      "title": "Sessions and devices view with revoke",
+      "description": "GET/DELETE /Devices; an operator revokes a device.",
+      "acceptanceCriteria": [
+        "Revoked device's token stops working"
+      ],
+      "priority": 22,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md identity",
+      "notes": ""
+    },
+    {
+      "id": "JS-043",
+      "phase": "ID",
+      "title": "Activity log",
+      "description": "GET /System/ActivityLog/Entries with sign-ins and playback.",
+      "acceptanceCriteria": [
+        "jellyfin-web's dashboard lists entries"
+      ],
+      "priority": 23,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md identity",
+      "notes": ""
+    },
+    {
+      "id": "JS-044",
+      "phase": "ID",
+      "title": "User avatars",
+      "description": "User images: get, upload, delete.",
+      "acceptanceCriteria": [
+        "jellyfin-web shows and changes avatars"
+      ],
+      "priority": 24,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md identity",
+      "notes": ""
+    },
+    {
+      "id": "JS-045",
+      "phase": "P5",
+      "title": "Artwork and synopses from files beside the film",
+      "description": "Poster and fanart images, .nfo files and embedded tags as the only metadata source.",
+      "acceptanceCriteria": [
+        "Matches a Jellyfin 12.4 capture where a client calls it",
+        "Played or browsed in jellyfin-web"
+      ],
+      "priority": 25,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase5-library",
+      "notes": ""
+    },
+    {
+      "id": "JS-046",
+      "phase": "P5",
+      "title": "Genres, studios and persons",
+      "description": "Their lists, pages and images through GET /Items filters, /Genres, /Studios, /Persons.",
+      "acceptanceCriteria": [
+        "Matches a Jellyfin 12.4 capture where a client calls it",
+        "Played or browsed in jellyfin-web"
+      ],
+      "priority": 26,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase5-library",
+      "notes": ""
+    },
+    {
+      "id": "JS-047",
+      "phase": "P5",
+      "title": "Next Up and filters",
+      "description": "GET /Shows/NextUp, /Items/Filters and Filters2.",
+      "acceptanceCriteria": [
+        "Matches a Jellyfin 12.4 capture where a client calls it",
+        "Played or browsed in jellyfin-web"
+      ],
+      "priority": 27,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase5-library",
+      "notes": ""
+    },
+    {
+      "id": "JS-048",
+      "phase": "P5",
+      "title": "Collections and playlists",
+      "description": "Create, edit and play collections and playlists of films and episodes.",
+      "acceptanceCriteria": [
+        "Matches a Jellyfin 12.4 capture where a client calls it",
+        "Played or browsed in jellyfin-web"
+      ],
+      "priority": 28,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase5-library",
+      "notes": ""
+    },
+    {
+      "id": "JS-049",
+      "phase": "P5",
+      "title": "Similar items and recommendations",
+      "description": "/Items/{id}/Similar and variants, /Movies/Recommendations (empty first), /Shows/Upcoming, /Items/Suggestions.",
+      "acceptanceCriteria": [
+        "Matches a Jellyfin 12.4 capture where a client calls it",
+        "Played or browsed in jellyfin-web"
+      ],
+      "priority": 29,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase5-library",
+      "notes": ""
+    },
+    {
+      "id": "JS-050",
+      "phase": "P5",
+      "title": "Multiple versions and multi-part films",
+      "description": "Group 4K and 1080p files by name at scan; /Videos/{id}/AdditionalParts.",
+      "acceptanceCriteria": [
+        "Matches a Jellyfin 12.4 capture where a client calls it",
+        "Played or browsed in jellyfin-web"
+      ],
+      "priority": 30,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase5-library",
+      "notes": ""
+    },
+    {
+      "id": "JS-051",
+      "phase": "P5",
+      "title": "Parental ratings",
+      "description": "Official rating from tags or .nfo; a maximum rating per user.",
+      "acceptanceCriteria": [
+        "Matches a Jellyfin 12.4 capture where a client calls it",
+        "Played or browsed in jellyfin-web"
+      ],
+      "priority": 31,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase5-library",
+      "notes": ""
+    },
+    {
+      "id": "JS-052",
+      "phase": "P5",
+      "title": "Media segments and intro skip",
+      "description": "From operator data or chapter markers; no fingerprinting.",
+      "acceptanceCriteria": [
+        "Matches a Jellyfin 12.4 capture where a client calls it",
+        "Played or browsed in jellyfin-web"
+      ],
+      "priority": 32,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase5-library",
+      "notes": ""
+    },
+    {
+      "id": "JS-053",
+      "phase": "P5",
+      "title": "Trickplay",
+      "description": "Workers generate trickplay tiles; tiles.m3u8 and images served.",
+      "acceptanceCriteria": [
+        "Matches a Jellyfin 12.4 capture where a client calls it",
+        "Played or browsed in jellyfin-web"
+      ],
+      "priority": 33,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase5-library",
+      "notes": ""
+    },
+    {
+      "id": "JS-054",
+      "phase": "P5",
+      "title": "Hardware encoding",
+      "description": "NVENC and VAAPI (and QSV) workers; encoder family in spec_hash.",
+      "acceptanceCriteria": [
+        "Matches a Jellyfin 12.4 capture where a client calls it",
+        "Played or browsed in jellyfin-web"
+      ],
+      "priority": 34,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase5-library",
+      "notes": ""
+    },
+    {
+      "id": "JS-055",
+      "phase": "P5",
+      "title": "Incremental S3 scan",
+      "description": "Diff on (key, size, etag); bucket events trigger prefix rescans.",
+      "acceptanceCriteria": [
+        "Matches a Jellyfin 12.4 capture where a client calls it",
+        "Played or browsed in jellyfin-web"
+      ],
+      "priority": 35,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "project plan Phase 5",
+      "notes": ""
+    },
+    {
+      "id": "JS-056",
+      "phase": "P6",
+      "title": "Helm chart",
+      "description": "The packaging: Deployments per role, readiness and liveness, CNPG, config as values.",
+      "acceptanceCriteria": [
+        "Installs on a fresh cluster",
+        "Readiness and liveness probes per role"
+      ],
+      "priority": 36,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase6-k8s",
+      "notes": ""
+    },
+    {
+      "id": "JS-057",
+      "phase": "P6",
+      "title": "KEDA autoscaling",
+      "description": "Scale workers on a Postgres query, keeping spare transcode slots.",
+      "acceptanceCriteria": [
+        "Workers scale up under queued jobs and down when idle"
+      ],
+      "priority": 37,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-056"
+      ],
+      "source": "project plan",
+      "notes": ""
+    },
+    {
+      "id": "JS-058",
+      "phase": "P6",
+      "title": "Upgrades without downtime",
+      "description": "Workers before stream and api; migrations old replicas survive; workers report their spec fields.",
+      "acceptanceCriteria": [
+        "A rolling upgrade under playback loses no picture"
+      ],
+      "priority": 38,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-056"
+      ],
+      "source": "PRODUCT.md phase6-k8s",
+      "notes": ""
+    },
+    {
+      "id": "JS-059",
+      "phase": "P6",
+      "title": "Backup and restore procedure",
+      "description": "Documented backup of Postgres and the object stores.",
+      "acceptanceCriteria": [
+        "Restore tested from a backup"
+      ],
+      "priority": 39,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase6-k8s",
+      "notes": ""
+    },
+    {
+      "id": "JS-060",
+      "phase": "P6",
+      "title": "Migration from Jellyfin",
+      "description": "One-way import of users, watch state and libraries.",
+      "acceptanceCriteria": [
+        "Viewers keep their history; users set a password or use OIDC"
+      ],
+      "priority": 40,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase6-k8s",
+      "notes": ""
+    },
+    {
+      "id": "JS-061",
+      "phase": "P6",
+      "title": "Streamystats compatibility, bundled by default",
+      "description": "Streamystats works against jellyscale unchanged, then ships as an optional chart component.",
+      "acceptanceCriteria": [
+        "Observe its calls on Jellyfin first",
+        "Its dashboards fill from jellyscale"
+      ],
+      "priority": 41,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-035",
+        "JS-056"
+      ],
+      "source": "user request 2026-11-07",
+      "notes": ""
+    },
+    {
+      "id": "JS-062",
+      "phase": "P6",
+      "title": "Load test: 200 mixed streams on a real cluster",
+      "description": "HLS bot fleet reporting rebuffer ratio, time to first frame, /Items p95.",
+      "acceptanceCriteria": [
+        "200 mixed streams with stated rebuffer ratio and p95s"
+      ],
+      "priority": 42,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-056"
+      ],
+      "source": "project plan Phase 6",
+      "notes": ""
+    },
+    {
+      "id": "JS-063",
+      "phase": "P7",
+      "title": "SyncPlay",
+      "description": "Groups with GetUtcTime, join, leave, queue, pause, seek, buffering, as a per-group actor on the replica holding the group's lease.",
+      "acceptanceCriteria": [
+        "Two viewers on different api replicas stay in sync in jellyfin-web",
+        "compat/coverage-12.4.tsv phase7-syncplay routes built (23)"
+      ],
+      "priority": 43,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-031"
+      ],
+      "source": "PRODUCT.md phase7-syncplay",
+      "notes": ""
+    }
+  ]
+}
