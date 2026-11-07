@@ -368,11 +368,13 @@ async function seekedAfter(page, act) {
   await waitFor("the seek to finish", async () => await page.evaluate(() => window.seekedAt !== null), 60000);
   return await page.evaluate(() => window.seekedAt);
 }
-const itemChapters = (page) => page.evaluate(async () => {
+// The id is the details page's: once the film plays, the page's URL has none,
+// and the session's NowPlayingItem can lag the player.
+const detailsId = (page) => page.evaluate(() => new URLSearchParams(location.hash.split("?")[1]).get("id"));
+const itemChapters = (page, id) => page.evaluate(async (id) => {
   const client = window.ApiClient;
-  const id = new URLSearchParams(location.hash.split("?")[1]).get("id") ?? (await client.getJSON(client.getUrl("Sessions"))).find((s) => s.NowPlayingItem)?.NowPlayingItem.Id;
   return (await client.getItem(client.getCurrentUserId(), id)).Chapters;
-});
+}, id);
 async function chapterSeek({ page, seen }, library, title, how, images) {
   const imageRequests = [], imageResponses = [];
   page.on("request", (r) => { if (/\/Images\/Chapter\//i.test(r.url())) imageRequests.push(r.url()); });
@@ -382,9 +384,10 @@ async function chapterSeek({ page, seen }, library, title, how, images) {
   await page.locator(".card:visible", { hasText: library }).first().click();
   await page.locator(".cardText a:visible", { hasText: title }).first().click();
   await page.locator(".btnPlay:visible").first().waitFor({ timeout: 30000 });
+  const id = await detailsId(page);
   if (images) {
     // A worker makes the pictures after the scan; the page lists them once it is loaded again.
-    await waitFor("the chapters to have pictures", async () => (await itemChapters(page)).every((c) => c.ImageTag), 90000);
+    await waitFor("the chapters to have pictures", async () => (await itemChapters(page, id)).every((c) => c.ImageTag), 90000);
     await page.reload();
     await page.locator(".btnPlay:visible").first().waitFor({ timeout: 30000 });
   }
@@ -422,7 +425,7 @@ async function chapterSeek({ page, seen }, library, title, how, images) {
 
   // What the player was given: the chapters, named as the file and Jellyfin do,
   // with a picture's tag only where pictures are on.
-  const given = await itemChapters(page);
+  const given = await itemChapters(page, id);
   if (JSON.stringify(given.map((c) => [c.Name, c.StartPositionTicks / 1e7])) !== JSON.stringify(chapters)) throw new Error(`chapters: ${JSON.stringify(given)}`);
   if (images ? given.some((c) => !/^[0-9a-f]{32}$/.test(c.ImageTag ?? "")) : given.some((c) => "ImageTag" in c)) throw new Error(`the chapters' ImageTags: ${JSON.stringify(given)}`);
   await page.mouse.move(600, 400);
