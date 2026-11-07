@@ -24,8 +24,10 @@ export async function schedule(name, options, execute) {
   const mine = options.stopsWorker ? shard === of - 1 : dealt++ % of === shard;
   if (!mine || (only && !only.test(name))) return;
   ran++;
-  if (options.stopsWorker) later.push(execute);
-  else await execute();
+  // The name, for E2E_REPEAT's summary, which can't tell it from "name: why" otherwise.
+  const start = () => (console.log(`run   ${name}`), execute());
+  if (options.stopsWorker) later.push(start);
+  else await start();
 }
 
 export async function runLater() {

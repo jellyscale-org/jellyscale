@@ -12,7 +12,7 @@ git diff --no-renames --name-only -z "$@" >"$list" 2>/dev/null || { echo code; e
 [[ -s $list ]] || { echo code; exit 0; }
 while IFS= read -r -d '' file; do
   case $file in
-  docs/*) ;;
+  docs/*.md) ;;
   */*) echo code; exit 0 ;;
   *.md) ;;
   *) echo code; exit 0 ;;

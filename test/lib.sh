@@ -19,7 +19,10 @@ make_work() {
   for old in "$test_root"/*.*.*; do
     [[ -e $old || -L $old ]] || continue
     pid=${old##*/}; pid=${pid#*.}; pid=${pid%%.*}
-    [[ $pid =~ ^[0-9]+$ ]] && ! kill -0 "$pid" 2>/dev/null && rm -rf "$old"
+    [[ $pid =~ ^[0-9]+$ ]] && ! kill -0 "$pid" 2>/dev/null || continue
+    # A given work dir's temp files, through the link (only ever .../t).
+    [[ -L $old/t && $(readlink "$old/t") == */t ]] && rm -rf "$(readlink "$old/t")"
+    rm -rf "$old"
   done
   find "$repo/.results" -mindepth 1 -maxdepth 1 -mtime +14 -exec rm -rf {} + 2>/dev/null
   tmp_base=$(mktemp -d "$test_root/$1.$$.XXXXXX") || return 1

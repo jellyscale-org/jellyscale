@@ -31,10 +31,10 @@ fails_with "a shard past n is refused" bash test/shard.sh count 3/3
 
 # --- shard.mjs: each scenario runs once, a worker-stopper last on the last shard.
 for i in 0 1 2; do E2E_SHARD=$i/3 node test/e2e/shard_test.mjs >"$tmp/shard$i" 2>&1; done
-check "shard 0 runs every third scenario" "ran s1 ran s4 ran s7 shard 0/3: ran 3 of 11" "$(tr '\n' ' ' <"$tmp/shard0" | sed 's/ $//')"
-check "shard 2 runs its share, then the worker-stoppers in call order" "ran s3 ran s6 ran s9 ran kill A ran kill B shard 2/3: ran 5 of 11" "$(tr '\n' ' ' <"$tmp/shard2" | sed 's/ $//')"
+check "shard 0 runs every third scenario" "run   s1 ran s1 run   s4 ran s4 run   s7 ran s7 shard 0/3: ran 3 of 11" "$(tr '\n' ' ' <"$tmp/shard0" | sed 's/ $//')"
+check "shard 2 runs its share, then the worker-stoppers in call order" "run   s3 ran s3 run   s6 ran s6 run   s9 ran s9 run   kill A ran kill A run   kill B ran kill B shard 2/3: ran 5 of 11" "$(tr '\n' ' ' <"$tmp/shard2" | sed 's/ $//')"
 check "every scenario ran once over the three shards" "$(printf 'kill A\nkill B\ns1\ns2\ns3\ns4\ns5\ns6\ns7\ns8\ns9\n')" "$(cat "$tmp"/shard? | sed -n 's/^ran //p' | sort)"
-check "E2E_ONLY filters after the count" "ran s4 shard 0/3: ran 1 of 11" "$(E2E_SHARD=0/3 E2E_ONLY='^s4$' node test/e2e/shard_test.mjs | tr '\n' ' ' | sed 's/ $//')"
+check "E2E_ONLY filters after the count" "run   s4 ran s4 shard 0/3: ran 1 of 11" "$(E2E_SHARD=0/3 E2E_ONLY='^s4$' node test/e2e/shard_test.mjs | tr '\n' ' ' | sed 's/ $//')"
 fails_with "a shard past n is refused by the gate" env E2E_SHARD=3/3 node test/e2e/shard_test.mjs
 
 # --- check-shards.sh
@@ -63,6 +63,8 @@ fails_with "an empty directory fails" bash test/check-shards.sh e2e "$tmp" "brow
 printf 'browse 0 1 7 7\n' >"$records/a.txt"; printf 'transcode 0 1 41 41\n' >"$records/b.txt"; rm -f "$records/c.txt"
 bash test/check-shards.sh e2e "$records" "browse transcode" >/dev/null 2>&1; check "every expected gate present passes" 0 $?
 fails_with "a whole gate that no shard ran fails" bash test/check-shards.sh e2e "$records" "browse play transcode"
+printf 'browse 0 1 7 7\n\n' >"$records/a.txt"
+fails_with "a blank or malformed record line fails" bash test/check-shards.sh e2e "$records" "browse transcode"
 
 # --- a gate's last line, as run.sh checks it.
 printf 'ok    a\n\nPASS\nshard 1/3: ran 4 of 12\n' >"$tmp/gate"
@@ -71,26 +73,29 @@ printf 'ok    a\n\nPASS\n' >"$tmp/gate"
 fails_with "a gate that printed no shard line fails" bash test/check-shards.sh line "$tmp/gate"
 printf 'FAILED\nshard 0/3: ran 0 of 12\n' >"$tmp/gate"
 fails_with "a shard that ran nothing fails" bash test/check-shards.sh line "$tmp/gate"
+check "with E2E_ONLY, a gate where nothing matched passes" "0 3 0 12" "$(E2E_ONLY=x bash test/check-shards.sh line "$tmp/gate")"
 printf 'shard 0/3: ran 2 of 12\nmore output\n' >"$tmp/gate"
 fails_with "a shard line that is not the last line fails" bash test/check-shards.sh line "$tmp/gate"
 fails_with "a missing file fails" bash test/check-shards.sh line "$tmp/none"
 
-# --- changes.sh: docs-only means Markdown in the root or docs/, nothing else.
+# --- changes.sh: docs-only means Markdown in the root or under docs/, nothing else.
 g="$tmp/git"
 git init -q "$g" && cd "$g" || exit 1
 git config user.email t@t && git config user.name t
-mkdir -p docs .claude/agents compat src && echo 1 >README.md && echo 1 >docs/a.txt && echo 1 >src/a.go && echo 1 >.claude/agents/qa.md && echo 1 >compat/x.md
+mkdir -p docs .claude/agents compat src && echo 1 >README.md && echo 1 >docs/a.md && echo 1 >docs/a.txt && echo 1 >src/a.go && echo 1 >.claude/agents/qa.md && echo 1 >compat/x.md
 git add -A && git commit -qm base
 changed() { git add -A && git commit -qm change && bash "$repo/test/changes.sh" HEAD~1 HEAD; }
-echo 2 >>README.md; echo 2 >>docs/a.txt
-check "a root .md and docs/ are docs-only" docs-only "$(changed)"
+echo 2 >>README.md; echo 2 >>docs/a.md
+check "a root .md and docs/*.md are docs-only" docs-only "$(changed)"
+echo 2 >>docs/a.txt
+check "a file under docs/ that is not Markdown is code" code "$(changed)"
 echo 2 >>README.md; echo 2 >>src/a.go
 check "a Go file with a doc is code" code "$(changed)"
 echo 2 >>.claude/agents/qa.md
 check ".claude is code even for a .md" code "$(changed)"
 echo 2 >>compat/x.md
 check "compat is code even for a .md" code "$(changed)"
-git mv src/a.go docs/a.md
+git mv src/a.go docs/b.md
 check "code renamed into docs/ is code" code "$(changed)"
 git mv README.md moved.txt
 check "a renamed .md is code" code "$(changed)"
@@ -164,7 +169,8 @@ git init -q "$lab" && printf '/.results/\n' >"$lab/.gitignore" && echo 1 >"$lab/
   export JELLYSCALE_TEST_ROOT="$tmp/root"
   source test/lib.sh
   sleep 60 & alive=$!; echo $alive >"$tmp/alive"
-  mkdir -p "$tmp/root/x.999999999.dead" "$tmp/root/y.$alive.live" "$tmp/root/other"
+  mkdir -p "$tmp/root/x.999999999.dead" "$tmp/root/y.$alive.live" "$tmp/root/other" "$tmp/deadwork/t"
+  echo junk >"$tmp/deadwork/t/junk" && ln -s "$tmp/deadwork/t" "$tmp/root/x.999999999.dead/t"
   make_work demo
   echo "$TMPDIR $work" >"$tmp/make_work.out"
   make_work given "$tmp/a/very/long/work/dir/that/someone/passed"
@@ -185,6 +191,7 @@ read -r tmpdir workdir <"$tmp/make_work_given.out"
 check "TMPDIR stays short when the work dir is long" "$tmp/root" "$(dirname "$(dirname "$tmpdir")")"
 check "and it leads into the given dir, so a killed run leaves its files there" "$workdir/t" "$(readlink "$tmpdir")"
 check "a short given dir gets the same link" "$tmp/short/t" "$(readlink "$(cat "$tmp/make_work_short.out")")"
+check "the sweep removes a dead run's temp files in its given work dir" 0 "$([[ -e $tmp/deadwork/t ]] && echo 1 || echo 0)"
 check "and the work dir is the one given" "$tmp/a/very/long/work/dir/that/someone/passed" "$workdir"
 check "the sweep removes the dir of an exited script and keeps a live one's" "other y.$(cat "$tmp/alive").live" "$(grep -v '^\(demo\|given\|short\)\.' "$tmp/root.ls" | tr '\n' ' ' | sed 's/ $//')"
 out=$(ls "$lab/.results"/*/ | sort | tr '\n' ' ')

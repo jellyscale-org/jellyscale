@@ -184,7 +184,8 @@ jobs:
   # Each shard is E2E_GATES and E2E_SHARD for test/e2e/run.sh. browse and play
   # are one sequence of steps, so they go to one job; subtitles and transcode are
   # dealt out by scenario. The transcode scenarios that stop the worker run last
-  # on its last shard, which is why that shard holds the fewest others.
+  # on its last shard, after that shard's ordinary share, so it is likely the
+  # longest; look there first if the e2e time grows.
   e2e-shard:
     name: e2e shard (${{ matrix.name }})
     needs: changes

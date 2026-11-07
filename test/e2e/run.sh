@@ -283,7 +283,7 @@ run_gate() { # gate out_dir
     echo "$gate $i $n $k $total" >"$logs/shard-$gate-${i}of$n.txt"
     (( n > 1 )) && gate_name+=-${i}of$n
   else
-    status=1
+    status=1 gate_name= # which shard it was is unknown, so nothing is recorded
     bash "$repo/test/report.sh" fail "test/e2e/$gate.mjs" 1 "e2e $gate" "the gate stopped partway or ran no scenario (see the line above)"
   fi
   gate_status=$status
@@ -319,7 +319,7 @@ for ((iteration = 1; iteration <= repeat; iteration++)); do
     run_gate "$gate" "$dir"
     repeat_outs+=("$dir/out.txt")
     [[ $gate_status -ne 0 ]] && result=1
-    [[ $whole -eq 1 ]] && gate_results+=("$gate_name|$gate_status|$gate_summary|$dir")
+    [[ $whole -eq 1 && -n $gate_name ]] && gate_results+=("$gate_name|$gate_status|$gate_summary|$dir")
   done
 done
 
@@ -331,18 +331,20 @@ if [[ $repeat -gt 1 ]]; then
   cat "${repeat_outs[@]}" | python3 -I -c '
 import sys
 repeat = int(sys.argv[1])
-passed, failed = {}, []
+passed, failed, known = {}, [], set()
 for line in sys.stdin:
     line = line.rstrip("\n")
-    if line.startswith("ok  "):
+    if line.startswith("run   "):
+        known.add(line[6:].strip())
+    elif line.startswith("ok  "):
         name = line[4:].strip()
         passed[name] = passed.get(name, 0) + 1
     elif line.startswith("FAIL  "):
         failed.append(line[6:])
-# A failure belongs to the passed name it starts with, and the longest one wins.
+# A failure belongs to the scenario name it starts with, and the longest one wins.
 counts = dict(passed)
 for text in failed:
-    owners = [name for name in passed if text == name or text.startswith(name + ": ")]
+    owners = [name for name in known | set(passed) if text == name or text.startswith(name + ": ")]
     if owners:
         counts.setdefault(max(owners, key=len), 0)
     else:

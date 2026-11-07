@@ -8,7 +8,7 @@
 #   check-shards.sh line <gate output file>
 #       Prints "<i> <n> <ran> <total>" from the file's last line, "shard i/n: ran
 #       k of T", and fails if there is no such line (the gate stopped partway) or
-#       it ran no scenario. test/e2e/run.sh runs it on every gate.
+#       it ran no scenario without E2E_ONLY. test/e2e/run.sh runs it on every gate.
 #   check-shards.sh e2e <dir> <gates>
 #       Records are lines "<gate> <i> <n> <ran> <total>", from each gate's last
 #       line "shard i/n: ran k of T". Per gate, every shard 0..n-1 must be there
@@ -23,7 +23,8 @@ if [[ $kind == line ]]; then
     echo "FAIL  the gate printed no \"shard i/n: ran k of T\" line at the end, so it stopped partway" >&2
     exit 1
   fi
-  if [[ ${BASH_REMATCH[3]} -eq 0 ]]; then
+  # With E2E_ONLY, a gate in which nothing matches has rightly run nothing.
+  if [[ ${BASH_REMATCH[3]} -eq 0 && -z ${E2E_ONLY:-} ]]; then
     echo "FAIL  the shard ran no scenario (E2E_SHARD=${E2E_SHARD:-none}, E2E_ONLY=${E2E_ONLY:-none})" >&2
     exit 1
   fi
@@ -57,6 +58,7 @@ e2e)
   declare -A records
   for gate in $gates; do records[$gate]=; done
   while read -r gate i n k t; do
+    [[ $gate =~ ^[a-z]+$ && "$i $n $k $t" =~ ^[0-9]+\ [0-9]+\ [0-9]+\ [0-9]+$ ]] || { bad "malformed record: $gate $i $n $k $t"; continue; }
     records[$gate]+="$i:$n:$k:$t "
   done < <(cat "${files[@]}")
   for gate in "${!records[@]}"; do
