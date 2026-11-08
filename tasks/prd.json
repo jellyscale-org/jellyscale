@@ -357,21 +357,27 @@
     {
       "id": "JS-021",
       "phase": "OPS",
-      "title": "OpenTelemetry tracing of a stream end to end",
-      "description": "One trace per playback: PlaybackInfo, decision, job queued, claim, ffmpeg start, each segment's wait, upload and serve, continuing across a worker failover.",
+      "title": "Follow any playback end to end, and see why the cluster needed more workers",
+      "description": "An operator must be able to see exactly where a playback stalled and why the cluster needed more workers, not only that a film is transcoding. Metrics (JS-019) give totals: stalls happened, the queue is deep. This adds one OpenTelemetry trace per playback (PlaySessionId) across the api, stream and worker processes: PlaybackInfo and its decision with reasons; each segment request and where its time went (served from the store, waited on a job, started a job); the job queued, claimed (queue time, which worker) and its ffmpeg runs with their speed; helpers started, and helpers wanted but not started for lack of a free slot; and a failover (lock lost, reap, replacement). The reasons for more workers become metrics too, which autoscaling (JS-057) scales on, so the reason it scaled is visible. Viewers keep seeing in their app that a film is transcoding and why (JS-067).",
       "acceptanceCriteria": [
-        "Trace context is carried in the transcode job row across the Postgres handoff",
-        "Exported over OTLP to any backend; off by default",
-        "A failover shows the dead worker's span end and the replacement's begin in one trace"
+        "One trace per playback session spans the api, stream and worker processes, its context carried in the transcode job row across the Postgres handoff",
+        "Given a stalled segment (over 5 s), its trace shows which part took the time: waiting for a free slot, an encode slower than real time, the upload, or reading the store; the stall metric links to the trace (exemplar)",
+        "A failover shows the dead worker's span end and the replacement's begin in one trace",
+        "Helper decisions are traced and counted: helpers started with the job's speed, and helpers wanted but not started because no slot was free",
+        "Demand for workers is a metric with its reason (jobs waiting for a slot and how long, helpers wanted but refused, jobs below real time), and the autoscaler's input is one of these, so why the cluster grew can be read back",
+        "Log lines carry the trace id (JS-022), so a trace leads to its logs",
+        "jellyfin-web's playback info still shows transcoding, its reasons and speed (JS-067), and stays right while helpers run (the viewer's own job may have ended)",
+        "Exported over OTLP to any backend, off by default; the dogfood runs a backend and the docs show reading a stall from it",
+        "Checked with real processes: a test collector receives a playback's trace from three processes, with a stall and a failover in it"
       ],
-      "priority": 46,
+      "priority": 40,
       "status": "todo",
       "passes": false,
       "dependsOn": [
         "JS-019"
       ],
       "source": "work queue (later)",
-      "notes": "Needs a design review; the homelab has no tracing backend yet (Tempo suggested)."
+      "notes": "Needs a design review; the homelab has no tracing backend yet (Tempo suggested). Product owner (2026-11-08): wants to trace everything through the pipeline, see where something stalled and why more workers were needed; placed before P6 (Kubernetes). JS-024 review (UX): Sessions can show the viewer's job as done while helpers encode, and no log line says a helper started."
     },
     {
       "id": "JS-022",
@@ -380,9 +386,10 @@
       "description": "Consistent, structured logs per role with request and job ids, so an operator can follow one playback.",
       "acceptanceCriteria": [
         "Each request and job log line carries ids that link them",
-        "Levels and noise reviewed against the dogfood"
+        "Levels and noise reviewed against the dogfood",
+        "Each line of a playback carries its play session id and trace id (JS-021), and a helper's start, end and failure say they are a helper's and whose"
       ],
-      "priority": 47,
+      "priority": 39,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -509,7 +516,7 @@
         "A Postgres restart or switchover under load does not restart transcodes whose rows survived",
         "No job is ever owned by two workers (invariant 25)"
       ],
-      "priority": 9,
+      "priority": 10,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -528,7 +535,7 @@
         "A claim racing a re-lock cannot cancel a job",
         "Rollback note for the liveness change"
       ],
-      "priority": 10,
+      "priority": 11,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -544,7 +551,7 @@
         "Kill an api replica during playback in the e2e tier: playback continues, progress persists, the socket reconnects",
         "Session ownership (sessions.ws_replica) moves to a live replica"
       ],
-      "priority": 13,
+      "priority": 14,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -560,7 +567,7 @@
         "POST /Sessions/{id}/Playing, /Command, /Message, /System, /Viewing, /Capabilities work across replicas",
         "jellyfin-web's remote control drives another session"
       ],
-      "priority": 14,
+      "priority": 15,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -578,7 +585,7 @@
         "POST /Users/New, DELETE /Users/{id}, /Users/{id}/Policy, /Password, /Configuration as Jellyfin 12.4",
         "jellyfin-web's admin user pages work"
       ],
-      "priority": 15,
+      "priority": 16,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -594,7 +601,7 @@
         "No plain token in the database",
         "API keys created and revoked through jellyfin-web"
       ],
-      "priority": 16,
+      "priority": 17,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -611,7 +618,7 @@
         "Last use time and address recorded",
         "Streamystats works with a read-only key and no extra user account"
       ],
-      "priority": 17,
+      "priority": 18,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -628,7 +635,7 @@
       "acceptanceCriteria": [
         "Enforced on every item route"
       ],
-      "priority": 18,
+      "priority": 19,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -646,7 +653,7 @@
         "Observed against Jellyfin 12.4 first",
         "Moonfin on the Shield and Findroid sign in with a code approved from jellyfin-web"
       ],
-      "priority": 19,
+      "priority": 20,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -661,7 +668,7 @@
       "acceptanceCriteria": [
         "Answer shape as Jellyfin 12.4"
       ],
-      "priority": 20,
+      "priority": 21,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -677,7 +684,7 @@
         "Sign in with an OIDC provider in jellyfin-web",
         "OIDC users reach TV apps through Quick Connect"
       ],
-      "priority": 21,
+      "priority": 22,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -695,7 +702,7 @@
         "No viewer token in any playlist or segment URL",
         "Kodi's TranscodingUrl editing still works"
       ],
-      "priority": 22,
+      "priority": 23,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -710,7 +717,7 @@
       "acceptanceCriteria": [
         "Each mode matches a Jellyfin 12.4 capture"
       ],
-      "priority": 23,
+      "priority": 24,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -725,7 +732,7 @@
       "acceptanceCriteria": [
         "Revoked device's token stops working"
       ],
-      "priority": 24,
+      "priority": 25,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -740,7 +747,7 @@
       "acceptanceCriteria": [
         "jellyfin-web's dashboard lists entries"
       ],
-      "priority": 25,
+      "priority": 26,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -755,7 +762,7 @@
       "acceptanceCriteria": [
         "jellyfin-web shows and changes avatars"
       ],
-      "priority": 26,
+      "priority": 27,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -771,7 +778,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 27,
+      "priority": 28,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -787,7 +794,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 28,
+      "priority": 29,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -803,7 +810,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 29,
+      "priority": 30,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -819,7 +826,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 30,
+      "priority": 31,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -835,7 +842,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 31,
+      "priority": 32,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -851,7 +858,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 32,
+      "priority": 33,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -867,7 +874,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 33,
+      "priority": 34,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -883,7 +890,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 34,
+      "priority": 35,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -899,7 +906,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 35,
+      "priority": 36,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -915,7 +922,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 36,
+      "priority": 37,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -931,7 +938,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 37,
+      "priority": 38,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -941,19 +948,21 @@
     {
       "id": "JS-056",
       "phase": "P6",
-      "title": "Helm chart",
-      "description": "The packaging: Deployments per role, readiness and liveness, CNPG, config as values.",
+      "title": "Kubernetes manifests and Helm chart",
+      "description": "The packaging, two ways: example manifests an operator applies with kubectl, and a Helm chart, kept in step. Deployments per role, readiness and liveness, Postgres (CNPG), configuration as plain files or values.",
       "acceptanceCriteria": [
-        "Installs on a fresh cluster",
+        "Example manifests in the repository install jellyscale on a fresh cluster with kubectl alone (`kubectl apply -k` or `-f`), no Helm",
+        "The Helm chart installs the same on a fresh cluster",
+        "The manifests and the chart cannot drift: a test fails when they would deploy different resources (for example, the manifests are the chart rendered with its defaults, checked in)",
         "Readiness and liveness probes per role",
-        "The chart sizes CNPG's max_connections from its own values: every process's databaseMaxConns plus one liveness connection per transcode worker, with headroom; installing values whose sum exceeds it fails the render"
+        "The chart sizes CNPG's max_connections from its own values: every process's databaseMaxConns plus one liveness connection per transcode worker, with headroom; installing values whose sum exceeds it fails the render. The manifests carry the same sizing with a comment saying how to recompute it"
       ],
-      "priority": 38,
+      "priority": 41,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
       "source": "PRODUCT.md phase6-k8s",
-      "notes": " JS-020 (2026-11-08): each worker holds one Postgres connection for its liveness lock, outside the pool, so a stock Postgres (max_connections 100) is exhausted at about 90 workers, long before its CPU (one primary carried 1600 streams on two cores' worth). Connections are the first wall when autoscaling."
+      "notes": "JS-020 (2026-11-08): each worker holds one Postgres connection for its liveness lock, outside the pool, so a stock Postgres (max_connections 100) is exhausted at about 90 workers, long before its CPU (one primary carried 1600 streams on two cores' worth). Connections are the first wall when autoscaling. User (2026-11-08): plain manifests for kubectl are wanted beside the chart, not Helm only."
     },
     {
       "id": "JS-057",
@@ -962,13 +971,15 @@
       "description": "Scale workers on a Postgres query, keeping spare transcode slots.",
       "acceptanceCriteria": [
         "Workers scale up under queued jobs and down when idle",
-        "KEDA's maximum worker replicas stay within the Postgres connection budget (one liveness connection per worker, on top of the pools), so scaling up never exhausts max_connections"
+        "KEDA's maximum worker replicas stay within the Postgres connection budget (one liveness connection per worker, on top of the pools), so scaling up never exhausts max_connections",
+        "It scales on the demand metric of JS-021 (jobs waiting for a slot, helpers refused for lack of one), so each scale-up can be read back with its reason"
       ],
-      "priority": 39,
+      "priority": 42,
       "status": "todo",
       "passes": false,
       "dependsOn": [
-        "JS-056"
+        "JS-056",
+        "JS-021"
       ],
       "source": "project plan",
       "notes": " JS-020 (2026-11-08): each worker holds one Postgres connection for its liveness lock, outside the pool, so a stock Postgres (max_connections 100) is exhausted at about 90 workers, long before its CPU (one primary carried 1600 streams on two cores' worth). Connections are the first wall when autoscaling."
@@ -981,7 +992,7 @@
       "acceptanceCriteria": [
         "A rolling upgrade under playback loses no picture"
       ],
-      "priority": 40,
+      "priority": 43,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -998,7 +1009,7 @@
       "acceptanceCriteria": [
         "Restore tested from a backup"
       ],
-      "priority": 41,
+      "priority": 44,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1013,7 +1024,7 @@
       "acceptanceCriteria": [
         "Viewers keep their history; users set a password or use OIDC"
       ],
-      "priority": 42,
+      "priority": 45,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1029,7 +1040,7 @@
         "Observe its calls on Jellyfin first",
         "Its dashboards fill from jellyscale"
       ],
-      "priority": 43,
+      "priority": 46,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1047,7 +1058,7 @@
       "acceptanceCriteria": [
         "200 mixed streams with stated rebuffer ratio and p95s"
       ],
-      "priority": 44,
+      "priority": 47,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1065,7 +1076,7 @@
         "Two viewers on different api replicas stay in sync in jellyfin-web",
         "compat/coverage-12.4.tsv phase7-syncplay routes built (23)"
       ],
-      "priority": 45,
+      "priority": 48,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1107,7 +1118,7 @@
         "Replays run in CI and fail on a response a client would reject (status, missing field, wrong shape)",
         "No titles or paths from a real library in the captures (synthetic fixtures only)"
       ],
-      "priority": 8,
+      "priority": 9,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1126,7 +1137,7 @@
         "Randomized schedules with a printed seed that reproduces a failure",
         "A soak mode (many repetitions) documented in docs/testing.md and run before failover changes merge"
       ],
-      "priority": 11,
+      "priority": 12,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1163,7 +1174,7 @@
         "Each entry with task JS-068 in compat/differences.yaml is fixed and removed, or becomes an improvement or non-goal with its reason",
         "test/differential/run.sh passes with the entries removed"
       ],
-      "priority": 12,
+      "priority": 13,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1203,7 +1214,7 @@
         "requests.yaml covers the startup, discovery and sign-in requests above, and the tier passes",
         "@jellyfin/sdk's recommended-server discovery accepts jellyscale in CI, and fails with ProductName put back"
       ],
-      "priority": 7,
+      "priority": 8,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1211,6 +1222,27 @@
       ],
       "source": "escaped defects from the dogfood, Findroid, 2026-11-08 (#44, #47)",
       "notes": "jellyfin-web ignores fields it doesn't read, so it can't catch this class; Kotlin and Swift SDK clients decode strictly. Scheduled after the web-client work (user, 2026-11-08: focus on the web client first, then pivot to other clients). Findroid's first home-screen call, GET /Items/Suggestions, 404s; a parked implementation is on branch feat/items-suggestions."
+    },
+    {
+      "id": "JS-071",
+      "phase": "P3",
+      "title": "Burnt image subtitles in every run: helpers, seeks and failovers draw the cue that is showing",
+      "description": "A PGS, VobSub or DVB cue is one packet when it appears, so an ffmpeg that begins mid-film (a seek, a failover, a helper's chunk) never sees the cue already on screen and leaves it out until the next one (DOMAINS 51's known departure). JS-024 therefore gives burnt image subtitles no helpers: a slow 4K film with Blu-ray subtitles stalls on one worker as before. PRODUCT.md (The experience we're building) promises that every film gets every capability. Make a run that begins at segment N draw the cue showing at N: start its ffmpeg early enough to read that cue's packet (the packet time comes from the track itself, read once and cached like the PGS file copy) and drop the frames before N, or another way that keeps the segment's frames at a single run's times. Then let burnt image subtitles be chunked and helped like any slow re-encode.",
+      "acceptanceCriteria": [
+        "A seek, a failover restart and a helper's chunk that begin inside a burnt PGS, VobSub or DVB cue show that cue from their first frame (TestBurnedImageSubtitleIsAtTheRightTime without its known-departure case)",
+        "A slow re-encode with a burnt image subtitle gets helpers, and its segments' frames fall at a single worker's times (TestABurntImageSubtitleGetsNoHelpers inverted)",
+        "The extra reading a run does before its first segment is bounded and measured, and a seek's time to first segment is recorded against today's",
+        "jellyfin-web plays a slow film with a burnt PGS track across a helper's chunk start with the cue on screen throughout",
+        "DOMAINS 51's known departure and DOMAINS 58's exception for image subtitles are removed"
+      ],
+      "priority": 7,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-024"
+      ],
+      "source": "User decision 2026-11-08 during JS-024: no helpers for burnt image subtitles for now, and every film should eventually get every capability",
+      "notes": ""
     },
     {
       "id": "JS-072",

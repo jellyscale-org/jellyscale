@@ -25,10 +25,10 @@ Video only: films and shows. No music, photos, Live TV or .NET plugins. Routes J
 | 4 | High availability: a worker killed mid-film is replaced without losing the picture | worker half done; API replica failover not built |
 | — | Identity: user management, Quick Connect, OIDC | not built |
 | 5 | Library and metadata, trickplay, GPU encoders | not built |
-| 6 | Kubernetes: Helm chart, autoscaling, metrics | not built |
+| 6 | Kubernetes: example manifests for kubectl and a Helm chart, autoscaling, metrics | not built |
 | 7 | SyncPlay | not built |
 
-[PRODUCT.md](PRODUCT.md) lists every feature with its status. Phase 0's findings, which the design rests on, are in [spikes/README.md](spikes/README.md).
+[PRODUCT.md](PRODUCT.md) says what jellyscale should be, and [docs/status.md](docs/status.md) lists every feature with its status. Phase 0's findings, which the design rests on, are in [spikes/README.md](spikes/README.md).
 
 ## Quick start
 

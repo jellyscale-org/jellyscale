@@ -92,7 +92,7 @@ func hiddenRoutes(t *testing.T, status string) []string {
 func needsBuilding(r row) bool { return r.slice != "-" }
 
 func TestCoverageRowsAreWellFormed(t *testing.T) {
-	product, err := os.ReadFile("../PRODUCT.md")
+	product, err := os.ReadFile("../docs/status.md")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +101,7 @@ func TestCoverageRowsAreWellFormed(t *testing.T) {
 		defined = append(defined, m[1])
 	}
 	if strings.Join(defined, " ") != strings.Join(sliceNames, " ") {
-		t.Errorf("PRODUCT.md roadmap defines slices %v, the test knows %v", defined, sliceNames)
+		t.Errorf("docs/status.md roadmap defines slices %v, the test knows %v", defined, sliceNames)
 	}
 	seen := map[string]bool{}
 	for _, r := range readRows(t) {
@@ -329,14 +329,14 @@ func TestSameRoute(t *testing.T) {
 // Every slice that has work to do has a group in Features, and every feature
 // line says where it stands.
 func TestFeaturesCoverNeededSlices(t *testing.T) {
-	raw, err := os.ReadFile("../PRODUCT.md")
+	raw, err := os.ReadFile("../docs/status.md")
 	if err != nil {
 		t.Fatal(err)
 	}
 	_, features, _ := strings.Cut(string(raw), "\n## Features\n")
 	features, _, _ = strings.Cut(features, "\n## Feature audit")
 	if features == "" {
-		t.Fatal("PRODUCT.md has no Features section")
+		t.Fatal("docs/status.md has no Features section")
 	}
 	groups := map[string]bool{}
 	for _, m := range regexp.MustCompile("(?m)^### `([a-z0-9-]+)`$").FindAllStringSubmatch(features, -1) {
@@ -359,10 +359,10 @@ func TestFeaturesCoverNeededSlices(t *testing.T) {
 	}
 }
 
-// PRODUCT.md says how many routes each slice still has to build, so that
+// docs/status.md says how many routes each slice still has to build, so that
 // "complete" can be counted.
 func TestSliceCountsMatchRows(t *testing.T) {
-	raw, err := os.ReadFile("../PRODUCT.md")
+	raw, err := os.ReadFile("../docs/status.md")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -379,7 +379,7 @@ func TestSliceCountsMatchRows(t *testing.T) {
 	}
 	for _, name := range sliceNames {
 		if want := fmt.Sprint(counted[name]); stated[name] != want {
-			t.Errorf("PRODUCT.md says slice %s has %q routes to build, rows have %s", name, stated[name], want)
+			t.Errorf("docs/status.md says slice %s has %q routes to build, rows have %s", name, stated[name], want)
 		}
 	}
 }
@@ -392,7 +392,7 @@ func TestParentalControlWaitsForRatings(t *testing.T) {
 			t.Errorf("%s is in slice %s, want phase5-library", r.id(), r.slice)
 		}
 	}
-	raw, err := os.ReadFile("../PRODUCT.md")
+	raw, err := os.ReadFile("../docs/status.md")
 	if err != nil {
 		t.Fatal(err)
 	}
