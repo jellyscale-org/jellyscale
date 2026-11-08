@@ -254,7 +254,12 @@ func (p *progress) pausedValue() float64 {
 // for a second or more since its first sample. It is measured up to now, so a
 // job whose ffmpeg stalls (and is not paused) sees its speed fall to nothing
 // and not stay at the last good value.
-func (p *progress) speed() (float64, bool) {
+func (p *progress) speed() (float64, bool) { return p.speedOver(1) }
+
+// speedOver is speed, unless the job has run less than span seconds since its
+// first sample. ffmpeg's output comes in bursts, and a speed over a second or
+// two of a job's start swings by a third either way.
+func (p *progress) speedOver(span float64) (float64, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if len(p.samples) < 2 {
@@ -262,7 +267,7 @@ func (p *progress) speed() (float64, bool) {
 	}
 	first, last := p.samples[0], p.samples[len(p.samples)-1]
 	active := p.activeLocked(p.now())
-	if active-first.active < 1 {
+	if active-first.active < span {
 		return 0, false
 	}
 	return (last.film - first.film) / (active - first.active), true

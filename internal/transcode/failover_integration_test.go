@@ -60,6 +60,7 @@ func workerProcess(id string) {
 		Segments: store.NewPosix(os.Getenv("JELLYSCALE_TEST_SEGMENTS")), Scratch: os.Getenv("JELLYSCALE_TEST_SCRATCH"),
 		Slots: 2, Idle: time.Minute, Lead: time.Hour,
 		Lease: duration("JELLYSCALE_TEST_LEASE", 10*time.Second), Heartbeat: duration("JELLYSCALE_TEST_HEARTBEAT", 3*time.Second)}
+	helperSettings(w)
 	if addr := os.Getenv("JELLYSCALE_TEST_LIVENESS"); addr != "" {
 		if w.LivenessConfig, err = through(dsn, addr); err != nil {
 			fail("liveness address", err)
@@ -681,8 +682,13 @@ func TestAWorkerWhoseLockIsGoneWithItsConnectionOpenStopsAndLocksAgain(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Helpers are a second, rightful ffmpeg for the spec, and this test counts
+	// ffmpeg to see the old owner gone before the job moves: no job here is
+	// slow enough to be helped (its speed is about 0.2x).
+	noHelp := func(w *Worker) { w.HelpBelow = 0.001 }
 	var id string
 	r.worker(t, func(w *Worker) {
+		noHelp(w)
 		w.LivenessConfig = cfg
 		w.Lease, w.Heartbeat = 10*time.Second, 3*time.Second
 		id = w.ID
@@ -693,7 +699,7 @@ func TestAWorkerWhoseLockIsGoneWithItsConnectionOpenStopsAndLocksAgain(t *testin
 		t.Fatal(err)
 	}
 	first := r.count(t, "SELECT max(id) FROM transcode_jobs")
-	r.worker(t, nil)
+	r.worker(t, noHelp)
 	waitFor(t, "the other worker to register", 10*time.Second, func() bool {
 		return r.count(t, "SELECT count(*) FROM transcode_nodes WHERE locked") == 2
 	})

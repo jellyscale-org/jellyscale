@@ -104,7 +104,7 @@ mkdir -p "$work/media/$t/Xi Film (2031)" && cp "$zeta" "$work/media/$t/Xi Film (
 # Two more of Zeta and of its interlaced twin, for the scenario that checks how far a
 # job runs ahead of the viewer: it needs segments nobody has made yet.
 # The same twice more for the scenarios that kill the worker playing a film.
-for pair in "Lead Copy Film (2094):Zeta Film (2023)" "Lead Encode Film (2095):Zeta Interlaced (2050)" "Failover Copy Film (2110):Zeta Film (2023)" "Failover Encode Film (2111):Zeta Interlaced (2050)"; do
+for pair in "Lead Copy Film (2094):Zeta Film (2023)" "Lead Encode Film (2095):Zeta Interlaced (2050)" "Failover Copy Film (2110):Zeta Film (2023)" "Failover Encode Film (2111):Zeta Interlaced (2050)" "Parallel Encode Film (2112):Zeta Interlaced (2050)"; do
   to=${pair%%:*} from=${pair#*:}
   link "$t/$from/$from.mkv" "$t/$to/$to.mkv"
 done
@@ -181,6 +181,8 @@ start() { PATH="$work/nobin" "$work/jellyscale" "$@" --config "$work/config-s3.j
 mkdir -p "$work/bin"
 speed="-readrate 2"
 [[ -n ${E2E_NO_SHIM:-} ]] && speed="-hide_banner"
+# A scenario that needs a slow transcode (under 1.2x, which is when helpers start)
+# writes the rate it wants to $work/bin/rate, and removes the file again.
 # Only the transcode (the one that writes HLS) is slowed; extracting a subtitle
 # track reads the whole file and would take as long as the film. Taking the
 # fonts out of "Cracked Fonts Film" fails as a film ffmpeg rejects does.
@@ -203,7 +205,7 @@ case "\$*" in
     set -- "\$@" "\$arg"
   done
   exec $(command -v ffmpeg) "\$@";;
-*"-f hls"*) exec $(command -v ffmpeg) $speed "\$@";;
+*"-f hls"*) if [ -s "$work/bin/rate" ]; then exec $(command -v ffmpeg) -readrate "\$(cat "$work/bin/rate")" "\$@"; fi; exec $(command -v ffmpeg) $speed "\$@";;
 esac
 exec $(command -v ffmpeg) "\$@"
 E2

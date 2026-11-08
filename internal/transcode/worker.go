@@ -49,6 +49,13 @@ type Worker struct {
 	// segment a viewer has asked for (default 60 seconds). It then pauses its
 	// ffmpeg until requests come within the lead again.
 	Lead time.Duration
+	// ChunkSegments is how many segments one ffmpeg makes before the next
+	// begins (default 4); every worker must use the same, since it decides which
+	// encoder run makes a segment. HelpBelow is the encode speed, in film
+	// seconds per second, under which a job gets helpers on other workers
+	// (default 1.2). See helpers.go.
+	ChunkSegments int
+	HelpBelow     float64
 	// Retention is how long a spec's segments stay after its last request.
 	Retention time.Duration
 	// ID names this worker in transcode_nodes and on the jobs it claims. It
@@ -135,6 +142,9 @@ type claimed struct {
 	Hash  string
 	Spec  playback.Spec
 	Start int
+	// Helper says the job is a helper (helpers.go): it belongs to all the
+	// spec's viewers, and its limit follows the furthest of them.
+	Helper bool
 
 	progress *progress // How fast ffmpeg goes; set by Run.
 }
@@ -161,6 +171,9 @@ const leadCheck = 500 * time.Millisecond
 // lead or more of film after segment from. It is the layout's count if the
 // film ends sooner.
 func limitFor(layout playback.Layout, from int, lead time.Duration) int {
+	if from < 0 || from >= layout.Count() {
+		return layout.Count() // A job asked to start past the end fails when ffmpeg does.
+	}
 	start, _ := layout.Segment(from)
 	for n := from + 1; n < layout.Count(); n++ {
 		if at, _ := layout.Segment(n); at-start >= int64(lead.Seconds()*ticksPerSecond) {
@@ -180,12 +193,23 @@ func limitFor(layout playback.Layout, from int, lead time.Duration) int {
 // existed, rather than stop for good where no request can move it. A viewer
 // that has only fetched a playlist does the same until its first segment.
 func (w *Worker) furthest(ctx context.Context, job claimed, next int) (n int, served, free bool, err error) {
+	from, to := job.Start, next+catchUpSegments
+	if job.Helper {
+		// A helper is ahead of the viewers, so none is within its window; the
+		// viewers at or before its chunk are its, and the furthest of them bounds
+		// it, not its start. A viewer far past the chunk has a job of its own,
+		// and the helpers of that one: its lead is not this helper's to fill.
+		from, to = 0, job.Start+w.chunkSize()
+	}
 	err = w.Pool.QueryRow(ctx, `SELECT
 			COALESCE(max(segment) FILTER (WHERE segment >= $3 AND segment < $4), -1),
 			COALESCE(bool_or(segment < 0), false)
 		FROM transcode_viewers
 		WHERE spec_hash = $1 AND NOT stopped AND last_seen_at > now() - make_interval(secs => $2)`,
-		job.Hash, w.idle().Seconds(), job.Start, next+catchUpSegments).Scan(&n, &free)
+		job.Hash, w.idle().Seconds(), from, to).Scan(&n, &free)
+	if job.Helper {
+		return n, n >= 0, free, err
+	}
 	return max(n, job.Start), n >= 0, free, err
 }
 
@@ -205,11 +229,21 @@ const startup = 20 * time.Second
 func (w *Worker) claim(ctx context.Context) (claimed, bool, error) {
 	var job claimed
 	var raw []byte
+	// A helper goes to a worker that has no job of its spec, or after a second
+	// to one that has, if none took it (a dead helper's replacement, with the
+	// other workers busy). It goes only while a slot stays free after it (it is
+	// counted, queued) for a viewer who has not asked yet; the slot count was
+	// right when it was queued, not necessarily now.
 	err := w.Pool.QueryRow(ctx, `UPDATE transcode_jobs SET state = 'running', worker = $1,
 			lease_expires_at = now() + make_interval(secs => $2)
 		WHERE `+registeredAs("$1")+` AND id = (SELECT id FROM transcode_jobs WHERE state = 'queued'
-			AND created_at > now() - make_interval(secs => $3) ORDER BY id FOR UPDATE SKIP LOCKED LIMIT 1)
-		RETURNING id, spec_hash, spec, start_segment`, w.ID, (w.lease()+startup).Seconds(), orDefault(w.QueueTimeout, queueTimeout).Seconds()).Scan(&job.ID, &job.Hash, &raw, &job.Start)
+			AND created_at > now() - make_interval(secs => $3)
+			AND (NOT helper OR (`+freeSlots("$4", "$3")+` >= 1
+				AND (created_at < now() - make_interval(secs => 1)
+					OR NOT EXISTS (SELECT 1 FROM transcode_jobs o WHERE o.spec_hash = transcode_jobs.spec_hash AND o.worker = $1 AND o.state = 'running'))))
+			ORDER BY id FOR UPDATE SKIP LOCKED LIMIT 1)
+		RETURNING id, spec_hash, spec, start_segment, helper`, w.ID, (w.lease()+startup).Seconds(), orDefault(w.QueueTimeout, queueTimeout).Seconds(),
+		workerAlive.Seconds()).Scan(&job.ID, &job.Hash, &raw, &job.Start, &job.Helper)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return job, false, nil
 	}
@@ -354,34 +388,21 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 			return fmt.Errorf("fonts of the film: %w", err)
 		}
 	}
-	var cmd *exec.Cmd
-	var gather *gatherer
-	if job.Spec.Copy {
-		video, audio := copyStart(film.Keyframes, layout, job.Start)
-		cmd, err = CopyCommand(ctx, input, job.Spec, film.VideoCodec(), video, audio, dir)
-		gather = newGatherer(dir, layout, film.Keyframes[0])
-	} else {
-		cmd, err = Command(ctx, input, job.Spec, job.Start, dir, ass, image)
+	// limit is the first segment this job may not store yet. It, and the lead
+	// state beside it, outlive one ffmpeg: a job goes on into the next chunk
+	// with a new one.
+	limit := limitFor(layout, job.Start, w.lead())
+	if job.Helper {
+		// Ahead of its viewers, a helper is bounded by the furthest of them.
+		switch at, served, free, err := w.furthest(ctx, job, job.Start); {
+		case err == nil && free:
+			limit = layout.Count()
+		case err == nil && served:
+			limit = limitFor(layout, at, w.lead())
+		default:
+			limit = job.Start // Nothing may be stored until the gate has looked.
+		}
 	}
-	if err != nil {
-		return err
-	}
-	// Stopped by hand below so the log says why. CommandContext's kill is the
-	// backstop, so no path leaves ffmpeg running.
-	var stderr tail
-	cmd.Stderr = &stderr
-	cmd.Stdout = job.progress
-	subtitles.DieWithParent(cmd)
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-	exited := make(chan error, 1)
-	go func() { exited <- cmd.Wait() }()
-
-	next := job.Start
-	// limit is the first segment this job may not store yet, and paused says
-	// whether ffmpeg is stopped at it.
-	limit, paused := limitFor(layout, job.Start, w.lead()), false
 	// freed is set while a viewer that has asked for no segment lifts the
 	// limit, which is looked at again until it is gone.
 	freed := false
@@ -389,200 +410,280 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	// paused here.
 	unbounded := limit >= layout.Count()
 	limitAt := time.Now()
-	stop := func(reason string) {
-		log.Info("stopping ffmpeg", "reason", reason)
-		cmd.Process.Kill() //nolint:errcheck
-		<-exited
-	}
-	// final is set once ffmpeg has exited. The segment it flushes on the way
-	// out is cut wherever its input ended, so it is only stored if it is the
-	// film's real last one.
-	upload := func(final bool) (caughtUp bool, err error) {
+	// A burnt image subtitle gets no helpers: a run that begins mid-film does
+	// not draw a cue whose packet came before it (invariant 51), so a helper's
+	// chunk would lose the cue showing at its start. Such a job is one ffmpeg.
+	chunked, size := w.chunked(job) && image == nil, w.chunkSize()
+	next := job.Start // The next segment to store.
+
+	// run is the job's ffmpeg, from segment begin.
+	run := func(begin int) (err error) {
+		var cmd *exec.Cmd
+		var gather *gatherer
+		if job.Spec.Copy {
+			next = begin
+			video, audio := copyStart(film.Keyframes, layout, begin)
+			cmd, err = CopyCommand(ctx, input, job.Spec, film.VideoCodec(), video, audio, dir)
+			gather = newGatherer(dir, layout, film.Keyframes[0])
+		} else {
+			next = begin
+			for _, stale := range globOr(filepath.Join(dir, "*.m4s")) {
+				os.Remove(stale)
+			}
+			cmd, err = Command(ctx, input, job.Spec, next, dir, ass, image)
+		}
+		if err != nil {
+			return err
+		}
+		// Stopped by hand below so the log says why. CommandContext's kill is the
+		// backstop, so no path leaves ffmpeg running.
+		var stderr tail
+		cmd.Stderr = &stderr
+		cmd.Stdout = job.progress
+		subtitles.DieWithParent(cmd)
+		if err := cmd.Start(); err != nil {
+			return err
+		}
+		exited := make(chan error, 1)
+		go func() { exited <- cmd.Wait() }()
+
+		// paused says whether ffmpeg is stopped at the limit.
+		paused := false
+		// chunkDone is set when the segment stored last ended a chunk another
+		// job has.
+		chunkDone := false
+		stop := func(reason string) {
+			log.Info("stopping ffmpeg", "reason", reason)
+			cmd.Process.Kill() //nolint:errcheck
+			<-exited
+		}
+		// final is set once ffmpeg has exited. The segment it flushes on the way
+		// out is cut wherever its input ended, so it is only stored if it is the
+		// film's real last one.
+		upload := func(final bool) (caughtUp bool, err error) {
+			for {
+				if next >= layout.Count() {
+					return false, nil // A copied run has fragments past the end.
+				}
+				if next < begin {
+					name := filepath.Join(dir, strconv.Itoa(next)+".m4s")
+					if _, err := os.Stat(name); err != nil {
+						return false, nil
+					}
+					os.Remove(name)
+					next++
+					continue
+				}
+				if !final && next >= limit {
+					return false, nil // Made, for when the viewers come to it.
+				}
+				name := filepath.Join(dir, strconv.Itoa(next)+".m4s")
+				if gather != nil {
+					if built, err := gather.segment(ctx, next, final); err != nil || !built {
+						return false, err
+					}
+				} else if _, err := os.Stat(name); err != nil {
+					return false, nil
+				} else if _, more := os.Stat(filepath.Join(dir, strconv.Itoa(next+1)+".m4s")); final && more != nil {
+					if err := checkLast(dir, next, layout); err != nil {
+						return false, err
+					}
+				}
+				if err := w.upload(ctx, job, next, name); err != nil {
+					return false, err
+				}
+				next++
+				if w.stored(ctx, job.Hash, next) {
+					return true, nil
+				}
+				// At a chunk start the same ffmpeg goes on unless another job has
+				// the chunk (a helper, or a seek's job), so a job nobody helps is
+				// one ffmpeg, as it was before chunks.
+				if chunked && next%size == 0 {
+					free, err := w.chunkFree(ctx, job, next)
+					if err != nil {
+						return false, err
+					}
+					chunkDone = !free
+					return false, nil
+				}
+			}
+		}
+
+		poll := time.NewTicker(100 * time.Millisecond)
+		defer poll.Stop()
+		beat := time.NewTicker(w.heartbeat())
+		loggedSlow := false
+		defer beat.Stop()
+		lastBeat := time.Now()
+		progressed, progressAt := next, time.Now()
+		// gate pauses ffmpeg once everything below the limit is made, so what it
+		// reads past the limit is what it reads before the next look, and lets it
+		// go on when the limit has moved.
+		// It reports false when the job is paused and none of its viewers is
+		// within its window any more: they have seeked past it or gone, and its
+		// slot is better given back than held for them.
+		gate := func() bool {
+			if unbounded {
+				return true
+			}
+			// Segment limit-1 is made when it is in scratch (a copy: when its
+			// fragments are), or already stored.
+			made := func() bool {
+				if next >= limit {
+					return true
+				}
+				if gather != nil {
+					ok, _ := gather.reached(ctx, limit-1)
+					return ok
+				}
+				_, err := os.Stat(filepath.Join(dir, strconv.Itoa(limit-1)+".m4s"))
+				return err == nil
+			}
+			wait := limit < layout.Count() && made()
+			if (wait || paused || freed) && time.Since(limitAt) >= leadCheck {
+				limitAt = time.Now()
+				at, served, free, err := w.furthest(ctx, job, next)
+				switch {
+				case err != nil:
+					log.Warn("reading the viewers' segments failed", "error", err)
+				case free:
+					limit, freed = layout.Count(), true
+				case paused && !served:
+					return false
+				default:
+					limit, freed = limitFor(layout, at, w.lead()), false
+				}
+				wait = limit < layout.Count() && made()
+			}
+			switch {
+			case wait && !paused:
+				if err := pauseProcess(cmd.Process, true); err != nil {
+					log.Warn("ffmpeg cannot be paused here, so this job runs without a lead limit", "error", err)
+					limit, unbounded = layout.Count(), true
+					return true
+				}
+				paused = true
+				job.progress.pause(true)
+				log.Debug("pausing ffmpeg at its lead", "limit", limit)
+			case !wait && paused:
+				if err := pauseProcess(cmd.Process, false); err != nil {
+					log.Error("resuming ffmpeg failed", "error", err)
+					return true
+				}
+				paused = false
+				job.progress.pause(false)
+				log.Debug("resuming ffmpeg", "limit", limit)
+			}
+			return true
+		}
 		for {
-			if next >= layout.Count() {
-				return false, nil // A copied run has fragments past the end.
-			}
-			if !final && next >= limit {
-				return false, nil // Made, for when the viewers come to it.
-			}
-			name := filepath.Join(dir, strconv.Itoa(next)+".m4s")
-			if gather != nil {
-				if built, err := gather.segment(ctx, next, final); err != nil || !built {
-					return false, err
+			select {
+			case err := <-exited:
+				caughtUp, uploadErr := upload(true)
+				if err != nil {
+					return fmt.Errorf("ffmpeg: %w: %s", err, stderr.String())
 				}
-			} else if _, err := os.Stat(name); err != nil {
-				return false, nil
-			} else if _, more := os.Stat(filepath.Join(dir, strconv.Itoa(next+1)+".m4s")); final && more != nil {
-				if err := checkLast(dir, next, layout); err != nil {
-					return false, err
+				if uploadErr != nil {
+					return fmt.Errorf("%w: %s", uploadErr, stderr.String())
 				}
-			}
-			if err := w.upload(ctx, job, next, name); err != nil {
-				return false, err
-			}
-			next++
-			if w.stored(ctx, job.Hash, next) {
-				return true, nil
+				if next <= begin {
+					return fmt.Errorf("ffmpeg ended without a segment: %s", stderr.String())
+				}
+				// A cut input can end exactly between two segments, leaving no
+				// partial one to notice.
+				if next < layout.Count() && !caughtUp {
+					return fmt.Errorf("the input ended early: ffmpeg stopped after segment %d of %d: %s", next-1, layout.Count(), stderr.String())
+				}
+				return nil
+			case <-poll.C:
+				caughtUp, err := upload(false)
+				if err != nil {
+					stop("upload failed")
+					return err
+				}
+				if caughtUp {
+					stop("caught up with stored segments")
+					return nil
+				}
+				if chunkDone {
+					stop("the next chunk is another job's")
+					return nil
+				}
+				if !gate() {
+					// What it made stays stored, and a viewer who comes back to
+					// the rest starts a job there.
+					w.Pool.Exec(context.WithoutCancel(ctx), "UPDATE transcode_jobs SET state = 'cancelled' WHERE id = $1 AND state = 'running'", job.ID) //nolint:errcheck
+					stop("its viewers have left it behind")
+					return nil
+				}
+			case <-beat.C:
+				alive, wanted, err := w.beat(ctx, job)
+				switch {
+				case err == nil:
+					lastBeat = time.Now()
+					// The operator's only signal beside GET /Sessions: jellyfin-web
+					// shows neither the speed nor the worker.
+					if speed, ok := w.measuredSpeed(job); ok {
+						if speed < 1 && !loggedSlow {
+							log.Warn("transcode is slower than real time, so playback will stall", "speed", speed, "worker", w.ID)
+						}
+						loggedSlow = speed < 1
+						if alive && chunked && w.needsHelp(job) {
+							if err := w.startHelper(ctx, job, next, layout); err != nil && ctx.Err() == nil {
+								log.Warn("starting a helper job failed", "error", err)
+							}
+						}
+					}
+				case time.Since(lastBeat) > w.lease():
+					// Nobody else knows we're alive, so another worker may own this now.
+					stop("lease expired while the database was unreachable")
+					return fmt.Errorf("%w: lease expired while the database was unreachable", errInterrupted)
+				case ctx.Err() == nil:
+					log.Warn("transcode heartbeat failed", "error", err)
+				}
+				if err == nil && !alive {
+					reason := w.lostReason(ctx, job)
+					stop(reason)
+					return fmt.Errorf("%w: %s", errInterrupted, reason)
+				}
+				if paused {
+					// A stopped ffmpeg makes no segment and writes nothing, which
+					// the stall check and the scratch sweep would both read as
+					// a hang.
+					now := time.Now()
+					progressAt = now
+					os.Chtimes(dir, now, now) //nolint:errcheck
+				}
+				if next != progressed {
+					progressed, progressAt = next, time.Now()
+				} else if since := time.Since(progressAt); since > orDefault(w.Stall, 30*time.Second) {
+					stop("ffmpeg has stalled")
+					return fmt.Errorf("ffmpeg made no segment in %s: %s", since.Round(time.Second), stderr.String())
+				}
+				if err == nil && !wanted {
+					w.Pool.Exec(context.WithoutCancel(ctx), "UPDATE transcode_jobs SET state = 'cancelled' WHERE id = $1 AND state = 'running'", job.ID) //nolint:errcheck
+					stop("no viewer is watching")
+					return nil
+				}
+			case <-ctx.Done():
+				reason := "worker is shutting down"
+				if errors.Is(context.Cause(ctx), errLockLost) {
+					reason = errLockLost.Error()
+				}
+				stop(reason)
+				return fmt.Errorf("%w: %s", errInterrupted, reason)
 			}
 		}
 	}
 
-	poll := time.NewTicker(100 * time.Millisecond)
-	defer poll.Stop()
-	beat := time.NewTicker(w.heartbeat())
-	loggedSlow := false
-	defer beat.Stop()
-	lastBeat := time.Now()
-	progressed, progressAt := next, time.Now()
-	// gate pauses ffmpeg once everything below the limit is made, so what it
-	// reads past the limit is what it reads before the next look, and lets it
-	// go on when the limit has moved.
-	// It reports false when the job is paused and none of its viewers is
-	// within its window any more: they have seeked past it or gone, and its
-	// slot is better given back than held for them.
-	gate := func() bool {
-		if unbounded {
-			return true
-		}
-		// Segment limit-1 is made when it is in scratch (a copy: when its
-		// fragments are), or already stored.
-		made := func() bool {
-			if next >= limit {
-				return true
-			}
-			if gather != nil {
-				ok, _ := gather.reached(ctx, limit-1)
-				return ok
-			}
-			_, err := os.Stat(filepath.Join(dir, strconv.Itoa(limit-1)+".m4s"))
-			return err == nil
-		}
-		wait := limit < layout.Count() && made()
-		if (wait || paused || freed) && time.Since(limitAt) >= leadCheck {
-			limitAt = time.Now()
-			at, served, free, err := w.furthest(ctx, job, next)
-			switch {
-			case err != nil:
-				log.Warn("reading the viewers' segments failed", "error", err)
-			case free:
-				limit, freed = layout.Count(), true
-			case paused && !served:
-				return false
-			default:
-				limit, freed = limitFor(layout, at, w.lead()), false
-			}
-			wait = limit < layout.Count() && made()
-		}
-		switch {
-		case wait && !paused:
-			if err := pauseProcess(cmd.Process, true); err != nil {
-				log.Warn("ffmpeg cannot be paused here, so this job runs without a lead limit", "error", err)
-				limit, unbounded = layout.Count(), true
-				return true
-			}
-			paused = true
-			job.progress.pause(true)
-			log.Debug("pausing ffmpeg at its lead", "limit", limit)
-		case !wait && paused:
-			if err := pauseProcess(cmd.Process, false); err != nil {
-				log.Error("resuming ffmpeg failed", "error", err)
-				return true
-			}
-			paused = false
-			job.progress.pause(false)
-			log.Debug("resuming ffmpeg", "limit", limit)
-		}
-		return true
-	}
-	for {
-		select {
-		case err := <-exited:
-			caughtUp, uploadErr := upload(true)
-			if err != nil {
-				return fmt.Errorf("ffmpeg: %w: %s", err, stderr.String())
-			}
-			if uploadErr != nil {
-				return fmt.Errorf("%w: %s", uploadErr, stderr.String())
-			}
-			if next == job.Start {
-				return fmt.Errorf("ffmpeg ended without a segment: %s", stderr.String())
-			}
-			// A cut input can end exactly between two segments, leaving no
-			// partial one to notice.
-			if next < layout.Count() && !caughtUp {
-				return fmt.Errorf("the input ended early: ffmpeg stopped after segment %d of %d: %s", next-1, layout.Count(), stderr.String())
-			}
-			return nil
-		case <-poll.C:
-			caughtUp, err := upload(false)
-			if err != nil {
-				stop("upload failed")
-				return err
-			}
-			if caughtUp {
-				stop("caught up with stored segments")
-				return nil
-			}
-			if !gate() {
-				// What it made stays stored, and a viewer who comes back to
-				// the rest starts a job there.
-				w.Pool.Exec(context.WithoutCancel(ctx), "UPDATE transcode_jobs SET state = 'cancelled' WHERE id = $1 AND state = 'running'", job.ID) //nolint:errcheck
-				stop("its viewers have left it behind")
-				return nil
-			}
-		case <-beat.C:
-			alive, wanted, err := w.beat(ctx, job)
-			switch {
-			case err == nil:
-				lastBeat = time.Now()
-				// The operator's only signal beside GET /Sessions: jellyfin-web
-				// shows neither the speed nor the worker.
-				if speed, ok := w.measuredSpeed(job); ok {
-					if speed < 1 && !loggedSlow {
-						log.Warn("transcode is slower than real time, so playback will stall", "speed", speed, "worker", w.ID)
-					}
-					loggedSlow = speed < 1
-				}
-			case time.Since(lastBeat) > w.lease():
-				// Nobody else knows we're alive, so another worker may own this now.
-				stop("lease expired while the database was unreachable")
-				return fmt.Errorf("%w: lease expired while the database was unreachable", errInterrupted)
-			case ctx.Err() == nil:
-				log.Warn("transcode heartbeat failed", "error", err)
-			}
-			if err == nil && !alive {
-				reason := w.lostReason(ctx, job)
-				stop(reason)
-				return fmt.Errorf("%w: %s", errInterrupted, reason)
-			}
-			if paused {
-				// A stopped ffmpeg makes no segment and writes nothing, which
-				// the stall check and the scratch sweep would both read as
-				// a hang.
-				now := time.Now()
-				progressAt = now
-				os.Chtimes(dir, now, now) //nolint:errcheck
-			}
-			if next != progressed {
-				progressed, progressAt = next, time.Now()
-			} else if since := time.Since(progressAt); since > orDefault(w.Stall, 30*time.Second) {
-				stop("ffmpeg has stalled")
-				return fmt.Errorf("ffmpeg made no segment in %s: %s", since.Round(time.Second), stderr.String())
-			}
-			if err == nil && !wanted {
-				w.Pool.Exec(context.WithoutCancel(ctx), "UPDATE transcode_jobs SET state = 'cancelled' WHERE id = $1 AND state = 'running'", job.ID) //nolint:errcheck
-				stop("no viewer is watching")
-				return nil
-			}
-		case <-ctx.Done():
-			reason := "worker is shutting down"
-			if errors.Is(context.Cause(ctx), errLockLost) {
-				reason = errLockLost.Error()
-			}
-			stop(reason)
-			return fmt.Errorf("%w: %s", errInterrupted, reason)
-		}
-	}
+	return run(job.Start)
+}
+
+// globOr is filepath.Glob without the error, which only a bad pattern has.
+func globOr(pattern string) []string {
+	names, _ := filepath.Glob(pattern)
+	return names
 }
 
 // extractSubtitle returns the job's subtitle track as ASS. Burning shares the
@@ -676,6 +777,20 @@ func (w *Worker) measuredSpeed(job claimed) (float64, bool) {
 		return 0, false
 	}
 	return job.progress.speed()
+}
+
+// helpSpan is how many running seconds a job's speed is measured over before it
+// asks for helpers: ffmpeg's output comes in bursts, and a job that makes 1.4x
+// can show 0.9x over its first two seconds.
+const helpSpan = 2
+
+// needsHelp says whether the job runs below HelpBelow, over at least helpSpan.
+// A job that has made nothing yet is starting, not slow: ffmpeg's first output
+// comes a second or two after it begins, and a restart at a late segment has
+// seconds of warm-up to read before its first frame.
+func (w *Worker) needsHelp(job claimed) bool {
+	speed, ok := job.progress.speedOver(helpSpan)
+	return ok && speed > 0 && speed < w.helpBelow()
 }
 
 // beat extends the lease, and stores the job's measured speed for GET /Sessions.

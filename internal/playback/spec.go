@@ -14,7 +14,7 @@ import (
 // hash includes them: bump OutputVersion with any change to the ffmpeg
 // settings, and old segments simply stop being found.
 const (
-	OutputVersion  = 3
+	OutputVersion  = 4
 	SegmentSeconds = 4
 	// Family is the encoder family; fMP4 can't splice across families.
 	Family = "x264"

@@ -109,9 +109,9 @@ func TestToneMapIsInTheSpecFromTheSource(t *testing.T) {
 	if got := spec(sdr, "").ToneMap; got != "" {
 		t.Errorf("an SDR film has ToneMap %q", got)
 	}
-	// An SDR spec hashes as it did before tone mapping existed.
+	// An SDR spec's hash has no tone map part, so it only changes with OutputVersion.
 	plain := Spec{Item: "i", Source: "s", ETag: "e", AudioIndex: 1, VideoBitrate: 1_000_000, AudioBitrate: 128_000, Width: 640, Height: 360}
-	if got, want := plain.Hash(), "8a5c05a0cc82bbb42c6cfc5d90a76724"; got != want {
+	if got, want := plain.Hash(), "01feca0cdf74da62877c8ca50f0a8f03"; got != want {
 		t.Errorf("the hash of an SDR spec changed: %s, was %s", got, want)
 	}
 	hashes := map[string]bool{}
