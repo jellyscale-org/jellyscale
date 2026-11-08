@@ -430,6 +430,7 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	poll := time.NewTicker(100 * time.Millisecond)
 	defer poll.Stop()
 	beat := time.NewTicker(w.heartbeat())
+	loggedSlow := false
 	defer beat.Stop()
 	lastBeat := time.Now()
 	progressed, progressAt := next, time.Now()
@@ -534,6 +535,14 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 			switch {
 			case err == nil:
 				lastBeat = time.Now()
+				// The operator's only signal beside GET /Sessions: jellyfin-web
+				// shows neither the speed nor the worker.
+				if speed, ok := w.measuredSpeed(job); ok {
+					if speed < 1 && !loggedSlow {
+						log.Warn("transcode is slower than real time, so playback will stall", "speed", speed, "worker", w.ID)
+					}
+					loggedSlow = speed < 1
+				}
 			case time.Since(lastBeat) > w.lease():
 				// Nobody else knows we're alive, so another worker may own this now.
 				stop("lease expired while the database was unreachable")
@@ -660,14 +669,30 @@ func checkLast(dir string, n int, layout playback.Layout) error {
 	return nil
 }
 
-// beat extends the lease. alive is false when the job is no longer ours to
-// run; wanted is false when no viewer has asked for the spec lately.
+// measuredSpeed is the job's speed, unless it is paused at its lead limit,
+// where it is idle by design and has no speed worth reporting.
+func (w *Worker) measuredSpeed(job claimed) (float64, bool) {
+	if job.progress == nil || job.progress.pausedValue() != 0 {
+		return 0, false
+	}
+	return job.progress.speed()
+}
+
+// beat extends the lease, and stores the job's measured speed for GET /Sessions.
+// A paused job keeps the speed it had, since it is idle by design. alive is
+// false when the job is no longer ours to run; wanted is false when no viewer
+// has asked for the spec lately.
 func (w *Worker) beat(ctx context.Context, job claimed) (alive, wanted bool, err error) {
-	err = w.Pool.QueryRow(ctx, `UPDATE transcode_jobs j SET lease_expires_at = now() + make_interval(secs => $3)
+	var speed *float64
+	if value, ok := w.measuredSpeed(job); ok {
+		speed = &value
+	}
+	err = w.Pool.QueryRow(ctx, `UPDATE transcode_jobs j SET lease_expires_at = now() + make_interval(secs => $3),
+			encode_speed = COALESCE($5, j.encode_speed)
 		WHERE j.id = $1 AND j.worker = $2 AND j.state = 'running' AND `+registeredAs("$2")+`
 		RETURNING EXISTS (SELECT 1 FROM transcode_viewers v WHERE v.spec_hash = j.spec_hash AND NOT v.stopped
 			AND v.last_seen_at > now() - make_interval(secs => $4))`,
-		job.ID, w.ID, w.lease().Seconds(), w.idle().Seconds()).Scan(&wanted)
+		job.ID, w.ID, w.lease().Seconds(), w.idle().Seconds(), speed).Scan(&wanted)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, false, nil
 	}

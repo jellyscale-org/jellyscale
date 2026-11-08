@@ -129,3 +129,10 @@
   path: >-
     /Videos/{{Movie/The Beta Film (2019)}}/master.m3u8?MaxStreamingBitrate=1000000&MediaSourceId={{Movie/The Beta Film (2019)}}&PlaySessionId=0123456789abcdef0123456789abcdef&VideoCodec=h264&AudioCodec=aac&MaxAudioChannels=2&TranscodingMaxAudioChannels=2&SegmentContainer=mp4&MinSegments=1&BreakOnNonKeyFrames=false&h264-profile=high,main,baseline,constrainedbaseline&h264-level=52
   ordered: true
+- name: sessions during a transcode
+  route: GET /Sessions
+  method: GET
+  play: playback info for a film over a 1 Mbit/s limit, which transcodes
+  only: TranscodingInfo
+  path: >-
+    /Sessions?deviceId=differential

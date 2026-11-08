@@ -687,3 +687,26 @@
     - "<id:Episode/Delta Show S01E01 Pilot>"
     - "<id:Episode/Delta Show S01E02 Second>"
     - "<id:Episode/Delta Show S02E01 Return>"
+
+- requests:
+    - "sessions during a transcode"
+  kind: improvement
+  reason: "jellyscale tells the operator how fast the job really encodes (film seconds per second of its running time; Jellyfin's Framerate only shows the encode's frames per second while ffmpeg runs), which worker runs it, and whether it is below 1x, so a viewer's stall has a visible cause"
+  paths:
+    - "[].TranscodingInfo.EncodeSpeed"
+    - "[].TranscodingInfo.Worker"
+    - "[].TranscodingInfo.IsBelowRealTime"
+
+- requests:
+    - "sessions during a transcode"
+  kind: improvement
+  reason: "jellyfin reports 1058604 for a 1000000 bit/s cap; jellyscale reports the bitrate it tells the encoder to use, video plus audio, which stays within the cap"
+  path: "[].TranscodingInfo.Bitrate"
+
+- requests:
+    - "sessions during a transcode"
+  kind: non-goal
+  reason: "Jellyfin has Framerate and CompletionPercentage only while its ffmpeg runs, and the fixture films finish within a second there; jellyscale's job is still running (or its speed not yet measured) when the request is sent. Whether they are there depends on timing, so the tier cannot compare them (compat/captures/transcoding-info-12.4.md)"
+  paths:
+    - "[].TranscodingInfo.Framerate"
+    - "[].TranscodingInfo.CompletionPercentage"

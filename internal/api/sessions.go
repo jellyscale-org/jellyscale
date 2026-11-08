@@ -143,6 +143,24 @@ func (s *Server) saveSession(r *http.Request, report playbackReport) error {
 	return err
 }
 
+// listSessionsSQL takes $1 the seconds of activity, $2 whether the caller is an admin,
+// $3 the caller's id and $4 a device id or ”.
+const listSessionsSQL = `SELECT s.token, s.user_id::text, u.name, s.client, s.device_id, s.device_name,
+			s.app_version, s.item_id::text, s.position_ticks, s.is_paused, COALESCE(s.play_method, ''), s.last_seen_at,
+			COALESCE(i.run_time_ticks, 0), t.spec, t.streams, t.state, t.worker, COALESCE(t.next_segment, 0), t.encode_speed, t.reasons
+		FROM sessions s JOIN users u ON u.id = s.user_id
+		LEFT JOIN items i ON i.id = s.item_id
+		-- The newest job of the play session's viewer, if it watches a transcode.
+		LEFT JOIN LATERAL (SELECT j.spec, j.state, j.worker, j.next_segment, j.encode_speed,
+				(SELECT m.streams FROM media_sources m WHERE m.id = (j.spec->>'Source')::uuid) AS streams,
+				COALESCE((SELECT r.reasons FROM transcode_reasons r WHERE r.play_session_id = v.play_session_id AND r.spec_hash = v.spec_hash), '{}') AS reasons
+			FROM transcode_viewers v JOIN transcode_jobs j ON j.id = v.job_id
+			WHERE v.play_session_id = s.play_session_id AND NOT v.stopped AND s.item_id IS NOT NULL
+			ORDER BY v.last_seen_at DESC LIMIT 1) t ON true
+		WHERE s.last_seen_at > now() - make_interval(secs => $1)
+			AND ($2 OR s.user_id = $3::uuid) AND ($4 = '' OR s.device_id = $4)
+		ORDER BY s.last_seen_at DESC`
+
 // listSessions shows recently active devices. Admins see everyone's.
 func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
 	caller := sessionOf(r).User
@@ -153,12 +171,7 @@ func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
 	} else if errors.Is(err, strconv.ErrRange) && !strings.HasPrefix(raw, "-") {
 		within = maxActiveWithin
 	}
-	rows, err := s.Pool.Query(r.Context(), `SELECT s.token, s.user_id::text, u.name, s.client, s.device_id, s.device_name,
-			s.app_version, s.item_id::text, s.position_ticks, s.is_paused, COALESCE(s.play_method, ''), s.last_seen_at
-		FROM sessions s JOIN users u ON u.id = s.user_id
-		WHERE s.last_seen_at > now() - make_interval(secs => $1)
-			AND ($2 OR s.user_id = $3::uuid) AND ($4 = '' OR s.device_id = $4)
-		ORDER BY s.last_seen_at DESC`,
+	rows, err := s.Pool.Query(r.Context(), listSessionsSQL,
 		float64(within), caller.IsAdmin, caller.ID, r.URL.Query().Get("deviceid"))
 	if err != nil {
 		s.fail(w, r, err)
@@ -177,7 +190,11 @@ func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
 		var position int64
 		var paused bool
 		var seen time.Time
-		if err := rows.Scan(&token, &userID, &userName, &client, &deviceID, &deviceName, &version, &itemID, &position, &paused, &method, &seen); err != nil {
+		var runTicks int64
+		var job transcodeRow
+		var state *string
+		if err := rows.Scan(&token, &userID, &userName, &client, &deviceID, &deviceName, &version, &itemID, &position, &paused, &method, &seen,
+			&runTicks, &job.Spec, &job.Streams, &state, &job.Worker, &job.NextSegment, &job.EncodeSpeed, &job.Reasons); err != nil {
 			s.fail(w, r, err)
 			return
 		}
@@ -195,6 +212,13 @@ func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
 				"PositionTicks": position, "CanSeek": true, "IsPaused": paused, "IsMuted": false,
 				"RepeatMode": "RepeatNone", "PlaybackOrder": "Default", "PlayMethod": method,
 			},
+		}
+		if state != nil {
+			job.State = *state
+			if info["TranscodingInfo"], err = transcodingInfo(job, runTicks); err != nil {
+				s.fail(w, r, err)
+				return
+			}
 		}
 		sessions = append(sessions, info)
 		if itemID != nil {

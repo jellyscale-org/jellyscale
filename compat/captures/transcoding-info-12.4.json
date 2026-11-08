@@ -1,0 +1,191 @@
+{
+ "_note": "Jellyfin 12.4.0 (jellyfin/jellyfin:12.4), jellyfin-web profile of transcode-12.4.json, synthetic e2e fixtures. Ids, tokens and play session ids removed. The first three ran at full speed and finished within a second or two; the slow one ran at 1 CPU on a 1080p film with MaxStreamingBitrate 1500000, so its encode was still running.",
+ "scenarios": {
+  "reencode": {
+   "film": "Lamed Film",
+   "playbackInfo": {
+    "MediaSource": {
+     "Container": "mkv",
+     "Bitrate": 614935,
+     "SupportsDirectPlay": false,
+     "SupportsDirectStream": false,
+     "SupportsTranscoding": true,
+     "TranscodingSubProtocol": "hls",
+     "TranscodingContainer": "mp4",
+     "TranscodeReasons": null,
+     "TranscodeReasonsInUrl": "VideoCodecNotSupported,AudioCodecNotSupported"
+    }
+   },
+   "sessionsDuringPlayback": {
+    "TranscodingInfo": {
+     "AudioCodec": "aac",
+     "VideoCodec": "h264",
+     "Container": "mp4",
+     "IsVideoDirect": false,
+     "IsAudioDirect": false,
+     "Bitrate": 3371345,
+     "Width": 640,
+     "Height": 360,
+     "AudioChannels": 1,
+     "HardwareAccelerationType": "none",
+     "TranscodeReasons": [
+      "VideoCodecNotSupported",
+      "AudioCodecNotSupported"
+     ]
+    },
+    "PlayState": {
+     "PositionTicks": 30000000,
+     "CanSeek": false,
+     "IsPaused": false,
+     "IsMuted": false,
+     "PlayMethod": "Transcode",
+     "RepeatMode": "RepeatNone",
+     "PlaybackOrder": "Default"
+    }
+   },
+   "sessionsAfterStop": {
+    "TranscodingInfo": null
+   }
+  },
+  "copy": {
+   "film": "Rho Film",
+   "playbackInfo": {
+    "MediaSource": {
+     "Container": "mkv",
+     "Bitrate": 845013,
+     "SupportsDirectPlay": false,
+     "SupportsDirectStream": false,
+     "SupportsTranscoding": true,
+     "TranscodingSubProtocol": "hls",
+     "TranscodingContainer": "mp4",
+     "TranscodeReasons": null,
+     "TranscodeReasonsInUrl": "AudioCodecNotSupported"
+    }
+   },
+   "sessionsDuringPlayback": {
+    "TranscodingInfo": {
+     "AudioCodec": "aac",
+     "VideoCodec": "h264",
+     "Container": "mp4",
+     "IsVideoDirect": true,
+     "IsAudioDirect": false,
+     "Bitrate": 3609330,
+     "Width": 640,
+     "Height": 360,
+     "AudioChannels": 1,
+     "HardwareAccelerationType": "none",
+     "TranscodeReasons": [
+      "AudioCodecNotSupported"
+     ]
+    },
+    "PlayState": {
+     "PositionTicks": 30000000,
+     "CanSeek": false,
+     "IsPaused": false,
+     "IsMuted": false,
+     "PlayMethod": "Transcode",
+     "RepeatMode": "RepeatNone",
+     "PlaybackOrder": "Default"
+    }
+   },
+   "sessionsAfterStop": {
+    "TranscodingInfo": null
+   }
+  },
+  "directplay": {
+   "film": "The Beta Film",
+   "playbackInfo": {
+    "MediaSource": {
+     "Container": "mp4",
+     "Bitrate": 6518985,
+     "SupportsDirectPlay": true,
+     "SupportsDirectStream": true,
+     "SupportsTranscoding": true,
+     "TranscodingSubProtocol": "http",
+     "TranscodingContainer": null,
+     "TranscodeReasons": null,
+     "TranscodeReasonsInUrl": null
+    }
+   },
+   "sessionsDuringPlayback": {
+    "TranscodingInfo": null,
+    "PlayState": {
+     "PositionTicks": 30000000,
+     "CanSeek": false,
+     "IsPaused": false,
+     "IsMuted": false,
+     "PlayMethod": "DirectPlay",
+     "RepeatMode": "RepeatNone",
+     "PlaybackOrder": "Default"
+    }
+   },
+   "sessionsAfterStop": {
+    "TranscodingInfo": null
+   }
+  },
+  "slow": {
+   "film": "Stigma",
+   "playbackInfo": {
+    "MediaSource": {
+     "Container": "mkv",
+     "Bitrate": 8176126,
+     "SupportsDirectPlay": false,
+     "SupportsDirectStream": false,
+     "SupportsTranscoding": true,
+     "TranscodingSubProtocol": "hls",
+     "TranscodingContainer": "mp4",
+     "TranscodeReasons": null,
+     "TranscodeReasonsInUrl": "AudioCodecNotSupported,ContainerBitrateExceedsLimit"
+    }
+   },
+   "sessionsDuringPlayback": {
+    "TranscodingInfo": {
+     "AudioCodec": "aac",
+     "VideoCodec": "h264",
+     "Container": "mp4",
+     "IsVideoDirect": false,
+     "IsAudioDirect": false,
+     "Bitrate": 1500000,
+     "Framerate": 55,
+     "CompletionPercentage": 42.766666666666666,
+     "Width": 1280,
+     "Height": 720,
+     "AudioChannels": 1,
+     "HardwareAccelerationType": "none",
+     "TranscodeReasons": [
+      "AudioCodecNotSupported",
+      "ContainerBitrateExceedsLimit"
+     ]
+    },
+    "PlayState": {
+     "PositionTicks": 30000000,
+     "CanSeek": false,
+     "IsPaused": false,
+     "IsMuted": false,
+     "PlayMethod": "Transcode",
+     "RepeatMode": "RepeatNone",
+     "PlaybackOrder": "Default"
+    }
+   },
+   "sessionsAfterStop": {
+    "TranscodingInfo": null
+   },
+   "sessionsAfterTheEncodeEnded": {
+    "AudioCodec": "aac",
+    "VideoCodec": "h264",
+    "Container": "mp4",
+    "IsVideoDirect": false,
+    "IsAudioDirect": false,
+    "Bitrate": 1500000,
+    "Width": 1280,
+    "Height": 720,
+    "AudioChannels": 1,
+    "HardwareAccelerationType": "none",
+    "TranscodeReasons": [
+     "AudioCodecNotSupported",
+     "ContainerBitrateExceedsLimit"
+    ]
+   }
+  }
+ }
+}

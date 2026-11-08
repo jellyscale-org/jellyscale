@@ -396,6 +396,14 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 	source["TranscodingUrl"] = playback.MasterURL(db.DashedID(itemID), params, user.Token, stored.ETag, decision, media.FrameRate())
 	source["TranscodingSubProtocol"] = "hls"
 	source["TranscodingContainer"] = "mp4"
+	// The session lists these reasons later (TranscodingInfo). They only label
+	// the dashboard, so failing to keep them never fails the play.
+	if _, err := s.Pool.Exec(r.Context(), `WITH pruned AS (DELETE FROM transcode_reasons WHERE created_at < now() - interval '1 day')
+		INSERT INTO transcode_reasons (play_session_id, spec_hash, reasons) VALUES ($1, $2, $3)
+		ON CONFLICT (play_session_id, spec_hash) DO UPDATE SET reasons = EXCLUDED.reasons, created_at = now()`,
+		playSession, spec.Hash(), append([]string{}, decision.Reasons...)); err != nil {
+		s.Log.Warn("could not keep the transcode reasons for the session list", "error", err)
+	}
 	return false, nil
 }
 

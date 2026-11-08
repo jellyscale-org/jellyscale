@@ -222,6 +222,94 @@ for (const flavour of flavours) await scenario("an AC3 film transcodes, plays fr
   await waitFor("ffmpeg to exit after Stopped", async () => ffmpegRuns().length === 0, 20000);
 });
 
+// ---- What the admin dashboard and the Playback info panel say about a stream (JS-067) ----
+// Both read TranscodingInfo from GET /Sessions: the panel as the player draws it,
+// and the dashboard's session card in a dialog its info button opens. The texts
+// are jellyfin-web's own (en-US), so a field that is missing or wrong shows here.
+const reasonTexts = { AudioCodecNotSupported: "The audio codec is not supported", VideoCodecNotSupported: "The video codec is not supported", InterlacedVideoNotSupported: "Interlaced video is not supported" };
+
+// The sections of the player's Playback info panel: a title and its label/value rows.
+async function playbackPanel(page, until) {
+  await page.mouse.move(600, 400);
+  await page.click(".btnVideoOsdSettings");
+  await page.click('.actionSheetMenuItem[data-id="stats"]', { timeout: 10000 });
+  const read = () => page.evaluate(() => {
+    const sections = [];
+    for (const row of document.querySelectorAll(".playerStats-stat")) {
+      const label = row.querySelector(".playerStats-stat-label")?.innerText.trim() ?? "";
+      const value = row.querySelector(".playerStats-stat-value")?.innerText.trim() ?? "";
+      if (row.classList.contains("playerStats-stat-header")) sections.push({ title: label, rows: {} });
+      else if (sections.length) sections.at(-1).rows[label] = value;
+    }
+    return sections;
+  });
+  // The panel asks for the session again every few seconds, and the first
+  // answer can come before the transcode has started.
+  const sections = await waitFor("the Playback info panel to show the transcode", async () => {
+    const found = await read();
+    return until(found) ? found : null;
+  }, 40000).catch(async (error) => { throw new Error(`${error.message}; the panel shows ${JSON.stringify(await read())}`); });
+  return sections;
+}
+
+// What the dashboard's card for the film says when its info button is pressed.
+async function dashboardDialog(title) {
+  const admin = await viewer();
+  try {
+    await admin.page.goto(`${base}/web/#/dashboard`);
+    const card = admin.page.locator(".MuiCard-root", { hasText: title }).first();
+    await card.waitFor({ timeout: 40000 });
+    await card.locator(".MuiCardActions-root button").last().click();
+    const dialog = admin.page.locator("[role=dialog]").last();
+    await dialog.waitFor({ timeout: 10000 });
+    return (await dialog.innerText()).replace(/\s+/g, " ");
+  } finally {
+    await admin.context.close().catch(() => {});
+  }
+}
+
+// What jellyfin-web 12.4 renders (web-dist chunk 1836, function m): for a
+// re-encode, Target codecs adds the channels and bitrate and a Progress / speed
+// row shows "n% / f fps (r.rrx)"; for a copy (DirectStream) neither, and its
+// dashboard dialog is generic help text with no TranscodingInfo details.
+const infoFlavours = [
+  { name: "re-encoded", film: "Zeta Interlaced", method: "Transcoding", panel: "Transcoding Info", codecs: /^H264, AAC, \d+ Ch, \d+(\.\d Mbps| Kbps)$/, transcode: true },
+  { name: "copied", film: "Zeta Film", method: "Direct streaming", panel: "Direct Streaming Info", codecs: /^H264 \(direct\), AAC$/, transcode: false },
+];
+for (const flavour of infoFlavours) await scenario("the dashboard card and the Playback info panel show the transcode" + `: ${flavour.name}`, async ({ page, seen }) => {
+  // Sessions of earlier scenarios may still say they play a film; only this one should.
+  sql("UPDATE sessions SET item_id = NULL, play_method = NULL, play_session_id = NULL");
+  await play(page, "Transcode", flavour.film);
+  await advances(page);
+  const reasons = /TranscodeReasons=([^&]+)/.exec(transcodeUrl(seen))?.[1].split(",") ?? [];
+  if (!reasons.length || reasons.some((r) => !reasonTexts[r])) throw new Error(`reasons the test has no text for: ${reasons}`);
+
+  const sections = await playbackPanel(page, (found) => found.some((x) => x.title === flavour.panel && x.rows["Target codecs"] && x.rows["Reasons"] && (!flavour.transcode || /fps/.test(x.rows["Progress / speed"] ?? ""))));
+  const info = sections.find((x) => x.title === flavour.panel);
+  // innerText collapses jellyfin-web's double spaces.
+  const codecs = info.rows["Target codecs"].replace(/\s+/g, " ");
+  if (!flavour.codecs.test(codecs)) throw new Error(`Target codecs reads ${JSON.stringify(codecs)}`);
+  if (flavour.transcode && (!/^\d+(\.\d)?%/.test(info.rows["Progress / speed"]) || !/ fps \(\d+\.\d\dx\)$/.test(info.rows["Progress / speed"]))) throw new Error(`Progress / speed reads ${JSON.stringify(info.rows["Progress / speed"])}`);
+  if (!flavour.transcode && info.rows["Progress / speed"] !== undefined) throw new Error(`a copy shows Progress / speed: ${JSON.stringify(info.rows["Progress / speed"])}`);
+  for (const reason of reasons) if (!info.rows["Reasons"].includes(reasonTexts[reason])) throw new Error(`Reasons reads ${JSON.stringify(info.rows["Reasons"])}, lacking ${reason}`);
+
+  const dialog = await dashboardDialog(flavour.film);
+  const wanted = flavour.transcode ? [flavour.method, "H264", "AAC", "MP4", "Reason for transcoding", ...reasons.map((r) => reasonTexts[r])] : [flavour.method];
+  for (const text of wanted) if (!dialog.includes(text)) throw new Error(`the dashboard card says ${JSON.stringify(dialog)}, lacking ${JSON.stringify(text)}`);
+  if (flavour.transcode && (!/Framerate: \d+fps/.test(dialog) || !/\d+(\.\d Mbps| Kbps)/.test(dialog))) throw new Error(`the dashboard card has no frame rate or bitrate: ${JSON.stringify(dialog)}`);
+  await leave(page);
+});
+
+await scenario("the dashboard card and the Playback info panel for a direct play show no transcode", async ({ page, seen }) => {
+  sql("UPDATE sessions SET item_id = NULL, play_method = NULL, play_session_id = NULL");
+  await play(page, "Transcode", "Nu Film");
+  if (seen.infos.at(-1).source.TranscodingUrl !== undefined) throw new Error("Nu Film should direct play");
+  await advances(page);
+  const dialog = await dashboardDialog("Nu Film");
+  if (!dialog.includes("Direct playing") || /Transcoding|Reason for transcoding/.test(dialog)) throw new Error(`the dashboard card says ${JSON.stringify(dialog)}`);
+  await leave(page);
+});
+
 await scenario("S3: a film from the bucket transcodes and plays", async ({ page, seen }) => {
   await play(page, "Cloud", "Eta Film");
   if (seen.infos.at(-1).source.TranscodingUrl === undefined) throw new Error("no TranscodingUrl");
