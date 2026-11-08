@@ -439,7 +439,9 @@
       "acceptanceCriteria": [
         "HDR10, HLG and DV (with a compatible base layer) copy when the client's profile allows",
         "jellyfin-web plays a 4K HDR film with TrueHD audio from a copy on a 4-core worker without stalls",
-        "Tone mapping stays for clients that cannot show HDR"
+        "Tone mapping stays for clients that cannot show HDR",
+        "An integration test copies HDR10, HLG, DV 8.1 and DV 7 fixtures through the worker's own ffmpeg path and checks each init segment's sample entry (hvc1, no dvcC/dvvC where the DV layer is dropped) and the master's VIDEO-RANGE",
+        "A rolling update cannot break playback: a stream replica serves every copy an api replica of the same or the previous release offers, or docs/running.md states the roll order and a test pins it"
       ],
       "priority": 3,
       "status": "todo",
@@ -448,7 +450,7 @@
         "JS-023"
       ],
       "source": "work queue 6; PRODUCT.md phase3 (HDR direct play and copy not built)",
-      "notes": ""
+      "notes": "Added after JS-023 (2026-11-08): JS-023 decides DV copies and writes the master, but no test runs a copy through jellyscale's ffmpeg (Jellyfin's arguments drop dvcC, checked by hand only), and its review found that an old replica refuses the HEVC copy a new one offers mid-rollout. Plain HDR copy widens both risks, so they belong here."
     },
     {
       "id": "JS-026",
