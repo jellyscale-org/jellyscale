@@ -11,7 +11,7 @@ func (s *Server) publicInfo(r *http.Request) map[string]any {
 		"LocalAddress":           "http://" + r.Host,
 		"ServerName":             s.Name,
 		"Version":                Version,
-		"ProductName":            "jellyscale",
+		"ProductName":            "Jellyfin Server", // jellyfin-sdk-kotlin clients reject any other name
 		"OperatingSystem":        "",
 		"Id":                     s.ServerID,
 		"StartupWizardCompleted": true,
