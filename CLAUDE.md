@@ -39,7 +39,7 @@ Each task in [tasks/prd.json](tasks/prd.json) goes through the `build` workflow 
 
 1. **Spec.** A spec writer turns the acceptance criteria into executable checks (tests, e2e scenarios, capture-based tests) and shows each fails today. Protocol behaviour is observed on a real Jellyfin 12.4 first.
 2. **Check.** An architecture reviewer reviews the design and whether the checks would catch a wrong build. A blocker sends it back to Spec once.
-3. **Build.** One implementer works until the checks and the tiers pass. The checks are locked: changing one, or disputing it, stops the run.
+3. **Build.** One implementer works until the checks and the tiers pass. The checks are locked: changing one, or disputing it, stops the run. The lead settles a dispute from evidence and, if the check was wrong, corrects it and resumes the run with `resolved` (the files and why), which every later reviewer and fixer is told.
 4. **Verify.** QA runs it; one blind adversarial reviewer tries to break it where the checks don't look; architecture reviews it again only for changes to the scan, a store or job semantics (`core: true`); UX when viewers or operators would notice (`ux: true`). A blocker or major needs executable evidence (a failing test, a command and its output, a capture diff), or it counts as minor. Environment failures are reported apart.
 5. **Fix.** One round for evidenced findings, fixing the cause that let each through rather than only the case reported, then Verify again. Evidenced findings left after that send the task back to Spec: the checks missed something. Minors never start a fix round; they go to a backlog the lead triages.
 

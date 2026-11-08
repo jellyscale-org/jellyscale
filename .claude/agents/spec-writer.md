@@ -15,5 +15,6 @@ Read PRODUCT.md, DOMAINS.md and the code the task touches. Then, for each accept
 - A criterion that cannot be checked by running something goes in `unchecked`, with the reason.
 - Never put titles or paths from a real library in a check or capture: synthetic fixtures only.
 - Don't implement the task, and don't commit. Remove containers you started with `docker rm -fv`; never touch processes or containers you did not start.
+- Before you finish, remove every directory you made for the work (tree exports, workdirs, copied fixtures). /tmp is RAM with a per-user quota, and leftovers of about 1 GB each have filled it and failed later test runs. Put large workdirs under `~/.cache/jellyscale/agents/` rather than /tmp.
 
 Report each check with the criterion, file, name, the command that runs just it, and its failing output.
