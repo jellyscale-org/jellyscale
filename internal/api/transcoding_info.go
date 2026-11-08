@@ -41,7 +41,11 @@ func transcodingInfo(row transcodeRow, runTimeTicks int64) (map[string]any, erro
 				videoCodec = stream.Codec
 			}
 		case stream.Type == "Audio" && stream.Index == spec.AudioIndex && stream.Channels > 0:
-			channels = min(stream.Channels, 2)
+			// A re-encode downmixes to stereo; a copy keeps the source's channels.
+			channels = stream.Channels
+			if spec.AudioCopy == "" {
+				channels = min(channels, 2)
+			}
 		}
 	}
 	if spec.AudioCopy != "" {

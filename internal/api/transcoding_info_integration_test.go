@@ -347,12 +347,14 @@ func startLive(t *testing.T, rate string, lead time.Duration) *liveTranscode {
 }
 
 // speedy waits for the first TranscodingInfo the replicas give that has an
-// EncodeSpeed, asking each in turn.
+// EncodeSpeed and some progress, asking each in turn. A segment is in the store
+// a moment before the job's next_segment says so, and a heartbeat can write the
+// speed in between, so the speed alone can come with 0%.
 func (l *liveTranscode) speedy(t *testing.T) map[string]any {
 	t.Helper()
 	deadline := time.Now().Add(45 * time.Second)
 	for replica := 0; time.Now().Before(deadline); replica++ {
-		if info := l.e.transcodingInfo(t, replica%2); info != nil && info["EncodeSpeed"] != nil {
+		if info := l.e.transcodingInfo(t, replica%2); info != nil && info["EncodeSpeed"] != nil && info["CompletionPercentage"].(float64) > 0 {
 			return info
 		}
 		time.Sleep(300 * time.Millisecond)
