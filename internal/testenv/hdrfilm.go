@@ -1,8 +1,9 @@
 package testenv
 
 import (
+	"bytes"
 	"encoding/binary"
-	"encoding/json"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -41,16 +42,9 @@ func MakeHDRFilm(out string, f HDRFilm) error {
 		"-map", "0:v", "-map", "1:a", "-pix_fmt", "yuv420p10le"}
 	x265 := map[string]string{"pq": x265PQ, "hlg": x265HLG, "sdr": x265SDR}[f.Base]
 	if f.HDR10Plus {
-		dir, err := os.MkdirTemp("", "hdr10plus")
-		if err != nil {
-			return err
-		}
-		defer os.RemoveAll(dir)
-		metadata := filepath.Join(dir, "hdr10plus.json")
-		if err := WriteHDR10PlusMetadata(metadata, seconds*24); err != nil {
-			return err
-		}
-		x265 += ":dhdr10-info=" + metadata
+		// addHDR10Plus goes through a raw stream, which has no timestamps to
+		// reorder B-frames with.
+		x265 += ":bframes=0"
 	}
 	switch f.Base {
 	case "av1":
@@ -66,7 +60,7 @@ func MakeHDRFilm(out string, f HDRFilm) error {
 	}
 	args = append(args, "-c:a", "aac", "-metadata:s:a:0", "language=eng")
 	target := out
-	if f.DVProfile > 0 {
+	if f.DVProfile > 0 || f.HDR10Plus {
 		target = out + ".base.mp4"
 		defer os.Remove(target)
 	}
@@ -76,8 +70,13 @@ func MakeHDRFilm(out string, f HDRFilm) error {
 	if output, err := exec.Command("ffmpeg", append(args, target)...).CombinedOutput(); err != nil {
 		return fmt.Errorf("ffmpeg: %w: %s", err, output)
 	}
+	if f.HDR10Plus {
+		if err := addHDR10Plus(target); err != nil {
+			return err
+		}
+	}
 	if f.DVProfile == 0 {
-		return nil
+		return os.Rename(target, out)
 	}
 	data, err := os.ReadFile(target)
 	if err != nil {
@@ -90,26 +89,48 @@ func MakeHDRFilm(out string, f HDRFilm) error {
 	return os.WriteFile(out, data, 0o644)
 }
 
-// WriteHDR10PlusMetadata writes the JSON x265's --dhdr10-info reads: the same
-// metadata on every frame.
-func WriteHDR10PlusMetadata(path string, frames int) error {
-	scenes := make([]map[string]any, frames)
-	for i := range scenes {
-		scenes[i] = map[string]any{
-			"BezierCurveData": map[string]any{"Anchors": []int{102, 205, 307, 410, 512, 614, 717, 819, 921}, "KneePointX": 100, "KneePointY": 100},
-			"LuminanceParameters": map[string]any{
-				"AverageRGB": 1000,
-				"LuminanceDistributions": map[string]any{
-					"DistributionIndex": []int{1, 5, 10, 25, 50, 75, 90, 95, 99}, "DistributionValues": []int{100, 200, 300, 400, 500, 600, 700, 800, 900}},
-				"MaxScl": []int{5000, 5000, 5000}},
-			"NumberOfWindows": 1, "TargetedSystemDisplayMaximumLuminance": 400, "SceneFrameNumber": i, "SequenceFrameNumber": i,
-		}
+// hdr10PlusSEI is a prefix SEI NAL unit carrying one HDR10+ (SMPTE ST 2094-40)
+// message, as x265 writes it from --dhdr10-info. The fixtures put it in
+// themselves because Ubuntu's libx265, which CI uses, is built without HDR10+
+// and ignores that option without an error.
+var hdr10PlusSEI, _ = hex.DecodeString("4e010438b5003c0001040140000c8007d003e801f400192408000428000850000cc8001190001658001ad0001ef80023180024004000000d0080300080")
+
+// addHDR10Plus puts the HDR10+ message before the first slice of every
+// picture of the MP4 film at path, by way of an Annex B copy of its video.
+func addHDR10Plus(path string) error {
+	raw := path + ".hevc"
+	defer os.Remove(raw)
+	if output, err := exec.Command("ffmpeg", "-nostdin", "-v", "error", "-y", "-i", path,
+		"-map", "0:v", "-c", "copy", "-bsf:v", "hevc_mp4toannexb", "-f", "hevc", raw).CombinedOutput(); err != nil {
+		return fmt.Errorf("ffmpeg: %w: %s", err, output)
 	}
-	data, err := json.Marshal(map[string]any{"JSONInfo": map[string]any{"HDR10plusProfile": "B", "Version": "1.0"}, "SceneInfo": scenes})
+	data, err := os.ReadFile(raw)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0o644)
+	var with []byte
+	for _, nal := range bytes.Split(data, []byte{0, 0, 1}) {
+		nal = bytes.TrimRight(nal, "\x00")
+		if len(nal) < 3 {
+			continue
+		}
+		// A slice (types 0 to 31) whose first_slice_segment_in_pic_flag is set
+		// starts a picture.
+		if nal[0]>>1&0x3f < 32 && nal[2]&0x80 != 0 {
+			with = append(append(with, 0, 0, 0, 1), hdr10PlusSEI...)
+		}
+		with = append(append(with, 0, 0, 0, 1), nal...)
+	}
+	if err := os.WriteFile(raw, with, 0o644); err != nil {
+		return err
+	}
+	muxed := path + ".plus.mp4"
+	defer os.Remove(muxed)
+	if output, err := exec.Command("ffmpeg", "-nostdin", "-v", "error", "-y", "-framerate", "24", "-i", raw, "-i", path,
+		"-map", "0:v", "-map", "1:a", "-c", "copy", "-tag:v", "hvc1", "-metadata:s:a:0", "language=eng", muxed).CombinedOutput(); err != nil {
+		return fmt.Errorf("ffmpeg: %w: %s", err, output)
+	}
+	return os.Rename(muxed, path)
 }
 
 // box is where a box starts in an MP4 and how long it is.
