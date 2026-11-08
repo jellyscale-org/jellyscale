@@ -323,8 +323,16 @@ func startLive(t *testing.T, rate string, lead time.Duration) *liveTranscode {
 		s.Transcode = &transcode.Jobs{Pool: s.Pool, Segments: segments, Hub: hub, QueueTimeout: 10 * time.Second, WaitTimeout: 60 * time.Second}
 	}
 
+	// PlaybackInfo offers a transcode only once a worker has registered, which
+	// the worker does a moment after it starts.
+	if !eventually(func() bool { return scalar[int](t, e.pool, "SELECT count(*) FROM transcode_nodes") > 0 }) {
+		t.Fatal("the worker never registered")
+	}
 	reply := e.playbackInfo(t, 0, e.item, map[string]any{"DeviceProfile": capturedProfile(t), "MaxStreamingBitrate": 2147483647,
 		"AudioStreamIndex": "1", "SubtitleStreamIndex": "-1", "MediaSourceId": source})
+	if sources, _ := reply["MediaSources"].([]any); len(sources) == 0 {
+		t.Fatalf("PlaybackInfo offered no source: %v", reply)
+	}
 	url := firstSource(reply)["TranscodingUrl"].(string)
 	e.play(t, reply, "Transcode")
 	_, master := e.do(t, 0, "GET", url, "", nil)
