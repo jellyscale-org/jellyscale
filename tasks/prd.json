@@ -345,7 +345,7 @@
         "The ceiling is stated in streams per Postgres primary in ARCHITECTURE.md",
         "A recommendation on whether NATS JetStream for ephemeral state is worth considering after the MVP"
       ],
-      "priority": 2,
+      "priority": 1,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -402,7 +402,7 @@
         "The decision table tests cover every VideoRangeType against jellyfin-web's own profile conditions",
         "Checked on the dogfood with a P8.1 film and a P7 film in jellyfin-web and one TV client"
       ],
-      "priority": 5,
+      "priority": 3,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -422,7 +422,7 @@
         "Helpers never take the last free slot from a new viewer",
         "Measured speedup with 1, 2 and 3 workers in the PR"
       ],
-      "priority": 6,
+      "priority": 4,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -441,7 +441,7 @@
         "jellyfin-web plays a 4K HDR film with TrueHD audio from a copy on a 4-core worker without stalls",
         "Tone mapping stays for clients that cannot show HDR"
       ],
-      "priority": 7,
+      "priority": 5,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -459,7 +459,7 @@
         "Video and audio both copied, segments splice after a restart",
         "Played and sought in jellyfin-web"
       ],
-      "priority": 8,
+      "priority": 6,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -475,7 +475,7 @@
         "Listed like Jellyfin 12.4",
         "Drawn into a transcode; PGS sent to jellyfin-web when its setting is on"
       ],
-      "priority": 9,
+      "priority": 7,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -491,7 +491,7 @@
         "One ffmpeg run per film for all text tracks",
         "S3 reads drop accordingly"
       ],
-      "priority": 10,
+      "priority": 8,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1103,14 +1103,14 @@
         "Replays run in CI and fail on a response a client would reject (status, missing field, wrong shape)",
         "No titles or paths from a real library in the captures (synthetic fixtures only)"
       ],
-      "priority": 4,
+      "priority": 10,
       "status": "todo",
       "passes": false,
       "dependsOn": [
         "JS-064"
       ],
       "source": "workflow research 2026-11-07; project plan (cassettes)",
-      "notes": "TV and iOS clients are untested today; Quick Connect and OIDC in Identity need their traffic most. Moved up 2026-11-08: Findroid failed on the dogfood twice where jellyfin-web worked (#44, #47); captures of real non-web clients catch what SDK models alone don't (call order, headers, routes)."
+      "notes": "TV and iOS clients are untested today; Quick Connect and OIDC in Identity need their traffic most. Moved up 2026-11-08: Findroid failed on the dogfood twice where jellyfin-web worked (#44, #47); captures of real non-web clients catch what SDK models alone don't (call order, headers, routes). Scheduled after the web-client work (user, 2026-11-08: focus on the web client first, then pivot to other clients)."
     },
     {
       "id": "JS-066",
@@ -1141,7 +1141,7 @@
         "The dashboard's session card shows the transcode details and the Playback info panel shows codecs and direct flags, checked in jellyfin-web in the e2e tier",
         "An improvement on Jellyfin, recorded in the differential allowlist: the encode speed (film seconds per wall second) is visible to the operator, and a job below 1x is flagged"
       ],
-      "priority": 3,
+      "priority": 2,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1199,14 +1199,14 @@
         "requests.yaml covers the startup, discovery and sign-in requests above, and the tier passes",
         "@jellyfin/sdk's recommended-server discovery accepts jellyscale in CI, and fails with ProductName put back"
       ],
-      "priority": 1,
+      "priority": 9,
       "status": "todo",
       "passes": false,
       "dependsOn": [
         "JS-069"
       ],
       "source": "escaped defects from the dogfood, Findroid, 2026-11-08 (#44, #47)",
-      "notes": "jellyfin-web ignores fields it doesn't read, so it can't catch this class; Kotlin and Swift SDK clients decode strictly."
+      "notes": "jellyfin-web ignores fields it doesn't read, so it can't catch this class; Kotlin and Swift SDK clients decode strictly. Scheduled after the web-client work (user, 2026-11-08: focus on the web client first, then pivot to other clients). Findroid's first home-screen call, GET /Items/Suggestions, 404s; a parked implementation is on branch feat/items-suggestions."
     }
   ]
 }
