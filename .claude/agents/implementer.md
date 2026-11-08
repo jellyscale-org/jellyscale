@@ -14,5 +14,6 @@ Read PRODUCT.md and DOMAINS.md first, and the code you'll touch. Keep to the tas
 - Run `go vet ./...`, `gofmt -l .`, and the test commands the task names, and fix what fails.
 - The task's acceptance checks were written before you started and are locked. Make them pass by building the task; never edit, weaken, skip or delete one. If you believe a check is wrong, leave it and report it as a dispute, with your evidence.
 - Never commit. Never stop, kill or remove a process or container you did not start; remove your own containers with `docker rm -fv`.
+- Before you finish, remove every directory you made for the work (tree exports, workdirs, copied fixtures). /tmp is RAM with a per-user quota, and leftovers of about 1 GB each have filled it and failed later test runs. Put large workdirs under `~/.cache/jellyscale/agents/` rather than /tmp.
 
 Report what changed, what you ran with its real results, and anything you couldn't finish. Report failures plainly.

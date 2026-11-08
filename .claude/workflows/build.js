@@ -87,7 +87,9 @@ const LOCKED = {
   required: ['changed'],
 }
 
-const { task, acceptance = [], tests = [], id = '', ux = false, core = false } = args
+const { task, acceptance = [], tests = [], id = '', ux = false, core = false, resolved = null } = args
+// Told to every later reviewer and fixer, so a corrected check is not reported or restored as tampering.
+const resolvedNote = resolved ? `\n\nThe lead corrected these locked check files after a dispute, on purpose; review the corrected version and never restore the original: ${resolved.files.join(', ')}. ${resolved.note}` : ''
 if (!task) throw new Error('build needs args.task')
 
 const criteria = acceptance.map((line) => `- ${line}`).join('\n')
@@ -166,13 +168,21 @@ let built = await agent(`${read('implementer')}${brief}${designNotes}${locked}\n
 if (!built) throw new Error('implementer returned nothing')
 let head = await snapshot('snapshot build', 'Build')
 let touched = await lockedChanged(head, 'locked checks')
+// A dispute stops the run. The lead settles it from evidence; if the check was
+// wrong, the lead corrects it and resumes with args.resolved = { files, note },
+// so this run's Spec, Check and Build replay from cache.
+if (resolved) {
+  head = await snapshot('snapshot after the resolved dispute', 'Build')
+  touched = (await lockedChanged(head, 'locked checks after the resolved dispute')).filter((f) => !resolved.files.includes(f))
+  built = { ...built, disputes: [], report: `${built.report}\n\nDispute resolved by the lead: ${resolved.note}` }
+}
 if (touched.length || built.disputes.length) {
   return { clean: false, stoppedAt: 'Build', reason: touched.length ? 'locked checks changed' : 'checks disputed', touched, disputes: built.disputes, spec, base, specTree, head, build: built }
 }
 
 // What every reviewer is told: the change to read and how to stay out of its tree.
 let reviewersNote = ''
-const setNote = () => { reviewersNote = `Someone else has built the task above. You are reviewing it, not doing it: never edit, stash or mutate the working tree. Inspect the change with \`git diff ${base} ${head}\` (the checks were written first, in \`git diff ${base} ${specTree}\`). To build or test, use your own export: \`git archive ${head} | tar -x -C <dir in your scratchpad>\`, plus a symlink to web-dist for e2e, and run every command from inside it. Remove your export and anything you started before you finish; remove containers with \`docker rm -fv\`.` }
+const setNote = () => { reviewersNote = `Someone else has built the task above. You are reviewing it, not doing it: never edit, stash or mutate the working tree. Inspect the change with \`git diff ${base} ${head}\` (the checks were written first, in \`git diff ${base} ${specTree}\`). To build or test, use your own export: \`git archive ${head} | tar -x -C <dir in your scratchpad>\`, plus a symlink to web-dist for e2e, and run every command from inside it. Remove your export, any workdir and anything you started before you finish (/tmp is RAM with a per-user quota; put large workdirs under ~/.cache/jellyscale/agents/); remove containers with \`docker rm -fv\`.${resolvedNote}` }
 
 // ---- Verify: QA runs it, one adversarial reads to break it, architecture only for core changes.
 const reviewers = (round) => {
@@ -210,7 +220,7 @@ log(`Verify 1: ${result.findings.length} finding(s), ${open.length} evidenced an
 if (open.length || result.missing.length) {
   phase('Fix')
   const list = open.map((f, i) => `${i + 1}. [${f.severity}] ${f.title} (${f.file ?? 'no file'})\nScenario: ${f.scenario}\nEvidence (${f.evidenceKind}): ${f.evidence}`).join('\n\n')
-  const fixed = await agent(`${read('implementer')}${brief}${locked}\n\n## Evidenced findings\n${list}\n\nFor each real defect, find the cause that let it through, not only the case reported: if a design would let other cases of the same kind through, fix the design and test it with a second case of that kind, not just the one reported. Add a test that catches it. If a finding is wrong, say why with evidence rather than changing code. Don't commit.`, { label: 'fix', phase: 'Fix', ...role('implementer'), schema: IMPLEMENTED })
+  const fixed = await agent(`${read('implementer')}${brief}${locked}${resolvedNote}\n\n## Evidenced findings\n${list}\n\nFor each real defect, find the cause that let it through, not only the case reported: if a design would let other cases of the same kind through, fix the design and test it with a second case of that kind, not just the one reported. Add a test that catches it. If a finding is wrong, say why with evidence rather than changing code. Don't commit.`, { label: 'fix', phase: 'Fix', ...role('implementer'), schema: IMPLEMENTED })
   if (!fixed) throw new Error('fixer returned nothing')
   built = fixed
   head = await snapshot('snapshot fix', 'Fix')
