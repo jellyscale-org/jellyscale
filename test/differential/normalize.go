@@ -11,6 +11,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"time"
 )
 
 // Difference is one place where the two answers disagree. Jellyfin or
@@ -23,7 +24,13 @@ type Difference struct {
 // A 32 digit id, with or without dashes, which is how the two servers write one.
 var idPattern = regexp.MustCompile(`(?i)[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}`)
 
-var timePattern = regexp.MustCompile(`\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?(Z|[+-]\d\d:\d\d)?`)
+// MaskedTimeKeys are the keys whose timestamp changes from run to run (when
+// the fixtures were scanned, played or signed in). Every other timestamp, such
+// as PremiereDate, is stable and compared. Documented in docs/testing.md.
+var MaskedTimeKeys = map[string]bool{
+	"DateCreated": true, "DateLastMediaAdded": true, "LastPlayedDate": true,
+	"LastActivityDate": true, "LastLoginDate": true,
+}
 
 // Tokens and session ids in a query string.
 var queryPattern = regexp.MustCompile(`(?i)\b(api_key|ApiKey|PlaySessionId|DeviceId)=[^&"\s]*`)
@@ -68,7 +75,7 @@ func ItemKeys(doc any) map[string]string {
 
 // Normalize returns a copy of doc that does not depend on which server made it:
 //   - an id in ids becomes "<id:KEY>", also inside longer strings such as URLs;
-//   - timestamps, and the value of tokens, ETags and session and server ids, are masked;
+//   - the timestamps under MaskedTimeKeys, and the value of tokens, ETags and session and server ids, are masked;
 //   - unless ordered, every array is sorted, because most listings promise no order.
 //
 // An id that is not in ids stays as it is and shows up as a difference.
@@ -86,6 +93,13 @@ type normalizer struct {
 	ordered bool
 }
 
+// realTime says whether a masked time key holds a real timestamp. An empty,
+// zero or unparsable value is kept, so it still differs from Jellyfin's.
+func realTime(text string) bool {
+	t, err := time.Parse(time.RFC3339Nano, text)
+	return err == nil && t.Year() > 1
+}
+
 func (n normalizer) value(v any) any {
 	switch v := v.(type) {
 	case map[string]any:
@@ -93,6 +107,10 @@ func (n normalizer) value(v any) any {
 		for k, child := range v {
 			if _, isString := child.(string); isString && maskedKeys[k] {
 				out[k] = "<masked>"
+				continue
+			}
+			if text, isString := child.(string); isString && MaskedTimeKeys[k] && realTime(text) {
+				out[k] = "<time>"
 				continue
 			}
 			out[k] = n.value(child)
@@ -119,7 +137,6 @@ func (n normalizer) value(v any) any {
 			}
 			return id
 		})
-		s = timePattern.ReplaceAllString(s, "<time>")
 		return queryPattern.ReplaceAllString(s, "${1}=<masked>")
 	}
 	return v
