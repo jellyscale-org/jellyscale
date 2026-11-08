@@ -146,7 +146,12 @@ for (let attempt = 1; attempt <= 2; attempt++) {
 const designNotes = design.findings.length
   ? `\n\n## Design review\n${design.findings.map((f) => `- [${f.severity}] ${f.title}: ${f.scenario}`).join('\n')}`
   : ''
-const lockedFiles = [...new Set(spec.checks.map((c) => c.file))]
+// The checks are what the spec writer wrote. A file a check only cites, such as an
+// existing script the task must change, stays open to the implementer.
+const written = await agent(`Run \`git diff --name-only ${base} ${specTree}\` in the repository root and return the files it lists. Do nothing else.`,
+  { label: 'checks written', phase: 'Spec', schema: LOCKED, model: 'haiku', effort: 'low' })
+if (!written) throw new Error('could not list the files the spec writer wrote')
+const lockedFiles = written.changed
 const locked = `\n\n## Locked checks\n${checkList(spec)}\n\nThese files are locked: ${lockedFiles.join(', ')}. Make the checks pass by building the task. Never edit, weaken, skip or delete a locked check. If you believe one is wrong, stop work on it and put it in disputes with your evidence.`
 
 const lockedChanged = async (head, label) => {
