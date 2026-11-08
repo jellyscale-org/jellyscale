@@ -28,19 +28,15 @@ func TestToneMapFollowsTheTransferFunction(t *testing.T) {
 		{"sdr", func(v *Stream) {}, ""},
 		{"hdr10", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "HDR10", PQ }, PQ},
 		{"hlg", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "HLG", HLG }, HLG},
-		{"dolby vision 8.1 with an hdr10 base", func(v *Stream) {
-			v.VideoRangeType, v.ColorTransfer, v.DolbyVisionBlCompatibility = "DOVI", PQ, 1
-		}, PQ},
-		{"dolby vision 8.4 with an hlg base", func(v *Stream) {
-			v.VideoRangeType, v.ColorTransfer, v.DolbyVisionBlCompatibility = "DOVI", HLG, 4
-		}, HLG},
+		{"dolby vision 8.1 with an hdr10 base", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "DOVIWithHDR10", PQ }, PQ},
+		{"dolby vision 8.1 with hdr10+", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "DOVIWithHDR10Plus", PQ }, PQ},
+		{"dolby vision 8.4 with an hlg base", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "DOVIWithHLG", HLG }, HLG},
+		{"dolby vision 7 with an hdr10 base", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "DOVIWithEL", PQ }, PQ},
 		// Profile 5's base layer is IPTPQc2, which is neither: mapped as PQ it comes
 		// out green and purple, so it is left as before even if the file says PQ.
 		{"dolby vision 5", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "DOVI", PQ }, ""},
 		{"dolby vision 5 that says nothing", func(v *Stream) { v.VideoRangeType = "DOVI" }, ""},
-		{"dolby vision 8.2 with an sdr base", func(v *Stream) {
-			v.VideoRangeType, v.ColorTransfer, v.DolbyVisionBlCompatibility = "DOVI", "bt709", 2
-		}, ""},
+		{"dolby vision 8.2 with an sdr base", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "DOVIWithSDR", "bt709" }, ""},
 		{"hdr scanned before the transfer was recorded", func(v *Stream) { v.VideoRangeType = "HDR10" }, ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {

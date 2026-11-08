@@ -416,20 +416,6 @@
 - requests:
     - "a film's details"
     - "an episode's details"
-  kind: gap
-  task: JS-023
-  reason: "the video range labels and the display title that carries them (SDR, HDR10, Dolby Vision) that jellyscale leaves out"
-  paths:
-    - "MediaSources[].MediaStreams[].DisplayTitle"
-    - "MediaSources[].MediaStreams[].VideoRange"
-    - "MediaSources[].MediaStreams[].VideoRangeType"
-    - "MediaStreams[].DisplayTitle"
-    - "MediaStreams[].VideoRange"
-    - "MediaStreams[].VideoRangeType"
-
-- requests:
-    - "a film's details"
-    - "an episode's details"
   kind: improvement
   reason: "jellyscale names a film or episode from its file name without the year; Jellyfin, with no metadata provider, keeps \"(2021)\" in the name and in the sort name"
   paths:
@@ -601,17 +587,6 @@
 - requests:
     - "playback info for a film that direct plays"
     - "playback info for a film over a 1 Mbit/s limit, which transcodes"
-  kind: gap
-  task: JS-023
-  reason: "the video range labels and the display title that carries them (SDR, HDR10, Dolby Vision) that jellyscale leaves out"
-  paths:
-    - "MediaSources[].MediaStreams[].DisplayTitle"
-    - "MediaSources[].MediaStreams[].VideoRange"
-    - "MediaSources[].MediaStreams[].VideoRangeType"
-
-- requests:
-    - "playback info for a film that direct plays"
-    - "playback info for a film over a 1 Mbit/s limit, which transcodes"
   kind: improvement
   reason: "jellyscale names a film or episode from its file name without the year; Jellyfin, with no metadata provider, keeps \"(2021)\" in the name and in the sort name"
   paths:
@@ -710,3 +685,380 @@
   paths:
     - "[].TranscodingInfo.Framerate"
     - "[].TranscodingInfo.CompletionPercentage"
+
+- requests:
+    - "the HDR films with their streams"
+  kind: gap
+  task: JS-068
+  reason: "Items/Latest lists a show with new episodes as the show, with its child count; jellyscale lists each new episode"
+  paths:
+    - "Items[].Container"
+    - "Items[].IsHD"
+    - "Items[].Name"
+
+- requests:
+    - "the HDR films with their streams"
+  kind: gap
+  task: JS-045
+  reason: "pictures: the image tag and blur hash are hashes of the poster Jellyfin extracted, where jellyscale has its own frame (or none for a library), and a view has no aspect ratio"
+  paths:
+    - "Items[].ImageBlurHashes.Primary"
+    - "Items[].ImageTags.Primary"
+    - "Items[].PrimaryImageAspectRatio"
+
+- requests:
+    - "the HDR films with their streams"
+  kind: gap
+  task: JS-068
+  reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
+  paths:
+    - "Items[].MediaSources[].DefaultAudioStreamIndex"
+    - "Items[].MediaSources[].GenPtsInput"
+    - "Items[].MediaSources[].HasSegments"
+    - "Items[].MediaSources[].IgnoreDts"
+    - "Items[].MediaSources[].IgnoreIndex"
+    - "Items[].MediaSources[].IsInfiniteStream"
+    - "Items[].MediaSources[].ReadAtNativeFramerate"
+    - "Items[].MediaSources[].RequiredHttpHeaders"
+    - "Items[].MediaSources[].RequiresLooping"
+    - "Items[].MediaSources[].UseMostCompatibleTranscodingProfile"
+
+- requests:
+    - "the HDR films with their streams"
+  kind: gap
+  task: JS-068
+  reason: "stream details ffprobe gives that jellyscale does not store or send: pixel format, level, reference frames, time base, aspect ratio, bit rates, frame rates, channel layout and the Localized* words"
+  paths:
+    - "Items[].MediaSources[].MediaStreams[].AspectRatio"
+    - "Items[].MediaSources[].MediaStreams[].AudioSpatialFormat"
+    - "Items[].MediaSources[].MediaStreams[].ChannelLayout"
+    - "Items[].MediaSources[].MediaStreams[].CodecTag"
+    - "Items[].MediaSources[].MediaStreams[].IsAnamorphic"
+    - "Items[].MediaSources[].MediaStreams[].IsHearingImpaired"
+    - "Items[].MediaSources[].MediaStreams[].IsInterlaced"
+    - "Items[].MediaSources[].MediaStreams[].IsOriginal"
+    - "Items[].MediaSources[].MediaStreams[].IsTextSubtitleStream"
+    - "Items[].MediaSources[].MediaStreams[].Language"
+    - "Items[].MediaSources[].MediaStreams[].Level"
+    - "Items[].MediaSources[].MediaStreams[].LocalizedDefault"
+    - "Items[].MediaSources[].MediaStreams[].LocalizedExternal"
+    - "Items[].MediaSources[].MediaStreams[].LocalizedLanguage"
+    - "Items[].MediaSources[].MediaStreams[].LocalizedOriginal"
+    - "Items[].MediaSources[].MediaStreams[].PixelFormat"
+    - "Items[].MediaSources[].MediaStreams[].RealFrameRate"
+    - "Items[].MediaSources[].MediaStreams[].RefFrames"
+    - "Items[].MediaSources[].MediaStreams[].ReferenceFrameRate"
+    - "Items[].MediaSources[].MediaStreams[].TimeBase"
+    - "Items[].MediaStreams[].AspectRatio"
+    - "Items[].MediaStreams[].AudioSpatialFormat"
+    - "Items[].MediaStreams[].ChannelLayout"
+    - "Items[].MediaStreams[].CodecTag"
+    - "Items[].MediaStreams[].IsAnamorphic"
+    - "Items[].MediaStreams[].IsHearingImpaired"
+    - "Items[].MediaStreams[].IsInterlaced"
+    - "Items[].MediaStreams[].IsOriginal"
+    - "Items[].MediaStreams[].IsTextSubtitleStream"
+    - "Items[].MediaStreams[].Language"
+    - "Items[].MediaStreams[].Level"
+    - "Items[].MediaStreams[].LocalizedDefault"
+    - "Items[].MediaStreams[].LocalizedExternal"
+    - "Items[].MediaStreams[].LocalizedLanguage"
+    - "Items[].MediaStreams[].LocalizedOriginal"
+    - "Items[].MediaStreams[].PixelFormat"
+    - "Items[].MediaStreams[].RealFrameRate"
+    - "Items[].MediaStreams[].RefFrames"
+    - "Items[].MediaStreams[].ReferenceFrameRate"
+    - "Items[].MediaStreams[].TimeBase"
+
+- requests:
+    - "the HDR films with their streams"
+  kind: gap
+  task: JS-068
+  reason: "the colour space and primaries ffprobe gives for an HDR film, which jellyscale does not store or send"
+  paths:
+    - "Items[].MediaSources[].MediaStreams[].ColorPrimaries"
+    - "Items[].MediaSources[].MediaStreams[].ColorSpace"
+    - "Items[].MediaStreams[].ColorPrimaries"
+    - "Items[].MediaStreams[].ColorSpace"
+
+- requests:
+    - "the HDR films with their streams"
+  kind: improvement
+  reason: "jellyscale names a film or episode from its file name without the year; Jellyfin, with no metadata provider, keeps \"(2021)\" in the name and in the sort name"
+  paths:
+    - "Items[].MediaSources[].Name"
+
+- requests:
+    - "the HDR films with their streams"
+  kind: improvement
+  reason: "jellyscale shows the path inside its library; Jellyfin shows the mount point inside its container"
+  paths:
+    - "Items[].MediaSources[].Path"
+
+- requests:
+    - "a Dolby Vision 8.1 film's details"
+  kind: non-goal
+  reason: "PRODUCT.md leaves out deleting media, Live TV, media conversion and public sharing, so jellyscale reports them as not allowed"
+  paths:
+    - "CanDelete"
+
+- requests:
+    - "a Dolby Vision 8.1 film's details"
+  kind: gap
+  task: JS-068
+  reason: "the container: Jellyfin reports the demuxer name (\"mov\" for a MediaSource, \"mov,mp4,m4a,3gp,3g2,mj2\" for an item) and jellyscale the file type \"mp4\""
+  paths:
+    - "Container"
+
+- requests:
+    - "a Dolby Vision 8.1 film's details"
+  kind: gap
+  task: JS-068
+  reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
+  paths:
+    - "DisplayPreferencesId"
+    - "EnableMediaSourceDisplay"
+    - "IsHD"
+    - "MediaSources[].DefaultAudioStreamIndex"
+    - "MediaSources[].GenPtsInput"
+    - "MediaSources[].HasSegments"
+    - "MediaSources[].IgnoreDts"
+    - "MediaSources[].IgnoreIndex"
+    - "MediaSources[].IsInfiniteStream"
+    - "MediaSources[].ReadAtNativeFramerate"
+    - "MediaSources[].RequiredHttpHeaders"
+    - "MediaSources[].RequiresLooping"
+    - "MediaSources[].UseMostCompatibleTranscodingProfile"
+    - "ParentId"
+
+- requests:
+    - "a Dolby Vision 8.1 film's details"
+  kind: gap
+  task: JS-045
+  reason: "pictures: the image tag and blur hash are hashes of the poster Jellyfin extracted, where jellyscale has its own frame (or none for a library), and a view has no aspect ratio"
+  paths:
+    - "ImageBlurHashes.Primary"
+    - "ImageTags.Primary"
+
+- requests:
+    - "a Dolby Vision 8.1 film's details"
+  kind: gap
+  task: JS-068
+  reason: "stream details ffprobe gives that jellyscale does not store or send: pixel format, level, reference frames, time base, aspect ratio, bit rates, frame rates, channel layout and the Localized* words"
+  paths:
+    - "MediaSources[].MediaStreams[].AspectRatio"
+    - "MediaSources[].MediaStreams[].AudioSpatialFormat"
+    - "MediaSources[].MediaStreams[].ChannelLayout"
+    - "MediaSources[].MediaStreams[].CodecTag"
+    - "MediaSources[].MediaStreams[].IsAnamorphic"
+    - "MediaSources[].MediaStreams[].IsHearingImpaired"
+    - "MediaSources[].MediaStreams[].IsInterlaced"
+    - "MediaSources[].MediaStreams[].IsOriginal"
+    - "MediaSources[].MediaStreams[].IsTextSubtitleStream"
+    - "MediaSources[].MediaStreams[].Language"
+    - "MediaSources[].MediaStreams[].Level"
+    - "MediaSources[].MediaStreams[].LocalizedDefault"
+    - "MediaSources[].MediaStreams[].LocalizedExternal"
+    - "MediaSources[].MediaStreams[].LocalizedLanguage"
+    - "MediaSources[].MediaStreams[].LocalizedOriginal"
+    - "MediaSources[].MediaStreams[].PixelFormat"
+    - "MediaSources[].MediaStreams[].RealFrameRate"
+    - "MediaSources[].MediaStreams[].RefFrames"
+    - "MediaSources[].MediaStreams[].ReferenceFrameRate"
+    - "MediaSources[].MediaStreams[].TimeBase"
+    - "MediaStreams[].AspectRatio"
+    - "MediaStreams[].AudioSpatialFormat"
+    - "MediaStreams[].ChannelLayout"
+    - "MediaStreams[].CodecTag"
+    - "MediaStreams[].IsAnamorphic"
+    - "MediaStreams[].IsHearingImpaired"
+    - "MediaStreams[].IsInterlaced"
+    - "MediaStreams[].IsOriginal"
+    - "MediaStreams[].IsTextSubtitleStream"
+    - "MediaStreams[].Language"
+    - "MediaStreams[].Level"
+    - "MediaStreams[].LocalizedDefault"
+    - "MediaStreams[].LocalizedExternal"
+    - "MediaStreams[].LocalizedLanguage"
+    - "MediaStreams[].LocalizedOriginal"
+    - "MediaStreams[].PixelFormat"
+    - "MediaStreams[].RealFrameRate"
+    - "MediaStreams[].RefFrames"
+    - "MediaStreams[].ReferenceFrameRate"
+    - "MediaStreams[].TimeBase"
+
+- requests:
+    - "a Dolby Vision 8.1 film's details"
+  kind: gap
+  task: JS-068
+  reason: "the colour space and primaries ffprobe gives for an HDR film, which jellyscale does not store or send"
+  paths:
+    - "MediaSources[].MediaStreams[].ColorPrimaries"
+    - "MediaSources[].MediaStreams[].ColorSpace"
+    - "MediaStreams[].ColorPrimaries"
+    - "MediaStreams[].ColorSpace"
+
+- requests:
+    - "a Dolby Vision 8.1 film's details"
+  kind: improvement
+  reason: "jellyscale names a film or episode from its file name without the year; Jellyfin, with no metadata provider, keeps \"(2021)\" in the name and in the sort name"
+  paths:
+    - "MediaSources[].Name"
+    - "Name"
+    - "SortName"
+
+- requests:
+    - "a Dolby Vision 8.1 film's details"
+  kind: improvement
+  reason: "jellyscale shows the path inside its library; Jellyfin shows the mount point inside its container"
+  paths:
+    - "MediaSources[].Path"
+    - "Path"
+
+- requests:
+    - "a Dolby Vision 8.1 film's details"
+  kind: gap
+  task: JS-046
+  reason: "genres, studios, people, tags and the other lists Jellyfin sends (empty here, filled by providers elsewhere) that jellyscale leaves out"
+  paths:
+    - "ProductionLocations"
+    - "SpecialFeatureCount"
+
+- requests:
+    - "playback info for a Dolby Vision 8.1 film, for a profile with HDR10 and no Dolby Vision"
+    - "playback info for a Dolby Vision 8.4 film, for a profile with HDR10 and HLG and no Dolby Vision"
+    - "playback info for a Dolby Vision 5 film, for a profile with HDR10 and no Dolby Vision"
+    - "playback info for a Dolby Vision 7 film, for a profile with Dolby Vision but no enhancement layer"
+  kind: gap
+  task: JS-068
+  reason: "the container: Jellyfin reports the demuxer name (\"mov\" for a MediaSource, \"mov,mp4,m4a,3gp,3g2,mj2\" for an item) and jellyscale the file type \"mp4\""
+  paths:
+    - "MediaSources[].Container"
+
+- requests:
+    - "playback info for a Dolby Vision 8.1 film, for a profile with HDR10 and no Dolby Vision"
+    - "playback info for a Dolby Vision 8.1 film, for a profile with Dolby Vision"
+    - "playback info for a Dolby Vision 8.4 film, for a profile with HDR10 and HLG and no Dolby Vision"
+    - "playback info for a Dolby Vision 5 film, for a profile with HDR10 and no Dolby Vision"
+    - "playback info for a Dolby Vision 7 film, for a profile with Dolby Vision but no enhancement layer"
+    - "playback info for an HDR10+ film, for a profile with HDR10 alone"
+  kind: gap
+  task: JS-041
+  reason: "jellyscale reports DefaultSubtitleStreamIndex -1 where Jellyfin leaves it out until the viewer's subtitle mode picks a track"
+  paths:
+    - "MediaSources[].DefaultSubtitleStreamIndex"
+
+- requests:
+    - "playback info for a Dolby Vision 8.1 film, for a profile with HDR10 and no Dolby Vision"
+    - "playback info for a Dolby Vision 8.1 film, for a profile with Dolby Vision"
+    - "playback info for a Dolby Vision 8.4 film, for a profile with HDR10 and HLG and no Dolby Vision"
+    - "playback info for a Dolby Vision 5 film, for a profile with HDR10 and no Dolby Vision"
+    - "playback info for a Dolby Vision 7 film, for a profile with Dolby Vision but no enhancement layer"
+    - "playback info for an HDR10+ film, for a profile with HDR10 alone"
+  kind: gap
+  task: JS-068
+  reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
+  paths:
+    - "MediaSources[].GenPtsInput"
+    - "MediaSources[].IgnoreDts"
+    - "MediaSources[].IgnoreIndex"
+    - "MediaSources[].ReadAtNativeFramerate"
+    - "MediaSources[].RequiresLooping"
+    - "MediaSources[].UseMostCompatibleTranscodingProfile"
+
+- requests:
+    - "playback info for a Dolby Vision 8.1 film, for a profile with HDR10 and no Dolby Vision"
+    - "playback info for a Dolby Vision 8.1 film, for a profile with Dolby Vision"
+    - "playback info for a Dolby Vision 8.4 film, for a profile with HDR10 and HLG and no Dolby Vision"
+    - "playback info for a Dolby Vision 5 film, for a profile with HDR10 and no Dolby Vision"
+    - "playback info for a Dolby Vision 7 film, for a profile with Dolby Vision but no enhancement layer"
+    - "playback info for an HDR10+ film, for a profile with HDR10 alone"
+  kind: gap
+  task: JS-068
+  reason: "stream details ffprobe gives that jellyscale does not store or send: pixel format, level, reference frames, time base, aspect ratio, bit rates, frame rates, channel layout and the Localized* words"
+  paths:
+    - "MediaSources[].MediaStreams[].AspectRatio"
+    - "MediaSources[].MediaStreams[].AudioSpatialFormat"
+    - "MediaSources[].MediaStreams[].ChannelLayout"
+    - "MediaSources[].MediaStreams[].CodecTag"
+    - "MediaSources[].MediaStreams[].IsAnamorphic"
+    - "MediaSources[].MediaStreams[].IsHearingImpaired"
+    - "MediaSources[].MediaStreams[].IsInterlaced"
+    - "MediaSources[].MediaStreams[].IsOriginal"
+    - "MediaSources[].MediaStreams[].IsTextSubtitleStream"
+    - "MediaSources[].MediaStreams[].Language"
+    - "MediaSources[].MediaStreams[].Level"
+    - "MediaSources[].MediaStreams[].LocalizedDefault"
+    - "MediaSources[].MediaStreams[].LocalizedExternal"
+    - "MediaSources[].MediaStreams[].LocalizedLanguage"
+    - "MediaSources[].MediaStreams[].LocalizedOriginal"
+    - "MediaSources[].MediaStreams[].PixelFormat"
+    - "MediaSources[].MediaStreams[].RealFrameRate"
+    - "MediaSources[].MediaStreams[].RefFrames"
+    - "MediaSources[].MediaStreams[].ReferenceFrameRate"
+    - "MediaSources[].MediaStreams[].TimeBase"
+
+- requests:
+    - "playback info for a Dolby Vision 8.1 film, for a profile with HDR10 and no Dolby Vision"
+    - "playback info for a Dolby Vision 8.1 film, for a profile with Dolby Vision"
+    - "playback info for a Dolby Vision 8.4 film, for a profile with HDR10 and HLG and no Dolby Vision"
+    - "playback info for a Dolby Vision 5 film, for a profile with HDR10 and no Dolby Vision"
+    - "playback info for a Dolby Vision 7 film, for a profile with Dolby Vision but no enhancement layer"
+    - "playback info for an HDR10+ film, for a profile with HDR10 alone"
+  kind: gap
+  task: JS-068
+  reason: "the colour space and primaries ffprobe gives for an HDR film, which jellyscale does not store or send"
+  paths:
+    - "MediaSources[].MediaStreams[].ColorPrimaries"
+    - "MediaSources[].MediaStreams[].ColorSpace"
+
+- requests:
+    - "playback info for a Dolby Vision 8.1 film, for a profile with HDR10 and no Dolby Vision"
+    - "playback info for a Dolby Vision 8.1 film, for a profile with Dolby Vision"
+    - "playback info for a Dolby Vision 8.4 film, for a profile with HDR10 and HLG and no Dolby Vision"
+    - "playback info for a Dolby Vision 5 film, for a profile with HDR10 and no Dolby Vision"
+    - "playback info for a Dolby Vision 7 film, for a profile with Dolby Vision but no enhancement layer"
+    - "playback info for an HDR10+ film, for a profile with HDR10 alone"
+  kind: improvement
+  reason: "jellyscale names a film or episode from its file name without the year; Jellyfin, with no metadata provider, keeps \"(2021)\" in the name and in the sort name"
+  paths:
+    - "MediaSources[].Name"
+
+- requests:
+    - "playback info for a Dolby Vision 8.1 film, for a profile with HDR10 and no Dolby Vision"
+    - "playback info for a Dolby Vision 8.1 film, for a profile with Dolby Vision"
+    - "playback info for a Dolby Vision 8.4 film, for a profile with HDR10 and HLG and no Dolby Vision"
+    - "playback info for a Dolby Vision 5 film, for a profile with HDR10 and no Dolby Vision"
+    - "playback info for a Dolby Vision 7 film, for a profile with Dolby Vision but no enhancement layer"
+    - "playback info for an HDR10+ film, for a profile with HDR10 alone"
+  kind: improvement
+  reason: "jellyscale shows the path inside its library; Jellyfin shows the mount point inside its container"
+  paths:
+    - "MediaSources[].Path"
+
+- requests:
+    - "playback info for a Dolby Vision 8.1 film, for a profile with HDR10 and no Dolby Vision"
+    - "playback info for a Dolby Vision 8.4 film, for a profile with HDR10 and HLG and no Dolby Vision"
+    - "playback info for a Dolby Vision 5 film, for a profile with HDR10 and no Dolby Vision"
+    - "playback info for a Dolby Vision 7 film, for a profile with Dolby Vision but no enhancement layer"
+  kind: gap
+  task: JS-068
+  reason: "the TranscodingUrl and the master playlist's stream line and playlist URI carry other query parameters and other BANDWIDTH and CODECS values"
+  paths:
+    - "MediaSources[].TranscodingUrl"
+
+- requests:
+    - "a Dolby Vision 8.1 film's details"
+  kind: gap
+  task: JS-068
+  reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
+  paths:
+    - "MediaSources[].TranscodingSubProtocol"
+
+- requests:
+    - "the HDR films with their streams"
+  kind: gap
+  task: JS-068
+  reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
+  paths:
+    - "Items[].MediaSources[].TranscodingSubProtocol"

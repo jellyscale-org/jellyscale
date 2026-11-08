@@ -38,10 +38,10 @@ result_name=differential
 result_log=$logs
 
 bash "$repo/test/fixtures/cached.sh" "$work" || exit 1
-# Two libraries, as on a small server.
+# Three libraries: the films and shows of a small server, and the HDR films (Dolby Vision, HDR10+).
 media=$work/diffmedia
 rm -rf "$media" && mkdir -p "$media" || exit 1
-cp -al "$work/media/movies" "$work/media/shows" "$media/" || exit 1
+cp -al "$work/media/movies" "$work/media/shows" "$work/media/hdr" "$media/" || exit 1
 
 docker run -d --rm --name "$pg" -e POSTGRES_PASSWORD=d -p 127.0.0.1::5432 postgres:18-alpine >/dev/null || exit 1
 started=1
@@ -55,7 +55,8 @@ cat >"$work/config.json" <<E2
 {"name": "differential", "adminUser": "admin", "scanInterval": "1h",
  "transcodeStore": "file://$work/segments", "transcodeScratch": "$work/scratch", "libraries": [
   {"name": "Movies", "kind": "movies", "media": "file://$media/movies", "assets": "file://$work/assets/movies"},
-  {"name": "Shows", "kind": "tvshows", "media": "file://$media/shows", "assets": "file://$work/assets/shows"}
+  {"name": "Shows", "kind": "tvshows", "media": "file://$media/shows", "assets": "file://$work/assets/shows"},
+  {"name": "HDR", "kind": "movies", "media": "file://$media/hdr", "assets": "file://$work/assets/hdr"}
 ]}
 E2
 (cd "$repo" && go build -o "$work/jellyscale" ./cmd/jellyscale && go build -o "$work/differential" ./test/differential/run) || exit 1

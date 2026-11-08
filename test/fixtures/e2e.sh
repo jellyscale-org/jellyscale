@@ -201,3 +201,33 @@ if [[ ! -f $big ]]; then
     -vf "noise=alls=20:allf=t" -c:v libx264 -preset veryfast -b:v 8M -maxrate 8M -bufsize 16M -g 48 -c:a ac3 "$big" || exit 1
 fi
 
+
+# Dolby Vision and HDR10+ labels, under media/hdr: the films the labels are read
+# from (the HDR library of the differential tier, and the checks of JS-023).
+# test/fixtures/dovi makes them (testenv.HDRFilm): an HDR10, HLG or SDR base
+# layer, or AV1, with the Dolby Vision configuration box a server reads the
+# profile and the base layer's compatibility id from, and the HDR10+ SEI x265
+# writes. There are no RPUs, because no tool here makes them. Each is 20 s.
+dovi="$work/media/sources/dovi"
+(cd "$repo/test/fixtures" && go build -o "$dovi" ./dovi) || exit 1
+hdr_film() { # name base [hdr10plus] [dv=profile.bl_compatibility_id[.el]]
+  local name=$1 file="$work/media/hdr/$1/$1.mp4"
+  [[ -f $file ]] && return
+  mkdir -p "$(dirname "$file")"
+  "$dovi" "$file" 20 "${@:2}" || { echo "could not make $file" >&2; exit 1; }
+}
+hdr_film "Plain Sdr Film (1990)" sdr
+hdr_film "Plain Pq Film (1991)" pq
+hdr_film "Plain Hlg Film (1992)" hlg
+hdr_film "Plain Plus Film (1993)" pq hdr10plus
+hdr_film "Dolby Five Film (1994)" pq dv=5.0
+hdr_film "Dolby Seven Film (1995)" pq dv=7.6.el
+hdr_film "Dolby Eight One Film (1996)" pq dv=8.1
+hdr_film "Dolby Eight Two Film (1997)" sdr dv=8.2
+hdr_film "Dolby Eight Four Film (1998)" hlg dv=8.4
+hdr_film "Dolby Eight Zero Film (1999)" pq dv=8.0
+hdr_film "Dolby Eight Three Film (2000)" pq dv=8.3
+hdr_film "Dolby Ten Film (2001)" av1 dv=10.1
+hdr_film "Dolby Eight One Plus Film (2002)" pq hdr10plus dv=8.1
+hdr_film "Dolby Seven Plus Film (2003)" pq hdr10plus dv=7.6.el
+hdr_film "Dolby Five Plus Film (2004)" pq hdr10plus dv=5.0

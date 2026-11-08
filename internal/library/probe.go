@@ -64,11 +64,24 @@ func (p Probe) wantsKeyframes() bool {
 	return false
 }
 
+// sideData is what a stream says in its configuration; a Dolby Vision file's
+// is the "DOVI configuration record", whose fields Jellyfin lists on the stream.
 type sideData struct {
-	Type string `json:"side_data_type"`
-	// BlCompatibility is a Dolby Vision file's dv_bl_signal_compatibility_id:
-	// 0 for a base layer that is no HDR10, HLG or SDR picture (profile 5).
+	Type         string `json:"side_data_type"`
+	VersionMajor int    `json:"dv_version_major"`
+	VersionMinor int    `json:"dv_version_minor"`
+	Profile      int    `json:"dv_profile"`
+	Level        int    `json:"dv_level"`
+	RPUPresent   int    `json:"rpu_present_flag"`
+	ELPresent    int    `json:"el_present_flag"`
+	BLPresent    int    `json:"bl_present_flag"`
+	// BlCompatibility is the dv_bl_signal_compatibility_id: 0 for a base layer
+	// that is no HDR10, HLG or SDR picture (profile 5), 1 HDR10, 2 SDR, 4 HLG.
 	BlCompatibility int `json:"dv_bl_signal_compatibility_id"`
+}
+
+func (d sideData) isDolbyVision() bool {
+	return strings.Contains(d.Type, "DOVI") || strings.Contains(d.Type, "Dolby Vision")
 }
 
 type ffprobeOutput struct {
@@ -178,12 +191,15 @@ func ProbeInput(ctx context.Context, input string) (Probe, error) {
 			// number, 52 for H.264 level 5.2, as profiles write it.
 			entry["Level"] = max(stream.Level, 0)
 			entry["IsInterlaced"] = slices.Contains([]string{"tt", "bb", "tb", "bt"}, stream.FieldOrder)
-			entry["VideoRangeType"] = rangeType(stream.Transfer, stream.SideData)
 			// Always set, empty or not, so a source scanned before it was recorded is found.
 			entry["ColorTransfer"] = stream.Transfer
-			if bl, ok := dolbyVisionBlCompatibility(stream.SideData); ok {
-				entry["DolbyVisionBlCompatibility"] = bl
+			// HDR10+ is in the frames, not the stream, so one is read, for
+			// the films that can have it.
+			side := stream.SideData
+			if stream.CodecName == "hevc" && stream.Transfer == playback.PQ && hasHDR10Plus(ctx, input) {
+				side = append(side, sideData{Type: hdr10PlusSideData})
 			}
+			addRangeLabels(entry, stream.Transfer, side)
 			entry["BitDepth"] = bitDepth(stream.PixFmt)
 			// The video can end before the audio does, and an HLS playlist
 			// has to stop where the video does. Matroska keeps the duration
@@ -200,7 +216,7 @@ func ProbeInput(ctx context.Context, input string) (Probe, error) {
 			if ticks > 0 {
 				entry["DurationTicks"] = ticks
 			}
-			entry["DisplayTitle"] = fmt.Sprintf("%dp %s", stream.Height, strings.ToUpper(stream.CodecName))
+			entry["DisplayTitle"] = fmt.Sprintf("%dp %s %s", stream.Height, strings.ToUpper(stream.CodecName), cmp.Or(entry["VideoDoViTitle"], entry["VideoRange"]))
 			if fps := frameRate(stream.AvgFrame); fps > 0 {
 				entry["AverageFrameRate"] = fps
 				// jellyfin-web divides a transcode's frame rate by this to show its speed.
@@ -210,8 +226,10 @@ func ProbeInput(ctx context.Context, input string) (Probe, error) {
 				probe.Width, probe.Height = stream.Width, stream.Height
 			}
 		case "Audio":
+			// Jellyfin gives the audio stream the range keys too.
+			entry["VideoRange"], entry["VideoRangeType"] = "Unknown", "Unknown"
 			entry["Channels"] = stream.Channels
-			entry["DisplayTitle"] = displayAudio(stream.Tags["language"], stream.CodecName, stream.Channels)
+			entry["DisplayTitle"] = displayAudio(stream.Tags["language"], stream.CodecName, stream.Channels, stream.Disposition.Default == 1)
 			if rate, err := strconv.Atoi(stream.SampleRate); err == nil {
 				entry["SampleRate"] = rate
 			}
@@ -277,32 +295,119 @@ func bitDepth(pixFmt string) int {
 	return 8
 }
 
-// rangeType is Jellyfin's VideoRangeType. HDR10+ looks like HDR10 here, and
-// either is simply not SDR to the profiles that matter.
-func rangeType(transfer string, sideData []sideData) string {
-	for _, d := range sideData {
-		if strings.Contains(d.Type, "DOVI") || strings.Contains(d.Type, "Dolby Vision") {
-			return "DOVI"
+// hdr10PlusSideData stands in the stream's side data for the HDR10+ metadata
+// that hasHDR10Plus found in its frames.
+const hdr10PlusSideData = "HDR10+"
+
+// addRangeLabels sets the keys Jellyfin 12.4 puts on a video stream to say what
+// kind of HDR it is: VideoRange and VideoRangeType, the Dolby Vision fields of a
+// file that has them, and the HDR10+ flag.
+func addRangeLabels(entry map[string]any, transfer string, side []sideData) {
+	for _, d := range side {
+		switch {
+		case d.isDolbyVision():
+			entry["DvVersionMajor"], entry["DvVersionMinor"] = d.VersionMajor, d.VersionMinor
+			entry["DvProfile"], entry["DvLevel"] = d.Profile, d.Level
+			entry["RpuPresentFlag"], entry["ElPresentFlag"], entry["BlPresentFlag"] = d.RPUPresent, d.ELPresent, d.BLPresent
+			entry["DvBlSignalCompatibilityId"], _ = dolbyVisionBlCompatibility(side)
+			entry["VideoDoViTitle"] = dolbyVisionTitle(d)
+		case d.Type == hdr10PlusSideData:
+			entry["Hdr10PlusPresentFlag"] = true
 		}
 	}
+	kind := rangeType(transfer, side)
+	entry["VideoRangeType"] = kind
+	entry["VideoRange"] = "HDR"
+	if kind == "SDR" || kind == "DOVIWithSDR" {
+		entry["VideoRange"] = "SDR"
+	}
+}
+
+// rangeType is Jellyfin's VideoRangeType.
+func rangeType(transfer string, side []sideData) string {
+	hdr10Plus := slices.ContainsFunc(side, func(d sideData) bool { return d.Type == hdr10PlusSideData })
+	fallback := transferRangeType(transfer, hdr10Plus)
+	for _, d := range side {
+		if d.isDolbyVision() {
+			return dolbyVisionRangeType(d, fallback, hdr10Plus)
+		}
+	}
+	return fallback
+}
+
+// transferRangeType is the label of a file with no Dolby Vision, and of one
+// whose Dolby Vision says nothing about its base layer (compatibility id 3).
+func transferRangeType(transfer string, hdr10Plus bool) string {
 	switch transfer {
-	case "smpte2084":
+	case playback.PQ:
+		if hdr10Plus {
+			return "HDR10Plus"
+		}
 		return "HDR10"
-	case "arib-std-b67":
+	case playback.HLG:
 		return "HLG"
 	}
 	return "SDR"
 }
 
-// dolbyVisionBlCompatibility is the base layer's signal compatibility of a
-// Dolby Vision stream, and false for any other.
-func dolbyVisionBlCompatibility(sideData []sideData) (int, bool) {
-	for _, d := range sideData {
-		if strings.Contains(d.Type, "DOVI") || strings.Contains(d.Type, "Dolby Vision") {
-			return d.BlCompatibility, true
+// dolbyVisionRangeType is Jellyfin's label for a Dolby Vision file: profile 5
+// is DOVI, profile 7 has an enhancement layer, and profiles 8 and 10 are named
+// by the picture their base layer shows (the compatibility id). fallback is
+// the label the transfer function gives.
+func dolbyVisionRangeType(dv sideData, fallback string, hdr10Plus bool) string {
+	withEL, withHDR10 := "DOVIWithEL", "DOVIWithHDR10"
+	if hdr10Plus {
+		withEL, withHDR10 = "DOVIWithELHDR10Plus", "DOVIWithHDR10Plus"
+	}
+	switch dv.Profile {
+	case 5:
+		return "DOVI"
+	case 7:
+		return withEL
+	case 8, 10:
+		switch dv.BlCompatibility {
+		case 1:
+			return withHDR10
+		case 2:
+			return "DOVIWithSDR"
+		case 3:
+			return fallback
+		case 4:
+			return "DOVIWithHLG"
 		}
 	}
-	return 0, false
+	return "DOVIInvalid"
+}
+
+// dolbyVisionTitle is "Dolby Vision Profile 8.1 (HDR10)": the profile, the
+// base layer's compatibility id when there is one, and the picture it shows.
+func dolbyVisionTitle(dv sideData) string {
+	title := fmt.Sprintf("Dolby Vision Profile %d", dv.Profile)
+	if dv.BlCompatibility > 0 {
+		title += fmt.Sprintf(".%d", dv.BlCompatibility)
+	}
+	switch dv.BlCompatibility {
+	case 1, 6:
+		title += " (HDR10)"
+	case 2:
+		title += " (SDR)"
+	case 4:
+		title += " (HLG)"
+	}
+	return title
+}
+
+// hasHDR10Plus reads the first frame of the video for HDR10+ metadata. A failed
+// read counts as none: the label is then HDR10, as it was before.
+func hasHDR10Plus(ctx context.Context, input string) bool {
+	var out bytes.Buffer
+	cmd := exec.CommandContext(ctx, "ffprobe", "-v", "error", "-select_streams", "v:0", "-read_intervals", "%+#1",
+		"-show_frames", "-show_entries", "frame=side_data_list", "-of", "json", "--", input)
+	cmd.Stdout = &out
+	if cmd.Run() != nil {
+		return false
+	}
+	return strings.Contains(out.String(), "HDR10+")
 }
 
 // streamTicks reads a stream's duration from ffprobe's "12.5" or a Matroska
@@ -351,7 +456,9 @@ func frameRate(value string) float64 {
 	return n / d
 }
 
-func displayAudio(language, codec string, channels int) string {
+// displayAudio is the label of an audio track as Jellyfin writes it:
+// "English - AAC - 5.1 - Default".
+func displayAudio(language, codec string, channels int, isDefault bool) string {
 	layout := fmt.Sprintf("%d ch", channels)
 	switch channels {
 	case 1:
@@ -363,7 +470,19 @@ func displayAudio(language, codec string, channels int) string {
 	case 8:
 		layout = "7.1"
 	}
-	return strings.TrimSpace(fmt.Sprintf("%s %s %s", language, strings.ToUpper(codec), layout))
+	var parts []string
+	if language != "" && language != "und" {
+		name := language
+		if _, label, ok := parseLanguage(language); ok {
+			name = label
+		}
+		parts = append(parts, name)
+	}
+	parts = append(parts, strings.ToUpper(codec), layout)
+	if isDefault {
+		parts = append(parts, "Default")
+	}
+	return strings.Join(parts, " - ")
 }
 
 // displaySubtitle is the menu label, which clients show as it is. Like
@@ -423,4 +542,15 @@ func ReadVideoEnd(ctx context.Context, input string, lastKeyframe int64) (int64,
 		duration = last - before
 	}
 	return int64((last + duration) * ticksPerSecond), nil
+}
+
+// dolbyVisionBlCompatibility is the base layer's signal compatibility of a
+// Dolby Vision stream, and false for any other.
+func dolbyVisionBlCompatibility(side []sideData) (int, bool) {
+	for _, d := range side {
+		if d.isDolbyVision() {
+			return d.BlCompatibility, true
+		}
+	}
+	return 0, false
 }

@@ -126,18 +126,19 @@ type Stream struct {
 	Profile      string
 	Level        int
 	IsInterlaced bool
-	// VideoRangeType is SDR, HDR10, HLG or DOVI. It is empty on a source
-	// scanned before the scanner recorded it; the level, field order and range
-	// then pass their conditions, so direct play continues until a rescan.
+	// VideoRangeType is Jellyfin's: SDR, HDR10, HDR10Plus, HLG, DOVI (profile 5)
+	// or one of the DOVIWith... types that name the base layer of the other
+	// Dolby Vision profiles. It is empty on a source scanned before the scanner
+	// recorded it; the level, field order and range then pass their conditions,
+	// so direct play continues until a rescan.
 	VideoRangeType string
 	// ColorTransfer is ffprobe's name for the transfer function: smpte2084 for
 	// PQ, arib-std-b67 for HLG. It is empty when the file doesn't say, and on a
 	// source scanned before it was recorded, which is never tone mapped.
 	ColorTransfer string
-	// DolbyVisionBlCompatibility is the base layer's signal compatibility of a
-	// Dolby Vision stream: 0 means there is no HDR10 or HLG picture to show
-	// (profile 5).
-	DolbyVisionBlCompatibility int
+	// DvProfile, DvLevel and DvBlSignalCompatibilityId are the Dolby Vision
+	// configuration, which name the stream in the master playlist.
+	DvProfile, DvLevel, DvBlSignalCompatibilityId int
 	// BitDepth is 8, 10 or 12, or 0 on a source scanned before it was recorded.
 	BitDepth      int
 	Width, Height int
@@ -220,28 +221,79 @@ func (s Source) VideoCodec() string {
 }
 
 // CanCopy reports whether Decide may offer the video as it is: a copyable
-// stream (canServeCopy) whose picture is SDR. HDR is not offered because the
-// master playlist labels a copy SDR; it is re-encoded and tone mapped
-// (Source.ToneMap), and a source scanned before the range was recorded counts
-// as HDR until a rescan fills it in. That includes H.264, which 10-bit PQ and
-// HLG films can be.
+// stream (canServeCopy) whose picture is SDR, or a Dolby Vision file whose base
+// layer is a picture of its own. Other HDR is not offered; it is re-encoded and
+// tone mapped (Source.ToneMap), and a source scanned before the range was
+// recorded counts as HDR until a rescan fills it in. That includes H.264, which
+// 10-bit PQ and HLG films can be.
 func (s Source) CanCopy() bool {
 	video, _ := s.video()
-	return s.canServeCopy() && video.VideoRangeType == "SDR"
+	_, dolbyVision := video.baseLayer()
+	return s.canServeCopy() && (video.VideoRangeType == "SDR" || dolbyVision)
 }
 
 // canServeCopy is what a stream replica honours when a master URL asks for a
 // copy: a codec that is copied, keyframes that make a playlist, and for HEVC
-// and AV1 an SDR picture whose master playlist can name its profile (codecs).
-// H.264 passes in any range, so an older api replica's copy of an HDR film
-// keeps playing during an upgrade; the new api never offers one.
+// and AV1 an SDR picture or a Dolby Vision base layer, whose master playlist can
+// name its profile (codecs). H.264 passes in any range, so an older api
+// replica's copy of an HDR film keeps playing during an upgrade; the new api
+// never offers one.
 func (s Source) canServeCopy() bool {
 	video, _ := s.video()
 	_, cut := s.copyLayout()
 	if !s.Copyable() || !cut || s.codecs() == "" {
 		return false
 	}
-	return video.Codec == "h264" || video.VideoRangeType == "SDR"
+	_, dolbyVision := video.baseLayer()
+	return video.Codec == "h264" || video.VideoRangeType == "SDR" || dolbyVision
+}
+
+// baseLayer is the range type of the picture a copy of a Dolby Vision file
+// sends: its base layer, which a client without Dolby Vision plays. It is false
+// for any other file, and for profile 5, whose base layer is no picture.
+func (v Stream) baseLayer() (string, bool) {
+	switch v.VideoRangeType {
+	case "DOVIWithHDR10", "DOVIWithEL":
+		return "HDR10", true
+	case "DOVIWithHDR10Plus", "DOVIWithELHDR10Plus":
+		return "HDR10Plus", true
+	case "DOVIWithHLG":
+		return "HLG", true
+	case "DOVIWithSDR":
+		return "SDR", true
+	case "DOVIInvalid":
+		switch v.ColorTransfer {
+		case PQ:
+			return "HDR10", true
+		case HLG:
+			return "HLG", true
+		}
+		return "SDR", true
+	}
+	return "", false
+}
+
+// copiedRange is what the master playlist says of a copy: its VIDEO-RANGE and,
+// for Dolby Vision, the SUPPLEMENTAL-CODECS that name the stream a client with
+// Dolby Vision may play it as, as Jellyfin writes them.
+func (s Source) copiedRange() (videoRange, supplemental string) {
+	video, _ := s.video()
+	base, dolbyVision := video.baseLayer()
+	if !dolbyVision {
+		return "SDR", ""
+	}
+	videoRange = map[string]string{"HDR10": "PQ", "HDR10Plus": "PQ", "HLG": "HLG"}[base]
+	if videoRange == "" {
+		videoRange = "SDR"
+	}
+	brand := map[int]string{1: "db1p", 4: "db4h"}[video.DvBlSignalCompatibilityId]
+	switch {
+	case video.VideoRangeType == "DOVIWithELHDR10Plus":
+		supplemental = s.codecs() + "/cdm4"
+	case brand != "" && strings.HasPrefix(video.VideoRangeType, "DOVIWith") && video.DvProfile != 7:
+		supplemental = fmt.Sprintf("%s.%02d.%02d/%s", map[string]string{"hevc": "dvh1", "av1": "dav1"}[video.Codec], video.DvProfile, video.DvLevel, brand)
+	}
+	return videoRange, supplemental
 }
 
 // Transfer functions ToneMap reports, which are also what the filter is given.
@@ -257,7 +309,7 @@ const (
 // green and purple. A profile 8.4 file has an HLG base and is mapped as HLG.
 func (s Source) ToneMap() string {
 	video, _ := s.video()
-	if video.VideoRangeType == "DOVI" && video.DolbyVisionBlCompatibility == 0 {
+	if video.VideoRangeType == "DOVI" {
 		return ""
 	}
 	if video.ColorTransfer == PQ || video.ColorTransfer == HLG {
@@ -629,8 +681,19 @@ func Decide(request Request, source Source, canTranscode bool) Decision {
 	}
 	// The video is copied when the client takes it as it is, whatever its
 	// container, and only the audio or the container forced the stream.
+	// A Dolby Vision file is copied without its Dolby Vision, so the profile's
+	// conditions see HDR10 whatever its base layer: Jellyfin copies an 8.4 file
+	// (HLG base) for a list of SDR and HDR10 and an 8.2 file (SDR base) for no
+	// list without HDR10 (compat/captures/dolby-vision-12.4.md).
+	sent := video
+	if _, ok := video.baseLayer(); ok {
+		sent.VideoRangeType = "HDR10"
+		if strings.HasSuffix(video.VideoRangeType, "HDR10Plus") {
+			sent.VideoRangeType = "HDR10Plus"
+		}
+	}
 	decision.Copy = fits && decision.Subtitle == nil && source.CanCopy() && profile.hlsMP4(video.Codec) &&
-		len(profile.limits("Video", video.Codec, video, audioStream)) == 0
+		len(profile.limits("Video", video.Codec, sent, audioStream)) == 0
 	// The audio is copied by the same test the spec makes, from the same values
 	// the URL will carry, so that the cap is split as the spec will see it.
 	hls, _ := profile.hlsProfile("h264")
@@ -740,8 +803,7 @@ func (p DeviceProfile) limits(kind, codec string, video, audio Stream) []string 
 			continue
 		}
 		for _, c := range profile.Conditions {
-			var value string
-			var reason string
+			var value, reason, orElse string
 			switch strings.ToLower(c.Property) {
 			case "videolevel":
 				value, reason = positive(video.Level), "VideoLevelNotSupported"
@@ -749,6 +811,9 @@ func (p DeviceProfile) limits(kind, codec string, video, audio Stream) []string 
 				value, reason = strconv.FormatBool(video.IsInterlaced), "InterlacedVideoNotSupported"
 			case "videorangetype":
 				value, reason = strings.ToLower(video.VideoRangeType), "VideoRangeTypeNotSupported"
+				if value == "hdr10plus" {
+					orElse = "hdr10" // HDR10+ is HDR10 with more, so a client that plays one plays it.
+				}
 			case "videoprofile":
 				value, reason = strings.ToLower(video.Profile), "VideoProfileNotSupported"
 			case "width":
@@ -763,7 +828,7 @@ func (p DeviceProfile) limits(kind, codec string, video, audio Stream) []string 
 			if value == "" && !c.IsRequired {
 				continue
 			}
-			if !c.holds(value) && !slices.Contains(reasons, reason) {
+			if !c.holds(value) && !(orElse != "" && c.holds(orElse)) && !slices.Contains(reasons, reason) {
 				reasons = append(reasons, reason)
 			}
 		}

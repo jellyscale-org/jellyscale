@@ -136,8 +136,13 @@ cat >"$shim/ffmpeg" <<'E1'
 [ -n "$FAKE_FFMPEG_HANG" ] && [ "$(wc -l <"$FAKE_FFMPEG_LOG")" -ge "$FAKE_FFMPEG_HANG" ] && exec sleep 5
 echo "$*" >>"$FAKE_FFMPEG_LOG"
 for last; do :; done
-# The bytes the Cues recipe cuts at, near the end.
-printf 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\034S\273kzz' >"$last"
+case $last in
+  # An MP4 is the smallest one that has an HEVC track (an empty mdat, an hvcC box with no content),
+  # which test/fixtures/dovi writes a Dolby Vision box into.
+  *.mp4) echo AAAAFGZ0eXBpc29tAAACAGlzb20AAAAIbWRhdAAAAK1tb292AAAApXRyYWsAAACdbWRpYQAAAJVtaW5mAAAAjXN0YmwAAACFc3RzZAAAAAAAAAABAAAAdWh2YzEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfaHZjQwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA | base64 -d >"$last" ;;
+  # The bytes the Cues recipe cuts at, near the end.
+  *) printf 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\034S\273kzz' >"$last" ;;
+esac
 E1
 echo font >"$tmp/stand-in.ttf"
 printf '#!/bin/sh\necho %s\n' "$tmp/stand-in.ttf" >"$shim/fc-match"

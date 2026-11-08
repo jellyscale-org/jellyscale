@@ -79,3 +79,27 @@ func TestChaptersAreNamedAndOrdered(t *testing.T) {
 		t.Errorf("no chapters: %#v", none)
 	}
 }
+
+// The item page and PlaybackInfo list the video stream with Jellyfin's range
+// labels and Dolby Vision fields, which jellyfin-web shows and decides by.
+func TestListedVideoStreamKeepsTheRangeLabels(t *testing.T) {
+	video := map[string]any{
+		"Index": 0, "Type": "Video", "Codec": "hevc", "Level": 63, "IsInterlaced": false, "DurationTicks": int64(200_000_000),
+		"VideoRange": "HDR", "VideoRangeType": "DOVIWithHDR10Plus", "VideoDoViTitle": "Dolby Vision Profile 8.1 (HDR10)",
+		"DvProfile": 8, "DvLevel": 10, "DvBlSignalCompatibilityId": 1, "Hdr10PlusPresentFlag": true,
+		"DisplayTitle": "360p HEVC Dolby Vision Profile 8.1 (HDR10)",
+	}
+	listed := playableStreams([]map[string]any{video})
+	if len(listed) != 1 {
+		t.Fatalf("%v", listed)
+	}
+	for key, want := range video {
+		switch key {
+		case "Level", "IsInterlaced", "DurationTicks":
+			continue // what the decision needs and no client listed
+		}
+		if listed[0][key] != want {
+			t.Errorf("%s is %v in the listed stream, want %v", key, listed[0][key], want)
+		}
+	}
+}

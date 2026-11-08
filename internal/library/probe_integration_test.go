@@ -5,9 +5,11 @@ package library
 import (
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"testing"
 
@@ -371,4 +373,78 @@ func pointVideoAtTextTrack(t *testing.T, file []byte) []byte {
 	}
 	end := video.at + video.size
 	return slices.Concat(file[:end], tref, file[end:])
+}
+
+// dolbyVisionFilms are the films of compat/captures/dolby-vision-12.4.json, by
+// the name they have there (test/fixtures/e2e.sh makes the same ones).
+var dolbyVisionFilms = map[string]testenv.HDRFilm{
+	"Plain Sdr Film (1990)":            {Base: "sdr"},
+	"Plain Pq Film (1991)":             {Base: "pq"},
+	"Plain Hlg Film (1992)":            {Base: "hlg"},
+	"Plain Plus Film (1993)":           {Base: "pq", HDR10Plus: true},
+	"Dolby Five Film (1994)":           {Base: "pq", DVProfile: 5},
+	"Dolby Seven Film (1995)":          {Base: "pq", DVProfile: 7, DVCompat: 6, DVEnhancement: true},
+	"Dolby Eight One Film (1996)":      {Base: "pq", DVProfile: 8, DVCompat: 1},
+	"Dolby Eight Two Film (1997)":      {Base: "sdr", DVProfile: 8, DVCompat: 2},
+	"Dolby Eight Four Film (1998)":     {Base: "hlg", DVProfile: 8, DVCompat: 4},
+	"Dolby Eight Zero Film (1999)":     {Base: "pq", DVProfile: 8},
+	"Dolby Eight Three Film (2000)":    {Base: "pq", DVProfile: 8, DVCompat: 3},
+	"Dolby Ten Film (2001)":            {Base: "av1", DVProfile: 10, DVCompat: 1},
+	"Dolby Eight One Plus Film (2002)": {Base: "pq", HDR10Plus: true, DVProfile: 8, DVCompat: 1},
+	"Dolby Seven Plus Film (2003)":     {Base: "pq", HDR10Plus: true, DVProfile: 7, DVCompat: 6, DVEnhancement: true},
+	"Dolby Five Plus Film (2004)":      {Base: "pq", HDR10Plus: true, DVProfile: 5},
+}
+
+// dolbyVisionKeys are the fields of Jellyfin's video stream that say what kind
+// of HDR a film is. A key Jellyfin leaves out is left out here too.
+var dolbyVisionKeys = []string{"VideoRange", "VideoRangeType", "VideoDoViTitle", "DisplayTitle", "DvVersionMajor", "DvVersionMinor",
+	"DvProfile", "DvLevel", "RpuPresentFlag", "ElPresentFlag", "BlPresentFlag", "DvBlSignalCompatibilityId", "Hdr10PlusPresentFlag"}
+
+// The probe labels a film as Jellyfin 12.4 does: the range and its type for
+// SDR, HDR10, HDR10+, HLG and each Dolby Vision profile with the base layer it
+// has, the Dolby Vision fields, the HDR10+ flag, and the display title that
+// carries them.
+func TestProbeLabelsHDRAndDolbyVisionAsJellyfinDoes(t *testing.T) {
+	testenv.FFmpeg(t)
+	raw, err := os.ReadFile("../../compat/captures/dolby-vision-12.4.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var capture struct {
+		Files map[string]struct{ Video map[string]any }
+	}
+	if err := json.Unmarshal(raw, &capture); err != nil {
+		t.Fatal(err)
+	}
+	for name, film := range dolbyVisionFilms {
+		t.Run(name, func(t *testing.T) {
+			film.Seconds = 1
+			file := filepath.Join(t.TempDir(), "film.mp4")
+			if err := testenv.MakeHDRFilm(file, film); err != nil {
+				t.Fatal(err)
+			}
+			probe, err := ProbeInput(context.Background(), file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			encoded, _ := json.Marshal(probe.Streams[0])
+			var got map[string]any
+			_ = json.Unmarshal(encoded, &got)
+			want := capture.Files[name].Video
+			for _, key := range dolbyVisionKeys {
+				if !reflect.DeepEqual(got[key], want[key]) {
+					t.Errorf("%s is %v, Jellyfin %v", key, got[key], want[key])
+				}
+			}
+			// Jellyfin gives the audio stream the same two keys, as "Unknown".
+			encoded, _ = json.Marshal(probe.Streams[1])
+			var audio map[string]any
+			_ = json.Unmarshal(encoded, &audio)
+			for _, key := range []string{"VideoRange", "VideoRangeType"} {
+				if audio[key] != "Unknown" {
+					t.Errorf("the audio stream's %s is %v, Jellyfin %q", key, audio[key], "Unknown")
+				}
+			}
+		})
+	}
 }
