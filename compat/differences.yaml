@@ -15,12 +15,10 @@
     - "the signed-in user"
   kind: gap
   task: JS-033
-  reason: "user management: provider ids, a hidden flag and a cast receiver id that Jellyfin keeps for each user and jellyscale does not"
+  reason: "user management: a hidden flag and a cast receiver id that Jellyfin keeps for each user and jellyscale does not"
   paths:
     - "Configuration.CastReceiverId"
-    - "Policy.AuthenticationProviderId"
     - "Policy.IsHidden"
-    - "Policy.PasswordResetProviderId"
 
 - requests:
     - "the signed-in user"

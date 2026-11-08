@@ -186,7 +186,8 @@ func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
 		info := map[string]any{
 			"Id": hex.EncodeToString(digest[:16]), "UserId": db.CompactID(userID), "UserName": userName,
 			"Client": client, "DeviceId": deviceID, "DeviceName": deviceName, "ApplicationVersion": version,
-			"LastActivityDate": seen.UTC().Format(time.RFC3339Nano), "ServerId": s.ServerID, "IsActive": true,
+			"LastActivityDate": seen.UTC().Format(time.RFC3339Nano), "LastPlaybackCheckIn": seen.UTC().Format(time.RFC3339Nano),
+			"ServerId": s.ServerID, "IsActive": true,
 			"SupportsMediaControl": false, "SupportsRemoteControl": false, "HasCustomDeviceName": false,
 			"AdditionalUsers": []any{}, "PlayableMediaTypes": []any{}, "SupportedCommands": []any{},
 			"NowPlayingQueue": []any{}, "NowPlayingQueueFullItems": []any{},
