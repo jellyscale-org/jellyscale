@@ -109,8 +109,10 @@ const role = (name) => ({ agentType: 'general-purpose', ...MODELS[name] })
 const read = (name) => `First read .claude/agents/${name}.md. It defines your role and its limits, and you must follow it exactly.\n\n`
 
 let root = null
-const snapshot = async (label, phase) => {
-  const result = await agent('Run `bash tools/snapshot.sh` from the repository root and return the printed tree hash, and the absolute path of the repository root (`pwd`). Do nothing else.',
+// note is for a snapshot whose prompt would repeat an earlier run's: on a resume
+// a repeated prompt replays the old tree from the cache.
+const snapshot = async (label, phase, note = '') => {
+  const result = await agent(`Run \`bash tools/snapshot.sh\` from the repository root and return the printed tree hash, and the absolute path of the repository root (\`pwd\`). Do nothing else.${note}`,
     { label, phase, schema: SNAPSHOT, model: 'haiku', effort: 'low' })
   if (!result) throw new Error(`snapshot failed: ${label}`)
   root = result.root
@@ -156,8 +158,11 @@ if (!written) throw new Error('could not list the files the spec writer wrote')
 const lockedFiles = written.changed
 const locked = `\n\n## Locked checks\n${checkList(spec)}\n\nThese files are locked: ${lockedFiles.join(', ')}. Make the checks pass by building the task. Never edit, weaken, skip or delete a locked check. If you believe one is wrong, stop work on it and put it in disputes with your evidence.`
 
+// lockBase is the tree the locked checks must stay as: the spec's, or the
+// lead's correction of them after a dispute.
+let lockBase = specTree
 const lockedChanged = async (head, label) => {
-  const result = await agent(`Run \`git diff --name-only ${specTree} ${head} -- ${lockedFiles.map((f) => `'${f}'`).join(' ')}\` in the repository root and return the files it lists. Do nothing else.`,
+  const result = await agent(`Run \`git diff --name-only ${lockBase} ${head} -- ${lockedFiles.map((f) => `'${f}'`).join(' ')}\` in the repository root and return the files it lists. Do nothing else.`,
     { label, phase: 'Build', schema: LOCKED, model: 'haiku', effort: 'low' })
   return result ? result.changed : ['(could not check)']
 }
@@ -170,10 +175,13 @@ let head = await snapshot('snapshot build', 'Build')
 let touched = await lockedChanged(head, 'locked checks')
 // A dispute stops the run. The lead settles it from evidence; if the check was
 // wrong, the lead corrects it and resumes with args.resolved = { files, note },
-// so this run's Spec, Check and Build replay from cache.
+// so this run's Spec, Check and Build replay from cache. resolved.light says
+// every reviewer has already seen this build and the correction leaves its
+// design as it was: then only QA and the adversarial reviewer look again.
 if (resolved) {
-  head = await snapshot('snapshot after the resolved dispute', 'Build')
+  head = await snapshot('snapshot after the resolved dispute', 'Build', ` (This follows the lead's correction: ${resolved.note})`)
   touched = (await lockedChanged(head, 'locked checks after the resolved dispute')).filter((f) => !resolved.files.includes(f))
+  lockBase = head
   built = { ...built, disputes: [], report: `${built.report}\n\nDispute resolved by the lead: ${resolved.note}` }
 }
 if (touched.length || built.disputes.length) {
@@ -190,6 +198,7 @@ const reviewers = (round) => {
     { key: 'qa', file: 'qa', focus: `${round === 1 ? 'Run the test commands, minus what a record covers, and check each acceptance criterion, including paths the checks skip. Then hunt flakes: run every integration test and e2e scenario the change adds or touches 5 times (`test/integration.sh -run \'<names>\' -count=5 <packages>`; `E2E_REPEAT=5` with `E2E_ONLY`), with another tier running beside it if you can. Timing races in new test rigs pass once on an idle machine and then fail in the merge queue; a failure in any repeat is a defect, with its output as evidence. If the change touches ffmpeg arguments, probing or the fixtures ffmpeg makes, also run the integration tests it adds or touches under `test/ffmpeg61.sh go test -tags integration -count=1 <packages> -run \'<names>\'`: ffmpeg 6.1 is the oldest supported and the one CI runs, and a newer local ffmpeg hides some of its defects.' : 'This round reviews fixes: rerun what the fixes touch and recheck the criteria they affect.'}\nHead tree: ${head}\nRecorded results: ${root}/.results/${head} (read-only; your role file says how to use them)` },
     { key: 'adversarial', file: 'adversarial-reviewer', focus: 'Break it where the locked checks do not look: concurrency across replicas and workers, partial failure, disconnects, leaks, client input, security, and whether the checks can really fail.' },
   ]
+  if (resolved?.light) return list
   if (core) list.push({ key: 'architecture', file: 'architecture-reviewer', focus: 'This change touches the scan, a store or job semantics: decide whether it is the right design, now that it is built.' })
   if (ux) list.push({ key: 'ux', file: 'ux-reviewer', focus: 'Review what viewers and operators experience. Check the affected flow in jellyfin-web once if you need to see it.' })
   return list

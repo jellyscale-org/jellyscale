@@ -40,12 +40,19 @@ Each task in [tasks/prd.json](tasks/prd.json) goes through the `build` workflow 
 
 1. **Spec.** A spec writer turns the acceptance criteria into executable checks (tests, e2e scenarios, capture-based tests) and shows each fails today. Protocol behaviour is observed on a real Jellyfin 12.4 first.
 2. **Check.** An architecture reviewer reviews the design and whether the checks would catch a wrong build. A blocker sends it back to Spec once.
-3. **Build.** One implementer works until the checks and the tiers pass. The checks are locked: changing one, or disputing it, stops the run. The lead settles a dispute from evidence and, if the check was wrong, corrects it and resumes the run with `resolved` (the files and why), which every later reviewer and fixer is told.
+3. **Build.** One implementer works until the checks and the tiers pass. The checks are locked: changing one, or disputing it, stops the run. The lead settles a dispute from evidence and, if the check was wrong, corrects it and resumes the run with `resolved` (the files and why), which every later reviewer and fixer is told. If every reviewer has already seen the build and the correction leaves its design as it was, `resolved.light` has only QA and the adversarial reviewer look again.
 4. **Verify.** QA runs it; one blind adversarial reviewer tries to break it where the checks don't look; architecture reviews it again only for changes to the scan, a store or job semantics (`core: true`); UX when viewers or operators would notice (`ux: true`). A blocker or major needs executable evidence (a failing test, a command and its output, a capture diff), or it counts as minor. Environment failures are reported apart.
 5. **Fix.** One round for evidenced findings, fixing the cause that let each through rather than only the case reported, then Verify again. Evidenced findings left after that send the task back to Spec: the checks missed something. Minors never start a fix round; they go to a backlog the lead triages.
 
 Blind means a reviewer sees the task, the checks, the diff and these docs, never the implementer's reasoning or another reviewer's findings. Keep it that way when changing the workflow. Role definitions are in `.claude/agents/`, and the intended design is in [ARCHITECTURE.md](ARCHITECTURE.md).
 
-After each task, record what the run found in `.results/tasks.jsonl` (gitignored): the task id, minutes and tokens per phase, each finding with whether it was real, its evidence kind and whether it was fixed, and later any defect that escaped to CI, the dogfood or a user, with the task it came from. Then mark the task done in `tasks/prd.json`, consider what the whole application now needs, and amend `tasks/prd.json` by pull request with the reason.
+After each task, record what the run found in `.results/tasks.jsonl` (gitignored), one JSON object per line in one of two shapes, so the reviewers' yield can be counted across tasks and each one's place decided from it:
+
+```json
+{"type": "task", "task": "JS-024", "date": "2026-11-08", "attempts": 1, "lead_corrections": 2, "minutes": {"spec": 31, "check": 4, "build": 160, "verify": 40, "fix": 20}, "tokens": {"spec": 186143, "build": 400000, "verify": 300000, "fix": 60000}, "findings": [{"reviewer": "architecture", "round": 1, "severity": "major", "evidence": "reading", "real": true, "fixed": true, "title": "..."}]}
+{"type": "escape", "task": "JS-023", "date": "2026-11-08", "caught_by": "merge-queue", "defect": "...", "why_missed": "..."}
+```
+
+`reviewer` is `check`, `qa`, `adversarial`, `architecture`, `ux` or `lead`; `evidence` is `test`, `command`, `capture` or `reading`; `caught_by` is `merge-queue`, `ci`, `dogfood` or `user`. Then mark the task done in `tasks/prd.json`, consider what the whole application now needs, and amend `tasks/prd.json` by pull request with the reason.
 
 Keep a task small enough to converge in one build and one fix round: one capability, its checks and docs.
