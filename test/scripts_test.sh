@@ -66,6 +66,24 @@ fails_with "a whole gate that no shard ran fails" bash test/check-shards.sh e2e 
 printf 'browse 0 1 7 7\n\n' >"$records/a.txt"
 fails_with "a blank or malformed record line fails" bash test/check-shards.sh e2e "$records" "browse transcode"
 
+# --- the differential tier is a gate of the required e2e check, and documented.
+printf 'browse 0 1 7 7\n' >"$records/a.txt"; rm -f "$records/b.txt" "$records/c.txt"
+fails_with "a differential gate that no job ran fails" bash test/check-shards.sh e2e "$records" "browse differential"
+printf 'differential 0 1 30 30\n' >"$records/b.txt"
+bash test/check-shards.sh e2e "$records" "browse differential" >/dev/null 2>&1; check "a differential record that adds up passes" 0 $?
+printf 'differential 0 1 0 30\n' >"$records/b.txt"
+fails_with "a differential run that checked nothing fails" bash test/check-shards.sh e2e "$records" "browse differential"
+check "CI runs test/differential/run.sh in an e2e shard" 1 "$(grep -c 'test/differential/run.sh' .github/workflows/ci.yml | awk '{print ($1>=1)}')"
+check "the required e2e check expects the differential gate" 1 "$(grep -c 'check-shards.sh e2e shards ".*differential' .github/workflows/ci.yml)"
+for word in test/differential/run.sh test/differential/requests.yaml compat/differences.yaml; do
+  check "docs/testing.md explains $word" 1 "$(grep -c -F "$word" docs/testing.md | awk '{print ($1>=1)}')"
+done
+
+# --- allowlist entries are scoped to requests; the acceptance run puts three bugs back.
+check "docs/testing.md tells how to scope an allowlist entry to a request" 1 "$(grep -c -E 'requests:' docs/testing.md | awk '{print ($1>=1)}')"
+check "compat/differences.yaml scopes entries by request, not route" 0 "$(grep -c -E '^- route:|^  route:' compat/differences.yaml)"
+check "acceptance.sh runs three broken builds" 3 "$(grep -c '^mutate ' test/differential/acceptance.sh)"
+
 # --- a gate's last line, as run.sh checks it.
 printf 'ok    a\n\nPASS\nshard 1/3: ran 4 of 12\n' >"$tmp/gate"
 check "a gate's shard line is read" "1 3 4 12" "$(bash test/check-shards.sh line "$tmp/gate")"

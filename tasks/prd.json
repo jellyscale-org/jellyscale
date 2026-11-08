@@ -1083,8 +1083,8 @@
         "Later compatibility tasks can state acceptance as 'route X matches, apart from the allowlist'"
       ],
       "priority": 1,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [
         "JS-019"
       ],
@@ -1148,6 +1148,24 @@
       ],
       "source": "post-task review after JS-019, 2026-11-07; jellyfin-web reads TranscodingInfo in its dashboard and player stats",
       "notes": "jellyscale sends no TranscodingInfo today, so both views are empty for a transcode. The metrics slice made the speed known per job; this puts it where operators and viewers already look."
+    },
+    {
+      "id": "JS-068",
+      "phase": "OPS",
+      "title": "Close the browse and playback-start differences the differential tier lists as gaps",
+      "description": "compat/differences.yaml lists, with kind gap and this task, the fields Jellyfin 12.4 sends that jellyscale leaves out (stream details from ffprobe, flags and counters, UserData.Key), the container names, how Items/Latest groups episodes, the master playlist's bandwidth and codecs, and the oldest-first order of SortBy=PremiereDate descending. Decide for each whether to match Jellyfin or to keep the difference as an improvement, and shrink the list.",
+      "acceptanceCriteria": [
+        "Each entry with task JS-068 in compat/differences.yaml is fixed and removed, or becomes an improvement or non-goal with its reason",
+        "test/differential/run.sh passes with the entries removed"
+      ],
+      "priority": 12,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-064"
+      ],
+      "source": "first run of the differential tier (JS-064)",
+      "notes": ""
     }
   ]
 }
