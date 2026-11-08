@@ -28,7 +28,7 @@ Video only: films and shows. No music, photos, Live TV or .NET plugins. Routes J
 | 6 | Kubernetes: Helm chart, autoscaling, metrics | not built |
 | 7 | SyncPlay | not built |
 
-[PRODUCT.md](PRODUCT.md) lists every feature with its status. Phase 0's findings, which the design rests on, are in [spikes/README.md](spikes/README.md).
+[PRODUCT.md](PRODUCT.md) says what jellyscale should be, and [docs/status.md](docs/status.md) lists every feature with its status. Phase 0's findings, which the design rests on, are in [spikes/README.md](spikes/README.md).
 
 ## Quick start
 
