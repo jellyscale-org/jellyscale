@@ -203,6 +203,8 @@ func ProbeInput(ctx context.Context, input string) (Probe, error) {
 			entry["DisplayTitle"] = fmt.Sprintf("%dp %s", stream.Height, strings.ToUpper(stream.CodecName))
 			if fps := frameRate(stream.AvgFrame); fps > 0 {
 				entry["AverageFrameRate"] = fps
+				// jellyfin-web divides a transcode's frame rate by this to show its speed.
+				entry["ReferenceFrameRate"] = fps
 			}
 			if probe.Width == 0 {
 				probe.Width, probe.Height = stream.Width, stream.Height

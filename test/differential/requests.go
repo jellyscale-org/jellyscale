@@ -23,6 +23,13 @@ type Request struct {
 	// empty list from either server fails: a route or fixture broken on both
 	// would otherwise agree.
 	Rows bool `yaml:"rows"`
+	// Play names a PlaybackInfo request. Before this one, the device plays what it
+	// answers: it fetches the transcode's playlists and first segment and reports
+	// the start of playback, so that a session has something to say.
+	Play string `yaml:"play"`
+	// Only keeps the differences under that key of each array element (the report
+	// of everything else a session says belongs to the tasks that build it).
+	Only string `yaml:"only"`
 	// Status is the status both servers must answer; 0 means any 2xx.
 	Status int `yaml:"status"`
 }

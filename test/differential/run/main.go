@@ -5,6 +5,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -60,8 +62,19 @@ func main() {
 	}
 	failures := map[string][]failure{}
 	var routes []string
+	byName := map[string]differential.Request{}
 	for _, r := range reqs {
-		diffs, err := compare(jf, js, r)
+		byName[r.Name] = r
+	}
+	for _, r := range reqs {
+		var diffs []differential.Difference
+		var err error
+		if r.Play != "" {
+			err = errors.Join(jf.play(byName[r.Play]), js.play(byName[r.Play]))
+		}
+		if err == nil {
+			diffs, err = compare(jf, js, r)
+		}
 		if err == nil {
 			diffs = allow.Filter(r.Name, diffs)
 		} else {
@@ -389,7 +402,11 @@ func compare(jf, js *server, r differential.Request) ([]differential.Difference,
 	a := differential.Normalize(jfDoc, merge(jf.ids, differential.ItemKeys(jfDoc)), r.Ordered)
 	b := differential.Normalize(jsDoc, merge(js.ids, differential.ItemKeys(jsDoc)), r.Ordered)
 	diffs = append(diffs, differential.Diff(a, b)...)
-	return append(diffs, differential.IDDifferences(a, b, r.Ordered)...), nil
+	diffs = append(diffs, differential.IDDifferences(a, b, r.Ordered)...)
+	if r.Only != "" {
+		diffs = slices.DeleteFunc(diffs, func(d differential.Difference) bool { return !strings.Contains(d.Path, "]."+r.Only+".") })
+	}
+	return diffs, nil
 }
 
 func merge(known, more map[string]string) map[string]string {
@@ -400,4 +417,65 @@ func merge(known, more map[string]string) map[string]string {
 		}
 	}
 	return out
+}
+
+// play does what jellyfin-web does when a transcode starts: it asks the PlaybackInfo
+// request, fetches the master and main playlists and the first segment of what
+// it was offered, and reports that playback began.
+func (s *server) play(info differential.Request) error {
+	path, err := s.fill(info.Path)
+	if err != nil {
+		return err
+	}
+	body, err := s.fill(info.Body)
+	if err != nil {
+		return err
+	}
+	data, err := s.mustDo(info.Method, path, body)
+	if err != nil {
+		return err
+	}
+	var reply struct {
+		PlaySessionId string
+		MediaSources  []struct{ Id, TranscodingUrl string }
+	}
+	if err := json.Unmarshal(data, &reply); err != nil || len(reply.MediaSources) == 0 || reply.MediaSources[0].TranscodingUrl == "" {
+		return fmt.Errorf("%s offered no transcode for %q: %v %s", s.name, info.Name, err, data)
+	}
+	source := reply.MediaSources[0]
+	dir := source.TranscodingUrl[:strings.LastIndex(source.TranscodingUrl, "/")+1]
+	if !strings.HasPrefix(dir, "/") {
+		dir = "/" + dir
+	}
+	line := func(playlist []byte, prefix string) (string, error) {
+		for _, l := range strings.Split(string(playlist), "\n") {
+			if strings.HasPrefix(l, prefix) {
+				return strings.TrimSpace(l), nil
+			}
+		}
+		return "", fmt.Errorf("%s: no line starting %q in %s", s.name, prefix, playlist)
+	}
+	master, err := s.mustDo("GET", source.TranscodingUrl, "")
+	if err != nil {
+		return err
+	}
+	mainURL, err := line(master, "main.m3u8")
+	if err != nil {
+		return err
+	}
+	main, err := s.mustDo("GET", dir+mainURL, "")
+	if err != nil {
+		return err
+	}
+	segment, err := line(main, "hls1/main/0.")
+	if err != nil {
+		return err
+	}
+	if _, err := s.mustDo("GET", dir+segment, ""); err != nil {
+		return err
+	}
+	started, _ := json.Marshal(map[string]any{"ItemId": source.Id, "MediaSourceId": source.Id, "PlaySessionId": reply.PlaySessionId,
+		"PlayMethod": "Transcode", "PositionTicks": 0, "IsPaused": false})
+	_, err = s.mustDo("POST", "/Sessions/Playing", string(started))
+	return err
 }
