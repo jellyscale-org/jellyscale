@@ -205,7 +205,7 @@ log(`Verify 1: ${result.findings.length} finding(s), ${open.length} evidenced an
 if (open.length || result.missing.length) {
   phase('Fix')
   const list = open.map((f, i) => `${i + 1}. [${f.severity}] ${f.title} (${f.file ?? 'no file'})\nScenario: ${f.scenario}\nEvidence (${f.evidenceKind}): ${f.evidence}`).join('\n\n')
-  const fixed = await agent(`${read('implementer')}${brief}${locked}\n\n## Evidenced findings\n${list}\n\nFix each real defect and add a test that catches it. If a finding is wrong, say why with evidence rather than changing code. Don't commit.`, { label: 'fix', phase: 'Fix', ...role('implementer'), schema: IMPLEMENTED })
+  const fixed = await agent(`${read('implementer')}${brief}${locked}\n\n## Evidenced findings\n${list}\n\nFor each real defect, find the cause that let it through, not only the case reported: if a design would let other cases of the same kind through, fix the design and test it with a second case of that kind, not just the one reported. Add a test that catches it. If a finding is wrong, say why with evidence rather than changing code. Don't commit.`, { label: 'fix', phase: 'Fix', ...role('implementer'), schema: IMPLEMENTED })
   if (!fixed) throw new Error('fixer returned nothing')
   built = fixed
   head = await snapshot('snapshot fix', 'Fix')

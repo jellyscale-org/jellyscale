@@ -41,7 +41,7 @@ Each task in [tasks/prd.json](tasks/prd.json) goes through the `build` workflow 
 2. **Check.** An architecture reviewer reviews the design and whether the checks would catch a wrong build. A blocker sends it back to Spec once.
 3. **Build.** One implementer works until the checks and the tiers pass. The checks are locked: changing one, or disputing it, stops the run.
 4. **Verify.** QA runs it; one blind adversarial reviewer tries to break it where the checks don't look; architecture reviews it again only for changes to the scan, a store or job semantics (`core: true`); UX when viewers or operators would notice (`ux: true`). A blocker or major needs executable evidence (a failing test, a command and its output, a capture diff), or it counts as minor. Environment failures are reported apart.
-5. **Fix.** One round for evidenced findings, then Verify again. Evidenced findings left after that send the task back to Spec: the checks missed something. Minors never start a fix round; they go to a backlog the lead triages.
+5. **Fix.** One round for evidenced findings, fixing the cause that let each through rather than only the case reported, then Verify again. Evidenced findings left after that send the task back to Spec: the checks missed something. Minors never start a fix round; they go to a backlog the lead triages.
 
 Blind means a reviewer sees the task, the checks, the diff and these docs, never the implementer's reasoning or another reviewer's findings. Keep it that way when changing the workflow. Role definitions are in `.claude/agents/`, and the intended design is in [ARCHITECTURE.md](ARCHITECTURE.md).
 
