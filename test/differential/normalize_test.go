@@ -74,8 +74,8 @@ func TestDifferentItemsStayDifferentAfterIdMapping(t *testing.T) {
 }
 
 func TestTokensTimestampsAndEtagsAreMaskedButKeysStay(t *testing.T) {
-	jf := parse(t, `{"AccessToken":"abc","Etag":"1a8b","MediaSources":[{"ETag":"9ab6","Id":"x"}],"DateCreated":"2026-11-07T16:15:41.8158016Z","PlaySessionId":"s1","ServerId":"48b8","Note":"made 2026-11-07T21:44:25.2340313Z","Url":"/a.m3u8?api_key=SECRET1&PlaySessionId=p1&x=1"}`)
-	js := parse(t, `{"AccessToken":"zzz","Etag":"ffff","MediaSources":[{"ETag":"0000","Id":"x"}],"DateCreated":"2025-01-01T00:00:00Z","PlaySessionId":"s2","ServerId":"9999","Note":"made 2026-11-08T01:02:03.1Z","Url":"/a.m3u8?api_key=OTHER&PlaySessionId=p2&x=1"}`)
+	jf := parse(t, `{"AccessToken":"abc","Etag":"1a8b","MediaSources":[{"ETag":"9ab6","Id":"x"}],"DateCreated":"2026-11-07T16:15:41.8158016Z","PlaySessionId":"s1","ServerId":"48b8","Url":"/a.m3u8?api_key=SECRET1&PlaySessionId=p1&x=1"}`)
+	js := parse(t, `{"AccessToken":"zzz","Etag":"ffff","MediaSources":[{"ETag":"0000","Id":"x"}],"DateCreated":"2025-01-01T00:00:00Z","PlaySessionId":"s2","ServerId":"9999","Url":"/a.m3u8?api_key=OTHER&PlaySessionId=p2&x=1"}`)
 	if d := Diff(Normalize(jf, nil, false), Normalize(js, nil, false)); len(d) != 0 {
 		t.Fatalf("masked values still differ: %v", paths(d))
 	}

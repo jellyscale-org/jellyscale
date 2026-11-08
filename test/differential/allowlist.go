@@ -29,6 +29,7 @@ type Entry struct {
 type Allowlist struct {
 	entries []Entry
 	used    []map[string]bool // per entry, the requests that needed it
+	failed  map[string]bool   // requests that failed before their differences were filtered
 }
 
 var taskPattern = regexp.MustCompile(`^JS-\d+$`)
@@ -74,7 +75,7 @@ func ParseAllowlist(text string) (*Allowlist, error) {
 	for i := range used {
 		used[i] = map[string]bool{}
 	}
-	return &Allowlist{entries: entries, used: used}, nil
+	return &Allowlist{entries: entries, used: used, failed: map[string]bool{}}, nil
 }
 
 func LoadAllowlist(path string) (*Allowlist, error) {
@@ -114,9 +115,11 @@ func (a *Allowlist) Filter(request string, diffs []Difference) []Difference {
 		path := indexPattern.ReplaceAllString(d.Path, "[]")
 		listed := false
 		for i, e := range a.entries {
-			if slices.Contains(e.Requests, request) && (e.Path == path || e.Path == d.Path) && pins(e, d) {
+			if slices.Contains(e.Requests, request) && (e.Path == path || e.Path == d.Path) {
+				// Used even when the pin fails: the entry is still needed,
+				// its list is what is wrong.
 				a.used[i][request] = true
-				listed = true
+				listed = listed || pins(e, d)
 			}
 		}
 		if !listed {
@@ -126,13 +129,18 @@ func (a *Allowlist) Filter(request string, diffs []Difference) []Difference {
 	return unlisted
 }
 
+// Failed records a request that failed before its differences were filtered.
+func (a *Allowlist) Failed(request string) { a.failed[request] = true }
+
 // Unused returns each entry and request pair that matched nothing so far:
 // differences that are gone. The Entry returned names that one request.
 func (a *Allowlist) Unused() []Entry {
 	var out []Entry
 	for i, e := range a.entries {
 		for _, name := range e.Requests {
-			if !a.used[i][name] {
+			// A request that failed before its differences were filtered (an
+			// error, no rows) says nothing about whether its entries still apply.
+			if !a.failed[name] && !a.used[i][name] {
 				e.Requests = []string{name}
 				out = append(out, e)
 			}

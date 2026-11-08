@@ -19,6 +19,38 @@ type Request struct {
 	// Ordered says the route promises an order (a sorted listing, a playlist),
 	// so the order of arrays is compared.
 	Ordered bool `yaml:"ordered"`
+	// Rows says the request is meant to return items on the fixtures, so an
+	// empty list from either server fails: a route or fixture broken on both
+	// would otherwise agree.
+	Rows bool `yaml:"rows"`
+	// Status is the status both servers must answer; 0 means any 2xx.
+	Status int `yaml:"status"`
+}
+
+// CheckAnswer says why one server's answer is not what r expects, or nil.
+func CheckAnswer(r Request, status int, doc any) error {
+	if r.Status == 0 && (status < 200 || status > 299) {
+		return fmt.Errorf("answered %d, want 2xx", status)
+	}
+	if r.Status != 0 && status != r.Status {
+		return fmt.Errorf("answered %d, want %d", status, r.Status)
+	}
+	if !r.Rows || status >= 300 {
+		return nil
+	}
+	var list []any
+	switch doc := doc.(type) {
+	case map[string]any:
+		list, _ = doc["Items"].([]any)
+	case []any:
+		list = doc
+	}
+	for _, row := range list {
+		if row != "" { // an empty body reaches here as one blank line
+			return nil
+		}
+	}
+	return fmt.Errorf("answered no rows")
 }
 
 func LoadRequests(path string) ([]Request, error) {

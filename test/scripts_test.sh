@@ -79,10 +79,10 @@ for word in test/differential/run.sh test/differential/requests.yaml compat/diff
   check "docs/testing.md explains $word" 1 "$(grep -c -F "$word" docs/testing.md | awk '{print ($1>=1)}')"
 done
 
-# --- allowlist entries are scoped to requests; the acceptance run puts three bugs back.
+# --- allowlist entries are scoped to requests; the acceptance run puts four bugs back.
 check "docs/testing.md tells how to scope an allowlist entry to a request" 1 "$(grep -c -E 'requests:' docs/testing.md | awk '{print ($1>=1)}')"
 check "compat/differences.yaml scopes entries by request, not route" 0 "$(grep -c -E '^- route:|^  route:' compat/differences.yaml)"
-check "acceptance.sh runs three broken builds" 3 "$(grep -c '^mutate ' test/differential/acceptance.sh)"
+check "acceptance.sh runs four broken builds" 4 "$(grep -c '^mutate ' test/differential/acceptance.sh)"
 
 # --- a gate's last line, as run.sh checks it.
 printf 'ok    a\n\nPASS\nshard 1/3: ran 4 of 12\n' >"$tmp/gate"

@@ -64,6 +64,8 @@ func main() {
 		diffs, err := compare(jf, js, r)
 		if err == nil {
 			diffs = allow.Filter(r.Name, diffs)
+		} else {
+			allow.Failed(r.Name)
 		}
 		if err == nil && len(diffs) == 0 {
 			fmt.Printf("ok    %s\n", r.Name)
@@ -368,6 +370,15 @@ func compare(jf, js *server, r differential.Request) ([]differential.Difference,
 	jsStatus, jsDoc, err := js.answer(r)
 	if err != nil {
 		return nil, err
+	}
+	for _, a := range []struct {
+		s      *server
+		status int
+		doc    any
+	}{{jf, jfStatus, jfDoc}, {js, jsStatus, jsDoc}} {
+		if err := differential.CheckAnswer(r, a.status, a.doc); err != nil {
+			return nil, fmt.Errorf("%s %s", a.s.name, err)
+		}
 	}
 	var diffs []differential.Difference
 	if jfStatus != jsStatus {

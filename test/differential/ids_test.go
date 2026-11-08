@@ -67,3 +67,31 @@ func TestAnIDsEntryMustPinAndOnlyAnIDsEntryMay(t *testing.T) {
 		}
 	}
 }
+
+// A pinned entry whose list changed is a failure (the difference is not hidden)
+// and not also "no longer differs": the entry is still needed, its list is wrong.
+func TestAChangedPinnedListFailsWithoutANoteToRemoveTheEntry(t *testing.T) {
+	a, err := ParseAllowlist(`
+- {requests: [r], path: "Items (ids)", jellyscale: [x, y], kind: gap, task: JS-068, reason: r}
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	worse := IDDifferences(items("y", "x"), items("y", "z"), true)
+	if left := a.Filter("r", worse); !reflect.DeepEqual(left, worse) {
+		t.Fatalf("a changed list was allowed: %v", left)
+	}
+	if unused := a.Unused(); len(unused) != 0 {
+		t.Fatalf("the entry still matches the path and is reported as gone: %+v", unused)
+	}
+}
+
+func TestAPinnedEntryForADifferenceThatIsGoneIsStillReported(t *testing.T) {
+	a, _ := ParseAllowlist(`
+- {requests: [r], path: "Items (ids)", jellyscale: [x, y], kind: gap, task: JS-068, reason: r}
+`)
+	a.Filter("r", nil)
+	if unused := a.Unused(); len(unused) != 1 {
+		t.Fatalf("want the entry reported when the lists agree, got %+v", unused)
+	}
+}
