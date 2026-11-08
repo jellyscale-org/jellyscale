@@ -124,10 +124,12 @@ func addHDR10Plus(path string) error {
 	if err := os.WriteFile(raw, with, 0o644); err != nil {
 		return err
 	}
+	// A raw stream's times are rounded to its own clock, so the frame rate
+	// would read 23.9998: set them, in the timescale the first encode had.
 	muxed := path + ".plus.mp4"
 	defer os.Remove(muxed)
 	if output, err := exec.Command("ffmpeg", "-nostdin", "-v", "error", "-y", "-framerate", "24", "-i", raw, "-i", path,
-		"-map", "0:v", "-map", "1:a", "-c", "copy", "-tag:v", "hvc1", "-metadata:s:a:0", "language=eng", muxed).CombinedOutput(); err != nil {
+		"-map", "0:v", "-map", "1:a", "-c", "copy", "-bsf:v", "setts=ts=N/(24*TB)", "-tag:v", "hvc1", "-video_track_timescale", "12288", "-metadata:s:a:0", "language=eng", muxed).CombinedOutput(); err != nil {
 		return fmt.Errorf("ffmpeg: %w: %s", err, output)
 	}
 	return os.Rename(muxed, path)
