@@ -1211,6 +1211,27 @@
       ],
       "source": "escaped defects from the dogfood, Findroid, 2026-11-08 (#44, #47)",
       "notes": "jellyfin-web ignores fields it doesn't read, so it can't catch this class; Kotlin and Swift SDK clients decode strictly. Scheduled after the web-client work (user, 2026-11-08: focus on the web client first, then pivot to other clients). Findroid's first home-screen call, GET /Items/Suggestions, 404s; a parked implementation is on branch feat/items-suggestions."
+    },
+    {
+      "id": "JS-072",
+      "phase": "P3",
+      "title": "A new viewer never waits behind a helper",
+      "description": "Helper jobs (JS-024) may fill every free transcode slot but one across the cluster and hold it until their chunk is done, so a second viewer who starts at the same moment queues behind them. A viewer's job takes a helper's slot instead: the helper stops, and its chunk falls back to the job that asked for help (or to another helper later). Operators can turn helpers off.",
+      "acceptanceCriteria": [
+        "With every slot but one held by helpers, two new viewers start at the same moment on separate worker processes and both get their first segment as fast as with no helpers running",
+        "The preempted helper's chunk is still made: the helped viewer plays through it with no stall beyond what a seek costs",
+        "A helper is never preempted by another helper",
+        "An operator setting turns helpers off; with it off, a slow job is one ffmpeg and inserts no helper rows; documented in docs/running.md",
+        "No preemption ever stops a viewer's own job"
+      ],
+      "priority": 2,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-024"
+      ],
+      "source": "JS-024 post-task review (2026-11-08); the user chose to land JS-024 and fix this next",
+      "notes": "Found reading the helper slot guard after the build: freeSlots is cluster-wide, so helpers keep one slot free for the whole cluster, not per worker. Priority 2 puts it ahead of JS-025."
     }
   ]
 }
