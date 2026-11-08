@@ -669,6 +669,51 @@ for (const [title, name, reasons, directWithHevc] of [
   });
 }
 
+// Dolby Vision (compat/captures/dolby-vision-12.4.md). The item says what Jellyfin's
+// labels say, and the label decides. Profile 8.1's base layer is HDR10: a browser
+// that plays HEVC HDR10 but lists no Dolby Vision is sent the file's own video with the
+// base layer's range and codec string (the Dolby Vision brand as SUPPLEMENTAL-CODECS),
+// and one that plays no HEVC gets the tone-mapped H.264. Profile 5 has no base layer
+// any such browser can show, so it is re-encoded, never copied. E2E_HEVC says which
+// browser this is, as for the films above. Films are in the HDR library (media/hdr).
+await scenario("Dolby Vision 8.1 in MP4" + `: ${hevcPlays ? "copied as HDR10 (E2E_HEVC=1)" : "re-encoded to H.264, tone mapped"}`, async ({ page, seen }) => {
+  await play(page, "HDR", "Dolby Eight One Film");
+  const source = seen.infos.at(-1).source;
+  const video = source.MediaStreams.find((s) => s.Type === "Video");
+  if (video.VideoRange !== "HDR" || video.VideoRangeType !== "DOVIWithHDR10" || video.DvProfile !== 8 || video.DvBlSignalCompatibilityId !== 1) {
+    throw new Error(`the labels are not Jellyfin's: ${JSON.stringify(video)}`);
+  }
+  const query = new URL(source.TranscodingUrl, base).searchParams;
+  const runs = ffmpegRuns();
+  if (hevcPlays) {
+    if (query.get("VideoCodec") !== "copy" || query.get("TranscodeReasons") !== "VideoRangeTypeNotSupported") throw new Error(`not a copy: ${source.TranscodingUrl}`);
+    const first = (await (await fetch(new URL(source.TranscodingUrl, base))).text()).split("\n").find((line) => line.startsWith("#EXT-X-STREAM-INF"));
+    if (!/VIDEO-RANGE=PQ,/.test(first) || !/CODECS="hvc1\.2\.4\.L\d+\.B0,/.test(first) || !/SUPPLEMENTAL-CODECS="dvh1\.08\.10\/db1p"/.test(first)) throw new Error(`master: ${first}`);
+    if (runs.length !== 1 || !runs[0].copy) throw new Error(`ffmpeg is not copying: ${runs.map((r) => r.line.slice(0, 400))}`);
+  } else {
+    if (query.get("VideoCodec") !== "h264") throw new Error(`not a re-encode: ${source.TranscodingUrl}`);
+    if (runs.length !== 1 || runs[0].copy || !/tonemap=tonemap=hable/.test(runs[0].line)) throw new Error(`ffmpeg is not tone mapping: ${runs.map((r) => r.line.slice(0, 400))}`);
+  }
+  await advances(page, 4);
+  noErrors(seen);
+  await leave(page);
+});
+
+await scenario("Dolby Vision 5 in MP4" + `: re-encoded to H.264, never copied${hevcPlays ? " (E2E_HEVC=1)" : ""}`, async ({ page, seen }) => {
+  await play(page, "HDR", "Dolby Five Film");
+  const source = seen.infos.at(-1).source;
+  const video = source.MediaStreams.find((s) => s.Type === "Video");
+  if (video.VideoRange !== "HDR" || video.VideoRangeType !== "DOVI" || video.DvProfile !== 5) throw new Error(`the labels are not Jellyfin's: ${JSON.stringify(video)}`);
+  const query = new URL(source.TranscodingUrl, base).searchParams;
+  if (query.get("VideoCodec") !== "h264") throw new Error(`profile 5 was not re-encoded: ${source.TranscodingUrl}`);
+  if (hevcPlays && query.get("TranscodeReasons") !== "VideoRangeTypeNotSupported") throw new Error(`reasons ${query.get("TranscodeReasons")}`);
+  const runs = ffmpegRuns();
+  if (runs.length !== 1 || runs[0].copy) throw new Error(`ffmpeg: ${runs.map((r) => r.line.slice(0, 400))}`);
+  await advances(page, 4);
+  noErrors(seen);
+  await leave(page);
+});
+
 await scenario("a Matroska with no Cues has no index and is re-encoded", async ({ page, seen }) => {
   await play(page, "Transcode", "Digamma Film");
   const url = seen.infos.at(-1).source.TranscodingUrl;

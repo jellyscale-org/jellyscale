@@ -91,8 +91,8 @@ func TestPlayableStreams(t *testing.T) {
 		}
 	}
 	probed := map[string]any{"Type": "Video", "Level": 41, "IsInterlaced": false, "VideoRangeType": "SDR", "DurationTicks": 5, "Width": 1}
-	if got := playableStreams([]map[string]any{probed}); len(got[0]) != 2 || probed["Level"] != 41 {
-		t.Errorf("the DTO's video stream carries the probe's decision fields, or the stored one lost them: %v %v", got[0], probed)
+	if got := playableStreams([]map[string]any{probed}); len(got[0]) != 3 || probed["Level"] != 41 {
+		t.Errorf("the DTO's video stream carries the probe's decision fields (the range labels it lists), or the stored one lost them: %v %v", got[0], probed)
 	}
 	if got := playableStreams([]map[string]any{video, first, flagged}); got[1]["IsDefault"] != true {
 		t.Error("kept the wrong audio stream")

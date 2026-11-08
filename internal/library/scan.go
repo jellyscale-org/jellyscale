@@ -279,7 +279,7 @@ func (s *Scanner) loadSeen(ctx context.Context, libraryID string) (map[string]se
 	rows, err := s.Pool.Query(ctx, `SELECT o.key, o.size, o.etag, o.item_id::text, m.sidecars,
 			COALESCE(m.sidecars IS NULL AND m.container = 'mkv'
 				OR jsonb_path_exists(m.streams, '$[*] ? (@.Type == "Subtitle" && @.IsTextSubtitleStream == false && !exists(@.IsImageSubtitleStream))'), false),
-			COALESCE(jsonb_path_exists(m.streams, '$[*] ? ((@.Type == "Video" && (!exists(@.VideoRangeType) || !exists(@.ColorTransfer))) || (@.Type == "Subtitle" && !exists(@.IsTextSubtitleStream)))')
+			COALESCE(jsonb_path_exists(m.streams, '$[*] ? ((@.Type == "Video" && !exists(@.VideoRange)) || (@.Type == "Subtitle" && !exists(@.IsTextSubtitleStream)))')
 				OR (m.keyframes IS NULL AND m.container IN ('mkv', 'mp4')
 					AND EXISTS (SELECT 1 FROM jsonb_array_elements(m.streams) v WHERE v->>'Type' = 'Video' AND v->>'Codec' = ANY($2))), false),
 			COALESCE(m.item_id IS NOT NULL AND m.chapters IS NULL, false)
@@ -775,7 +775,7 @@ func playableStreams(streams []map[string]any) []map[string]any {
 		if stream["Type"] == "Video" {
 			// What the decision needs and the item page never listed.
 			stream = maps.Clone(stream)
-			for _, key := range []string{"Level", "IsInterlaced", "VideoRangeType", "DurationTicks"} {
+			for _, key := range []string{"Level", "IsInterlaced", "DurationTicks"} {
 				delete(stream, key)
 			}
 		}

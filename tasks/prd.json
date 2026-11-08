@@ -403,11 +403,11 @@
         "Checked on the dogfood with a P8.1 film and a P7 film in jellyfin-web and one TV client"
       ],
       "priority": 1,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [],
       "source": "work queue 4; internal/library/scan.go strips them today",
-      "notes": "Found while preparing the task (2026-11-07): Jellyfin's labels drive decisions, not only display. jellyfin-web sends CodecProfiles conditions on VideoRangeType, and Jellyfin copies a DOVIWithHDR10 stream to an HDR10-only client (tagging it db1p in the master playlist). jellyscale reports every DV file as plain DOVI, so those films are re-encoded in software today."
+      "notes": "Found while preparing the task (2026-11-07): Jellyfin's labels drive decisions, not only display. jellyfin-web sends CodecProfiles conditions on VideoRangeType, and Jellyfin copies a DOVIWithHDR10 stream to an HDR10-only client (tagging it db1p in the master playlist). jellyscale reports every DV file as plain DOVI, so those films are re-encoded in software today. Built 2026-11-08: Jellyfin 12.4 labels P8 compat 0 as DOVIInvalid and compat 3 as plain HDR10, and copies a DV file whose base layer the client plays as a transcode with VideoRangeTypeNotSupported (video copied, base layer in CODECS/VIDEO-RANGE, DV brand in SUPPLEMENTAL-CODECS) rather than direct play. The fixtures carry only the dvcC box (no RPUs). The lead checks real P8.1 and P7 films in jellyfin-web on the dogfood after merge; TV clients wait for the client pivot (JS-070, JS-065). Backlog: a row scanned before this change is not tone mapped until the next scan re-probes it; a failed HDR10+ frame read leaves HDR10 until the file changes; no test copies a DV file through jellyscale's own ffmpeg path (Jellyfin's argument set drops dvcC from the init segment, checked by hand); an old api replica refuses the HEVC copy a new one offers during a rollout."
     },
     {
       "id": "JS-024",

@@ -635,3 +635,84 @@ func TestScanStoresChapters(t *testing.T) {
 		t.Errorf("the item changed its id")
 	}
 }
+
+// hdrFilm makes one of the synthetic HDR films (testenv.HDRFilm) in a library.
+func hdrFilm(t *testing.T, file string, film testenv.HDRFilm) {
+	t.Helper()
+	film.Seconds = 1
+	if err := testenv.MakeHDRFilm(file, film); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// The scan records the Dolby Vision profile, the base layer's compatibility id
+// and HDR10+, as Jellyfin's video stream names them, and the item and its media
+// source list them for a client: the range labels are no longer left out.
+func TestScanRecordsDolbyVisionAndHDR10Plus(t *testing.T) {
+	f := setup(t, "movies")
+	hdrFilm(t, filepath.Join(f.media, "Eight One Plus (2020)", "Eight One Plus (2020).mp4"),
+		testenv.HDRFilm{Base: "pq", HDR10Plus: true, DVProfile: 8, DVCompat: 1})
+	f.scan(t)
+	const want = `{"VideoRange":"HDR","VideoRangeType":"DOVIWithHDR10Plus","DvProfile":8,"DvBlSignalCompatibilityId":1,"Hdr10PlusPresentFlag":true,` +
+		`"VideoDoViTitle":"Dolby Vision Profile 8.1 (HDR10)","DisplayTitle":"360p HEVC Dolby Vision Profile 8.1 (HDR10)"}`
+	for _, stream := range [][2]string{
+		{"streams->0", "media_sources"},
+		{"dto->'MediaStreams'->0", "items"},
+		{"dto->'MediaSources'->0->'MediaStreams'->0", "items"},
+	} {
+		if !scalar[bool](t, f.pool, "SELECT ("+stream[0]+") @> $1::jsonb FROM "+stream[1], want) {
+			t.Errorf("%s of %s lacks %s: %s", stream[0], stream[1], want, scalar[string](t, f.pool, "SELECT ("+stream[0]+")::text FROM "+stream[1]))
+		}
+	}
+	// Jellyfin gives the audio stream the same two keys, as "Unknown".
+	if !scalar[bool](t, f.pool, `SELECT dto->'MediaStreams'->1 @> '{"Type":"Audio","VideoRange":"Unknown","VideoRangeType":"Unknown"}' FROM items`) {
+		t.Errorf("the audio stream is %s", scalar[string](t, f.pool, "SELECT (dto->'MediaStreams'->1)::text FROM items"))
+	}
+}
+
+// A film scanned before the labels existed is probed again by the next scan,
+// whatever it is: the Dolby Vision film that was stored as plain DOVI, the
+// HDR10+ one stored as HDR10, an SDR one with no VideoRange. Once, not at every
+// scan, and the item a client reads is updated too.
+func TestScanProbesAgainFilmsScannedBeforeTheRangeLabels(t *testing.T) {
+	f := setup(t, "movies")
+	hdrFilm(t, filepath.Join(f.media, "Eight One (2020)", "Eight One (2020).mp4"), testenv.HDRFilm{Base: "pq", DVProfile: 8, DVCompat: 1})
+	hdrFilm(t, filepath.Join(f.media, "Plus (2021)", "Plus (2021).mp4"), testenv.HDRFilm{Base: "pq", HDR10Plus: true})
+	clip(t, filepath.Join(f.media, "Plain (2022)", "Plain (2022).mkv"))
+	f.scan(t)
+	ctx := context.Background()
+	// What the scan before this one stored, which carries the range type and the transfer function.
+	for name, old := range map[string]string{
+		"Eight One": `[{"Index":0,"Type":"Video","Codec":"hevc","VideoRangeType":"DOVI","ColorTransfer":"smpte2084","DolbyVisionBlCompatibility":1}]`,
+		"Plus":      `[{"Index":0,"Type":"Video","Codec":"hevc","VideoRangeType":"HDR10","ColorTransfer":"smpte2084"}]`,
+		"Plain":     `[{"Index":0,"Type":"Video","Codec":"h264","VideoRangeType":"SDR","ColorTransfer":""}]`,
+	} {
+		if _, err := f.pool.Exec(ctx, `UPDATE media_sources SET streams = $2::jsonb WHERE item_id = (SELECT id FROM items WHERE name LIKE $1 || '%')`, name, old); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := f.pool.Exec(ctx, `UPDATE items SET dto = jsonb_set(jsonb_set(dto, '{MediaStreams}', $2::jsonb), '{MediaSources,0,MediaStreams}', $2::jsonb) WHERE name LIKE $1 || '%'`, name, old); err != nil {
+			t.Fatal(err)
+		}
+	}
+	f.scan(t)
+	for name, want := range map[string]string{
+		"Eight One": `{"VideoRange":"HDR","VideoRangeType":"DOVIWithHDR10","DvProfile":8,"DvBlSignalCompatibilityId":1}`,
+		"Plus":      `{"VideoRange":"HDR","VideoRangeType":"HDR10Plus","Hdr10PlusPresentFlag":true}`,
+		"Plain":     `{"VideoRange":"SDR","VideoRangeType":"SDR"}`,
+	} {
+		for _, column := range []string{"(SELECT streams->0 FROM media_sources WHERE item_id = items.id)", "dto->'MediaStreams'->0", "dto->'MediaSources'->0->'MediaStreams'->0"} {
+			if !scalar[bool](t, f.pool, "SELECT "+column+" @> $2::jsonb FROM items WHERE name LIKE $1 || '%'", name, want) {
+				t.Errorf("%s: %s is %s after the next scan, want %s", name, column,
+					scalar[string](t, f.pool, "SELECT ("+column+")::text FROM items WHERE name LIKE $1 || '%'", name), want)
+			}
+		}
+	}
+	// A film that has them is left alone: a key the scan doesn't write survives another scan.
+	if _, err := f.pool.Exec(ctx, `UPDATE media_sources SET streams = jsonb_set(streams, '{0,Sentinel}', 'true')`); err != nil {
+		t.Fatal(err)
+	}
+	f.scan(t)
+	if n := scalar[int](t, f.pool, `SELECT count(*) FROM media_sources WHERE streams->0 ? 'Sentinel'`); n != 3 {
+		t.Errorf("%d of 3 films kept their streams through another scan; the rest were probed again", n)
+	}
+}

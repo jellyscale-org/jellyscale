@@ -204,14 +204,14 @@ func (s *server) setUp(password string) error {
 	if err := s.signIn("admin", password); err != nil {
 		return err
 	}
-	for _, lib := range [][2]string{{"Movies", "movies"}, {"Shows", "tvshows"}} {
+	for _, lib := range [][2]string{{"Movies", "movies"}, {"Shows", "tvshows"}, {"HDR", "movies"}} {
 		path := "/Library/VirtualFolders?refreshLibrary=false&name=" + lib[0] + "&collectionType=" + lib[1]
 		body := `{"LibraryOptions":{"PathInfos":[{"Path":"/media/` + strings.ToLower(lib[0]) + `"}]}}`
 		if _, err := s.mustDo("POST", path, body); err != nil {
 			return err
 		}
 	}
-	// One scan for both libraries. With refreshLibrary=true on each, a second
+	// One scan for all the libraries. With refreshLibrary=true on each, a second
 	// refresh while the first scan ran sometimes cancelled it, leaving 3 items.
 	_, err := s.mustDo("POST", "/Library/Refresh", "")
 	return err

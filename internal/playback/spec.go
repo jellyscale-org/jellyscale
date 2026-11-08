@@ -354,9 +354,13 @@ func Master(spec Spec, source Source, query string) string {
 	if framerate := source.FrameRate(); framerate > 0 {
 		rate = ",FRAME-RATE=" + strconv.FormatFloat(framerate, 'f', 3, 64)
 	}
-	codecs, audio := "avc1.640033", "mp4a.40.2"
+	codecs, audio, videoRange, supplemental := "avc1.640033", "mp4a.40.2", "SDR", ""
 	if spec.Copy {
 		codecs = source.codecs()
+		videoRange, supplemental = source.copiedRange()
+	}
+	if supplemental != "" {
+		supplemental = fmt.Sprintf(",SUPPLEMENTAL-CODECS=\"%s\"", supplemental)
 	}
 	if spec.AudioCopy != "" {
 		stream, _ := source.audio(spec.AudioIndex)
@@ -368,8 +372,8 @@ func Master(spec Spec, source Source, query string) string {
 		audioBitrate = unknownAudioBitrate
 	}
 	bandwidth := spec.VideoBitrate + audioBitrate
-	return fmt.Sprintf("#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=%d,AVERAGE-BANDWIDTH=%d,VIDEO-RANGE=SDR,CODECS=\"%s,%s\",RESOLUTION=%dx%d%s\nmain.m3u8?%s\n",
-		bandwidth, bandwidth, codecs, audio, spec.Width, spec.Height, rate, query)
+	return fmt.Sprintf("#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=%d,AVERAGE-BANDWIDTH=%d,VIDEO-RANGE=%s,CODECS=\"%s,%s\"%s,RESOLUTION=%dx%d%s\nmain.m3u8?%s\n",
+		bandwidth, bandwidth, videoRange, codecs, audio, supplemental, spec.Width, spec.Height, rate, query)
 }
 
 // Main is the complete VOD playlist, known before any segment exists.

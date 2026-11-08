@@ -52,7 +52,7 @@ func TestRequestsMeantToReturnRowsSayRows(t *testing.T) {
 		"the home page views", "latest films in the Movies library", "latest in the Shows library",
 		"continue watching, Video", "the films library, by name", "the films library, newest first",
 		"the shows library, by name", "search", "the seasons of a show", "the episodes of a show",
-		"the master playlist of a transcode",
+		"the master playlist of a transcode", "the HDR films with their streams",
 	} {
 		if r, ok := byName[name]; !ok || !r.Rows {
 			t.Errorf("%q is meant to return rows and does not say rows: true", name)

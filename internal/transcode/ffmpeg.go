@@ -165,8 +165,10 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		args = append(args, "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv")
 	}
 	if hasAudio && copied {
-		// -strict -2 lets older ffmpegs write FLAC and Opus into MP4.
-		args = append(args, "-c:a", "copy", "-strict", "-2")
+		// No -strict -2: FLAC and Opus go into MP4 without it from ffmpeg 6.1
+		// on, and on 6.1 it lets the muxer copy a Dolby Vision source's dvcC
+		// box into the H.264 stream, which Chrome then won't play.
+		args = append(args, "-c:a", "copy")
 	} else if hasAudio {
 		args = append(args, "-c:a", "aac", "-b:a", strconv.FormatInt(spec.AudioBitrate, 10), "-ac", "2", "-ar", strconv.Itoa(audioRate))
 	}
