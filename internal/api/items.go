@@ -144,6 +144,36 @@ func (s *Server) listItems(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, result)
 }
 
+// suggestions answers GET /Items/Suggestions as Jellyfin 12.4 does: items of
+// the given types from the whole library, in random order. Findroid asks for it
+// first on its home screen. Its filters are named type and mediaType where
+// /Items says includeItemTypes and mediaTypes.
+func (s *Server) suggestions(w http.ResponseWriter, r *http.Request) {
+	params := r.URL.Query()
+	params.Set("includeitemtypes", params.Get("type"))
+	params.Set("mediatypes", params.Get("mediatype"))
+	params.Del("parentid")
+	r.URL.RawQuery = params.Encode()
+	q, ok, err := s.itemQuery(r)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	if !ok {
+		writeJSON(w, items.Empty())
+		return
+	}
+	q.Recursive = true
+	q.SortBy, q.Descending = []string{"Random"}, nil
+	withCount := params.Get("enabletotalrecordcount") == "true"
+	result, err := s.Items.Find(r.Context(), q, items.ParseFields(""), withCount)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	writeJSON(w, result)
+}
+
 func (s *Server) latestItems(w http.ResponseWriter, r *http.Request) {
 	q, ok, err := s.itemQuery(r)
 	if err != nil {
