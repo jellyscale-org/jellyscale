@@ -8,7 +8,7 @@ A self-hosted video server that speaks the Jellyfin client API and runs as a hor
 
 ## Who it's for
 
-**Operators** running one library on Kubernetes for a household or a community, with tens to hundreds of people watching at once. They are comfortable with Helm and Postgres, and want the server to be something they set up once and then mostly forget.
+**Operators** running one library on Kubernetes for a household or a community, with tens to hundreds of people watching at once. They are comfortable with Kubernetes and Postgres, and want the server to be something they set up once and then mostly forget.
 
 **Viewers**, who are not technical and never need to be. They see only a Jellyfin app on a phone, a TV, a laptop or a browser.
 
@@ -31,7 +31,7 @@ A viewer opens the Jellyfin app they already use, signs in, and finds their film
 
 ### The operator
 
-- **Installing is boring.** A Helm chart, a Postgres, and storage, chosen per library between local disks and S3-compatible object storage, with neither second-class. Libraries and settings are declared in configuration and kept in version control, not clicked together in a dashboard.
+- **Installing is boring.** Plain manifests applied with `kubectl` (example manifests in the repository) or a Helm chart, whichever the operator prefers, plus a Postgres and storage, chosen per library between local disks and S3-compatible object storage, with neither second-class. Libraries and settings are declared in configuration and kept in version control, not clicked together in a dashboard.
 - **Growing is adding machines.** Each part (the API, streaming, transcoding, library work) scales on its own, and more viewers or heavier films are met by more machines rather than a bigger one. The cluster can grow and shrink with demand by itself.
 - **Nothing breaks the viewers' evening.** Upgrades, a lost machine and a database failover happen without interrupting anyone.
 - **Nothing is hidden.** They can see who is watching what, how it is being delivered, how fast each encode runs and where, and every failure is reported with its reason, never silent.
@@ -91,5 +91,5 @@ The experience above arrives in this order, each stage usable on its own:
 2. **Never interrupted:** any part of the cluster can fail mid-film without the viewer losing their place.
 3. **People:** accounts, sign-in by code and single sign-on, per-user libraries, devices and activity.
 4. **A living library:** metadata and artwork from files, next up, collections, versions, chapters, trickplay and intro skipping, hardware encoding.
-5. **Running on Kubernetes:** the Helm chart, autoscaling, upgrades without downtime, backup, and migration from Jellyfin.
+5. **Running on Kubernetes:** example manifests and a Helm chart, autoscaling, upgrades without downtime, backup, and migration from Jellyfin.
 6. **Watching together:** SyncPlay across the cluster.

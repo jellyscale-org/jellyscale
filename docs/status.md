@@ -87,7 +87,7 @@ Every viewer-visible and operator-visible feature in scope, in one list. Status 
 
 ### `phase6-k8s`
 
-- Helm chart, readiness and liveness, Kubernetes deployment: **not built**. The chart is the packaging: no operator and no raw-manifest install (decision).
+- Kubernetes deployment, as example manifests for `kubectl` and as a Helm chart, with readiness and liveness: **not built**. Both are supported ways to install; there is no operator (decision).
 - Metrics (Prometheus): **not built**. In scope.
 - Backup and restore: **not built**. In scope as documented procedure: the operator backs up Postgres and the object stores, so Jellyfin's Backup API is a non-goal (decision).
 - Migration from Jellyfin: **not built**. In scope as a one-way import of users, watch state and libraries, so that viewers keep their history. Users arrive without passwords: they set one, or sign in through OIDC (decision).
