@@ -364,11 +364,7 @@
         "Exported over OTLP to any backend; off by default",
         "A failover shows the dead worker's span end and the replacement's begin in one trace"
       ],
-<<<<<<< Updated upstream
-      "priority": 48,
-=======
-      "priority": 46,
->>>>>>> Stashed changes
+      "priority": 47,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -386,11 +382,7 @@
         "Each request and job log line carries ids that link them",
         "Levels and noise reviewed against the dogfood"
       ],
-<<<<<<< Updated upstream
-      "priority": 49,
-=======
-      "priority": 47,
->>>>>>> Stashed changes
+      "priority": 48,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -515,11 +507,7 @@
         "A Postgres restart or switchover under load does not restart transcodes whose rows survived",
         "No job is ever owned by two workers (invariant 25)"
       ],
-<<<<<<< Updated upstream
-      "priority": 11,
-=======
-      "priority": 8,
->>>>>>> Stashed changes
+      "priority": 10,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -538,11 +526,7 @@
         "A claim racing a re-lock cannot cancel a job",
         "Rollback note for the liveness change"
       ],
-<<<<<<< Updated upstream
-      "priority": 12,
-=======
-      "priority": 9,
->>>>>>> Stashed changes
+      "priority": 11,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -558,11 +542,7 @@
         "Kill an api replica during playback in the e2e tier: playback continues, progress persists, the socket reconnects",
         "Session ownership (sessions.ws_replica) moves to a live replica"
       ],
-<<<<<<< Updated upstream
-      "priority": 15,
-=======
-      "priority": 12,
->>>>>>> Stashed changes
+      "priority": 14,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -578,11 +558,7 @@
         "POST /Sessions/{id}/Playing, /Command, /Message, /System, /Viewing, /Capabilities work across replicas",
         "jellyfin-web's remote control drives another session"
       ],
-<<<<<<< Updated upstream
-      "priority": 16,
-=======
-      "priority": 13,
->>>>>>> Stashed changes
+      "priority": 15,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -600,11 +576,7 @@
         "POST /Users/New, DELETE /Users/{id}, /Users/{id}/Policy, /Password, /Configuration as Jellyfin 12.4",
         "jellyfin-web's admin user pages work"
       ],
-<<<<<<< Updated upstream
-      "priority": 17,
-=======
-      "priority": 15,
->>>>>>> Stashed changes
+      "priority": 16,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -620,11 +592,7 @@
         "No plain token in the database",
         "API keys created and revoked through jellyfin-web"
       ],
-<<<<<<< Updated upstream
-      "priority": 18,
-=======
-      "priority": 16,
->>>>>>> Stashed changes
+      "priority": 17,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -641,11 +609,7 @@
         "Last use time and address recorded",
         "Streamystats works with a read-only key and no extra user account"
       ],
-<<<<<<< Updated upstream
-      "priority": 19,
-=======
-      "priority": 17,
->>>>>>> Stashed changes
+      "priority": 18,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -662,11 +626,7 @@
       "acceptanceCriteria": [
         "Enforced on every item route"
       ],
-<<<<<<< Updated upstream
-      "priority": 20,
-=======
-      "priority": 18,
->>>>>>> Stashed changes
+      "priority": 19,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -684,11 +644,7 @@
         "Observed against Jellyfin 12.4 first",
         "Moonfin on the Shield and Findroid sign in with a code approved from jellyfin-web"
       ],
-<<<<<<< Updated upstream
-      "priority": 21,
-=======
-      "priority": 19,
->>>>>>> Stashed changes
+      "priority": 20,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -703,11 +659,7 @@
       "acceptanceCriteria": [
         "Answer shape as Jellyfin 12.4"
       ],
-<<<<<<< Updated upstream
-      "priority": 22,
-=======
-      "priority": 20,
->>>>>>> Stashed changes
+      "priority": 21,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -723,11 +675,7 @@
         "Sign in with an OIDC provider in jellyfin-web",
         "OIDC users reach TV apps through Quick Connect"
       ],
-<<<<<<< Updated upstream
-      "priority": 23,
-=======
-      "priority": 21,
->>>>>>> Stashed changes
+      "priority": 22,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -745,11 +693,7 @@
         "No viewer token in any playlist or segment URL",
         "Kodi's TranscodingUrl editing still works"
       ],
-<<<<<<< Updated upstream
-      "priority": 24,
-=======
-      "priority": 22,
->>>>>>> Stashed changes
+      "priority": 23,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -764,11 +708,7 @@
       "acceptanceCriteria": [
         "Each mode matches a Jellyfin 12.4 capture"
       ],
-<<<<<<< Updated upstream
-      "priority": 25,
-=======
-      "priority": 23,
->>>>>>> Stashed changes
+      "priority": 24,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -783,11 +723,7 @@
       "acceptanceCriteria": [
         "Revoked device's token stops working"
       ],
-<<<<<<< Updated upstream
-      "priority": 26,
-=======
-      "priority": 24,
->>>>>>> Stashed changes
+      "priority": 25,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -802,11 +738,7 @@
       "acceptanceCriteria": [
         "jellyfin-web's dashboard lists entries"
       ],
-<<<<<<< Updated upstream
-      "priority": 27,
-=======
-      "priority": 25,
->>>>>>> Stashed changes
+      "priority": 26,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -821,11 +753,7 @@
       "acceptanceCriteria": [
         "jellyfin-web shows and changes avatars"
       ],
-<<<<<<< Updated upstream
-      "priority": 28,
-=======
-      "priority": 26,
->>>>>>> Stashed changes
+      "priority": 27,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -841,11 +769,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-<<<<<<< Updated upstream
-      "priority": 29,
-=======
-      "priority": 27,
->>>>>>> Stashed changes
+      "priority": 28,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -861,11 +785,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-<<<<<<< Updated upstream
-      "priority": 30,
-=======
-      "priority": 28,
->>>>>>> Stashed changes
+      "priority": 29,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -881,11 +801,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-<<<<<<< Updated upstream
-      "priority": 31,
-=======
-      "priority": 29,
->>>>>>> Stashed changes
+      "priority": 30,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -901,11 +817,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-<<<<<<< Updated upstream
-      "priority": 32,
-=======
-      "priority": 30,
->>>>>>> Stashed changes
+      "priority": 31,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -921,11 +833,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-<<<<<<< Updated upstream
-      "priority": 33,
-=======
-      "priority": 31,
->>>>>>> Stashed changes
+      "priority": 32,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -941,11 +849,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-<<<<<<< Updated upstream
-      "priority": 34,
-=======
-      "priority": 32,
->>>>>>> Stashed changes
+      "priority": 33,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -961,11 +865,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-<<<<<<< Updated upstream
-      "priority": 35,
-=======
-      "priority": 33,
->>>>>>> Stashed changes
+      "priority": 34,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -981,11 +881,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-<<<<<<< Updated upstream
-      "priority": 36,
-=======
-      "priority": 34,
->>>>>>> Stashed changes
+      "priority": 35,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1001,11 +897,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-<<<<<<< Updated upstream
-      "priority": 37,
-=======
-      "priority": 35,
->>>>>>> Stashed changes
+      "priority": 36,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1021,11 +913,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-<<<<<<< Updated upstream
-      "priority": 38,
-=======
-      "priority": 36,
->>>>>>> Stashed changes
+      "priority": 37,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1041,11 +929,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-<<<<<<< Updated upstream
-      "priority": 39,
-=======
-      "priority": 37,
->>>>>>> Stashed changes
+      "priority": 38,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1061,11 +945,7 @@
         "Installs on a fresh cluster",
         "Readiness and liveness probes per role"
       ],
-<<<<<<< Updated upstream
-      "priority": 40,
-=======
-      "priority": 38,
->>>>>>> Stashed changes
+      "priority": 39,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1080,11 +960,7 @@
       "acceptanceCriteria": [
         "Workers scale up under queued jobs and down when idle"
       ],
-<<<<<<< Updated upstream
-      "priority": 41,
-=======
-      "priority": 39,
->>>>>>> Stashed changes
+      "priority": 40,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1101,11 +977,7 @@
       "acceptanceCriteria": [
         "A rolling upgrade under playback loses no picture"
       ],
-<<<<<<< Updated upstream
-      "priority": 42,
-=======
-      "priority": 40,
->>>>>>> Stashed changes
+      "priority": 41,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1122,11 +994,7 @@
       "acceptanceCriteria": [
         "Restore tested from a backup"
       ],
-<<<<<<< Updated upstream
-      "priority": 43,
-=======
-      "priority": 41,
->>>>>>> Stashed changes
+      "priority": 42,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1141,11 +1009,7 @@
       "acceptanceCriteria": [
         "Viewers keep their history; users set a password or use OIDC"
       ],
-<<<<<<< Updated upstream
-      "priority": 44,
-=======
-      "priority": 42,
->>>>>>> Stashed changes
+      "priority": 43,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1161,11 +1025,7 @@
         "Observe its calls on Jellyfin first",
         "Its dashboards fill from jellyscale"
       ],
-<<<<<<< Updated upstream
-      "priority": 45,
-=======
-      "priority": 43,
->>>>>>> Stashed changes
+      "priority": 44,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1183,11 +1043,7 @@
       "acceptanceCriteria": [
         "200 mixed streams with stated rebuffer ratio and p95s"
       ],
-<<<<<<< Updated upstream
-      "priority": 46,
-=======
-      "priority": 44,
->>>>>>> Stashed changes
+      "priority": 45,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1205,11 +1061,7 @@
         "Two viewers on different api replicas stay in sync in jellyfin-web",
         "compat/coverage-12.4.tsv phase7-syncplay routes built (23)"
       ],
-<<<<<<< Updated upstream
-      "priority": 47,
-=======
-      "priority": 45,
->>>>>>> Stashed changes
+      "priority": 46,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1251,11 +1103,7 @@
         "Replays run in CI and fail on a response a client would reject (status, missing field, wrong shape)",
         "No titles or paths from a real library in the captures (synthetic fixtures only)"
       ],
-<<<<<<< Updated upstream
-      "priority": 10,
-=======
-      "priority": 14,
->>>>>>> Stashed changes
+      "priority": 9,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1274,11 +1122,7 @@
         "Randomized schedules with a printed seed that reproduces a failure",
         "A soak mode (many repetitions) documented in docs/testing.md and run before failover changes merge"
       ],
-<<<<<<< Updated upstream
-      "priority": 13,
-=======
-      "priority": 10,
->>>>>>> Stashed changes
+      "priority": 12,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1315,11 +1159,7 @@
         "Each entry with task JS-068 in compat/differences.yaml is fixed and removed, or becomes an improvement or non-goal with its reason",
         "test/differential/run.sh passes with the entries removed"
       ],
-<<<<<<< Updated upstream
-      "priority": 14,
-=======
-      "priority": 11,
->>>>>>> Stashed changes
+      "priority": 13,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1359,7 +1199,7 @@
         "requests.yaml covers the startup, discovery and sign-in requests above, and the tier passes",
         "@jellyfin/sdk's recommended-server discovery accepts jellyscale in CI, and fails with ProductName put back"
       ],
-      "priority": 9,
+      "priority": 8,
       "status": "todo",
       "passes": false,
       "dependsOn": [
