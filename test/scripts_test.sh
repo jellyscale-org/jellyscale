@@ -96,15 +96,19 @@ printf 'shard 0/3: ran 2 of 12\nmore output\n' >"$tmp/gate"
 fails_with "a shard line that is not the last line fails" bash test/check-shards.sh line "$tmp/gate"
 fails_with "a missing file fails" bash test/check-shards.sh line "$tmp/none"
 
-# --- changes.sh: docs-only means Markdown in the root or under docs/, nothing else.
+# --- changes.sh: docs-only means Markdown in the root or under docs/, or tasks/prd.json.
 g="$tmp/git"
 git init -q "$g" && cd "$g" || exit 1
 git config user.email t@t && git config user.name t
-mkdir -p docs .claude/agents compat src && echo 1 >README.md && echo 1 >docs/a.md && echo 1 >docs/a.txt && echo 1 >src/a.go && echo 1 >.claude/agents/qa.md && echo 1 >compat/x.md
+mkdir -p docs .claude/agents compat src tasks && echo 1 >tasks/prd.json && echo 1 >tasks/other.json && echo 1 >README.md && echo 1 >docs/a.md && echo 1 >docs/a.txt && echo 1 >src/a.go && echo 1 >.claude/agents/qa.md && echo 1 >compat/x.md
 git add -A && git commit -qm base
 changed() { git add -A && git commit -qm change && bash "$repo/test/changes.sh" HEAD~1 HEAD; }
 echo 2 >>README.md; echo 2 >>docs/a.md
 check "a root .md and docs/*.md are docs-only" docs-only "$(changed)"
+echo 2 >>tasks/prd.json; echo 2 >>docs/a.md
+check "tasks/prd.json with docs is docs-only" docs-only "$(changed)"
+echo 2 >>tasks/other.json
+check "another file under tasks/ is code" code "$(changed)"
 echo 2 >>docs/a.txt
 check "a file under docs/ that is not Markdown is code" code "$(changed)"
 echo 2 >>README.md; echo 2 >>src/a.go
