@@ -357,21 +357,27 @@
     {
       "id": "JS-021",
       "phase": "OPS",
-      "title": "OpenTelemetry tracing of a stream end to end",
-      "description": "One trace per playback: PlaybackInfo, decision, job queued, claim, ffmpeg start, each segment's wait, upload and serve, continuing across a worker failover.",
+      "title": "Follow any playback end to end, and see why the cluster needed more workers",
+      "description": "An operator must be able to see exactly where a playback stalled and why the cluster needed more workers, not only that a film is transcoding. Metrics (JS-019) give totals: stalls happened, the queue is deep. This adds one OpenTelemetry trace per playback (PlaySessionId) across the api, stream and worker processes: PlaybackInfo and its decision with reasons; each segment request and where its time went (served from the store, waited on a job, started a job); the job queued, claimed (queue time, which worker) and its ffmpeg runs with their speed; helpers started, and helpers wanted but not started for lack of a free slot; and a failover (lock lost, reap, replacement). The reasons for more workers become metrics too, which autoscaling (JS-057) scales on, so the reason it scaled is visible. Viewers keep seeing in their app that a film is transcoding and why (JS-067).",
       "acceptanceCriteria": [
-        "Trace context is carried in the transcode job row across the Postgres handoff",
-        "Exported over OTLP to any backend; off by default",
-        "A failover shows the dead worker's span end and the replacement's begin in one trace"
+        "One trace per playback session spans the api, stream and worker processes, its context carried in the transcode job row across the Postgres handoff",
+        "Given a stalled segment (over 5 s), its trace shows which part took the time: waiting for a free slot, an encode slower than real time, the upload, or reading the store; the stall metric links to the trace (exemplar)",
+        "A failover shows the dead worker's span end and the replacement's begin in one trace",
+        "Helper decisions are traced and counted: helpers started with the job's speed, and helpers wanted but not started because no slot was free",
+        "Demand for workers is a metric with its reason (jobs waiting for a slot and how long, helpers wanted but refused, jobs below real time), and the autoscaler's input is one of these, so why the cluster grew can be read back",
+        "Log lines carry the trace id (JS-022), so a trace leads to its logs",
+        "jellyfin-web's playback info still shows transcoding, its reasons and speed (JS-067), and stays right while helpers run (the viewer's own job may have ended)",
+        "Exported over OTLP to any backend, off by default; the dogfood runs a backend and the docs show reading a stall from it",
+        "Checked with real processes: a test collector receives a playback's trace from three processes, with a stall and a failover in it"
       ],
-      "priority": 47,
+      "priority": 40,
       "status": "todo",
       "passes": false,
       "dependsOn": [
         "JS-019"
       ],
       "source": "work queue (later)",
-      "notes": "Needs a design review; the homelab has no tracing backend yet (Tempo suggested)."
+      "notes": "Needs a design review; the homelab has no tracing backend yet (Tempo suggested). Product owner (2026-11-08): wants to trace everything through the pipeline, see where something stalled and why more workers were needed; placed before P6 (Kubernetes). JS-024 review (UX): Sessions can show the viewer's job as done while helpers encode, and no log line says a helper started."
     },
     {
       "id": "JS-022",
@@ -380,9 +386,10 @@
       "description": "Consistent, structured logs per role with request and job ids, so an operator can follow one playback.",
       "acceptanceCriteria": [
         "Each request and job log line carries ids that link them",
-        "Levels and noise reviewed against the dogfood"
+        "Levels and noise reviewed against the dogfood",
+        "Each line of a playback carries its play session id and trace id (JS-021), and a helper's start, end and failure say they are a helper's and whose"
       ],
-      "priority": 48,
+      "priority": 39,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -950,7 +957,7 @@
         "Readiness and liveness probes per role",
         "The chart sizes CNPG's max_connections from its own values: every process's databaseMaxConns plus one liveness connection per transcode worker, with headroom; installing values whose sum exceeds it fails the render. The manifests carry the same sizing with a comment saying how to recompute it"
       ],
-      "priority": 39,
+      "priority": 41,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -964,13 +971,15 @@
       "description": "Scale workers on a Postgres query, keeping spare transcode slots.",
       "acceptanceCriteria": [
         "Workers scale up under queued jobs and down when idle",
-        "KEDA's maximum worker replicas stay within the Postgres connection budget (one liveness connection per worker, on top of the pools), so scaling up never exhausts max_connections"
+        "KEDA's maximum worker replicas stay within the Postgres connection budget (one liveness connection per worker, on top of the pools), so scaling up never exhausts max_connections",
+        "It scales on the demand metric of JS-021 (jobs waiting for a slot, helpers refused for lack of one), so each scale-up can be read back with its reason"
       ],
-      "priority": 40,
+      "priority": 42,
       "status": "todo",
       "passes": false,
       "dependsOn": [
-        "JS-056"
+        "JS-056",
+        "JS-021"
       ],
       "source": "project plan",
       "notes": " JS-020 (2026-11-08): each worker holds one Postgres connection for its liveness lock, outside the pool, so a stock Postgres (max_connections 100) is exhausted at about 90 workers, long before its CPU (one primary carried 1600 streams on two cores' worth). Connections are the first wall when autoscaling."
@@ -983,7 +992,7 @@
       "acceptanceCriteria": [
         "A rolling upgrade under playback loses no picture"
       ],
-      "priority": 41,
+      "priority": 43,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1000,7 +1009,7 @@
       "acceptanceCriteria": [
         "Restore tested from a backup"
       ],
-      "priority": 42,
+      "priority": 44,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1015,7 +1024,7 @@
       "acceptanceCriteria": [
         "Viewers keep their history; users set a password or use OIDC"
       ],
-      "priority": 43,
+      "priority": 45,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1031,7 +1040,7 @@
         "Observe its calls on Jellyfin first",
         "Its dashboards fill from jellyscale"
       ],
-      "priority": 44,
+      "priority": 46,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1049,7 +1058,7 @@
       "acceptanceCriteria": [
         "200 mixed streams with stated rebuffer ratio and p95s"
       ],
-      "priority": 45,
+      "priority": 47,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1067,7 +1076,7 @@
         "Two viewers on different api replicas stay in sync in jellyfin-web",
         "compat/coverage-12.4.tsv phase7-syncplay routes built (23)"
       ],
-      "priority": 46,
+      "priority": 48,
       "status": "todo",
       "passes": false,
       "dependsOn": [
