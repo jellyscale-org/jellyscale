@@ -61,6 +61,10 @@ type config struct {
 	// furthest segment a viewer has asked for before its ffmpeg pauses.
 	TranscodeLead string `json:"transcodeLead"`
 
+	// DatabaseMaxConns is the most Postgres connections the process opens, for
+	// every role in it together. Zero means db.DefaultMaxConns.
+	DatabaseMaxConns int `json:"databaseMaxConns"`
+
 	// MetricsListen is where /metrics is served, such as ":9090", by every role
 	// in the process and apart from the public port. Empty serves none.
 	MetricsListen string `json:"metricsListen"`
@@ -79,7 +83,24 @@ func parseConfig(raw []byte) (config, error) {
 	if _, err := decoder.Token(); err != io.EOF {
 		return cfg, errors.New("unexpected data after the config")
 	}
+	// The hint listener holds one connection for good, so a pool of 1 leaves
+	// nothing for queries and the process hangs; the cap keeps the int32 pgx
+	// takes from wrapping.
+	if n := cfg.DatabaseMaxConns; n < 0 || n == 1 || n > maxDatabaseConns {
+		return cfg, fmt.Errorf("databaseMaxConns must be 0 (the default, %d) or 2 to %d, not %d", db.DefaultMaxConns, maxDatabaseConns, n)
+	}
 	return cfg, nil
+}
+
+// maxDatabaseConns is far above any Postgres max_connections worth running.
+const maxDatabaseConns = 10000
+
+// openDatabase opens the pool every role in the process shares.
+func openDatabase(ctx context.Context, dsn string, cfg config) (*pgxpool.Pool, error) {
+	if cfg.DatabaseMaxConns == 0 {
+		return db.Open(ctx, dsn)
+	}
+	return db.Open(ctx, dsn, db.WithMaxConns(int32(cfg.DatabaseMaxConns)))
 }
 
 func main() {
@@ -131,7 +152,7 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 		return errors.New("JELLYSCALE_DATABASE_URL is required")
 	}
 
-	pool, err := db.Open(ctx, dsn)
+	pool, err := openDatabase(ctx, dsn, cfg)
 	if err != nil {
 		return err
 	}

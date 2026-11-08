@@ -19,9 +19,30 @@ var migrations embed.FS
 // Replicas can start together, so migrations run under this advisory lock.
 const migrationLock = 7364021
 
+// DefaultMaxConns is the pool size when none is asked for. pgx's own default is
+// the CPU count, at least 4, which the control-plane stress run found too few
+// for a process running every role (ARCHITECTURE.md, Control-plane ceiling).
+const DefaultMaxConns = 16
+
+// Option changes how Open sets up the pool.
+type Option func(*pgxpool.Config)
+
+// WithMaxConns sets the most connections the pool opens.
+func WithMaxConns(n int32) Option {
+	return func(cfg *pgxpool.Config) { cfg.MaxConns = n }
+}
+
 // Open connects to Postgres and brings the schema up to date.
-func Open(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
-	pool, err := pgxpool.New(ctx, dsn)
+func Open(ctx context.Context, dsn string, options ...Option) (*pgxpool.Pool, error) {
+	cfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("connect: %w", err)
+	}
+	cfg.MaxConns = DefaultMaxConns
+	for _, option := range options {
+		option(cfg)
+	}
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("connect: %w", err)
 	}

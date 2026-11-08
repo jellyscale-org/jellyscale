@@ -30,3 +30,38 @@ One binary, chosen with `--roles`, run as separate Deployments. Roles version to
 
 - A burnt-in PGS cue that began before a transcode job's restart point is not drawn by that job until the next cue, though a job from zero draws it, so a segment's picture depends on which job made it where a cue spans a restart (DOMAINS 51). Text cues are exact, because their track is a whole file. Opening the track's input earlier would cost another read of the film for as long as the job, so it is accepted until a measurement says otherwise.
 - A worker from before a release that adds a spec field (tone mapping, copied audio) stores segments made without it under the new hash if it takes a job with the field, so workers roll first and roll back last (docs/transcoding.md, Tone mapping). The general fix, workers reporting their `OutputVersion` and the api offering only specs every live worker supports, belongs to the upgrades item in `phase6-k8s` (PRODUCT.md).
+
+## Control-plane ceiling
+
+How many streams one Postgres primary carries for the control plane alone, no video (JS-020). `test/stress.sh <workdir>` starts a disposable Postgres (`postgres:18-alpine`, 18.6 on the run below, `max_connections=2000`) and drives the real calls, not copied SQL: per viewer a `Jobs.Watch`, `Jobs.Segment` (with its ensure and state reads, waiting on a fake job) every 4 s and a `Jobs.Unavailable` at start and every 30 s; per running job `Worker.beat` every 3 s, a `Worker.furthest` look every 500 ms (as a job at its lead limit makes, so an upper bound) and a segment stored and a `Notify` every 4 s; per worker `Reap` four times a second on top of its own liveness-lock connection, `Worker.claim` every second and on each new-job hint, and `Worker.Sweep` once a minute. Only ffmpeg is fake. V viewers, W = V/4 workers (4 slots each, so about one job per 4 viewers), 60 s per step, calls open loop so a slow database shows as latency, never as a quietly lower rate. The run fails if any operation completes less than 90% of its intended calls without error.
+
+**Result: one primary carries about 1600 streams with 400 workers (a pool of 64 per process), with Watch, beat and Reap p99 at 22 ms, 22 ms and 14 ms; 3200 streams with 800 workers is just over the line (Watch p99 55 ms); 6400 collapses.** Measured on 16 cores (AMD Ryzen 7 7800X3D, 8 cores with SMT) and 62 GB RAM, Postgres in Docker, with the load generator on the same cores, so the CPU numbers are for the pair and the real ceiling of a dedicated primary is a little higher. A step is degraded when p99 of Watch or beat is over 50 ms or of Reap over 250 ms (a dead worker's jobs get a second). All the calls share one pgx pool, as every role of a process does in the dogfood; its size is `databaseMaxConns` (docs/running.md).
+
+Step table, pool of 64 (CPU is `docker stats`, percent of one core, averaged over the step; conns is the most Postgres connections seen, workers' liveness connections included). The last two rows come from a run of the same driver past the ladder's top step (`JELLYSCALE_STRESS_STEPS=3200,6400`):
+
+| V | W | Watch p99 | beat p99 | Reap p99 | Postgres CPU | conns |
+| --- | --- | --- | --- | --- | --- | --- |
+| 50 | 12 | 16.4 ms | 10.8 ms | 1.1 ms | 4% | 36 |
+| 100 | 25 | 15.1 ms | 14.4 ms | 0.8 ms | 7% | 65 |
+| 200 | 50 | 12.3 ms | 13.3 ms | 1.0 ms | 16% | 117 |
+| 400 | 100 | 14.7 ms | 15.7 ms | 3.0 ms | 36% | 173 |
+| 800 | 200 | 13.3 ms | 13.4 ms | 1.4 ms | 71% | 273 |
+| 1600 | 400 | 21.4 ms | 22.1 ms | 13.8 ms | 195% | 473 |
+| 3200 | 800 | 54.9 ms | 58.4 ms | 47.6 ms | 499% | 873 |
+| 6400 | 1600 | 5.0 s | 5.0 s | 5.0 s | 796% | 1673 |
+
+At 6400 most calls hit the harness's 5 s limit and 77% of Watch calls failed; the run stopped there.
+
+The pgx pool size, same ladder (p99 of Watch / beat / Reap, ms; the pool is shared by every role of the process, and the hint listener holds one connection of it for good):
+
+| pool | V=200 | V=400 | V=800 | V=1600 | first degraded step |
+| --- | --- | --- | --- | --- | --- |
+| 4 (pgx's default on a host with 4 CPUs or fewer, as the dogfood's) | 57.2 / 62.3 / 49.4 | 1686 / 1676 / 1675 | 5001 / 5001 / 5001 | not reached | V=200; V=400 queues every call; V=800 fails (half its calls time out) |
+| 16 | 11.1 / 13.1 / 0.8 | 14.1 / 14.9 / 0.8 | 17.3 / 21.3 / 6.2 | 490 / 498 / 483 | V=1600 |
+| 64 | 12.3 / 13.3 / 1.0 | 14.7 / 15.7 / 3.0 | 13.3 / 13.4 / 1.4 | 21.4 / 22.1 / 13.8 | none to 1600; V=3200 |
+
+A pool of 4 is the limit well before Postgres is: at V=400 Postgres used 25% of one core and every call queued for a connection. Pool 4 is on a cliff between V=200 and V=800, so its rows vary from run to run: three runs gave V=400 Watch p99 of 1.5 s, 1.7 s and 4.9 s, the last with 2890 of 6000 Segment calls failing, which stops the ladder there with the rate error; the row is the run of 2026-11-08, and the conclusion, not the digits, is what repeats. The pools of 16 and 64 sit far from their cliffs and repeat in shape. `db.DefaultMaxConns` is 16, which holds 800 viewers and 200 workers' traffic per process without a queue; raise `databaseMaxConns` to 64 for a process that carries more. The cost is `max_connections`: a process opens up to its pool size, plus one connection for every worker it runs, so a stock Postgres (100) is reached at about 90 workers (one connection each) however idle it is. That is the first wall, ahead of CPU, and it moves with one setting (or, for the pools only, a session-mode pooler; the liveness connection must stay direct).
+
+Rerun: `test/stress.sh <workdir>` (about 7 minutes; Docker only; `JELLYSCALE_STRESS_POOL=64` picks the pool, `JELLYSCALE_STRESS_STEPS=3200,6400` the steps; the report is `<workdir>/stress-report-pool<N>.txt`). It is behind the build tag `stress` and in no CI tier. `go test -tags integration -run TestStressDriver ./internal/transcode` runs the same driver for 6 seconds at V=8 as a check that it still works.
+
+**NATS JetStream for ephemeral state after the MVP: not recommended; no task proposed.** The target is tens to hundreds of streams (PRODUCT.md; plan Phase 6: 200 mixed streams). That is 8 times below the 1600 streams one primary carried with p99s of 14 to 22 ms, using about two of 16 cores, and the 200-viewer step (W=50) cost 16% of one core. Postgres stays the only required service (rule 5), and adding NATS would cost a second service to run for a ceiling nobody is near. If the target ever moves past a few thousand streams, move the polling before the state: the `Reap` loops (four a second per worker, the bulk of calls at every step), the `furthest` looks and the 1 s claim ticks are what Postgres is asked most, and the first two can be slowed or served from the NOTIFY hints without a new service. The limits that arrive first are `max_connections` and the pool size, both settings. Unverified: the figures past 1600 are one run, and the load generator's own CPU is not separated from Postgres's.

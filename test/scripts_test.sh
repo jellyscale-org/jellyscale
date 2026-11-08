@@ -231,6 +231,23 @@ check "putfile stored two objects" 2 "$(find "$tmp/store" -type f | wc -l)"
 "$tmp/putfile" -delete "file://$tmp/store"
 check "putfile -delete removes them all" 0 "$(find "$tmp/store" -type f | wc -l)"
 
+# --- the control-plane stress run: in no CI tier, there to be run, and written up.
+tier_tests=$(go test -tags integration -list '.*' ./... 2>/dev/null | grep -E '^Test' | grep -c 'ControlPlaneLadder')
+check "the stress ladder is not in the integration tier" 0 "$tier_tests"
+check "the stress ladder is not in the unit tier" 0 "$(go test -list '.*' ./... 2>/dev/null | grep -c 'ControlPlaneLadder')"
+check "the stress ladder exists under its own tag" 1 "$(go test -tags stress -list '.*' ./internal/transcode 2>/dev/null | grep -c '^TestControlPlaneLadder$')"
+check "test/stress.sh exists" 1 "$([[ -f test/stress.sh ]] && echo 1 || echo 0)"
+check "the integration shards still tile the tier with the stress files in" "$all" "$(printf '%s\n%s\n' "$dealt" "$rest" | sort)"
+arch=$(sed -n '/^## Control-plane ceiling/,/^## /p' ARCHITECTURE.md)
+check "ARCHITECTURE.md has a Control-plane ceiling section" 1 "$([[ -n $arch ]] && echo 1 || echo 0)"
+for v in 50 100 200 400 800 1600; do
+  check "the ceiling section has a row for V=$v" 1 "$(grep -c "^| *$v *|" <<<"$arch")"
+done
+check "the ceiling section states streams per primary" 1 "$(grep -ci 'streams' <<<"$arch" | awk '{print ($1>0)}')"
+check "the ceiling section says how to rerun" 1 "$(grep -c 'test/stress.sh' <<<"$arch" | awk '{print ($1>0)}')"
+check "the ceiling section recommends on NATS" 1 "$(grep -c 'NATS' <<<"$arch" | awk '{print ($1>0)}')"
+check "the ceiling section names the cores and RAM of the machine" 1 "$(grep -ciE 'cores?|threads' <<<"$arch" | awk '{print ($1>0)}')"
+
 echo
 [[ $fails -eq 0 ]] && echo "scripts: all passed" || echo "scripts: $fails failed"
 exit $((fails > 0))

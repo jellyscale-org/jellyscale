@@ -10,7 +10,8 @@ import (
 
 // A mistyped build tag hides a file from every tier without a skip or an error,
 // and `go test -list` can't see it, because it reads the same tags. So a file's
-// name and its tag have to agree, and the only tags are the two the tiers use.
+// name and its tag have to agree, and the only tags are the two the tiers use, and stress for the control-plane
+// stress run (test/stress.sh), whose driver is shared with the integration tier.
 func TestBuildTags(t *testing.T) {
 	root := filepath.Join("..", "..")
 	found := 0
@@ -34,6 +35,14 @@ func TestBuildTags(t *testing.T) {
 		}
 		integration := strings.HasSuffix(path, "_integration_test.go")
 		switch {
+		case strings.HasSuffix(path, "_stress_test.go") || strings.HasSuffix(path, "/stress_test.go"):
+			if tag != "stress" {
+				t.Errorf("%s: a stress file needs //go:build stress, has %q", path, tag)
+			}
+		case strings.HasSuffix(path, "/stress_driver_test.go"):
+			if tag != "integration || stress" {
+				t.Errorf("%s: the stress driver needs //go:build integration || stress, has %q", path, tag)
+			}
 		case integration && tag != "integration":
 			t.Errorf("%s: an integration test file needs //go:build integration, has %q", path, tag)
 		case !integration && tag != "" && tag != "!integration":
