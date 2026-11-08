@@ -14,6 +14,7 @@ E2E_GATES=transcode E2E_SHARD=1/3 test/e2e/run.sh ...  # A slice of a gate; E2E_
 E2E_REPEAT=5 test/e2e/run.sh ...            # Warm reruns on one stack, "passed p of n" per scenario (a flake hunt)
 test/differential/run.sh <workdir>          # A real Jellyfin 12.4 and jellyscale asked the same requests (needs Docker, ffmpeg)
 test/scripts_test.sh                        # Tests of the test scripts
+test/ffmpeg61.sh go test -tags integration ./internal/transcode -run X  # Under Ubuntu 24.04's ffmpeg 6.1, as CI
 go run ./cmd/jellyscale --print-routes > compat/endpoints.yaml
 ```
 
