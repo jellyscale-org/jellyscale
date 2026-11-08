@@ -533,13 +533,21 @@ func TestASeekIntoAHelpersChunkJoinsTheHelper(t *testing.T) {
 // worker's ffmpeg (taskset), one, two and three worker processes, and helpers
 // wanted whatever the speed (HelpBelow is high), because on this machine a CPU
 // alone is faster than real time. It shows that more workers finish the film
-// sooner, and logs the numbers.
+// sooner, and logs the numbers. Each worker gets a CPU on its own physical
+// core: two hyperthreads of one core are not two CPUs' worth of encoding (a
+// 4-vCPU CI runner has two cores), so n workers can only gain as much as
+// min(n, cores) cores give.
 func TestMoreWorkersFinishTheFilmSooner(t *testing.T) {
 	real := testenv.FFmpeg(t)
 	film(t)
 	if _, err := exec.LookPath("taskset"); err != nil {
 		t.Fatal("this test pins each worker's ffmpeg to a CPU with taskset")
 	}
+	cpus := oneCPUPerCore(t)
+	if len(cpus) < 2 {
+		t.Fatalf("this test needs at least two physical cores, found CPUs %v", cpus)
+	}
+	t.Logf("one CPU per physical core: %v", cpus)
 	timings := map[int]time.Duration{}
 	for _, n := range []int{1, 2, 3} {
 		r := newRig(t, nil)
@@ -547,7 +555,7 @@ func TestMoreWorkersFinishTheFilmSooner(t *testing.T) {
 		set := &helperFleet{cmds: map[string]*exec.Cmd{}}
 		for i := 0; i < n; i++ {
 			bin := t.TempDir()
-			script := fmt.Sprintf("#!/bin/sh\nexec taskset -c %d %s \"$@\"\n", i, real)
+			script := fmt.Sprintf("#!/bin/sh\nexec taskset -c %d %s \"$@\"\n", cpus[i%len(cpus)], real)
 			if err := os.WriteFile(filepath.Join(bin, "ffmpeg"), []byte(script), 0o755); err != nil {
 				t.Fatal(err)
 			}
@@ -562,12 +570,52 @@ func TestMoreWorkersFinishTheFilmSooner(t *testing.T) {
 		set.stop(t)
 	}
 	t.Logf("speedup over one worker: 2 workers %.2fx, 3 workers %.2fx", float64(timings[1])/float64(timings[2]), float64(timings[1])/float64(timings[3]))
-	if timings[2] > timings[1]*80/100 {
-		t.Errorf("two workers took %v, one took %v: no real gain", timings[2], timings[1])
+	// Two cores should take at most 80% of one core's time, three at most 60%.
+	most := map[int]time.Duration{2: timings[1] * 80 / 100, 3: timings[1] * 60 / 100}
+	for _, n := range []int{2, 3} {
+		if limit := most[min(n, len(cpus))]; timings[n] > limit {
+			t.Errorf("%d workers on %d cores took %v, one took %v: no real gain (at most %v)", n, min(n, len(cpus)), timings[n], timings[1], limit)
+		}
 	}
-	if timings[3] > timings[1]*60/100 {
-		t.Errorf("three workers took %v, one took %v: no real gain", timings[3], timings[1])
+}
+
+// oneCPUPerCore lists one logical CPU for each physical core this process may
+// run on, by the kernel's topology.
+func oneCPUPerCore(t *testing.T) []int {
+	t.Helper()
+	out, err := exec.Command("taskset", "-pc", strconv.Itoa(os.Getpid())).Output()
+	if err != nil {
+		t.Fatal(err)
 	}
+	// "pid 123's current affinity list: 0-3,8"
+	list := strings.TrimSpace(string(out[strings.LastIndex(string(out), ":")+1:]))
+	seen := map[string]bool{}
+	var cpus []int
+	for _, part := range strings.Split(list, ",") {
+		lo, hi, found := strings.Cut(part, "-")
+		if !found {
+			hi = lo
+		}
+		a, err1 := strconv.Atoi(lo)
+		b, err2 := strconv.Atoi(hi)
+		if err1 != nil || err2 != nil {
+			t.Fatalf("taskset affinity list %q", list)
+		}
+		for cpu := a; cpu <= b; cpu++ {
+			dir := fmt.Sprintf("/sys/devices/system/cpu/cpu%d/topology/", cpu)
+			pkg, err1 := os.ReadFile(dir + "physical_package_id")
+			core, err2 := os.ReadFile(dir + "core_id")
+			if err1 != nil || err2 != nil {
+				t.Fatalf("no topology for CPU %d: %v %v", cpu, err1, err2)
+			}
+			key := strings.TrimSpace(string(pkg)) + "/" + strings.TrimSpace(string(core))
+			if !seen[key] {
+				seen[key] = true
+				cpus = append(cpus, cpu)
+			}
+		}
+	}
+	return cpus
 }
 
 // A job nobody helps runs one ffmpeg from where it began to the end of the
