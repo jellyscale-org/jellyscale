@@ -916,18 +916,26 @@
     {
       "id": "JS-054",
       "phase": "P5",
-      "title": "Hardware encoding",
-      "description": "NVENC and VAAPI (and QSV) workers; encoder family in spec_hash.",
+      "title": "Use every GPU and CPU the cluster has",
+      "description": "A worker uses whatever encoder hardware its node exposes (NVIDIA NVENC, Intel QSV or VAAPI, AMD VAAPI) and falls back to the CPU, so a cluster with GPUs uses them, as Jellyfin does on the dogfood's Intel iGPUs. fMP4 can't splice across encoder families (spikes/seam: x264 spliced with NVENC lost half the frames), so each stream is given the best family with room when it starts, and its helpers (JS-024) and failover stay in that family. A GPU can also serve a CPU-encoded stream by decoding for it, if its frames equal software decoding, so every node still helps every stream.",
       "acceptanceCriteria": [
-        "Matches a Jellyfin 12.4 capture where a client calls it",
-        "Played or browsed in jellyfin-web"
+        "Design reviewed before building: how a family is chosen for a stream, helpers and failover within a family, and what a viewer sees when the last worker of their stream's family is lost mid-film (playing on is the goal; a restart needs the product owner's decision)",
+        "A worker detects at start which encoders its node can run (a short test encode per family, not the ffmpeg build's list) and advertises them; a node with no GPU runs exactly as before",
+        "A new stream gets a GPU family when a worker of that family has a free slot, and the CPU otherwise; the encoder family stays in the spec hash and the decision is logged and metered with its reason",
+        "Helpers and failover of a GPU stream stay in its family; a seek, a restart and a helper's chunk splice cleanly on QSV/VAAPI and NVENC as the seam spike showed for one family",
+        "Hardware decoding for CPU-encoded streams only where its frames are measured equal to software decoding (per codec and family); otherwise software decoding",
+        "Tested on real hardware in its own tier chosen explicitly (never skipped): Intel QSV/VAAPI on the dogfood cluster's iGPUs and NVENC on a developer machine; jellyfin-web plays, seeks and recovers from a killed GPU worker",
+        "Operators see which encoder family and worker serve each stream (Sessions, metrics, JS-021 traces)"
       ],
       "priority": 37,
       "status": "todo",
       "passes": false,
-      "dependsOn": [],
-      "source": "PRODUCT.md phase5-library",
-      "notes": ""
+      "dependsOn": [
+        "JS-024",
+        "JS-072"
+      ],
+      "source": "PRODUCT.md phase5-library; rewritten 2026-11-08: the product owner wants every GPU and CPU in the cluster used where possible, priority kept in P5",
+      "notes": "The dogfood cluster has an Intel iGPU on each of its three nodes (gpu.intel.com/i915: 1 allocatable) and the user's Jellyfin requests one; the developer machine has an RTX 4070 Ti and an AMD iGPU. GPU tone mapping (libplacebo or vendor filters) gives frames unlike zscale's, so it splices only within its own family."
     },
     {
       "id": "JS-055",
@@ -955,7 +963,8 @@
         "The Helm chart installs the same on a fresh cluster",
         "The manifests and the chart cannot drift: a test fails when they would deploy different resources (for example, the manifests are the chart rendered with its defaults, checked in)",
         "Readiness and liveness probes per role",
-        "The chart sizes CNPG's max_connections from its own values: every process's databaseMaxConns plus one liveness connection per transcode worker, with headroom; installing values whose sum exceeds it fails the render. The manifests carry the same sizing with a comment saying how to recompute it"
+        "The chart sizes CNPG's max_connections from its own values: every process's databaseMaxConns plus one liveness connection per transcode worker, with headroom; installing values whose sum exceeds it fails the render. The manifests carry the same sizing with a comment saying how to recompute it",
+        "An optional GPU worker pool requests gpu.intel.com/i915 or nvidia.com/gpu through the vendor's device plugin (JS-054); a cluster without one runs CPU workers only; documented in docs/running.md"
       ],
       "priority": 41,
       "status": "todo",
