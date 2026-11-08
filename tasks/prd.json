@@ -943,14 +943,15 @@
       "description": "The packaging: Deployments per role, readiness and liveness, CNPG, config as values.",
       "acceptanceCriteria": [
         "Installs on a fresh cluster",
-        "Readiness and liveness probes per role"
+        "Readiness and liveness probes per role",
+        "The chart sizes CNPG's max_connections from its own values: every process's databaseMaxConns plus one liveness connection per transcode worker, with headroom; installing values whose sum exceeds it fails the render"
       ],
       "priority": 40,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
       "source": "PRODUCT.md phase6-k8s",
-      "notes": ""
+      "notes": " JS-020 (2026-11-08): each worker holds one Postgres connection for its liveness lock, outside the pool, so a stock Postgres (max_connections 100) is exhausted at about 90 workers, long before its CPU (one primary carried 1600 streams on two cores' worth). Connections are the first wall when autoscaling."
     },
     {
       "id": "JS-057",
@@ -958,7 +959,8 @@
       "title": "KEDA autoscaling",
       "description": "Scale workers on a Postgres query, keeping spare transcode slots.",
       "acceptanceCriteria": [
-        "Workers scale up under queued jobs and down when idle"
+        "Workers scale up under queued jobs and down when idle",
+        "KEDA's maximum worker replicas stay within the Postgres connection budget (one liveness connection per worker, on top of the pools), so scaling up never exhausts max_connections"
       ],
       "priority": 41,
       "status": "todo",
@@ -967,7 +969,7 @@
         "JS-056"
       ],
       "source": "project plan",
-      "notes": ""
+      "notes": " JS-020 (2026-11-08): each worker holds one Postgres connection for its liveness lock, outside the pool, so a stock Postgres (max_connections 100) is exhausted at about 90 workers, long before its CPU (one primary carried 1600 streams on two cores' worth). Connections are the first wall when autoscaling."
     },
     {
       "id": "JS-058",
