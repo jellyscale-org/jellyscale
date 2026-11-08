@@ -12,6 +12,7 @@ test/roles.sh <workdir>                     # Each role as its own process
 test/e2e/run.sh <workdir> <playwright_dir>  # Real jellyfin-web in Chromium
 E2E_GATES=transcode E2E_SHARD=1/3 test/e2e/run.sh ...  # A slice of a gate; E2E_ONLY=regex picks scenarios
 E2E_REPEAT=5 test/e2e/run.sh ...            # Warm reruns on one stack, "passed p of n" per scenario (a flake hunt)
+test/differential/run.sh <workdir>          # A real Jellyfin 12.4 and jellyscale asked the same requests (needs Docker, ffmpeg)
 test/scripts_test.sh                        # Tests of the test scripts
 go run ./cmd/jellyscale --print-routes > compat/endpoints.yaml
 ```

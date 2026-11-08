@@ -1,0 +1,691 @@
+# Where jellyscale answers differently from Jellyfin 12.4 in the differential tier
+# (test/differential/run.sh). Each entry names the requests (by name, in
+# test/differential/requests.yaml) it applies to and the JSON paths below them, with
+# [] for any array index, and why the difference is allowed. An entry hides nothing in
+# any other request, even one to the same route, and a name that is no request fails the
+# tier. kind is improvement (better than Jellyfin), non-goal (PRODUCT.md leaves it out)
+# or gap (to close, with the task in tasks/prd.json). A difference not listed here fails
+# the tier; an entry that no longer matches in a request is reported, so remove it. A
+# path ending in "(ids)" is which items a listing holds, and in what order when the
+# request is ordered; it must pin the Ids jellyscale answers today (jellyscale:), so a
+# dropped, extra or reordered item is a new difference even where every field is listed.
+# See docs/testing.md.
+
+- requests:
+    - "the signed-in user"
+  kind: gap
+  task: JS-033
+  reason: "user management: provider ids, a hidden flag and a cast receiver id that Jellyfin keeps for each user and jellyscale does not"
+  paths:
+    - "Configuration.CastReceiverId"
+    - "Policy.AuthenticationProviderId"
+    - "Policy.IsHidden"
+    - "Policy.PasswordResetProviderId"
+
+- requests:
+    - "the signed-in user"
+  kind: non-goal
+  reason: "PRODUCT.md leaves out deleting media, Live TV, media conversion and public sharing, so jellyscale reports them as not allowed"
+  paths:
+    - "Policy.EnableContentDeletion"
+    - "Policy.EnableLiveTvAccess"
+    - "Policy.EnableMediaConversion"
+    - "Policy.EnablePublicSharing"
+
+- requests:
+    - "the signed-in user"
+  kind: gap
+  task: JS-063
+  reason: "SyncPlay is not built, so a user can join no group"
+  paths:
+    - "Policy.SyncPlayAccess"
+
+- requests:
+    - "the home page views"
+  kind: non-goal
+  reason: "PRODUCT.md leaves out deleting media, Live TV, media conversion and public sharing, so jellyscale reports them as not allowed"
+  paths:
+    - "Items[].CanDelete"
+
+- requests:
+    - "the home page views"
+  kind: gap
+  task: JS-068
+  reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
+  paths:
+    - "Items[].CanDownload"
+    - "Items[].ChannelId"
+    - "Items[].Chapters"
+    - "Items[].ChildCount"
+    - "Items[].DateCreated"
+    - "Items[].DateLastMediaAdded"
+    - "Items[].Etag"
+    - "Items[].MediaType"
+    - "Items[].ParentId"
+
+- requests:
+    - "the home page views"
+  kind: gap
+  task: JS-046
+  reason: "genres, studios, people, tags and the other lists Jellyfin sends (empty here, filled by providers elsewhere) that jellyscale leaves out"
+  paths:
+    - "Items[].ExternalUrls"
+    - "Items[].GenreItems"
+    - "Items[].LocalTrailerCount"
+    - "Items[].LockData"
+    - "Items[].LockedFields"
+    - "Items[].People"
+    - "Items[].RemoteTrailers"
+    - "Items[].SpecialFeatureCount"
+    - "Items[].Studios"
+    - "Items[].Taglines"
+    - "Items[].Tags"
+
+- requests:
+    - "the home page views"
+  kind: gap
+  task: JS-045
+  reason: "pictures: the image tag and blur hash are hashes of the poster Jellyfin extracted, where jellyscale has its own frame (or none for a library), and a view has no aspect ratio"
+  paths:
+    - "Items[].ImageBlurHashes.Primary"
+    - "Items[].ImageTags.Primary"
+    - "Items[].PrimaryImageAspectRatio"
+
+- requests:
+    - "the home page views"
+  kind: improvement
+  reason: "jellyscale shows the path inside its library; Jellyfin shows the mount point inside its container"
+  paths:
+    - "Items[].Path"
+
+- requests:
+    - "latest films in the Movies library"
+  kind: gap
+  task: JS-045
+  reason: "pictures: the image tag and blur hash are hashes of the poster Jellyfin extracted, where jellyscale has its own frame (or none for a library), and a view has no aspect ratio"
+  paths:
+    - "[].ImageBlurHashes.Primary"
+
+- requests:
+    - "latest films in the Movies library"
+    - "latest in the Shows library"
+  kind: gap
+  task: JS-045
+  reason: "pictures: the image tag and blur hash are hashes of the poster Jellyfin extracted, where jellyscale has its own frame (or none for a library), and a view has no aspect ratio"
+  paths:
+    - "[].ImageTags.Primary"
+
+- requests:
+    - "latest in the Shows library"
+  kind: gap
+  task: JS-045
+  reason: "pictures: the image tag and blur hash are hashes of the poster Jellyfin extracted, where jellyscale has its own frame (or none for a library), and a view has no aspect ratio"
+  paths:
+    - "[].PrimaryImageAspectRatio"
+
+- requests:
+    - "latest films in the Movies library"
+    - "latest in the Shows library"
+  kind: gap
+  task: JS-068
+  reason: "Items/Latest lists a show with new episodes as the show, with its child count; jellyscale lists each new episode"
+  paths:
+    - "[].Container"
+    - "[].IsHD"
+    - "[].Name"
+
+- requests:
+    - "latest films in the Movies library"
+  kind: gap
+  task: JS-068
+  reason: "Items/Latest lists a show with new episodes as the show, with its child count; jellyscale lists each new episode"
+  paths:
+    - "[].UserData.LastPlayedDate"
+
+- requests:
+    - "latest in the Shows library"
+  kind: gap
+  task: JS-068
+  reason: "Items/Latest lists a show with new episodes as the show, with its child count; jellyscale lists each new episode"
+  paths:
+    - "[]"
+    - "[].AirDays"
+    - "[].Id"
+    - "[].IndexNumber"
+    - "[].IsFolder"
+    - "[].MediaType"
+    - "[].ParentId"
+    - "[].ParentIndexNumber"
+    - "[].RunTimeTicks"
+    - "[].SeasonId"
+    - "[].SeriesId"
+    - "[].Type"
+    - "[].UserData.ItemId"
+    - "[].UserData.Key"
+    - "[].UserData.PlayedPercentage"
+    - "[].UserData.UnplayedItemCount"
+    - "[].VideoType"
+
+- requests:
+    - "continue watching, Video"
+  kind: gap
+  task: JS-045
+  reason: "pictures: the image tag and blur hash are hashes of the poster Jellyfin extracted, where jellyscale has its own frame (or none for a library), and a view has no aspect ratio"
+  paths:
+    - "Items[].ImageBlurHashes.Primary"
+    - "Items[].ImageTags.Primary"
+
+- requests:
+    - "continue watching, Video"
+  kind: gap
+  task: JS-068
+  reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
+  paths:
+    - "Items[].IsHD"
+    - "Items[].UserData.LastPlayedDate"
+
+- requests:
+    - "continue watching, Video"
+  kind: improvement
+  reason: "jellyscale names a film or episode from its file name without the year; Jellyfin, with no metadata provider, keeps \"(2021)\" in the name and in the sort name"
+  paths:
+    - "Items[].Name"
+
+- requests:
+    - "the films library, by name"
+    - "the films library, newest first"
+    - "search"
+  kind: gap
+  task: JS-045
+  reason: "pictures: the image tag and blur hash are hashes of the poster Jellyfin extracted, where jellyscale has its own frame (or none for a library), and a view has no aspect ratio"
+  paths:
+    - "Items[].ImageBlurHashes.Primary"
+    - "Items[].ImageTags.Primary"
+
+- requests:
+    - "the films library, by name"
+    - "the films library, newest first"
+    - "search"
+  kind: gap
+  task: JS-068
+  reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
+  paths:
+    - "Items[].IsHD"
+    - "Items[].UserData.LastPlayedDate"
+
+- requests:
+    - "the shows library, by name"
+  kind: gap
+  task: JS-068
+  reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
+  paths:
+    - "Items[].MediaType"
+    - "Items[].UserData.UnplayedItemCount"
+
+- requests:
+    - "the films library, by name"
+    - "the films library, newest first"
+    - "search"
+  kind: improvement
+  reason: "jellyscale names a film or episode from its file name without the year; Jellyfin, with no metadata provider, keeps \"(2021)\" in the name and in the sort name"
+  paths:
+    - "Items[].Name"
+
+- requests:
+    - "the films library, by name"
+    - "the films library, newest first"
+    - "search"
+  kind: gap
+  task: JS-068
+  reason: "the container: Jellyfin reports the demuxer name (\"mov\" for a MediaSource, \"mov,mp4,m4a,3gp,3g2,mj2\" for an item) and jellyscale the file type \"mp4\""
+  paths:
+    - "Items[].Container"
+
+- requests:
+    - "the films library, newest first"
+  kind: gap
+  task: JS-068
+  reason: "SortBy=PremiereDate with SortOrder=Descending lists the oldest film first; the other fields here follow from the order (the sorted-by-name request is not affected)"
+  paths:
+    - "Items[].Id"
+    - "Items[].RunTimeTicks"
+    - "Items[].UserData.ItemId"
+    - "Items[].UserData.Key"
+    - "Items[].UserData.PlaybackPositionTicks"
+
+- requests:
+    - "the films library, newest first"
+    - "the shows library, by name"
+  kind: gap
+  task: JS-068
+  reason: "SortBy=PremiereDate with SortOrder=Descending lists the oldest film first; the other fields here follow from the order (the sorted-by-name request is not affected)"
+  paths:
+    - "Items[].ProductionYear"
+    - "Items[].UserData.PlayedPercentage"
+
+- requests:
+    - "the shows library, by name"
+  kind: gap
+  task: JS-046
+  reason: "genres, studios, people, tags and the other lists Jellyfin sends (empty here, filled by providers elsewhere) that jellyscale leaves out"
+  paths:
+    - "Items[].AirDays"
+
+- requests:
+    - "a film's details"
+    - "an episode's details"
+    - "a show's details"
+  kind: non-goal
+  reason: "PRODUCT.md leaves out deleting media, Live TV, media conversion and public sharing, so jellyscale reports them as not allowed"
+  paths:
+    - "CanDelete"
+
+- requests:
+    - "a film's details"
+    - "an episode's details"
+    - "a show's details"
+  kind: gap
+  task: JS-068
+  reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
+  paths:
+    - "DisplayPreferencesId"
+    - "EnableMediaSourceDisplay"
+
+- requests:
+    - "a film's details"
+    - "an episode's details"
+  kind: gap
+  task: JS-068
+  reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
+  paths:
+    - "MediaSources[].DefaultAudioStreamIndex"
+    - "MediaSources[].GenPtsInput"
+    - "MediaSources[].HasSegments"
+    - "MediaSources[].IgnoreDts"
+    - "MediaSources[].IgnoreIndex"
+    - "MediaSources[].IsInfiniteStream"
+    - "MediaSources[].ReadAtNativeFramerate"
+    - "MediaSources[].RequiredHttpHeaders"
+    - "MediaSources[].RequiresLooping"
+    - "MediaSources[].TranscodingSubProtocol"
+    - "MediaSources[].UseMostCompatibleTranscodingProfile"
+
+- requests:
+    - "a film's details"
+    - "a show's details"
+  kind: gap
+  task: JS-068
+  reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
+  paths:
+    - "ParentId"
+
+- requests:
+    - "a film's details"
+  kind: gap
+  task: JS-068
+  reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
+  paths:
+    - "UserData.LastPlayedDate"
+
+- requests:
+    - "an episode's details"
+  kind: gap
+  task: JS-068
+  reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
+  paths:
+    - "SeasonName"
+    - "SeriesName"
+    - "UserData.Key"
+
+- requests:
+    - "a show's details"
+  kind: gap
+  task: JS-068
+  reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
+  paths:
+    - "Chapters"
+    - "ChildCount"
+    - "DateLastMediaAdded"
+    - "MediaType"
+    - "RecursiveItemCount"
+    - "UserData.PlayedPercentage"
+    - "UserData.UnplayedItemCount"
+
+- requests:
+    - "a film's details"
+    - "an episode's details"
+  kind: gap
+  task: JS-045
+  reason: "pictures: the image tag and blur hash are hashes of the poster Jellyfin extracted, where jellyscale has its own frame (or none for a library), and a view has no aspect ratio"
+  paths:
+    - "ImageBlurHashes.Primary"
+    - "ImageTags.Primary"
+
+- requests:
+    - "a film's details"
+    - "an episode's details"
+  kind: gap
+  task: JS-068
+  reason: "stream details ffprobe gives that jellyscale does not store or send: pixel format, level, reference frames, time base, aspect ratio, bit rates, frame rates, channel layout and the Localized* words"
+  paths:
+    - "MediaSources[].MediaStreams[].AspectRatio"
+    - "MediaSources[].MediaStreams[].AudioSpatialFormat"
+    - "MediaSources[].MediaStreams[].AverageFrameRate"
+    - "MediaSources[].MediaStreams[].BitRate"
+    - "MediaSources[].MediaStreams[].ChannelLayout"
+    - "MediaSources[].MediaStreams[].ColorTransfer"
+    - "MediaSources[].MediaStreams[].IsAVC"
+    - "MediaSources[].MediaStreams[].IsAnamorphic"
+    - "MediaSources[].MediaStreams[].IsHearingImpaired"
+    - "MediaSources[].MediaStreams[].IsInterlaced"
+    - "MediaSources[].MediaStreams[].IsOriginal"
+    - "MediaSources[].MediaStreams[].IsTextSubtitleStream"
+    - "MediaSources[].MediaStreams[].Level"
+    - "MediaSources[].MediaStreams[].LocalizedDefault"
+    - "MediaSources[].MediaStreams[].LocalizedExternal"
+    - "MediaSources[].MediaStreams[].LocalizedLanguage"
+    - "MediaSources[].MediaStreams[].LocalizedOriginal"
+    - "MediaSources[].MediaStreams[].NalLengthSize"
+    - "MediaSources[].MediaStreams[].PixelFormat"
+    - "MediaSources[].MediaStreams[].RealFrameRate"
+    - "MediaSources[].MediaStreams[].RefFrames"
+    - "MediaSources[].MediaStreams[].ReferenceFrameRate"
+    - "MediaSources[].MediaStreams[].TimeBase"
+    - "MediaStreams[].AspectRatio"
+    - "MediaStreams[].AudioSpatialFormat"
+    - "MediaStreams[].AverageFrameRate"
+    - "MediaStreams[].BitRate"
+    - "MediaStreams[].ChannelLayout"
+    - "MediaStreams[].ColorTransfer"
+    - "MediaStreams[].IsAVC"
+    - "MediaStreams[].IsAnamorphic"
+    - "MediaStreams[].IsHearingImpaired"
+    - "MediaStreams[].IsInterlaced"
+    - "MediaStreams[].IsOriginal"
+    - "MediaStreams[].IsTextSubtitleStream"
+    - "MediaStreams[].Level"
+    - "MediaStreams[].LocalizedDefault"
+    - "MediaStreams[].LocalizedExternal"
+    - "MediaStreams[].LocalizedLanguage"
+    - "MediaStreams[].LocalizedOriginal"
+    - "MediaStreams[].NalLengthSize"
+    - "MediaStreams[].PixelFormat"
+    - "MediaStreams[].RealFrameRate"
+    - "MediaStreams[].RefFrames"
+    - "MediaStreams[].ReferenceFrameRate"
+    - "MediaStreams[].TimeBase"
+
+- requests:
+    - "a film's details"
+    - "an episode's details"
+  kind: gap
+  task: JS-023
+  reason: "the video range labels and the display title that carries them (SDR, HDR10, Dolby Vision) that jellyscale leaves out"
+  paths:
+    - "MediaSources[].MediaStreams[].DisplayTitle"
+    - "MediaSources[].MediaStreams[].VideoRange"
+    - "MediaSources[].MediaStreams[].VideoRangeType"
+    - "MediaStreams[].DisplayTitle"
+    - "MediaStreams[].VideoRange"
+    - "MediaStreams[].VideoRangeType"
+
+- requests:
+    - "a film's details"
+    - "an episode's details"
+  kind: improvement
+  reason: "jellyscale names a film or episode from its file name without the year; Jellyfin, with no metadata provider, keeps \"(2021)\" in the name and in the sort name"
+  paths:
+    - "MediaSources[].Name"
+    - "Name"
+    - "SortName"
+
+- requests:
+    - "a film's details"
+    - "an episode's details"
+  kind: improvement
+  reason: "jellyscale shows the path inside its library; Jellyfin shows the mount point inside its container"
+  paths:
+    - "MediaSources[].Path"
+
+- requests:
+    - "a film's details"
+    - "an episode's details"
+    - "a show's details"
+  kind: improvement
+  reason: "jellyscale shows the path inside its library; Jellyfin shows the mount point inside its container"
+  paths:
+    - "Path"
+
+- requests:
+    - "a film's details"
+  kind: gap
+  task: JS-046
+  reason: "genres, studios, people, tags and the other lists Jellyfin sends (empty here, filled by providers elsewhere) that jellyscale leaves out"
+  paths:
+    - "ProductionLocations"
+
+- requests:
+    - "a film's details"
+    - "an episode's details"
+    - "a show's details"
+  kind: gap
+  task: JS-046
+  reason: "genres, studios, people, tags and the other lists Jellyfin sends (empty here, filled by providers elsewhere) that jellyscale leaves out"
+  paths:
+    - "SpecialFeatureCount"
+
+- requests:
+    - "an episode's details"
+  kind: gap
+  task: JS-046
+  reason: "genres, studios, people, tags and the other lists Jellyfin sends (empty here, filled by providers elsewhere) that jellyscale leaves out"
+  paths:
+    - "SeriesStudio"
+
+- requests:
+    - "a show's details"
+  kind: gap
+  task: JS-046
+  reason: "genres, studios, people, tags and the other lists Jellyfin sends (empty here, filled by providers elsewhere) that jellyscale leaves out"
+  paths:
+    - "AirDays"
+
+- requests:
+    - "the seasons of a show"
+  kind: gap
+  task: JS-068
+  reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
+  paths:
+    - "Items[].MediaType"
+    - "Items[].ParentId"
+    - "Items[].UserData.Key"
+    - "Items[].UserData.PlayedPercentage"
+    - "Items[].UserData.UnplayedItemCount"
+
+- requests:
+    - "the episodes of a show"
+  kind: gap
+  task: JS-045
+  reason: "pictures: the image tag and blur hash are hashes of the poster Jellyfin extracted, where jellyscale has its own frame (or none for a library), and a view has no aspect ratio"
+  paths:
+    - "Items[].ImageBlurHashes.Primary"
+    - "Items[].ImageTags.Primary"
+
+- requests:
+    - "the episodes of a show"
+  kind: gap
+  task: JS-068
+  reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
+  paths:
+    - "Items[].IsHD"
+    - "Items[].ParentId"
+    - "Items[].SeasonName"
+    - "Items[].SeriesName"
+    - "Items[].UserData.Key"
+
+- requests:
+    - "the episodes of a show"
+  kind: improvement
+  reason: "jellyscale names a film or episode from its file name without the year; Jellyfin, with no metadata provider, keeps \"(2021)\" in the name and in the sort name"
+  paths:
+    - "Items[].Name"
+
+- requests:
+    - "playback info for a film that direct plays"
+    - "playback info for a film over a 1 Mbit/s limit, which transcodes"
+  kind: gap
+  task: JS-041
+  reason: "jellyscale reports DefaultSubtitleStreamIndex -1 where Jellyfin leaves it out until the viewer's subtitle mode picks a track"
+  paths:
+    - "MediaSources[].DefaultSubtitleStreamIndex"
+
+- requests:
+    - "playback info for a film that direct plays"
+    - "playback info for a film over a 1 Mbit/s limit, which transcodes"
+  kind: gap
+  task: JS-068
+  reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
+  paths:
+    - "MediaSources[].GenPtsInput"
+    - "MediaSources[].IgnoreDts"
+    - "MediaSources[].IgnoreIndex"
+    - "MediaSources[].ReadAtNativeFramerate"
+    - "MediaSources[].RequiresLooping"
+    - "MediaSources[].UseMostCompatibleTranscodingProfile"
+
+- requests:
+    - "playback info for a film that direct plays"
+    - "playback info for a film over a 1 Mbit/s limit, which transcodes"
+  kind: gap
+  task: JS-068
+  reason: "stream details ffprobe gives that jellyscale does not store or send: pixel format, level, reference frames, time base, aspect ratio, bit rates, frame rates, channel layout and the Localized* words"
+  paths:
+    - "MediaSources[].MediaStreams[].AspectRatio"
+    - "MediaSources[].MediaStreams[].AudioSpatialFormat"
+    - "MediaSources[].MediaStreams[].AverageFrameRate"
+    - "MediaSources[].MediaStreams[].ChannelLayout"
+    - "MediaSources[].MediaStreams[].ColorTransfer"
+    - "MediaSources[].MediaStreams[].IsAVC"
+    - "MediaSources[].MediaStreams[].IsAnamorphic"
+    - "MediaSources[].MediaStreams[].IsHearingImpaired"
+    - "MediaSources[].MediaStreams[].IsInterlaced"
+    - "MediaSources[].MediaStreams[].IsOriginal"
+    - "MediaSources[].MediaStreams[].IsTextSubtitleStream"
+    - "MediaSources[].MediaStreams[].Level"
+    - "MediaSources[].MediaStreams[].LocalizedDefault"
+    - "MediaSources[].MediaStreams[].LocalizedExternal"
+    - "MediaSources[].MediaStreams[].LocalizedLanguage"
+    - "MediaSources[].MediaStreams[].LocalizedOriginal"
+    - "MediaSources[].MediaStreams[].NalLengthSize"
+    - "MediaSources[].MediaStreams[].PixelFormat"
+    - "MediaSources[].MediaStreams[].RealFrameRate"
+    - "MediaSources[].MediaStreams[].RefFrames"
+    - "MediaSources[].MediaStreams[].ReferenceFrameRate"
+    - "MediaSources[].MediaStreams[].TimeBase"
+
+- requests:
+    - "playback info for a film that direct plays"
+  kind: gap
+  task: JS-068
+  reason: "stream details ffprobe gives that jellyscale does not store or send: pixel format, level, reference frames, time base, aspect ratio, bit rates, frame rates, channel layout and the Localized* words"
+  paths:
+    - "MediaSources[].MediaStreams[].BitRate"
+
+- requests:
+    - "playback info for a film over a 1 Mbit/s limit, which transcodes"
+  kind: gap
+  task: JS-068
+  reason: "stream details ffprobe gives that jellyscale does not store or send: pixel format, level, reference frames, time base, aspect ratio, bit rates, frame rates, channel layout and the Localized* words"
+  paths:
+    - "MediaSources[].MediaStreams[].CodecTag"
+    - "MediaSources[].MediaStreams[].Language"
+
+- requests:
+    - "playback info for a film that direct plays"
+    - "playback info for a film over a 1 Mbit/s limit, which transcodes"
+  kind: gap
+  task: JS-023
+  reason: "the video range labels and the display title that carries them (SDR, HDR10, Dolby Vision) that jellyscale leaves out"
+  paths:
+    - "MediaSources[].MediaStreams[].DisplayTitle"
+    - "MediaSources[].MediaStreams[].VideoRange"
+    - "MediaSources[].MediaStreams[].VideoRangeType"
+
+- requests:
+    - "playback info for a film that direct plays"
+    - "playback info for a film over a 1 Mbit/s limit, which transcodes"
+  kind: improvement
+  reason: "jellyscale names a film or episode from its file name without the year; Jellyfin, with no metadata provider, keeps \"(2021)\" in the name and in the sort name"
+  paths:
+    - "MediaSources[].Name"
+
+- requests:
+    - "playback info for a film that direct plays"
+    - "playback info for a film over a 1 Mbit/s limit, which transcodes"
+  kind: improvement
+  reason: "jellyscale shows the path inside its library; Jellyfin shows the mount point inside its container"
+  paths:
+    - "MediaSources[].Path"
+
+- requests:
+    - "playback info for a film over a 1 Mbit/s limit, which transcodes"
+  kind: gap
+  task: JS-068
+  reason: "the container: Jellyfin reports the demuxer name (\"mov\" for a MediaSource, \"mov,mp4,m4a,3gp,3g2,mj2\" for an item) and jellyscale the file type \"mp4\""
+  paths:
+    - "MediaSources[].Container"
+
+- requests:
+    - "playback info for a film over a 1 Mbit/s limit, which transcodes"
+  kind: gap
+  task: JS-068
+  reason: "the TranscodingUrl and the master playlist's stream line and playlist URI carry other query parameters and other BANDWIDTH and CODECS values"
+  paths:
+    - "MediaSources[].TranscodingUrl"
+
+- requests:
+    - "the master playlist of a transcode"
+  kind: gap
+  task: JS-068
+  reason: "the TranscodingUrl and the master playlist's stream line and playlist URI carry other query parameters and other BANDWIDTH and CODECS values"
+  paths:
+    - "[1]"
+    - "[2]"
+
+- requests:
+    - "a show's details"
+  kind: gap
+  task: JS-045
+  reason: "a show's year: Jellyfin sets ProductionYear from the folder name some seconds after the scan (and in some runs not at all, so this entry is sometimes reported as no longer differing); jellyscale reads no year for a show"
+  paths:
+    - "ProductionYear"
+
+- requests:
+    - "latest in the Shows library"
+  kind: gap
+  task: JS-045
+  reason: "a show's year: Jellyfin sets ProductionYear from the folder name some seconds after the scan (and in some runs not at all); jellyscale reads no year for a show"
+  paths:
+    - "[].ProductionYear"
+
+- requests:
+    - "the films library, newest first"
+  kind: gap
+  task: JS-068
+  reason: "SortBy=PremiereDate with SortOrder=Descending lists the oldest film first"
+  path: "Items (ids)"
+  jellyscale:
+    - "<id:Movie/Gamma.Film.2015.1080p>"
+    - "<id:Movie/The Beta Film (2019)>"
+    - "<id:Movie/Alpha Film (2021)>"
+
+- requests:
+    - "latest in the Shows library"
+  kind: gap
+  task: JS-068
+  reason: "Items/Latest lists a show with new episodes as the show, with its child count; jellyscale lists each new episode"
+  path: "(ids)"
+  jellyscale:
+    - "<id:Episode/Delta Show S01E01 Pilot>"
+    - "<id:Episode/Delta Show S01E02 Second>"
+    - "<id:Episode/Delta Show S02E01 Return>"

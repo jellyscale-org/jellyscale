@@ -201,6 +201,8 @@ jobs:
           - { name: transcode-0of3, gates: transcode, shard: 0/3 }
           - { name: transcode-1of3, gates: transcode, shard: 1/3 }
           - { name: transcode-2of3, gates: transcode, shard: 2/3 }
+          # Not an e2e gate: the same stack of fixtures, asked by test/differential/run.sh.
+          - { name: differential, gates: differential, shard: 0/1 }
     env:
       E2E_FIXTURE_CACHE: /home/runner/e2e-fixtures
     steps:
@@ -232,11 +234,18 @@ jobs:
           npm init -y >/dev/null
           npm install playwright-core
       # Chrome, because fixtures are H.264 and AAC, which Chromium builds can omit.
-      - run: bash test/e2e/run.sh /tmp/e2e /tmp/pw
+      - if: matrix.name != 'differential'
+        run: bash test/e2e/run.sh /tmp/e2e /tmp/pw
         env:
           CHROMIUM_PATH: /usr/bin/google-chrome
           E2E_GATES: ${{ matrix.gates }}
           E2E_SHARD: ${{ matrix.shard }}
+          JELLYSCALE_LOG_DIR: ${{ runner.temp }}/logs
+      # The differential shard asks a real Jellyfin 12.4 and jellyscale the same
+      # questions; it leaves a record like a gate's.
+      - if: matrix.name == 'differential'
+        run: bash test/differential/run.sh /tmp/differential
+        env:
           JELLYSCALE_LOG_DIR: ${{ runner.temp }}/logs
       # What each gate of this shard ran: gate, shard, ran and total.
       - uses: actions/upload-artifact@v7
@@ -276,4 +285,4 @@ jobs:
           merge-multiple: true
           path: shards
       - if: steps.decide.outputs.run == 'true'
-        run: bash test/check-shards.sh e2e shards "browse play subtitles transcode"
+        run: bash test/check-shards.sh e2e shards "browse play subtitles transcode differential"
