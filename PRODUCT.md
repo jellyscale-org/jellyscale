@@ -8,6 +8,26 @@ A self-hosted video server that speaks the Jellyfin client API and runs as a hor
 
 Operators running one library on Kubernetes for a household or community, with tens to hundreds of concurrent streams. They're comfortable with Helm and Postgres. Their viewers aren't technical and only ever see a Jellyfin client.
 
+## The experience we're building
+
+This is the journey the rest of this document serves. When a design or a task trades any of it away, that is a decision for the product owner, recorded as a known gap with a task, never a quiet exception.
+
+### The viewer
+
+A viewer opens the Jellyfin app they already use, signs in and finds their films. They never need to know jellyscale exists.
+
+- **Any film plays, and plays well.** A 4K HDR Blu-ray rip with Dolby Vision and PGS subtitles, an old DVD rip with VobSub, an AV1 web release: each plays on the device in their hand, with the audio and subtitles they chose. No codec, HDR format or subtitle track is second-class. Everything the server can do (direct play, copying, tone mapping, sharing a slow encode across the cluster, failover, seeking) it does for every film. Where it doesn't yet, that is a gap with a task in `tasks/prd.json`.
+- **Play starts in seconds and keeps up.** A heavy transcode uses the whole cluster's CPUs rather than stalling on one machine while others sit idle.
+- **Seeking and resuming just work.** Jump anywhere and the picture, sound and subtitles are right from the first frame. Stop on the TV and pick up on the phone at the same moment.
+- **Failures are invisible.** A server or worker that dies mid-film costs at most a moment of buffering, never the stream, the position or the subtitles.
+
+### The operator
+
+- **Installing is boring.** A Helm chart, a Postgres, and storage (POSIX or S3, chosen per library); libraries are declared in configuration.
+- **Growing is adding nodes.** Each part scales on its own, and more viewers or heavier films are met by more machines, not a bigger one.
+- **Nothing is hidden.** They can see who is watching what, how fast each encode runs and on which worker, and every failure is reported, never silent.
+- **Upgrades don't interrupt anyone.**
+
 ## Goals, in priority order
 
 1. **Playback never surprises a viewer.** Starting, seeking, resuming and recovering from a server failure should just work.
