@@ -62,9 +62,10 @@ func TestAnyReplicaServesAnySegmentAndOneJobStarts(t *testing.T) {
 				if started := r.count(t, "SELECT start_segment FROM transcode_jobs WHERE spec_hash = $1", r.hash); started != 3 {
 					t.Fatalf("the job started at segment %d, want 3", started)
 				}
-				// A copy is over in a moment, so only an encode is still running.
-				if procs := r.ffmpegProcesses(); !copied && len(procs) != 1 {
-					t.Fatalf("%d ffmpeg processes: %v", len(procs), procs)
+				// A copy is over in a moment, so only an encode is still running. It
+				// begins a new ffmpeg at the end of each chunk, which takes a moment.
+				if !copied {
+					waitFor(t, "the one job's one ffmpeg", 5*time.Second, func() bool { return len(r.ffmpegProcesses()) == 1 })
 				}
 
 				// Either replica now serves the init segment and the next one without a new job.

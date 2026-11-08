@@ -61,6 +61,46 @@ func TestProgressSpeedIsFilmPerRunningSecond(t *testing.T) {
 	}
 }
 
+// A job that makes 1.4x but whose output came in bursts over its first two
+// seconds must not read as slow enough for helpers.
+func TestSpeedOverWaitsForTheSpanBeforeJudging(t *testing.T) {
+	p, c := newProgress()
+	emit(t, p, 0)
+	c.at = c.at.Add(1500 * time.Millisecond)
+	emit(t, p, 1.4) // A burst that ends 0.9x short of the rate to come.
+	if speed, ok := p.speed(); !ok || speed > 1 {
+		t.Fatalf("speed %v, %v; want the early reading under 1x, which the check below must not act on", speed, ok)
+	}
+	if _, ok := p.speedOver(helpSpan); ok {
+		t.Fatal("1.5 seconds is judged before helpSpan")
+	}
+	for i := 1; i <= 4; i++ {
+		c.at = c.at.Add(time.Second)
+		emit(t, p, 1.4+1.4*float64(i))
+	}
+	if speed, ok := p.speedOver(helpSpan); !ok || speed < 1.2 {
+		t.Fatalf("speed %v, %v after helpSpan; want 1.2x or more", speed, ok)
+	}
+}
+
+// A job whose first output is a few seconds coming has made nothing: it is
+// starting, and does not ask for helpers.
+func TestAJobThatHasMadeNothingYetAsksForNoHelp(t *testing.T) {
+	p, c := newProgress()
+	emit(t, p, 0)
+	c.at = c.at.Add(time.Duration(helpSpan+1) * time.Second)
+	emit(t, p, 0)
+	w := &Worker{}
+	if w.needsHelp(claimed{progress: p}) {
+		t.Fatal("a job that has made no film asks for helpers")
+	}
+	c.at = c.at.Add(time.Duration(helpSpan+1) * time.Second)
+	emit(t, p, 2)
+	if !w.needsHelp(claimed{progress: p}) {
+		t.Fatal("a job at 0.25x asks for no helpers")
+	}
+}
+
 // ffmpeg is stopped at the lead limit for as long as the viewers are behind, and
 // that must not read as a slow encode: the next slice starts helpers for jobs
 // below 1.2x.

@@ -430,13 +430,13 @@
         "Measured speedup with 1, 2 and 3 workers in the PR"
       ],
       "priority": 2,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [
         "JS-019"
       ],
       "source": "work queue 5",
-      "notes": "The user's idea: use CPU on all nodes rather than relying on a GPU. 'Gotta test sharding streams.'"
+      "notes": "The user's idea: use CPU on all nodes rather than relying on a GPU. 'Gotta test sharding streams.' Built 2026-11-08: a job below 1.2x real time (judged after 2 s of output) inserts a helper row for the next free 4-segment chunk within the viewer's lead; helpers are claimed by other workers first and never take a worker's last free slot. A job's ffmpeg runs on across chunk starts until it reaches a chunk another job holds, so a job nobody helps is one ffmpeg. Measured with each worker's ffmpeg pinned to one CPU: 1 worker 16.3 s, 2 workers 10.4 s (1.57x), 3 workers 8.0 s (2.03x). Re-encoded segments from different runs have the same frames and frame times within 1 ms, not the same bytes (x264 stays multi-threaded). A burnt image subtitle gets no helpers (a run that starts mid-film loses the cue showing at its start); JS-071 closes that gap. A failed helper does not fail the viewer's spec and blocks re-helping its chunk for 30 s. Backlog: helpers are a fixed threshold (1.2x), not a measure of spare capacity across the cluster; a helper's chunk that the viewer never reaches is wasted work until the idle kill; per-helper metrics (JS-021 traces should show which chunks were helped and why)."
     },
     {
       "id": "JS-025",

@@ -7,6 +7,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { dirname } from "node:path";
 import { createRequire } from "node:module";
 import { runLater, schedule, shardLine } from "./shard.mjs";
 
@@ -1265,6 +1266,72 @@ for (const flavour of [{ name: "re-encoded", film: "Failover Encode Film", copy:
     process.kill(workerPid, "SIGCONT");
   }
 }, { stopsWorker: true });
+
+// Parallel transcoding (JS-024). Every worker's ffmpeg reads at 0.7 of the film's
+// speed, so one worker alone cannot keep up: a viewer who watched it would stall
+// for a third of the film. Two more workers run beside the main one, and helper
+// jobs encode later chunks of the same film on them. hls.js plays through the
+// seams between the chunks, seeks back and forth across them, and arrives at
+// a point of the film sooner than one worker at that speed could take it.
+await scenario("a slow re-encode is shared by three workers, and hls.js plays and seeks across the chunk boundaries", async ({ page, seen }) => {
+  const launch = process.env.E2E_WORKER;
+  if (!launch) throw new Error("the parallel scenario needs E2E_WORKER (test/e2e/run.sh sets it)");
+  const rate = `${dirname(launch)}/rate`;
+  writeFileSync(rate, "0.7");
+  const workers = [];
+  try {
+    for (let i = 0; i < 2; i++) workers.push(spawn(launch, [], { stdio: "ignore" }));
+    await waitFor("three workers to hold their locks", async () => sql(`SELECT count(*) FROM transcode_nodes n WHERE slots > 0 AND locked AND EXISTS (SELECT 1 FROM pg_locks l
+      WHERE l.locktype = 'advisory' AND l.classid = 27219 AND l.objsubid = 2 AND l.objid::bigint = hashtext(n.id)::bigint & 4294967295)`) === "3", 60000);
+    await play(page, "Transcode", "Parallel Encode Film");
+    const began = Date.now();
+    const helper = await waitFor("a helper job on another worker", async () => {
+      const row = sql("SELECT min(start_segment) FROM transcode_jobs WHERE state = 'running' AND start_segment > 0");
+      return row === "" ? null : Number(row);
+    }, 60000);
+    const boundary = helper * 4; // Seconds into the film where the main job's chunk ends.
+    console.log(`      a helper started at segment ${helper}, ${Math.round((Date.now() - began) / 1000)} s into the film`);
+    const workersBusy = sql("SELECT count(DISTINCT worker) FROM transcode_jobs WHERE state = 'running'");
+    if (Number(workersBusy) < 2) throw new Error(`the helper runs on the main job's worker (${workersBusy} workers busy)`);
+
+    // Plays through the first seam, and on to 60 s of the film, with no long stand-still and in less time than
+    // one worker at 0.7 could (86 s) take.
+    const target = 60;
+    let last = await time(page), moved = Date.now(), freeze = 0;
+    while (last < target) {
+      if (Date.now() - began > 78000) throw new Error(`the film reached ${last.toFixed(1)} s after 78 s; one worker at this speed would be at 55 s`);
+      if (await page.getByText("Playback Error").count()) throw new Error("the viewer got a Playback Error dialog");
+      const now = await time(page);
+      if (now > last + 0.05) { freeze = Math.max(freeze, Date.now() - moved); moved = Date.now(); last = now; }
+      if (Date.now() - moved > 6000) throw new Error(`the picture stood still for ${Date.now() - moved} ms at ${last.toFixed(1)} s (the seam is at ${boundary} s)`);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    console.log(`      reached ${target} s of the film ${Math.round((Date.now() - began) / 1000)} s after it started, the longest stand-still was ${freeze} ms`);
+    // The seam left no gap in what the player holds: one range covers it.
+    const covered = await page.evaluate((at) => {
+      const ranges = document.querySelector("video").buffered;
+      for (let i = 0; i < ranges.length; i++) if (ranges.start(i) <= at - 1 && ranges.end(i) >= at + 1) return true;
+      return false;
+    }, boundary);
+    if (!covered) throw new Error(`the buffer has a gap around ${boundary} s, the seam between two chunks`);
+
+    // Seeks back across it, to just before it, and on past it, and then far.
+    for (const to of [2, boundary - 1.5, boundary + 6, (await duration(page)) * 0.8]) {
+      await page.evaluate((t) => { document.querySelector("video").currentTime = t; }, to);
+      const seeked = Date.now();
+      await waitFor(`playback past ${to.toFixed(1)} s after a seek`, async () => (await time(page)) > to + 2, 45000);
+      if (await page.getByText("Playback Error").count()) throw new Error(`a Playback Error dialog after the seek to ${to.toFixed(1)} s`);
+      console.log(`      seek to ${to.toFixed(1)} s played on after ${Date.now() - seeked} ms`);
+    }
+    noErrors(seen);
+    await leave(page);
+    await waitFor("every ffmpeg to exit after Stopped", async () => ffmpegRuns().length === 0, 30000);
+    if (sql("SELECT count(*) FROM transcode_jobs WHERE state IN ('queued', 'running')") !== "0") throw new Error("a job is still live after Stopped");
+  } finally {
+    for (const w of workers) w.kill("SIGKILL");
+    rmSync(rate, { force: true });
+  }
+});
 
 // These stop the worker or need it gone, so they are marked and run last, on the
 // last shard (test/e2e/shard.mjs). A viewer whose transcode can't start must

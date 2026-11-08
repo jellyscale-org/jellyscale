@@ -203,7 +203,7 @@ func (j *Jobs) Unavailable(ctx context.Context, hash, userID, deviceID string) (
 			(SELECT count(*) FROM transcode_jobs WHERE (state = 'queued' OR (state = 'running' AND lease_expires_at > now()
 					AND worker IN (SELECT id FROM transcode_nodes WHERE seen_at > now() - make_interval(secs => $2))))
 				AND owner NOT IN (SELECT play_session_id FROM transcode_viewers WHERE user_id::text = $4 AND device_id = $5)),
-			(SELECT error FROM transcode_jobs WHERE spec_hash = $1 AND state = 'failed'
+			(SELECT error FROM transcode_jobs WHERE spec_hash = $1 AND state = 'failed' AND NOT helper
 				AND ended_at > now() - make_interval(secs => $3) ORDER BY id DESC LIMIT 1)`,
 		hash, workerAlive.Seconds(), failureMemory.Seconds(), userID, deviceID).Scan(&workers, &slots, &taken, &failure)
 	if err != nil {
@@ -228,7 +228,7 @@ func (j *Jobs) Unavailable(ctx context.Context, hash, userID, deviceID string) (
 // idempotent, as clients send it twice. A job nobody is left watching is
 // cancelled now, so its slot is free and it stops at the next heartbeat. A
 // viewer watches the job it last waited on, or any of the spec's if it has
-// only read segments (job_id 0).
+// only read segments (job_id 0); a helper is watched by every viewer of the spec.
 func (j *Jobs) Stop(ctx context.Context, userID, playSessionID, deviceID, item string) error {
 	if playSessionID == "" && deviceID == "" {
 		return nil
@@ -241,7 +241,7 @@ func (j *Jobs) Stop(ctx context.Context, userID, playSessionID, deviceID, item s
 	}
 	_, err = j.Pool.Exec(ctx, `UPDATE transcode_jobs j SET state = 'cancelled' WHERE state IN ('queued', 'running')
 		AND NOT EXISTS (SELECT 1 FROM transcode_viewers v WHERE v.spec_hash = j.spec_hash AND NOT v.stopped
-			AND v.job_id IN (j.id, 0))`)
+			AND (j.helper OR v.job_id IN (j.id, 0)))`)
 	return err
 }
 
@@ -443,7 +443,9 @@ func (j *Jobs) ensure(ctx context.Context, spec playback.Spec, hash, owner strin
 		if !found {
 			// A client that asks again after a failure, as a browser does when it
 			// abandons a request, must not start the same broken job every time.
-			err := tx.QueryRow(ctx, `SELECT error FROM transcode_jobs WHERE spec_hash = $1 AND state = 'failed'
+			// A helper's failure is not remembered: the viewer's own job is tried,
+			// and it fails too if the film is what is broken.
+			err := tx.QueryRow(ctx, `SELECT error FROM transcode_jobs WHERE spec_hash = $1 AND state = 'failed' AND NOT helper
 				AND ended_at > now() - make_interval(secs => $2) ORDER BY id DESC LIMIT 1`, hash, failureMemory.Seconds()).Scan(&failure)
 			if err == nil {
 				return FailedError{"the last attempt failed: " + failure}

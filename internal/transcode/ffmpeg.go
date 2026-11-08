@@ -91,17 +91,27 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		audioSeek, drop = copiedAudioCut(keyframe, seek, frameDuration)
 	}
 	if start > 0 && hasAudio && !copied {
-		firstFrame := max(int((seek+1e-9)/aacFrame)-warmupFrames, 0)
-		audioSeek = float64(firstFrame) * aacFrame
+		// A run from the start puts its AAC packets on a grid that begins where the
+		// track does, which is not on a multiple of a frame for every file, so the
+		// restart is asked for where that grid has a packet and cuts on it.
+		grid, err := audioGrid(ctx, input, spec)
+		if err != nil {
+			return nil, err
+		}
+		// The grid's phase on the file's own clock, which is what -ss counts.
+		phase := float64(grid) - base*audioRate
 		// The muxer cuts audio at the keyframe's DTS. x264 sees frame numbers,
 		// so the keyframe's time rounds to a whole frame before the delay is
 		// taken off; a source that doesn't start on a frame boundary would
 		// otherwise be off by a fraction of a frame, enough to move the cut by
 		// an audio packet.
 		cut := (math.Round(keyframe/frameDuration)-reorderFrames)*frameDuration - base
-		cutFrame := math.Ceil((cut+aacFrame)/aacFrame - 1e-6)
-		threshold := (int64(cutFrame)-1)*1024 + int64(math.Round(base*audioRate))
-		drop = fmt.Sprintf("noise=drop=lt(pts\\,%d)", threshold)
+		// The run starts warmupFrames before the cut: the encoder emits nothing
+		// for a frame's worth, and the delay is more than a frame of 12.5 fps.
+		firstFrame := max(int(math.Floor((cut*audioRate-phase)/1024+1e-9))-warmupFrames, int(math.Ceil(-phase/1024)))
+		audioSeek = (float64(firstFrame)*1024 + phase) / audioRate
+		first := math.Ceil((cut*audioRate-phase)/1024 - 1e-6)
+		drop = fmt.Sprintf("noise=drop=lt(pts\\,%d)", int64(first)*1024+grid)
 	}
 
 	args := []string{"-nostdin", "-v", "warning", "-progress", "pipe:1", "-nostats", "-y", "-copyts", "-ss", seconds(videoSeek)}
@@ -190,6 +200,29 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		cmd.Dir = dir // Where the subtitle filter finds its file; dir is absolute.
 	}
 	return cmd, nil
+}
+
+// audioGrid is the time, in samples, of the first AAC packet a run from the
+// start of the film makes for the audio track: the packets of every run fall
+// at that time plus whole frames of 1024 samples. Only a prefix of the track is
+// encoded, enough for one packet, and the way the run from the start opens it:
+// a seek to 0 trims what comes before 0, which moves the grid of a track that
+// starts a little early.
+func audioGrid(ctx context.Context, input string, spec playback.Spec) (int64, error) {
+	out, err := exec.CommandContext(ctx, "ffmpeg", "-nostdin", "-v", "error", "-copyts", "-ss", seconds(0), "-i", input, "-map", "0:"+strconv.Itoa(spec.AudioIndex),
+		"-frames:a", "1", "-c:a", "aac", "-b:a", strconv.FormatInt(spec.AudioBitrate, 10), "-ac", "2", "-ar", strconv.Itoa(audioRate), "-f", "framecrc", "-").Output()
+	if err != nil {
+		return 0, fmt.Errorf("finding where the audio's packets fall: %w", err)
+	}
+	for _, line := range strings.Split(string(out), "\n") {
+		// stream, dts, pts, duration, size, crc
+		if fields := strings.Split(line, ","); len(fields) >= 6 && !strings.HasPrefix(line, "#") {
+			if pts, err := strconv.ParseInt(strings.TrimSpace(fields[2]), 10, 64); err == nil {
+				return pts, nil
+			}
+		}
+	}
+	return 0, errors.New("finding where the audio's packets fall: ffmpeg made no packet")
 }
 
 // copiedAudioCut says where a restarted run reads copied audio from and which

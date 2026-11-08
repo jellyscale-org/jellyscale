@@ -250,7 +250,8 @@ func TestSeekJoiningAnothersJobEndsTheOwn(t *testing.T) {
 	}
 	waitFor(t, "A's earlier ffmpeg to exit", 10*time.Second, func() bool {
 		procs := r.ffmpegProcesses()
-		return len(procs) == 1 && segmentStart(procs[0]) == "10"
+		// B's job is at 10, or in the chunk after the one that began there.
+		return len(procs) == 1 && (segmentStart(procs[0]) == "10" || segmentStart(procs[0]) == "12")
 	})
 	if jobs := r.count(t, "SELECT count(*) FROM transcode_jobs"); jobs != 2 {
 		t.Fatalf("%d jobs", jobs)
