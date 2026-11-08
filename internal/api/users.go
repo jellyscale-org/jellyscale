@@ -108,12 +108,15 @@ func (s *Server) authenticateByName(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{
 		"User": s.userDTO(user),
 		"SessionInfo": map[string]any{
-			"PlayState":       map[string]any{"CanSeek": false, "IsPaused": false, "IsMuted": false, "RepeatMode": "RepeatNone"},
+			"PlayState": map[string]any{"CanSeek": false, "IsPaused": false, "IsMuted": false, "RepeatMode": "RepeatNone",
+				"PlaybackOrder": "Default"},
 			"AdditionalUsers": []any{}, "PlayableMediaTypes": []any{}, "SupportedCommands": []any{},
 			"Id": db.CompactID(uuid.NewString()), "UserId": db.CompactID(user.ID), "UserName": user.Name,
 			"Client": info.Client, "DeviceName": info.Device, "DeviceId": info.DeviceID,
 			"ApplicationVersion": info.Version, "LastActivityDate": now.Format(time.RFC3339Nano),
-			"ServerId": s.ServerID, "IsActive": true, "SupportsMediaControl": false, "SupportsRemoteControl": false,
+			// Nothing played yet; Jellyfin sends its zero time. SDK clients require the field.
+			"LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+			"ServerId":            s.ServerID, "IsActive": true, "SupportsMediaControl": false, "SupportsRemoteControl": false,
 			"HasCustomDeviceName": false, "NowPlayingQueue": []any{},
 		},
 		"AccessToken": accessToken,
@@ -190,6 +193,9 @@ func (s *Server) userDTO(user User) map[string]any {
 			"InvalidLoginAttemptCount": 0, "LoginAttemptsBeforeLockout": -1, "MaxActiveSessions": 0,
 			"EnablePublicSharing": false, "BlockedMediaFolders": []any{}, "BlockedChannels": []any{},
 			"RemoteClientBitrateLimit": 0, "SyncPlayAccess": "None",
+			// Jellyfin's default providers, by type name; SDK clients require both fields.
+			"AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+			"PasswordResetProviderId":  "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
 		},
 	}
 	if user.LastLoginAt != nil {
