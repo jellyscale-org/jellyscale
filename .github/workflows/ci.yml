@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # The merge queue tests each pull request on top of main and what is queued
+  # before it; the required checks must report there too.
+  merge_group:
 
 permissions:
   contents: read
@@ -18,8 +21,8 @@ concurrency:
 # the tests side by side, and the job named integration or e2e fails if any shard
 # failed or was cancelled, or if the shards did not add up to every test and
 # scenario (test/check-shards.sh). A pull request that changes only Markdown in
-# the root or under docs/ skips the media jobs (test/changes.sh); a push to main
-# always runs everything.
+# the root or under docs/ skips the media jobs (test/changes.sh); a merge group
+# and a push to main always run everything.
 jobs:
   changes:
     runs-on: ubuntu-latest
