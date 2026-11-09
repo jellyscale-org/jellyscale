@@ -26,7 +26,7 @@ MEDIA_DIR=/path/to/media JELLYSCALE_ADMIN_PASSWORD=change-me \
 
 ## Rolling update
 
-Replace the `stream` replicas first, then the `api` replicas. An `api` replica of this release offers a copy of HDR10, HDR10+ and HLG video (only the audio is re-encoded), and a `stream` replica of the previous release refuses that copy, so a viewer who is sent to it fails to play. A new `stream` replica serves every copy the previous `api` offered, so it is safe to be first.
+Replace the `stream` replicas first, then the `api` replicas. An `api` replica of this release offers a copy of HDR10, HDR10+ and HLG video, and a `stream` replica of the previous release refuses that copy, so a viewer who is sent to it fails to play. A new `stream` replica serves every copy the previous `api` offered, so it is safe to be first.
 
 ## Configuration
 

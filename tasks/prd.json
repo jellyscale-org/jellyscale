@@ -468,12 +468,12 @@
         "Video and audio both copied, segments splice after a restart",
         "Played and sought in jellyfin-web"
       ],
-      "priority": 4,
-      "status": "todo",
-      "passes": false,
+      "priority": null,
+      "status": "done",
+      "passes": true,
       "dependsOn": [],
       "source": "PRODUCT.md phase3 (not built)",
-      "notes": ""
+      "notes": "Built 2026-11-09. Observed on a real Jellyfin 12.4 first (compat/captures/copy-both-12.4.md): Remux copies both when the fMP4 HLS profile takes the audio codec and channels. jellyscale copies the track under the audio-copy rules (codec in the URL's list, channels within the limit, at most a quarter of the cap), else re-encodes it with the video still copied; a restart seeks the audio to the video's cut so segments splice on any worker (13 films, MKV and MP4, H.264, HEVC, AV1; AAC, AC3, E-AC3, MP3, Opus, FLAC). TranscodeReasons now add the codec reasons Jellyfin adds when the container is the reason. Played in jellyfin-web in Chrome by picking the AAC track of an H.264 and AC3 film. Two disputes upheld: a unit test pinning the replaced behaviour, and an e2e precondition that assumed a fresh job when segment reuse is correct. Backlog: SecondaryAudioNotSupported for a track pick, MP3 under Chrome (fMP4 only), the audio list for HEVC and AV1 copies comes from the H.264 HLS profile. Follow-up: JS-074 (read the film once)."
     },
     {
       "id": "JS-027",

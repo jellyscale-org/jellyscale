@@ -243,7 +243,7 @@ func copiedAudioCut(keyframe, seek, frameDuration float64) (audioSeek float64, d
 var copyReadRate = "5"
 
 // CopyCommand builds the ffmpeg run for a copied stream: the video is copied
-// and the audio re-encoded, and one fragment is written for each keyframe, as
+// and the audio is copied (spec.AudioCopy) or re-encoded, and one fragment is written for each keyframe, as
 // g0.m4s, g1.m4s ... with init.mp4 beside them. gather joins the fragments
 // into the playlist's segments, which ffmpeg can't cut the same way from every
 // start: the hls muxer counts its segment lengths from where it began.
@@ -259,16 +259,17 @@ var copyReadRate = "5"
 // video and audio say where in the source's clock (seconds) to begin, or are
 // negative to begin at the start of the file. A run for segment N begins at
 // the keyframe before it and its audio two seconds early, on the same AAC
-// frame grid as a run from the start. The video then reaches segment N's
+// frame grid as a run from the start. A copied audio is the source's own packets
+// and needs no grid or warm-up: it begins at the video's cut. The video then reaches segment N's
 // keyframe as it would in a run from the start, with the same decode time,
 // and the audio is warm and whole by then, with no need to know which packet
 // the muxer will cut at. What comes before segment N is dropped.
 func CopyCommand(ctx context.Context, input string, spec playback.Spec, codec string, video, audio float64, dir string) (*exec.Cmd, error) {
 	hasAudio := spec.AudioIndex >= 0
-	var base float64
+	var base, frameDuration float64
 	if video >= 0 {
 		var err error
-		if base, _, err = sourceTiming(ctx, input); err != nil {
+		if base, frameDuration, err = sourceTiming(ctx, input); err != nil {
 			return nil, err
 		}
 	}
@@ -280,8 +281,17 @@ func CopyCommand(ctx context.Context, input string, spec playback.Spec, codec st
 		args = append(args, "-ss", seconds(max(video-base, 0)+0.005))
 	}
 	args = append(args, "-readrate", copyReadRate, "-i", input)
+	both := spec.AudioCopy != ""
 	if hasAudio {
-		if audio >= 0 {
+		if audio >= 0 && both {
+			// The packets are the source's own: begin with the first at or after
+			// the video's cut (the keyframe's DTS, as in Command's AAC case), which
+			// is where a run from zero puts the first audio of the keyframe's
+			// fragment. A bitstream filter dropping the earlier ones would leave
+			// the muxer without a packet to write E-AC3's init segment from.
+			cut := (math.Round(video/frameDuration) - reorderFrames) * frameDuration
+			args = append(args, "-ss", seconds(max(cut-base-1e-6, 0)))
+		} else if audio >= 0 {
 			args = append(args, "-ss", seconds(math.Floor(max(audio-base, 0)/aacFrame)*aacFrame))
 		}
 		args = append(args, "-readrate", copyReadRate, "-i", input)
@@ -293,7 +303,9 @@ func CopyCommand(ctx context.Context, input string, spec playback.Spec, codec st
 		// what the master playlist's CODECS says and what Chrome and Safari take.
 		args = append(args, "-tag:v", "hvc1")
 	}
-	if hasAudio {
+	if hasAudio && both {
+		args = append(args, "-map", "1:"+strconv.Itoa(spec.AudioIndex), "-c:a", "copy")
+	} else if hasAudio {
 		args = append(args, "-map", "1:"+strconv.Itoa(spec.AudioIndex),
 			"-c:a", "aac", "-b:a", strconv.FormatInt(spec.AudioBitrate, 10), "-ac", "2", "-ar", strconv.Itoa(audioRate))
 	}
