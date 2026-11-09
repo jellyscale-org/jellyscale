@@ -62,8 +62,10 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 	seek := float64(start * playback.SegmentSeconds)
 	hasAudio := spec.AudioIndex >= 0
 	burn := spec.Subtitle != nil && image == nil
+	// A track beside the film is a file of its own, read from its start.
+	external := image != nil && image.File != ""
 	var base, frameDuration float64
-	if start > 0 || burn {
+	if start > 0 || burn || external {
 		var err error
 		if base, frameDuration, err = sourceTiming(ctx, input); err != nil {
 			return nil, err
@@ -115,13 +117,27 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 	}
 
 	args := []string{"-nostdin", "-v", "warning", "-progress", "pipe:1", "-nostats", "-y", "-copyts", "-ss", seconds(videoSeek)}
+	canvas := []string{}
 	if image != nil && image.Width > 0 && image.Height > 0 {
 		// The size the track's bitmaps are placed on, which its stream may not say.
-		args = append(args, "-canvas_size", fmt.Sprintf("%dx%d", image.Width, image.Height))
+		canvas = []string{"-canvas_size", fmt.Sprintf("%dx%d", image.Width, image.Height)}
+	}
+	if !external {
+		args = append(args, canvas...)
 	}
 	args = append(args, "-i", input)
+	inputs := 1
 	if hasAudio {
 		args = append(args, "-ss", seconds(audioSeek), "-i", input)
+		inputs++
+	}
+	if external {
+		// Its times are the cues' own, counted from 0, and the film's clock starts at base.
+		args = append(args, canvas...)
+		if base != 0 {
+			args = append(args, "-itsoffset", seconds(base))
+		}
+		args = append(args, "-i", image.File)
 	}
 	if image == nil {
 		args = append(args, "-map", "0:v:0")
@@ -159,8 +175,12 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 	} else {
 		// eof_action=pass lets the video go on when the track's packets end,
 		// as they do before the film does.
-		args = append(args, "-filter_complex", fmt.Sprintf("[0:v:0]%s[v];[0:%d]scale=%d:%d[s];[v][s]overlay=eof_action=pass:repeatlast=0,format=yuv420p[o]",
-			picture, *spec.Subtitle, spec.Width, spec.Height), "-map", "[o]")
+		track := fmt.Sprintf("0:%d", *spec.Subtitle)
+		if external {
+			track = fmt.Sprintf("%d:0", inputs)
+		}
+		args = append(args, "-filter_complex", fmt.Sprintf("[0:v:0]%s[v];[%s]scale=%d:%d[s];[v][s]overlay=eof_action=pass:repeatlast=0,format=yuv420p[o]",
+			picture, track, spec.Width, spec.Height), "-map", "[o]")
 	}
 	args = append(args,
 		"-c:v", "libx264", "-preset", "veryfast", "-profile:v", "high", "-level", "51",

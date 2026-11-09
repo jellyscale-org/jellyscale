@@ -160,6 +160,12 @@ type Stream struct {
 	// Fingerprint identifies the version of the subtitle file beside the film
 	// that the track is; empty for a track inside the film.
 	Fingerprint string
+	// Path is the subtitle file's key in the media store, and SubPath the .sub
+	// of a VobSub pair whose .idx Path is.
+	Path, SubPath string
+	// File is where a worker put a copy of the external image track to read it
+	// from. It is never stored.
+	File string `json:"-"`
 	// Unreadable is a subtitle file a worker found it cannot read, which stays
 	// so until the file changes.
 	Unreadable bool

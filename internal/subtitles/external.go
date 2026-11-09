@@ -16,30 +16,33 @@ import (
 // stops a stray large file from filling a worker's memory.
 const MaxFile = 16 << 20
 
-// externalStream is what media_sources.streams says about a subtitle file
+// ExternalStream is what media_sources.streams says about a subtitle file
 // beside the film: where it is, and a fingerprint of the version that was
 // listed (its key, size and ETag).
-type externalStream struct {
+type ExternalStream struct {
 	Index       int
 	IsExternal  bool
 	Path        string
 	Fingerprint string
 	Unreadable  bool
-	Language    string // ISO 639-3 from the file's name, or empty
+	// FileSize and FileETag are the version of a .sup that was listed.
+	FileSize int64
+	FileETag string
+	Language string // ISO 639-3 from the file's name, or empty
 }
 
 // External finds stream index of src if it is a file beside the film.
-func External(src items.Source, index int) (externalStream, bool) {
-	var streams []externalStream
+func External(src items.Source, index int) (ExternalStream, bool) {
+	var streams []ExternalStream
 	if json.Unmarshal(src.Streams, &streams) != nil {
-		return externalStream{}, false
+		return ExternalStream{}, false
 	}
 	for _, stream := range streams {
 		if stream.IsExternal && stream.Index == index {
 			return stream, true
 		}
 	}
-	return externalStream{}, false
+	return ExternalStream{}, false
 }
 
 // ExtractFile converts the text of a subtitle file; ext is its extension,

@@ -227,7 +227,7 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 				continue
 			}
 		}
-		if err := s.upsert(ctx, lib, object, probe, sidecars, sets[object.Key], keep); err != nil {
+		if err := s.upsert(ctx, lib, object, probe, sidecars, s.describe(ctx, lib.Media, sets[object.Key]), keep); err != nil {
 			s.Log.Error("store item failed", "key", object.Key, "error", err)
 			continue
 		}
@@ -236,7 +236,7 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 		}
 	}
 	for _, object := range refreshed {
-		if err := s.refreshSidecars(ctx, lib.ID, object, *seen[object.Key].itemID, sets[object.Key]); err != nil {
+		if err := s.refreshSidecars(ctx, lib.ID, object, *seen[object.Key].itemID, s.describe(ctx, lib.Media, sets[object.Key])); err != nil {
 			s.Log.Error("reading subtitle files failed", "key", object.Key, "error", err)
 		}
 	}
@@ -456,7 +456,7 @@ func (s *Scanner) upsert(ctx context.Context, lib Library, object store.Object, 
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return err
 		}
-		external, next := externalStreams(object, subtitleFiles.files, old, nextIndex(probe.Streams), counter)
+		external, next := externalStreams(object, subtitleFiles, old, nextIndex(probe.Streams), counter)
 		probe.Streams = append(probe.Streams, external...)
 		slices.SortFunc(probe.Streams, func(a, b map[string]any) int { return indexOf(a) - indexOf(b) })
 		item.dto = videoDTO(item, object, probe)
@@ -738,7 +738,7 @@ func (s *Scanner) refreshSidecars(ctx context.Context, libraryID string, object 
 			return err
 		}
 		own := slices.DeleteFunc(slices.Clone(streams), func(stream map[string]any) bool { return stream["IsExternal"] == true })
-		external, next := externalStreams(object, files.files, streams, nextIndex(own), counter)
+		external, next := externalStreams(object, files, streams, nextIndex(own), counter)
 		streams = append(own, external...)
 		slices.SortFunc(streams, func(a, b map[string]any) int { return indexOf(a) - indexOf(b) })
 		if err := storeStreams(ctx, tx, itemID, streams, next); err != nil {
@@ -780,9 +780,11 @@ func playableStreams(streams []map[string]any) []map[string]any {
 			}
 		}
 		if stream["Type"] == "Subtitle" && stream["Fingerprint"] != nil {
-			// Keys the cached track; no client has use for it.
+			// Keys the cached track and says where the file is; no client has use for it.
 			stream = maps.Clone(stream)
-			delete(stream, "Fingerprint")
+			for _, key := range []string{"Fingerprint", "FileSize", "FileETag", "SubPath", "SubSize"} {
+				delete(stream, key)
+			}
 		}
 		listed := stream["IsTextSubtitleStream"] == true || stream["IsImageSubtitleStream"] == true
 		if stream["Type"] == "Video" || i == audio || (stream["Type"] == "Subtitle" && listed && stream["Unreadable"] != true) {
