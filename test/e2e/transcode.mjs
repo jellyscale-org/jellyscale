@@ -589,6 +589,45 @@ await scenario("copy, POSIX, MP4: AV1 resumes mid-film from a copy", async ({ pa
   await leave(page);
 });
 
+// An HDR10 film is copied for a client that plays its video and not its audio
+// (JS-025), and CI's Chrome can show that with AV1, which it plays in software
+// (HEVC it does not, so the HEVC copy is checked only with E2E_HEVC=1 below).
+// The film is AV1 in PQ with AC3 audio: the master says PQ, the video is copied,
+// and the player plays and goes on through a seek to a point it has not buffered.
+await scenario("copy, POSIX, Matroska: AV1 HDR10 and AC3 plays as PQ with the video copied, through a seek", async ({ page, seen }) => {
+  await play(page, "Transcode", "Kaf Film");
+  const source = seen.infos.at(-1).source;
+  const video = source.MediaStreams.find((s) => s.Type === "Video");
+  if (video.Codec !== "av1" || video.VideoRangeType !== "HDR10") throw new Error(`the labels are not an AV1 HDR10 film's: ${JSON.stringify(video)}`);
+  const query = new URL(source.TranscodingUrl, base).searchParams;
+  if (query.get("VideoCodec") !== "copy" || query.get("TranscodeReasons") !== "AudioCodecNotSupported") throw new Error(`not a copy for the audio alone: ${source.TranscodingUrl}`);
+  const answer = await fetch(new URL(source.TranscodingUrl, base));
+  const first = (await answer.text()).split("\n").find((line) => line.startsWith("#EXT-X-STREAM-INF"));
+  if (!/VIDEO-RANGE=PQ,/.test(first ?? "") || !/CODECS="av01\.0\.\d\dM\.10,/.test(first)) throw new Error(`master: ${first}`);
+  const runs = ffmpegRuns();
+  if (runs.length !== 1 || !runs[0].copy || /libsvtav1|libx26[45]/.test(runs[0].line)) throw new Error(`ffmpeg is not copying the video: ${runs.map((r) => r.line.slice(0, 400))}`);
+  await advances(page, 3);
+  // A seek to a point the player has not buffered, so it must fetch a segment
+  // there. Not a fixed time: a warm rerun (E2E_REPEAT) resumes where the last
+  // run left, and a copy started at 22 s has 24 s buffered within seconds.
+  const target = await page.evaluate(() => {
+    const ranges = document.querySelector("video").buffered;
+    const buffered = (t) => Array.from({ length: ranges.length }, (_, i) => [ranges.start(i), ranges.end(i)]).some(([a, b]) => t >= a && t < b);
+    return [24, 4, 12].find((t) => !buffered(t)) ?? null;
+  });
+  if (target === null) throw new Error("every seek target is buffered already");
+  const seeked = Date.now();
+  await page.evaluate((t) => { document.querySelector("video").currentTime = t; }, target);
+  await waitFor("a segment of the seek", async () => seen.hls.find((r) => r.at > seeked && r.status === 200 && /\/\d+\.mp4$/i.test(r.path)), 60000);
+  await waitFor("playback past the seek target", async () => (await time(page)) > target + 2, 60000);
+  await advances(page, 2);
+  const shown = await page.evaluate(() => ({ frames: document.querySelector("video").getVideoPlaybackQuality().totalVideoFrames, width: document.querySelector("video").videoWidth }));
+  if (shown.frames < 20 || shown.width !== 640) throw new Error(`the AV1 picture did not decode: ${JSON.stringify(shown)}`);
+  if (!ffmpegRuns().every((r) => r.copy)) throw new Error("ffmpeg stopped copying after the seek");
+  noErrors(seen);
+  await leave(page);
+});
+
 // What Chrome plays decides HEVC, and CI's Chrome has no hardware decoder, so
 // it sends no HEVC in its profile and the film is re-encoded to H.264, with the
 // reasons Jellyfin gives (compat/captures/hevc-av1-12.4.md). A machine with one
