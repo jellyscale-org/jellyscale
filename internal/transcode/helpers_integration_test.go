@@ -56,6 +56,7 @@ func helperSettings(w *Worker) {
 	if n, ok := number("JELLYSCALE_TEST_IDLE_SECONDS"); ok {
 		w.Idle = time.Duration(n) * time.Second
 	}
+	w.NoHelpers = os.Getenv("JELLYSCALE_TEST_NO_HELPERS") == "1"
 	if v, err := strconv.ParseFloat(os.Getenv("JELLYSCALE_TEST_HELP_BELOW"), 64); err == nil {
 		w.HelpBelow = v
 	}

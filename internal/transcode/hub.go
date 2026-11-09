@@ -15,6 +15,10 @@ const channel = "jellyscale_transcode"
 // Hint payloads. A segment hint is segmentHint(hash); a new job is jobHint.
 const jobHint = "job"
 
+// preemptHint tells workers a helper was cancelled for a new viewer
+// (preemptHelper), so the worker running it stops it now.
+const preemptHint = "preempt"
+
 func segmentHint(hash string) string { return "segment:" + hash }
 
 // Notify sends a hint after the data it announces has committed. It runs in

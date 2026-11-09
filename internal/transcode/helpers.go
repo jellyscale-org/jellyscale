@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -159,4 +160,26 @@ func (w *Worker) chunkFree(ctx context.Context, job claimed, next int) (bool, er
 	err := w.Pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM transcode_jobs j WHERE j.spec_hash = $1 AND j.id <> $2 AND `+live("j")+`
 		AND j.start_segment <= $3 AND $3 < (j.start_segment / $4 + 1) * $4)`, job.Hash, job.ID, next, w.chunkSize()).Scan(&taken)
 	return !taken, err
+}
+
+// preemptHelper cancels one helper if no slot is free for the viewer's job
+// about to be inserted, so a viewer never waits behind a helper. A queued
+// helper goes first, else the running one furthest ahead, and only one whose
+// slot freeSlots counts (queued, or running on a live worker): cancelling a
+// dead worker's helper would free nothing. Only helpers are cancelled; a
+// viewer's job is never. It reports whether it cancelled one, so the caller
+// can send preemptHint once the transaction commits and the helper stops at
+// once rather than at its next heartbeat. What the helper stored stays, and
+// the rest of its chunk is made when a viewer reaches it, as after a seek.
+// Called under the helpers lock. The outer state test is not redundant: a
+// helper that finished after the subquery chose it is re-checked on its new
+// row, so it stays done rather than turning cancelled.
+func preemptHelper(ctx context.Context, tx pgx.Tx, queue time.Duration) (bool, error) {
+	tag, err := tx.Exec(ctx, `UPDATE transcode_jobs SET state = 'cancelled', error = 'a new viewer needed its slot', ended_at = now() WHERE id = (
+			SELECT h.id FROM transcode_jobs h WHERE h.helper AND (h.state = 'queued' AND h.created_at > now() - make_interval(secs => $2)
+				OR h.state = 'running' AND h.lease_expires_at > now()
+					AND h.worker IN (SELECT id FROM transcode_nodes WHERE seen_at > now() - make_interval(secs => $1)))
+			ORDER BY h.state = 'queued' DESC, h.start_segment DESC LIMIT 1)
+		AND state IN ('queued', 'running') AND `+freeSlots("$1", "$2")+` < 1`, workerAlive.Seconds(), queue.Seconds())
+	return tag.RowsAffected() > 0, err
 }

@@ -39,3 +39,24 @@ func TestRunningDocsNameThePoolKey(t *testing.T) {
 		t.Error("docs/running.md does not document databaseMaxConns")
 	}
 }
+
+// Operators turn helpers (parallel transcoding) off with transcodeHelpers.
+func TestHelpersCanBeTurnedOffAndTheDocsSayHow(t *testing.T) {
+	cfg, err := parseConfig([]byte(`{"transcodeHelpers": false}`))
+	if err != nil {
+		t.Fatalf("transcodeHelpers is not a config key: %v", err)
+	}
+	if cfg.TranscodeHelpers == nil || *cfg.TranscodeHelpers {
+		t.Errorf("transcodeHelpers: false did not read as off: %v", cfg.TranscodeHelpers)
+	}
+	if cfg, err := parseConfig([]byte(`{}`)); err != nil || cfg.TranscodeHelpers != nil {
+		t.Errorf("helpers are on unless turned off: %v, %v", cfg.TranscodeHelpers, err)
+	}
+	raw, err := os.ReadFile("../../docs/running.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "transcodeHelpers") {
+		t.Error("docs/running.md does not document transcodeHelpers")
+	}
+}
