@@ -258,9 +258,10 @@ func TestAudioCopyIsInTheHashAndOnlyThere(t *testing.T) {
 	}
 }
 
-// A copied video re-encodes its audio (CopyCommand's fragment joiner relies
-// on the AAC grid), whatever the URL lists, and its hash is what it was.
-func TestVideoCopyNeverCopiesAudio(t *testing.T) {
+// A copied video copies its audio too when the URL lists the track's codec
+// (JS-026), and re-encodes it when the URL lists none; that video copy keeps
+// the hash it had before JS-026.
+func TestVideoCopyCopiesTheAudioTheURLLists(t *testing.T) {
 	source := copyable("mkv", "aac")
 	source.Streams[1].Profile, source.Streams[1].Bitrate = "LC", 128_000
 	p, err := params(t, "mediasourceid="+sourceID+"&playsessionid=abc&videocodec=copy&audiocodec=aac,flac", source)
@@ -271,16 +272,19 @@ func TestVideoCopyNeverCopiesAudio(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !spec.Copy || spec.AudioCopy != "" {
+	if !spec.Copy || spec.AudioCopy != "aac" {
 		t.Fatalf("spec %+v", spec)
 	}
 	without, _ := params(t, "mediasourceid="+sourceID+"&playsessionid=abc&videocodec=copy", source)
 	plain, _ := NewSpec("11111111-2222-3333-4444-555555555555", without, source)
-	if spec.Hash() != plain.Hash() {
-		t.Error("the audio list must not change a video copy's hash")
+	if !plain.Copy || plain.AudioCopy != "" {
+		t.Fatalf("with no audio list the audio is re-encoded: %+v", plain)
+	}
+	if spec.Hash() == plain.Hash() {
+		t.Error("copying both streams must be its own output, apart from a video copy")
 	}
 	if !strings.Contains(Master(spec, source, "q"), `,mp4a.40.2"`) {
-		t.Error("a video copy's audio is AAC")
+		t.Error("the copied audio is AAC LC")
 	}
 }
 

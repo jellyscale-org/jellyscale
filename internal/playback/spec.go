@@ -181,8 +181,7 @@ type Spec struct {
 	ToneMap string
 	// AudioCopy is the codec of the audio when it is copied, not re-encoded,
 	// and "" when it is re-encoded to AAC. It is the codec's name so AC3 and
-	// E-AC3 never share segments. A copied video always has the audio
-	// re-encoded (CopyCommand), so Copy and AudioCopy are never both set.
+	// E-AC3 never share segments. Set with Copy, both streams are the source's own.
 	AudioCopy string
 }
 
@@ -199,9 +198,13 @@ func NewSpec(item string, p Params, source Source) (Spec, error) {
 		if p.Subtitle != nil {
 			return Spec{}, errors.New("a copied video can't have a subtitle burnt into it")
 		}
+		audioBitrate, audioCopy := min(p.AudioBitrate, MaxAudioBitrate), ""
+		if stream, ok := source.copyAudio(p); ok {
+			audioBitrate, audioCopy = stream.Bitrate, stream.Codec
+		}
 		return Spec{
 			Item: strings.ReplaceAll(strings.ToLower(item), "-", ""), Source: p.SourceID, ETag: source.ETag,
-			AudioIndex: p.AudioIndex, AudioBitrate: min(p.AudioBitrate, MaxAudioBitrate), Width: video.Width, Height: video.Height,
+			AudioIndex: p.AudioIndex, AudioBitrate: audioBitrate, AudioCopy: audioCopy, Width: video.Width, Height: video.Height,
 			VideoBitrate: source.FileBitrate(), Copy: true,
 		}, nil
 	}

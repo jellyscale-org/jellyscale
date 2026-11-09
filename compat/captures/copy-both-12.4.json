@@ -1,0 +1,4540 @@
+{
+ "server": "jellyfin/jellyfin:12.4 (jellyfin-ffmpeg)",
+ "note": "results[file/profile@MaxStreamingBitrate#AudioStreamIndex]. 20 s progressive 640x360 fixtures, keyframe every 72 frames, synthetic. src lists the streams as PlaybackInfo reports them (MKV bitrates are Jellyfin guesses). ffmpegVideo and ffmpegAudio are the -codec:v:0 and -codec:a:0 of the ffmpeg command Jellyfin logged; ffmpegLog is the log kind (Remux: both streams copied; DirectStream: video copied, audio encoded; Transcode: video encoded).",
+ "deviceProfiles": {
+  "chrome": {
+   "MaxStreamingBitrate": 120000000,
+   "MaxStaticBitrate": 100000000,
+   "MusicStreamingTranscodingBitrate": 384000,
+   "DirectPlayProfiles": [
+    {
+     "Container": "webm",
+     "Type": "Video",
+     "VideoCodec": "vp8,vp9,av1",
+     "AudioCodec": "vorbis,opus"
+    },
+    {
+     "Container": "mp4,m4v",
+     "Type": "Video",
+     "VideoCodec": "h264,vp9,av1",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "mkv",
+     "Type": "Video",
+     "VideoCodec": "h264,vp9,av1",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "mov",
+     "Type": "Video",
+     "VideoCodec": "h264",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webm",
+     "AudioCodec": "opus",
+     "Type": "Audio"
+    },
+    {
+     "Container": "ts",
+     "AudioCodec": "mp3",
+     "Type": "Audio"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio"
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "m4a",
+     "AudioCodec": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "m4b",
+     "AudioCodec": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "flac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webma",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webm",
+     "AudioCodec": "webma",
+     "Type": "Audio"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio"
+    },
+    {
+     "Container": "ogg",
+     "Type": "Audio"
+    },
+    {
+     "Container": "hls",
+     "Type": "Video",
+     "VideoCodec": "av1,h264,vp9",
+     "AudioCodec": "aac,mp2,opus,flac"
+    },
+    {
+     "Container": "hls",
+     "Type": "Video",
+     "VideoCodec": "h264",
+     "AudioCodec": "aac,mp3,mp2"
+    }
+   ],
+   "TranscodingProfiles": [
+    {
+     "Container": "mp4",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false,
+     "EnableAudioVbrEncoding": true
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio",
+     "AudioCodec": "mp3",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio",
+     "AudioCodec": "opus",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio",
+     "AudioCodec": "wav",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio",
+     "AudioCodec": "opus",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio",
+     "AudioCodec": "mp3",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio",
+     "AudioCodec": "wav",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp4",
+     "Type": "Video",
+     "AudioCodec": "aac,mp2,opus,flac",
+     "VideoCodec": "av1,h264,vp9",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false
+    },
+    {
+     "Container": "ts",
+     "Type": "Video",
+     "AudioCodec": "aac,mp3,mp2",
+     "VideoCodec": "h264",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false
+    }
+   ],
+   "ContainerProfiles": [],
+   "CodecProfiles": [
+    {
+     "Type": "VideoAudio",
+     "Codec": "aac",
+     "Conditions": [
+      {
+       "Condition": "Equals",
+       "Property": "IsSecondaryAudio",
+       "Value": "false",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "VideoAudio",
+     "Conditions": [
+      {
+       "Condition": "Equals",
+       "Property": "IsSecondaryAudio",
+       "Value": "false",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "h264",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "high|main|baseline|constrained baseline|high 10",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "52",
+       "IsRequired": false
+      },
+      {
+       "Condition": "NotEquals",
+       "Property": "IsInterlaced",
+       "Value": "true",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "hevc",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "main",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "120",
+       "IsRequired": false
+      },
+      {
+       "Condition": "NotEquals",
+       "Property": "IsInterlaced",
+       "Value": "true",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "vp9",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "av1",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "main",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "19",
+       "IsRequired": false
+      }
+     ]
+    }
+   ],
+   "SubtitleProfiles": [
+    {
+     "Format": "vtt",
+     "Method": "External"
+    },
+    {
+     "Format": "ass",
+     "Method": "External"
+    },
+    {
+     "Format": "ssa",
+     "Method": "External"
+    }
+   ],
+   "ResponseProfiles": [
+    {
+     "Type": "Video",
+     "Container": "m4v",
+     "MimeType": "video/mp4"
+    }
+   ]
+  },
+  "chrome-nomkv": {
+   "MaxStreamingBitrate": 120000000,
+   "MaxStaticBitrate": 100000000,
+   "MusicStreamingTranscodingBitrate": 384000,
+   "DirectPlayProfiles": [
+    {
+     "Container": "webm",
+     "Type": "Video",
+     "VideoCodec": "vp8,vp9,av1",
+     "AudioCodec": "vorbis,opus"
+    },
+    {
+     "Container": "mp4,m4v",
+     "Type": "Video",
+     "VideoCodec": "h264,vp9,av1",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "mov",
+     "Type": "Video",
+     "VideoCodec": "h264",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webm",
+     "AudioCodec": "opus",
+     "Type": "Audio"
+    },
+    {
+     "Container": "ts",
+     "AudioCodec": "mp3",
+     "Type": "Audio"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio"
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "m4a",
+     "AudioCodec": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "m4b",
+     "AudioCodec": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "flac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webma",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webm",
+     "AudioCodec": "webma",
+     "Type": "Audio"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio"
+    },
+    {
+     "Container": "ogg",
+     "Type": "Audio"
+    },
+    {
+     "Container": "hls",
+     "Type": "Video",
+     "VideoCodec": "av1,h264,vp9",
+     "AudioCodec": "aac,mp2,opus,flac"
+    },
+    {
+     "Container": "hls",
+     "Type": "Video",
+     "VideoCodec": "h264",
+     "AudioCodec": "aac,mp3,mp2"
+    }
+   ],
+   "TranscodingProfiles": [
+    {
+     "Container": "mp4",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false,
+     "EnableAudioVbrEncoding": true
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio",
+     "AudioCodec": "mp3",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio",
+     "AudioCodec": "opus",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio",
+     "AudioCodec": "wav",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio",
+     "AudioCodec": "opus",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio",
+     "AudioCodec": "mp3",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio",
+     "AudioCodec": "wav",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp4",
+     "Type": "Video",
+     "AudioCodec": "aac,mp2,opus,flac",
+     "VideoCodec": "av1,h264,vp9",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false
+    },
+    {
+     "Container": "ts",
+     "Type": "Video",
+     "AudioCodec": "aac,mp3,mp2",
+     "VideoCodec": "h264",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false
+    }
+   ],
+   "ContainerProfiles": [],
+   "CodecProfiles": [
+    {
+     "Type": "VideoAudio",
+     "Codec": "aac",
+     "Conditions": [
+      {
+       "Condition": "Equals",
+       "Property": "IsSecondaryAudio",
+       "Value": "false",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "VideoAudio",
+     "Conditions": [
+      {
+       "Condition": "Equals",
+       "Property": "IsSecondaryAudio",
+       "Value": "false",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "h264",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "high|main|baseline|constrained baseline|high 10",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "52",
+       "IsRequired": false
+      },
+      {
+       "Condition": "NotEquals",
+       "Property": "IsInterlaced",
+       "Value": "true",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "hevc",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "main",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "120",
+       "IsRequired": false
+      },
+      {
+       "Condition": "NotEquals",
+       "Property": "IsInterlaced",
+       "Value": "true",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "vp9",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "av1",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "main",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "19",
+       "IsRequired": false
+      }
+     ]
+    }
+   ],
+   "SubtitleProfiles": [
+    {
+     "Format": "vtt",
+     "Method": "External"
+    },
+    {
+     "Format": "ass",
+     "Method": "External"
+    },
+    {
+     "Format": "ssa",
+     "Method": "External"
+    }
+   ],
+   "ResponseProfiles": [
+    {
+     "Type": "Video",
+     "Container": "m4v",
+     "MimeType": "video/mp4"
+    }
+   ]
+  },
+  "hevc-nomkv": {
+   "MaxStreamingBitrate": 120000000,
+   "MaxStaticBitrate": 100000000,
+   "MusicStreamingTranscodingBitrate": 384000,
+   "DirectPlayProfiles": [
+    {
+     "Container": "webm",
+     "Type": "Video",
+     "VideoCodec": "vp8,vp9,av1",
+     "AudioCodec": "vorbis,opus"
+    },
+    {
+     "Container": "mp4,m4v",
+     "Type": "Video",
+     "VideoCodec": "h264,hevc,vp9,av1",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "mov",
+     "Type": "Video",
+     "VideoCodec": "h264",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webm",
+     "AudioCodec": "opus",
+     "Type": "Audio"
+    },
+    {
+     "Container": "ts",
+     "AudioCodec": "mp3",
+     "Type": "Audio"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio"
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "m4a",
+     "AudioCodec": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "m4b",
+     "AudioCodec": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "flac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webma",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webm",
+     "AudioCodec": "webma",
+     "Type": "Audio"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio"
+    },
+    {
+     "Container": "ogg",
+     "Type": "Audio"
+    },
+    {
+     "Container": "hls",
+     "Type": "Video",
+     "VideoCodec": "av1,h264,vp9",
+     "AudioCodec": "aac,mp2,opus,flac"
+    },
+    {
+     "Container": "hls",
+     "Type": "Video",
+     "VideoCodec": "h264",
+     "AudioCodec": "aac,mp3,mp2"
+    }
+   ],
+   "TranscodingProfiles": [
+    {
+     "Container": "mp4",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false,
+     "EnableAudioVbrEncoding": true
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio",
+     "AudioCodec": "mp3",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio",
+     "AudioCodec": "opus",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio",
+     "AudioCodec": "wav",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio",
+     "AudioCodec": "opus",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio",
+     "AudioCodec": "mp3",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio",
+     "AudioCodec": "wav",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp4",
+     "Type": "Video",
+     "AudioCodec": "aac,mp2,opus,flac",
+     "VideoCodec": "av1,hevc,h264,vp9",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false
+    },
+    {
+     "Container": "ts",
+     "Type": "Video",
+     "AudioCodec": "aac,mp3,mp2",
+     "VideoCodec": "h264",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false
+    }
+   ],
+   "ContainerProfiles": [],
+   "CodecProfiles": [
+    {
+     "Type": "VideoAudio",
+     "Codec": "aac",
+     "Conditions": [
+      {
+       "Condition": "Equals",
+       "Property": "IsSecondaryAudio",
+       "Value": "false",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "VideoAudio",
+     "Conditions": [
+      {
+       "Condition": "Equals",
+       "Property": "IsSecondaryAudio",
+       "Value": "false",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "h264",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "high|main|baseline|constrained baseline|high 10",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "52",
+       "IsRequired": false
+      },
+      {
+       "Condition": "NotEquals",
+       "Property": "IsInterlaced",
+       "Value": "true",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "hevc",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "main|main 10",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "183",
+       "IsRequired": false
+      },
+      {
+       "Condition": "NotEquals",
+       "Property": "IsInterlaced",
+       "Value": "true",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "vp9",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "av1",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "main",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "19",
+       "IsRequired": false
+      }
+     ]
+    }
+   ],
+   "SubtitleProfiles": [
+    {
+     "Format": "vtt",
+     "Method": "External"
+    },
+    {
+     "Format": "ass",
+     "Method": "External"
+    },
+    {
+     "Format": "ssa",
+     "Method": "External"
+    }
+   ],
+   "ResponseProfiles": [
+    {
+     "Type": "Video",
+     "Container": "m4v",
+     "MimeType": "video/mp4"
+    }
+   ]
+  },
+  "hevc-surround": {
+   "MaxStreamingBitrate": 120000000,
+   "MaxStaticBitrate": 100000000,
+   "MusicStreamingTranscodingBitrate": 384000,
+   "DirectPlayProfiles": [
+    {
+     "Container": "webm",
+     "Type": "Video",
+     "VideoCodec": "vp8,vp9,av1",
+     "AudioCodec": "vorbis,opus"
+    },
+    {
+     "Container": "mp4,m4v",
+     "Type": "Video",
+     "VideoCodec": "h264,hevc,vp9,av1",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "mkv",
+     "Type": "Video",
+     "VideoCodec": "h264,hevc,vp9,av1",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "mov",
+     "Type": "Video",
+     "VideoCodec": "h264",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webm",
+     "AudioCodec": "opus",
+     "Type": "Audio"
+    },
+    {
+     "Container": "ts",
+     "AudioCodec": "mp3",
+     "Type": "Audio"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio"
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "m4a",
+     "AudioCodec": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "m4b",
+     "AudioCodec": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "flac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webma",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webm",
+     "AudioCodec": "webma",
+     "Type": "Audio"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio"
+    },
+    {
+     "Container": "ogg",
+     "Type": "Audio"
+    },
+    {
+     "Container": "hls",
+     "Type": "Video",
+     "VideoCodec": "av1,h264,vp9",
+     "AudioCodec": "aac,mp2,opus,flac"
+    },
+    {
+     "Container": "hls",
+     "Type": "Video",
+     "VideoCodec": "h264",
+     "AudioCodec": "aac,mp3,mp2"
+    }
+   ],
+   "TranscodingProfiles": [
+    {
+     "Container": "mp4",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false,
+     "EnableAudioVbrEncoding": true
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio",
+     "AudioCodec": "mp3",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio",
+     "AudioCodec": "opus",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio",
+     "AudioCodec": "wav",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio",
+     "AudioCodec": "opus",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio",
+     "AudioCodec": "mp3",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio",
+     "AudioCodec": "wav",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp4",
+     "Type": "Video",
+     "AudioCodec": "aac,mp3,ac3,eac3,flac,opus",
+     "VideoCodec": "av1,hevc,h264,vp9",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "6",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false
+    },
+    {
+     "Container": "ts",
+     "Type": "Video",
+     "AudioCodec": "aac,mp3,mp2",
+     "VideoCodec": "h264",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false
+    }
+   ],
+   "ContainerProfiles": [],
+   "CodecProfiles": [
+    {
+     "Type": "VideoAudio",
+     "Codec": "aac",
+     "Conditions": [
+      {
+       "Condition": "Equals",
+       "Property": "IsSecondaryAudio",
+       "Value": "false",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "VideoAudio",
+     "Conditions": [
+      {
+       "Condition": "Equals",
+       "Property": "IsSecondaryAudio",
+       "Value": "false",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "h264",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "high|main|baseline|constrained baseline|high 10",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "52",
+       "IsRequired": false
+      },
+      {
+       "Condition": "NotEquals",
+       "Property": "IsInterlaced",
+       "Value": "true",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "hevc",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "main|main 10",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "183",
+       "IsRequired": false
+      },
+      {
+       "Condition": "NotEquals",
+       "Property": "IsInterlaced",
+       "Value": "true",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "vp9",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "av1",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "main",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "19",
+       "IsRequired": false
+      }
+     ]
+    }
+   ],
+   "SubtitleProfiles": [
+    {
+     "Format": "vtt",
+     "Method": "External"
+    },
+    {
+     "Format": "ass",
+     "Method": "External"
+    },
+    {
+     "Format": "ssa",
+     "Method": "External"
+    }
+   ],
+   "ResponseProfiles": [
+    {
+     "Type": "Video",
+     "Container": "m4v",
+     "MimeType": "video/mp4"
+    }
+   ]
+  },
+  "hevc-surround-nomkv": {
+   "MaxStreamingBitrate": 120000000,
+   "MaxStaticBitrate": 100000000,
+   "MusicStreamingTranscodingBitrate": 384000,
+   "DirectPlayProfiles": [
+    {
+     "Container": "webm",
+     "Type": "Video",
+     "VideoCodec": "vp8,vp9,av1",
+     "AudioCodec": "vorbis,opus"
+    },
+    {
+     "Container": "mp4,m4v",
+     "Type": "Video",
+     "VideoCodec": "h264,hevc,vp9,av1",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "mov",
+     "Type": "Video",
+     "VideoCodec": "h264",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webm",
+     "AudioCodec": "opus",
+     "Type": "Audio"
+    },
+    {
+     "Container": "ts",
+     "AudioCodec": "mp3",
+     "Type": "Audio"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio"
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "m4a",
+     "AudioCodec": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "m4b",
+     "AudioCodec": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "flac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webma",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webm",
+     "AudioCodec": "webma",
+     "Type": "Audio"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio"
+    },
+    {
+     "Container": "ogg",
+     "Type": "Audio"
+    },
+    {
+     "Container": "hls",
+     "Type": "Video",
+     "VideoCodec": "av1,h264,vp9",
+     "AudioCodec": "aac,mp2,opus,flac"
+    },
+    {
+     "Container": "hls",
+     "Type": "Video",
+     "VideoCodec": "h264",
+     "AudioCodec": "aac,mp3,mp2"
+    }
+   ],
+   "TranscodingProfiles": [
+    {
+     "Container": "mp4",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false,
+     "EnableAudioVbrEncoding": true
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio",
+     "AudioCodec": "mp3",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio",
+     "AudioCodec": "opus",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio",
+     "AudioCodec": "wav",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio",
+     "AudioCodec": "opus",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio",
+     "AudioCodec": "mp3",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio",
+     "AudioCodec": "wav",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp4",
+     "Type": "Video",
+     "AudioCodec": "aac,mp3,ac3,eac3,flac,opus",
+     "VideoCodec": "av1,hevc,h264,vp9",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "6",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false
+    },
+    {
+     "Container": "ts",
+     "Type": "Video",
+     "AudioCodec": "aac,mp3,mp2",
+     "VideoCodec": "h264",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false
+    }
+   ],
+   "ContainerProfiles": [],
+   "CodecProfiles": [
+    {
+     "Type": "VideoAudio",
+     "Codec": "aac",
+     "Conditions": [
+      {
+       "Condition": "Equals",
+       "Property": "IsSecondaryAudio",
+       "Value": "false",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "VideoAudio",
+     "Conditions": [
+      {
+       "Condition": "Equals",
+       "Property": "IsSecondaryAudio",
+       "Value": "false",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "h264",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "high|main|baseline|constrained baseline|high 10",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "52",
+       "IsRequired": false
+      },
+      {
+       "Condition": "NotEquals",
+       "Property": "IsInterlaced",
+       "Value": "true",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "hevc",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "main|main 10",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "183",
+       "IsRequired": false
+      },
+      {
+       "Condition": "NotEquals",
+       "Property": "IsInterlaced",
+       "Value": "true",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "vp9",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "av1",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "main",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "19",
+       "IsRequired": false
+      }
+     ]
+    }
+   ],
+   "SubtitleProfiles": [
+    {
+     "Format": "vtt",
+     "Method": "External"
+    },
+    {
+     "Format": "ass",
+     "Method": "External"
+    },
+    {
+     "Format": "ssa",
+     "Method": "External"
+    }
+   ],
+   "ResponseProfiles": [
+    {
+     "Type": "Video",
+     "Container": "m4v",
+     "MimeType": "video/mp4"
+    }
+   ]
+  },
+  "surround": {
+   "MaxStreamingBitrate": 120000000,
+   "MaxStaticBitrate": 100000000,
+   "MusicStreamingTranscodingBitrate": 384000,
+   "DirectPlayProfiles": [
+    {
+     "Container": "webm",
+     "Type": "Video",
+     "VideoCodec": "vp8,vp9,av1",
+     "AudioCodec": "vorbis,opus"
+    },
+    {
+     "Container": "mp4,m4v",
+     "Type": "Video",
+     "VideoCodec": "h264,vp9,av1",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "mkv",
+     "Type": "Video",
+     "VideoCodec": "h264,vp9,av1",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "mov",
+     "Type": "Video",
+     "VideoCodec": "h264",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webm",
+     "AudioCodec": "opus",
+     "Type": "Audio"
+    },
+    {
+     "Container": "ts",
+     "AudioCodec": "mp3",
+     "Type": "Audio"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio"
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "m4a",
+     "AudioCodec": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "m4b",
+     "AudioCodec": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "flac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webma",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webm",
+     "AudioCodec": "webma",
+     "Type": "Audio"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio"
+    },
+    {
+     "Container": "ogg",
+     "Type": "Audio"
+    },
+    {
+     "Container": "hls",
+     "Type": "Video",
+     "VideoCodec": "av1,h264,vp9",
+     "AudioCodec": "aac,mp2,opus,flac"
+    },
+    {
+     "Container": "hls",
+     "Type": "Video",
+     "VideoCodec": "h264",
+     "AudioCodec": "aac,mp3,mp2"
+    }
+   ],
+   "TranscodingProfiles": [
+    {
+     "Container": "mp4",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false,
+     "EnableAudioVbrEncoding": true
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio",
+     "AudioCodec": "mp3",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio",
+     "AudioCodec": "opus",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio",
+     "AudioCodec": "wav",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio",
+     "AudioCodec": "opus",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio",
+     "AudioCodec": "mp3",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio",
+     "AudioCodec": "wav",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp4",
+     "Type": "Video",
+     "AudioCodec": "aac,mp3,ac3,eac3,flac,opus",
+     "VideoCodec": "av1,h264,vp9",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "6",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false
+    },
+    {
+     "Container": "ts",
+     "Type": "Video",
+     "AudioCodec": "aac,mp3,mp2",
+     "VideoCodec": "h264",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false
+    }
+   ],
+   "ContainerProfiles": [],
+   "CodecProfiles": [
+    {
+     "Type": "VideoAudio",
+     "Codec": "aac",
+     "Conditions": [
+      {
+       "Condition": "Equals",
+       "Property": "IsSecondaryAudio",
+       "Value": "false",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "VideoAudio",
+     "Conditions": [
+      {
+       "Condition": "Equals",
+       "Property": "IsSecondaryAudio",
+       "Value": "false",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "h264",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "high|main|baseline|constrained baseline|high 10",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "52",
+       "IsRequired": false
+      },
+      {
+       "Condition": "NotEquals",
+       "Property": "IsInterlaced",
+       "Value": "true",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "hevc",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "main",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "120",
+       "IsRequired": false
+      },
+      {
+       "Condition": "NotEquals",
+       "Property": "IsInterlaced",
+       "Value": "true",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "vp9",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "av1",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "main",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "19",
+       "IsRequired": false
+      }
+     ]
+    }
+   ],
+   "SubtitleProfiles": [
+    {
+     "Format": "vtt",
+     "Method": "External"
+    },
+    {
+     "Format": "ass",
+     "Method": "External"
+    },
+    {
+     "Format": "ssa",
+     "Method": "External"
+    }
+   ],
+   "ResponseProfiles": [
+    {
+     "Type": "Video",
+     "Container": "m4v",
+     "MimeType": "video/mp4"
+    }
+   ]
+  },
+  "surround-nomkv": {
+   "MaxStreamingBitrate": 120000000,
+   "MaxStaticBitrate": 100000000,
+   "MusicStreamingTranscodingBitrate": 384000,
+   "DirectPlayProfiles": [
+    {
+     "Container": "webm",
+     "Type": "Video",
+     "VideoCodec": "vp8,vp9,av1",
+     "AudioCodec": "vorbis,opus"
+    },
+    {
+     "Container": "mp4,m4v",
+     "Type": "Video",
+     "VideoCodec": "h264,vp9,av1",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "mov",
+     "Type": "Video",
+     "VideoCodec": "h264",
+     "AudioCodec": "aac,mp3,mp2,opus,flac,vorbis"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webm",
+     "AudioCodec": "opus",
+     "Type": "Audio"
+    },
+    {
+     "Container": "ts",
+     "AudioCodec": "mp3",
+     "Type": "Audio"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio"
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "m4a",
+     "AudioCodec": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "m4b",
+     "AudioCodec": "aac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "flac",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webma",
+     "Type": "Audio"
+    },
+    {
+     "Container": "webm",
+     "AudioCodec": "webma",
+     "Type": "Audio"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio"
+    },
+    {
+     "Container": "ogg",
+     "Type": "Audio"
+    },
+    {
+     "Container": "hls",
+     "Type": "Video",
+     "VideoCodec": "av1,h264,vp9",
+     "AudioCodec": "aac,mp2,opus,flac"
+    },
+    {
+     "Container": "hls",
+     "Type": "Video",
+     "VideoCodec": "h264",
+     "AudioCodec": "aac,mp3,mp2"
+    }
+   ],
+   "TranscodingProfiles": [
+    {
+     "Container": "mp4",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false,
+     "EnableAudioVbrEncoding": true
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio",
+     "AudioCodec": "mp3",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio",
+     "AudioCodec": "opus",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio",
+     "AudioCodec": "wav",
+     "Context": "Streaming",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "opus",
+     "Type": "Audio",
+     "AudioCodec": "opus",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp3",
+     "Type": "Audio",
+     "AudioCodec": "mp3",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "aac",
+     "Type": "Audio",
+     "AudioCodec": "aac",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "wav",
+     "Type": "Audio",
+     "AudioCodec": "wav",
+     "Context": "Static",
+     "Protocol": "http",
+     "MaxAudioChannels": "2"
+    },
+    {
+     "Container": "mp4",
+     "Type": "Video",
+     "AudioCodec": "aac,mp3,ac3,eac3,flac,opus",
+     "VideoCodec": "av1,h264,vp9",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "6",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false
+    },
+    {
+     "Container": "ts",
+     "Type": "Video",
+     "AudioCodec": "aac,mp3,mp2",
+     "VideoCodec": "h264",
+     "Context": "Streaming",
+     "Protocol": "hls",
+     "MaxAudioChannels": "2",
+     "MinSegments": "1",
+     "BreakOnNonKeyFrames": false
+    }
+   ],
+   "ContainerProfiles": [],
+   "CodecProfiles": [
+    {
+     "Type": "VideoAudio",
+     "Codec": "aac",
+     "Conditions": [
+      {
+       "Condition": "Equals",
+       "Property": "IsSecondaryAudio",
+       "Value": "false",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "VideoAudio",
+     "Conditions": [
+      {
+       "Condition": "Equals",
+       "Property": "IsSecondaryAudio",
+       "Value": "false",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "h264",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "high|main|baseline|constrained baseline|high 10",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "52",
+       "IsRequired": false
+      },
+      {
+       "Condition": "NotEquals",
+       "Property": "IsInterlaced",
+       "Value": "true",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "hevc",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "main",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "120",
+       "IsRequired": false
+      },
+      {
+       "Condition": "NotEquals",
+       "Property": "IsInterlaced",
+       "Value": "true",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "vp9",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      }
+     ]
+    },
+    {
+     "Type": "Video",
+     "Codec": "av1",
+     "Conditions": [
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoProfile",
+       "Value": "main",
+       "IsRequired": false
+      },
+      {
+       "Condition": "EqualsAny",
+       "Property": "VideoRangeType",
+       "Value": "SDR|HDR10|HDR10Plus|HLG",
+       "IsRequired": false
+      },
+      {
+       "Condition": "LessThanEqual",
+       "Property": "VideoLevel",
+       "Value": "19",
+       "IsRequired": false
+      }
+     ]
+    }
+   ],
+   "SubtitleProfiles": [
+    {
+     "Format": "vtt",
+     "Method": "External"
+    },
+    {
+     "Format": "ass",
+     "Method": "External"
+    },
+    {
+     "Format": "ssa",
+     "Method": "External"
+    }
+   ],
+   "ResponseProfiles": [
+    {
+     "Type": "Video",
+     "Container": "m4v",
+     "MimeType": "video/mp4"
+    }
+   ]
+  }
+ },
+ "results": {
+  "H264 Aac2 Mkv/chrome-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1695019,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 2,
+      "BitRate": 192000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported",
+   "AudioCodecInUrl": "aac",
+   "AudioBitrate": "192000",
+   "VideoBitrate": "1440795881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.42401E,mp4a.40.2",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "H264 Aac2 Mkv/surround-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1695019,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 2,
+      "BitRate": 192000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported",
+   "AudioCodecInUrl": "aac",
+   "AudioBitrate": "192000",
+   "VideoBitrate": "1440795881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.42401E,mp4a.40.2",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "H264 Aac6 Mkv/chrome-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1626180,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 6,
+      "BitRate": 320000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,AudioChannelsNotSupported",
+   "AudioCodecInUrl": "aac,opus,flac",
+   "AudioBitrate": "320000",
+   "VideoBitrate": "1440667881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.42401E,mp4a.40.2",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "libfdk_aac -ac 2",
+   "ffmpegLog": "FFmpeg.DirectStream"
+  },
+  "H264 Aac6 Mkv/surround-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1626180,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 6,
+      "BitRate": 320000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported",
+   "AudioCodecInUrl": "aac",
+   "AudioBitrate": "320000",
+   "VideoBitrate": "1440667881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.42401E,mp4a.40.2",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "H264 Ac32 Mkv/chrome-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1759930,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 2,
+      "BitRate": 192000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,AudioCodecNotSupported",
+   "AudioCodecInUrl": "aac,opus,flac",
+   "AudioBitrate": "384000",
+   "VideoBitrate": "1440603881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.42401E,mp4a.40.2",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "libfdk_aac -ac 2",
+   "ffmpegLog": "FFmpeg.DirectStream"
+  },
+  "H264 Ac32 Mkv/surround-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1759930,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 2,
+      "BitRate": 192000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,AudioCodecNotSupported",
+   "AudioCodecInUrl": "ac3",
+   "AudioBitrate": "192000",
+   "VideoBitrate": "1440795881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.42401E,ac-3",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "H264 Ac36 Mkv/chrome-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1759930,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 6,
+      "BitRate": 448000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,AudioCodecNotSupported",
+   "AudioCodecInUrl": "aac,opus,flac",
+   "AudioBitrate": "384000",
+   "VideoBitrate": "1440603881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.42401E,mp4a.40.2",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "libfdk_aac -ac 2",
+   "ffmpegLog": "FFmpeg.DirectStream"
+  },
+  "H264 Ac36 Mkv/surround-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1759930,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 6,
+      "BitRate": 448000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,AudioCodecNotSupported",
+   "AudioCodecInUrl": "ac3",
+   "AudioBitrate": "448000",
+   "VideoBitrate": "1440539881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.42401E,ac-3",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "H264 Eac36 Mkv/chrome-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1759930,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "eac3",
+      "Profile": null,
+      "Channels": 6,
+      "BitRate": 448000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,AudioCodecNotSupported",
+   "AudioCodecInUrl": "aac,opus,flac",
+   "AudioBitrate": "384000",
+   "VideoBitrate": "1440603881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.42401E,mp4a.40.2",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "libfdk_aac -ac 2",
+   "ffmpegLog": "FFmpeg.DirectStream"
+  },
+  "H264 Eac36 Mkv/surround-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1759930,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "eac3",
+      "Profile": null,
+      "Channels": 6,
+      "BitRate": 448000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,AudioCodecNotSupported",
+   "AudioCodecInUrl": "eac3",
+   "AudioBitrate": "448000",
+   "VideoBitrate": "1440539881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.42401E,ec-3",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "H264 Opus Mkv/chrome-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1782156,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "opus",
+      "Profile": null,
+      "Channels": 2,
+      "BitRate": 128000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported",
+   "AudioCodecInUrl": "opus",
+   "AudioBitrate": "128000",
+   "VideoBitrate": "1440859881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.42401E,Opus",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "H264 Opus Mkv/surround-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1782156,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "opus",
+      "Profile": null,
+      "Channels": 2,
+      "BitRate": 128000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported",
+   "AudioCodecInUrl": "opus",
+   "AudioBitrate": "128000",
+   "VideoBitrate": "1440859881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.42401E,Opus",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "H264 Flac Mkv/chrome-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 934628,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "flac",
+      "Profile": null,
+      "Channels": 2,
+      "BitRate": 960000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported",
+   "AudioCodecInUrl": "flac",
+   "AudioBitrate": "960000",
+   "VideoBitrate": "1440027881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.42401E,fLaC",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "H264 Flac Mkv/surround-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 934628,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "flac",
+      "Profile": null,
+      "Channels": 2,
+      "BitRate": 960000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported",
+   "AudioCodecInUrl": "flac",
+   "AudioBitrate": "960000",
+   "VideoBitrate": "1440027881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.42401E,fLaC",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "H264 Ac32 Mp4/chrome-nomkv@1440987881#1": {
+   "src": {
+    "container": "mp4",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1756426,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 2,
+      "BitRate": 192000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "AudioCodecNotSupported",
+   "AudioCodecInUrl": "aac,opus,flac",
+   "AudioBitrate": "384000",
+   "VideoBitrate": "1440603881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.42401E,mp4a.40.2",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "libfdk_aac -ac 2",
+   "ffmpegLog": "FFmpeg.DirectStream"
+  },
+  "H264 Ac32 Mp4/surround-nomkv@1440987881#1": {
+   "src": {
+    "container": "mp4",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1756426,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 2,
+      "BitRate": 192000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "AudioCodecNotSupported",
+   "AudioCodecInUrl": "ac3",
+   "AudioBitrate": "192000",
+   "VideoBitrate": "1440795881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.42401E,ac-3",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "H264 Mp3 Mkv/chrome-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1758614,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "mp3",
+      "Profile": null,
+      "Channels": 2,
+      "BitRate": 128000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported",
+   "AudioCodecInUrl": "mp3",
+   "AudioBitrate": "128000",
+   "VideoBitrate": "1440859881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.42401E,mp4a.40.34",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "H264 Mp3 Mkv/surround-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1758614,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "mp3",
+      "Profile": null,
+      "Channels": 2,
+      "BitRate": 128000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported",
+   "AudioCodecInUrl": "mp3",
+   "AudioBitrate": "128000",
+   "VideoBitrate": "1440859881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.42401E,mp4a.40.34",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "H264 Truehd Mkv/chrome-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": null,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "truehd",
+      "Profile": null,
+      "Channels": 6,
+      "BitRate": 4200000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,AudioCodecNotSupported",
+   "AudioCodecInUrl": "aac,opus,flac",
+   "AudioBitrate": "384000",
+   "VideoBitrate": "1440603881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.42401E,mp4a.40.2",
+   "ffmpegVideo": "libx264",
+   "ffmpegAudio": "libfdk_aac -ac 2",
+   "ffmpegLog": "FFmpeg.Transcode"
+  },
+  "H264 Truehd Mkv/surround-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": null,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "truehd",
+      "Profile": null,
+      "Channels": 6,
+      "BitRate": 4200000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,AudioCodecNotSupported",
+   "AudioCodecInUrl": "aac,mp3,ac3,eac3,flac,opus",
+   "AudioBitrate": "640000",
+   "VideoBitrate": "1440347881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.42401E,mp4a.40.2",
+   "ffmpegVideo": "libx264",
+   "ffmpegAudio": "libfdk_aac -ac 6",
+   "ffmpegLog": "FFmpeg.Transcode"
+  },
+  "Hevc Ac32 Mkv/chrome-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 498437,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 2,
+      "BitRate": 192000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,VideoCodecNotSupported,AudioCodecNotSupported",
+   "AudioCodecInUrl": "aac,opus,flac",
+   "AudioBitrate": "384000",
+   "VideoBitrate": "1440603881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.640033,mp4a.40.2",
+   "ffmpegVideo": "libx264",
+   "ffmpegAudio": "libfdk_aac -ac 2",
+   "ffmpegLog": "FFmpeg.Transcode"
+  },
+  "Hevc Ac32 Mkv/surround-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 498437,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 2,
+      "BitRate": 192000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,VideoCodecNotSupported,AudioCodecNotSupported",
+   "AudioCodecInUrl": "ac3",
+   "AudioBitrate": "192000",
+   "VideoBitrate": "1440795881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.640033,ac-3",
+   "ffmpegVideo": "libx264",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Transcode"
+  },
+  "Hevc Ac32 Mkv/hevc-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 498437,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 2,
+      "BitRate": 192000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,AudioCodecNotSupported",
+   "AudioCodecInUrl": "aac,opus,flac",
+   "AudioBitrate": "384000",
+   "VideoBitrate": "1440603881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "hvc1.1.4.L63.B0,mp4a.40.2",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "libfdk_aac -ac 2",
+   "ffmpegLog": "FFmpeg.DirectStream"
+  },
+  "Hevc Ac32 Mkv/hevc-surround-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 498437,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 2,
+      "BitRate": 192000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,AudioCodecNotSupported",
+   "AudioCodecInUrl": "ac3",
+   "AudioBitrate": "192000",
+   "VideoBitrate": "1440795881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "hvc1.1.4.L63.B0,ac-3",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "Hevc Aac2 Mkv/chrome-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 434849,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 2,
+      "BitRate": 192000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,VideoCodecNotSupported,AudioCodecNotSupported",
+   "AudioCodecInUrl": "aac",
+   "AudioBitrate": "192000",
+   "VideoBitrate": "1440795881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.640033,mp4a.40.2",
+   "ffmpegVideo": "libx264",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Transcode"
+  },
+  "Hevc Aac2 Mkv/surround-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 434849,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 2,
+      "BitRate": 192000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,VideoCodecNotSupported,AudioCodecNotSupported",
+   "AudioCodecInUrl": "aac",
+   "AudioBitrate": "192000",
+   "VideoBitrate": "1440795881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.640033,mp4a.40.2",
+   "ffmpegVideo": "libx264",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Transcode"
+  },
+  "Hevc Aac2 Mkv/hevc-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 434849,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 2,
+      "BitRate": 192000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported",
+   "AudioCodecInUrl": "aac",
+   "AudioBitrate": "192000",
+   "VideoBitrate": "1440795881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "hvc1.1.4.L63.B0,mp4a.40.2",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "Hevc Aac2 Mkv/hevc-surround-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 434849,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 2,
+      "BitRate": 192000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported",
+   "AudioCodecInUrl": "aac",
+   "AudioBitrate": "192000",
+   "VideoBitrate": "1440795881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "hvc1.1.4.L63.B0,mp4a.40.2",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "Hevc Ac36 Mkv/chrome-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 498437,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 6,
+      "BitRate": 448000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,VideoCodecNotSupported,AudioCodecNotSupported",
+   "AudioCodecInUrl": "aac,opus,flac",
+   "AudioBitrate": "384000",
+   "VideoBitrate": "1440603881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.640033,mp4a.40.2",
+   "ffmpegVideo": "libx264",
+   "ffmpegAudio": "libfdk_aac -ac 2",
+   "ffmpegLog": "FFmpeg.Transcode"
+  },
+  "Hevc Ac36 Mkv/surround-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 498437,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 6,
+      "BitRate": 448000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,VideoCodecNotSupported,AudioCodecNotSupported",
+   "AudioCodecInUrl": "ac3",
+   "AudioBitrate": "448000",
+   "VideoBitrate": "1440539881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.640033,ac-3",
+   "ffmpegVideo": "libx264",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Transcode"
+  },
+  "Hevc Ac36 Mkv/hevc-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 498437,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 6,
+      "BitRate": 448000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,AudioCodecNotSupported",
+   "AudioCodecInUrl": "aac,opus,flac",
+   "AudioBitrate": "384000",
+   "VideoBitrate": "1440603881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "hvc1.1.4.L63.B0,mp4a.40.2",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "libfdk_aac -ac 2",
+   "ffmpegLog": "FFmpeg.DirectStream"
+  },
+  "Hevc Ac36 Mkv/hevc-surround-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 498437,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 6,
+      "BitRate": 448000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,AudioCodecNotSupported",
+   "AudioCodecInUrl": "ac3",
+   "AudioBitrate": "448000",
+   "VideoBitrate": "1440539881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "hvc1.1.4.L63.B0,ac-3",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "Hevc Opus Mkv/chrome-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 521168,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "opus",
+      "Profile": null,
+      "Channels": 2,
+      "BitRate": 128000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,VideoCodecNotSupported",
+   "AudioCodecInUrl": "opus",
+   "AudioBitrate": "128000",
+   "VideoBitrate": "1440859881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.640033,Opus",
+   "ffmpegVideo": "libx264",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Transcode"
+  },
+  "Hevc Opus Mkv/surround-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 521168,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "opus",
+      "Profile": null,
+      "Channels": 2,
+      "BitRate": 128000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,VideoCodecNotSupported",
+   "AudioCodecInUrl": "opus",
+   "AudioBitrate": "128000",
+   "VideoBitrate": "1440859881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.640033,Opus",
+   "ffmpegVideo": "libx264",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Transcode"
+  },
+  "Hevc Opus Mkv/hevc-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 521168,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "opus",
+      "Profile": null,
+      "Channels": 2,
+      "BitRate": 128000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported",
+   "AudioCodecInUrl": "opus",
+   "AudioBitrate": "128000",
+   "VideoBitrate": "1440859881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "hvc1.1.4.L63.B0,Opus",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "Hevc Opus Mkv/hevc-surround-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 521168,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "opus",
+      "Profile": null,
+      "Channels": 2,
+      "BitRate": 128000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported",
+   "AudioCodecInUrl": "opus",
+   "AudioBitrate": "128000",
+   "VideoBitrate": "1440859881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "hvc1.1.4.L63.B0,Opus",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "H264 Aac2 Mkv/chrome-nomkv@1500000#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1695019,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 2,
+      "BitRate": 192000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerBitrateExceedsLimit",
+   "AudioCodecInUrl": "aac,opus,flac",
+   "AudioBitrate": "192000",
+   "VideoBitrate": "1308000",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.42401E,mp4a.40.2",
+   "ffmpegVideo": "libx264",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Transcode"
+  },
+  "H264 Aac2 Mkv/surround-nomkv@1500000#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1695019,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 2,
+      "BitRate": 192000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerBitrateExceedsLimit",
+   "AudioCodecInUrl": "aac,mp3,ac3,eac3,flac,opus",
+   "AudioBitrate": "192000",
+   "VideoBitrate": "1308000",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.42401E,mp4a.40.2",
+   "ffmpegVideo": "libx264",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Transcode"
+  },
+  "H264 Ac32 Mkv/chrome-nomkv@1500000#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1759930,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 2,
+      "BitRate": 192000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "AudioCodecNotSupported,ContainerBitrateExceedsLimit",
+   "AudioCodecInUrl": "aac,opus,flac",
+   "AudioBitrate": "384000",
+   "VideoBitrate": "1116000",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.42401E,mp4a.40.2",
+   "ffmpegVideo": "libx264",
+   "ffmpegAudio": "libfdk_aac -ac 2",
+   "ffmpegLog": "FFmpeg.Transcode"
+  },
+  "H264 Ac32 Mkv/surround-nomkv@1500000#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1759930,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 2,
+      "BitRate": 192000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerBitrateExceedsLimit",
+   "AudioCodecInUrl": "aac,mp3,ac3,eac3,flac,opus",
+   "AudioBitrate": "192000",
+   "VideoBitrate": "1308000",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.42401E,ac-3",
+   "ffmpegVideo": "libx264",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Transcode"
+  },
+  "H264 Aac6 Mkv/chrome-nomkv@1500000#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1626180,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 6,
+      "BitRate": 320000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "AudioChannelsNotSupported,ContainerBitrateExceedsLimit",
+   "AudioCodecInUrl": "aac,opus,flac",
+   "AudioBitrate": "320000",
+   "VideoBitrate": "1180000",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.42401E,mp4a.40.2",
+   "ffmpegVideo": "libx264",
+   "ffmpegAudio": "libfdk_aac -ac 2",
+   "ffmpegLog": "FFmpeg.Transcode"
+  },
+  "H264 Aac6 Mkv/surround-nomkv@1500000#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1626180,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 6,
+      "BitRate": 320000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerBitrateExceedsLimit",
+   "AudioCodecInUrl": "aac,mp3,ac3,eac3,flac,opus",
+   "AudioBitrate": "320000",
+   "VideoBitrate": "1180000",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.42401E,mp4a.40.2",
+   "ffmpegVideo": "libx264",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Transcode"
+  },
+  "H264 Ac32 Mkv/surround@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1759930,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 2,
+      "BitRate": 192000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "AudioCodecNotSupported",
+   "AudioCodecInUrl": "ac3",
+   "AudioBitrate": "192000",
+   "VideoBitrate": "1440795881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.42401E,ac-3",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "H264 Ac36 Mkv/surround@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1759930,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 6,
+      "BitRate": 448000,
+      "Index": 1
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "AudioCodecNotSupported",
+   "AudioCodecInUrl": "ac3",
+   "AudioBitrate": "448000",
+   "VideoBitrate": "1440539881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.42401E,ac-3",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "Two Ac3Aac Mkv/chrome@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1637912,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 1,
+      "BitRate": 96000,
+      "Index": 1
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 192000,
+      "Index": 2
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "AudioCodecNotSupported",
+   "AudioCodecInUrl": "aac,opus,flac",
+   "AudioBitrate": "128000",
+   "VideoBitrate": "1440859881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.42401E,mp4a.40.2",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "libfdk_aac -ac 1",
+   "ffmpegLog": "FFmpeg.DirectStream"
+  },
+  "Two Ac3Aac Mkv/chrome@1440987881#2": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1637912,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 1,
+      "BitRate": 96000,
+      "Index": 1
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 192000,
+      "Index": 2
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "SecondaryAudioNotSupported",
+   "AudioCodecInUrl": "aac",
+   "AudioBitrate": "192000",
+   "VideoBitrate": "1440795881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.42401E,mp4a.40.2",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "Two Ac3Aac Mkv/hevc-surround@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1637912,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 1,
+      "BitRate": 96000,
+      "Index": 1
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 192000,
+      "Index": 2
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "AudioCodecNotSupported",
+   "AudioCodecInUrl": "ac3",
+   "AudioBitrate": "96000",
+   "VideoBitrate": "1440891881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.42401E,ac-3",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "Two Ac3Aac Mkv/hevc-surround@1440987881#2": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1637912,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 1,
+      "BitRate": 96000,
+      "Index": 1
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 192000,
+      "Index": 2
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "SecondaryAudioNotSupported",
+   "AudioCodecInUrl": "aac",
+   "AudioBitrate": "192000",
+   "VideoBitrate": "1440795881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.42401E,mp4a.40.2",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "Two Ac3Aac Mkv/surround@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1637912,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 1,
+      "BitRate": 96000,
+      "Index": 1
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 192000,
+      "Index": 2
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "AudioCodecNotSupported",
+   "AudioCodecInUrl": "ac3",
+   "AudioBitrate": "96000",
+   "VideoBitrate": "1440891881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.42401E,ac-3",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "Two Ac3Aac Mkv/surround@1440987881#2": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1637912,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 1,
+      "BitRate": 96000,
+      "Index": 1
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 192000,
+      "Index": 2
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "SecondaryAudioNotSupported",
+   "AudioCodecInUrl": "aac",
+   "AudioBitrate": "192000",
+   "VideoBitrate": "1440795881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "avc1.42401E,mp4a.40.2",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "Two AacAac Mp4/chrome@1440987881#1": {
+   "src": {
+    "container": "mp4",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1756426,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 69354,
+      "Index": 1
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 69231,
+      "Index": 2
+     }
+    ]
+   },
+   "SupportsDirectPlay": true,
+   "TranscodeReasons": "",
+   "AudioCodecInUrl": null,
+   "AudioBitrate": null,
+   "VideoBitrate": null,
+   "TranscodingMaxAudioChannels": null,
+   "masterCodecs": null,
+   "ffmpegVideo": null,
+   "ffmpegAudio": null,
+   "ffmpegLog": ""
+  },
+  "Two AacAac Mp4/chrome@1440987881#2": {
+   "src": {
+    "container": "mp4",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1756426,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 69354,
+      "Index": 1
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 69231,
+      "Index": 2
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "SecondaryAudioNotSupported",
+   "AudioCodecInUrl": "aac",
+   "AudioBitrate": "69231",
+   "VideoBitrate": "1440918650",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.42401E,mp4a.40.2",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "Two AacAac Mkv/chrome@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1516252,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 192000,
+      "Index": 1
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 192000,
+      "Index": 2
+     }
+    ]
+   },
+   "SupportsDirectPlay": true,
+   "TranscodeReasons": "",
+   "AudioCodecInUrl": null,
+   "AudioBitrate": null,
+   "VideoBitrate": null,
+   "TranscodingMaxAudioChannels": null,
+   "masterCodecs": null,
+   "ffmpegVideo": null,
+   "ffmpegAudio": null,
+   "ffmpegLog": ""
+  },
+  "Two AacAac Mkv/chrome@1440987881#2": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1516252,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 192000,
+      "Index": 1
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 192000,
+      "Index": 2
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "SecondaryAudioNotSupported",
+   "AudioCodecInUrl": "aac",
+   "AudioBitrate": "192000",
+   "VideoBitrate": "1440795881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.42401E,mp4a.40.2",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "Two Hevc Ac3Aac Mkv/hevc-surround@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 377743,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 1,
+      "BitRate": 96000,
+      "Index": 1
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 192000,
+      "Index": 2
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "AudioCodecNotSupported",
+   "AudioCodecInUrl": "ac3",
+   "AudioBitrate": "96000",
+   "VideoBitrate": "1440891881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "hvc1.1.4.L63.B0,ac-3",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "Two Hevc Ac3Aac Mkv/hevc-surround@1440987881#2": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 377743,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 1,
+      "BitRate": 96000,
+      "Index": 1
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 192000,
+      "Index": 2
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "SecondaryAudioNotSupported",
+   "AudioCodecInUrl": "aac",
+   "AudioBitrate": "192000",
+   "VideoBitrate": "1440795881",
+   "TranscodingMaxAudioChannels": "6",
+   "masterCodecs": "hvc1.1.4.L63.B0,mp4a.40.2",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "Two Hevc Ac3Aac Mkv/hevc-nomkv@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 377743,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 1,
+      "BitRate": 96000,
+      "Index": 1
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 192000,
+      "Index": 2
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,AudioCodecNotSupported",
+   "AudioCodecInUrl": "aac,opus,flac",
+   "AudioBitrate": "128000",
+   "VideoBitrate": "1440859881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "hvc1.1.4.L63.B0,mp4a.40.2",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "libfdk_aac -ac 1",
+   "ffmpegLog": "FFmpeg.DirectStream"
+  },
+  "Two Hevc Ac3Aac Mkv/hevc-nomkv@1440987881#2": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 377743,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 1,
+      "BitRate": 96000,
+      "Index": 1
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 192000,
+      "Index": 2
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "ContainerNotSupported,SecondaryAudioNotSupported",
+   "AudioCodecInUrl": "aac",
+   "AudioBitrate": "192000",
+   "VideoBitrate": "1440795881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "hvc1.1.4.L63.B0,mp4a.40.2",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  },
+  "Two Hevc Ac3Aac Mkv/chrome@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 377743,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 1,
+      "BitRate": 96000,
+      "Index": 1
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 192000,
+      "Index": 2
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "VideoCodecNotSupported,AudioCodecNotSupported",
+   "AudioCodecInUrl": "aac,opus,flac",
+   "AudioBitrate": "128000",
+   "VideoBitrate": "1440859881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.640033,mp4a.40.2",
+   "ffmpegVideo": "libx264",
+   "ffmpegAudio": "libfdk_aac -ac 1",
+   "ffmpegLog": "FFmpeg.Transcode"
+  },
+  "Two Hevc Ac3Aac Mkv/chrome@1440987881#2": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "hevc",
+      "Profile": "Main",
+      "Channels": null,
+      "BitRate": 377743,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "ac3",
+      "Profile": null,
+      "Channels": 1,
+      "BitRate": 96000,
+      "Index": 1
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 192000,
+      "Index": 2
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "VideoCodecNotSupported,SecondaryAudioNotSupported",
+   "AudioCodecInUrl": "aac",
+   "AudioBitrate": "192000",
+   "VideoBitrate": "1440795881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.640033,mp4a.40.2",
+   "ffmpegVideo": "libx264",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Transcode"
+  },
+  "Two AacOpus Mkv/chrome@1440987881#1": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1600938,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 192000,
+      "Index": 1
+     },
+     {
+      "Type": "Audio",
+      "Codec": "opus",
+      "Profile": null,
+      "Channels": 1,
+      "BitRate": 128000,
+      "Index": 2
+     }
+    ]
+   },
+   "SupportsDirectPlay": true,
+   "TranscodeReasons": "",
+   "AudioCodecInUrl": null,
+   "AudioBitrate": null,
+   "VideoBitrate": null,
+   "TranscodingMaxAudioChannels": null,
+   "masterCodecs": null,
+   "ffmpegVideo": null,
+   "ffmpegAudio": null,
+   "ffmpegLog": ""
+  },
+  "Two AacOpus Mkv/chrome@1440987881#2": {
+   "src": {
+    "container": "mkv",
+    "streams": [
+     {
+      "Type": "Video",
+      "Codec": "h264",
+      "Profile": "Constrained Baseline",
+      "Channels": null,
+      "BitRate": 1600938,
+      "Index": 0
+     },
+     {
+      "Type": "Audio",
+      "Codec": "aac",
+      "Profile": "LC",
+      "Channels": 1,
+      "BitRate": 192000,
+      "Index": 1
+     },
+     {
+      "Type": "Audio",
+      "Codec": "opus",
+      "Profile": null,
+      "Channels": 1,
+      "BitRate": 128000,
+      "Index": 2
+     }
+    ]
+   },
+   "SupportsDirectPlay": false,
+   "TranscodeReasons": "SecondaryAudioNotSupported",
+   "AudioCodecInUrl": "opus",
+   "AudioBitrate": "128000",
+   "VideoBitrate": "1440859881",
+   "TranscodingMaxAudioChannels": "2",
+   "masterCodecs": "avc1.42401E,Opus",
+   "ffmpegVideo": "copy",
+   "ffmpegAudio": "copy",
+   "ffmpegLog": "FFmpeg.Remux"
+  }
+ }
+}

@@ -32,4 +32,4 @@ jellyscale reads the same inputs, from the URL and the source alone (DOMAINS 34)
 4. **CODECS is always complete**, including after a re-encode under a cap.
 5. **5.1 is downmixed to stereo** when it is encoded; Jellyfin keeps six channels if the profile allows them.
 6. **The profile's CodecProfiles apply to the track** (`VideoAudio` limits on `AudioChannels`): a codec whose limit the track fails is taken out of the list in the URL.
-7. **The video copy path re-encodes its audio** as before; a copy of both is a later slice.
+7. **The video copy path re-encodes its audio** as before; a copy of both is a later slice (built since in JS-026, observed in `copy-both-12.4.md`).

@@ -444,6 +444,87 @@ await scenario("copy, POSIX, MP4: the playlist is exact where Jellyfin's lies", 
 await scenario("copy, S3, Matroska", (v) => copiedFilm(v, "Cloud", "Heta Film", `${media}/Rho Film (2041)/Rho Film (2041).mkv`, "S3 mkv"));
 await scenario("copy, S3, MP4", (v) => copiedFilm(v, "Cloud", "Koppa Film", `${media}/Qoppa Film (2042)/Qoppa Film (2042).mp4`, "S3 mp4"));
 
+// Both streams copied (compat/captures/copy-both-12.4.md). Rho Film is H.264 with
+// AC3 (the default track, which Chrome cannot play, so only the video is copied)
+// and AAC (the second, which it can: the viewer's pick of it is a remux of
+// both). Played, sought far (a job starts in the middle) and read whole as
+// another viewer would, with some segments from jobs that began in the middle:
+// the picture and the sound in the stream are the file's own packets.
+await scenario("copy both: picking the AAC track of an H.264 and AC3 film copies the picture and the sound, through a seek", async ({ page, seen }) => {
+  const file = `${media}/Rho Film (2041)/Rho Film (2041).mkv`;
+  await play(page, "Transcode", "Rho Film");
+  // The scenario "copy, POSIX, Matroska" may have stored this spec already, so
+  // the first play can start no ffmpeg at all; that scenario checks its sound is AAC.
+  const before = ffmpegRuns();
+  if (before.length > 1 || (before.length === 1 && (!before[0].copy || / -c:a copy /.test(before[0].line) || !/-c:a aac/.test(before[0].line)))) {
+    throw new Error(`the AC3 track should be encoded with the video copied: ${before.map((r) => r.line.slice(0, 500))}`);
+  }
+  await page.mouse.move(300, 300);
+  await page.mouse.move(600, 400);
+  await page.click(".btnAudio");
+  await page.click('[data-id="2"]');
+  const info = await waitFor("a PlaybackInfo for track 2", async () => seen.infos.find((i) => Number(i.request.AudioStreamIndex) === 2));
+  const url = info.source.TranscodingUrl;
+  if (!/VideoCodec=copy/.test(url)) throw new Error(`the video is not copied: ${url}`);
+  const master = await (await fetch(new URL(url, base))).text();
+  if (!/CODECS="avc1\.[0-9A-F]+,mp4a\.40\.2"/i.test(master)) throw new Error(`master: ${master}`);
+  await waitFor("segments of the second track", async () => seen.hls.some((r) => r.query.get("AudioStreamIndex") === "2" && /\/hls1\/main\/\d+\.mp4$/i.test(r.path) && r.status === 200));
+  await advances(page, 2);
+  const copyingBoth = (run) => run.copy && / -c:a copy /.test(run.line) && !/-c:a aac/.test(run.line) && !/libx264/.test(run.line) && run.audio === "2";
+  const second = await waitFor("only the second track's ffmpeg to be left", async () => {
+    const runs = ffmpegRuns();
+    return runs.length === 1 && runs[0].audio === "2" ? runs[0] : null;
+  }, 20000);
+  if (!copyingBoth(second)) throw new Error(`ffmpeg is not copying both streams: ${second.line.slice(0, 600)}`);
+  noErrors(seen);
+
+  // A far seek starts a job in the middle, which copies both as well.
+  const total = await duration(page);
+  const target = total * 0.7;
+  await page.evaluate((t) => { document.querySelector("video").currentTime = t; }, target);
+  await waitFor("playback past the seek target", async () => (await time(page)) > target + 1.5, 60000);
+  const runs = ffmpegRuns();
+  if (runs.length !== 1 || !copyingBoth(runs[0])) throw new Error(`after the seek: ${runs.map((r) => r.line.slice(0, 600))}`);
+  noErrors(seen);
+
+  // Every segment, some from jobs that began in the middle: the file's video
+  // and the file's second track, packet for packet.
+  const playlist = await playlistOf(url);
+  const downloader = (u) => { u.searchParams.set("PlaySessionId", randomBytes(16).toString("hex")); return u; };
+  const init = await bytesOf(downloader(playlist.init));
+  const bodies = [];
+  for (const segment of playlist.segments) bodies.push(await bytesOf(downloader(segment.url)));
+  const dir = mkdtempSync(`${tmpdir()}/jellyscale-e2e-`);
+  writeFileSync(`${dir}/all.mp4`, Buffer.concat([init, ...bodies]));
+  const video = (input) => execFileSync("ffmpeg", ["-v", "error", "-i", input, "-map", "0:v:0", "-c", "copy", "-f", "md5", "-"]).toString().trim();
+  const got = audioPacketsOf(`${dir}/all.mp4`, "a:0");
+  const codec = execFileSync("ffprobe", ["-v", "error", "-select_streams", "a:0", "-show_entries", "stream=codec_name", "-of", "csv=p=0", `${dir}/all.mp4`]).toString().trim();
+  const copiedVideo = video(`${dir}/all.mp4`);
+  rmSync(dir, { recursive: true, force: true });
+  if (copiedVideo !== video(file)) throw new Error(`the video is not the file's: ${copiedVideo} against ${video(file)}`);
+  const original = audioPacketsOf(file, "a:1");
+  if (!codec.startsWith("aac")) throw new Error(`the sound is ${codec}`);
+  // By time, since a tone repeats its packets; the stream's clock is the file's plus 100 s.
+  const at = original.findIndex((packet) => Math.abs(packet.time - (got[0].time - 100)) < 0.01);
+  if (at < 0 || at > 1 || original.length - got.length > 3 || got.some((packet, i) => packet.data !== original[at + i]?.data || Math.abs(packet.time - 100 - original[at + i].time) > 0.002)) {
+    throw new Error(`the sound is not the file's second track (${got.length} packets of ${original.length}, first at ${at})`);
+  }
+  console.log(`      ${bodies.length} segments: the picture and the sound are the file's own`);
+
+  // Played through the seams, now that every segment exists.
+  await page.evaluate(() => { document.querySelector("video").currentTime = 0; });
+  await waitFor("playback from the start", async () => (await time(page)) < 2 && (await time(page)) > 0.2, 30000);
+  await page.evaluate(() => { window.__waits = 0; document.querySelector("video").addEventListener("waiting", () => window.__waits++); });
+  await waitFor("playback to pass 15 s, over two seams", async () => (await time(page)) > 15, 40000);
+  const health = await page.evaluate(() => {
+    const element = document.querySelector("video");
+    return { waits: window.__waits, error: element.error?.message ?? null, corrupted: element.getVideoPlaybackQuality().corruptedVideoFrames };
+  });
+  if (health.waits || health.error || health.corrupted) throw new Error(`playback through the seams: ${JSON.stringify(health)}`);
+  noErrors(seen);
+  await leave(page);
+});
+
 // Chapters. In a library with chapter pictures off, as Jellyfin has it by
 // default, the details page lists none (compat/captures/chapters-12.4.md); in
 // one with them on it lists each with its picture, and picking one starts the

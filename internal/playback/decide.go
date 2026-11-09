@@ -439,10 +439,10 @@ const unknownAudioBitrate = 6_000_000
 // copied when the client takes its codec (AudioCodecs), it has no more channels
 // than the client's limit, ffmpeg can name it in the master playlist, and it
 // takes no more than a quarter of the bitrate cap and than the URL can say (maxCopiedAudioBitrate), which is the sum of the
-// URL's video and audio bitrates. A copied video has its audio re-encoded.
+// URL's video and audio bitrates. A copied video copies it too, then.
 func (s Source) copyAudio(p Params) (Stream, bool) {
 	stream, ok := s.audio(p.AudioIndex)
-	if !ok || p.Copy || !slices.Contains(p.AudioCodecs, stream.Codec) || audioCodecString(stream) == "" ||
+	if !ok || !slices.Contains(p.AudioCodecs, stream.Codec) || audioCodecString(stream) == "" ||
 		stream.Channels < 1 || stream.Channels > p.MaxAudioChannels || stream.Bitrate > maxCopiedAudioBitrate {
 		return Stream{}, false
 	}
@@ -609,8 +609,8 @@ type Decision struct {
 	// audio when they and the cap allow it (Source.copyAudio).
 	AudioCodecs      []string
 	MaxAudioChannels int
-	// Copy: the video goes to the client as it is, and only the audio is
-	// re-encoded.
+	// Copy: the video goes to the client as it is. The audio is copied too when
+	// Source.copyAudio allows it, else re-encoded.
 	Copy bool
 }
 
@@ -780,7 +780,30 @@ func (p DeviceProfile) reasons(source Source, video Stream, audio int) []string 
 		}
 	}
 	if len(matching) == 0 {
-		return []string{"ContainerNotSupported"}
+		// Jellyfin names the codecs the container's absence leaves, judged by the
+		// first profile that lists the video codec, or the first profile if none
+		// does (compat/captures/copy-both-12.4.md).
+		reasons := []string{"ContainerNotSupported"}
+		var profiles []DirectPlayProfile
+		for _, d := range p.DirectPlayProfiles {
+			if strings.EqualFold(d.Type, "Video") {
+				profiles = append(profiles, d)
+			}
+		}
+		if len(profiles) == 0 {
+			return reasons
+		}
+		chosen := profiles[0]
+		if i := slices.IndexFunc(profiles, func(d DirectPlayProfile) bool { return listHas(d.VideoCodec, video.Codec) }); i >= 0 {
+			chosen = profiles[i]
+		}
+		if !listHas(chosen.VideoCodec, video.Codec) {
+			reasons = append(reasons, "VideoCodecNotSupported")
+		}
+		if hasAudio && !listHas(chosen.AudioCodec, audioStream.Codec) {
+			reasons = append(reasons, "AudioCodecNotSupported")
+		}
+		return reasons
 	}
 	videoOK := slices.ContainsFunc(matching, func(d DirectPlayProfile) bool { return listHas(d.VideoCodec, video.Codec) })
 	audioOK := !hasAudio || slices.ContainsFunc(matching, func(d DirectPlayProfile) bool { return listHas(d.AudioCodec, audioStream.Codec) })
