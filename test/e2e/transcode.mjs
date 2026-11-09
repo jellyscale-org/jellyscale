@@ -42,7 +42,9 @@ function ffmpegRuns() {
       line,
       copy: /-c:v copy/.test(line),
       start: /-start_number (\d+)/.test(line) ? Number(/-start_number (\d+)/.exec(line)[1]) : Math.ceil(Number(/-ss ([\d.]+)/.exec(line)?.[1] ?? 0) / 4),
-      audio: /-map 1:(\d+)/.exec(line)?.[1],
+      // The audio track's map: from the second input, or from the only one.
+      audio: /-map [01]:(\d+)/.exec(line)?.[1],
+      inputs: (line.match(/ -i /g) ?? []).length,
     }));
   } catch {
     return []; // pgrep exits 1 when nothing matches.
@@ -470,7 +472,7 @@ await scenario("copy both: picking the AAC track of an H.264 and AC3 film copies
   if (!/CODECS="avc1\.[0-9A-F]+,mp4a\.40\.2"/i.test(master)) throw new Error(`master: ${master}`);
   await waitFor("segments of the second track", async () => seen.hls.some((r) => r.query.get("AudioStreamIndex") === "2" && /\/hls1\/main\/\d+\.mp4$/i.test(r.path) && r.status === 200));
   await advances(page, 2);
-  const copyingBoth = (run) => run.copy && / -c:a copy /.test(run.line) && !/-c:a aac/.test(run.line) && !/libx264/.test(run.line) && run.audio === "2";
+  const copyingBoth = (run) => run.copy && / -c:a copy /.test(run.line) && !/-c:a aac/.test(run.line) && !/libx264/.test(run.line) && run.audio === "2" && run.inputs === 1; // The film is opened once.
   const second = await waitFor("only the second track's ffmpeg to be left", async () => {
     const runs = ffmpegRuns();
     return runs.length === 1 && runs[0].audio === "2" ? runs[0] : null;

@@ -250,9 +250,11 @@ var copyReadRate = "5"
 //
 // The input is read at copyReadRate times the film's speed, which stops a copy
 // from reading, writing and uploading the whole film as fast as the disk and
-// the store allow. It does not follow the viewer: the file is opened twice, once
-// for the video and once for the audio, so ten times the film's bitrate is read
-// while the job runs (twice the film's, per film), until the film ends or the job is stopped.
+// the store allow. It does not follow the viewer: a copy of both
+// streams opens the file once. A video copy with re-encoded audio opens it twice,
+// once for the video and once for the audio, so ten times the film's bitrate is
+// read while the job runs (twice the film's, per film), until the film ends or
+// the job is stopped.
 //
 // codec is the source's video codec.
 //
@@ -260,16 +262,16 @@ var copyReadRate = "5"
 // negative to begin at the start of the file. A run for segment N begins at
 // the keyframe before it and its audio two seconds early, on the same AAC
 // frame grid as a run from the start. A copied audio is the source's own packets
-// and needs no grid or warm-up: it begins at the video's cut. The video then reaches segment N's
+// and needs no grid or warm-up: it comes from the video's input and so begins at the video's cut. The video then reaches segment N's
 // keyframe as it would in a run from the start, with the same decode time,
 // and the audio is warm and whole by then, with no need to know which packet
 // the muxer will cut at. What comes before segment N is dropped.
 func CopyCommand(ctx context.Context, input string, spec playback.Spec, codec string, video, audio float64, dir string) (*exec.Cmd, error) {
 	hasAudio := spec.AudioIndex >= 0
-	var base, frameDuration float64
+	var base float64
 	if video >= 0 {
 		var err error
-		if base, frameDuration, err = sourceTiming(ctx, input); err != nil {
+		if base, _, err = sourceTiming(ctx, input); err != nil {
 			return nil, err
 		}
 	}
@@ -282,16 +284,11 @@ func CopyCommand(ctx context.Context, input string, spec playback.Spec, codec st
 	}
 	args = append(args, "-readrate", copyReadRate, "-i", input)
 	both := spec.AudioCopy != ""
-	if hasAudio {
-		if audio >= 0 && both {
-			// The packets are the source's own: begin with the first at or after
-			// the video's cut (the keyframe's DTS, as in Command's AAC case), which
-			// is where a run from zero puts the first audio of the keyframe's
-			// fragment. A bitstream filter dropping the earlier ones would leave
-			// the muxer without a packet to write E-AC3's init segment from.
-			cut := (math.Round(video/frameDuration) - reorderFrames) * frameDuration
-			args = append(args, "-ss", seconds(max(cut-base-1e-6, 0)))
-		} else if audio >= 0 {
+	// A copied audio is the source's own packets and needs no grid of its own, so
+	// it comes from the one input; only a re-encoded track opens the file again,
+	// to start its AAC frames on their own grid.
+	if hasAudio && !both {
+		if audio >= 0 {
 			args = append(args, "-ss", seconds(math.Floor(max(audio-base, 0)/aacFrame)*aacFrame))
 		}
 		args = append(args, "-readrate", copyReadRate, "-i", input)
@@ -304,7 +301,7 @@ func CopyCommand(ctx context.Context, input string, spec playback.Spec, codec st
 		args = append(args, "-tag:v", "hvc1")
 	}
 	if hasAudio && both {
-		args = append(args, "-map", "1:"+strconv.Itoa(spec.AudioIndex), "-c:a", "copy")
+		args = append(args, "-map", "0:"+strconv.Itoa(spec.AudioIndex), "-c:a", "copy")
 	} else if hasAudio {
 		args = append(args, "-map", "1:"+strconv.Itoa(spec.AudioIndex),
 			"-c:a", "aac", "-b:a", strconv.FormatInt(spec.AudioBitrate, 10), "-ac", "2", "-ar", strconv.Itoa(audioRate))
