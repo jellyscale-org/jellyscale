@@ -14,6 +14,12 @@ import (
 // read-ahead limit, so it uploads nothing that would show it the cancel, and
 // the new viewer comes just after the helper's heartbeat: only the preempt
 // hint can stop it before the next one, about 10 s later.
+//
+// What is timed is how soon a worker claims the viewer's job, which it can
+// only do once the helper's ffmpeg has left its slot. It is not the viewer's
+// first segment: that also counts the encode, which on CI's two cores, with
+// two other viewers' encodes running, took 3.75 s longer than on an idle
+// cluster with the hint working, so it measured the CPU and not the slot.
 func TestAPausedHelperLetsGoOfItsSlotAtOnce(t *testing.T) {
 	slow(t)
 	r := newRig(t, nil)
@@ -22,18 +28,6 @@ func TestAPausedHelperLetsGoOfItsSlotAtOnce(t *testing.T) {
 	r.workers(t, 3, 1, 4, r.ownStore(t), "JELLYSCALE_TEST_LEAD_SECONDS=20",
 		"JELLYSCALE_TEST_HEARTBEAT=10s", "JELLYSCALE_TEST_LEASE=30s")
 	j := r.jobs(t)
-
-	probe, probeHash := r.otherStream(700_000)
-	alone, err := r.firstSegment(j, probe, probeHash, psid(9))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := j.Stop(context.Background(), r.user, psid(9), "", ""); err != nil {
-		t.Fatal(err)
-	}
-	waitFor(t, "the probe's job and ffmpeg to be gone", 30*time.Second, func() bool {
-		return r.activeJobs(t) == 0 && len(r.ffmpegProcesses()) == 0
-	})
 
 	if _, err := r.fetch(t, j, psid(0), 0); err != nil {
 		t.Fatal(err)
@@ -69,6 +63,20 @@ func TestAPausedHelperLetsGoOfItsSlotAtOnce(t *testing.T) {
 	before := lease()
 	waitFor(t, "the helper to beat", 20*time.Second, func() bool { return lease().After(before) })
 	last, lastHash := r.otherStream(1_000_000)
+	claimed := make(chan time.Duration, 1)
+	began := time.Now()
+	go func() {
+		for time.Since(began) < 30*time.Second {
+			var state string
+			r.pool.QueryRow(context.Background(), "SELECT state FROM transcode_jobs WHERE spec_hash = $1 AND NOT helper ORDER BY id DESC LIMIT 1", lastHash).Scan(&state) //nolint:errcheck
+			if state == "running" {
+				claimed <- time.Since(began)
+				return
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+		claimed <- time.Since(began)
+	}()
 	took, err := r.firstSegment(j, last, lastHash, psid(12))
 	if err != nil {
 		t.Fatalf("the third viewer got no first segment: %v (film's jobs: %+v)", err, r.jobsOf(t, r.hash))
@@ -76,9 +84,10 @@ func TestAPausedHelperLetsGoOfItsSlotAtOnce(t *testing.T) {
 	if r.helperRows(t, "cancelled") != 1 {
 		t.Fatalf("the paused helper was not the one stopped: %+v", r.jobsOf(t, r.hash))
 	}
-	t.Logf("first segment: %v on an idle cluster, %v taking the paused helper's slot", alone.Round(10*time.Millisecond), took.Round(10*time.Millisecond))
-	if took > alone+1500*time.Millisecond {
-		t.Errorf("the viewer waited %v for a first segment, %v on an idle cluster: the helper held its slot until its heartbeat", took, alone)
+	claim := <-claimed
+	t.Logf("a worker claimed the viewer's job %v after it asked; first segment after %v", claim.Round(10*time.Millisecond), took.Round(10*time.Millisecond))
+	if claim > 3*time.Second {
+		t.Errorf("a worker claimed the viewer's job %v after it asked, with a 10 s heartbeat: the helper held its slot until its heartbeat", claim)
 	}
 }
 
