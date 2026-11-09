@@ -253,6 +253,12 @@ check "the ceiling section says how to rerun" 1 "$(grep -c 'test/stress.sh' <<<"
 check "the ceiling section recommends on NATS" 1 "$(grep -c 'NATS' <<<"$arch" | awk '{print ($1>0)}')"
 check "the ceiling section names the cores and RAM of the machine" 1 "$(grep -ciE 'cores?|threads' <<<"$arch" | awk '{print ($1>0)}')"
 
+# A workflow script runs as the body of an async function; a stray backtick in
+# a prompt ends its template literal, and the workflow then can't start at all.
+for f in .claude/workflows/*.js; do
+  check "$f parses" ok "$(node -e 'const s = require("fs").readFileSync(process.argv[1], "utf8").replace(/^export /m, ""); new Function("return (async () => {" + s + "\n})"); console.log("ok")' "$f" 2>&1 | tail -1)"
+done
+
 echo
 [[ $fails -eq 0 ]] && echo "scripts: all passed" || echo "scripts: $fails failed"
 exit $((fails > 0))
