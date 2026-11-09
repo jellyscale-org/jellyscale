@@ -409,7 +409,7 @@
         "The decision table tests cover every VideoRangeType against jellyfin-web's own profile conditions",
         "Checked on the dogfood with a P8.1 film and a P7 film in jellyfin-web and one TV client"
       ],
-      "priority": 1,
+      "priority": null,
       "status": "done",
       "passes": true,
       "dependsOn": [],
@@ -429,7 +429,7 @@
         "Helpers never take the last free slot from a new viewer",
         "Measured speedup with 1, 2 and 3 workers in the PR"
       ],
-      "priority": 2,
+      "priority": null,
       "status": "done",
       "passes": true,
       "dependsOn": [
@@ -1265,14 +1265,14 @@
         "An operator setting turns helpers off; with it off, a slow job is one ffmpeg and inserts no helper rows; documented in docs/running.md",
         "No preemption ever stops a viewer's own job"
       ],
-      "priority": 2,
-      "status": "todo",
-      "passes": false,
+      "priority": null,
+      "status": "done",
+      "passes": true,
       "dependsOn": [
         "JS-024"
       ],
       "source": "JS-024 post-task review (2026-11-08); the user chose to land JS-024 and fix this next",
-      "notes": "Found reading the helper slot guard after the build: freeSlots is cluster-wide, so helpers keep one slot free for the whole cluster, not per worker. Priority 2 puts it ahead of JS-025."
+      "notes": "Found reading the helper slot guard after the build: freeSlots is cluster-wide, so helpers keep one slot free for the whole cluster, not per worker. Priority 2 puts it ahead of JS-025. Built 2026-11-08: a viewer's job, under the cluster-wide helpers lock, cancels one helper when no slot is free (a queued one first, else the one furthest ahead, only on a live worker), then sends a preempt hint after its transaction commits; a running helper beats on that hint, and once as it subscribes, so it gives its slot back at once rather than at its next heartbeat. Measured: with a paused helper, a 10 s heartbeat and the viewer arriving just after the helper beat, the viewer's first segment took 5.75 s, the same as on an idle cluster; without the hint it was refused. transcodeHelpers: false on a worker turns its helpers off. Backlog: every viewer's ensure takes the cluster-wide helpers lock; transcodeHelpers is per worker, so mixed settings are possible; no check drives the config key through to the worker; a helper preempted during its pre-ffmpeg setup (subtitle extraction, fonts) sees the cancel only after ffmpeg starts; when queued viewers already exceed the free slots, a new viewer still cancels a helper whose slot goes to an earlier viewer; the preempt hint names no job, so every running helper beats once per preemption; operators see preemption only in the job's error and the log."
     }
   ]
 }
