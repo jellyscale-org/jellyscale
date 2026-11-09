@@ -28,6 +28,7 @@ Every viewer-visible and operator-visible feature in scope, in one list. Status 
 - Direct play from POSIX and S3-compatible stores, with ranges and HEAD: **done**.
 - Transcode to H.264 with audio track and bitrate choice, seeks, and text subtitles delivered or burnt in: **done**.
 - Video copy with audio re-encoded (SDR H.264, HEVC and AV1, in MKV and MP4): **done**.
+- Parallel transcoding: a re-encode running below 1.2x real time gets helper jobs on other workers for the 4-segment chunks ahead of the viewer, and a new viewer who finds every slot taken stops a helper rather than waiting; `transcodeHelpers: false` turns it off (`docs/running.md`): **done** (not for a burnt image subtitle, JS-071; helpers use a fixed threshold, not the cluster's spare capacity).
 - Local accounts with bcrypt passwords and per-device tokens; the first administrator comes from configuration: **partial** (no user management, see `identity`).
 - Sessions list and playback reporting: **partial** (listing and progress done, no operator view of devices).
 - Items' multiple audio tracks: **done**.

@@ -56,6 +56,9 @@ type Worker struct {
 	// (default 1.2). See helpers.go.
 	ChunkSegments int
 	HelpBelow     float64
+	// NoHelpers stops this worker's jobs from asking for helpers. It does not
+	// stop it from running helpers other workers asked for.
+	NoHelpers bool
 	// Retention is how long a spec's segments stay after its last request.
 	Retention time.Duration
 	// ID names this worker in transcode_nodes and on the jobs it claims. It
@@ -515,6 +518,17 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		beat := time.NewTicker(w.heartbeat())
 		loggedSlow := false
 		defer beat.Stop()
+		// A helper cancelled for a new viewer (preemptHelper) beats at once, so
+		// it gives its slot back now rather than at its next heartbeat. It also
+		// beats as soon as it listens, for a cancel that came before it did (a
+		// helper is often the newest job, cancelled as it starts).
+		var preempted <-chan struct{}
+		if job.Helper {
+			wake, unsubscribe := w.Hub.Subscribe(preemptHint)
+			defer unsubscribe()
+			preempted = wake
+			beat.Reset(time.Millisecond)
+		}
 		lastBeat := time.Now()
 		progressed, progressAt := next, time.Now()
 		// gate pauses ffmpeg once everything below the limit is made, so what it
@@ -617,7 +631,10 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 					stop("its viewers have left it behind")
 					return nil
 				}
+			case <-preempted:
+				beat.Reset(time.Millisecond)
 			case <-beat.C:
+				beat.Reset(w.heartbeat())
 				alive, wanted, err := w.beat(ctx, job)
 				switch {
 				case err == nil:
@@ -629,7 +646,7 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 							log.Warn("transcode is slower than real time, so playback will stall", "speed", speed, "worker", w.ID)
 						}
 						loggedSlow = speed < 1
-						if alive && chunked && w.needsHelp(job) {
+						if alive && chunked && !w.NoHelpers && w.needsHelp(job) {
 							if err := w.startHelper(ctx, job, next, layout); err != nil && ctx.Err() == nil {
 								log.Warn("starting a helper job failed", "error", err)
 							}
@@ -734,8 +751,11 @@ func (w *Worker) awaitJob(ctx context.Context, job claimed, log *slog.Logger, fe
 // lostReason says why the job is no longer ours to run: a seek replaced it, or
 // something took the lease from us.
 func (w *Worker) lostReason(ctx context.Context, job claimed) string {
-	var state string
-	w.Pool.QueryRow(ctx, "SELECT state FROM transcode_jobs WHERE id = $1", job.ID).Scan(&state) //nolint:errcheck
+	var state, reason string
+	w.Pool.QueryRow(ctx, "SELECT state, COALESCE(error, '') FROM transcode_jobs WHERE id = $1", job.ID).Scan(&state, &reason) //nolint:errcheck
+	if state == "cancelled" && reason != "" {
+		return reason // A helper stopped for a new viewer (preemptHelper).
+	}
 	if state == "cancelled" {
 		return "a newer job replaced this one, or it was cancelled"
 	}

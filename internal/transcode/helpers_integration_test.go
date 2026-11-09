@@ -56,6 +56,7 @@ func helperSettings(w *Worker) {
 	if n, ok := number("JELLYSCALE_TEST_IDLE_SECONDS"); ok {
 		w.Idle = time.Duration(n) * time.Second
 	}
+	w.NoHelpers = os.Getenv("JELLYSCALE_TEST_NO_HELPERS") == "1"
 	if v, err := strconv.ParseFloat(os.Getenv("JELLYSCALE_TEST_HELP_BELOW"), 64); err == nil {
 		w.HelpBelow = v
 	}
@@ -547,14 +548,23 @@ func TestMoreWorkersFinishTheFilmSooner(t *testing.T) {
 		t.Fatalf("this test needs at least two physical cores, found CPUs %v", cpus)
 	}
 	t.Logf("one CPU per physical core: %v", cpus)
+	// More workers than cores would put two encodes on one CPU: the chunks
+	// there run at half speed, the viewer waits on them in order, and the
+	// number measures contention (1.1x to 1.6x for three workers on a 2-core
+	// runner), not what another worker adds.
+	counts := []int{1, 2, 3}
+	if len(cpus) < 3 {
+		counts = []int{1, 2}
+		t.Logf("three workers are not measured: %d cores", len(cpus))
+	}
 	timings := map[int]time.Duration{}
-	for _, n := range []int{1, 2, 3} {
+	for _, n := range counts {
 		r := newRig(t, nil)
 		dir := r.ownStore(t)
 		set := &helperFleet{cmds: map[string]*exec.Cmd{}}
 		for i := 0; i < n; i++ {
 			bin := t.TempDir()
-			script := fmt.Sprintf("#!/bin/sh\nexec taskset -c %d %s \"$@\"\n", cpus[i%len(cpus)], real)
+			script := fmt.Sprintf("#!/bin/sh\nexec taskset -c %d %s \"$@\"\n", cpus[i], real)
 			if err := os.WriteFile(filepath.Join(bin, "ffmpeg"), []byte(script), 0o755); err != nil {
 				t.Fatal(err)
 			}
@@ -568,16 +578,18 @@ func TestMoreWorkersFinishTheFilmSooner(t *testing.T) {
 		t.Logf("%d worker(s), each ffmpeg on 1 CPU: %v for %d segments", n, timings[n].Round(10*time.Millisecond), filmSegments)
 		set.stop(t)
 	}
-	t.Logf("speedup over one worker: 2 workers %.2fx, 3 workers %.2fx", float64(timings[1])/float64(timings[2]), float64(timings[1])/float64(timings[3]))
+	for _, n := range counts[1:] {
+		t.Logf("speedup over one worker: %d workers %.2fx", n, float64(timings[1])/float64(timings[n]))
+	}
 	// With cores to spare for Postgres, the workers and this test, two workers
 	// take at most 80% of one's time and three at most 60%. A CI runner has two
-	// cores in all, which the encodes share with everything else: there two and
-	// three workers measure 1.2x to 1.35x, so the bar is a 10% gain.
+	// cores in all, which the encodes share with everything else: there two
+	// workers measure 1.2x to 1.7x, so the bar is a 10% gain.
 	most := map[int]time.Duration{2: timings[1] * 80 / 100, 3: timings[1] * 60 / 100}
 	if len(cpus) < 4 {
 		most = map[int]time.Duration{2: timings[1] * 90 / 100, 3: timings[1] * 90 / 100}
 	}
-	for _, n := range []int{2, 3} {
+	for _, n := range counts[1:] {
 		if timings[n] > most[n] {
 			t.Errorf("%d workers on %d cores took %v, one took %v: no real gain (at most %v)", n, len(cpus), timings[n], timings[1], most[n])
 		}

@@ -61,6 +61,10 @@ type config struct {
 	// furthest segment a viewer has asked for before its ffmpeg pauses.
 	TranscodeLead string `json:"transcodeLead"`
 
+	// TranscodeHelpers is false to stop slow jobs from asking other workers to
+	// help; nil means on.
+	TranscodeHelpers *bool `json:"transcodeHelpers"`
+
 	// DatabaseMaxConns is the most Postgres connections the process opens, for
 	// every role in it together. Zero means db.DefaultMaxConns.
 	DatabaseMaxConns int `json:"databaseMaxConns"`
@@ -299,6 +303,7 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 	w := &transcode.Worker{
 		ID: id, Pool: pool, Items: &items.Repo{Pool: pool, ServerID: serverID}, Segments: segments, Hub: result.hub, Log: log,
 		Media: media.Open, Scratch: scratch, Slots: slots, Idle: idle, Lead: lead, Retention: retention,
+		NoHelpers: cfg.TranscodeHelpers != nil && !*cfg.TranscodeHelpers,
 	}
 	if worker {
 		result.collectors = []prometheus.Collector{w}

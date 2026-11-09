@@ -202,7 +202,7 @@ func (j *Jobs) Unavailable(ctx context.Context, hash, userID, deviceID string) (
 			(SELECT COALESCE(sum(slots), 0) FROM transcode_nodes WHERE seen_at > now() - make_interval(secs => $2)),
 			(SELECT count(*) FROM transcode_jobs WHERE (state = 'queued' OR (state = 'running' AND lease_expires_at > now()
 					AND worker IN (SELECT id FROM transcode_nodes WHERE seen_at > now() - make_interval(secs => $2))))
-				AND owner NOT IN (SELECT play_session_id FROM transcode_viewers WHERE user_id::text = $4 AND device_id = $5)),
+				AND NOT helper AND owner NOT IN (SELECT play_session_id FROM transcode_viewers WHERE user_id::text = $4 AND device_id = $5)),
 			(SELECT error FROM transcode_jobs WHERE spec_hash = $1 AND state = 'failed' AND NOT helper
 				AND ended_at > now() - make_interval(secs => $3) ORDER BY id DESC LIMIT 1)`,
 		hash, workerAlive.Seconds(), failureMemory.Seconds(), userID, deviceID).Scan(&workers, &slots, &taken, &failure)
@@ -412,9 +412,11 @@ func (j *Jobs) ensure(ctx context.Context, spec playback.Spec, hash, owner strin
 	}
 	var id int64
 	var failure string
-	created := false
+	created, preempted := false, false
 	err = pgx.BeginFunc(ctx, j.Pool, func(tx pgx.Tx) error {
-		if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", hash); err != nil {
+		// The helpers lock first, as insertHelper takes them, so that a free slot
+		// is not counted twice.
+		if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended('helpers', 0)), pg_advisory_xact_lock(hashtextextended($1, 0))", hash); err != nil {
 			return err
 		}
 		// Locks the viewer's row, so a Stop that lands now waits and then cancels
@@ -465,11 +467,17 @@ func (j *Jobs) ensure(ctx context.Context, spec playback.Spec, hash, owner strin
 			return nil
 		}
 		created = true
+		if preempted, err = preemptHelper(ctx, tx, orDefault(j.QueueTimeout, queueTimeout)); err != nil {
+			return err
+		}
 		return tx.QueryRow(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment)
 			VALUES ($1, $2, $3, $4, $4) RETURNING id`, hash, raw, owner, start).Scan(&id)
 	})
 	if err != nil {
 		return 0, false, err
+	}
+	if preempted {
+		Notify(ctx, j.Pool, preemptHint)
 	}
 	if created {
 		Notify(ctx, j.Pool, jobHint)
