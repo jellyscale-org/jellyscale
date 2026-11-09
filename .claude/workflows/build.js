@@ -87,6 +87,14 @@ const LOCKED = {
   required: ['changed'],
 }
 
+const TIERS = {
+  type: 'object',
+  properties: {
+    records: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, status: { type: 'string' }, summary: { type: 'string' }, log: { type: 'string' } }, required: ['name', 'status', 'summary'] } },
+  },
+  required: ['records'],
+}
+
 const { task, acceptance = [], tests = [], id = '', ux = false, core = false, resolved = null } = args
 // Told to every later reviewer and fixer, so a corrected check is not reported or restored as tampering.
 const resolvedNote = resolved ? `\n\nThe lead corrected these locked check files after a dispute, on purpose; review the corrected version and never restore the original: ${resolved.files.join(', ')}. ${resolved.note}` : ''
@@ -182,7 +190,18 @@ if (resolved) {
   head = await snapshot('snapshot after the resolved dispute', 'Build', ` (This follows the lead's correction: ${resolved.note})`)
   touched = (await lockedChanged(head, 'locked checks after the resolved dispute')).filter((f) => !resolved.files.includes(f))
   lockBase = head
-  built = { ...built, disputes: [], report: `${built.report}\n\nDispute resolved by the lead: ${resolved.note}` }
+  // An implementer that stopped on its dispute left the build unfinished and the
+  // tiers unrun: it finishes now, on the corrected checks. (JS-025 skipped this,
+  // and a stale test reached the merge queue.)
+  if (built.disputes.length && !touched.length) {
+    const finished = await agent(`${read('implementer')}${brief}${designNotes}${locked}\n\n## Your dispute was settled\nYou stopped on a dispute. The lead settled it and corrected these files: ${resolved.files.join(', ')}. ${resolved.note}\n\nYour partial build is in the working tree. Finish the task from it and run the tiers. Don't commit.`, { label: 'build after the resolved dispute', phase: 'Build', ...role('implementer'), schema: IMPLEMENTED })
+    if (!finished) throw new Error('implementer returned nothing')
+    built = finished
+    head = await snapshot('snapshot of the finished build', 'Build')
+    touched = await lockedChanged(head, 'locked checks after the finished build')
+  } else {
+    built = { ...built, disputes: [], report: `${built.report}\n\nDispute resolved by the lead: ${resolved.note}` }
+  }
 }
 if (touched.length || built.disputes.length) {
   return { clean: false, stoppedAt: 'Build', reason: touched.length ? 'locked checks changed' : 'checks disputed', touched, disputes: built.disputes, spec, base, specTree, head, build: built }
@@ -203,15 +222,28 @@ const reviewers = (round) => {
   if (ux) list.push({ key: 'ux', file: 'ux-reviewer', focus: 'Review what viewers and operators experience. Check the affected flow in jellyfin-web once if you need to see it.' })
   return list
 }
+// The whole unit and integration tiers on the head, from records the test
+// scripts write. Missing ones are run here, so no review rests on a build
+// whose tiers nobody ran; a failure blocks like any evidenced finding.
+const tiers = async (round) => {
+  const result = await agent(`From the repository root (${root}), without editing any file, make sure \`.results/${head}/\` holds a record for each of: \`unit\` (\`bash test/unit.sh\`), and \`integration-rest\`, \`integration-0of3\`, \`integration-1of3\`, \`integration-2of3\` (\`INTEGRATION_SHARD=rest bash test/integration.sh\`, then \`0/3\`, \`1/3\`, \`2/3\`; two at a time at most), or a single \`integration\` record that covers the whole tier. A record is a file of key=value lines written by the scripts; never write one. First run \`bash tools/snapshot.sh\`: if it does not print ${head}, the working tree has changed, so return one record named \`tree\` with status \`fail\` and stop. Run only what has no record, send output to files, and then return each record's name, status, summary and log from its file. ${economy}`,
+    { label: `tiers (round ${round})`, phase: 'Verify', schema: TIERS, model: 'haiku', effort: 'low' })
+  if (!result) return [{ severity: 'major', kind: 'environment', title: 'the tier gate returned nothing', scenario: '', evidenceKind: 'reading', evidence: '', reviewer: 'tiers' }]
+  return result.records.filter((r) => r.status !== 'pass').map((r) => ({
+    severity: 'major', kind: 'defect', title: `${r.name} does not pass on the head`, file: r.log, scenario: r.summary,
+    evidenceKind: 'command-output', evidence: `.results/${head}/${r.name}: status=${r.status}; ${r.summary}; log ${r.log ?? ''}`, reviewer: 'tiers',
+  }))
+}
 const verify = async (round) => {
   phase('Verify')
+  const gate = await tiers(round)
   const roles = reviewers(round)
   const results = await parallel(roles.map((r) => () =>
     agent(`${read(r.file)}${brief}\n\n${reviewersNote}\n\n${r.focus}\n\n${evidenceRule} ${economy}`, { label: `${r.key} (round ${round})`, phase: 'Verify', ...role(r.file), schema: FINDINGS })
       .then((result) => ({ key: r.key, result }))))
   const answered = results.filter((x) => x && x.result)
   const missing = roles.map((r) => r.key).filter((k) => !answered.some((x) => x.key === k))
-  const findings = answered.flatMap((x) => x.result.findings.map((f) => ({ ...f, reviewer: x.key })))
+  const findings = [...gate, ...answered.flatMap((x) => x.result.findings.map((f) => ({ ...f, reviewer: x.key })))]
   // The evidence gate: reading alone never blocks, and the environment is not the change.
   for (const f of findings) if (f.severity !== 'minor' && f.evidenceKind === 'reading') f.severity = 'minor'
   return { findings, missing }
