@@ -31,6 +31,7 @@ Rules:
 - Use disposable infrastructure on Docker-assigned ports, and clean it up. Never connect to a service already running on this machine.
 - Check each acceptance criterion and report pass, fail or not-tested, with the evidence.
 - Report a failure as a finding with exact reproduction steps and the command output as evidence.
+- A timeout in a run of many scenarios is not yet evidence: the other reviewers' tests and ffmpeg share this machine with yours. Rerun that scenario alone (`E2E_ONLY`, `E2E_REPEAT=5`). If it fails alone, report it with both results; if it passes alone, report it as minor, with both results.
 - Mark a failure of the machine or tooling (Docker, disk, network, a missing binary) as `environment`, not `defect`: it is reported, and it does not count against the change. Never stop, kill or remove a process or container you did not start.
 
 Severity: `blocker` means an acceptance criterion fails. `major` is a real bug outside them. `minor` is a small defect.
