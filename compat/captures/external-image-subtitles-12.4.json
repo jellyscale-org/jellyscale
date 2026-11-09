@@ -1,0 +1,570 @@
+{
+ "about": "Observed on jellyfin/jellyfin:12.4 (12.4.0), 2026-11-09; ids, paths and the token are placeholders. See external-image-subtitles-12.4.md.",
+ "films": {
+  "Ext Img Film (2080)": {
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "Type": "Subtitle",
+     "Codec": "PGSSUB",
+     "Language": "deu",
+     "DisplayTitle": "German - Default - PGSSUB - External",
+     "IsExternal": true,
+     "IsDefault": true,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": true,
+     "Width": 1920,
+     "Height": 1080,
+     "Path": "/media/movies/Ext Img Film (2080)/Ext Img Film (2080).de.default.sup"
+    },
+    {
+     "Index": 1,
+     "Type": "Subtitle",
+     "Codec": "subrip",
+     "Language": "eng",
+     "DisplayTitle": "English - SUBRIP - External",
+     "IsExternal": true,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": true,
+     "SupportsExternalStream": true,
+     "Path": "/media/movies/Ext Img Film (2080)/Ext Img Film (2080).en.srt"
+    },
+    {
+     "Index": 2,
+     "Type": "Subtitle",
+     "Codec": "PGSSUB",
+     "Language": "eng",
+     "DisplayTitle": "English - PGSSUB - External",
+     "IsExternal": true,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": true,
+     "Width": 1920,
+     "Height": 1080,
+     "Path": "/media/movies/Ext Img Film (2080)/Ext Img Film (2080).en.sup"
+    },
+    {
+     "Index": 3,
+     "Type": "Subtitle",
+     "Codec": "DVDSUB",
+     "Language": "en",
+     "DisplayTitle": "English - DVDSUB - External",
+     "IsExternal": true,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": true,
+     "Width": 720,
+     "Height": 480,
+     "Path": "/media/movies/Ext Img Film (2080)/Ext Img Film (2080).es.idx"
+    },
+    {
+     "Index": 4,
+     "Type": "Subtitle",
+     "Codec": "PGSSUB",
+     "Language": "fra",
+     "DisplayTitle": "French - Forced - PGSSUB - External",
+     "IsExternal": true,
+     "IsDefault": false,
+     "IsForced": true,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": true,
+     "Width": 1920,
+     "Height": 1080,
+     "Path": "/media/movies/Ext Img Film (2080)/Ext Img Film (2080).fr.forced.sup"
+    },
+    {
+     "Index": 5,
+     "Type": "Subtitle",
+     "Codec": "DVDSUB",
+     "Language": "ita",
+     "DisplayTitle": "Italian - DVDSUB - External",
+     "IsExternal": true,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": true,
+     "Path": "/media/movies/Ext Img Film (2080)/Ext Img Film (2080).it.sub"
+    },
+    {
+     "Index": 6,
+     "Type": "Subtitle",
+     "Codec": "DVDSUB",
+     "Language": "en",
+     "DisplayTitle": "English - Forced - DVDSUB - External",
+     "IsExternal": true,
+     "IsDefault": false,
+     "IsForced": true,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": true,
+     "Width": 720,
+     "Height": 480,
+     "Path": "/media/movies/Ext Img Film (2080)/Ext Img Film (2080).ja.forced.idx"
+    },
+    {
+     "Index": 7,
+     "Type": "Subtitle",
+     "Codec": "PGSSUB",
+     "DisplayTitle": "Undefined - PGSSUB - External",
+     "IsExternal": true,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": true,
+     "Width": 1920,
+     "Height": 1080,
+     "Path": "/media/movies/Ext Img Film (2080)/Ext Img Film (2080).sup"
+    },
+    {
+     "Index": 8,
+     "Type": "Video",
+     "Codec": "h264",
+     "DisplayTitle": "360p H264 SDR",
+     "IsExternal": false,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Width": 640,
+     "Height": 360
+    },
+    {
+     "Index": 9,
+     "Type": "Audio",
+     "Codec": "aac",
+     "Language": "eng",
+     "DisplayTitle": "English - AAC - Mono",
+     "IsExternal": false,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false
+    },
+    {
+     "Index": 10,
+     "Type": "Subtitle",
+     "Codec": "subrip",
+     "Language": "eng",
+     "DisplayTitle": "English - SUBRIP",
+     "IsExternal": false,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": true,
+     "SupportsExternalStream": true
+    }
+   ],
+   "PlaybackInfo, PGS and VobSub rendering off": {
+    "SupportsDirectPlay": false,
+    "TranscodingUrl": "/videos/ITEM-ID/master.m3u8",
+    "Subtitles": [
+     {
+      "Index": 0,
+      "Codec": "PGSSUB",
+      "DeliveryMethod": "Encode",
+      "DeliveryUrl": null,
+      "IsExternalUrl": null
+     },
+     {
+      "Index": 1,
+      "Codec": "subrip",
+      "DeliveryMethod": "External",
+      "DeliveryUrl": "/Videos/ITEM-ID/HEX32/Subtitles/1/0/Stream.vtt?ApiKey=HEX32",
+      "IsExternalUrl": false
+     },
+     {
+      "Index": 2,
+      "Codec": "PGSSUB",
+      "DeliveryMethod": "Encode",
+      "DeliveryUrl": null,
+      "IsExternalUrl": null
+     },
+     {
+      "Index": 3,
+      "Codec": "DVDSUB",
+      "DeliveryMethod": "Encode",
+      "DeliveryUrl": null,
+      "IsExternalUrl": null
+     },
+     {
+      "Index": 4,
+      "Codec": "PGSSUB",
+      "DeliveryMethod": "Encode",
+      "DeliveryUrl": null,
+      "IsExternalUrl": null
+     },
+     {
+      "Index": 5,
+      "Codec": "DVDSUB",
+      "DeliveryMethod": "Encode",
+      "DeliveryUrl": null,
+      "IsExternalUrl": null
+     },
+     {
+      "Index": 6,
+      "Codec": "DVDSUB",
+      "DeliveryMethod": "Encode",
+      "DeliveryUrl": null,
+      "IsExternalUrl": null
+     },
+     {
+      "Index": 7,
+      "Codec": "PGSSUB",
+      "DeliveryMethod": "Encode",
+      "DeliveryUrl": null,
+      "IsExternalUrl": null
+     },
+     {
+      "Index": 10,
+      "Codec": "subrip",
+      "DeliveryMethod": "External",
+      "DeliveryUrl": "/Videos/ITEM-ID/HEX32/Subtitles/10/0/Stream.vtt?ApiKey=HEX32",
+      "IsExternalUrl": false
+     }
+    ]
+   },
+   "PlaybackInfo, PGS and VobSub rendering on": {
+    "SupportsDirectPlay": true,
+    "TranscodingUrl": "",
+    "Subtitles": [
+     {
+      "Index": 0,
+      "Codec": "PGSSUB",
+      "DeliveryMethod": "External",
+      "DeliveryUrl": "/Videos/ITEM-ID/HEX32/Subtitles/0/0/Stream.pgssub?ApiKey=HEX32",
+      "IsExternalUrl": false
+     },
+     {
+      "Index": 1,
+      "Codec": "subrip",
+      "DeliveryMethod": "External",
+      "DeliveryUrl": "/Videos/ITEM-ID/HEX32/Subtitles/1/0/Stream.vtt?ApiKey=HEX32",
+      "IsExternalUrl": false
+     },
+     {
+      "Index": 2,
+      "Codec": "PGSSUB",
+      "DeliveryMethod": "External",
+      "DeliveryUrl": "/Videos/ITEM-ID/HEX32/Subtitles/2/0/Stream.pgssub?ApiKey=HEX32",
+      "IsExternalUrl": false
+     },
+     {
+      "Index": 3,
+      "Codec": "DVDSUB",
+      "DeliveryMethod": "Encode",
+      "DeliveryUrl": null,
+      "IsExternalUrl": null
+     },
+     {
+      "Index": 4,
+      "Codec": "PGSSUB",
+      "DeliveryMethod": "External",
+      "DeliveryUrl": "/Videos/ITEM-ID/HEX32/Subtitles/4/0/Stream.pgssub?ApiKey=HEX32",
+      "IsExternalUrl": false
+     },
+     {
+      "Index": 5,
+      "Codec": "DVDSUB",
+      "DeliveryMethod": "Encode",
+      "DeliveryUrl": null,
+      "IsExternalUrl": null
+     },
+     {
+      "Index": 6,
+      "Codec": "DVDSUB",
+      "DeliveryMethod": "Encode",
+      "DeliveryUrl": null,
+      "IsExternalUrl": null
+     },
+     {
+      "Index": 7,
+      "Codec": "PGSSUB",
+      "DeliveryMethod": "External",
+      "DeliveryUrl": "/Videos/ITEM-ID/HEX32/Subtitles/7/0/Stream.pgssub?ApiKey=HEX32",
+      "IsExternalUrl": false
+     },
+     {
+      "Index": 10,
+      "Codec": "subrip",
+      "DeliveryMethod": "External",
+      "DeliveryUrl": "/Videos/ITEM-ID/HEX32/Subtitles/10/0/Stream.vtt?ApiKey=HEX32",
+      "IsExternalUrl": false
+     }
+    ]
+   }
+  },
+  "Idx Lang Film (2083)": {
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "Type": "Subtitle",
+     "Codec": "PGSSUB",
+     "Language": "eng",
+     "DisplayTitle": "commentary - English - PGSSUB - External",
+     "Title": "commentary",
+     "IsExternal": true,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": true,
+     "Width": 1920,
+     "Height": 1080,
+     "Path": "/media/movies/Idx Lang Film (2083)/Idx Lang Film (2083).en.commentary.sup"
+    },
+    {
+     "Index": 1,
+     "Type": "Subtitle",
+     "Codec": "PGSSUB",
+     "Language": "eng",
+     "DisplayTitle": "English - Hearing Impaired - PGSSUB - External",
+     "IsExternal": true,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": true,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": true,
+     "Width": 1920,
+     "Height": 1080,
+     "Path": "/media/movies/Idx Lang Film (2083)/Idx Lang Film (2083).en.sdh.sup"
+    },
+    {
+     "Index": 2,
+     "Type": "Subtitle",
+     "Codec": "PGSSUB",
+     "Language": "eng",
+     "DisplayTitle": "English - PGSSUB - External",
+     "IsExternal": true,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": true,
+     "Width": 1920,
+     "Height": 1080,
+     "Path": "/media/movies/Idx Lang Film (2083)/Idx Lang Film (2083).English.sup"
+    },
+    {
+     "Index": 3,
+     "Type": "Subtitle",
+     "Codec": "DVDSUB",
+     "Language": "spa",
+     "DisplayTitle": "Spanish - Forced - DVDSUB - External",
+     "IsExternal": true,
+     "IsDefault": false,
+     "IsForced": true,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": true,
+     "Path": "/media/movies/Idx Lang Film (2083)/Idx Lang Film (2083).es.forced.sub"
+    },
+    {
+     "Index": 4,
+     "Type": "Subtitle",
+     "Codec": "DVDSUB",
+     "Language": "ja",
+     "DisplayTitle": "Japanese - DVDSUB - External",
+     "IsExternal": true,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": true,
+     "Width": 720,
+     "Height": 480,
+     "Path": "/media/movies/Idx Lang Film (2083)/Idx Lang Film (2083).fr.idx"
+    },
+    {
+     "Index": 5,
+     "Type": "Subtitle",
+     "Codec": "PGSSUB",
+     "Language": "pt-br",
+     "DisplayTitle": "Portuguese (Brazil) - PGSSUB - External",
+     "IsExternal": true,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": true,
+     "Width": 1920,
+     "Height": 1080,
+     "Path": "/media/movies/Idx Lang Film (2083)/Idx Lang Film (2083).pt-br.sup"
+    },
+    {
+     "Index": 6,
+     "Type": "Subtitle",
+     "Codec": "PGSSUB",
+     "DisplayTitle": "zz - Undefined - PGSSUB - External",
+     "Title": "zz",
+     "IsExternal": true,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": true,
+     "Path": "/media/movies/Idx Lang Film (2083)/Idx Lang Film (2083).zz.sup"
+    },
+    {
+     "Index": 7,
+     "Type": "Video",
+     "Codec": "h264",
+     "DisplayTitle": "360p H264 SDR",
+     "IsExternal": false,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Width": 640,
+     "Height": 360
+    },
+    {
+     "Index": 8,
+     "Type": "Audio",
+     "Codec": "aac",
+     "Language": "eng",
+     "DisplayTitle": "English - AAC - Mono",
+     "IsExternal": false,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false
+    }
+   ]
+  },
+  "Only Sup Film (2082)": {
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "Type": "Subtitle",
+     "Codec": "PGSSUB",
+     "Language": "eng",
+     "DisplayTitle": "English - PGSSUB - External",
+     "IsExternal": true,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": true,
+     "Width": 1920,
+     "Height": 1080,
+     "Path": "/media/movies/Only Sup Film (2082)/Only Sup Film (2082).en.sup"
+    },
+    {
+     "Index": 1,
+     "Type": "Video",
+     "Codec": "h264",
+     "DisplayTitle": "360p H264 SDR",
+     "IsExternal": false,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Width": 640,
+     "Height": 360
+    },
+    {
+     "Index": 2,
+     "Type": "Audio",
+     "Codec": "aac",
+     "Language": "eng",
+     "DisplayTitle": "English - AAC - Mono",
+     "IsExternal": false,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false
+    }
+   ],
+   "PlaybackInfo, PGS and VobSub rendering off": {
+    "SupportsDirectPlay": false,
+    "TranscodingUrl": "/videos/ITEM-ID/master.m3u8",
+    "Subtitles": [
+     {
+      "Index": 0,
+      "Codec": "PGSSUB",
+      "DeliveryMethod": "Encode",
+      "DeliveryUrl": null,
+      "IsExternalUrl": null
+     }
+    ]
+   },
+   "PlaybackInfo, PGS and VobSub rendering on": {
+    "SupportsDirectPlay": true,
+    "TranscodingUrl": "",
+    "Subtitles": [
+     {
+      "Index": 0,
+      "Codec": "PGSSUB",
+      "DeliveryMethod": "External",
+      "DeliveryUrl": "/Videos/ITEM-ID/HEX32/Subtitles/0/0/Stream.pgssub?ApiKey=HEX32",
+      "IsExternalUrl": false
+     }
+    ]
+   }
+  },
+  "Only Vob Film (2081)": {
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "Type": "Subtitle",
+     "Codec": "DVDSUB",
+     "Language": "en",
+     "DisplayTitle": "English - DVDSUB - External",
+     "IsExternal": true,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": true,
+     "Width": 720,
+     "Height": 480,
+     "Path": "/media/movies/Only Vob Film (2081)/Only Vob Film (2081).en.idx"
+    },
+    {
+     "Index": 1,
+     "Type": "Video",
+     "Codec": "h264",
+     "DisplayTitle": "360p H264 SDR",
+     "IsExternal": false,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Width": 640,
+     "Height": 360
+    },
+    {
+     "Index": 2,
+     "Type": "Audio",
+     "Codec": "aac",
+     "Language": "eng",
+     "DisplayTitle": "English - AAC - Mono",
+     "IsExternal": false,
+     "IsDefault": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false
+    }
+   ]
+  }
+ }
+}

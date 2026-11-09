@@ -484,12 +484,12 @@
         "Listed like Jellyfin 12.4",
         "Drawn into a transcode; PGS sent to jellyfin-web when its setting is on"
       ],
-      "priority": 6,
-      "status": "todo",
-      "passes": false,
+      "priority": null,
+      "status": "done",
+      "passes": true,
       "dependsOn": [],
       "source": "PRODUCT.md phase3 (not built)",
-      "notes": ""
+      "notes": "External .sup and .sub/.idx files beside the film, POSIX and S3, listed as Jellyfin 12.4 lists them (compat/captures/external-image-subtitles-12.4.md); a .sup goes to jellyfin-web as the file with its PGS setting on, else both are drawn into a transcode by a worker. A file ffprobe refuses or finds no packets in is hidden on its first burn. Two attempts: the first left damaged files unhidden."
     },
     {
       "id": "JS-028",

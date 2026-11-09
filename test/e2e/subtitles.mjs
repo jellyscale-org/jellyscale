@@ -428,8 +428,9 @@ const cues = [[18, 22, "top"], [50, 52, null], [58, 62, "bottom"], [98, 102, "mi
 // when its cues say, with no PlaybackInfo, transcode job or playlist for the
 // pick and nothing drawn into the picture. The film plays as it is or, with
 // transcoded, is transcoded anyway (its audio is AC3) and the track is still
-// the client's to draw.
-function pgsDrawnByTheClient(name, library, title, transcoded) {
+// the client's to draw. With external the track is a .sup beside the film, which a
+// worker reads itself, however it does that.
+function pgsDrawnByTheClient(name, library, title, transcoded, external = false) {
   return scenario(name, async ({ page, seen }) => {
     await page.evaluate(() => localStorage.setItem("subtitlerenderpgs", "true"));
     const supJobs = Number(sql("SELECT count(*) FROM subtitle_jobs WHERE kind = 'sup'"));
@@ -445,6 +446,7 @@ function pgsDrawnByTheClient(name, library, title, transcoded) {
       !/^\/Videos\/[0-9a-f-]{36}\/[0-9a-f]{32}\/Subtitles\/2\/0\/Stream\.pgssub\?ApiKey=\w+$/i.test(pgs.DeliveryUrl)) {
       throw new Error(`tracks: ${JSON.stringify(tracks)}`);
     }
+    if (external && (pgs.IsExternal !== true || pgs.DisplayTitle !== "English - PGSSUB - External")) throw new Error(`the file beside the film: ${JSON.stringify(pgs)}`);
     await advances(page, 3);
     await pickSubtitle(page, -1); // Whatever the client started with, begin from off.
     await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -462,7 +464,7 @@ function pgsDrawnByTheClient(name, library, title, transcoded) {
     if (seen.infos.length !== infos || jobCount() !== jobs || seen.playlists.length !== playlists) {
       throw new Error(`picking the track caused work: ${seen.infos.length - infos} PlaybackInfo, ${jobCount() - jobs} jobs, ${seen.playlists.length - playlists} playlists`);
     }
-    if (Number(sql("SELECT count(*) FROM subtitle_jobs WHERE kind = 'sup'")) - supJobs !== 1) throw new Error("the file was not copied out of the film by one job");
+    if (!external && Number(sql("SELECT count(*) FROM subtitle_jobs WHERE kind = 'sup'")) - supJobs !== 1) throw new Error("the file was not copied out of the film by one job");
     if (ffmpegRuns().some((r) => r.burns)) throw new Error(`a transcode draws a track the client draws: ${JSON.stringify(ffmpegRuns())}`);
     if (!transcoded && ffmpegRuns().length) throw new Error("ffmpeg ran for a direct play");
     noErrors(seen);
@@ -478,8 +480,10 @@ await pgsDrawnByTheClient("S3 direct play of PGS: jellyfin-web draws the track f
 // transcode: PGS with the viewer's default settings, and VobSub whatever they
 // are. It is read from the film by the transcode itself, so no subtitle job is
 // made, and no file is fetched. The bar is in the picture at the cue's time
-// after far seeks, which restart the job part-way in.
-function imageBurnedIn(name, library, title, codec, renderPgs = false) {
+// after far seeks, which restart the job part-way in. With external the track is
+// a file beside the film (a .sup, or a .sub and .idx pair), which a worker
+// reads itself; whether that takes a subtitle job is its own business.
+function imageBurnedIn(name, library, title, codec, renderPgs = false, external = false) {
   return scenario(name, async ({ page, seen }) => {
     if (renderPgs) await page.evaluate(() => localStorage.setItem("subtitlerenderpgs", "true"));
     const subtitleJobs = subtitleJobCount();
@@ -491,6 +495,7 @@ function imageBurnedIn(name, library, title, codec, renderPgs = false) {
       throw new Error(`tracks: ${JSON.stringify(first.source.MediaStreams.filter((s) => s.Type === "Subtitle"))}`);
     }
     if (first.source.TranscodingUrl) throw new Error(`transcoding for no subtitle: ${first.source.TranscodingUrl}`);
+    if (external && track.IsExternal !== true) throw new Error(`the file beside the film: ${JSON.stringify(track)}`);
 
     await chooseBurn(page, seen, 2);
     if (!ffmpegRuns().some((r) => r.burns)) throw new Error(`no ffmpeg draws the subtitle: ${JSON.stringify(ffmpegRuns())}`);
@@ -505,7 +510,7 @@ function imageBurnedIn(name, library, title, codec, renderPgs = false) {
     expectBright(await brightThirds(page, true), null);
     await waitFor("no ffmpeg to draw a subtitle with them off", async () => !ffmpegRuns().some((r) => r.burns), 20000);
     if (seen.subtitles.length) throw new Error("subtitle files were fetched while burning in");
-    if (subtitleJobCount() !== subtitleJobs) throw new Error(`${subtitleJobCount() - subtitleJobs} subtitle jobs for a track the transcode reads itself`);
+    if (!external && subtitleJobCount() !== subtitleJobs) throw new Error(`${subtitleJobCount() - subtitleJobs} subtitle jobs for a track the transcode reads itself`);
     noErrors(seen);
     await leave(page);
   });
@@ -517,6 +522,31 @@ await imageBurnedIn("POSIX burn-in of VobSub: the bar is in the picture at the r
 await imageBurnedIn("POSIX burn-in of VobSub for a viewer whose client draws PGS and VobSub: it is still burnt in", "Transcode", "Vobsub Render Film", "DVDSUB", true);
 await imageBurnedIn("S3 burn-in of VobSub: the bar is in the picture at the right time, after far seeks", "Cloud", "Vobsub Cloud Film", "DVDSUB");
 await imageBurnedIn("POSIX burn-in of DVB: the bar is in the picture at the right time, after far seeks", "Transcode", "Dvb Film", "DVBSUB");
+
+// The same with the track in a file beside the film. A .sup is the file a client
+// that draws PGS fetches, as for a track inside the film, and is drawn into a
+// transcode for any other; a .sub and .idx pair is one VobSub track that is
+// drawn into a transcode whatever the client says it draws, as Jellyfin 12.4 does
+// for files (compat/captures/external-image-subtitles-12.4.md).
+await pgsDrawnByTheClient("POSIX direct play of a .sup beside the film: jellyfin-web draws the track from the file where its cues say", "Transcode", "Sup Beside Film", false, true);
+await pgsDrawnByTheClient("POSIX transcode with a .sup beside the film: jellyfin-web draws the track from the file, and the transcode doesn't", "Transcode", "Sup Beside Transcode Film", true, true);
+await pgsDrawnByTheClient("S3 direct play of a .sup beside the film: jellyfin-web draws the track from the file where its cues say", "Cloud", "Sup Beside Cloud Film", false, true);
+await imageBurnedIn("POSIX burn-in of a .sup beside the film for a viewer whose client doesn't draw it: the bar is in the picture at the right time, after far seeks", "Transcode", "Sup Beside Film", "PGSSUB", false, true);
+await imageBurnedIn("S3 burn-in of a .sup beside the film for a viewer whose client doesn't draw it: the bar is in the picture at the right time, after far seeks", "Cloud", "Sup Beside Cloud Film", "PGSSUB", false, true);
+await imageBurnedIn("POSIX burn-in of a .sub and .idx pair beside the film: the bar is in the picture at the right time, after far seeks", "Transcode", "Idx Beside Film", "DVDSUB", false, true);
+await imageBurnedIn("POSIX burn-in of a .sub and .idx pair for a viewer whose client draws PGS and VobSub: it is still burnt in", "Transcode", "Idx Beside Render Film", "DVDSUB", true, true);
+await imageBurnedIn("S3 burn-in of a .sub and .idx pair beside the film: the bar is in the picture at the right time, after far seeks", "Cloud", "Idx Beside Cloud Film", "DVDSUB", false, true);
+
+// A .sub with no .idx and an .idx with no .sub are no track: the film is listed
+// and plays, with nothing in its subtitle menu.
+await scenario("a .sub without its .idx and an .idx without its .sub are not listed, and the film plays", async ({ page, seen }) => {
+  await play(page, "Transcode", "Orphan Beside Film");
+  const tracks = seen.infos.at(-1).source.MediaStreams.filter((s) => s.Type === "Subtitle");
+  if (tracks.length) throw new Error(`tracks: ${JSON.stringify(tracks)}`);
+  await advances(page, 2);
+  noErrors(seen);
+  await leave(page);
+});
 
 // Choosing a track to draw into the picture replaces the stream: PlaybackInfo,
 // DELETE, a new master. Returns the PlaybackInfo.

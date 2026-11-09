@@ -128,7 +128,7 @@ func objects(keys ...string) []store.Object {
 // listing is externalStreams as the scan uses it: the paths and indices it gave
 // in index order, the streams to keep for the next scan, and the counter.
 func listing(files []store.Object, old []map[string]any, own, counter int) (string, []map[string]any, int) {
-	streams, next := externalStreams(store.Object{Key: "Film/Film.mkv"}, files, old, own, counter)
+	streams, next := externalStreams(store.Object{Key: "Film/Film.mkv"}, sidecarSet{files: files}, old, own, counter)
 	slices.SortFunc(streams, func(a, b map[string]any) int { return indexOf(a) - indexOf(b) })
 	var out []string
 	for _, stream := range streams {
@@ -196,12 +196,12 @@ func TestUnreadableLastsUntilTheFileChanges(t *testing.T) {
 	files := objects("en")
 	_, streams, counter := listing(files, nil, 2, 0)
 	streams[0]["Unreadable"] = true
-	again, next := externalStreams(store.Object{Key: "Film/Film.mkv"}, files, streams, 2, counter)
+	again, next := externalStreams(store.Object{Key: "Film/Film.mkv"}, sidecarSet{files: files}, streams, 2, counter)
 	if again[0]["Unreadable"] != true || indexOf(again[0]) != 2 || next != counter {
 		t.Errorf("same file: %v", again)
 	}
 	edited := []store.Object{{Key: files[0].Key, Size: 11, ETag: files[0].ETag}}
-	changed, _ := externalStreams(store.Object{Key: "Film/Film.mkv"}, edited, streams, 2, counter)
+	changed, _ := externalStreams(store.Object{Key: "Film/Film.mkv"}, sidecarSet{files: edited}, streams, 2, counter)
 	if changed[0]["Unreadable"] != nil || indexOf(changed[0]) != 2 || changed[0]["Fingerprint"] == again[0]["Fingerprint"] {
 		t.Errorf("edited file: %v", changed)
 	}
@@ -223,7 +223,7 @@ func TestFilesAreNumberedWhereTheListedTracksEnd(t *testing.T) {
 		{"Index": 0, "Type": "Video"}, {"Index": 1, "Type": "Audio"},
 		{"Index": 2, "Type": "Attachment", "MimeType": "font/ttf"}, {"Index": 3, "Type": "Attachment", "MimeType": "font/ttf"},
 	}
-	external, next := externalStreams(store.Object{Key: "Film/Film.mkv"}, objects("en", "fr"), nil, nextIndex(film), 0)
+	external, next := externalStreams(store.Object{Key: "Film/Film.mkv"}, sidecarSet{files: objects("en", "fr")}, nil, nextIndex(film), 0)
 	if got := indexOf(external[0]); got != 2 || next != 4 {
 		t.Fatalf("first file %d, counter %d, want 2 and 4", got, next)
 	}

@@ -91,6 +91,31 @@ imagefilm "Vobsub Film (2071)" aac dvdsub
 imagefilm "Pgs Transcode Film (2072)" ac3 copy
 imagefilm "Dvb Film (2073)" aac dvbsub
 
+# Films whose image subtitles are files beside them, with the cues of the films
+# above: "Pgs Film"'s as a .sup, and as a .sub and .idx pair on a 720x480 canvas
+# (the bar in the same place of the picture). Stream 2 is the file, after the
+# film's video and audio. The orphan film has a .sub and an .idx that belong to
+# no pair, which are not tracks.
+(cd "$here" && go build -o "$tmp/vobsub" ./vobsub) || exit 1
+"$tmp/vobsub" "$tmp/image" 720 480 20,26,247,44,225,53 60,66,247,382,225,53 100,106,247,213,225,53 || exit 1
+imagebeside() { # name audio_codec kind (sup, vobsub or none)
+  local dir="$root/transcode/$1" video="$root/transcode/$1/$1.mkv"
+  mkdir -p "$dir"
+  [[ -f $video ]] || ffmpeg -nostdin -v error -y -f lavfi -i "color=c=black:size=640x360:rate=24:duration=120" \
+    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=120" -map 0:v -map 1:a -c:v libx264 -preset ultrafast -g 48 -c:a "$2" \
+    -metadata:s:a:0 language=eng "$video"
+  case $3 in
+    sup) cp "$tmp/image.sup" "$dir/$1.en.sup" ;;
+    vobsub) cp "$tmp/image.sub" "$dir/$1.en.sub"; cp "$tmp/image.idx" "$dir/$1.en.idx" ;;
+    none) cp "$tmp/image.sub" "$dir/$1.en.sub"; cp "$tmp/image.idx" "$dir/$1.fr.idx" ;;
+  esac
+}
+imagebeside "Sup Beside Film (2120)" aac sup
+# AC3 makes Chrome transcode it whatever the subtitle.
+imagebeside "Sup Beside Transcode Film (2121)" ac3 sup
+imagebeside "Idx Beside Film (2122)" aac vobsub
+imagebeside "Orphan Beside Film (2127)" aac none
+
 # Films whose subtitles are files beside them, named as Jellyfin reads them:
 # an English SubRip and a Japanese ASS file, which come out as streams 2 and 3.
 # Direct plays with AAC, transcodes with AC3, and the black one burn-in shows

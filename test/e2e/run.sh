@@ -99,6 +99,11 @@ done
 # The VobSub film again, for the scenario that burns it in for a viewer who draws PGS:
 # the segments of a spec are kept, so it needs a film of its own.
 link "$t/Vobsub Film (2071)/Vobsub Film (2071).mkv" "$t/Vobsub Render Film (2076)/Vobsub Render Film (2076).mkv"
+# And the VobSub pair beside a film, the same.
+link "$t/Idx Beside Film (2122)/Idx Beside Film (2122).mkv" "$t/Idx Beside Render Film (2124)/Idx Beside Render Film (2124).mkv"
+for ext in en.sub en.idx; do
+  link "$t/Idx Beside Film (2122)/Idx Beside Film (2122).$ext" "$t/Idx Beside Render Film (2124)/Idx Beside Render Film (2124).$ext"
+done
 # The failure scenario cuts this copy short, so it is a copy and not a link.
 mkdir -p "$work/media/$t/Xi Film (2031)" && cp "$zeta" "$work/media/$t/Xi Film (2031)/Xi Film (2031).mkv" || exit 1
 # Two more of Zeta and of its interlaced twin, for the scenario that checks how far a
@@ -165,6 +170,13 @@ done
 # And two with image tracks, a PGS one and a VobSub one.
 "$work/putfile" "s3://e2e/media?$s3" "Pgs Cloud Film (2074)/Pgs Cloud Film (2074).mkv" "$sub/Pgs Film (2070)/Pgs Film (2070).mkv" || exit 1
 "$work/putfile" "s3://e2e/media?$s3" "Vobsub Cloud Film (2075)/Vobsub Cloud Film (2075).mkv" "$sub/Vobsub Film (2071)/Vobsub Film (2071).mkv" || exit 1
+# And the same two with their image subtitles in files beside them.
+for ext in mkv en.sup; do
+  "$work/putfile" "s3://e2e/media?$s3" "Sup Beside Cloud Film (2125)/Sup Beside Cloud Film (2125).$ext" "$sub/Sup Beside Film (2120)/Sup Beside Film (2120).$ext" || exit 1
+done
+for ext in mkv en.sub en.idx; do
+  "$work/putfile" "s3://e2e/media?$s3" "Idx Beside Cloud Film (2126)/Idx Beside Cloud Film (2126).$ext" "$sub/Idx Beside Film (2122)/Idx Beside Film (2122).$ext" || exit 1
+done
 
 free() { python3 -I -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])'; }
 export JELLYSCALE_DATABASE_URL="postgres://postgres:e2e@127.0.0.1:$port/postgres" JELLYSCALE_ADMIN_PASSWORD=e2e-pass

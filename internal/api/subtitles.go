@@ -87,6 +87,14 @@ func (s *Server) subtitleStream(w http.ResponseWriter, r *http.Request) {
 	// bad request.
 	switch {
 	case sup && media.SubtitleCodec(index) == "PGSSUB":
+		if file, external := subtitles.External(source, index); external {
+			if file.Unreadable {
+				http.NotFound(w, r) // Hidden, as an unreadable text file is.
+				return
+			}
+			s.externalSup(w, r, source, file)
+			return
+		}
 		s.supStream(w, r, itemID, source, index)
 		return
 	case sup && media.Burnable(index), !playlist && media.ImageSubtitle(index):
@@ -172,6 +180,34 @@ func (s *Server) supStream(w http.ResponseWriter, r *http.Request, itemID string
 		return
 	}
 	s.serveSource(w, r, assets, items.Source{Key: key, Size: objects[i].Size, ETag: objects[i].ETag})
+}
+
+// externalSup sends a .sup file beside the film as it is, from the media store.
+// It is a few hundred kilobytes, and no worker has anything to do to it.
+func (s *Server) externalSup(w http.ResponseWriter, r *http.Request, source items.Source, file subtitles.ExternalStream) {
+	media, err := s.stores.Open(source.StoreURI)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	// The size and ETag as the store has them now, not as the last scan listed
+	// them: a file replaced since would be cut or padded at its old size.
+	// A store lists directories, not one key; a film at the root lists the root.
+	dir := path.Dir(file.Path)
+	if dir == "." {
+		dir = ""
+	}
+	objects, err := media.List(r.Context(), dir)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	i := slices.IndexFunc(objects, func(o store.Object) bool { return o.Key == file.Path })
+	if i < 0 {
+		http.NotFound(w, r)
+		return
+	}
+	s.serveSource(w, r, media, items.Source{Key: file.Path, Size: objects[i].Size, ETag: objects[i].ETag})
 }
 
 // ticksPerSecond is the unit of every position in the API.
@@ -441,6 +477,10 @@ func (s *Server) deliverable(ctx context.Context, itemID string, source map[stri
 		}
 		index := int(number(stream["Index"]))
 		switch codec, _ := stream["Codec"].(string); {
+		case stream["IsExternal"] == true:
+			// A subtitle file is read as it is, or drawn by a transcode, and
+			// needs nothing in the asset store.
+			checked[index] = stream["IsTextSubtitleStream"] != true || subtitles.Exists(ctx, assets, subtitles.Key(stored, index))
 		case codec == "PGSSUB":
 			checked[index] = subtitles.Exists(ctx, assets, subtitles.SupKey(stored, index))
 		case stream["IsImageSubtitleStream"] == true:

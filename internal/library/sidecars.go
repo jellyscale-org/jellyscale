@@ -22,12 +22,14 @@ import (
 
 // subtitleCodecs maps the extensions of the subtitle files read beside a film
 // to the codec name Jellyfin lists them with.
-var subtitleCodecs = map[string]string{".srt": "subrip", ".ass": "ass", ".ssa": "ass", ".vtt": "webvtt"}
+// A .sub is not here: it is half of a VobSub track, listed by its .idx.
+var subtitleCodecs = map[string]string{".srt": "subrip", ".ass": "ass", ".ssa": "ass", ".vtt": "webvtt", ".sup": "PGSSUB", ".idx": "DVDSUB"}
 
 // IsSubtitleFile reports whether key is a subtitle file a scan reads.
 func IsSubtitleFile(key string) bool {
-	_, ok := subtitleCodecs[strings.ToLower(path.Ext(key))]
-	return ok
+	ext := strings.ToLower(path.Ext(key))
+	_, ok := subtitleCodecs[ext]
+	return ok || ext == ".sub"
 }
 
 // subtitleName is what a subtitle file's name says about it, in the way
@@ -159,23 +161,46 @@ func (n subtitleName) displayTitle() string {
 // is the order new tracks are numbered in, and a fingerprint of all of them. A
 // scan compares the fingerprint to the last one to see that a file was added,
 // changed or removed without probing the film again.
+//
+// A VobSub track is two files. It is listed as its .idx, with the .sub in
+// partners; an .idx with no .sub, or a .sub with no .idx, is not a track.
+// describe fills in what the image files say.
 type sidecarSet struct {
 	files       []store.Object
 	fingerprint string
+	partners    map[string]store.Object // The .sub of an .idx, by the .idx's key.
+	images      map[string]imageFile    // By key, for the files describe could read.
 }
 
 func sidecarsOf(video string, candidates []store.Object) sidecarSet {
-	var found sidecarSet
+	found := sidecarSet{partners: map[string]store.Object{}}
+	subs := map[string]store.Object{} // By key without the extension.
 	for _, file := range candidates {
-		if _, ok := parseSubtitleName(video, file.Key); ok {
-			found.files = append(found.files, file)
+		if strings.EqualFold(path.Ext(file.Key), ".sub") {
+			subs[strings.TrimSuffix(file.Key, path.Ext(file.Key))] = file
 		}
+	}
+	for _, file := range candidates {
+		if _, ok := parseSubtitleName(video, file.Key); !ok {
+			continue
+		}
+		if strings.EqualFold(path.Ext(file.Key), ".idx") {
+			sub, paired := subs[strings.TrimSuffix(file.Key, path.Ext(file.Key))]
+			if !paired {
+				continue
+			}
+			found.partners[file.Key] = sub
+		}
+		found.files = append(found.files, file)
 	}
 	slices.SortFunc(found.files, func(a, b store.Object) int { return strings.Compare(strings.ToLower(a.Key), strings.ToLower(b.Key)) })
 	if len(found.files) > 0 {
 		hash := sha256.New()
 		for _, file := range found.files {
 			fmt.Fprintf(hash, "%s\n", fingerprintOf(file))
+			if sub, ok := found.partners[file.Key]; ok {
+				fmt.Fprintf(hash, "%s\n", fingerprintOf(sub))
+			}
 		}
 		found.fingerprint = hex.EncodeToString(hash.Sum(nil))
 	}
@@ -196,7 +221,7 @@ func fingerprintOf(file store.Object) string {
 // counter, which only grows, so the index of a removed file is never given
 // again. floor is the number of the film's own streams, which the files come
 // after, and counter the last next. next is the counter to store.
-func externalStreams(video store.Object, files []store.Object, old []map[string]any, floor, counter int) (streams []map[string]any, next int) {
+func externalStreams(video store.Object, set sidecarSet, old []map[string]any, floor, counter int) (streams []map[string]any, next int) {
 	before := map[string]map[string]any{}
 	for _, stream := range old {
 		if path, ok := stream["Path"].(string); ok && stream["IsExternal"] == true {
@@ -204,9 +229,16 @@ func externalStreams(video store.Object, files []store.Object, old []map[string]
 		}
 	}
 	next = max(counter, floor, nextIndex(old))
-	for _, file := range files {
+	for _, file := range set.files {
 		name, _ := parseSubtitleName(video.Key, file.Key)
+		image, isImage := set.images[file.Key]
+		if (name.Codec == "PGSSUB" || name.Codec == "DVDSUB") && !isImage {
+			continue // Unreadable for good (describe), or not yet.
+		}
 		fingerprint := fingerprintOf(file)
+		if sub, paired := set.partners[file.Key]; paired {
+			fingerprint = fingerprintOf(store.Object{Key: file.Key, Size: file.Size + sub.Size, ETag: file.ETag + sub.ETag})
+		}
 		index, unreadable := -1, false
 		// A film that was replaced by one with more streams of its own can
 		// have taken the index; the file is then numbered again.
@@ -222,6 +254,20 @@ func externalStreams(video store.Object, files []store.Object, old []map[string]
 			"IsDefault": name.Default, "IsForced": name.Forced, "IsHearingImpaired": name.Hears,
 			"IsExternal": true, "IsTextSubtitleStream": true, "SupportsExternalStream": true,
 			"Path": file.Key, "Fingerprint": fingerprint, "DisplayTitle": name.displayTitle(),
+		}
+		if isImage {
+			stream["IsTextSubtitleStream"], stream["IsImageSubtitleStream"] = false, true
+			stream["FileSize"], stream["FileETag"] = file.Size, file.ETag
+			if image.Width > 0 && image.Height > 0 {
+				stream["Width"], stream["Height"] = image.Width, image.Height
+			}
+			if sub, paired := set.partners[file.Key]; paired {
+				stream["SubPath"], stream["SubSize"] = sub.Key, sub.Size
+				// A pair's language is the one in its .idx, as Jellyfin has it, and
+				// not the file name's.
+				name.Language, name.LanguageName = image.Language, image.LanguageName
+				stream["DisplayTitle"] = name.displayTitle()
+			}
 		}
 		if name.Language != "" {
 			stream["Language"] = name.Language

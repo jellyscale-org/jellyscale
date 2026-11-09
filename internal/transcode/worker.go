@@ -26,6 +26,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"jellyscale/internal/items"
+	"jellyscale/internal/library"
 	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
 	"jellyscale/internal/subtitles"
@@ -305,6 +306,75 @@ func (w *Worker) run(ctx context.Context, job claimed) {
 	Notify(finish, w.Pool, segmentHint(job.Hash)) // Waiters should see the new state now.
 }
 
+// fetchImageFile copies the PGS file, or the .idx and .sub of a VobSub pair,
+// out of the media store into dir and gives the path ffmpeg opens. The pair
+// keeps one name, which is how ffmpeg finds the .sub beside the .idx.
+func fetchImageFile(ctx context.Context, media store.Store, dir string, track playback.Stream) (string, error) {
+	files := map[string]string{filepath.Join(dir, "track.sup"): track.Path}
+	input := filepath.Join(dir, "track.sup")
+	if track.SubPath != "" {
+		input = filepath.Join(dir, "track.idx")
+		files = map[string]string{input: track.Path, filepath.Join(dir, "track.sub"): track.SubPath}
+	}
+	for local, key := range files {
+		body, err := media.Open(ctx, key, 0)
+		if err != nil {
+			return "", err
+		}
+		err = writeFile(local, body)
+		body.Close()
+		if err != nil {
+			return "", err
+		}
+	}
+	return input, nil
+}
+
+// checkImageFile reads the copied image track on its own before the burn, so a
+// file ffmpeg refuses, or holds no picture at all (a .sub of noise reads as
+// nothing and would stall the burn), is found out at once. Such a file is
+// hidden from the film until it changes, as an unreadable text file is
+// (library.MarkUnreadable). Only ffprobe's own answer counts: it exited with
+// an error status, or read the file and found no packets. A probe that was
+// killed by a signal, timed out or could not start says nothing about the file,
+// so the burn goes on and ffmpeg judges it.
+func (w *Worker) checkImageFile(ctx context.Context, job claimed, track playback.Stream, log *slog.Logger) error {
+	probed, stop := context.WithTimeout(ctx, 10*time.Second)
+	defer stop()
+	out, err := ffprobe(probed, "-count_packets", "-show_entries", "stream=nb_read_packets", "-of", "csv=p=0", track.File)
+	var exited *exec.ExitError
+	switch {
+	case err == nil:
+		if packets, _ := strconv.Atoi(strings.TrimSpace(string(out))); packets != 0 {
+			return nil
+		}
+		err = errors.New("it holds no subtitle packets")
+	case errors.As(err, &exited) && exited.ExitCode() > 0 && probed.Err() == nil:
+	default:
+		return nil
+	}
+	log.Warn("subtitle file not listed: it can't be read", "file", track.Path, "error", err)
+	// Not the job's context, which ends with the job.
+	marked, stopMark := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer stopMark()
+	if markErr := library.MarkUnreadable(marked, w.Pool, job.Spec.Item, *job.Spec.Subtitle, track.Fingerprint); markErr != nil {
+		err = errors.Join(err, markErr)
+	}
+	return err
+}
+
+func writeFile(path string, body io.Reader) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(file, body); err != nil {
+		file.Close()
+		return err
+	}
+	return file.Close()
+}
+
 // errInterrupted marks a job that stopped before its work was done, because
 // the worker was going away or no longer owned the job.
 var errInterrupted = errors.New("interrupted")
@@ -379,6 +449,18 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		return err
 	}
 	defer os.RemoveAll(dir)
+	// An image track beside the film is copied to the scratch directory, where
+	// ffmpeg reads it as a second input.
+	if image != nil && image.Fingerprint != "" {
+		local := *image
+		if local.File, err = fetchImageFile(ctx, media, dir, local); err != nil {
+			return fmt.Errorf("subtitle track %d: %w", *job.Spec.Subtitle, err)
+		}
+		image = &local
+		if err := w.checkImageFile(ctx, job, local, log); err != nil {
+			return fmt.Errorf("subtitle track %d: %w", *job.Spec.Subtitle, err)
+		}
+	}
 	// Only ASS and SSA name fonts; the others are drawn in the default one.
 	if job.Spec.Subtitle != nil && (film.SubtitleCodec(*job.Spec.Subtitle) == "ass" || film.SubtitleCodec(*job.Spec.Subtitle) == "ssa") {
 		// The segments are kept under a hash that doesn't name the fonts, so a
