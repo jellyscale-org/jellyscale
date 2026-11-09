@@ -1273,6 +1273,26 @@
       ],
       "source": "JS-024 post-task review (2026-11-08); the user chose to land JS-024 and fix this next",
       "notes": "Found reading the helper slot guard after the build: freeSlots is cluster-wide, so helpers keep one slot free for the whole cluster, not per worker. Priority 2 puts it ahead of JS-025. Built 2026-11-08: a viewer's job, under the cluster-wide helpers lock, cancels one helper when no slot is free (a queued one first, else the one furthest ahead, only on a live worker), then sends a preempt hint after its transaction commits; a running helper beats on that hint, and once as it subscribes, so it gives its slot back at once rather than at its next heartbeat. Measured: with a paused helper, a 10 s heartbeat and the viewer arriving just after the helper beat, the viewer's first segment took 5.75 s, the same as on an idle cluster; without the hint it was refused. transcodeHelpers: false on a worker turns its helpers off. Backlog: every viewer's ensure takes the cluster-wide helpers lock; transcodeHelpers is per worker, so mixed settings are possible; no check drives the config key through to the worker; a helper preempted during its pre-ffmpeg setup (subtitle extraction, fonts) sees the cancel only after ffmpeg starts; when queued viewers already exceed the free slots, a new viewer still cancels a helper whose slot goes to an earlier viewer; the preempt hint names no job, so every running helper beats once per preemption; operators see preemption only in the job's error and the log."
+    },
+    {
+      "id": "JS-073",
+      "phase": "P3",
+      "title": "Every PR plays an HDR copy in a real browser and copies a 4K TrueHD film",
+      "description": "JS-025's HDR copy is checked in a browser only with E2E_HEVC=1, which CI's Chrome cannot use, and its 4K TrueHD criterion rests on one manual measurement. CI's Chrome plays AV1, so an AV1 HDR10 copy can be played there; and a 4K copy is cheap enough to time on CI's two cores.",
+      "acceptanceCriteria": [
+        "An e2e scenario plays an AV1 HDR10 film with audio the browser does not play from a copy in CI's Chrome: master VIDEO-RANGE=PQ, ffmpeg copying the video, currentTime advancing through a seek",
+        "An integration test copies a synthetic 4K HDR10 HEVC film with 5.1 TrueHD through the worker's own ffmpeg and checks it runs well above real time on two CPUs, with hvc1, PQ kept and stereo AAC",
+        "An integration test copies AV1 HDR10 through the worker's own ffmpeg and checks the init segment keeps the PQ transfer and the master's range",
+        "Both run in CI without E2E_HEVC and without a GPU"
+      ],
+      "priority": 3,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-025"
+      ],
+      "source": "JS-025 post-task review (2026-11-08)",
+      "notes": "JS-025's reviewers found the HDR copy path untested in CI's browser and the 4K TrueHD criterion unchecked. The lead measured 30 s of 4K HDR10 HEVC with TrueHD copied in 0.41 s on 4 CPUs, so a timing bar has a wide margin even on two cores. Priority 3, ahead of JS-026, because it closes a criterion of a done task."
     }
   ]
 }
