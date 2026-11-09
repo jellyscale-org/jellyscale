@@ -1285,14 +1285,14 @@
         "An integration test copies AV1 HDR10 through the worker's own ffmpeg and checks the init segment keeps the PQ transfer and the master's range",
         "Both run in CI without E2E_HEVC and without a GPU"
       ],
-      "priority": 3,
-      "status": "todo",
-      "passes": false,
+      "priority": null,
+      "status": "done",
+      "passes": true,
       "dependsOn": [
         "JS-025"
       ],
       "source": "JS-025 post-task review (2026-11-08)",
-      "notes": "JS-025's reviewers found the HDR copy path untested in CI's browser and the 4K TrueHD criterion unchecked. The lead measured 30 s of 4K HDR10 HEVC with TrueHD copied in 0.41 s on 4 CPUs, so a timing bar has a wide margin even on two cores. Priority 3, ahead of JS-026, because it closes a criterion of a done task."
+      "notes": "JS-025's reviewers found the HDR copy path untested in CI's browser and the 4K TrueHD criterion unchecked. The lead measured 30 s of 4K HDR10 HEVC with TrueHD copied in 0.41 s on 4 CPUs, so a timing bar has a wide margin even on two cores. Priority 3, ahead of JS-026, because it closes a criterion of a done task. Built 2026-11-09, tests only: an e2e scenario plays an AV1 HDR10 copy in CI's Chrome (PQ master, ffmpeg copying, a seek to an unbuffered point); a 4K HDR10 HEVC film with 5.1 TrueHD copies at 55x real time on two pinned CPUs (bar 10x); an AV1 HDR10 copy keeps PQ in the init segment's colr box. QA's warm-repeat hunt caught the scenario assuming playback starts at 0 (a rerun resumes); the lead made it seek to an unbuffered point (6 of 6). The first run used a stale copy of the workflow without the tier gate; resumed from the repository's build.js."
     }
   ]
 }

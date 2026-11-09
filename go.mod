@@ -14,6 +14,7 @@ require (
 	github.com/prometheus/client_model v0.6.3
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d
 	golang.org/x/crypto v0.58.0
+	golang.org/x/sys v0.49.0
 	golang.org/x/text v0.43.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -45,7 +46,6 @@ require (
 	github.com/prometheus/procfs v0.22.0 // indirect
 	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
-	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/term v0.47.0 // indirect
 	golang.org/x/tools v0.51.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect

@@ -216,6 +216,17 @@ hdr_film() { # name base [hdr10plus] [dv=profile.bl_compatibility_id[.el]]
   mkdir -p "$(dirname "$file")"
   "$dovi" "$file" 20 "${@:2}" || { echo "could not make $file" >&2; exit 1; }
 }
+# AV1 in HDR10 with AC3 audio in Matroska, in the Transcode library: CI's Chrome
+# plays AV1 but not AC3, so the video is copied with its PQ range and only the
+# audio is re-encoded (JS-073; with HEVC, which CI's Chrome does not play, this
+# copy is checked only with E2E_HEVC=1). 40 s, a keyframe every 2 s, so a seek
+# lands between keyframes of a copy.
+av1_hdr="$work/media/transcode/Kaf Film (2088)/Kaf Film (2088).mkv"
+if [[ ! -f $av1_hdr ]]; then
+  mkdir -p "$(dirname "$av1_hdr")" "$work/media/sources"
+  "$dovi" "$work/media/sources/av1-hdr10.mp4" 40 av1 || { echo "could not make $av1_hdr" >&2; exit 1; }
+  ffmpeg -nostdin -v error -y -i "$work/media/sources/av1-hdr10.mp4" -map 0:v -map 0:a -c:v copy -c:a ac3 -metadata:s:a:0 language=eng "$av1_hdr" || { echo "could not make $av1_hdr" >&2; exit 1; }
+fi
 hdr_film "Plain Sdr Film (1990)" sdr
 hdr_film "Plain Pq Film (1991)" pq
 hdr_film "Plain Hlg Film (1992)" hlg
