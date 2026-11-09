@@ -761,7 +761,8 @@ func TestPlaybackInfoOffersACopyOfHEVCAndAV1(t *testing.T) {
 		{"av1", "av1", "Main", `"Level":8,"BitDepth":10`, "chrome", true, "AudioCodecNotSupported", "av01.0.08M.10"},
 		{"hevc for a client without it", "hevc", "Main", `"Level":120,"BitDepth":8`, "chrome", false, "VideoCodecNotSupported,AudioCodecNotSupported", ""},
 		{"hevc, hls lists h264 only", "hevc", "Main", `"Level":120,"BitDepth":8`, "hevc-direct-only", false, "VideoCodecNotSupported,AudioCodecNotSupported", ""},
-		{"hevc hdr10", "hevc", "Main 10", `"Level":153,"BitDepth":10,"VideoRangeType":"HDR10"`, "hevc-client", false, "AudioCodecNotSupported", ""},
+		// HDR10 is copied for a client whose profile lists it (JS-025).
+		{"hevc hdr10", "hevc", "Main 10", `"Level":153,"BitDepth":10,"VideoRangeType":"HDR10"`, "hevc-client", true, "AudioCodecNotSupported", "hvc1.2.4.L153.B0"},
 		{"hevc rext", "hevc", "Rext", `"Level":120,"BitDepth":12`, "hevc-client", false, "AudioCodecNotSupported,VideoProfileNotSupported", ""},
 		{"av1 with no bit depth stored", "av1", "Main", `"Level":8`, "chrome", false, "AudioCodecNotSupported,VideoProfileNotSupported", ""},
 	} {
