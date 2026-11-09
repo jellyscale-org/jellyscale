@@ -169,10 +169,13 @@ const locked = `\n\n## Locked checks\n${checkList(spec)}\n\nThese files are lock
 // lockBase is the tree the locked checks must stay as: the spec's, or the
 // lead's correction of them after a dispute.
 let lockBase = specTree
+// resolved.unlock names files the lead found locked by mistake (in the spec's
+// tree only by accident): the implementer may change them.
+const unlocked = resolved?.unlock ?? []
 const lockedChanged = async (head, label) => {
   const result = await agent(`Run \`git diff --name-only ${lockBase} ${head} -- ${lockedFiles.map((f) => `'${f}'`).join(' ')}\` in the repository root and return the files it lists. Do nothing else.`,
     { label, phase: 'Build', schema: LOCKED, model: 'haiku', effort: 'low' })
-  return result ? result.changed : ['(could not check)']
+  return result ? result.changed.filter((f) => !unlocked.includes(f)) : ['(could not check)']
 }
 
 // ---- Build.
@@ -194,7 +197,7 @@ if (resolved) {
   // tiers unrun: it finishes now, on the corrected checks. (JS-025 skipped this,
   // and a stale test reached the merge queue.)
   if (built.disputes.length && !touched.length) {
-    const finished = await agent(`${read('implementer')}${brief}${designNotes}${locked}\n\n## Your dispute was settled\nYou stopped on a dispute. The lead settled it and corrected these files: ${resolved.files.join(', ')}. ${resolved.note}\n\nYour partial build is in the working tree. Finish the task from it and run the tiers. Don't commit.`, { label: 'build after the resolved dispute', phase: 'Build', ...role('implementer'), schema: IMPLEMENTED })
+    const finished = await agent(`${read('implementer')}${brief}${designNotes}${locked}\n\n## Your dispute was settled\nYou stopped on a dispute. The lead settled it and corrected these files: ${resolved.files.join(', ')}. ${resolved.note}\n\n${unlocked.length ? `These files are not locked, whatever the list above says: ${unlocked.join(', ')}. ` : ''}Your partial build is in the working tree. Finish the task from it and run the tiers. Don't commit.`, { label: 'build after the resolved dispute', phase: 'Build', ...role('implementer'), schema: IMPLEMENTED })
     if (!finished) throw new Error('implementer returned nothing')
     built = finished
     head = await snapshot('snapshot of the finished build', 'Build')
