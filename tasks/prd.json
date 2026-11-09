@@ -1305,14 +1305,14 @@
         "Played and sought in jellyfin-web in CI's Chrome as JS-026's scenario does",
         "docs/transcoding.md and DOMAINS 48 state the reading cost of a copy of both, and docs/status.md drops the note that it opens the file twice"
       ],
-      "priority": 5,
-      "status": "todo",
-      "passes": false,
+      "priority": null,
+      "status": "done",
+      "passes": true,
       "dependsOn": [
         "JS-026"
       ],
       "source": "JS-026 post-task review (2026-11-09)",
-      "notes": "JS-026's design reviewer ran a scratch experiment: one input at the copy's flags gave identical fragments to two inputs for H.264 with AC3 and E-AC3 in Matroska (13 of 13) and for AAC in MP4 after the first fragment. The implementer did not take it because JS-026's locked e2e helper reads the audio map from the second input (-map 1:N); this task changes that helper. Priority 5, right after JS-026: copies are the common path for a remux library, and halving their reads helps the S3 and NAS costs every copy-both viewer incurs."
+      "notes": "JS-026's design reviewer ran a scratch experiment: one input at the copy's flags gave identical fragments to two inputs for H.264 with AC3 and E-AC3 in Matroska (13 of 13) and for AAC in MP4 after the first fragment. The implementer did not take it because JS-026's locked e2e helper reads the audio map from the second input (-map 1:N); this task changes that helper. Priority 5, right after JS-026: copies are the common path for a remux library, and halving their reads helps the S3 and NAS costs every copy-both viewer incurs. Built 2026-11-09: CopyCommand maps a copied audio track from the one input (-map 0:N); a copy with re-encoded audio keeps its two inputs. TestACopyOfBothStreamsFromS3ReadsTheFilmOnce measures the bytes the range proxy serves on SeaweedFS and Garage: 2.00 times the film before, once after (QA put the old command back and saw it fail). Every splice case of JS-026 still passes, AAC in MP4 byte for byte, under ffmpeg 9.0.2 and 6.1.1; the transcode e2e gate passed 60 of 60. The first Verify round sent the task back only because one integration shard had not finished when the tier gate looked; it passed."
     }
   ]
 }

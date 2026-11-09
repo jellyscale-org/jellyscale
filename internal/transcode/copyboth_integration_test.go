@@ -12,10 +12,12 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"jellyscale/internal/playback"
+	"jellyscale/internal/store"
 )
 
 // copyBothSegments runs a copy of both streams from segment start to the end
@@ -94,6 +96,15 @@ func TestCopyOfBothSplicesTheSameSegments(t *testing.T) {
 			count := layout.Count()
 			if count < 10 {
 				t.Fatalf("%d segments, want enough to restart at 1, 4, 8 and the last", count)
+			}
+
+			// The film is opened once: the audio is the source's own packets and
+			// needs neither a second input nor a grid of its own.
+			if inputs := strings.Count(" "+strings.Join(args, " "), " -i "); inputs != 1 {
+				t.Errorf("%d inputs, want 1: %v", inputs, args)
+			}
+			if !slices.Contains(args, "0:"+fmt.Sprint(spec.AudioIndex)) || slices.Contains(args, "1:"+fmt.Sprint(spec.AudioIndex)) {
+				t.Errorf("the audio is not mapped from the one input: %v", args)
 			}
 
 			// Neither stream goes through an encoder.
@@ -229,5 +240,72 @@ func TestCopiedBothStreamsServeFromAnySegmentAsTheSourcesPackets(t *testing.T) {
 	at := slices.Index(sourcePackets, got[0])
 	if at < 0 || at+len(got) > len(sourcePackets) || !slices.Equal(got, sourcePackets[at:at+len(got)]) {
 		t.Fatalf("the stored audio is not a run of the source's packets (%d packets, starting at source packet %d)", len(got), at)
+	}
+}
+
+// countingStore counts the bytes read from its objects.
+type countingStore struct {
+	store.Store
+	read atomic.Int64
+}
+
+type countingBody struct {
+	io.ReadCloser
+	read *atomic.Int64
+}
+
+func (b countingBody) Read(p []byte) (int, error) {
+	n, err := b.ReadCloser.Read(p)
+	b.read.Add(int64(n))
+	return n, err
+}
+
+func (c *countingStore) Open(ctx context.Context, key string, offset int64) (io.ReadCloser, error) {
+	body, err := c.Store.Open(ctx, key, offset)
+	if err != nil {
+		return nil, err
+	}
+	return countingBody{body, &c.read}, nil
+}
+
+// A job that copies both streams from S3 reads the film once: the worker's
+// loopback server for the object serves one stream of its bytes, where two
+// inputs doubled it (the film's size twice per full watch, DOMAINS 48). Real
+// ffmpeg, a whole job from segment 0.
+func TestACopyOfBothStreamsFromS3ReadsTheFilmOnce(t *testing.T) {
+	media, segments := s3Segments(t), s3Segments(t)
+	for name := range segments {
+		t.Run(name, func(t *testing.T) {
+			whole, err := os.ReadFile(filepath.Join(film(t), "film.mkv"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := media[name].Put(context.Background(), "film.mkv", bytes.NewReader(whole)); err != nil {
+				t.Fatal(err)
+			}
+			counted := &countingStore{Store: media[name]}
+			r := newRig(t, segments[name])
+			r.copied(t, "film.mkv")
+			r.spec.AudioCopy, r.spec.AudioBitrate = "aac", 128_000
+			r.hash = r.spec.Hash()
+			r.worker(t, func(w *Worker) {
+				w.Media = func(string) (store.Store, error) { return counted, nil }
+			})
+			j := r.jobs(t)
+			for n := range 9 {
+				if body, err := r.fetch(t, j, psid(0), n); err != nil || !isMP4Segment(body) {
+					t.Fatalf("segment %d: %d bytes, %v", n, len(body), err)
+				}
+			}
+			waitFor(t, "the job to end", 30*time.Second, func() bool {
+				return r.count(t, "SELECT count(*) FROM transcode_jobs WHERE state IN ('queued', 'running')") == 0
+			})
+			// A little over the film's size is the container's index and a probe
+			// of its head; two reads of it are about twice.
+			size := int64(len(whole))
+			if got := counted.read.Load(); got < size*9/10 || got > size*5/4 {
+				t.Errorf("%d bytes read of a %d byte film (%.2f times), want one read of it", got, size, float64(got)/float64(size))
+			}
+		})
 	}
 }
