@@ -18,7 +18,18 @@ import (
 // and the Dolby Vision brand. Profile 5 is only ever played as it is by a profile
 // that lists DOVI.
 func TestPlaybackInfoDecidesForDolbyVisionAsJellyfinDid(t *testing.T) {
-	raw, err := os.ReadFile("../../compat/captures/dolby-vision-12.4.json")
+	playbackInfoDecidesAsJellyfinDid(t, "dolby-vision-12.4.json", "mp4", "aac")
+}
+
+// The same for the plain HDR10, HLG and HDR10+ films of hdr-copy-12.4.json, which
+// need a transcode for their AC3 audio: a client that lists the range is sent the
+// file's own video (copied) and a master playlist that says PQ or HLG.
+func TestPlaybackInfoCopiesPlainHDRAsJellyfinDid(t *testing.T) {
+	playbackInfoDecidesAsJellyfinDid(t, "hdr-copy-12.4.json", "mkv", "ac3")
+}
+
+func playbackInfoDecidesAsJellyfinDid(t *testing.T, captureFile, container, audio string) {
+	raw, err := os.ReadFile("../../compat/captures/" + captureFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,14 +47,15 @@ func TestPlaybackInfoDecidesForDolbyVisionAsJellyfinDid(t *testing.T) {
 	if err := json.Unmarshal(raw, &capture); err != nil {
 		t.Fatal(err)
 	}
-	e, _, source := transcodeEnv(t, "hevc", "aac")
-	mustExec(t, e.pool, "UPDATE media_sources SET container = 'mp4', keyframes = '{0,30000000,70000000,130000000,180000000,260000000,310000000,390000000,440000000,520000000,570000000,650000000,700000000,780000000,830000000}', video_end = 900000000, size = 25000000")
+	e, _, source := transcodeEnv(t, "hevc", audio)
+	mustExec(t, e.pool, `UPDATE media_sources SET container = '`+container+`', keyframes = '{0,30000000,70000000,130000000,180000000,260000000,310000000,390000000,440000000,520000000,570000000,650000000,700000000,780000000,830000000}', video_end = 900000000, size = 25000000`)
 	mustExec(t, e.pool, "UPDATE items SET run_time_ticks = 900000000")
 	// jellyscale writes hvc1.1.6 for Main, where Jellyfin writes hvc1.1.4: the same stream.
 	main := strings.NewReplacer("hvc1.1.4.", "hvc1.1.6.")
 	for file, entry := range capture.Files {
 		mustExec(t, e.pool, `UPDATE media_sources SET streams = jsonb_build_array($1::jsonb,
-			'{"Index":1,"Type":"Audio","Codec":"aac","IsDefault":true,"Channels":2}'::jsonb, '{"Index":2,"Type":"Audio","Codec":"aac","Channels":2}'::jsonb)`, string(entry.Video))
+			jsonb_build_object('Index', 1, 'Type', 'Audio', 'Codec', $2::text, 'IsDefault', true, 'Channels', 2),
+			jsonb_build_object('Index', 2, 'Type', 'Audio', 'Codec', $2::text, 'Channels', 2))`, string(entry.Video), audio)
 		for name, want := range entry.PlaybackInfo {
 			t.Run(file+"/"+name, func(t *testing.T) {
 				body := map[string]any{"DeviceProfile": capture.DeviceProfiles[name], "MaxStreamingBitrate": 2147483647, "AudioStreamIndex": "1", "SubtitleStreamIndex": "-1", "MediaSourceId": source}
