@@ -221,23 +221,29 @@ func (s Source) VideoCodec() string {
 }
 
 // CanCopy reports whether Decide may offer the video as it is: a copyable
-// stream (canServeCopy) whose picture is SDR, or a Dolby Vision file whose base
-// layer is a picture of its own. Other HDR is not offered; it is re-encoded and
-// tone mapped (Source.ToneMap), and a source scanned before the range was
-// recorded counts as HDR until a rescan fills it in. That includes H.264, which
-// 10-bit PQ and HLG films can be.
+// stream (canServeCopy) whose picture is SDR, HDR10, HDR10+ or HLG, or a Dolby
+// Vision file whose base layer is a picture of its own. Whether the client can
+// show the range is the profile's say (Decide). A source scanned before the
+// range was recorded is re-encoded until a rescan fills it in, and so is
+// H.264 in HDR, which the api never offered a copy of.
 func (s Source) CanCopy() bool {
 	video, _ := s.video()
 	_, dolbyVision := video.baseLayer()
-	return s.canServeCopy() && (video.VideoRangeType == "SDR" || dolbyVision)
+	return s.canServeCopy() && (video.VideoRangeType == "SDR" || dolbyVision || (video.Codec != "h264" && plainHDR(video.VideoRangeType)))
+}
+
+// plainHDR is a range type of HDR that is no Dolby Vision.
+func plainHDR(rangeType string) bool {
+	return rangeType == "HDR10" || rangeType == "HDR10Plus" || rangeType == "HLG"
 }
 
 // canServeCopy is what a stream replica honours when a master URL asks for a
-// copy: a codec that is copied, keyframes that make a playlist, and for HEVC
-// and AV1 an SDR picture or a Dolby Vision base layer, whose master playlist can
-// name its profile (codecs). H.264 passes in any range, so an older api
-// replica's copy of an HDR film keeps playing during an upgrade; the new api
-// never offers one.
+// copy: a codec that is copied, keyframes that make a playlist, and a picture
+// whose range the master playlist can name: SDR, HDR10, HDR10+, HLG or a Dolby
+// Vision base layer. H.264 passes in any range, so an older api replica's copy
+// of an HDR film keeps playing during an upgrade. A stream replica of the
+// previous release refuses plain HDR, so a rolling update replaces the stream
+// replicas first (docs/running.md).
 func (s Source) canServeCopy() bool {
 	video, _ := s.video()
 	_, cut := s.copyLayout()
@@ -245,7 +251,7 @@ func (s Source) canServeCopy() bool {
 		return false
 	}
 	_, dolbyVision := video.baseLayer()
-	return video.Codec == "h264" || video.VideoRangeType == "SDR" || dolbyVision
+	return video.Codec == "h264" || video.VideoRangeType == "SDR" || dolbyVision || plainHDR(video.VideoRangeType)
 }
 
 // baseLayer is the range type of the picture a copy of a Dolby Vision file
@@ -280,11 +286,17 @@ func (s Source) copiedRange() (videoRange, supplemental string) {
 	video, _ := s.video()
 	base, dolbyVision := video.baseLayer()
 	if !dolbyVision {
-		return "SDR", ""
+		base = video.VideoRangeType
 	}
 	videoRange = map[string]string{"HDR10": "PQ", "HDR10Plus": "PQ", "HLG": "HLG"}[base]
 	if videoRange == "" {
 		videoRange = "SDR"
+	}
+	if !dolbyVision {
+		if base == "HDR10Plus" {
+			supplemental = s.codecs() + "/cdm4"
+		}
+		return videoRange, supplemental
 	}
 	brand := map[int]string{1: "db1p", 4: "db4h"}[video.DvBlSignalCompatibilityId]
 	switch {

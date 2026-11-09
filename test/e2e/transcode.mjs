@@ -634,15 +634,17 @@ await scenario("HEVC in Matroska with AC3 audio" + `: ${hevcPlays ? "copied (E2E
 // The expectation comes from the client's profile, which the runner states with
 // E2E_HEVC: a profile that plays HEVC HDR direct plays the MP4 film (its container
 // and audio fit), and every other case is the tone-mapped transcode. Resh's
-// Matroska and AC3 never direct play, and an HDR film is never copied, so it is a
-// transcode either way; its reasons are only checked for the profile without HEVC.
-for (const [title, name, reasons, directWithHevc] of [
-  ["Resh Film", "HDR10 HEVC in Matroska", "VideoCodecNotSupported,AudioCodecNotSupported", false],
-  ["Shin Film", "HLG HEVC in MP4", "VideoCodecNotSupported", true],
-  ["Tav Film", "HDR10 H.264 in Matroska", "VideoRangeTypeNotSupported", false],
+// Matroska and AC3 never direct play; where the browser plays HEVC (JS-025) the
+// video is copied as PQ with only the audio re-encoded, and where it does not it
+// is the tone-mapped transcode. Its reasons are only checked for the profile without HEVC.
+for (const [title, name, reasons, directWithHevc, copiedWithHevc] of [
+  ["Resh Film", "HDR10 HEVC in Matroska", "VideoCodecNotSupported,AudioCodecNotSupported", false, true],
+  ["Shin Film", "HLG HEVC in MP4", "VideoCodecNotSupported", true, false],
+  ["Tav Film", "HDR10 H.264 in Matroska", "VideoRangeTypeNotSupported", false, false],
 ]) {
   const direct = hevcPlays && directWithHevc;
-  await scenario(`${name} ${direct ? "direct plays (E2E_HEVC=1)" : "plays through a tone-mapped transcode"}`, async ({ page, seen }) => {
+  const copied = hevcPlays && copiedWithHevc;
+  await scenario(`${name} ${direct ? "direct plays (E2E_HEVC=1)" : copied ? "is copied as PQ, only the audio re-encoded (E2E_HEVC=1)" : "plays through a tone-mapped transcode"}`, async ({ page, seen }) => {
     await play(page, "Transcode", title);
     const source = seen.infos.at(-1).source;
     if (direct) {
@@ -653,6 +655,17 @@ for (const [title, name, reasons, directWithHevc] of [
       return;
     }
     const query = new URL(source.TranscodingUrl, base).searchParams;
+    if (copied) {
+      if (query.get("VideoCodec") !== "copy") throw new Error(`not a copy: ${source.TranscodingUrl}`);
+      const first = (await (await fetch(new URL(source.TranscodingUrl, base))).text()).split("\n").find((line) => line.startsWith("#EXT-X-STREAM-INF"));
+      if (!/VIDEO-RANGE=PQ,/.test(first) || !/CODECS="hvc1\.2\.4\.L\d+\.B0,/.test(first)) throw new Error(`master: ${first}`);
+      const runs = ffmpegRuns();
+      if (runs.length !== 1 || !runs[0].copy) throw new Error(`ffmpeg is not copying: ${runs.map((r) => r.line.slice(0, 400))}`);
+      await advances(page, 4);
+      noErrors(seen);
+      await leave(page);
+      return;
+    }
     if (query.get("VideoCodec") !== "h264") throw new Error(`not a re-encode: ${source.TranscodingUrl}`);
     if ((!hevcPlays || title === "Tav Film") && query.get("TranscodeReasons") !== reasons) throw new Error(`reasons ${query.get("TranscodeReasons")}, want ${reasons}`);
     const runs = ffmpegRuns();

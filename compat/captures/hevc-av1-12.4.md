@@ -34,7 +34,7 @@ ffmpeg for the copies (`FFmpeg.DirectStream-*` logs, command lines in the JSON):
 
 Master playlists of the copies: `CODECS="hvc1.1.4.L63.B0,mp4a.40.2"` (Main), `hvc1.2.4.L63.B0` (Main 10), `av01.0.01M.08`, `av01.0.01M.10`, with `VIDEO-RANGE=SDR` for SDR films. The level is ffprobe's number. jellyscale writes `hvc1.1.6.L63.B0` for Main (the compatibility flags of a Main stream written by x265 and by ffmpeg's muxer; both decode the same) and the same strings otherwise.
 
-The HDR films: Jellyfin offers the copy with `VIDEO-RANGE=PQ` and a second, tone-mapped H.264 variant. **jellyscale does not copy HDR**: its master playlist has one variant labelled SDR, so a copy would be washed out. HDR films direct-play if the profile allows it, else they are re-encoded to H.264 and tone-mapped to SDR (`compat/captures/hdr-tonemap-12.4.md`). This is where the decision differs from Jellyfin's.
+The HDR films: Jellyfin offers the copy with `VIDEO-RANGE=PQ` and a second, tone-mapped H.264 variant. jellyscale copies HDR10 too since JS-025, with a master playlist that says PQ (`compat/captures/hdr-copy-12.4.md`). Before JS-025 it re-encoded every HDR film to H.264 tone-mapped to SDR, which was where the decision differed from Jellyfin's; a client that cannot show HDR still gets that (`compat/captures/hdr-tonemap-12.4.md`).
 
 ## Chromium
 

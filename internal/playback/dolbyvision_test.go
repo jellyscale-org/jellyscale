@@ -152,7 +152,7 @@ func TestMasterOfAnEncodedDolbyVisionFileIsSDR(t *testing.T) {
 // A client that edits the URL to ask for the file's own video gets it only
 // where Jellyfin would send it: not for profile 5, whose base layer is no
 // picture a client without Dolby Vision can show (it comes out green and
-// purple), and not for HDR10 without Dolby Vision, which stays as before.
+// purple). HDR10 without Dolby Vision is copied since JS-025.
 func TestCopyOfDolbyVisionIsOnlyForABaseLayerThatIsAPicture(t *testing.T) {
 	capture := loadDolbyVisionCapture(t)
 	for file, copy := range map[string]bool{
@@ -165,7 +165,7 @@ func TestCopyOfDolbyVisionIsOnlyForABaseLayerThatIsAPicture(t *testing.T) {
 		"Dolby Eight Zero Film (1999)":     true,
 		"Dolby Five Film (1994)":           false,
 		"Dolby Five Plus Film (2004)":      false,
-		"Plain Pq Film (1991)":             false,
+		"Plain Pq Film (1991)":             true,
 	} {
 		t.Run(file, func(t *testing.T) {
 			source := capturedFilm(t, capture.Files[file].Video)

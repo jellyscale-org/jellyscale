@@ -854,8 +854,8 @@ func loadHEVCAV1Capture(t *testing.T) hevcAV1Capture {
 
 // Decide gives what Jellyfin 12.4 reported for each captured file: direct play
 // or not, and the TranscodeReasons in order. Whether the video is copied is
-// the capture's ffmpeg log (DirectStream copies, Transcode encodes); the one
-// difference is HDR, which jellyscale re-encodes and Jellyfin copies.
+// the capture's ffmpeg log (DirectStream copies, Transcode encodes). HDR10 is
+// copied by both (JS-025), with a master playlist that says PQ.
 func TestDecideMatchesJellyfinForHEVCAndAV1(t *testing.T) {
 	capture := loadHEVCAV1Capture(t)
 	// copied: Jellyfin ran FFmpeg.DirectStream for it, and jellyscale copies too.
@@ -863,6 +863,7 @@ func TestDecideMatchesJellyfinForHEVCAndAV1(t *testing.T) {
 		"Hevc Mkv (2001).mkv/hevc-client": true, "Hevc Ten (2003).mkv/hevc-client": true,
 		"Av1 Mkv (2005).mkv/chrome": true, "Av1 Ten (2008).mkv/chrome": true,
 		"Av1 Mkv (2005).mkv/hevc-client": true, "Av1 Ten (2008).mkv/hevc-client": true,
+		"Hevc Hdr (2004).mkv/hevc-client": true, "Av1 Hdr (2007).mkv/chrome": true, "Av1 Hdr (2007).mkv/hevc-client": true,
 		// The H.264 control.
 		"H264 Ac3 (2009).mkv/chrome": true, "H264 Ac3 (2009).mkv/hevc-client": true, "H264 Ac3 (2009).mkv/hevc-direct-only": true,
 	}
@@ -926,10 +927,10 @@ func TestCopyOfHEVCAndAV1(t *testing.T) {
 		// The client's HLS profile doesn't list the codec: re-encoded, as Jellyfin does.
 		{"hevc, hls profile lists h264 only", "hevc-direct-only", source("hevc", "Main", 120, 8), false, "hvc1.1.6.L120.B0", []string{"VideoCodecNotSupported", "AudioCodecNotSupported"}},
 		{"av1, hls profile lists h264 only", "hevc-direct-only", source("av1", "Main", 8, 8), false, "av01.0.08M.08", []string{"VideoCodecNotSupported", "AudioCodecNotSupported"}},
-		// HDR is labelled SDR in the master playlist, so it is never copied. A source
-		// scanned before the range was recorded is treated alike.
-		{"hevc hdr10", "hevc-client", source("hevc", "Main 10", 153, 10, func(v *Stream) { v.VideoRangeType = "HDR10" }), false, "hvc1.2.4.L153.B0", []string{"AudioCodecNotSupported"}},
-		{"av1 hdr10", "chrome", source("av1", "Main", 8, 10, func(v *Stream) { v.VideoRangeType = "HDR10" }), false, "av01.0.08M.10", []string{"AudioCodecNotSupported"}},
+		// HDR10 is copied (JS-025) and its master playlist says PQ. A source
+		// scanned before the range was recorded is re-encoded.
+		{"hevc hdr10", "hevc-client", source("hevc", "Main 10", 153, 10, func(v *Stream) { v.VideoRangeType = "HDR10" }), true, "hvc1.2.4.L153.B0", []string{"AudioCodecNotSupported"}},
+		{"av1 hdr10", "chrome", source("av1", "Main", 8, 10, func(v *Stream) { v.VideoRangeType = "HDR10" }), true, "av01.0.08M.10", []string{"AudioCodecNotSupported"}},
 		{"hevc, range not scanned yet", "hevc-client", source("hevc", "Main", 120, 8, func(v *Stream) { v.VideoRangeType = "" }), false, "hvc1.1.6.L120.B0", []string{"AudioCodecNotSupported"}},
 		// Profiles the master playlist can't name are re-encoded, and say why.
 		{"hevc rext", "hevc-client", source("hevc", "Rext", 120, 12), false, "", []string{"AudioCodecNotSupported", "VideoProfileNotSupported"}},
