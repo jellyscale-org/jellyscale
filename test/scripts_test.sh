@@ -259,6 +259,34 @@ for f in .claude/workflows/*.js; do
   check "$f parses" ok "$(node -e 'const s = require("fs").readFileSync(process.argv[1], "utf8").replace(/^export /m, ""); new Function("return (async () => {" + s + "\n})"); console.log("ok")' "$f" 2>&1 | tail -1)"
 done
 
+# --- tools/tiers.sh: the build workflow's tier gate, with stand-in tier scripts.
+lab=$tmp/tiers; mkdir -p "$lab/tools" "$lab/test"
+cp tools/tiers.sh tools/snapshot.sh "$lab/tools/"
+cat >"$lab/test/stub.sh" <<'EOF'
+name=$1; tree=$(bash tools/snapshot.sh); sleep 1; mkdir -p ".results/$tree"
+status=pass; [[ $name == "${STUB_FAIL:-}" ]] && status=fail
+printf 'tier=%s\nstatus=%s\nsummary=stub\nlog=l\n' "$name" "$status" >".results/$tree/$name"
+EOF
+echo 'bash test/stub.sh unit' >"$lab/test/unit.sh"
+echo 'n=integration-${INTEGRATION_SHARD/\//of}; [[ $n == "${STUB_LOSE:-}" ]] && exit 1; bash test/stub.sh "$n"' >"$lab/test/integration.sh"
+(
+  cd "$lab" && git init -q && echo /.results/ >.gitignore
+  tree=$(bash tools/snapshot.sh)
+  export HOME=$tmp/home
+  tiers() { bash tools/tiers.sh "$@" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["done"], " ".join(r["name"]+"="+r["status"] for r in d["records"]))'; }
+  check "tiers.sh runs every missing tier and reports each" "True unit=pass integration-rest=pass integration-0of3=pass integration-1of3=pass integration-2of3=pass" "$(tiers "$tree" 60)"
+  check "tiers.sh leaves no state after a clean gate" "" "$(ls "$HOME/.cache/jellyscale/agents" 2>/dev/null)"
+  check "tiers.sh refuses a tree that is not the working tree's" "True tree=fail" "$(tiers 0000 5)"
+  rm -rf .results
+  check "tiers.sh reports a failing shard and one that ended without a record" "True unit=pass integration-rest=pass integration-0of3=pass integration-1of3=fail integration-2of3=fail" "$(STUB_FAIL=integration-1of3 STUB_LOSE=integration-2of3 tiers "$tree" 60)"
+  check "tiers.sh does not start a lost run again" "0" "$(STUB_LOSE=integration-2of3 tiers "$tree" 5 >/dev/null; pgrep -cf "$lab/test" || true)"
+  rm -rf .results "$HOME/.cache"; mkdir -p ".results/$tree"
+  printf 'status=pass\n' >".results/$tree/unit"; printf 'status=pass\n' >".results/$tree/integration"
+  check "one record for the whole integration tier answers for its shards" "True unit=pass integration=pass" "$(tiers "$tree" 5)"
+  exit "$fails"
+)
+fails=$((fails + $?))
+
 echo
 [[ $fails -eq 0 ]] && echo "scripts: all passed" || echo "scripts: $fails failed"
 exit $((fails > 0))
