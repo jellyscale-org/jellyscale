@@ -95,10 +95,35 @@ const TIERS = {
   required: ['records'],
 }
 
-const { task, acceptance = [], tests = [], id = '', ux = false, core = false, resolved = null } = args
+const { task, tests = [], id = '', ux = false, core = false, resolved = null, refine = true } = args
+let { acceptance = [] } = args
 // Told to every later reviewer and fixer, so a corrected check is not reported or restored as tampering.
 const resolvedNote = resolved ? `\n\nThe lead corrected these locked check files after a dispute, on purpose; review the corrected version and never restore the original: ${resolved.files.join(', ')}. ${resolved.note}` : ''
 if (!task) throw new Error('build needs args.task')
+
+// ---- Refine: thin criteria predicted the tasks that went back to Spec (JS-027,
+// JS-028: two criteria each, five attempts between them), so before any check is
+// written the strongest model sharpens them against the code. It may only make a
+// criterion more exact; the lead reads the changes it logs and records them in
+// tasks/prd.json. A later attempt passes the refined list with refine: false.
+const REFINED = {
+  type: 'object',
+  properties: {
+    acceptance: { type: 'array', items: { type: 'string' }, description: 'The refined criteria, in order' },
+    changes: { type: 'array', items: { type: 'string' }, description: 'Each change and why, citing the code or doc that prompted it' },
+  },
+  required: ['acceptance', 'changes'],
+}
+if (refine) {
+  const refined = await agent(`You sharpen the acceptance criteria of one jellyscale task before its checks are written. Read PRODUCT.md, the parts of DOMAINS.md and ARCHITECTURE.md the task touches, and the code it will change (targeted reads, not whole trees). Then rewrite the criteria so a spec writer can turn each into a check that fails on a plausible wrong build:\n- Name the cases a wrong build would get wrong: counts and bounds (how many reads, runs, jobs; "at most", "each"), failures that are the file's and failures that are not (store, timeout, signal, lost lease), several of a thing as well as one, a replaced or changed file, two replicas or workers at once, and what the viewer or operator sees.\n- Split a criterion that holds several claims; state an "always" or "whatever X does" claim only with the bound it really has.\n- Keep every guarantee the criteria give: never drop, weaken or narrow one, and never add a feature the task did not ask for. If a criterion seems wrong, keep it and say why in changes.\n- Keep the criteria few and plain: one line each, no implementation.\nDo not edit any file, and do not run tests, Docker or servers.\n\n## Task${id ? ` ${id}` : ''}\n${task}\n\n## Acceptance criteria\n${acceptance.map((line) => `- ${line}`).join('\n')}`,
+    { label: 'refine criteria', phase: 'Spec', model: 'claude-fable-5-2', effort: 'high', schema: REFINED })
+  if (refined && refined.acceptance.length) {
+    acceptance = refined.acceptance
+    log(`Refined criteria (record in tasks/prd.json): ${JSON.stringify(refined)}`)
+  } else {
+    log('Criteria refinement returned nothing; building on the criteria as given')
+  }
+}
 
 const criteria = acceptance.map((line) => `- ${line}`).join('\n')
 const commands = tests.map((line) => `- ${line}`).join('\n')
@@ -237,7 +262,10 @@ const tiers = async (round) => {
   // records; the shards go on, so a fresh agent waits for those and runs the rest.
   let result = null
   for (let attempt = 1; attempt <= 4 && !result; attempt++) {
-    result = await agent(`${attempt > 1 ? 'An earlier agent started some of these runs and stopped before they ended. ' : ''}From the repository root (${root}), without editing any file, make sure \`.results/${head}/\` holds a record for each of: \`unit\` (\`bash test/unit.sh\`), and \`integration-rest\`, \`integration-0of3\`, \`integration-1of3\`, \`integration-2of3\` (\`INTEGRATION_SHARD=rest bash test/integration.sh\`, then \`0/3\`, \`1/3\`, \`2/3\`; two at a time at most), or a single \`integration\` record that covers the whole tier. A record is a file of key=value lines written by the scripts; never write one. First run \`bash tools/snapshot.sh\`: if it does not print ${head}, the working tree has changed, so return one record named \`tree\` with status \`fail\` and stop. A run already going for this tree (\`pgrep -af 'test/(unit|integration)[.]sh'\`) will write its record: wait for it, never start a second. Run only what has no record, with output to files under \`~/.cache/jellyscale/agents/\` (not /tmp), and wait for every run to end: a shard takes up to 20 minutes, so wait on it rather than return while it runs. A run still going is not a failure, and status \`incomplete\` is never returned. Wait in the foreground, in Bash calls with a timeout of 590000 ms that loop until the record file exists, as many as it takes; never end your turn before returning the records. Then return each record's name, status, summary and log from its file, and remove the output files. ${economy}`,
+    // tools/tiers.sh does the work and prints the answer, so the agent only
+    // repeats one command and copies its output (the earlier prompt asked a small
+    // model to manage the runs, and it once reported a running shard as failed).
+    result = await agent(`In the repository root (${root}), run \`bash tools/tiers.sh ${head}\` in the foreground, with the Bash tool's timeout set to 600000 ms. It prints one JSON line. While its "done" is false, run the same command again, as many times as it takes (each call waits up to 9 minutes; a tier takes up to 20). When "done" is true, return its "records" exactly as printed. Do nothing else: never edit a file, start a test yourself, or end your turn before "done" is true.`,
       { label: `tiers (round ${round})${attempt > 1 ? ` try ${attempt}` : ''}`, phase: 'Verify', schema: TIERS, model: 'haiku', effort: 'low' })
       .catch(() => null)
   }
