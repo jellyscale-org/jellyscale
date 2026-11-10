@@ -60,6 +60,7 @@ const SPEC = {
     },
     observed: { type: 'string', description: 'What was observed on a real Jellyfin 12.4 or client, and where it is recorded; or why nothing needed observing' },
     unchecked: { type: 'array', items: { type: 'string' }, description: 'Criteria with no executable check, and why' },
+    answers: { type: 'array', items: { type: 'string' }, description: 'For a revision after review: each finding, and the check that now covers it, or why you disagree, with evidence' },
   },
   required: ['checks', 'observed', 'unchecked'],
 }
@@ -71,8 +72,9 @@ const IMPLEMENTED = {
     report: { type: 'string', description: 'What changed, what ran and the real results' },
     disputes: { type: 'array', items: { type: 'string' }, description: 'Locked checks you believe are wrong, with evidence; you did not change them' },
     unfinished: { type: 'array', items: { type: 'string' } },
+    designAnswers: { type: 'array', items: { type: 'string' }, description: 'Each blocker or major of the design review: what you built for it, or why not, with evidence' },
   },
-  required: ['done', 'report', 'disputes', 'unfinished'],
+  required: ['done', 'report', 'disputes', 'unfinished', 'designAnswers'],
 }
 
 const SNAPSHOT = {
@@ -169,23 +171,30 @@ let specTree = await snapshot('snapshot spec', 'Spec')
 
 // ---- Check: design and checks reviewed together, once revised at most.
 const checkList = (s) => s.checks.map((c, i) => `${i + 1}. ${c.criterion}\n   ${c.file}: ${c.name} (\`${c.command}\`)\n   Fails today: ${c.failsToday}`).join('\n')
-const checkPrompt = (s, tree) => `${read('architecture-reviewer')}${brief}\n\n## Checks written for it\n${checkList(s)}\nObserved: ${s.observed}\nUnchecked: ${s.unchecked.join('; ') || 'none'}\n\nNothing is built yet; the checks are in \`git diff ${base} ${tree}\`. Review two things: the design (where this work should live and in what shape, against ARCHITECTURE.md and PRODUCT.md), and the checks: would each fail on a plausible wrong build, do they cover the criteria, was real behaviour observed where a protocol is involved? Never edit the working tree. ${evidenceRule}`
+const checkPrompt = (s, tree) => `${read('architecture-reviewer')}${brief}\n\n## Checks written for it\n${checkList(s)}\nObserved: ${s.observed}\nUnchecked: ${s.unchecked.join('; ') || 'none'}${s.answers?.length ? `\nThe spec writer's answers to your first review:\n${s.answers.map((a) => `- ${a}`).join('\n')}` : ''}\n\nNothing is built yet; the checks are in \`git diff ${base} ${tree}\`. Review two things: the design (where this work should live and in what shape, against ARCHITECTURE.md and PRODUCT.md), and the checks: would each fail on a plausible wrong build, do they cover the criteria, was real behaviour observed where a protocol is involved? Never edit the working tree. ${evidenceRule}`
 let design = null
 for (let attempt = 1; attempt <= 2; attempt++) {
   phase('Check')
   design = await agent(checkPrompt(spec, specTree), { label: `check ${attempt}`, phase: 'Check', ...role('check'), schema: FINDINGS })
   if (!design) throw new Error('check review returned nothing')
-  const stops = design.findings.filter((f) => f.severity === 'blocker')
-  if (!stops.length) break
-  if (attempt === 2) return { clean: false, stoppedAt: 'Check', open: stops, spec, design, base, specTree }
+  // A major sends the checks back once too: JS-071's Check named the case its
+  // checks missed and a better design as majors, the build went ahead without
+  // either, and the case it named was the one the build got wrong. A second
+  // review stops the run only on a blocker; its majors bind the implementer.
+  const back = design.findings.filter((f) => f.severity !== 'minor')
+  if (attempt === 2 || !back.length) {
+    const stops = back.filter((f) => f.severity === 'blocker')
+    if (stops.length) return { clean: false, stoppedAt: 'Check', open: stops, spec, design, base, specTree }
+    break
+  }
   phase('Spec')
-  const notes = `\n\n## Review of your first checks\n${stops.map((f) => `- ${f.title}: ${f.scenario}`).join('\n')}`
+  const notes = `\n\n## Review of your first checks\n${back.map((f) => `- [${f.severity}] ${f.title}: ${f.scenario}`).join('\n')}\n\nFor each finding, add or change checks so a build that ignores it fails, or answer why you disagree, with evidence, in answers. A design finding is answered with checks that pin the behaviour it asks for, not with code.`
   spec = await agent(specPrompt(notes), { label: 'spec revised', phase: 'Spec', ...role('spec-writer'), schema: SPEC })
   if (!spec) throw new Error('spec writer returned nothing')
   specTree = await snapshot('snapshot spec revised', 'Spec')
 }
 const designNotes = design.findings.length
-  ? `\n\n## Design review\n${design.findings.map((f) => `- [${f.severity}] ${f.title}: ${f.scenario}`).join('\n')}`
+  ? `\n\n## Design review\n${design.findings.map((f) => `- [${f.severity}] ${f.title}: ${f.scenario}`).join('\n')}\n\nEach blocker and major above binds you: build what it asks, or answer in designAnswers why not, with evidence (a measurement, a failing approach, a conflicting check). The lead reads every answer; one without evidence counts as ignoring the review.`
   : ''
 // The checks are what the spec writer wrote. A file a check only cites, such as an
 // existing script the task must change, stays open to the implementer.
@@ -211,6 +220,8 @@ const lockedChanged = async (head, label) => {
 phase('Build')
 let built = await agent(`${read('implementer')}${brief}${designNotes}${locked}\n\nImplement this. Don't commit.`, { label: 'build', phase: 'Build', ...role('implementer'), schema: IMPLEMENTED })
 if (!built) throw new Error('implementer returned nothing')
+// For the lead only: the Verify reviewers stay blind to the implementer's reasoning.
+if (built.designAnswers.length) log(`Implementer's answers to the design review: ${JSON.stringify(built.designAnswers)}`)
 let head = await snapshot('snapshot build', 'Build')
 let touched = await lockedChanged(head, 'locked checks')
 // A dispute stops the run. The lead settles it from evidence; if the check was
