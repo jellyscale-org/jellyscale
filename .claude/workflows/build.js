@@ -110,7 +110,8 @@ const MODELS = {
   'architecture-reviewer': { model: 'sonnet' },
   // Check reads only the spec and its checks, and a gap it misses costs a
   // whole build and Verify (about 1M tokens), so it gets the strongest model.
-  check: { model: 'fable' },
+  // Pinned by ID: the `fable` alias follows the CLI version of the session.
+  check: { model: 'claude-fable-5-2' },
   'adversarial-reviewer': { model: 'sonnet' },
   qa: { model: 'haiku', effort: 'high' },
   'ux-reviewer': { model: 'haiku', effort: 'high' },
