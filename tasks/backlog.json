@@ -1,0 +1,424 @@
+{
+  "description": "Findings judged real but not fixed by the task that found them. Read by the lead at each post-task review, and promoted into tasks/prd.json when worth doing. Not part of any task's brief: no role file or doc points subagents here.",
+  "conventions": {
+    "status": "open | check (may already be fixed) | promoted (to the prd task named in notes) | wontfix (reason in notes)",
+    "source": "the task whose review found it, or the review that did",
+    "severity": "as the reviewer gave it"
+  },
+  "items": [
+    {
+      "id": "BL-001",
+      "source": "JS-024",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "helper slot protection is a count, not a reservation",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-002",
+      "source": "JS-024",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "OutputVersion bump invalidates every stored segment",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-003",
+      "source": "JS-024",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "GET /Sessions shows a helper's worker and speed as the viewer's",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-004",
+      "source": "JS-024",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "helpers spawn helpers",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-005",
+      "source": "JS-024",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "no reason shown to operators when a burnt-image job gets no helpers",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-006",
+      "source": "JS-024",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "helper placement counts slots, not CPU",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-007",
+      "source": "JS-024",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "helper jobs indistinguishable from seeks and failovers for operators",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-008",
+      "source": "JS-024",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "paused helpers keep their slots; a second new viewer can queue",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-009",
+      "source": "JS-072",
+      "reviewer": "check",
+      "severity": "minor",
+      "title": "No check covers the PlaybackInfo admission path (Jobs.Unavailable)",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-010",
+      "source": "JS-072",
+      "reviewer": "check",
+      "severity": "minor",
+      "title": "transcodeHelpers reaching Worker.NoHelpers has no executable check",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-011",
+      "source": "JS-072",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "transcodeHelpers is per worker, so mixed settings leave helpers running",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-012",
+      "source": "JS-072",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "A helper preempted mid-chunk leaves a gap the asking job never fills",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-013",
+      "source": "JS-072",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "Every ensure takes one cluster-wide advisory lock",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-014",
+      "source": "JS-072",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "Preempting a helper when it cannot free a slot for the viewer",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-015",
+      "source": "JS-072",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "Every running helper beats on any preempt hint",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-016",
+      "source": "JS-072",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "No check drives the transcodeHelpers config key to the worker",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-017",
+      "source": "JS-072",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "A helper preempted during pre-ffmpeg setup sees the cancel only after ffmpeg starts",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-018",
+      "source": "JS-025",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "The e2e HDR10 copy scenario never runs in CI (needs E2E_HEVC=1)",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-019",
+      "source": "JS-025",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "DV 7 fixture has no enhancement-layer NALs",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-020",
+      "source": "JS-025",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "Roll-order check pins docs wording, not behaviour",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-021",
+      "source": "JS-025",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "4K HDR TrueHD criterion has no check (lead measured 73x on 4 CPUs)",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-022",
+      "source": "JS-025",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "Capture note cites a TrueHD observation its JSON lacks",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-023",
+      "source": "JS-025",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "AV1 HDR copies have no ffmpeg-path test",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-024",
+      "source": "JS-026",
+      "reviewer": "check",
+      "severity": "major",
+      "title": "Copy of both opens the source twice; one input splices the same (deferred to JS-074)",
+      "status": "check",
+      "notes": "Deferred to JS-074, which is done; confirm whether it was fixed there"
+    },
+    {
+      "id": "BL-025",
+      "source": "JS-026",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "SecondaryAudioNotSupported not named for a track pick",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-026",
+      "source": "JS-026",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "MP3 under Chrome re-encoded where Jellyfin copies (fMP4 only)",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-027",
+      "source": "JS-026",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "Copied audio list taken from the h264 HLS profile for HEVC/AV1 copies",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-028",
+      "source": "JS-074",
+      "reviewer": "check",
+      "severity": "minor",
+      "title": "No check pins the re-encoded-audio copy to two inputs",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-029",
+      "source": "JS-028",
+      "reviewer": "qa",
+      "severity": "blocker",
+      "title": "A track ffmpeg hangs on until the time limit leaves the film's good text tracks unstored (documented limit; a fallback would read the picked track alone after a timeout)",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-030",
+      "source": "JS-028",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "The first pick of a track the pass could not extract answers 'its result is missing'",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-031",
+      "source": "JS-028",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "A track the file lacks is logged as 'ffmpeg can't extract it'",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-032",
+      "source": "JS-028",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "Each text track the file lacks costs an ffmpeg start, which on S3 is an open and a header read",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-033",
+      "source": "JS-028",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "docs/subtitles.md gives no number for a proxy's read timeout during a subtitle pass (up to twice SubtitleTimeout)",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-034",
+      "source": "state review 2026-11-10",
+      "reviewer": "architecture",
+      "severity": "major",
+      "title": "One slot pool counts a near-free copy the same as a multi-core re-encode (internal/transcode/worker.go slots); fold into JS-054's design and before JS-057's scaling signal",
+      "status": "promoted",
+      "notes": "JS-054 design criterion"
+    },
+    {
+      "id": "BL-035",
+      "source": "state review 2026-11-10",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "The scan decides what to re-probe from stored JSON with a special case per feature (internal/library/scan.go); a probe_version would replace the shims, before JS-045",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-036",
+      "source": "state review 2026-11-10",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "The 1600-stream control-plane ceiling was measured on empty tables; ended-job lookups and the sweep's delete by created_at are unindexed (amend JS-030)",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-037",
+      "source": "state review 2026-11-10",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "No way to ask for a scan, a re-probe or an asset rebuild, which a restore needs (amend JS-059)",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-038",
+      "source": "state review 2026-11-10",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "The Store interface has no Stat (callers open to check existence), and S3 has one credential pair for every store (JS-055, JS-056)",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-039",
+      "source": "state review 2026-11-10",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "Worker.encode is a 400-line function whose loop interleaves six concerns; split before JS-029 next changes it",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-040",
+      "source": "state review 2026-11-10",
+      "reviewer": "product",
+      "severity": "minor",
+      "title": "JS-054 is too large for one build: slice detection and one family (Intel QSV/VAAPI on the dogfood) from placement and failover",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-041",
+      "source": "state review 2026-11-10",
+      "reviewer": "product",
+      "severity": "minor",
+      "title": "JS-021 is too large and blocks JS-057; JS-062's gate is undefined for a 4-CPU homelab",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-042",
+      "source": "state review 2026-11-10",
+      "reviewer": "product",
+      "severity": "minor",
+      "title": "Start and seek times have no stated target and no recorded trend (first-frame times are logged in test/e2e/transcode.mjs, not recorded)",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-043",
+      "source": "state review 2026-11-10",
+      "reviewer": "product",
+      "severity": "minor",
+      "title": "Nothing plans for the next Jellyfin release: jellyfin/jellyfin:12.4 is pinned in three places with no procedure to move",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-044",
+      "source": "state review 2026-11-10",
+      "reviewer": "product",
+      "severity": "minor",
+      "title": "DOMAINS.md is 117 KB with lines over 14,000 characters; every role reads it",
+      "status": "open",
+      "notes": ""
+    },
+    {
+      "id": "BL-045",
+      "source": "state review 2026-11-10",
+      "reviewer": "product",
+      "severity": "minor",
+      "title": "JS-070 derives required fields with a script instead of using the client SDKs as the oracle, and the differential tier masks playlist content",
+      "status": "promoted",
+      "notes": "JS-070 criterion"
+    },
+    {
+      "id": "BL-046",
+      "source": "state review 2026-11-10",
+      "reviewer": "product",
+      "severity": "minor",
+      "title": "JS-030 is a grab-bag; the one-reaper item is not needed at the target scale (ARCHITECTURE.md rule 6)",
+      "status": "open",
+      "notes": ""
+    }
+  ]
+}
