@@ -69,6 +69,9 @@ func workerProcess(id string) {
 	w.Hub = &Hub{Pool: pool, Log: log}
 	go w.Hub.Run(ctx)
 	go w.Present(ctx, "worker", "", 200*time.Millisecond)
+	if os.Getenv("JELLYSCALE_TEST_SUBTITLES") != "" {
+		go w.RunSubtitles(ctx) // As main does; a test of subtitle jobs asks for it.
+	}
 	w.Run(ctx)
 }
 

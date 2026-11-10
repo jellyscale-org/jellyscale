@@ -28,7 +28,7 @@ func TestUnreadableExternalImageFileStaysHiddenUntilItChanges(t *testing.T) {
 				index int
 				name  string
 			}{{5, "film.en.sup"}, {6, "film.es."}} {
-				if err := library.MarkUnreadable(context.Background(), f.pool, f.text, c.index, fingerprint(c.index)); err != nil {
+				if err := library.MarkUnreadable(context.Background(), f.pool, f.text, c.index, fingerprint(c.index), ""); err != nil {
 					t.Fatal(err)
 				}
 			}

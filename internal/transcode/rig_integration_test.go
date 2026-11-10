@@ -39,6 +39,10 @@ func TestMain(m *testing.M) {
 		workerProcess(id) // A worker of its own, for tests that kill or stop one.
 		return
 	}
+	if track := os.Getenv("JELLYSCALE_TEST_API_TRACK"); track != "" {
+		apiProcessBody(track) // An api replica asking for a subtitle track.
+		return
+	}
 	code := m.Run()
 	if filmDir != "" {
 		os.RemoveAll(filmDir)
@@ -109,7 +113,7 @@ func newRig(t *testing.T, segments store.Store) *rig {
 	r.user = uuid.NewString()
 	exec(`INSERT INTO libraries (id, name, kind, media_store_uri, asset_store_uri) VALUES ($1, 'L', 'movies', $2, $2)`, library, "file://"+dir)
 	exec(`INSERT INTO items (id, library_id, type, name, sort_name, natural_key, run_time_ticks, dto)
-		VALUES ($1, $2, 'Movie', 'Film', 'film', 'film', 900000000, '{}')`, item, library)
+		VALUES ($1, $2, 'Movie', 'Film', 'film', 'film', 900000000, '{"MediaSources": [{}], "MediaStreams": []}')`, item, library)
 	exec(`INSERT INTO media_sources (id, item_id, store_key, size, object_etag, container, streams) VALUES ($1, $1, 'film.mkv', 1, 'etag1', 'mkv', '[]')`, item)
 	exec(`INSERT INTO users (id, name, password_hash) VALUES ($1, 'viewer', 'x')`, r.user)
 	r.spec = playback.Spec{Item: db.CompactID(item), Source: db.CompactID(item), ETag: "etag1", AudioIndex: 1,

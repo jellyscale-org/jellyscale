@@ -451,3 +451,53 @@ func TestFillFontsSkipsAFontFfmpegDidNotWrite(t *testing.T) {
 		t.Errorf("fonts %v %v %v", fonts, found, err)
 	}
 }
+
+// A text track ffmpeg refuses (here SubRip that is not UTF-8, which it can't
+// decode to text) is left out of the film's pass, and the other text tracks are
+// stored all the same.
+func TestFillTextLeavesOutATrackFFmpegRefuses(t *testing.T) {
+	testenv.FFmpeg(t)
+	dir := t.TempDir()
+	write := func(name string, data []byte) string {
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	good := write("good.srt", []byte("1\n00:00:02,000 --> 00:00:03,000\nGood\n"))
+	bad := write("bad.srt", []byte("1\n00:00:02,000 --> 00:00:03,000\n\xff\xfe\xfd caf\xe9\n"))
+	other := write("other.srt", []byte("1\n00:00:02,000 --> 00:00:03,000\nOther\n"))
+	args := []string{"-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=160x90:rate=10:duration=3"}
+	for _, srt := range []string{good, bad, other} {
+		args = append(args, "-f", "srt", "-i", srt)
+	}
+	args = append(args, "-map", "0", "-map", "1", "-map", "2", "-map", "3", "-c:v", "libx264", "-preset", "ultrafast", "-c:s", "copy", filepath.Join(dir, "film.mkv"))
+	if out, err := exec.Command("ffmpeg", args...).CombinedOutput(); err != nil {
+		// Copying is what keeps the bad bytes; if ffmpeg won't build the film the premise is gone.
+		t.Fatalf("ffmpeg: %v: %s", err, out)
+	}
+	info, err := os.Stat(filepath.Join(dir, "film.mkv"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	streams := `[{"Index": 0, "Type": "Video"}`
+	for i := 1; i <= 3; i++ {
+		streams += fmt.Sprintf(`, {"Index": %d, "Type": "Subtitle", "Codec": "subrip", "IsTextSubtitleStream": true}`, i)
+	}
+	src := items.Source{ID: "src", Key: "film.mkv", ETag: "v1", Size: info.Size(), Streams: []byte(streams + "]")}
+	assets := store.NewPosix(t.TempDir())
+	ctx := context.Background()
+	if _, err := ExtractAll(ctx, filepath.Join(dir, "film.mkv"), []int{1, 2, 3}); !errors.Is(err, ErrBadFile) {
+		t.Fatalf("the film's pass over all three: %v; want ErrBadFile, or this test proves nothing", err)
+	}
+	if err := FillText(ctx, src, store.NewPosix(dir), assets, 0, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("FillText: %v", err)
+	}
+	for index, want := range map[int]bool{1: true, 2: false, 3: true} {
+		_, found, err := Read(ctx, assets, Key(src, index))
+		if err != nil || found != want {
+			t.Errorf("track %d: stored %v, err %v; want stored %v", index, found, err, want)
+		}
+	}
+}

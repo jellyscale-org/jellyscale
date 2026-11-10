@@ -306,6 +306,44 @@ await clientRendered("POSIX transcode, subtitle files beside the film: SubRip an
 await clientRendered("S3 direct play, subtitle files beside the film: SubRip and ASS tracks show", "Cloud", "Beside Direct Film", false, true);
 await clientRendered("S3 transcode, subtitle files beside the film: SubRip and ASS tracks show", "Cloud", "Beside Transcode Film", true, true);
 
+// Switching between two text tracks of a film: the first pick has a worker read the
+// film once for every text track in it (one ffmpeg, whatever the track), and the
+// second pick, and going back to the first, show their text with no new ffmpeg and no
+// new subtitle job. The film has no scenario before this one: its tracks are not
+// stored until the first pick here. A fonts dump is another job, not a read for tracks.
+function switchingTracks(name, library, title) {
+  const extractions = () => ffmpegLines().filter((line) => !/-dump_attachment/.test(line)).length;
+  const trackJobs = () => Number(sql("SELECT count(*) FROM subtitle_jobs WHERE kind NOT IN ('fonts', 'chapters')"));
+  return scenario(name, async ({ page, seen }) => {
+    await play(page, library, title);
+    await advances(page, 3);
+    await pickSubtitle(page, -1);
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const reads0 = extractions(), jobs0 = trackJobs();
+
+    await pickSubtitle(page, 2);
+    await waitFor("the SubRip track", async () => seen.subtitles.find((r) => r.index === 2 && r.status === 200));
+    await seek(page, 12);
+    await waitFor("the first cue", async () => (await activeText(page)) === "English line 1");
+    const reads1 = extractions(), jobs1 = trackJobs();
+    if (reads1 - reads0 !== 1) throw new Error(`the first pick should be one read of the film (one ffmpeg), not ${reads1 - reads0}`);
+
+    await pickSubtitle(page, 3);
+    await waitFor("the ASS track", async () => seen.subtitles.find((r) => r.index === 3 && r.status === 200));
+    await seek(page, 12);
+    await waitFor("ASS text drawn", async () => (await assPixels(page)) > 100);
+    await pickSubtitle(page, 2);
+    await seek(page, 22);
+    await waitFor("the SubRip track again", async () => (await activeText(page)) === "English line 2");
+    if (extractions() !== reads1) throw new Error(`switching tracks read the film again: ${extractions() - reads1} more ffmpeg runs`);
+    if (trackJobs() !== jobs1) throw new Error(`switching tracks started ${trackJobs() - jobs1} subtitle jobs, after ${jobs1 - jobs0} for the first pick`);
+    noErrors(seen);
+    await leave(page);
+  });
+}
+await switchingTracks("POSIX direct play: picking a second text track costs no new read of the film", "Transcode", "Pick Film");
+await switchingTracks("S3 direct play: picking a second text track costs no new read of the film", "Cloud", "Pick Cloud Film");
+
 // The ASS track names a font the renderer doesn't have. With the font attached
 // to the film, jellyfin-web fetches it from the DeliveryUrl in MediaAttachments
 // and the renderer draws the text in it; without, in its fallback, which is

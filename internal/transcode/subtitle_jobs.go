@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"slices"
 	"sync"
 	"time"
 
@@ -31,9 +32,9 @@ const (
 	// subtitleAttempts is how many times a lease may be lost, with the worker
 	// gone, before the track is given up on.
 	subtitleAttempts = 3
-	// subtitleWaitLimit stops a request that outlives the longest extraction
-	// (an hour) and a wait in the queue.
-	subtitleWaitLimit = 2 * time.Hour
+	// subtitleWaitLimit stops a request that outlives the longest extraction (a
+	// pass of two runs, an hour each) and a wait in the queue.
+	subtitleWaitLimit = 3 * time.Hour
 	// subtitleSlots is how many extractions a worker runs at once, so a burst
 	// of tracks can't use up CPU, connections or the object store.
 	subtitleSlots = 4
@@ -68,19 +69,30 @@ const workerAliveSQL = `EXISTS (SELECT 1 FROM transcode_nodes
 	WHERE roles ~ '(^|,)worker(,|$)' AND seen_at > now() - make_interval(secs => $1))`
 
 // FetchSubtitle returns stream index of src. A cached track is read at once.
-// Otherwise it queues a job (one per track, whoever asks) and waits for the
+// Otherwise it queues a job and waits for the
 // track to appear in the asset store, for as long as a live worker is on it.
 // A job queued behind busy workers waits its turn, because jellyfin-web doesn't
 // ask twice. With no worker, or a job unclaimed while no extraction is running
 // anywhere (a worker from before subtitle jobs), it gives up after queueTimeout
 // with ErrNoSubtitleWorker rather than leave the viewer waiting on nothing.
+//
+// A text track inside the film is extracted by the film's pass job, which
+// writes every such track from one read, so whoever asks for whichever track
+// waits for the same job. A track the pass did not store, one ffmpeg could not
+// extract, is ErrUnreadable. A file beside the film has a job of its own.
 func FetchSubtitle(ctx context.Context, pool *pgxpool.Pool, hub *Hub, assets store.Store, itemID string, src items.Source, index int) (subtitles.Track, error) {
 	key := subtitles.Key(src, index)
 	if track, found, err := subtitles.Read(ctx, assets, key); found || err != nil {
 		return track, err
 	}
-	err := awaitJob(ctx, pool, hub, subtitleJob{Key: key, Kind: "track", Item: itemID, Source: src.ID, Index: index})
-	if err != nil {
+	if subtitles.Unreadable(src, index) {
+		return subtitles.Track{}, fmt.Errorf("%w: ffmpeg could not extract it", ErrUnreadable)
+	}
+	job := subtitleJob{Key: key, Kind: "track", Item: itemID, Source: src.ID, Index: index}
+	if _, beside := subtitles.External(src, index); !beside && slices.Contains(subtitles.TextTracks(src), index) {
+		job.Key = subtitles.PassKey(src)
+	}
+	if err := awaitJob(ctx, pool, hub, job); err != nil {
 		return subtitles.Track{}, err
 	}
 	// Only now is the store worth asking: a job that says done has put it.
@@ -417,6 +429,30 @@ func (w *Worker) extractTrack(ctx context.Context, job subtitleJob, log *slog.Lo
 		}
 		return subtitles.FillSup(ctx, source, media, assets, job.Index, w.SubtitleTimeout, log)
 	}
+	if job.Key == subtitles.PassKey(source) {
+		if err := subtitles.FillText(ctx, source, media, assets, w.SubtitleTimeout, log); err != nil {
+			return err
+		}
+		// A track the pass left out is hidden until a scan sees the file change,
+		// as a subtitle file beside the film is. Done before the job ends, so no
+		// one asks again in between.
+		marked, stop := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer stop()
+		for _, index := range subtitles.TextTracks(source) {
+			missing, err := subtitles.Missing(ctx, assets, subtitles.Key(source, index))
+			if err != nil {
+				return err
+			}
+			if !missing {
+				continue
+			}
+			log.Warn("track not listed: ffmpeg can't extract it", "track", index)
+			if err := library.MarkUnreadable(marked, w.Pool, job.Item, index, "", source.ETag); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 	if subtitles.Key(source, job.Index) != job.Key {
 		return errors.New("the source file has changed or is gone")
 	}
@@ -427,7 +463,7 @@ func (w *Worker) extractTrack(ctx context.Context, job subtitleJob, log *slog.Lo
 		// Not the job's context, which ends with the job.
 		marked, stop := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer stop()
-		if markErr := library.MarkUnreadable(marked, w.Pool, job.Item, job.Index, file.Fingerprint); markErr != nil {
+		if markErr := library.MarkUnreadable(marked, w.Pool, job.Item, job.Index, file.Fingerprint, ""); markErr != nil {
 			err = errors.Join(err, markErr)
 		}
 	}
