@@ -370,7 +370,7 @@
         "Exported over OTLP to any backend, off by default; the dogfood runs a backend and the docs show reading a stall from it",
         "Checked with real processes: a test collector receives a playback's trace from three processes, with a stall and a failover in it"
       ],
-      "priority": 41,
+      "priority": 48,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -387,9 +387,10 @@
       "acceptanceCriteria": [
         "Each request and job log line carries ids that link them",
         "Levels and noise reviewed against the dogfood",
-        "Each line of a playback carries its play session id and trace id (JS-021), and a helper's start, end and failure say they are a helper's and whose"
+        "Each line of a playback carries its play session id and trace id (JS-021), and a helper's start, end and failure say they are a helper's and whose",
+        "Metrics beyond the transcode path: HTTP requests by role, route and status with latency, store operations and bytes by store, scan durations and errors"
       ],
-      "priority": 40,
+      "priority": 47,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -510,11 +511,13 @@
     {
       "id": "JS-029",
       "phase": "P4",
-      "title": "Keep transcodes through a Postgres failover",
-      "description": "A CNPG switchover ends every worker's lock connection; today every transcode restarts. Re-lock first, then check the worker's own row: if it is present nobody touched its jobs and they continue.",
+      "title": "Keep playback and transcodes through a Postgres failover",
+      "description": "A CNPG switchover ends every worker's lock connection; today every transcode restarts. Re-lock first, then check the worker's own row: if it is present nobody touched its jobs and they continue. The stream role has the same failure: every playlist, segment and direct-play request reads Postgres (token, source row, viewer), and a database error is answered with a 500 (internal/api/server.go requireAuth, transcode.go, stream.go), which jellyfin-web treats as the end of playback (DOMAINS.md: any answer of 400 or more destroys the player). So a switchover, the most ordinary Kubernetes event, stops every viewer. The stream role must never answer 5xx for a database that is briefly away.",
       "acceptanceCriteria": [
         "A Postgres restart or switchover under load does not restart transcodes whose rows survived",
-        "No job is ever owned by two workers (invariant 25)"
+        "No job is ever owned by two workers (invariant 25)",
+        "A Postgres restart mid-film, for HLS and for direct play, in jellyfin-web in the e2e tier: the picture continues and no request is answered 5xx for the database's absence (the stream role waits within hls.js's retry window, or serves from a short in-process cache of tokens and source rows)",
+        "/healthz of the stream and api roles does not fail every replica at once when Postgres is away"
       ],
       "priority": 11,
       "status": "todo",
@@ -535,7 +538,7 @@
         "A claim racing a re-lock cannot cancel a job",
         "Rollback note for the liveness change"
       ],
-      "priority": 12,
+      "priority": 20,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -545,13 +548,15 @@
     {
       "id": "JS-031",
       "phase": "P4",
-      "title": "API replica failover",
-      "description": "An api replica killed mid-film loses neither the picture nor the resume position; WebSockets reconnect to any replica.",
+      "title": "API and stream replica failover",
+      "description": "An api replica killed mid-film loses neither the picture nor the resume position; WebSockets reconnect to any replica. The stream role carries every byte and is in no failure test: kill and roll a stream replica too, for HLS and direct play. On SIGTERM a replica fails readiness first, then drains for a grace that matches the pod's termination grace period.",
       "acceptanceCriteria": [
         "Kill an api replica during playback in the e2e tier: playback continues, progress persists, the socket reconnects",
-        "Session ownership (sessions.ws_replica) moves to a live replica"
+        "Session ownership (sessions.ws_replica) moves to a live replica",
+        "Kill a stream replica, and roll one gracefully, during HLS and direct play in the e2e tier: playback continues",
+        "On SIGTERM a replica stops being ready before it stops serving, and drains in-flight responses for a configurable grace"
       ],
-      "priority": 15,
+      "priority": 19,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -567,7 +572,7 @@
         "POST /Sessions/{id}/Playing, /Command, /Message, /System, /Viewing, /Capabilities work across replicas",
         "jellyfin-web's remote control drives another session"
       ],
-      "priority": 16,
+      "priority": 26,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -583,9 +588,10 @@
       "description": "Create, delete, disable users; change passwords; preferences and configuration.",
       "acceptanceCriteria": [
         "POST /Users/New, DELETE /Users/{id}, /Users/{id}/Policy, /Password, /Configuration as Jellyfin 12.4",
-        "jellyfin-web's admin user pages work"
+        "jellyfin-web's admin user pages work",
+        "Login attempts are throttled per user and per client address, and the Policy's lockout fields work as Jellyfin 12.4's do"
       ],
-      "priority": 17,
+      "priority": 13,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -601,7 +607,7 @@
         "No plain token in the database",
         "API keys created and revoked through jellyfin-web"
       ],
-      "priority": 18,
+      "priority": 27,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -618,7 +624,7 @@
         "Last use time and address recorded",
         "Streamystats works with a read-only key and no extra user account"
       ],
-      "priority": 19,
+      "priority": 28,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -635,7 +641,7 @@
       "acceptanceCriteria": [
         "Enforced on every item route"
       ],
-      "priority": 20,
+      "priority": 29,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -653,7 +659,7 @@
         "Observed against Jellyfin 12.4 first",
         "Moonfin on the Shield and Findroid sign in with a code approved from jellyfin-web"
       ],
-      "priority": 21,
+      "priority": 30,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -668,7 +674,7 @@
       "acceptanceCriteria": [
         "Answer shape as Jellyfin 12.4"
       ],
-      "priority": 22,
+      "priority": 31,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -684,7 +690,7 @@
         "Sign in with an OIDC provider in jellyfin-web",
         "OIDC users reach TV apps through Quick Connect"
       ],
-      "priority": 23,
+      "priority": 32,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -702,7 +708,7 @@
         "No viewer token in any playlist or segment URL",
         "Kodi's TranscodingUrl editing still works"
       ],
-      "priority": 24,
+      "priority": 33,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -717,7 +723,7 @@
       "acceptanceCriteria": [
         "Each mode matches a Jellyfin 12.4 capture"
       ],
-      "priority": 25,
+      "priority": 34,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -732,7 +738,7 @@
       "acceptanceCriteria": [
         "Revoked device's token stops working"
       ],
-      "priority": 26,
+      "priority": 35,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -747,7 +753,7 @@
       "acceptanceCriteria": [
         "jellyfin-web's dashboard lists entries"
       ],
-      "priority": 27,
+      "priority": 36,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -762,7 +768,7 @@
       "acceptanceCriteria": [
         "jellyfin-web shows and changes avatars"
       ],
-      "priority": 28,
+      "priority": 37,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -778,7 +784,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 29,
+      "priority": 15,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -794,7 +800,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 30,
+      "priority": 38,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -810,7 +816,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 31,
+      "priority": 16,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -826,7 +832,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 32,
+      "priority": 39,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -842,7 +848,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 33,
+      "priority": 40,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -858,7 +864,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 34,
+      "priority": 41,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -874,7 +880,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 35,
+      "priority": 42,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -890,7 +896,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 36,
+      "priority": 43,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -906,7 +912,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 37,
+      "priority": 44,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -919,7 +925,7 @@
       "title": "Use every GPU and CPU the cluster has",
       "description": "A worker uses whatever encoder hardware its node exposes (NVIDIA NVENC, Intel QSV or VAAPI, AMD VAAPI) and falls back to the CPU, so a cluster with GPUs uses them, as Jellyfin does on the dogfood's Intel iGPUs. fMP4 can't splice across encoder families (spikes/seam: x264 spliced with NVENC lost half the frames), so each stream is given the best family with room when it starts, and its helpers (JS-024) and failover stay in that family. A GPU can also serve a CPU-encoded stream by decoding for it, if its frames equal software decoding, so every node still helps every stream.",
       "acceptanceCriteria": [
-        "Design reviewed before building: how a family is chosen for a stream, helpers and failover within a family, and what a viewer sees when the last worker of their stream's family is lost mid-film (playing on is the goal; a restart needs the product owner's decision)",
+        "Design reviewed before building: how a family is chosen for a stream, helpers and failover within a family, and what a viewer sees when the last worker of their stream's family is lost mid-film (playing on is the goal; a restart needs the product owner's decision); and whether a copy and a re-encode should share one slot pool (today a near-free copy holds a slot for the whole film like a multi-core re-encode)",
         "A worker detects at start which encoders its node can run (a short test encode per family, not the ffmpeg build's list) and advertises them; a node with no GPU runs exactly as before",
         "A new stream gets a GPU family when a worker of that family has a free slot, and the CPU otherwise; the encoder family stays in the spec hash and the decision is logged and metered with its reason",
         "Helpers and failover of a GPU stream stay in its family; a seek, a restart and a helper's chunk splice cleanly on QSV/VAAPI and NVENC as the seam spike showed for one family",
@@ -927,12 +933,13 @@
         "Tested on real hardware in its own tier chosen explicitly (never skipped): Intel QSV/VAAPI on the dogfood cluster's iGPUs and NVENC on a developer machine; jellyfin-web plays, seeks and recovers from a killed GPU worker",
         "Operators see which encoder family and worker serve each stream (Sessions, metrics, JS-021 traces)"
       ],
-      "priority": 38,
+      "priority": 45,
       "status": "todo",
       "passes": false,
       "dependsOn": [
         "JS-024",
-        "JS-072"
+        "JS-072",
+        "JS-075"
       ],
       "source": "PRODUCT.md phase5-library; rewritten 2026-11-08: the product owner wants every GPU and CPU in the cluster used where possible, priority kept in P5",
       "notes": "The dogfood cluster has an Intel iGPU on each of its three nodes (gpu.intel.com/i915: 1 allocatable) and the user's Jellyfin requests one; the developer machine has an RTX 4070 Ti and an AMD iGPU. GPU tone mapping (libplacebo or vendor filters) gives frames unlike zscale's, so it splices only within its own family."
@@ -946,7 +953,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 39,
+      "priority": 46,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -964,9 +971,10 @@
         "The manifests and the chart cannot drift: a test fails when they would deploy different resources (for example, the manifests are the chart rendered with its defaults, checked in)",
         "Readiness and liveness probes per role",
         "The chart sizes CNPG's max_connections from its own values: every process's databaseMaxConns plus one liveness connection per transcode worker, with headroom; installing values whose sum exceeds it fails the render. The manifests carry the same sizing with a comment saying how to recompute it",
-        "An optional GPU worker pool requests gpu.intel.com/i915 or nvidia.com/gpu through the vendor's device plugin (JS-054); a cluster without one runs CPU workers only; documented in docs/running.md"
+        "An optional GPU worker pool requests gpu.intel.com/i915 or nvidia.com/gpu through the vendor's device plugin (JS-054); a cluster without one runs CPU workers only; documented in docs/running.md",
+        "Each probe states what it depends on: liveness never depends on Postgres or a store, so a database failover restarts no pod; ffmpeg threads follow the pod's CPU limit, not the node's cores"
       ],
-      "priority": 42,
+      "priority": 49,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -983,7 +991,7 @@
         "KEDA's maximum worker replicas stay within the Postgres connection budget (one liveness connection per worker, on top of the pools), so scaling up never exhausts max_connections",
         "It scales on the demand metric of JS-021 (jobs waiting for a slot, helpers refused for lack of one), so each scale-up can be read back with its reason"
       ],
-      "priority": 43,
+      "priority": 50,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -997,11 +1005,11 @@
       "id": "JS-058",
       "phase": "P6",
       "title": "Upgrades without downtime",
-      "description": "Workers before stream and api; migrations old replicas survive; workers report their spec fields.",
+      "description": "Workers before stream and api; migrations old replicas survive; workers report their spec fields. The mixed-version safety of migrations and spec hashes is split out to JS-079, which comes much earlier.",
       "acceptanceCriteria": [
         "A rolling upgrade under playback loses no picture"
       ],
-      "priority": 44,
+      "priority": 51,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1018,7 +1026,7 @@
       "acceptanceCriteria": [
         "Restore tested from a backup"
       ],
-      "priority": 45,
+      "priority": 52,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1033,7 +1041,7 @@
       "acceptanceCriteria": [
         "Viewers keep their history; users set a password or use OIDC"
       ],
-      "priority": 46,
+      "priority": 53,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1049,7 +1057,7 @@
         "Observe its calls on Jellyfin first",
         "Its dashboards fill from jellyscale"
       ],
-      "priority": 47,
+      "priority": 54,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1067,7 +1075,7 @@
       "acceptanceCriteria": [
         "200 mixed streams with stated rebuffer ratio and p95s"
       ],
-      "priority": 48,
+      "priority": 55,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1085,7 +1093,7 @@
         "Two viewers on different api replicas stay in sync in jellyfin-web",
         "compat/coverage-12.4.tsv phase7-syncplay routes built (23)"
       ],
-      "priority": 49,
+      "priority": 56,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1127,7 +1135,7 @@
         "Replays run in CI and fail on a response a client would reject (status, missing field, wrong shape)",
         "No titles or paths from a real library in the captures (synthetic fixtures only)"
       ],
-      "priority": 10,
+      "priority": 18,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1144,9 +1152,10 @@
       "acceptanceCriteria": [
         "Each invariant (single owner, no lost job, resume bound, no segment stored by a dead owner) has a test that fails when the guarding code is removed",
         "Randomized schedules with a printed seed that reproduces a failure",
-        "A soak mode (many repetitions) documented in docs/testing.md and run before failover changes merge"
+        "A soak mode (many repetitions) documented in docs/testing.md and run before failover changes merge",
+        "A Stop never cancels a job another viewer is watching, under the randomized schedules (today the cancel is not scoped to the stopped viewers' specs: internal/transcode/jobs.go)"
       ],
-      "priority": 13,
+      "priority": 21,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1183,7 +1192,7 @@
         "Each entry with task JS-068 in compat/differences.yaml is fixed and removed, or becomes an improvement or non-goal with its reason",
         "test/differential/run.sh passes with the entries removed"
       ],
-      "priority": 14,
+      "priority": 22,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1221,9 +1230,10 @@
         "The required fields per response model come from a pinned jellyfin-sdk-kotlin release by a script, not by hand, and the list is checked in with its version",
         "The differential tier fails when a jellyscale response lacks a field the SDK requires for that route's return type, and an allowlist entry for such a field is refused; shown with ProductName and the four sign-in fields of #44 and #47 put back",
         "requests.yaml covers the startup, discovery and sign-in requests above, and the tier passes",
-        "@jellyfin/sdk's recommended-server discovery accepts jellyscale in CI, and fails with ProductName put back"
+        "@jellyfin/sdk's recommended-server discovery accepts jellyscale in CI, and fails with ProductName put back",
+        "Where a client SDK can be run (the TypeScript and Kotlin SDKs), its own deserialisation of jellyscale's answers is the check, not only a list derived from it"
       ],
-      "priority": 9,
+      "priority": 17,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1313,6 +1323,127 @@
       ],
       "source": "JS-026 post-task review (2026-11-09)",
       "notes": "JS-026's design reviewer ran a scratch experiment: one input at the copy's flags gave identical fragments to two inputs for H.264 with AC3 and E-AC3 in Matroska (13 of 13) and for AAC in MP4 after the first fragment. The implementer did not take it because JS-026's locked e2e helper reads the audio map from the second input (-map 1:N); this task changes that helper. Priority 5, right after JS-026: copies are the common path for a remux library, and halving their reads helps the S3 and NAS costs every copy-both viewer incurs. Built 2026-11-09: CopyCommand maps a copied audio track from the one input (-map 0:N); a copy with re-encoded audio keeps its two inputs. TestACopyOfBothStreamsFromS3ReadsTheFilmOnce measures the bytes the range proxy serves on SeaweedFS and Garage: 2.00 times the film before, once after (QA put the old command back and saw it fail). Every splice case of JS-026 still passes, AAC in MP4 byte for byte, under ffmpeg 9.0.2 and 6.1.1; the transcode e2e gate passed 60 of 60. The first Verify round sent the task back only because one integration shard had not finished when the tier gate looked; it passed."
+    },
+    {
+      "id": "JS-075",
+      "phase": "OPS",
+      "title": "Real players on the dogfood: ExoPlayer and AVPlayer play jellyscale's own streams",
+      "description": "Every streaming decision so far was checked on hls.js in Chromium only. No ExoPlayer client (Android TV, Findroid) or AVPlayer client (Swiftfin) has played a jellyscale stream, which the Phase 0 report left open (spikes/README.md, remaining risks 1 and 2), and the decision engine answers direct play to any client whose profile has no fMP4 HLS entry (internal/playback/decide.go). Before more is built on the segment format (JS-054), the owner plays films on real devices against the dogfood, and the lead records what each client asked for and what it played. Web-first stays the plan; this is a check that the format holds.",
+      "acceptanceCriteria": [
+        "The owner plays, on an ExoPlayer client and on an AVPlayer client against the dogfood: a direct play, an HEVC or 4K film that transcodes, a seek, an audio switch, a text and an image subtitle",
+        "Each client's PlaybackInfo request and the server's decision are recorded from the dogfood's logs (no titles or paths in the record), with what the viewer saw",
+        "Each failure becomes a task in tasks/prd.json, placed before JS-054 when it concerns the segment format",
+        "docs/status.md says which clients have played which paths"
+      ],
+      "priority": 9,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "Fable 5.2 state review, 2026-11-10",
+      "notes": "Needs the owner's devices and about an hour; the lead prepares the test list and reads the logs."
+    },
+    {
+      "id": "JS-076",
+      "phase": "P4",
+      "title": "Watch state survives a file missing from one scan, and libraries keep their identity",
+      "description": "A scan deletes the item of every file the listing no longer shows, and a user's watch state cascades from the item (internal/library/scan.go, migration 0001 user_item_data ON DELETE CASCADE); a file that returns gets a new id. The only guard is a store that lists no video at all. So one disk of a pooled mount dropping out, a half-finished sync, a file replaced in two steps or an S3 re-upload under a new key loses positions, played flags and favourites for good, and changes ids clients hold. A library's id is a hash of its name, so renaming it in config creates a second library, and a library removed from config is never removed.",
+      "acceptanceCriteria": [
+        "A file absent from a scan is hidden, not deleted, for a configurable grace (default days, not minutes), and a file that returns within it keeps its item id and every user's watch state",
+        "A file that reappears under another key with the same size and content identity (ETag, or the probe's fingerprint) inside the grace is matched to its old item across scans, not only within one",
+        "A scan that loses more than a set share of a library's files keeps them all and says so, as the empty-mount guard does",
+        "Renaming a library in config keeps its id and items; a library removed from config is hidden and later removed, documented in docs/running.md",
+        "Tests show each case loses no user_item_data row"
+      ],
+      "priority": 12,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "Fable 5.2 state review, 2026-11-10",
+      "notes": "Must land before JS-045 starts P5 scan work and before JS-060 imports history."
+    },
+    {
+      "id": "JS-077",
+      "phase": "P4",
+      "title": "Stream segments to the viewer without holding them whole in memory",
+      "description": "The stream role reads every segment whole into memory before sending it (internal/transcode/jobs.go readSegment, io.ReadAll). A copied segment carries the file's bitrate and lasts up to 12 seconds (DOMAINS 47), so a 4K copy segment is tens of MB per request, times every concurrent viewer, and a stream pod's memory limit must be set to survive that. Send stored segments as they are read, keeping the guarantee that a cut or empty object is treated as not there yet.",
+      "acceptanceCriteria": [
+        "A stored segment is sent while it is read; a segment cut short or empty is still re-asked rather than sent truncated",
+        "A test measures the stream role's peak memory for many concurrent viewers of a high-bitrate copy and states the bound",
+        "docs/running.md gives the stream role's memory per concurrent viewer, for JS-056's requests and limits"
+      ],
+      "priority": 23,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "Fable 5.2 state review, 2026-11-10",
+      "notes": ""
+    },
+    {
+      "id": "JS-078",
+      "phase": "OPS",
+      "title": "A size budget for the transcode store and cleanup of the asset store",
+      "description": "The transcode store's segments are swept by age only, with no size budget and no metric of its size (internal/transcode/worker.go Sweep), and copies are stored at the file's own bitrate. The asset store is never cleaned: subtitle text, .sup copies and images of a changed or removed file stay for good (internal/subtitles/cache.go, sup.go, library/scan.go put with no delete).",
+      "acceptanceCriteria": [
+        "The transcode store has a configurable size budget; past it the least recently used specs no viewer is watching are removed first; its size is a metric",
+        "Assets of a file version that no longer exists are removed by a sweep, with a test for subtitles, .sup copies and images",
+        "docs/running.md says how to size the transcode volume or bucket and what the sweep removes"
+      ],
+      "priority": 24,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "Fable 5.2 state review, 2026-11-10",
+      "notes": ""
+    },
+    {
+      "id": "JS-079",
+      "phase": "P4",
+      "title": "Mixed versions are safe: migrations and spec hashes across a rolling upgrade",
+      "description": "Every dogfood deploy already runs two versions side by side, but upgrade safety is one line at the end of the plan (JS-058). Migrations run with no lock timeout and no check for migrations a newer version applied (internal/db/db.go), an old worker can compute another spec hash than a new one (ARCHITECTURE.md known departures), and docs/running.md and ARCHITECTURE.md disagree on which role rolls first.",
+      "acceptanceCriteria": [
+        "Migrations take a lock timeout and a version that finds a migration newer than it knows refuses to start with a clear message",
+        "A worker of the previous version and one of this version serve the same stream, in a real-process test, without a spec hash disagreement breaking playback (or the job is refused by the older one)",
+        "One documented rollout order, the same in docs/running.md and ARCHITECTURE.md, and a test or check that each migration in a release is safe for the previous version's code"
+      ],
+      "priority": 25,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "Fable 5.2 state review, 2026-11-10",
+      "notes": "Before JS-054, which adds encoder families to the spec."
+    },
+    {
+      "id": "JS-080",
+      "phase": "P5",
+      "title": "File naming against real library layouts: extras, specials and odd names",
+      "description": "The naming rules have three tests (internal/library/naming_test.go) and every video in a movies library becomes a Movie (internal/library/scan.go), so extras, featurettes, trailers and samples beside a film are listed as films, and episodes without a season tag are skipped. Metadata files (JS-045) and the Jellyfin import (JS-060) attach to items by path, so the rules must be right first.",
+      "acceptanceCriteria": [
+        "A table of real-world layouts (folders of extras, trailers, samples, specials, multi-episode files, years in names), from Jellyfin's documented naming conventions and observed on a real Jellyfin 12.4, with what each becomes",
+        "Extras are not listed as films; specials and season-less episodes are placed as Jellyfin 12.4 places them, or the difference is recorded",
+        "No library titles in the fixtures"
+      ],
+      "priority": 14,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "Fable 5.2 state review, 2026-11-10",
+      "notes": ""
+    },
+    {
+      "id": "JS-081",
+      "phase": "OPS",
+      "title": "Replace wall-clock ratio bars in tests with checks of the mechanism",
+      "description": "Tests that pass or fail on a timing ratio are the largest class of merge-queue escapes (.results escape records for JS-067, JS-024 and JS-072): they pass on a 16-core developer machine and fail on shared CI runners. Convert the existing ratio bars (internal/transcode/helpers_integration_test.go and others found by grep) to checks of what the code does, such as how many helpers ran or which segments each made.",
+      "acceptanceCriteria": [
+        "Each existing timing-ratio assertion is replaced by a check of the mechanism, and the replacement fails when the mechanism is removed",
+        "Timings a test still measures are logged, not asserted"
+      ],
+      "priority": 10,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "Fable 5.2 state review, 2026-11-10",
+      "notes": ""
     }
   ]
 }
