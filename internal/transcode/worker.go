@@ -357,7 +357,7 @@ func (w *Worker) checkImageFile(ctx context.Context, job claimed, track playback
 	// Not the job's context, which ends with the job.
 	marked, stopMark := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer stopMark()
-	if markErr := library.MarkUnreadable(marked, w.Pool, job.Spec.Item, *job.Spec.Subtitle, track.Fingerprint); markErr != nil {
+	if markErr := library.MarkUnreadable(marked, w.Pool, job.Spec.Item, *job.Spec.Subtitle, track.Fingerprint, ""); markErr != nil {
 		err = errors.Join(err, markErr)
 	}
 	return err

@@ -24,6 +24,7 @@ import (
 	"jellyscale/internal/items"
 	"jellyscale/internal/library"
 	"jellyscale/internal/store"
+	"jellyscale/internal/subtitles"
 	"jellyscale/internal/transcode"
 
 	"jellyscale/internal/testenv"
@@ -396,16 +397,16 @@ func TestSubtitleExtractionRunsOnce(t *testing.T) {
 		if runs := f.runs(); runs != 1 {
 			t.Fatalf("a second request ran ffmpeg: %d runs", runs)
 		}
-		// A different track is a different extraction.
+		// The other text track was written by the same run (JS-028).
 		f.get(t, 0, f.path(f.text, 2, 0, "Stream.vtt"))
-		if runs := f.runs(); runs != 2 {
-			t.Fatalf("a second track: %d runs, want 2", runs)
+		if runs := f.runs(); runs != 1 {
+			t.Fatalf("a second track: %d runs, want still 1", runs)
 		}
 		// A changed file has another ETag, and so fresh text.
 		mustExec(t, f.pool, "UPDATE media_sources SET object_etag = 'changed' WHERE item_id = $1", f.text)
 		f.get(t, 0, f.path(f.text, 3, 0, "Stream.ass"))
-		if runs := f.runs(); runs != 3 {
-			t.Fatalf("a changed file: %d runs, want 3", runs)
+		if runs := f.runs(); runs != 2 {
+			t.Fatalf("a changed file: %d runs, want 2", runs)
 		}
 	})
 }
@@ -706,26 +707,19 @@ func TestManyRequestsForOneTrackAllAnswer(t *testing.T) {
 	}
 }
 
-// A burst of distinct tracks runs at most four ffmpegs at once, and all finish.
+// A burst of extractions for distinct films runs at most four ffmpegs at once,
+// and all finish. (The tracks of one film share a run, JS-028.)
 func TestDistinctTracksRunFourAtATime(t *testing.T) {
-	const tracks = 20
+	const films = 20
 	testenv.FFmpeg(t)
-	// The film is Text's, with 20 SubRip tracks: streams 2 to 21.
 	dir := t.TempDir()
 	srt := filepath.Join(dir, "a.srt")
 	if err := os.WriteFile(srt, []byte(testSRT), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	args := []string{"-f", "lavfi", "-i", "testsrc2=size=160x90:rate=10:duration=3", "-f", "lavfi", "-i", "sine=frequency=440:duration=3"}
-	for range tracks {
-		args = append(args, "-i", srt)
-	}
-	args = append(args, "-map", "0", "-map", "1")
-	for i := range tracks {
-		args = append(args, "-map", fmt.Sprint(i+2))
-	}
 	film := filepath.Join(dir, "film.mkv")
-	ffmpegRun(t, append(args, "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "-c:s", "srt", film)...)
+	ffmpegRun(t, "-f", "lavfi", "-i", "testsrc2=size=160x90:rate=10:duration=3", "-f", "lavfi", "-i", "sine=frequency=440:duration=3", "-i", srt,
+		"-map", "0", "-map", "1", "-map", "2", "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "-c:s", "srt", film)
 	data, err := os.ReadFile(film)
 	if err != nil {
 		t.Fatal(err)
@@ -739,22 +733,26 @@ func TestDistinctTracksRunFourAtATime(t *testing.T) {
 	})
 	f.startWorker(t, 0)
 	ctx := context.Background()
-	media, assets := "file://"+t.TempDir(), "file://"+t.TempDir()
-	files, err := store.Open(media)
-	if err != nil {
-		t.Fatal(err)
+	// One library for each film, each with its own text track: stream 2.
+	var ids []string
+	for i := range films {
+		media, assets := "file://"+t.TempDir(), "file://"+t.TempDir()
+		files, err := store.Open(media)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := files.Put(ctx, "film.mkv", bytes.NewReader(data)); err != nil {
+			t.Fatal(err)
+		}
+		libs, err := library.Sync(ctx, f.pool, []library.Config{{Name: fmt.Sprint("Many", i), Kind: "movies", Media: media, Assets: assets}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := (&library.Scanner{Pool: f.pool, Log: slog.New(slog.DiscardHandler)}).Scan(ctx, libs[0]); err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, scalar[string](t, f.pool, "SELECT id::text FROM items WHERE library_id = $1 AND type = 'Movie'", libs[0].ID))
 	}
-	if err := files.Put(ctx, "film.mkv", bytes.NewReader(data)); err != nil {
-		t.Fatal(err)
-	}
-	libs, err := library.Sync(ctx, f.pool, []library.Config{{Name: "Many", Kind: "movies", Media: media, Assets: assets}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := (&library.Scanner{Pool: f.pool, Log: slog.New(slog.DiscardHandler)}).Scan(ctx, libs[0]); err != nil {
-		t.Fatal(err)
-	}
-	item := scalar[string](t, f.pool, "SELECT id::text FROM items WHERE library_id = $1 AND type = 'Movie'", libs[0].ID)
 
 	// Each ffmpeg notes its start and end; it waits first so that runs overlap.
 	real := testenv.FFmpeg(t)
@@ -766,19 +764,19 @@ func TestDistinctTracksRunFourAtATime(t *testing.T) {
 	}
 	t.Setenv("PATH", shim+string(os.PathListSeparator)+os.Getenv("PATH"))
 
-	statuses := make([]int, tracks)
+	statuses := make([]int, films)
 	var wg sync.WaitGroup
-	for i := range tracks {
+	for i := range films {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			statuses[i], _, _ = f.get(t, i%2, f.path(item, i+2, 0, "Stream.vtt"))
+			statuses[i], _, _ = f.get(t, i%2, f.path(ids[i], 2, 0, "Stream.vtt"))
 		}()
 	}
 	wg.Wait()
 	for i, status := range statuses {
 		if status != 200 {
-			t.Fatalf("track %d: %d", i+2, status)
+			t.Fatalf("film %d: %d", i, status)
 		}
 	}
 	log, _ := os.ReadFile(events)
@@ -791,8 +789,8 @@ func TestDistinctTracksRunFourAtATime(t *testing.T) {
 		}
 		most = max(most, running)
 	}
-	if strings.Count(string(log), "+") != tracks || most != 4 {
-		t.Errorf("%d runs, at most %d at once; want %d and 4", strings.Count(string(log), "+"), most, tracks)
+	if strings.Count(string(log), "+") != films || most != 4 {
+		t.Errorf("%d runs, at most %d at once; want %d and 4", strings.Count(string(log), "+"), most, films)
 	}
 }
 
@@ -801,8 +799,18 @@ func TestDistinctTracksRunFourAtATime(t *testing.T) {
 // working. When a worker returns every track is listed again.
 func TestNoWorkerHidesUncachedTracks(t *testing.T) {
 	f := subtitleEnv(t, "")
-	if status, _, _ := f.get(t, 0, f.path(f.text, 3, 0, "Stream.ass")); status != 200 {
-		t.Fatalf("caching track 3: %d", status)
+	// Track 3 is cached by hand, so that track 2 is the one left uncached.
+	source, _, err := (&items.Repo{Pool: f.pool, ServerID: "srv"}).Source(context.Background(), f.text, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assets, err := store.Open(source.AssetStoreURI)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cached := subtitles.Track{VTT: "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\ncached\n", SRT: "1\n00:00:01,000 --> 00:00:02,000\ncached\n"}
+	if err := assets.Put(context.Background(), subtitles.Key(source, 3), cached.Encode()); err != nil {
+		t.Fatal(err)
 	}
 	f.stopWorker()
 	mustExec(t, f.pool, "TRUNCATE transcode_nodes")
@@ -850,8 +858,8 @@ func TestNoWorkerHidesUncachedTracks(t *testing.T) {
 	if status != 503 || time.Since(began) > 10*time.Second {
 		t.Errorf("an uncached track with no worker: %d after %s", status, time.Since(began))
 	}
-	if runs := f.runs(); runs != 1 {
-		t.Errorf("%d extractions, want the one that cached track 3", runs)
+	if runs := f.runs(); runs != 0 {
+		t.Errorf("%d extractions, want none", runs)
 	}
 
 	f.startWorker(t, 0)

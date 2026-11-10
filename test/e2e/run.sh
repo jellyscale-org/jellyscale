@@ -121,6 +121,9 @@ link "$t/Chapters Copy (2097)/Chapters Copy (2097).mkv" "scenes/Scenes Copy (210
 link "$t/Chapters Encode (2098)/Chapters Encode (2098).mkv" "scenes/Scenes Encode (2108)/Scenes Encode (2108).mkv"
 # The 1080p film twice more, so resuming it finds nothing made: each item has its own segments.
 link "$t/Stigma Film (2047)/Stigma Film (2047).mkv" "$t/Sho Film (2048)/Sho Film (2048).mkv"
+# Sigma's SubRip and ASS tracks again, for the scenario that picks one and then the
+# other: each item has its own subtitle objects, so its first pick reads the film.
+link "$t/Sigma Film (2034)/Sigma Film (2034).mkv" "$t/Pick Film (2130)/Pick Film (2130).mkv"
 
 
 docker run -d --rm --name "$pg" -e POSTGRES_PASSWORD=e2e -p 127.0.0.1::5432 postgres:18-alpine >/dev/null || exit 1
@@ -158,6 +161,7 @@ sub="$work/media/transcode"
 "$work/putfile" "s3://e2e/media?$s3" "Chi Film (2038)/Chi Film (2038).mkv" "$sub/Sigma Film (2034)/Sigma Film (2034).mkv" || exit 1
 "$work/putfile" "s3://e2e/media?$s3" "Psi Film (2039)/Psi Film (2039).mkv" "$sub/Tau Film (2035)/Tau Film (2035).mkv" || exit 1
 "$work/putfile" "s3://e2e/media?$s3" "Omega Film (2040)/Omega Film (2040).mkv" "$sub/Phi Film (2037)/Phi Film (2037).mkv" || exit 1
+"$work/putfile" "s3://e2e/media?$s3" "Pick Cloud Film (2131)/Pick Cloud Film (2131).mkv" "$sub/Sigma Film (2034)/Sigma Film (2034).mkv" || exit 1
 # And the films with their subtitles in files beside them: the files go to S3
 # too, where the scan finds them by listing.
 for pair in "Direct Sub Film (2060)|Beside Direct Film (2065)" "Transcode Sub Film (2061)|Beside Transcode Film (2066)" "Burn Sub Film (2062)|Beside Burn Film (2067)"; do

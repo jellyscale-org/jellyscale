@@ -34,28 +34,41 @@ var ErrBadFile = errors.New("the file can't be read as subtitles")
 
 // Extract reads stream index of input, a path or URL, and converts it.
 func Extract(ctx context.Context, input string, index int) (Track, error) {
+	tracks, err := ExtractAll(ctx, input, []int{index})
+	return tracks[index], err
+}
+
+// ExtractAll reads streams indexes of input in one run of ffmpeg, so the file
+// is read once whatever the number of tracks.
+func ExtractAll(ctx context.Context, input string, indexes []int) (map[int]Track, error) {
 	dir, err := os.MkdirTemp("", "subtitles-")
 	if err != nil {
-		return Track{}, err
+		return nil, err
 	}
 	defer os.RemoveAll(dir)
 	args := []string{"-nostdin", "-v", "error"}
 	args = append(args, "-i", input)
-	for _, ext := range []string{"vtt", "srt", "ass"} {
-		args = append(args, "-map", "0:"+strconv.Itoa(index), filepath.Join(dir, "track."+ext))
+	for _, index := range indexes {
+		for _, ext := range []string{"vtt", "srt", "ass"} {
+			args = append(args, "-map", "0:"+strconv.Itoa(index), filepath.Join(dir, fmt.Sprintf("%d-track.%s", index, ext)))
+		}
 	}
 	if err := runFFmpeg(ctx, args); err != nil {
-		return Track{}, err
+		return nil, err
 	}
-	var track Track
-	for ext, text := range map[string]*string{"vtt": &track.VTT, "srt": &track.SRT, "ass": &track.ASS} {
-		data, err := os.ReadFile(filepath.Join(dir, "track."+ext))
-		if err != nil {
-			return Track{}, err
+	tracks := map[int]Track{}
+	for _, index := range indexes {
+		var track Track
+		for ext, text := range map[string]*string{"vtt": &track.VTT, "srt": &track.SRT, "ass": &track.ASS} {
+			data, err := os.ReadFile(filepath.Join(dir, fmt.Sprintf("%d-track.%s", index, ext)))
+			if err != nil {
+				return nil, err
+			}
+			*text = string(data)
 		}
-		*text = string(data)
+		tracks[index] = track
 	}
-	return track, nil
+	return tracks, nil
 }
 
 // runFFmpeg runs ffmpeg and says whether it did what it was asked.

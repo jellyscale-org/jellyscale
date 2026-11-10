@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -131,7 +132,13 @@ func TestLostLeasesAreRetriedThenGivenUp(t *testing.T) {
 	source, assets := r.track(t)
 	runs := countExtractions(t, "")
 	r.worker(t, nil)
-	key := func(index int) string { return subtitles.Key(source, index) }
+	// A text track is extracted by the film's pass job, any other by its own.
+	key := func(index int) string {
+		if slices.Contains(subtitles.TextTracks(source), index) {
+			return subtitles.PassKey(source)
+		}
+		return subtitles.Key(source, index)
+	}
 	insert := func(index, attempts int) {
 		t.Helper()
 		if _, err := r.pool.Exec(context.Background(), `INSERT INTO subtitle_jobs (key, item_id, source_id, idx, state, worker, attempts, lease_expires_at)

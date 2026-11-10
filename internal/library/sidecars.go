@@ -317,20 +317,26 @@ func storeStreams(ctx context.Context, tx pgx.Tx, itemID string, streams []map[s
 	return err
 }
 
-// MarkUnreadable hides the subtitle file that is stream index of the film's
-// media source, if it is still the version with that fingerprint: a worker
-// found it can't be read, and reading it again would only find that again. The
-// mark stays until the file changes, which a scan sees as a new fingerprint.
-func MarkUnreadable(ctx context.Context, pool *pgxpool.Pool, itemID string, index int, fingerprint string) error {
+// MarkUnreadable hides the subtitle that is stream index of the film's media
+// source, if it is still the version with that fingerprint (empty for a track
+// inside the film) and, when etag is not empty, the version of the file with
+// that ETag, compared under the row lock the update is made in: a worker found it can't be read, and reading it again would
+// only find that again. The mark stays until the file changes, which a scan
+// sees as a new fingerprint or a new ETag.
+func MarkUnreadable(ctx context.Context, pool *pgxpool.Pool, itemID string, index int, fingerprint, etag string) error {
 	return pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 		var raw []byte
 		var next int
-		err := tx.QueryRow(ctx, "SELECT streams, next_index FROM media_sources WHERE item_id = $1 FOR UPDATE", itemID).Scan(&raw, &next)
+		var have string
+		err := tx.QueryRow(ctx, "SELECT streams, next_index, COALESCE(object_etag, '') FROM media_sources WHERE item_id = $1 FOR UPDATE", itemID).Scan(&raw, &next, &have)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
 		if err != nil {
 			return err
+		}
+		if etag != "" && have != etag {
+			return nil
 		}
 		var streams []map[string]any
 		if err := json.Unmarshal(raw, &streams); err != nil {
@@ -338,7 +344,8 @@ func MarkUnreadable(ctx context.Context, pool *pgxpool.Pool, itemID string, inde
 		}
 		changed := false
 		for _, stream := range streams {
-			if stream["IsExternal"] == true && indexOf(stream) == index && stream["Fingerprint"] == fingerprint && stream["Unreadable"] != true {
+			got, _ := stream["Fingerprint"].(string)
+			if indexOf(stream) == index && got == fingerprint && stream["Unreadable"] != true {
 				stream["Unreadable"] = true
 				changed = true
 			}

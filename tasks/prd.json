@@ -500,12 +500,12 @@
         "One ffmpeg run per film for all text tracks",
         "S3 reads drop accordingly"
       ],
-      "priority": 7,
-      "status": "todo",
-      "passes": false,
+      "priority": null,
+      "status": "done",
+      "passes": true,
       "dependsOn": [],
       "source": "work queue (later)",
-      "notes": ""
+      "notes": "One subtitle_jobs row and one ffmpeg run per film write every text track inside it; a later pick of another track is served from the store. ffmpeg names the streams it fails on, so any number of undecodable tracks costs two reads, each with the whole limit; streams the file lacks are dropped at setup. A mark names the file version it was read from. Known limit: a track ffmpeg hangs on until the limit keeps the other tracks unstored. Three attempts."
     },
     {
       "id": "JS-029",
