@@ -108,6 +108,9 @@ const MODELS = {
   'spec-writer': { model: 'sonnet' },
   implementer: { model: 'sonnet' },
   'architecture-reviewer': { model: 'sonnet' },
+  // Check reads only the spec and its checks, and a gap it misses costs a
+  // whole build and Verify (about 1M tokens), so it gets the strongest model.
+  check: { model: 'fable' },
   'adversarial-reviewer': { model: 'sonnet' },
   qa: { model: 'haiku', effort: 'high' },
   'ux-reviewer': { model: 'haiku', effort: 'high' },
@@ -144,7 +147,7 @@ const checkPrompt = (s, tree) => `${read('architecture-reviewer')}${brief}\n\n##
 let design = null
 for (let attempt = 1; attempt <= 2; attempt++) {
   phase('Check')
-  design = await agent(checkPrompt(spec, specTree), { label: `check ${attempt}`, phase: 'Check', ...role('architecture-reviewer'), schema: FINDINGS })
+  design = await agent(checkPrompt(spec, specTree), { label: `check ${attempt}`, phase: 'Check', ...role('check'), schema: FINDINGS })
   if (!design) throw new Error('check review returned nothing')
   const stops = design.findings.filter((f) => f.severity === 'blocker')
   if (!stops.length) break
