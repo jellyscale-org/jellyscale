@@ -90,6 +90,9 @@ func (c cueFilm) write(t *testing.T, dir, name string) int64 {
 	default:
 		args = append(args, "-c:v", "libx264", "-preset", "ultrafast", "-g", "48")
 	}
+	// Interleaved strictly by time: ffmpeg 6.1 otherwise writes a sparse
+	// track's packets well ahead of their video, where no real film has them.
+	args = append(args, "-max_interleave_delta", "0")
 	audio, ext := "flac", "mkv"
 	if c.container == "ts" {
 		audio, ext = "aac", "ts"

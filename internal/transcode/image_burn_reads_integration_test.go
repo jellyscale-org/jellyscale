@@ -180,7 +180,11 @@ func TestTheFirstMidFilmRunReadsTheSameInAFilmFourTimesAsLong(t *testing.T) {
 	if diff := extra[256] - extra[64]; diff > 1<<20 || diff < -(1<<20) {
 		t.Errorf("before its first segment, the first mid-film run read %d bytes more than without the track in the 256 s film and %d in the 64 s one: it grows with the film (by %d bytes)", extra[256], extra[64], diff)
 	}
-	if diff := total[256] - total[64]; diff > 2<<20 || diff < -(2<<20) {
+	// What is read by the time the store is quiet includes ffmpeg's read-ahead
+	// while the job waits at its lead limit, which varies by about 2 MB from run
+	// to run; a read of the whole film (the defect this guards) adds the 192 s of
+	// 1 Mbps film the longer one has, 24 MB. 8 MB lies between.
+	if diff := total[256] - total[64]; diff > 8<<20 || diff < -(8<<20) {
 		t.Errorf("by the time the store was quiet, the first mid-film run had read %d bytes of the 256 s film and %d of the 64 s one: something it does grows with the film (by %d bytes)", total[256], total[64], diff)
 	}
 }
