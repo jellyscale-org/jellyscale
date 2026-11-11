@@ -99,6 +99,8 @@ done
 # The VobSub film again, for the scenario that burns it in for a viewer who draws PGS:
 # the segments of a spec are kept, so it needs a film of its own.
 link "$t/Vobsub Film (2071)/Vobsub Film (2071).mkv" "$t/Vobsub Render Film (2076)/Vobsub Render Film (2076).mkv"
+# And the PGS film for the scenario that shares its burn-in between workers.
+link "$t/Pgs Film (2070)/Pgs Film (2070).mkv" "$t/Pgs Parallel Film (2128)/Pgs Parallel Film (2128).mkv"
 # And the VobSub pair beside a film, the same.
 link "$t/Idx Beside Film (2122)/Idx Beside Film (2122).mkv" "$t/Idx Beside Render Film (2124)/Idx Beside Render Film (2124).mkv"
 for ext in en.sub en.idx; do
@@ -215,9 +217,11 @@ case "\$*" in *-dump_attachment*"Cracked Fonts"*) echo "Invalid data found when 
 case "\$*" in
 *overlay=eof_action*)
   inputs=0
+  # A scenario that writes a rate slows this run too, by the same input.
+  pace="$speed"; [ -s "$work/bin/rate" ] && pace="-readrate \$(cat "$work/bin/rate")"
   for arg; do
     shift
-    if [ "\$arg" = -i ]; then inputs=\$((inputs + 1)); [ "\$inputs" = 2 ] && set -- "\$@" $speed; fi
+    if [ "\$arg" = -i ]; then inputs=\$((inputs + 1)); [ "\$inputs" = 2 ] && set -- "\$@" \$pace; fi
     set -- "\$@" "\$arg"
   done
   exec $(command -v ffmpeg) "\$@";;

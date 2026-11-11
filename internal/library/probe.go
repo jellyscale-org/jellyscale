@@ -47,6 +47,10 @@ type Probe struct {
 	// VideoEnd is where the last video frame ends, from ReadVideoEnd, on the
 	// same clock as Keyframes. Set with them.
 	VideoEnd int64
+	// ImageCues are where the packets of the film's image subtitle tracks lie
+	// (Matroska only). Nil: not read, or the read failed and a later scan tries
+	// again.
+	ImageCues ImageCues
 }
 
 // wantsKeyframes: only the codecs playback copies need an index, and only

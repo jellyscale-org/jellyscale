@@ -113,6 +113,10 @@ type seenObject struct {
 	// chaptersUnread: stored before chapters were read (media_sources.chapters
 	// is NULL). Probed again like attachmentsUnread, keeping the index.
 	chaptersUnread bool
+	// imageCuesUnread: a Matroska film whose image subtitle tracks' cue points
+	// were never read (media_sources.image_cues is NULL). The next scan reads
+	// them, from the file's Cues alone and not by probing the film again.
+	imageCuesUnread bool
 }
 
 // ErrElsewhere is what Scan returns when another replica is scanning the
@@ -168,7 +172,7 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 	// A video is probed again when it changed. When only its subtitle files
 	// did, the film isn't read again: its tracks are listed anew from them.
 	sets := map[string]sidecarSet{}
-	var changed, refreshed []store.Object
+	var changed, refreshed, cuesUnread []store.Object
 	attachmentsOnly := map[string]bool{} // Keys in changed whose stored index is kept.
 	for _, object := range videos {
 		found := sidecarsOf(object.Key, subtitleFiles[path.Dir(object.Key)])
@@ -182,6 +186,11 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 			attachmentsOnly[object.Key] = true
 		case old.itemID != nil && (old.sidecars == nil || *old.sidecars != found.fingerprint):
 			refreshed = append(refreshed, object)
+			if old.imageCuesUnread {
+				cuesUnread = append(cuesUnread, object)
+			}
+		case old.imageCuesUnread:
+			cuesUnread = append(cuesUnread, object)
 		}
 	}
 	gone := map[string]seenObject{}
@@ -235,6 +244,11 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 			s.Log.Info("films probed", "library", lib.Name, "done", stored, "of", len(changed))
 		}
 	}
+	for _, object := range cuesUnread {
+		if err := s.refreshImageCues(ctx, lib, object, *seen[object.Key].itemID); err != nil {
+			s.Log.Warn("reading the image tracks' cue points failed; the next scan tries again", "key", object.Key, "error", err)
+		}
+	}
 	for _, object := range refreshed {
 		if err := s.refreshSidecars(ctx, lib.ID, object, *seen[object.Key].itemID, s.describe(ctx, lib.Media, sets[object.Key])); err != nil {
 			s.Log.Error("reading subtitle files failed", "key", object.Key, "error", err)
@@ -282,7 +296,9 @@ func (s *Scanner) loadSeen(ctx context.Context, libraryID string) (map[string]se
 			COALESCE(jsonb_path_exists(m.streams, '$[*] ? ((@.Type == "Video" && !exists(@.VideoRange)) || (@.Type == "Subtitle" && !exists(@.IsTextSubtitleStream)))')
 				OR (m.keyframes IS NULL AND m.container IN ('mkv', 'mp4')
 					AND EXISTS (SELECT 1 FROM jsonb_array_elements(m.streams) v WHERE v->>'Type' = 'Video' AND v->>'Codec' = ANY($2))), false),
-			COALESCE(m.item_id IS NOT NULL AND m.chapters IS NULL, false)
+			COALESCE(m.item_id IS NOT NULL AND m.chapters IS NULL, false),
+			COALESCE(m.image_cues IS NULL AND m.container = 'mkv'
+				AND jsonb_path_exists(m.streams, '$[*] ? (@.Type == "Subtitle" && @.IsImageSubtitleStream == true && !exists(@.Fingerprint))'), false)
 		FROM scan_objects o LEFT JOIN media_sources m ON m.item_id = o.item_id WHERE o.library_id = $1`, libraryID, playback.CopyCodecs())
 	if err != nil {
 		return nil, err
@@ -292,7 +308,7 @@ func (s *Scanner) loadSeen(ctx context.Context, libraryID string) (map[string]se
 	for rows.Next() {
 		var key string
 		var old seenObject
-		if err := rows.Scan(&key, &old.size, &old.etag, &old.itemID, &old.sidecars, &old.attachmentsUnread, &old.unprobed, &old.chaptersUnread); err != nil {
+		if err := rows.Scan(&key, &old.size, &old.etag, &old.itemID, &old.sidecars, &old.attachmentsUnread, &old.unprobed, &old.chaptersUnread, &old.imageCuesUnread); err != nil {
 			return nil, err
 		}
 		seen[key] = old
@@ -339,6 +355,9 @@ func (s *Scanner) probeAll(ctx context.Context, lib Library, objects []store.Obj
 				if probe.wantsKeyframes() && !keepIndex[object.Key] {
 					s.readIndex(ctx, lib, object, input, &probe)
 				}
+				if probe.Container == "mkv" {
+					probe.ImageCues = s.readImageCues(ctx, lib, object, probe.Streams)
+				}
 				results <- probed{object, probe}
 			}()
 		}
@@ -378,6 +397,52 @@ func (s *Scanner) readIndex(ctx context.Context, lib Library, object store.Objec
 	default:
 		probe.Keyframes = keyframes
 	}
+}
+
+// readImageCues reads where the packets of the image tracks of a Matroska film
+// lie, for those of the streams that are image tracks inside the film. A failed
+// read gives nil, so that the next scan tries again.
+func (s *Scanner) readImageCues(ctx context.Context, lib Library, object store.Object, streams []map[string]any) ImageCues {
+	cues := ImageCues{}
+	image := false
+	for _, stream := range streams {
+		image = image || stream["Type"] == "Subtitle" && stream["IsImageSubtitleStream"] == true && stream["Fingerprint"] == nil
+	}
+	if !image {
+		return cues
+	}
+	found, err := ReadImageCues(ctx, lib.Media, object.Key, object.Size)
+	if err != nil {
+		s.Log.Warn("reading the image tracks' cue points failed; the next scan tries again", "key", object.Key, "error", err)
+		return nil
+	}
+	for _, stream := range streams {
+		if track, ok := found[indexOf(stream)]; ok && stream["IsImageSubtitleStream"] == true && stream["Fingerprint"] == nil {
+			cues[indexOf(stream)] = track
+		}
+	}
+	return cues
+}
+
+// refreshImageCues stores the cue points of a film that was scanned without
+// them, and whose file has not changed since: only the head and the Cues of
+// the film are read.
+func (s *Scanner) refreshImageCues(ctx context.Context, lib Library, object store.Object, itemID string) error {
+	var raw []byte
+	if err := s.Pool.QueryRow(ctx, "SELECT streams FROM media_sources WHERE item_id = $1", itemID).Scan(&raw); err != nil {
+		return err
+	}
+	var streams []map[string]any
+	if err := json.Unmarshal(raw, &streams); err != nil {
+		return err
+	}
+	cues := s.readImageCues(ctx, lib, object, streams)
+	if cues == nil {
+		return errors.New("the read failed")
+	}
+	// Only if the film is still the one that was read.
+	_, err := s.Pool.Exec(ctx, "UPDATE media_sources SET image_cues = $2 WHERE item_id = $1 AND object_etag = $3", itemID, cues, object.ETag)
+	return err
 }
 
 // record is one row of the items table.
@@ -480,9 +545,9 @@ func (s *Scanner) upsert(ctx context.Context, lib Library, object store.Object, 
 		if _, err := tx.Exec(ctx, "DELETE FROM media_sources WHERE item_id = $1", stored); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO media_sources (id, item_id, store_key, size, object_etag, container, streams, keyframes, video_end, next_index, sidecars, chapters)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-			stored, stored, object.Key, object.Size, object.ETag, probe.Container, streams, probe.Keyframes, probe.VideoEnd, next, subtitleFiles.fingerprint, chapters); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO media_sources (id, item_id, store_key, size, object_etag, container, streams, keyframes, video_end, next_index, sidecars, chapters, image_cues)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+			stored, stored, object.Key, object.Size, object.ETag, probe.Container, streams, probe.Keyframes, probe.VideoEnd, next, subtitleFiles.fingerprint, chapters, probe.ImageCues); err != nil {
 			return err
 		}
 		_, err = tx.Exec(ctx, `INSERT INTO scan_objects (library_id, key, size, etag, item_id) VALUES ($1, $2, $3, $4, $5)

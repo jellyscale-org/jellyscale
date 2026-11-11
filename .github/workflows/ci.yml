@@ -126,7 +126,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30 # The tests' own limit is 20, set in test/integration.sh.
+    timeout-minutes: 40 # The tests' own limit is 30, set in test/integration.sh.
     strategy:
       fail-fast: false
       matrix:
@@ -137,6 +137,10 @@ jobs:
           - { name: rest, shard: rest }
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The upgrade checks build the previous release from its commit
+          # (image_burn_upgrade_integration_test.go).
+          fetch-depth: 0
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod

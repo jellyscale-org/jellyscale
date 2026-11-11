@@ -72,7 +72,7 @@ if [[ -n $shard ]]; then
   mapfile -t packages < <(bash test/shard.sh args "$shard") && [[ ${#packages[@]} -gt 0 ]] || { echo "test/shard.sh could not split the tier as $shard" >&2; exit 1; }
   tier=integration:$shard
 fi
-go tool gotestsum --format testname --jsonfile "$results/tests.json" -- -tags integration -p 1 -count=1 -timeout 20m "${packages[@]}" "$@"
+go tool gotestsum --format testname --jsonfile "$results/tests.json" -- -tags integration -p 1 -count=1 -timeout 30m "${packages[@]}" "$@"
 status=$?
 [[ $# -gt 0 ]] && tier=
 bash test/report.sh go "$results/tests.json" "go test (integration tier${shard:+, shard $shard})" $tier | tee "$work/report.out"

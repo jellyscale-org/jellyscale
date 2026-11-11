@@ -1248,20 +1248,34 @@
       "title": "Burnt image subtitles in every run: helpers, seeks and failovers draw the cue that is showing",
       "description": "A PGS, VobSub or DVB cue is one packet when it appears, so an ffmpeg that begins mid-film (a seek, a failover, a helper's chunk) never sees the cue already on screen and leaves it out until the next one (DOMAINS 51's known departure). JS-024 therefore gives burnt image subtitles no helpers: a slow 4K film with Blu-ray subtitles stalls on one worker as before. PRODUCT.md (The experience we're building) promises that every film gets every capability. Make a run that begins at segment N draw the cue showing at N: start its ffmpeg early enough to read that cue's packet (the packet time comes from the track itself, read once and cached like the PGS file copy) and drop the frames before N, or another way that keeps the segment's frames at a single run's times. Then let burnt image subtitles be chunked and helped like any slow re-encode.",
       "acceptanceCriteria": [
-        "A seek, a failover restart and a helper's chunk that begin inside a burnt PGS, VobSub or DVB cue show that cue from their first frame (TestBurnedImageSubtitleIsAtTheRightTime without its known-departure case)",
-        "A slow re-encode with a burnt image subtitle gets helpers, and its segments' frames fall at a single worker's times (TestABurntImageSubtitleGetsNoHelpers inverted)",
-        "The extra reading a run does before its first segment is bounded and measured, and a seek's time to first segment is recorded against today's",
-        "jellyfin-web plays a slow film with a burnt PGS track across a helper's chunk start with the cue on screen throughout",
-        "DOMAINS 51's known departure and DOMAINS 58's exception for image subtitles are removed"
+        "Every run that begins at a segment N > 0 inside a burnt image cue draws, from its first frame until the cue ends, the picture a run from zero draws there, for each of PGS, VobSub and DVB; shown for a seek, a failover restart and a helper's chunk, each through a worker's job (TestBurnedImageSubtitleIsAtTheRightTime without its known-departure case)",
+        "The same holds for a cue that began long before the cut (50 s or more, several chunks back), on a film the scan has read, with the cue times reaching the run as they do in production and never handed in by the test",
+        "The same holds for a film whose index the scan does not read today: MPEG-2 video with a VobSub track in Matroska (a DVD rip)",
+        "With several cues in the film a run draws only what a run from zero shows at its cut: nothing in the gap after a cue has ended, before the first cue or after the last, and the later cue (not the earlier) when it begins inside the second of two",
+        "A PGS picture built by more than one packet (a line added while an earlier line stays on screen) is drawn whole by a run that begins after the later packet, as a run from zero draws it",
+        "A run that begins where no cue is showing, 50 s or more after the last cue ended, reads no more bytes of the film before its first segment than the same run without the track (within the spread of repeated runs), for each of PGS (ended by a clear packet), VobSub (ended by its duration) and DVB (whose clear packet carries a duration); measured through a worker's job",
+        "A run that begins inside a cue reads, beyond the same run without the track, at most the film from that cue's first packet to the cut; checked for a cue 8 s old and one 50 s old through a worker's job with the cue times as production supplies them, and the bound does not grow with the gap before the cue",
+        "A run from segment 0, and a run whose image track is a file beside the film, read nothing they do not read today",
+        "No job (from zero, a seek, a failover or a helper) starts or waits on a read of the whole film, or any read that grows with the film's length, to learn cue times: the first mid-film run on a film reads the same before its first segment for the same cue in a film four times as long",
+        "Two runs of one film that begin at once on two workers (two helpers, or a helper and a seek) each stay within one run's bound, and neither waits for a read the other makes",
+        "If learning the cue times takes a read that fails for a reason that is not the film's (a store error, a timeout, the job ending), the run does not go on as if nothing were showing: no segment is stored without a cue a run from zero draws, the failure is not remembered as the film's, and the read ends with its job",
+        "A film that lists no times for the track without a whole-film read (MPEG-TS; a Matroska written without cue points for the track) still starts no whole-film read: a mid-film run reads at most a stated look-back more than the run without the track, shows a cue that began within that look-back from its first frame, and an older cue is the one remaining gap, pinned by a test on both sides of the look-back",
+        "A film already in the library when the release is deployed (scanned by the previous release, its file unchanged) meets these criteria by the next scan at the latest, with no step by the operator",
+        "After a film's file is replaced by one whose cues fall at other times, a mid-film run draws and reads by the new file's cues, never the old file's",
+        "docs/transcoding.md records a seek's bytes read and time to first segment, measured through a worker on a film of stated size and bitrate, for origin/main and for this build: with no cue showing, inside a cue 8 s old and one 50 s old, and for the first mid-film run on a film as well as a later one; no check passes or fails on a duration",
+        "A slow re-encode with a burnt image subtitle, inside the film or in a file beside it, gets helpers as the same film without the track does (TestABurntImageSubtitleGetsNoHelpers inverted), with at least one helper's chunk beginning inside a cue and one beginning where nothing is showing",
+        "Every segment of that helped run has the same number of video frames at the same times (within 1 ms) as a single worker's run from zero, whichever run made it, and so does every segment a seek or a failover run makes",
+        "jellyfin-web plays a slow film with a burnt PGS track across a helper's chunk start that falls inside a cue: the cue is on screen before the chunk start, at the first frame played from the helper's segment and until the cue ends, that segment was made by the helper, and the player reports no error",
+        "DOMAINS 51's known departure, DOMAINS 58's exception for image subtitles and DOMAINS 22's exception for a PGS cue before a restart are removed, with ARCHITECTURE's Known departures and docs/status.md agreeing, and their replacement states the cost: where cue times come from and what that read costs per film and per run, a run's extra rea\n\n... [6674 characters truncated] ...\n\n85 (loadSeen), so a design that stores cue times at scan time covers only newly scanned films unless it adds a condition; DOMAINS 51's 'Upgrade' paragraph is the precedent. A design that reads near the cut at run time meets it trivially."
       ],
       "priority": 8,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [
         "JS-024"
       ],
       "source": "User decision 2026-11-08 during JS-024: no helpers for burnt image subtitles for now, and every film should eventually get every capability",
-      "notes": ""
+      "notes": "Built in two attempts. The scan keeps each image track's cue points from the Matroska Cues it already reads (media_sources.image_cues); a mid-film run reads the packet at the last point before its cut, opens at the start of the picture showing there and trims to the cut. Films with no points for the track (MPEG-TS, Matroska without Cues for it) open 10 s back. Burnt image subtitles now get helpers. A seek inside a cue costs about 0.3 MB and 0.04 s per second the cue has been showing (docs/transcoding.md); no cap (BL-049)."
     },
     {
       "id": "JS-072",
