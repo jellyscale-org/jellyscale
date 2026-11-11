@@ -131,7 +131,7 @@ Routes still to build, by slice (checked against the rows):
 - `phase3`: 0 routes to build
 - `phase4-ha`: 10 routes to build
 - `identity`: 34 routes to build
-- `phase5-library`: 46 routes to build
+- `phase5-library`: 45 routes to build
 - `phase6-k8s`: 0 routes to build
 - `phase7-syncplay`: 23 routes to build
 
