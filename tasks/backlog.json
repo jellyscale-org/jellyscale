@@ -446,6 +446,69 @@
       "title": "A seek inside a long-showing image cue pays the cue's whole age, uncapped",
       "status": "open",
       "notes": "Measured 0.3 MB and 0.04 s per second of age at 640x360; a 4K film costs more and is unmeasured. A cap would drop a cue on screen, so it needs a viewer-visible decision."
+    },
+    {
+      "id": "BL-050",
+      "source": "JS-081 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "Helper-kill replacement check allows a replacement starting after the first missing segment",
+      "status": "open",
+      "notes": "TestAKilledHelpersChunk... only requires replacement.Start >= dead.Next (no duplicates). A replacement starting several segments after the first missing one passes if another job made the gap, so the 'from the first segment missing' property is not enforced."
+    },
+    {
+      "id": "BL-051",
+      "source": "JS-081 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "TestMoreWorkersFinishTheFilmSooner drops the 3-worker case on fewer than 3 cores",
+      "status": "open",
+      "notes": "On a 2-CPU runner counts is reduced to {1,2} and the 3-worker measurement is logged as not measured. This is a case dropped for core count in a test that still exists; the replacement mechanism test runs 2 and 3 workers regardless of cores, so the replacement's verdict is unaffected."
+    },
+    {
+      "id": "BL-052",
+      "source": "JS-081 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "Shown speed vs recorded speed uses a 25 percent tolerance",
+      "status": "open",
+      "notes": "TestAWorkersShownSpeedIsTheOneItRecordedAndHoldsAcrossAPause compares shown speed with the recorded value using before < recorded*0.75 || before > recorded*1.25. This is a comparison of two measured speeds with a bound; it is not in timing-bounds.txt. It is probably stable on a paused job, but it is not exact and was not exercised under load."
+    },
+    {
+      "id": "BL-053",
+      "source": "JS-081 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "TestSeekBackBeforeTheResumePoint keeps a 20 s bound that is under ten times a right build under load",
+      "status": "open",
+      "notes": "queue_integration_test.go (`time.Since(began) > 20*time.Second`, listed in test/timing-bounds.txt as a hang bound of 'a few seconds'). On a right build with one contended CPU (taskset -c 0 plus 4 busy loops) the seek took 4.27 s, so the bound is about 4.7x. docs/testing.md says a bound closer than ten times a right build is a bar. A slower runner can exceed it. A wait-for-event with a context dead"
+    },
+    {
+      "id": "BL-054",
+      "source": "JS-081 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "Flag check on the 3x job cannot fail the 'kept above 1' half, and the recorded-speed equality can race a heartbeat",
+      "status": "open",
+      "notes": "TestSessionsDoNotFlagAJobThatKeepsUp and TestSessionsFlagFollowsTheShownSpeedOfAJobThatMayKeepUp only compare the flag with the speed in the same answer. A 3x throttle is a ceiling, so on a slow runner the job is below 1 and a build that always sets IsBelowRealTime passes. The task asks for one job kept above 1. Separately, TestSessionsShowTheSpeedTheWorkerRecordedAndHoldItAcrossAPauseAtTheLead (t"
+    },
+    {
+      "id": "BL-055",
+      "source": "JS-081 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "A sleep sets the pause-time speed baseline in the metrics test",
+      "status": "open",
+      "notes": "TestAWorkerReportsItsJobWhileItRuns (metrics_integration_test.go) sleeps 1 s after jobs pauses, scrapes the speed, sleeps 5 s, scrapes again and requires them equal to 1e-9. On a slow runner ffmpeg progress still in the pipe after the 1 s can change the speed between the two scrapes, which fails a right build. The comment says it is read 'by now'. Reading only."
+    },
+    {
+      "id": "BL-056",
+      "source": "JS-071 merge queue",
+      "reviewer": "lead",
+      "severity": "minor",
+      "title": "QA runs every touched ffmpeg test under ffmpeg 6.1, not a sample",
+      "status": "open",
+      "notes": "JS-071 took four merge-queue runs: two fixture artifacts of ffmpeg 6.1 (sparse subtitle packets muxed ahead of their video) were found by CI, not by QA's 6.1 runs."
     }
   ]
 }

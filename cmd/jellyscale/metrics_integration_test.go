@@ -73,6 +73,7 @@ func TestScanLoopReportsEachLibraryScan(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	began := time.Now()
 	go scanLoop(ctx, pool, []library.Library{taken, broken, good}, time.Hour, slog.New(slog.DiscardHandler))
 	deadline := time.Now().Add(20 * time.Second)
 	for _, ok := gaugeOf(t, scanOK, good.ID); !ok; _, ok = gaugeOf(t, scanOK, good.ID) {
@@ -84,15 +85,20 @@ func TestScanLoopReportsEachLibraryScan(t *testing.T) {
 	if value, _ := gaugeOf(t, scanOK, good.ID); value != 1 {
 		t.Errorf("a scan that worked: %v", value)
 	}
-	if value, ok := gaugeOf(t, scanDuration, good.ID); !ok || value <= 0 || value > 20 {
+	// What the scan took is the machine's to say; it is recorded, and a duration.
+	if value, ok := gaugeOf(t, scanDuration, good.ID); !ok || value == 0 || math.Signbit(value) {
 		t.Errorf("duration %v, %v", value, ok)
+	} else {
+		t.Logf("the scan took %.3fs", value)
 	}
 	if value, ok := gaugeOf(t, scanOK, broken.ID); !ok || value != 0 {
 		t.Errorf("a scan that failed: %v, %v", value, ok)
 	}
 	for _, id := range []string{good.ID, broken.ID} {
-		if at, ok := gaugeOf(t, scanTime, id); !ok || math.Abs(float64(time.Now().Unix())-at) > 20 {
-			t.Errorf("last scan time %v, %v; want about now", at, ok)
+		// Stamped by a scan that ran after the loop started and before now.
+		at, ok := gaugeOf(t, scanTime, id)
+		if !ok || at < float64(began.UnixNano())/1e9 || at > float64(time.Now().UnixNano())/1e9 {
+			t.Errorf("last scan time %v, %v; want between the start of the loop (%v) and now", at, ok, began)
 		}
 	}
 	if _, ok := gaugeOf(t, scanTime, taken.ID); ok {

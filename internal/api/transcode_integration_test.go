@@ -327,11 +327,9 @@ func TestStoppedEndsTheViewer(t *testing.T) {
 	if response.StatusCode != 204 {
 		t.Fatalf("Stopped: %d", response.StatusCode)
 	}
-	// Jellyfin took 1.5 to 3.6 s, waiting for ffmpeg to exit; this only marks the viewer.
+	// Jellyfin took 1.5 to 3.6 s, waiting for ffmpeg to exit; this only marks the
+	// viewer, which the count below shows. The time is logged, not judged.
 	t.Logf("Stopped answered in %v", time.Since(began).Round(time.Millisecond))
-	if time.Since(began) > time.Second {
-		t.Errorf("Stopped took %v", time.Since(began))
-	}
 	if n := scalar[int](t, e.pool, "SELECT count(*) FROM transcode_viewers WHERE NOT stopped"); n != 1 {
 		t.Fatalf("%d live viewers after Stopped, want the other session's one", n)
 	}
@@ -364,8 +362,11 @@ func TestSegmentWithoutAWorkerAnswers503(t *testing.T) {
 	if response.StatusCode != 503 || response.Header.Get("Retry-After") == "" {
 		t.Fatalf("got %d", response.StatusCode)
 	}
-	if took := time.Since(began); took < time.Second || took > 4*time.Second {
-		t.Fatalf("took %v, want about the 2 second queue timeout", took)
+	t.Logf("the request without a worker was answered after %v", time.Since(began).Round(time.Millisecond))
+	// The request waited on a job that no worker took, until the queue timeout
+	// cancelled it: it was not refused before a job was queued.
+	if n := scalar[int](t, e.pool, "SELECT count(*) FROM transcode_jobs WHERE state = 'cancelled' AND error = 'no worker took the job'"); n != 1 {
+		t.Fatalf("%d jobs cancelled for want of a worker, want the one the request waited on (answered after %v)", n, time.Since(began).Round(time.Millisecond))
 	}
 }
 

@@ -64,8 +64,10 @@ async function login(page) {
 async function viewer() {
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const page = await context.newPage();
-  const seen = { infos: [], hls: [], deletes: [], errors: [], console: [] };
+  const seen = { infos: [], hls: [], deletes: [], errors: [], console: [], failed: [] };
   page.on("pageerror", (error) => seen.errors.push(error.message));
+  // A request that ended without an answer: hls.js abandons one after ten seconds. A seek aborts some too, so a scenario that seeks looks before it does.
+  page.on("requestfailed", (request) => { if (request.url().startsWith(base) && /\/hls1\//i.test(request.url())) seen.failed.push(`${request.method()} ${new URL(request.url()).pathname} ${request.failure()?.errorText}`); });
   page.on("console", (message) => { if (/hls|playback/i.test(message.text())) seen.console.push(message.text().slice(0, 200)); });
   // The player's playback requests, for a failure to show what it did and when.
   const start = Date.now();
@@ -890,6 +892,9 @@ await scenario("a bitrate cap re-encodes a film that would be copied", async ({ 
 
 // What a copy saves. The worker's own ffmpeg time is its children's, read from
 // the process table once they are gone.
+// Every ffmpeg command line the worker has run, from the shim's log beside the server's.
+const ffmpegLines = () => readFileSync(`${dirname(process.env.E2E_LOG)}/ffmpeg.log`, "utf8").split("\n").filter(Boolean);
+
 function workerCpu() {
   const fields = readFileSync(`/proc/${process.env.E2E_WORKER_PID}/stat`, "utf8").replace(/^.*\) /, "").split(" ");
   return (Number(fields[13]) + Number(fields[14])) / 100; // cutime and cstime, in clock ticks.
@@ -930,18 +935,25 @@ async function cpuPerSegment(page, seen, title, segments, quality) {
 await scenario("a copied 1080p film costs a fraction of the CPU of the re-encode", async ({ page, seen }) => {
   const segments = 8; // 32 s of film each way.
   let before = workerCpu();
+  let logged = ffmpegLines().length;
   await cpuPerSegment(page, seen, "Stigma Film", segments, null);
   const copy = workerCpu() - before;
+  // What a copy does, not what it costs: every ffmpeg that made its picture copied it.
+  const copied = ffmpegLines().slice(logged).filter((line) => /-hls_time/.test(line) && /-c:v /.test(line));
+  if (!copied.length || copied.some((line) => !/-c:v copy/.test(line))) throw new Error(`the copy's ffmpeg did not copy the picture: ${JSON.stringify(copied.map((l) => l.slice(0, 200)))}`);
   const copyRuns = seen.infos.at(-1).source.TranscodingUrl;
   if (!/VideoCodec=copy/.test(copyRuns)) throw new Error("the first run was not a copy");
   const second = await viewer();
   try {
     before = workerCpu();
+    logged = ffmpegLines().length;
     await cpuPerSegment(second.page, second.seen, "Stigma Film", segments, 3000000);
     const encoded = workerCpu() - before;
     if (!/VideoCodec=h264/.test(second.seen.infos.at(-1).source.TranscodingUrl)) throw new Error("the second run was not a re-encode");
+    // Logged, not judged: CPU seconds depend on the machine. The re-encode is the run that encoded the picture.
     console.log(`      1080p, ${segments * 4} s of film: copy ${copy.toFixed(2)} CPU s, re-encode ${encoded.toFixed(2)} CPU s (${(copy / encoded * 100).toFixed(0)}%)`);
-    if (copy > encoded * 0.25) throw new Error(`a copy used ${copy.toFixed(2)} CPU s, a re-encode ${encoded.toFixed(2)}`);
+    const encodedLines = ffmpegLines().slice(logged).filter((line) => /-hls_time/.test(line) && /-c:v /.test(line));
+    if (!encodedLines.length || encodedLines.some((line) => !/-c:v libx264/.test(line))) throw new Error(`the re-encode's ffmpeg did not encode the picture: ${JSON.stringify(encodedLines.map((l) => l.slice(0, 200)))}`);
   } finally {
     await second.context.close().catch(() => {});
   }
@@ -1377,22 +1389,33 @@ for (const flavour of [{ name: "re-encoded", film: "Failover Encode Film", copy:
     const survivor = workers.find((w) => w !== victim);
     if (!victim) throw new Error(`ffmpeg belongs to process ${owner}, not one of the two workers`);
     const before = await time(page);
+    const [victimJob, victimWorker] = sql("SELECT id || ' ' || worker FROM transcode_jobs WHERE state = 'running' ORDER BY id DESC LIMIT 1").split(" ");
     const killed = Date.now();
     victim.kill("SIGKILL");
-    // currentTime must go on, and must not stand still for long: hls.js abandons a request after ten seconds. Killed about a second into playback the buffer is smallest, so this is the worst case: a re-encode stood still 2.5 to 2.8 s, a copy 0.3 s (it had read ahead). The bound leaves CI a little over a second of slack, no more, so a slower takeover fails here.
+    // currentTime must go on: the film reaches 30 s past the kill. How long it stood still is logged and not judged (a re-encode stood still 2.5 to 2.8 s, a copy 0.3 s, on a fast machine); what makes it right is below: the surviving worker made the later segments, no request failed or was abandoned, no dialog showed. The deadline only stops a hang.
+    const survivorHasFfmpeg = () => ffmpegRuns().some((r) => parentOf(r.line.split(" ")[0]) === survivor.pid);
+    const deadline = Date.now() + 300000;
     let last = before, moved = Date.now(), freeze = 0, taken = null;
-    while (last < before + 30) {
-      if (Date.now() - killed > 120000) throw new Error(`the film reached ${last.toFixed(1)} s, killed at ${before.toFixed(1)} s`);
+    while (last < before + 30 && Date.now() < deadline) {
       if (await page.getByText("Playback Error").count()) throw new Error("the viewer got a Playback Error dialog");
       const now = await time(page);
-      if (now > last + 0.05) { freeze = Math.max(freeze, Date.now() - moved); moved = Date.now(); last = now; }
-      if (Date.now() - moved > 5000) throw new Error(`the picture stood still for ${Date.now() - moved} ms after the kill`);
-      if (!taken && ffmpegRuns().some((r) => parentOf(r.line.split(" ")[0]) === survivor.pid)) taken = Date.now() - killed;
+      if (now > last + 0.05) {
+        freeze = Math.max(freeze, Date.now() - moved);
+        moved = Date.now();
+        last = now;
+      }
+      if (!taken && survivorHasFfmpeg()) taken = Date.now() - killed;
       await new Promise((resolve) => setTimeout(resolve, 250));
     }
+    if (last < before + 30) throw new Error(`the film reached ${last.toFixed(1)} s, killed at ${before.toFixed(1)} s`);
     freeze = Math.max(freeze, Date.now() - moved);
     console.log(`      SIGKILL at ${before.toFixed(1)} s: the other worker's ffmpeg started ${taken} ms after it, the longest stand-still was ${freeze} ms`);
     if (taken === null) throw new Error("the other worker never started an ffmpeg");
+    const replacements = sql(`SELECT count(*) FROM transcode_jobs WHERE id > ${victimJob} AND worker <> '${victimWorker}' AND next_segment > start_segment`);
+    if (replacements === "0") throw new Error(`no job on a worker other than the killed one's (${victimWorker}) made segments after the kill`);
+    // What happened, whatever the clock: the surviving worker made the job's later segments, no request failed or was abandoned, no error dialog showed.
+    if (seen.failed.length) throw new Error(`requests ended without an answer: ${seen.failed.slice(0, 3).join("; ")}`);
+    if (await page.getByText("Playback Error").count()) throw new Error("the viewer got a Playback Error dialog");
     noErrors(seen);
     await leave(page);
     await waitFor("ffmpeg to exit after Stopped", async () => ffmpegRuns().length === 0, 30000);
@@ -1418,10 +1441,12 @@ await scenario("a slow re-encode is shared by three workers, and hls.js plays an
     for (let i = 0; i < 2; i++) workers.push(spawn(launch, [], { stdio: "ignore" }));
     await waitFor("three workers to hold their locks", async () => sql(`SELECT count(*) FROM transcode_nodes n WHERE slots > 0 AND locked AND EXISTS (SELECT 1 FROM pg_locks l
       WHERE l.locktype = 'advisory' AND l.classid = 27219 AND l.objsubid = 2 AND l.objid::bigint = hashtext(n.id)::bigint & 4294967295)`) === "3", 60000);
+    // Job rows outlive their scenario, and earlier scenarios left seek and replacement jobs past segment 0 on other workers: only the rows this play added count.
+    const firstJob = Number(sql("SELECT COALESCE(max(id), 0) FROM transcode_jobs"));
     await play(page, "Transcode", "Parallel Encode Film");
     const began = Date.now();
     const helper = await waitFor("a helper job on another worker", async () => {
-      const row = sql("SELECT min(start_segment) FROM transcode_jobs WHERE state = 'running' AND start_segment > 0");
+      const row = sql(`SELECT min(start_segment) FROM transcode_jobs WHERE id > ${firstJob} AND helper AND state = 'running'`);
       return row === "" ? null : Number(row);
     }, 60000);
     const boundary = helper * 4; // Seconds into the film where the main job's chunk ends.
@@ -1429,19 +1454,32 @@ await scenario("a slow re-encode is shared by three workers, and hls.js plays an
     const workersBusy = sql("SELECT count(DISTINCT worker) FROM transcode_jobs WHERE state = 'running'");
     if (Number(workersBusy) < 2) throw new Error(`the helper runs on the main job's worker (${workersBusy} workers busy)`);
 
-    // Plays through the first seam, and on to 60 s of the film, with no long stand-still and in less time than
-    // one worker at 0.7 could (86 s) take.
+    // Plays through the first seam, and on to 60 s of the film. How long that took and how long the
+    // picture stood still are logged and not judged: a slower runner takes longer on a right build.
+    // What is judged is below, and the deadline only stops a hang.
     const target = 60;
+    const deadline = Date.now() + 300000;
     let last = await time(page), moved = Date.now(), freeze = 0;
-    while (last < target) {
-      if (Date.now() - began > 78000) throw new Error(`the film reached ${last.toFixed(1)} s after 78 s; one worker at this speed would be at 55 s`);
+    while (last < target && Date.now() < deadline) {
       if (await page.getByText("Playback Error").count()) throw new Error("the viewer got a Playback Error dialog");
       const now = await time(page);
-      if (now > last + 0.05) { freeze = Math.max(freeze, Date.now() - moved); moved = Date.now(); last = now; }
-      if (Date.now() - moved > 6000) throw new Error(`the picture stood still for ${Date.now() - moved} ms at ${last.toFixed(1)} s (the seam is at ${boundary} s)`);
+      if (now > last + 0.05) {
+        freeze = Math.max(freeze, Date.now() - moved);
+        moved = Date.now();
+        last = now;
+      }
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
+    if (last < target) throw new Error(`the film reached ${last.toFixed(1)} s, the seam is at ${boundary} s`);
     console.log(`      reached ${target} s of the film ${Math.round((Date.now() - began) / 1000)} s after it started, the longest stand-still was ${freeze} ms`);
+    // What happened, whatever the clock: a helper on another worker made segments past the seam, the player played them, no request failed or was abandoned.
+    const made = sql(`SELECT string_agg(worker || ' ' || start_segment || ' ' || next_segment, ';') FROM transcode_jobs WHERE id > ${firstJob} AND helper AND next_segment > start_segment`).split(";").filter(Boolean).map((row) => row.split(" "));
+    const mainWorker = sql(`SELECT worker FROM transcode_jobs WHERE id > ${firstJob} AND NOT helper AND start_segment = 0 ORDER BY id LIMIT 1`);
+    const helped = made.filter(([worker, start]) => worker !== mainWorker && Number(start) >= helper);
+    if (!helped.length) throw new Error(`no helper on another worker than the main job's (${mainWorker}) made segments: ${JSON.stringify(made)}`);
+    const played = (n) => seen.hls.some((r) => r.status === 200 && Number(r.path.match(/\/(\d+)\.mp4$/i)?.[1]) === n);
+    if (!helped.some(([, start, next]) => played(Number(start)) && Number(next) > Number(start))) throw new Error(`the player never fetched a segment a helper made: ${JSON.stringify(helped)}`);
+    if (seen.failed.length) throw new Error(`requests ended without an answer: ${seen.failed.slice(0, 3).join("; ")}`);
     // The seam left no gap in what the player holds: one range covers it.
     const covered = await page.evaluate((at) => {
       const ranges = document.querySelector("video").buffered;
@@ -1485,7 +1523,9 @@ await scenario("worker lost mid-film: the player gets an answer in time and stop
   await page.evaluate((t) => { document.querySelector("video").currentTime = t; }, target);
   const answer = await waitFor("an error answer to the segment", async () => seen.hls.find((r) => r.status >= 500 && /\/hls1\/main\/\d+\.mp4$/i.test(r.path)), 30000);
   console.log(`      worker killed, far seek: the segment request was answered ${answer.status} after ${answer.at - seeked} ms`);
-  if (answer.at - seeked > 9000) throw new Error(`the answer took ${answer.at - seeked} ms, and the player gives up at 10000`);
+  // The player was answered, not left to abandon the request: a request it gave up on ends without an answer, and a seek aborts only the requests it replaces.
+  if (answer.status !== 503 && answer.status !== 500) throw new Error(`the segment request was answered ${answer.status}`);
+  if (seen.failed.some((f) => /ERR_TIMED_OUT|ERR_CONNECTION/.test(f))) throw new Error(`requests ended without an answer: ${seen.failed.join("; ")}`);
   const asked = [seen.hls.length, seen.infos.length];
   await new Promise((resolve) => setTimeout(resolve, 12000));
   if (seen.hls.length !== asked[0] || seen.infos.length !== asked[1]) throw new Error("the client kept asking after the refusal");

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -75,9 +76,12 @@ func TestAWorkerReportsItsJobWhileItRuns(t *testing.T) {
 
 	var text string
 	waitFor(t, "a speed", 20*time.Second, func() bool { text = scrape(t, w); return speedLine.MatchString(text) })
-	speed, _ := strconv.ParseFloat(speedLine.FindStringSubmatch(text)[1], 64)
-	if speed < 0.6 || speed > 1.5 {
-		t.Errorf("speed %v for an encode at the film's own speed", speed)
+	// What the speed is on this machine is its own to say (TestAWorkersShownSpeed...
+	// in mechanism_integration_test.go checks it against what the worker
+	// recorded); here it is shown, and a number.
+	shownBefore, err := strconv.ParseFloat(speedLine.FindStringSubmatch(text)[1], 64)
+	if err != nil || shownBefore == 0 || math.IsNaN(shownBefore) {
+		t.Errorf("speed %q for a running job", speedLine.FindStringSubmatch(text)[1])
 	}
 	for series, want := range map[string]float64{
 		`jellyscale_transcode_slots`:                         2,
@@ -97,7 +101,13 @@ func TestAWorkerReportsItsJobWhileItRuns(t *testing.T) {
 	// At its lead the job stops, for as long as it takes; its speed is the
 	// speed it had and not what a stopped process averages.
 	waitFor(t, "the job to pause", 30*time.Second, func() bool { return r.paused() })
-	time.Sleep(6 * time.Second)
+	time.Sleep(time.Second) // Whatever ffmpeg had already written when it stopped is read by now.
+	text = scrape(t, w)
+	pausedAt := speedLine.FindStringSubmatch(text)
+	if pausedAt == nil {
+		t.Fatal("the job lost its speed when it paused")
+	}
+	time.Sleep(5 * time.Second)
 	text = scrape(t, w)
 	if got := value(text, `jellyscale_transcode_job_paused{job="`+r.jobID(t)+`"}`); got != 1 {
 		t.Errorf("a paused job reports paused %v", got)
@@ -106,8 +116,12 @@ func TestAWorkerReportsItsJobWhileItRuns(t *testing.T) {
 	if match == nil {
 		t.Fatal("the paused job lost its speed")
 	}
-	if speed, _ := strconv.ParseFloat(match[1], 64); speed < 0.6 || speed > 1.5 {
-		t.Errorf("speed %v after 6 seconds paused; pausing counted as slow encoding", speed)
+	// The speed is over the job's running time, so six seconds paused change
+	// nothing; a speed that fell would be pausing counted as slow encoding.
+	shownHeld, _ := strconv.ParseFloat(match[1], 64)
+	shownPaused, _ := strconv.ParseFloat(pausedAt[1], 64)
+	if math.Abs(shownHeld-shownPaused) > 1e-9*math.Max(shownHeld, shownPaused) {
+		t.Errorf("speed %v after 6 seconds paused, %v when it paused: pausing counted as slow encoding", shownHeld, shownPaused)
 	}
 
 	// Nobody asks any more: the job is cut short, and the series is gone.

@@ -37,6 +37,13 @@ check "every scenario ran once over the three shards" "$(printf 'kill A\nkill B\
 check "E2E_ONLY filters after the count" "run   s4 ran s4 shard 0/3: ran 1 of 11" "$(E2E_SHARD=0/3 E2E_ONLY='^s4$' node test/e2e/shard_test.mjs | tr '\n' ' ' | sed 's/ $//')"
 fails_with "a shard past n is refused by the gate" env E2E_SHARD=3/3 node test/e2e/shard_test.mjs
 
+# --- report.sh timings: a run that passed keeps what its tests logged, in the output.
+printf '%s\n' \
+  '{"Action":"output","Package":"p","Test":"TestMoreWorkersFinishTheFilmSooner","Output":"    helpers_test.go:578: speedup over one worker: 2 workers 1.62x\n"}' \
+  '{"Action":"output","Package":"p","Test":"TestMoreWorkersFinishTheFilmSooner","Output":"    helpers_test.go:579: one CPU per physical core: [0 2]\n"}' \
+  '{"Action":"pass","Package":"p","Test":"TestMoreWorkersFinishTheFilmSooner","Elapsed":9}' >"$tmp/passed.json"
+check "report.sh timings prints a timing a passing test logged, and not a line with none" "timing  TestMoreWorkersFinishTheFilmSooner: speedup over one worker: 2 workers 1.62x" "$(bash test/report.sh timings "$tmp/passed.json")"
+
 # --- check-shards.sh
 records="$tmp/records"
 mkdir "$records"

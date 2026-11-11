@@ -10,6 +10,11 @@
 #       for the tier named (a run that stopped partway), or from what
 #       test/shard.sh counts for the shard: neither is allowed to leave CI green. The full output of
 #       each failure goes to failures.log beside the JSON.
+#   report.sh timings <gotestsum.json>
+#       Prints the lines tests logged that hold a time or a multiple (the speedup
+#       of more workers, the copy's multiple of real time), whether the test
+#       passed or not. `go` runs it, so the job log of a run that passed keeps them:
+#       CI uploads tests.json only for a failed job. Tests log timings, never judge them.
 #   report.sh fail <file> <line> <title> <message>
 #       One failure, from a bash check.
 #   report.sh lines <file> <title>
@@ -34,6 +39,19 @@ annotate() { # file line title message
 }
 
 case ${1:-} in
+timings)
+  python3 -I -c '
+import json, re, sys
+for line in open(sys.argv[1]):
+    try:
+        event = json.loads(line)
+    except ValueError:
+        continue
+    text = event.get("Output", "").strip()
+    if event.get("Action") == "output" and event.get("Test") and re.search(r"_test\.go:\d+: .*\d(?:ms|µs|s|x)\b", text):
+        print("timing  %s: %s" % (event["Test"], text.split(": ", 1)[1]))
+' "$2"
+  ;;
 fail)
   _file=$2 _line=$3 _title=$4 _message=$5
   annotate "$_file" "$_line" "$_title" "$_message"
@@ -79,6 +97,11 @@ go)
     want=$(go test "${tags[@]}" -list '.*' ./... 2>/dev/null | grep -cE '^(Test|Example|Fuzz)')
   fi
   go run ./cmd/testreport -json "$json" -title "$title" -want "$want" -log "$(dirname "$json")/failures.log"
+  _status=$?
+  # After the summary line, which callers read first. The timings stay in the job's output.
+  echo "logged timings of the tests (kept, not judged):"
+  bash "$repo/test/report.sh" timings "$json"
+  exit $_status
   ;;
 *)
   sed -n '2,/^set /p' "$0" | sed '$d' | sed 's/^# \{0,1\}//' >&2

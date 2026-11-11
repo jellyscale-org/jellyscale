@@ -5,6 +5,7 @@ package transcode
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -38,15 +39,22 @@ func TestChapterImageJobsHaveSlotsOfTheirOwn(t *testing.T) {
 	}
 	r.exec(t, "UPDATE libraries SET chapter_images = true")
 
-	// Every frame takes three seconds, so the jobs are still running when the
-	// subtitle is asked for.
+	// Every chapter job's ffmpeg waits for a file the test writes, so the jobs
+	// are still running when the subtitle is asked for, whatever the machine.
 	real := testenv.FFmpeg(t)
 	dir := t.TempDir()
-	script := fmt.Sprintf("#!/bin/sh\ncase \"$*\" in *image2pipe*) sleep 3 >/dev/null 2>&1;; esac\nexec %q \"$@\"\n", real)
+	gate := filepath.Join(dir, "go")
+	script := fmt.Sprintf("#!/bin/sh\ncase \"$*\" in *image2pipe*) while [ ! -e %q ]; do sleep 0.1; done;; esac\nexec %q \"$@\"\n", gate, real)
 	if err := os.WriteFile(filepath.Join(dir, "ffmpeg"), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	open := func() {
+		if err := os.WriteFile(gate, nil, 0o644); err != nil && !errors.Is(err, os.ErrExist) {
+			t.Error(err)
+		}
+	}
+	t.Cleanup(open)
 	r.worker(t, nil)
 	j := r.jobs(t)
 
@@ -62,16 +70,19 @@ func TestChapterImageJobsHaveSlotsOfTheirOwn(t *testing.T) {
 	}
 	waitFor(t, "two chapter jobs running", 20*time.Second, func() bool { return running() == chapterSlots })
 
-	began := time.Now()
-	if _, err := FetchSubtitle(context.Background(), r.pool, j.Hub, assets, r.spec.Item, source, 2); err != nil {
-		t.Fatal(err)
+	// A subtitle that waited behind the chapter pictures would wait for the gate,
+	// which only this test opens: the minute only stops that hang.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	asked := time.Now()
+	if _, err := FetchSubtitle(ctx, r.pool, j.Hub, assets, r.spec.Item, source, 2); err != nil {
+		t.Fatalf("the subtitle was not read while chapter pictures held the slots: %v", err)
 	}
-	if took := time.Since(began); took > 2*time.Second {
-		t.Errorf("the subtitle waited %s behind chapter pictures", took)
-	}
+	t.Logf("the subtitle was read %v after it was asked for", time.Since(asked).Round(time.Millisecond))
 	if n := running(); n != chapterSlots {
 		t.Errorf("%d chapter jobs running when the subtitle was done, want %d", n, chapterSlots)
 	}
+	open()
 
 	// The rest of them, never more than the slots at once.
 	most := 0
