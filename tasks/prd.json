@@ -1224,23 +1224,24 @@
     {
       "id": "JS-070",
       "phase": "OPS",
-      "title": "Client SDK conformance: the fields and checks SDK clients enforce",
-      "description": "Findroid failed twice on the dogfood (2026-11-08) where jellyfin-web worked. First, jellyfin-sdk-kotlin's server discovery rejects any ProductName but \"Jellyfin Server\" (#44). Second, its strict decoder throws on a missing non-null field: four were missing from the sign-in response (#47), so Findroid reported bad credentials. The differential tier had seen two of them and filed them as a gap. Make the tier and CI enforce what client SDKs enforce: (1) derive, from a pinned jellyfin-sdk-kotlin release, the required (non-null, no default) fields of each response model, and fail the differential tier when a jellyscale response lacks one for its route's return type; (2) refuse an allowlist entry that hides a missing required field; (3) add the requests every client makes before its home screen to requests.yaml: /System/Info/Public, /System/Ping, /Users/Public, /Branding/Configuration, /QuickConnect/Enabled, sign-in itself, /Sessions, DisplayPreferences; (4) run @jellyfin/sdk's server discovery (TypeScript, as Streamyfin uses it) against jellyscale in CI.",
+      "title": "Client SDK conformance: the routes and fields SDK clients need",
+      "description": "Every client but jellyfin-web is built on a Jellyfin SDK (jellyfin-sdk-kotlin: Findroid, Android TV; jellyfin-sdk-swift: Swiftfin; @jellyfin/sdk: Streamyfin), and they fail where jellyfin-web does not. Findroid has stopped on the dogfood three times: its server discovery rejected a ProductName (#44), its strict decoder threw on four missing sign-in fields (#47), and on 2026-11-11 its home screen stopped on a 404 from GET /Items/Suggestions (#91), a route compat/coverage-12.4.tsv listed as needed for Swiftfin and Streamyfin but no task built. Two things decide whether an SDK client works: the routes it calls on its main paths answer, and the answers carry every field its SDK requires. Evaluate both from the clients' and SDKs' own source, pinned by release, and make CI enforce them. (1) Routes: from each client's source (Findroid, Android TV, Swiftfin, Streamyfin), list the SDK operations it calls on startup, sign-in, home, library browse, item detail, playback, progress and stop; record them per client in compat/ by a script; every such route answers as Jellyfin 12.4 does or with an empty result of the right shape, never a 404; a route a client calls that we choose not to serve is a decision written in the coverage file. (2) Fields: derive, from the pinned SDKs, the required (non-null, no default) fields of each response model, and fail the differential tier when a jellyscale response lacks one for its route's return type; refuse an allowlist entry that hides a missing required field. (3) Run @jellyfin/sdk's recommended-server discovery and the Kotlin SDK's own decoding of jellyscale's answers in CI.",
       "acceptanceCriteria": [
-        "The required fields per response model come from a pinned jellyfin-sdk-kotlin release by a script, not by hand, and the list is checked in with its version",
-        "The differential tier fails when a jellyscale response lacks a field the SDK requires for that route's return type, and an allowlist entry for such a field is refused; shown with ProductName and the four sign-in fields of #44 and #47 put back",
-        "requests.yaml covers the startup, discovery and sign-in requests above, and the tier passes",
+        "A script lists, per client and pinned release (Findroid, Android TV, Swiftfin, Streamyfin), the SDK operations it calls on startup, sign-in, home, browse, detail, playback, progress and stop, checked in under compat/ with the versions",
+        "Every operation on that list answers a request shaped as the client sends it with a status other than 404, and with Jellyfin 12.4's shape (an empty result counts); a route left unserved is written as a decision in compat/coverage-12.4.tsv; a test fails when a listed route 404s, shown with /Items/Suggestions removed",
+        "The required fields per response model come from the pinned jellyfin-sdk-kotlin and jellyfin-sdk-swift releases by a script, and the differential tier fails when a jellyscale response lacks one; an allowlist entry for such a field is refused; shown with ProductName and the four sign-in fields of #44 and #47 put back",
         "@jellyfin/sdk's recommended-server discovery accepts jellyscale in CI, and fails with ProductName put back",
-        "Where a client SDK can be run (the TypeScript and Kotlin SDKs), its own deserialisation of jellyscale's answers is the check, not only a list derived from it"
+        "Where a client SDK can be run (the TypeScript and Kotlin SDKs), its own deserialisation of jellyscale's answers is the check, not only a list derived from it",
+        "docs/status.md says, per client, which main paths are covered"
       ],
-      "priority": 17,
+      "priority": 10,
       "status": "todo",
       "passes": false,
       "dependsOn": [
         "JS-069"
       ],
       "source": "escaped defects from the dogfood, Findroid, 2026-11-08 (#44, #47)",
-      "notes": "jellyfin-web ignores fields it doesn't read, so it can't catch this class; Kotlin and Swift SDK clients decode strictly. Scheduled after the web-client work (user, 2026-11-08: focus on the web client first, then pivot to other clients). Findroid's first home-screen call, GET /Items/Suggestions, 404s; a parked implementation is on branch feat/items-suggestions."
+      "notes": "jellyfin-web ignores fields it doesn't read, so it can't catch this class; Kotlin and Swift SDK clients decode strictly. Scheduled after the web-client work (user, 2026-11-08: focus on the web client first, then pivot to other clients). Findroid's first home-screen call, GET /Items/Suggestions, 404s; a parked implementation is on branch feat/items-suggestions. Moved up and widened 2026-11-11 (owner: the SDK is the primary way clients are built, other than the web client; evaluate what is required): it now also lists the routes each SDK client calls, since a missing route stops a client as surely as a missing field. /Items/Suggestions shipped in #91; the parked branch feat/items-suggestions is superseded."
     },
     {
       "id": "JS-071",
