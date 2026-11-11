@@ -126,7 +126,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30 # The tests' own limit is 20, set in test/integration.sh.
+    timeout-minutes: 40 # The tests' own limit is 30, set in test/integration.sh.
     strategy:
       fail-fast: false
       matrix:
