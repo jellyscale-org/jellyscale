@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 
+	"jellyscale/internal/library"
 	"jellyscale/internal/playback"
 	subs "jellyscale/internal/subtitles"
 )
@@ -56,8 +57,9 @@ const (
 // it the video's time as the video advances, so a gap between cues doesn't hold
 // the video back (unless the input is read with -readrate, which waits for the
 // track). A restart at start > 0 opens the film at the keyframe before the cut,
-// so a cue whose packet came before that is missing from that run though a run
-// from zero draws it (DOMAINS 51).
+// which is after the packet of a cue that began earlier and is still showing; so
+// the run opens early enough to read that packet (cueStart), and drops the
+// frames before the cut, and draws the cue as a run from zero does (DOMAINS 51).
 func Command(ctx context.Context, input string, spec playback.Spec, start int, dir, ass string, image *playback.Stream) (*exec.Cmd, error) {
 	seek := float64(start * playback.SegmentSeconds)
 	hasAudio := spec.AudioIndex >= 0
@@ -79,12 +81,26 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 	// negative start time doesn't move the cut, a positive one does.)
 	var keyframe float64
 	videoSeek := seek
+	trim := ""
 	if start > 0 {
 		var err error
 		if keyframe, err = firstFrameAt(ctx, input, seek+max(base, 0)); err != nil {
 			return nil, err
 		}
 		videoSeek = keyframe - max(base, 0) - frameDuration/4
+		if image != nil && !external {
+			// The frames before the cut are decoded and dropped by trim, not -ss,
+			// so the first one kept is the same on every ffmpeg.
+			trim = fmt.Sprintf("trim=start=%s,", seconds(keyframe-frameDuration/4))
+			early, err := cueStart(image, keyframe)
+			if err != nil {
+				return nil, err
+			}
+			if early < keyframe {
+				// A second before the packet, so that the demuxer's seek lands before it.
+				videoSeek = max(min(videoSeek, early-max(base, 0)-1), 0)
+			}
+		}
 	}
 	var audioSeek float64
 	var drop string
@@ -179,8 +195,8 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		if external {
 			track = fmt.Sprintf("%d:0", inputs)
 		}
-		args = append(args, "-filter_complex", fmt.Sprintf("[0:v:0]%s[v];[%s]scale=%d:%d[s];[v][s]overlay=eof_action=pass:repeatlast=0,format=yuv420p[o]",
-			picture, track, spec.Width, spec.Height), "-map", "[o]")
+		args = append(args, "-filter_complex", fmt.Sprintf("[0:v:0]%s%s[v];[%s]scale=%d:%d[s];[v][s]overlay=eof_action=pass:repeatlast=0,format=yuv420p[o]",
+			trim, picture, track, spec.Width, spec.Height), "-map", "[o]")
 	}
 	args = append(args,
 		"-c:v", "libx264", "-preset", "veryfast", "-profile:v", "high", "-level", "51",
@@ -387,6 +403,26 @@ func firstFrameAt(ctx context.Context, input string, t float64) (float64, error)
 		return 0, fmt.Errorf("no video frame at %.3fs", t)
 	}
 	return first, nil
+}
+
+// cueLookback is how far before its cut a run begins that draws an image track
+// whose cue times are not known: MPEG-TS, a Matroska file without cue points for
+// the track. A cue that began earlier is missed until the next one.
+const cueLookback = 10.0
+
+// cueStart is the time a run with its first frame at t must open the film at to
+// read the picture of the image track showing there: with the track's cue points
+// known it is the start of that picture (t if none is showing); without them,
+// cueLookback before t.
+func cueStart(image *playback.Stream, t float64) (float64, error) {
+	if image.OpenAt == nil {
+		return t - cueLookback, nil
+	}
+	open, err := image.OpenAt(t)
+	if errors.Is(err, library.ErrUnknownPicture) {
+		return t - cueLookback, nil
+	}
+	return open, err
 }
 
 func ffprobe(ctx context.Context, args ...string) ([]byte, error) {

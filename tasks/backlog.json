@@ -419,6 +419,33 @@
       "title": "JS-030 is a grab-bag; the one-reaper item is not needed at the target scale (ARCHITECTURE.md rule 6)",
       "status": "open",
       "notes": ""
+    },
+    {
+      "id": "BL-047",
+      "source": "JS-071 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "A DVB cue that ends by its page time-out, with no clear packet, is treated as showing forever",
+      "status": "open",
+      "notes": "imagecues.go classify ignores page_time_out; a run long after such a cue opens at its start and reads the gap. Reading only."
+    },
+    {
+      "id": "BL-048",
+      "source": "JS-071 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "A film whose image-track Cues cannot be parsed has them re-read and warned about on every scan",
+      "status": "open",
+      "notes": "No marker for unreadable; image_cues stays NULL and loadSeen selects it again."
+    },
+    {
+      "id": "BL-049",
+      "source": "JS-071 verify",
+      "reviewer": "lead",
+      "severity": "minor",
+      "title": "A seek inside a long-showing image cue pays the cue's whole age, uncapped",
+      "status": "open",
+      "notes": "Measured 0.3 MB and 0.04 s per second of age at 640x360; a 4K film costs more and is unmeasured. A cap would drop a cue on screen, so it needs a viewer-visible decision."
     }
   ]
 }

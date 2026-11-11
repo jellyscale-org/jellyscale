@@ -6,8 +6,8 @@
 // by a transcode otherwise, as VobSub always is. Needs the stack test/e2e/run.sh starts.
 // Usage: E2E_SCRATCH=<worker scratch dir> E2E_PG=<postgres container> node subtitles.mjs <base_url> <user> <password>
 // Run from a directory with playwright-core installed.
-import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, rmSync, statSync, truncateSync } from "node:fs";
+import { execFileSync, spawn } from "node:child_process";
+import { existsSync, readFileSync, readdirSync, rmSync, statSync, truncateSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
 import { runLater, schedule, shardLine } from "./shard.mjs";
@@ -556,6 +556,44 @@ function imageBurnedIn(name, library, title, codec, renderPgs = false, external 
 
 await imageBurnedIn("POSIX burn-in of PGS for a viewer whose client doesn't draw it: the bar is in the picture at the right time, after far seeks", "Transcode", "Pgs Film", "PGSSUB");
 await imageBurnedIn("S3 burn-in of PGS for a viewer whose client doesn't draw it: the bar is in the picture at the right time, after far seeks", "Cloud", "Pgs Cloud Film", "PGSSUB");
+
+// JS-071. A burnt image track is shared by workers like any slow re-encode, and
+// a helper whose chunk begins inside a cue draws it from its first frame. Every
+// worker's ffmpeg reads at 0.7 of the film's speed, so a viewer who seeks to
+// 56 s gets a helper at segment 16 (64 s, the next chunk start) while the first
+// job is still on its way; the bottom bar is on from 60 to 66 s, across the
+// seam, and is looked at just after the helper's first frame and again two
+// seconds on.
+await scenario("a slow burn-in of PGS is shared by workers, and the cue is on screen across a helper's chunk start", async ({ page, seen }) => {
+  const launch = process.env.E2E_WORKER;
+  if (!launch) throw new Error("the parallel scenario needs E2E_WORKER (test/e2e/run.sh sets it)");
+  const rate = `${dirname(launch)}/rate`;
+  writeFileSync(rate, "0.7");
+  const workers = [];
+  try {
+    for (let i = 0; i < 2; i++) workers.push(spawn(launch, [], { stdio: "ignore" }));
+    await waitFor("three workers to hold their locks", async () => sql(`SELECT count(*) FROM transcode_nodes n WHERE slots > 0 AND locked AND EXISTS (SELECT 1 FROM pg_locks l
+      WHERE l.locktype = 'advisory' AND l.classid = 27219 AND l.objsubid = 2 AND l.objid::bigint = hashtext(n.id)::bigint & 4294967295)`) === "3", 60000);
+    await play(page, "Transcode", "Pgs Parallel Film");
+    await chooseBurn(page, seen, 2);
+    await page.evaluate(() => { document.querySelector("video").currentTime = 56; });
+    await waitFor("a helper at the chunk start after the cue's start", async () => sql("SELECT count(*) FROM transcode_jobs WHERE helper AND start_segment = 16") !== "0", 90000);
+    // The cue began at 60 s, before the helper's chunk (64 s): it is on screen before the seam.
+    await waitFor("playback to reach the second before the helper's chunk", async () => (await time(page)) >= 62.5, 90000);
+    if ((await time(page)) >= 63.9) throw new Error("playback was already past 63.9 s when the picture before the helper's chunk was looked at");
+    expectBright(await brightThirds(page, true), "bottom");
+    await waitFor("playback to reach the helper's first frame", async () => (await time(page)) >= 64.2, 90000);
+    expectBright(await brightThirds(page, true), "bottom");
+    await waitFor("playback two seconds on", async () => (await time(page)) >= 65.5, 30000);
+    if ((await time(page)) < 66) expectBright(await brightThirds(page, true), "bottom");
+    if (sql("SELECT count(*) FROM transcode_jobs WHERE helper AND start_segment = 16 AND next_segment > 16") === "0") throw new Error("the helper at segment 16 made no segment, so the seam was not played from it");
+    noErrors(seen);
+    await leave(page);
+  } finally {
+    for (const w of workers) w.kill("SIGKILL");
+    rmSync(rate, { force: true });
+  }
+});
 await imageBurnedIn("POSIX burn-in of VobSub: the bar is in the picture at the right time, after far seeks", "Transcode", "Vobsub Film", "DVDSUB");
 await imageBurnedIn("POSIX burn-in of VobSub for a viewer whose client draws PGS and VobSub: it is still burnt in", "Transcode", "Vobsub Render Film", "DVDSUB", true);
 await imageBurnedIn("S3 burn-in of VobSub: the bar is in the picture at the right time, after far seeks", "Cloud", "Vobsub Cloud Film", "DVDSUB");

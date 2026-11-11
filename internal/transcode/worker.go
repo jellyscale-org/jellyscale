@@ -495,10 +495,27 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	// paused here.
 	unbounded := limit >= layout.Count()
 	limitAt := time.Now()
-	// A burnt image subtitle gets no helpers: a run that begins mid-film does
-	// not draw a cue whose packet came before it (invariant 51), so a helper's
-	// chunk would lose the cue showing at its start. Such a job is one ffmpeg.
-	chunked, size := w.chunked(job) && image == nil, w.chunkSize()
+	chunked, size := w.chunked(job), w.chunkSize()
+	// A track inside the film whose cue points the scan read: a run that begins
+	// mid-film reads the packet of the cue showing at its cut (a few small reads
+	// of the film, under the job's lease), and opens early enough to see it.
+	if image != nil && image.Fingerprint == "" {
+		var cues library.ImageCues
+		if err := w.Pool.QueryRow(ctx, "SELECT image_cues FROM media_sources WHERE id = $1::uuid", source.ID).Scan(&cues); err != nil {
+			return err
+		}
+		if track, ok := cues[image.Index]; ok {
+			local := *image
+			local.OpenAt = func(t float64) (open float64, err error) {
+				err = w.awaitJob(ctx, job, log, func(ctx context.Context) (err error) {
+					open, err = track.OpenAt(ctx, media, source.Key, source.Size, t)
+					return err
+				})
+				return open, err
+			}
+			image = &local
+		}
+	}
 	next := job.Start // The next segment to store.
 
 	// run is the job's ffmpeg, from segment begin.

@@ -48,11 +48,12 @@ func imageFilm(t *testing.T, dir, name, codec string) string {
 }
 
 // The track is in the picture at its cue's time, from a run that starts at zero
-// and from restarts, and the run gets to the end of a film whose track has no
-// packets for its last ten seconds. A cue that a restart lands inside is not
-// drawn by that run (the known departure of DOMAINS 51): the keyframes are two
-// seconds apart, so the restart at segment 6, 24 seconds in, seeks to the one
-// at 22.02, after the cue's packet, and finds the bottom bar missing.
+// and from a restart where no cue is showing, and the run gets to the end of a
+// film whose track has no packets for its last ten seconds. This calls Command
+// as it is, with no times of the track's cues, so the restarts that land inside
+// a cue (which need them) are the worker-level checks of JS-071, where the cue
+// times reach the run as they do in production
+// (TestAMidFilmRunDrawsTheCueAFilmFromZeroShowsAtItsCut, TestASeekInto...).
 func TestBurnedImageSubtitleIsAtTheRightTime(t *testing.T) {
 	for _, tc := range []struct{ name, codec string }{{"PGS", "copy"}, {"VobSub", "dvdsub"}, {"DVB", "dvbsub"}} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -83,14 +84,11 @@ func TestBurnedImageSubtitleIsAtTheRightTime(t *testing.T) {
 			}
 			const total = 10
 			const none, top, bottom, edge = 0, 1, 2, 3
-			want := func(second, restart int) int {
+			want := func(second int) int {
 				switch {
 				case second >= 7 && second <= 9:
 					return top
 				case second >= 23 && second <= 29:
-					if restart*4 > 22 && second >= restart*4 {
-						return none // The run began inside the cue and never saw it start.
-					}
 					return bottom
 				case second <= 4 || (second >= 12 && second <= 20) || second >= 32:
 					return none
@@ -98,7 +96,7 @@ func TestBurnedImageSubtitleIsAtTheRightTime(t *testing.T) {
 				return edge
 			}
 			whole := build(spec, 0)
-			for _, restart := range []int{0, 3, 6} {
+			for _, restart := range []int{0, 3} {
 				dir := whole
 				if restart > 0 {
 					dir = build(spec, restart)
@@ -118,7 +116,7 @@ func TestBurnedImageSubtitleIsAtTheRightTime(t *testing.T) {
 					case half != [2]int{}:
 						got = edge
 					}
-					if expect := want(second, restart); expect != edge && got != expect {
+					if expect := want(second); expect != edge && got != expect {
 						t.Errorf("restart %d, second %d: bright pixels top %d, bottom %d; want %v (0 none, 1 top, 2 bottom)", restart, second, half[0], half[1], expect)
 					}
 				}

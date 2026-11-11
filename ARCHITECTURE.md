@@ -28,7 +28,7 @@ One binary, chosen with `--roles`, run as separate Deployments. Roles version to
 
 ## Known departures
 
-- A burnt-in PGS cue that began before a transcode job's restart point is not drawn by that job until the next cue, though a job from zero draws it, so a segment's picture depends on which job made it where a cue spans a restart (DOMAINS 51). Text cues are exact, because their track is a whole file. Opening the track's input earlier would cost another read of the film for as long as the job, so it is accepted until a measurement says otherwise.
+- A burnt-in image subtitle cue (PGS, VobSub, DVB) that began before a transcode job's restart point is drawn by that job only if the film lists cue points for the track: Matroska with Cues for it, which the scan keeps (DOMAINS 51). A film with none (MPEG-TS, a Matroska file written without Cues for the track or with Cues for the video only) is read a look-back of 10 seconds early, with no read of the whole film, so a cue that began within the look-back is drawn from the run's first frame and an older one is missed until the next cue. A run inside a showing cue also reads and decodes the film from the cue's first packet to its cut, which grows with the cue's age and has no cap.
 - A worker from before a release that adds a spec field (tone mapping, copied audio) stores segments made without it under the new hash if it takes a job with the field, so workers roll first and roll back last (docs/transcoding.md, Tone mapping). The general fix, workers reporting their `OutputVersion` and the api offering only specs every live worker supports, belongs to the upgrades item in `phase6-k8s` (PRODUCT.md).
 
 ## Control-plane ceiling

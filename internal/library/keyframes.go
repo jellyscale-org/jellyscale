@@ -190,25 +190,28 @@ func ebmlUint(b []byte) uint64 {
 	return v
 }
 
-func (f *indexFile) matroskaKeyframes() ([]int64, error) {
+// matroskaLayout reads the head of a Matroska file for where its Segment's
+// children are, and the length of a timestamp step in nanoseconds. Its Tracks
+// are read, and its Cues named, or the file has no index.
+func (f *indexFile) matroskaLayout() (base int64, where map[uint32]int64, unit int64, tracks []byte, err error) {
 	if err := f.readHead(); err != nil {
-		return nil, err
+		return 0, nil, 0, nil, err
 	}
 	// The Segment follows the EBML header; its children are placed by the
 	// SeekHead, which every muxer writes first.
 	id, header, size, ok := ebml(f.head)
 	if !ok || id != ebmlHeader || size < 0 {
-		return nil, noIndex("it does not start with an EBML header")
+		return 0, nil, 0, nil, noIndex("it does not start with an EBML header")
 	}
 	if header+size > int64(len(f.head)) {
-		return nil, noIndex("the EBML header runs past the start of the file that was read")
+		return 0, nil, 0, nil, noIndex("the EBML header runs past the start of the file that was read")
 	}
 	id, segmentHeader, _, ok := ebml(f.head[header+size:])
 	if !ok || id != mkvSegment {
-		return nil, noIndex("no Segment follows the EBML header")
+		return 0, nil, 0, nil, noIndex("no Segment follows the EBML header")
 	}
-	base := header + size + segmentHeader
-	where := map[uint32]int64{}
+	base = header + size + segmentHeader
+	where = map[uint32]int64{}
 	ebmlChildren(f.head[base:], func(id uint32, body []byte) {
 		if id != mkvSeekHead {
 			return
@@ -233,14 +236,14 @@ func (f *indexFile) matroskaKeyframes() ([]int64, error) {
 		})
 	})
 	if _, ok := where[mkvCues]; !ok {
-		return nil, noIndex("the SeekHead names no Cues")
+		return 0, nil, 0, nil, noIndex("the SeekHead names no Cues")
 	}
 
-	unit := int64(1_000_000) // Nanoseconds per timestamp step, by default.
+	unit = 1_000_000 // Nanoseconds per timestamp step, by default.
 	if at, ok := where[mkvInfo]; ok {
 		_, info, err := f.element(at, ebml)
 		if err != nil {
-			return nil, err
+			return 0, nil, 0, nil, err
 		}
 		ebmlChildren(info, func(id uint32, value []byte) {
 			if id == mkvTimecodeUnit {
@@ -250,9 +253,17 @@ func (f *indexFile) matroskaKeyframes() ([]int64, error) {
 	}
 	at, ok := where[mkvTracks]
 	if !ok {
-		return nil, noIndex("the SeekHead names no Tracks")
+		return 0, nil, 0, nil, noIndex("the SeekHead names no Tracks")
 	}
-	_, tracks, err := f.element(at, ebml)
+	_, tracks, err = f.element(at, ebml)
+	if err != nil {
+		return 0, nil, 0, nil, err
+	}
+	return base, where, unit, tracks, nil
+}
+
+func (f *indexFile) matroskaKeyframes() ([]int64, error) {
+	_, where, unit, tracks, err := f.matroskaLayout()
 	if err != nil {
 		return nil, err
 	}

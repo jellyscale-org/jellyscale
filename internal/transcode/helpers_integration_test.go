@@ -16,7 +16,6 @@ import (
 	"testing"
 	"time"
 
-	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
 	"jellyscale/internal/testenv"
 )
@@ -637,8 +636,7 @@ func oneCPUPerCore(t *testing.T) []int {
 
 // A job nobody helps runs one ffmpeg from where it began to the end of the
 // film. A new ffmpeg at each chunk start would cost a fast viewer a restart
-// every 16 seconds, and a burnt PGS cue that runs across a chunk start would
-// vanish there (invariant 51).
+// every 16 seconds.
 func TestAJobNobodyHelpsIsOneFFmpeg(t *testing.T) {
 	film(t)
 	real := testenv.FFmpeg(t)
@@ -683,39 +681,6 @@ func TestAFailedHelperDoesNotFailTheViewer(t *testing.T) {
 	}
 	if _, err := r.fetch(t, j, psid(0), 4); err != nil {
 		t.Errorf("the segment of a failed helper's chunk: %v", err)
-	}
-}
-
-// A burnt image subtitle gets no helpers, however slow the job: a run that
-// begins mid-film does not draw a cue whose packet came before it (invariant
-// 51), so a helper's chunk would lose the cue showing at its start.
-func TestABurntImageSubtitleGetsNoHelpers(t *testing.T) {
-	dir := t.TempDir()
-	imageFilm(t, dir, "film.mkv", "copy")
-	slow(t)
-	r := newRig(t, nil)
-	streams, err := json.Marshal([]playback.Stream{{Index: 2, Type: "Subtitle", IsImageSubtitleStream: true, Width: 1920, Height: 1080}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx := context.Background()
-	for sql, arg := range map[string]any{
-		"UPDATE libraries SET media_store_uri = $1": "file://" + dir,
-		"UPDATE items SET run_time_ticks = $1":      400_000_000, // The film is 40 seconds.
-		"UPDATE media_sources SET streams = $1":     streams,
-	} {
-		if _, err := r.pool.Exec(ctx, sql, arg); err != nil {
-			t.Fatalf("%s: %v", sql, err)
-		}
-	}
-	index := 2
-	r.spec.Subtitle = &index
-	r.hash = r.spec.Hash()
-	r.workers(t, 2, 2, 2, r.ownStore(t))
-	j := r.jobs(t)
-	r.playThrough(t, j, psid(0), 0, 10)
-	if helpers := r.count(t, "SELECT count(*) FROM transcode_jobs WHERE helper"); helpers != 0 {
-		t.Errorf("a burnt PGS track's job had %d helpers, want none: %+v", helpers, r.jobsOf(t, r.hash))
 	}
 }
 

@@ -166,6 +166,13 @@ type Stream struct {
 	// File is where a worker put a copy of the external image track to read it
 	// from. It is never stored.
 	File string `json:"-"`
+	// OpenAt is set by a worker for a track inside the film whose cue points
+	// the scan read. For a run whose first frame is at time t (seconds on the
+	// film's clock) it says when the run must open the film to read the picture
+	// showing there, t if none is. Nil: the times are not known, and the run
+	// opens the film a fixed time early (transcode.cueLookback). It is never
+	// stored.
+	OpenAt func(t float64) (float64, error) `json:"-"`
 	// Unreadable is a subtitle file a worker found it cannot read, which stays
 	// so until the file changes.
 	Unreadable bool
