@@ -1449,15 +1449,29 @@
       "title": "Replace wall-clock ratio bars in tests with checks of the mechanism",
       "description": "Tests that pass or fail on a timing ratio are the largest class of merge-queue escapes (.results escape records for JS-067, JS-024 and JS-072): they pass on a 16-core developer machine and fail on shared CI runners. Convert the existing ratio bars (internal/transcode/helpers_integration_test.go and others found by grep) to checks of what the code does, such as how many helpers ran or which segments each made.",
       "acceptanceCriteria": [
-        "Each existing timing-ratio assertion is replaced by a check of the mechanism, and the replacement fails when the mechanism is removed",
-        "Timings a test still measures are logged, not asserted"
+        "A timing bar is any assertion a slower runner can fail on a right build: a measured duration with an upper bound, two measured durations compared, or a measured speed with a lower bound or a not-slow flag. None is left in the Go tiers, test/e2e or test/roles.sh, and every assertion the grep finds that compares a measured time or speed is accounted for as replaced or as a hang bound, with the reason.",
+        "At least these are bars and are replaced. internal/transcode: helpers_integration_test.go (63 s for three workers; the 60/80/90% bars of TestMoreWorkersFinishTheFilmSooner; the 9 s slowest wait after a killed helper; the 9 s seek into a helper's chunk), helpers_preempt_integration_test.go (9 s slowest wait), hdrcopy_media_integration_test.go (10x real time), failover_integration_test.go (7 s from SIGKILL to the replacement's first segment), chapter_jobs_integration_test.go (2 s subtitle), metrics_integration_test.go (speed 0.6 to 1.5, twice). internal/api: transcoding_info_integration_test.go (EncodeSpeed 0.1 to 0.6 and 1.5 to 6, not flagged at 3x, not below 1 while paused). test/e2e/transcode.mjs: 78 s to reach 60 s of film, and the 5 s and 6 s stand-stills.",
+        "Each replacement passes on the unchanged application code and fails on a faulty copy of it with that mechanism removed: one faulty copy for each mechanism named below, each failed by the new check alone and not by a clock, none committed.",
+        "Each replacement gives the same verdict on a slow runner: it passes with the test, its workers and their ffmpeg held to two CPUs, and no case is dropped or failed for the number of cores.",
+        "No test is deleted, and each test that held a bar keeps every assertion it made that reads no clock.",
+        "Workers sharing a slow film, checked with two workers and with three: every worker made segments, no segment was made by two jobs, and jobs on different workers were running at the same moment. It fails when no helper starts, and when the workers make their chunks one after another.",
+        "The 4K HDR10 copy with TrueHD: the run decoded and encoded no video frame, and ffmpeg was given the arguments that keep the TrueHD's decoding off the video's path. It fails on a copy that decodes or re-encodes the picture, and on one that decodes the audio in the video's path.",
+        "A killed worker's job: the replacement was claimed by the other worker before the dead worker's own lease would have run out, and every request of the viewer was answered. It fails on a build that waits the lease out.",
+        "A helper that is killed, a helper stopped for another viewer, and a seek into a helper's chunk: the check is which job made each segment of that chunk (a replacement on another worker from the first segment missing; the viewer's own job after a preemption; the helper itself on a seek, with no job started) and that no request of the viewer failed. Each fails on a build where that job does not make them.",
+        "A subtitle asked for while chapter pictures fill their slots: it was read while that many chapter jobs were still running and none had finished since it was asked for. It fails on a build where chapter pictures may take every slot.",
+        "A shown speed (EncodeSpeed and Framerate in TranscodingInfo on both replicas, jellyscale_transcode_job_speed_ratio) is checked against what the worker recorded for the job, and against itself across a pause at the lead (not lower after than before); IsBelowRealTime is checked against that speed for one job the test keeps below 1 and one it keeps above. No check needs the runner to encode faster than the film.",
+        "In test/e2e/transcode.mjs the parallel and failover scenarios judge by what happened: a helper on another worker made segments past the seam that the player then played, the surviving worker took the job over, no request failed or was abandoned, no error dialog showed, and the buffer has no gap at the seam.",
+        "Every timing a bar measured is still measured and logged with what it is (the speedup of two and three workers over one, the copy's multiple of real time, kill to first segment, slowest wait, time to reach 60 s, longest stand-still); no test passes, fails or branches on one.",
+        "A time bound stays only where it stops a hang: a wait for an event with a timeout (waitFor, a context deadline, a select on time.After), or a measured bound of at least ten times what a right build takes at that step whose wrong build never delivers, or not before a timer or sleep the test set. A bound closer than that is a bar.",
+        "The change touches only test files, test scripts and docs: no file the server or a worker is built from.",
+        "docs/testing.md says that tests check mechanisms, not speeds, gives the rule for a time bound that may stay, and names where a run's logged timings are kept; what it says holds for a run that passed, locally and in CI."
       ],
       "priority": 10,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [],
       "source": "Fable 5.2 state review, 2026-11-10",
-      "notes": ""
+      "notes": "Timing bars in the Go tiers, test/e2e and test/roles.sh became checks of what the code did (which worker made each segment, ffmpeg's arguments, job rows); timings are logged and summed by test/report.sh timings. cmd/testreport/timing_test.go fails on any new bar not listed as a hang bound in test/timing-bounds.txt."
     }
   ]
 }

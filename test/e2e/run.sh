@@ -323,6 +323,9 @@ reset_state() {
   rm -rf "$work/segments" "$work/scratch"
   "$work/putfile" -delete "s3://e2e/segments?$s3" || result=1
   docker exec "$pg" psql -U postgres -Atc 'TRUNCATE transcode_viewers, transcode_jobs' >/dev/null || result=1
+  # A film the last iteration left half watched would resume there, not at the start
+  # the scenarios that play it from the top expect.
+  docker exec "$pg" psql -U postgres -Atc 'UPDATE user_item_data SET position_ticks = 0, played = false' >/dev/null || result=1
   start_worker
   # A worker counts once its lock is held; the killed one's row has no lock.
   for _ in $(seq 1 60); do
