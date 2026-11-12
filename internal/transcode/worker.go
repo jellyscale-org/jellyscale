@@ -596,8 +596,12 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 				}
 				name := filepath.Join(dir, strconv.Itoa(next)+".m4s")
 				if gather != nil {
-					if built, err := gather.segment(ctx, next, final); err != nil || !built {
-						return false, err
+					// A segment gathered before, whose store waited for Postgres, is
+					// already built and its fragments are gone: store it as it is.
+					if _, err := os.Stat(name); err != nil {
+						if built, err := gather.segment(ctx, next, final); err != nil || !built {
+							return false, err
+						}
 					}
 				} else if _, err := os.Stat(name); err != nil {
 					return false, nil

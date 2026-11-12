@@ -210,17 +210,33 @@ func TestEveryJobOfEveryWorkerGoesOnThroughAnOutage(t *testing.T) {
 // and no segment is stored before: the check before every store (invariant 37)
 // has to pass first. The job is the same row and ffmpeg throughout.
 func TestASegmentFinishedWhileAwayIsStoredOnlyOnceTheCheckPassesAgain(t *testing.T) {
+	// A copy too: its segments are gathered from ffmpeg's fragments, which are
+	// gone once gathered, so a store that waits must not gather again (JS-029:
+	// the restart shape failed a copy job so in the merge queue).
+	for _, copied := range []bool{false, true} {
+		t.Run(map[bool]string{false: "re-encode", true: "copy"}[copied], func(t *testing.T) {
+			storedOnceTheCheckPasses(t, copied)
+		})
+	}
+}
+
+func storedOnceTheCheckPasses(t *testing.T, copied bool) {
 	slowAt(t, "8") // A segment every half second.
 	s := newStack(t, 1)
 	r := s.r
+	if copied {
+		r.copied(t, "film.mkv")
+	}
 	w := s.workers[0]
 	if _, err := s.fetch(context.Background(), s.jobs, r.spec, psid(0), 0); err != nil {
 		t.Fatal(err)
 	}
 	waitFor(t, "a few segments", 30*time.Second, func() bool { return len(r.storedSegments(r.hash)) >= 3 })
 	before := r.jobRows(t)
+	// A copy's ffmpeg can finish the short film while Postgres is away, so only
+	// the re-encode's is followed.
 	ffmpegBefore, ok := r.ffmpegOf(w)
-	if !ok {
+	if !ok && !copied {
 		t.Fatal("no ffmpeg")
 	}
 	s.afterRenewal()
@@ -237,16 +253,17 @@ func TestASegmentFinishedWhileAwayIsStoredOnlyOnceTheCheckPassesAgain(t *testing
 			t.Errorf("a store began at %v, while Postgres was away (since %v): %s", p.at, severed, p.key)
 		}
 	}
-	if p, ok := r.ffmpegOf(w); !ok || p.Pid != ffmpegBefore.Pid {
+	if p, ok := r.ffmpegOf(w); !copied && (!ok || p.Pid != ffmpegBefore.Pid) {
 		t.Fatalf("ffmpeg was %+v and is %+v (running %v): the outage ended the job", ffmpegBefore, p, ok)
 	}
 	s.back(true, w)
 	// Nothing is lost: the segments made while it was away are stored, from the first, with no gap.
 	waitFor(t, "the segments made while Postgres was away to be stored", 60*time.Second, func() bool { return r.firstMissing(r.hash) >= 9 })
-	if after := r.jobRows(t); fmt.Sprint(after) != fmt.Sprint(before) {
+	// A copy may have finished its film by now, which ends its job done.
+	if after := r.jobRows(t); !copied && fmt.Sprint(after) != fmt.Sprint(before) {
 		t.Errorf("the job changed:\nbefore %+v\nafter  %+v", before, after)
 	}
-	if p, ok := r.ffmpegOf(w); ok && p.Pid != ffmpegBefore.Pid {
+	if p, ok := r.ffmpegOf(w); !copied && ok && p.Pid != ffmpegBefore.Pid {
 		t.Errorf("ffmpeg was started again: %+v", p)
 	}
 	r.noFailed(t)
