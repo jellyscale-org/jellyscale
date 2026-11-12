@@ -53,11 +53,11 @@ func (s *Server) serveFile(w http.ResponseWriter, r *http.Request, attachment bo
 		http.NotFound(w, r)
 		return
 	}
-	source, found, err := s.Items.Source(r.Context(), itemID, sourceID)
+	source, found, err := s.source(r.Context(), itemID, sourceID)
 	if err == nil && !found && attachment && sourceID != "" {
 		// Jellyfin sends the item's own file when the source id matches none, and
 		// a saved-file link has no better answer than that.
-		source, found, err = s.Items.Source(r.Context(), itemID, "")
+		source, found, err = s.source(r.Context(), itemID, "")
 	}
 	if err != nil {
 		s.fail(w, r, err)
@@ -76,6 +76,17 @@ func (s *Server) serveFile(w http.ResponseWriter, r *http.Request, attachment bo
 		w.Header().Set("Content-Disposition", contentDisposition(path.Base(source.Key)))
 	}
 	s.serveSource(w, r, media, source)
+}
+
+// source is Items.Source for a request that plays: it waits for Postgres when it is
+// away. The row is read for every request, not kept, so a replaced file is served
+// from its new row at once.
+func (s *Server) source(ctx context.Context, itemID, sourceID string) (source items.Source, found bool, err error) {
+	err = db.Retry(ctx, s.Pool, func() (err error) {
+		source, found, err = s.Items.Source(ctx, itemID, sourceID)
+		return
+	})
+	return
 }
 
 // contentDisposition is Jellyfin's form: an ASCII fallback with each other

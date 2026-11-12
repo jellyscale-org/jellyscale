@@ -41,7 +41,7 @@ func (s *Server) hlsRequestFor(w http.ResponseWriter, r *http.Request) (hlsReque
 		http.NotFound(w, r)
 		return req, false
 	}
-	source, found, err := s.Items.Source(r.Context(), itemID, sourceID)
+	source, found, err := s.source(r.Context(), itemID, sourceID)
 	if err != nil {
 		s.fail(w, r, err)
 		return req, false
@@ -58,8 +58,11 @@ func (s *Server) hlsRequestFor(w http.ResponseWriter, r *http.Request) (hlsReque
 	req.params, err = playback.ParseParams(r.URL.Query(), req.media)
 	if err == nil && req.params.Copy {
 		// The request names the copy, so it is the one place that reads the index.
-		var dbErr error
-		if req.media.Keyframes, req.media.VideoEnd, dbErr = s.Items.Keyframes(r.Context(), source.ID); dbErr != nil {
+		dbErr := db.Retry(r.Context(), s.Pool, func() (err error) {
+			req.media.Keyframes, req.media.VideoEnd, err = s.Items.Keyframes(r.Context(), source.ID)
+			return
+		})
+		if dbErr != nil {
 			s.fail(w, r, dbErr)
 			return req, false
 		}

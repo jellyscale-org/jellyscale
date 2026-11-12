@@ -56,8 +56,12 @@ func workerProcess(id string) {
 		return fallback
 	}
 	var media store.Cache
+	var segments store.Store = store.NewPosix(os.Getenv("JELLYSCALE_TEST_SEGMENTS"))
+	if path := os.Getenv("JELLYSCALE_TEST_PUTLOG"); path != "" {
+		segments = &putLog{Store: segments, worker: id, path: path} // outage_integration_test.go
+	}
 	w := &Worker{ID: id, Pool: pool, Items: &items.Repo{Pool: pool, ServerID: "srv"}, Log: log, Media: media.Open,
-		Segments: store.NewPosix(os.Getenv("JELLYSCALE_TEST_SEGMENTS")), Scratch: os.Getenv("JELLYSCALE_TEST_SCRATCH"),
+		Segments: segments, Scratch: os.Getenv("JELLYSCALE_TEST_SCRATCH"),
 		Slots: 2, Idle: time.Minute, Lead: time.Hour,
 		Lease: duration("JELLYSCALE_TEST_LEASE", 10*time.Second), Heartbeat: duration("JELLYSCALE_TEST_HEARTBEAT", 3*time.Second)}
 	helperSettings(w)
@@ -587,9 +591,11 @@ func TestAWorkerWhoseConnectionStaysOpenIsReplacedAtLeaseExpiry(t *testing.T) {
 	owned.check(t)
 }
 
-// A killed worker's slots stop counting at once, not when its row is 10
-// seconds old.
-func TestAKilledWorkersSlotsStopCountingAtOnce(t *testing.T) {
+// The last worker, killed, stops counting once it has not reported in for 10
+// seconds. Only workers forget dead workers (JS-029: a replica that missed an
+// outage forgot live ones), so with none left its row is not forgotten at once;
+// the owner accepted the 10 s for this case, where it was about one before.
+func TestTheLastKilledWorkerStopsCountingOnceItHasNotReportedIn(t *testing.T) {
 	segments := t.TempDir()
 	r := newRig(t, store.NewPosix(segments))
 	a := r.workerProcess(t, "worker-a", segments)
@@ -599,7 +605,7 @@ func TestAKilledWorkersSlotsStopCountingAtOnce(t *testing.T) {
 	}
 	a.Process.Kill() //nolint:errcheck
 	killed := time.Now()
-	waitFor(t, "the dead worker to stop counting", 5*time.Second, func() bool {
+	waitFor(t, "the dead worker to stop counting", 20*time.Second, func() bool { // A hang bound.
 		reason, err := j.Unavailable(context.Background(), r.hash, r.user, "device")
 		return err == nil && reason == "no transcode worker is running"
 	})

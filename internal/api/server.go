@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"jellyscale/internal/compat"
+	"jellyscale/internal/db"
 	"jellyscale/internal/items"
 	"jellyscale/internal/store"
 	"jellyscale/internal/transcode"
@@ -95,6 +96,7 @@ func sessionOf(r *http.Request) Session {
 
 // Handler builds the HTTP handler for this server's roles.
 func (s *Server) Handler() http.Handler {
+	db.Of(s.Pool).SetLog(s.Log) // Where it says Postgres went away, and came back.
 	mux := http.NewServeMux()
 	for _, route := range s.Routes() {
 		if !slices.Contains(s.Roles, route.Role) {
@@ -107,10 +109,8 @@ func (s *Server) Handler() http.Handler {
 		mux.HandleFunc(route.Method+" "+lowerLiterals(route.Path), handler)
 	}
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-		if err := s.Pool.Ping(r.Context()); err != nil {
-			http.Error(w, "database unavailable", http.StatusServiceUnavailable)
-			return
-		}
+		// The process alone: a probe that failed for Postgres being away would
+		// take every replica out of service, or restart them, at once.
 		w.WriteHeader(http.StatusNoContent)
 	})
 	if s.WebDir != "" {
@@ -209,6 +209,9 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func (s *Server) fail(w http.ResponseWriter, r *http.Request, err error) {
+	if r.Context().Err() != nil {
+		return // The client gave up, as a player does on a request that waits for Postgres; nobody is left to hear.
+	}
 	s.Log.Error("request failed", "method", r.Method, "path", r.URL.Path, "error", err)
 	http.Error(w, "internal error", http.StatusInternalServerError)
 }

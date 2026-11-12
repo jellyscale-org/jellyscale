@@ -8,12 +8,13 @@ import (
 	"io"
 	"log/slog"
 	"math"
-	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"jellyscale/internal/db"
 	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
 )
@@ -62,7 +63,6 @@ type Jobs struct {
 
 	Log *slog.Logger // Optional.
 
-	reaped atomic.Int64 // When this replica last looked for dead workers.
 }
 
 // queueTimeout is the default for a job's wait in the queue, which workers
@@ -153,16 +153,21 @@ func SegmentKey(hash string, n int) string {
 // wait that goes on); the worker bounds a job by the segment each viewer asked
 // for last, so it rides on the write that was made anyway.
 func (j *Jobs) Watch(ctx context.Context, v Viewer, hash string, segment int) error {
-	tag, err := j.Pool.Exec(ctx, `INSERT INTO transcode_viewers (play_session_id, spec_hash, user_id, device_id, item_id, segment)
+	var tag pgconn.CommandTag
+	err := db.Retry(ctx, j.Pool, func() (err error) { tag, err = j.watch(ctx, v, hash, segment); return })
+	if err == nil && tag.RowsAffected() == 0 {
+		return refusedAsStopped()
+	}
+	return err
+}
+
+func (j *Jobs) watch(ctx context.Context, v Viewer, hash string, segment int) (pgconn.CommandTag, error) {
+	return j.Pool.Exec(ctx, `INSERT INTO transcode_viewers (play_session_id, spec_hash, user_id, device_id, item_id, segment)
 		VALUES ($1, $2, $3::uuid, $4, $5, $6)
 		ON CONFLICT (play_session_id, spec_hash) DO UPDATE SET last_seen_at = now(),
 			segment = CASE WHEN EXCLUDED.segment >= 0 THEN EXCLUDED.segment ELSE transcode_viewers.segment END
 			WHERE NOT transcode_viewers.stopped AND transcode_viewers.user_id = EXCLUDED.user_id`,
 		v.PlaySessionID, hash, v.UserID, v.DeviceID, v.Item, segment)
-	if err == nil && tag.RowsAffected() == 0 {
-		return refusedAsStopped()
-	}
-	return err
 }
 
 // defaultIdle is how long a spec may go without a request before its jobs stop.
@@ -183,12 +188,12 @@ const failureMemory = 30 * time.Second
 // A viewer's own jobs don't count as busy: jellyfin-web asks for the new stream
 // before it deletes the old one, which is about to free its slot.
 func (j *Jobs) Unavailable(ctx context.Context, hash, userID, deviceID string) (reason string, err error) {
-	// At most once a second per replica: a dead worker's slots stop counting
-	// even when no live worker is left to reap it, and a burst of PlaybackInfo
-	// does not scan pg_locks once each. Without it the 10 s lease still holds.
-	if err := j.reap(ctx); err != nil && j.Log != nil {
-		j.Log.Warn("looking for dead transcode workers failed", "error", err)
-	}
+	// Only workers look for dead workers (Reap). A replica that holds no
+	// liveness lock may have missed an outage altogether (an idle pool meets
+	// the returned Postgres on a fresh connection and sees no failure), and
+	// would then forget live workers still taking their lock again, which
+	// stops every transcode (JS-029). With no live worker left, a dead one's
+	// slots count until it has not reported in for 10 s.
 	if err := expireQueued(ctx, j.Pool, orDefault(j.QueueTimeout, queueTimeout)); err != nil {
 		return "", err
 	}
@@ -280,9 +285,13 @@ func (j *Jobs) segment(ctx context.Context, spec playback.Spec, hash string, vie
 	defer ticker.Stop()
 	deadline := time.NewTimer(orDefault(j.WaitTimeout, 90*time.Second))
 	defer deadline.Stop()
+	// The wait is for a worker and the store, not for Postgres: time it was
+	// away is added to the deadline, as it is to the queue's age.
+	awayAtStart, extended := db.Of(j.Pool).Total(), time.Duration(0)
 
 	var job int64
 	starts, unreadable := 0, 0
+	var awayAtJob time.Duration // How long Postgres had been away when the job was found.
 	watched := time.Now()
 	for {
 		body, err := readSegment(ctx, j.Segments, SegmentKey(hash, n))
@@ -307,9 +316,14 @@ func (j *Jobs) segment(ctx context.Context, spec playback.Spec, hash string, vie
 				start = startAt
 			}
 			var created bool
-			if job, created, err = j.ensure(ctx, spec, hash, viewer.PlaySessionID, n, start); err != nil {
+			err = db.Retry(ctx, j.Pool, func() (err error) {
+				job, created, err = j.ensure(ctx, spec, hash, viewer.PlaySessionID, n, start)
+				return
+			})
+			if err != nil {
 				return nil, err
 			}
+			awayAtJob = db.Of(j.Pool).Total()
 			if *source == "" {
 				*source = "waited"
 				if created {
@@ -317,11 +331,14 @@ func (j *Jobs) segment(ctx context.Context, spec playback.Spec, hash string, vie
 				}
 			}
 		} else {
-			state, err := j.state(ctx, job)
+			var state jobState
+			err := db.Retry(ctx, j.Pool, func() (err error) { state, err = j.state(ctx, job); return })
 			if err != nil {
 				return nil, err
 			}
-			if err := j.queuedTooLong(ctx, job, state); err != nil {
+			// A job waited for a worker only while Postgres was there to take it.
+			state.Age -= db.Of(j.Pool).Total() - awayAtJob
+			if err := db.Retry(ctx, j.Pool, func() error { return j.queuedTooLong(ctx, job, state) }); err != nil {
 				return nil, err
 			}
 			switch {
@@ -357,7 +374,12 @@ func (j *Jobs) segment(ctx context.Context, spec playback.Spec, hash string, vie
 		case <-wake:
 		case <-ticker.C:
 		case <-deadline.C:
-			return nil, ErrTimeout
+			away := db.Of(j.Pool).Total() - awayAtStart
+			if away <= extended {
+				return nil, ErrTimeout
+			}
+			deadline.Reset(away - extended)
+			extended = away
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}

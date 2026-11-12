@@ -509,6 +509,123 @@
       "title": "QA runs every touched ffmpeg test under ffmpeg 6.1, not a sample",
       "status": "open",
       "notes": "JS-071 took four merge-queue runs: two fixture artifacts of ffmpeg 6.1 (sparse subtitle packets muxed ahead of their video) were found by CI, not by QA's 6.1 runs."
+    },
+    {
+      "id": "BL-057",
+      "source": "JS-029 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "Worker's pre-store ownership check treats its own 5s timeout as an interruption, so an outage where connects hang cancels the job instead of waiting",
+      "status": "open",
+      "notes": "In upload(), the check runs under context.WithTimeout(ctx, lease/2). If Postgres is away in the form where connections hang (packets dropped, as can happen behind a Service during a switchover) rather than being refused or reset, the error is context.DeadlineExceeded. db.IsAway deliberately returns false for that, so the code takes the errInterrupted path: the job is cancelled and its ffmpeg stopp"
+    },
+    {
+      "id": "BL-058",
+      "source": "JS-029 verify",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "Reap hold-off is process-local, so a reaper that missed the outage can still forget live workers",
+      "status": "open",
+      "notes": "reapHold is read from db.Of(pool).Recent(10s), which is set only when that process's own queries or connections fail. A reaper that sees no failure, for example an api replica whose idle connection survived or was replaced without an error, forgets workers whose locks died with the old primary before they take them again. Alternative: record the lock gap in the database (a lock_missing_since colum"
+    },
+    {
+      "id": "BL-059",
+      "source": "JS-029 verify",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "/healthz no longer touches Postgres, so a replica with a permanently broken database stays Ready",
+      "status": "open",
+      "notes": "The probe was changed to return 204 with no database check, as the task asks. A replica whose database is permanently unreachable (bad credentials after a rotation, a wrong host) stays in service, and every request on it then waits in db.Retry with no upper bound except the client giving up. A cap on the wait, or a separate readiness signal such as 'away longer than N minutes', would be cheap."
+    },
+    {
+      "id": "BL-060",
+      "source": "JS-029 verify",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "A staged segment file is no longer removed when the final UPDATE fails for a non-outage reason",
+      "status": "open",
+      "notes": "In Worker.upload, os.Remove(name) moved after the UPDATE and only the IsAway error returns before it. A non-away error now leaves the file on disk until the job's working directory is cleaned up. Alternative: remove the file only on success or on errWaiting."
+    },
+    {
+      "id": "BL-061",
+      "source": "JS-029 verify",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "An idle api or stream replica logs nothing about an outage",
+      "status": "open",
+      "notes": "With no scanInterval set (the default), api and stream replicas run no periodic query. internal/db/outage.go logs 'Postgres is away' and 'Postgres is back' only from the tracer, which needs a failing query or connection. A replica with no viewers during a switchover never logs either line, although the criteria require each stream and api replica to say so. An operator comparing replica logs sees "
+    },
+    {
+      "id": "BL-062",
+      "source": "JS-029 verify",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "Some stream and login requests answer 500 during an outage, against the docs' 'wait rather than answer an error'",
+      "status": "open",
+      "notes": "Subtitle requests (internal/api/subtitles.go:72, 246, 336, 457) call s.Items.Source without db.Retry, and DELETE Videos/ActiveEncodings calls Transcode.Stop (internal/transcode/jobs.go:243-249) without it. A request that passed requireAuth just before the outage began, or a PlaybackInfo-style call in that window, gets 500 'internal error'. Login (POST Users/AuthenticateByName, internal/api/users.g"
+    },
+    {
+      "id": "BL-063",
+      "source": "JS-029 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "db.IsAway treats any net.Error as Postgres being away, so job.run marks non-database network errors as cancelled, not failed",
+      "status": "open",
+      "notes": "IsAway returns true for any net.Error, including S3 or segment-store timeouts. worker.run now adds `|| db.IsAway(err)` to the cancelled branch, so a store outage that returns a net error ends the job as `cancelled`. Such jobs are never refused, and viewers restart them without limit instead of seeing the last-attempt-failed protection. The same IsAway test would also start an outage tracker and pr"
+    },
+    {
+      "id": "BL-064",
+      "source": "JS-029 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "Stream-role subtitle, attachment and font reads are not wrapped in Retry",
+      "status": "open",
+      "notes": "Items.Source in subtitles.go (lines 72, 246, 336, 457) and transcode.FetchSubtitle, FetchSup and StartFonts use the pool directly. Auth now waits, so a request that starts while Postgres is away waits as intended. A request that passes auth just before the outage, or one started after a brief blip, gets s.fail 500 on the first failed query. This is the same 500 the task forbids for the stream role"
+    },
+    {
+      "id": "BL-065",
+      "source": "JS-029 verify",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "/healthz no longer reflects the database at all, so a replica partitioned from Postgres stays in service",
+      "status": "open",
+      "notes": "/healthz now always answers 204. A single pod that permanently loses its path to Postgres (wrong DSN host, a network policy) is never taken out of service. db.Retry keeps its requests waiting until each client gives up. Alternative: fail /healthz only once db.Of(pool).Total() for the current outage exceeds a bound well above a switchover, such as 2 minutes. That would still satisfy the 'whole outa"
+    },
+    {
+      "id": "BL-066",
+      "source": "JS-029 verify",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "Process-global sync.Map keyed by pool, and a tracker that learns only from failures",
+      "status": "open",
+      "notes": "db.Of(pool) looks the tracker up in a package-level sync.Map that Open fills and nothing removes. Every caller that was handed some other pool (tests, tools) silently gets a nil tracker that never says 'away'. Holding the tracker on a small wrapper type or in Server/Jobs/Worker fields would cost a few constructor changes and would make the missing-tracker case a compile error, not a silent no-op."
+    },
+    {
+      "id": "BL-067",
+      "source": "JS-029 verify",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "Worker logs an ERROR for a Postgres switchover it survives",
+      "status": "open",
+      "notes": "Any Postgres switchover or restart ends the worker's liveness connection. The worker logs at Error level 'the worker's liveness connection ended; its jobs go on, and it claims none until it holds the lock again and its row is there' (line 285), then at Info 'holds its liveness lock again ... its jobs went on'. Operators see ERROR lines for an event the build survives. Reading only."
+    },
+    {
+      "id": "BL-068",
+      "source": "JS-029 verify",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "Unwrapped api and stream writes can still answer 500 across a switchover",
+      "status": "open",
+      "notes": "requireAuth waits for Postgres (db.Retry on userByToken), but the handlers' own writes are not wrapped: Sessions/Playing/Progress and /Stopped/Ping (sessions.go), planPlayback writes (stream.go ~248-412), Transcode.Stop in DELETE /Videos/ActiveEncodings (stream role, transcode.go:181 -> jobs.go:243-249). A cut that lands after the token check and before the write answers 500 'request failed' (ERRO"
+    },
+    {
+      "id": "BL-069",
+      "source": "JS-029 verify",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "Silent failures for abandoned requests also hide real errors from operators",
+      "status": "open",
+      "notes": "fail() now returns without any log whenever r.Context().Err() != nil, for every error and not only outage errors. A player that abandons a request after 10 seconds, and a request that fails for a bug (not Postgres), now both leave no 'request failed' line. Operators lose the diagnostic for real failures on abandoned requests. Reading only."
     }
   ]
 }

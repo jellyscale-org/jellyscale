@@ -42,10 +42,14 @@ func Open(ctx context.Context, dsn string, options ...Option) (*pgxpool.Pool, er
 	for _, option := range options {
 		option(cfg)
 	}
+	outage := &Outage{probe: cfg.ConnConfig.Copy()}
+	cfg.ConnConfig.Tracer = outage
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("connect: %w", err)
 	}
+	outage.pool = pool
+	outages.Store(pool, outage)
 	if err := migrate(ctx, pool); err != nil {
 		pool.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
