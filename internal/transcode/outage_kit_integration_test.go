@@ -173,6 +173,11 @@ func (s *stack) addWorker(env ...string) *outageWorker {
 	}
 	w.cmd = cmd
 	go func() { cmd.Wait(); close(w.reaped) }() //nolint:errcheck
+	t.Cleanup(func() {                          // After the kill below, which runs first.
+		if t.Failed() {
+			t.Logf("worker %s logged:\n%s", w.id, w.log.String())
+		}
+	})
 	t.Cleanup(func() { w.kill() })
 	s.workers = append(s.workers, w)
 	waitFor(t, "worker "+w.id+" to hold its lock and register", 30*time.Second, func() bool { return s.r.locked(w.id) })

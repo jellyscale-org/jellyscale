@@ -390,6 +390,11 @@ func TestAWorkerReapedByItsOwnLookIsCounted(t *testing.T) {
 	w := &Worker{ID: "lost-lock", Pool: r.pool, Log: r.log}
 	r.exec(t, `INSERT INTO transcode_nodes (id, roles, store, slots, locked) VALUES ($1, 'worker', '', 2, true)`, w.ID)
 	before := counterValue(t, workers)
+	// A node is forgotten on a second look, a grace after the first found it dead.
+	if w.lookForTheDead(ctx) {
+		t.Fatal("the first look already forgot the worker")
+	}
+	time.Sleep(reapGrace)
 	if !w.lookForTheDead(ctx) {
 		t.Fatal("a worker whose row is among the dead did not find itself lost")
 	}
