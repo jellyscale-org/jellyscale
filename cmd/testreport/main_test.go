@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -121,5 +122,45 @@ func TestFailureIsWhatTheTestSaidLast(t *testing.T) {
 	f := rep.Failures[0]
 	if f.Line != "50" || !strings.Contains(strings.Join(f.Lines, "\n"), "the real reason") {
 		t.Fatalf("line %s, lines %q", f.Line, f.Lines)
+	}
+}
+
+// A package that hit go test's limit leaves tests that started and never
+// finished; they are the failure, and the report names them.
+const timeoutStream = `{"Action":"run","Package":"jellyscale/internal/a","Test":"TestDone"}
+{"Action":"pass","Package":"jellyscale/internal/a","Test":"TestDone"}
+{"Action":"run","Package":"jellyscale/internal/a","Test":"TestSlow"}
+{"Action":"run","Package":"jellyscale/internal/a","Test":"TestParent"}
+{"Action":"run","Package":"jellyscale/internal/a","Test":"TestParent/sub"}
+{"Action":"output","Package":"jellyscale/internal/a","Output":"panic: test timed out after 30m0s\n"}
+{"Action":"fail","Package":"jellyscale/internal/a"}
+`
+
+func TestATimedOutPackageNamesTheTestsThatDidNotFinish(t *testing.T) {
+	rep, err := analyze(strings.NewReader(timeoutStream), -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, f := range rep.Failures {
+		names = append(names, f.Name+": "+f.Lines[0])
+	}
+	want := []string{
+		"TestSlow: timed out while running TestSlow",
+		"TestParent/sub: timed out while running TestParent/sub",
+	}
+	if !slices.Equal(names, want) || rep.Failed != 2 || len(rep.Problems) == 0 {
+		t.Fatalf("failures %q, failed %d, problems %q, want %q", names, rep.Failed, rep.Problems, want)
+	}
+}
+
+func TestSummaryHasOneGreppableLinePerFailure(t *testing.T) {
+	rep, _ := analyze(strings.NewReader(timeoutStream), -1)
+	var summary strings.Builder
+	rep.render("go test", &strings.Builder{}, &summary, false)
+	for _, want := range []string{"\nfailed: jellyscale/internal/a.TestSlow\n", "\nfailed: jellyscale/internal/a.TestParent/sub\n"} {
+		if !strings.Contains(summary.String(), want) {
+			t.Errorf("summary lacks %q:\n%s", want, summary.String())
+		}
 	}
 }

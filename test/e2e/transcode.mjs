@@ -145,6 +145,7 @@ const transcodeUrl = (seen) => seen.infos.map((i) => i.source.TranscodingUrl).fi
 // and runs last, on the last shard.
 function scenario(name, run, options = {}) {
   return schedule(name, options, async () => {
+    const began = Date.now();
     const v = await viewer();
     let passed = false;
     try {
@@ -152,7 +153,7 @@ function scenario(name, run, options = {}) {
       passed = true;
     } catch (error) {
       failures.push(`${name}: ${error.message.split("\n")[0]}`);
-      console.log(`FAIL  ${name}: ${error.message.split("\n")[0]}`);
+      console.log(`FAIL  ${name}: ${error.message.split("\n")[0]} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
       await v.page.screenshot({ path: `${process.env.TMPDIR ?? "/tmp"}/jellyscale-e2e-transcode.png` }).catch(() => {});
     } finally {
       await v.context.close().catch(() => {});
@@ -160,10 +161,10 @@ function scenario(name, run, options = {}) {
     // Nothing may be left running for the next scenario.
     await waitFor("ffmpeg to exit between scenarios", async () => ffmpegRuns().length === 0, 60000).catch(() => {
       failures.push(`${name}: ffmpeg still running afterwards`);
-      console.log(`FAIL  ${name}: ffmpeg still running afterwards`);
+      console.log(`FAIL  ${name}: ffmpeg still running afterwards (${((Date.now() - began) / 1000).toFixed(1)}s)`);
       passed = false;
     });
-    if (passed) console.log(`ok    ${name}`);
+    if (passed) console.log(`ok    ${name} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
   });
 }
 

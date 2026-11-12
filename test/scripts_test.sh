@@ -29,6 +29,21 @@ counts=$(( $(bash test/shard.sh count 0/4) + $(bash test/shard.sh count 1/4) + $
 check "the shards' counts add up to the tier" "$(echo "$all" | wc -l | tr -d ' ')" "$counts"
 fails_with "a shard past n is refused" bash test/shard.sh count 3/3
 
+# The split follows test/shard-times.txt. Per shard: the seconds the file gives its tests.
+shard_seconds() { # shard, times file
+  bash test/shard.sh args "$1" | sed -n 2p | sed 's/^\^(//; s/)\$$//' | tr '|' '\n' |
+    awk 'NR == FNR { if ($0 !~ /^#/) t[$1] = $2; next } { s += ($1 in t) ? t[$1] : 0 } END { printf "%d\n", s }' "$2" -
+}
+totals=$(for i in 0 1 2 3; do shard_seconds "$i/4" test/shard-times.txt; done | sort -n)
+check "the split is the same when dealt again" "$(bash test/shard.sh args 2/4)" "$(bash test/shard.sh args 2/4)"
+check "the shards are balanced by time: the largest is within 1.25x of the smallest" "yes" \
+  "$(echo "$totals" | awk 'NR == 1 { min = $1 } { max = $1 } END { print (max <= 1.25 * min) ? "yes" : "no (" min "s to " max "s)" }')"
+# Only the first transcode test is in this file; the rest count as the median.
+first=$(go test -tags integration -list '.*' ./internal/transcode | grep -E '^Test' | sort | sed -n 1p)
+echo "$first 1000" >"$tmp/times.txt"
+others=$(for i in 0 1 2 3; do SHARD_TIMES="$tmp/times.txt" bash test/shard.sh args "$i/4" | sed -n 2p | sed 's/^\^(//; s/)\$$//' | tr '|' '\n'; done | sort)
+check "tests missing from the times file are still dealt, each once" "$(go test -tags integration -list '.*' ./internal/transcode | grep -E '^Test' | sort)" "$others"
+
 # --- shard.mjs: each scenario runs once, a worker-stopper last on the last shard.
 for i in 0 1 2; do E2E_SHARD=$i/3 node test/e2e/shard_test.mjs >"$tmp/shard$i" 2>&1; done
 check "shard 0 runs every third scenario" "run   s1 ran s1 run   s4 ran s4 run   s7 ran s7 shard 0/3: ran 3 of 11" "$(tr '\n' ' ' <"$tmp/shard0" | sed 's/ $//')"
@@ -36,6 +51,10 @@ check "shard 2 runs its share, then the worker-stoppers in call order" "run   s3
 check "every scenario ran once over the three shards" "$(printf 'kill A\nkill B\ns1\ns2\ns3\ns4\ns5\ns6\ns7\ns8\ns9\n')" "$(cat "$tmp"/shard? | sed -n 's/^ran //p' | sort)"
 check "E2E_ONLY filters after the count" "run   s4 ran s4 shard 0/3: ran 1 of 11" "$(E2E_SHARD=0/3 E2E_ONLY='^s4$' node test/e2e/shard_test.mjs | tr '\n' ' ' | sed 's/ $//')"
 fails_with "a shard past n is refused by the gate" env E2E_SHARD=3/3 node test/e2e/shard_test.mjs
+
+# --- report.sh lines: a failed scenario is one greppable line on the job summary, without its duration.
+printf 'ok    first (1.0s)\nFAIL  second: it broke (2.5s)\n' | GITHUB_STEP_SUMMARY="$tmp/summary" bash test/report.sh lines test/e2e/play.mjs "e2e play" >/dev/null 2>&1
+check "report.sh lines writes 'failed: <gate>.<scenario>' for a failure" "failed: e2e play.second: it broke" "$(grep '^failed: ' "$tmp/summary")"
 
 # --- report.sh timings: a run that passed keeps what its tests logged, in the output.
 printf '%s\n' \

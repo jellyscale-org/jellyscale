@@ -53,12 +53,13 @@ async function login(page) {
 let steps = 0;
 async function step(name, action) {
   steps++;
+  const began = Date.now();
   try {
     await action();
-    console.log(`ok    ${name}`);
+    console.log(`ok    ${name} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
   } catch (error) {
     failures.push(`${name}: ${error.message.split("\n")[0]}`);
-    console.log(`FAIL  ${name}: ${error.message.split("\n")[0]}`);
+    console.log(`FAIL  ${name}: ${error.message.split("\n")[0]} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
   }
 }
 

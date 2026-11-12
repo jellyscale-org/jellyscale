@@ -136,6 +136,34 @@ func analyze(in io.Reader, want int) (report, error) {
 		}
 	}
 
+	// A test that started and never finished: the package timed out or crashed
+	// while running it. Of a subtest and its parents, only the subtest is named.
+	unfinished := map[string]bool{}
+	for _, key := range order {
+		if tests[key].action == "none" {
+			unfinished[key] = true
+			for p := tests[key].name; strings.Contains(p, "/"); {
+				p = p[:strings.LastIndex(p, "/")]
+				delete(unfinished, tests[key].pkg+" "+p)
+			}
+		}
+	}
+	for _, key := range order {
+		r := tests[key]
+		if !unfinished[key] {
+			continue
+		}
+		why := "stopped"
+		if pkgOut[r.pkg] != nil && strings.Contains(pkgOut[r.pkg].String(), "test timed out") {
+			why = "timed out"
+		}
+		f := testFailure(r)
+		f.Lines = append([]string{why + " while running " + r.name}, f.Lines...)
+		f.Output += pkgOut[r.pkg].String()
+		rep.Failures = append(rep.Failures, f)
+		rep.Failed++
+	}
+
 	// A package that failed with no failed test: a build error, a timeout, a panic.
 	var pkgs []string
 	for p := range pkgOut {
@@ -209,6 +237,14 @@ func packageFailure(pkg, out string) failure {
 	return f
 }
 
+// ledger is "<package>.<Test>", or just the package when the package itself failed.
+func (f failure) ledger() string {
+	if strings.HasPrefix(f.Name, "package ") {
+		return f.Package
+	}
+	return f.Package + "." + f.Name
+}
+
 func joinDir(dir, file string) string {
 	if dir == "" || strings.HasPrefix(file, "/") {
 		return file
@@ -245,6 +281,8 @@ func (rep report) render(title string, out, summary io.Writer, annotate bool) {
 			fmt.Fprintf(out, "::error %stitle=%s::%s\n", where, escape(f.Name, true), escape(body, false))
 		}
 		if summary != nil {
+			// One greppable line per failure, for collecting flakes across runs with gh.
+			fmt.Fprintf(summary, "failed: %s\n\n", f.ledger())
 			at := ""
 			if f.File != "" {
 				at = " `" + f.File + ":" + f.Line + "`"

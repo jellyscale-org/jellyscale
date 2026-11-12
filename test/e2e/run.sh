@@ -358,7 +358,7 @@ done
 if [[ $repeat -gt 1 ]]; then
   echo "--- passed p of $repeat, per scenario"
   cat "${repeat_outs[@]}" | python3 -I -c '
-import sys
+import re, sys
 repeat = int(sys.argv[1])
 passed, failed, known = {}, [], set()
 for line in sys.stdin:
@@ -366,7 +366,7 @@ for line in sys.stdin:
     if line.startswith("run   "):
         known.add(line[6:].strip())
     elif line.startswith("ok  "):
-        name = line[4:].strip()
+        name = re.sub(r" \(\d+\.\ds\)$", "", line[4:].strip())  # The duration is not part of the name.
         passed[name] = passed.get(name, 0) + 1
     elif line.startswith("FAIL  "):
         failed.append(line[6:])

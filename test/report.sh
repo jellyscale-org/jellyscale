@@ -73,13 +73,16 @@ lines)
       # the longest part of the line that is a quoted literal is the name. A
       # scenario keeps what is known only at run time after ": ", so it is still
       # found; a name with no quoted literal gets line 1.
-      _name=${line#FAIL  } _at=
+      _name=${line#FAIL  } _name=${_name% (*s)} _at=
       while [[ -z $_at ]]; do
         _at=$(grep -nF -m1 -- "\"$_name\"" "$_file" | cut -d: -f1)
         [[ $_name == *": "* ]] || break
         _name=${_name%: *}
       done
       bash "$repo/test/report.sh" fail "$2" "${_at:-1}" "$_title" "$line"
+      # One greppable line per failure, for collecting flakes across runs with gh.
+      _ledger=${line#FAIL  }
+      printf 'failed: %s.%s\n\n' "$_title" "${_ledger% (*s)}" | summary
       ;;
     esac
   done
