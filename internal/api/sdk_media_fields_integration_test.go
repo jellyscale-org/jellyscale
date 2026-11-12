@@ -71,4 +71,16 @@ func TestItemAndPlaybackInfoCarryEveryFieldTheKotlinSDKRequires(t *testing.T) {
 		t.Fatalf("PlaybackInfo: %d", response.StatusCode)
 	}
 	check("PlaybackInfo", body, "MediaSources")
+
+	// A transcode lists every audio stream from the full probe, added after the
+	// stored sources were filled in: Findroid's player failed to decode this
+	// reply after #94.
+	for _, codec := range []string{"h264", "hevc"} {
+		e, _, source := transcodeEnv(t, codec, "aac")
+		response, body := e.do(t, 0, "POST", "/Items/"+db.CompactID(e.item)+"/PlaybackInfo", e.token, transcodeProfileBody(t, source))
+		if response.StatusCode != 200 {
+			t.Fatalf("%s PlaybackInfo: %d", codec, response.StatusCode)
+		}
+		check(codec+" PlaybackInfo", body, "MediaSources")
+	}
 }

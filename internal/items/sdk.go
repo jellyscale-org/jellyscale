@@ -59,9 +59,15 @@ func withItemSDKFields(dto map[string]any) {
 }
 
 func streams(holder map[string]any) {
-	list, _ := holder["MediaStreams"].([]any)
-	for _, entry := range list {
-		if stream, ok := entry.(map[string]any); ok {
+	switch list := holder["MediaStreams"].(type) {
+	case []any: // As decoded from a stored DTO.
+		for _, entry := range list {
+			if stream, ok := entry.(map[string]any); ok {
+				fill(stream, streamDefaults)
+			}
+		}
+	case []map[string]any: // As PlaybackInfo builds it.
+		for _, stream := range list {
 			fill(stream, streamDefaults)
 		}
 	}
