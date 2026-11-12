@@ -131,7 +131,9 @@ check "api role doesn't serve downloads" 404 "$(code -H "Authorization: MediaBro
 # The same download link through the e2e router, which carries the compose Caddyfile's rule.
 router=$(free)
 node "$repo/test/e2e/router.mjs" "$router" "$stream" "$api1,$api2" >>"$logs/roles.log" 2>&1 & pids+=($!)
-for _ in $(seq 1 50); do [[ $(code "127.0.0.1:$router/healthz") != 000 ]] && break; sleep 0.1; done
+# Node can take seconds to start on a busy runner; 5 s was once too few in CI.
+for _ in $(seq 1 300); do [[ $(code "127.0.0.1:$router/healthz") != 000 ]] && break; sleep 0.1; done # A hang bound of 30 s.
+check "the router is up" yes "$([[ $(code "127.0.0.1:$router/healthz") != 000 ]] && echo yes || echo no)"
 check "the ingress sends a download to the stream role" "200 stream" "$(curl -s -o /dev/null -D - "127.0.0.1:$router/Items/$id/Download?ApiKey=$token" | tr -d '\r' | awk 'BEGIN{c=""} /^HTTP/{c=$2} tolower($1)=="x-routed-to:"{r=$2} END{print c, r}')"
 # UserData: written through one api replica, read through the other.
 curl -s -o /dev/null -X POST -H "Authorization: MediaBrowser Token=\"$token\"" -H 'Content-Type: application/json' -d '{"PlaybackPositionTicks":123000000,"IsFavorite":true}' "127.0.0.1:$api1/UserItems/$id/UserData"
