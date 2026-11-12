@@ -145,7 +145,7 @@ jobs:
         with:
           go-version-file: go.mod
       # ffmpeg from Ubuntu has libx264, libx265, libsvtav1 and libass; burn-in needs a font.
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg fontconfig fonts-dejavu-core
+      - run: bash test/apt.sh ffmpeg fontconfig fonts-dejavu-core
       - run: bash test/integration.sh
         env:
           INTEGRATION_SHARD: ${{ matrix.shard }}
@@ -202,7 +202,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: bash test/apt.sh ffmpeg
       - run: bash test/roles.sh "$RUNNER_TEMP/roles"
         env:
           JELLYSCALE_LOG_DIR: ${{ runner.temp }}/logs
@@ -225,7 +225,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: bash test/apt.sh ffmpeg
       - id: fixtures
         run: echo "key=$(bash test/fixtures/key.sh)" >> "$GITHUB_OUTPUT"
       - id: cache
@@ -268,7 +268,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: lts/*
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: bash test/apt.sh ffmpeg
       # The films ffmpeg makes take minutes and are the same on every run, so
       # they are cached under the key test/fixtures/key.sh gives (the recipes and
       # ffmpeg's version), the same one test/e2e/run.sh looks them up by.
