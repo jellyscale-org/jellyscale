@@ -536,7 +536,7 @@
       "passes": true,
       "dependsOn": [],
       "source": "work queue follow-ups",
-      "notes": "A worker whose lock connection ends takes the lock again and keeps its jobs if its row is there; a store waits for Postgres rather than failing; stream requests wait for Postgres (db.Retry) rather than answer 400 or more; /healthz answers from the process. Only workers forget dead workers: an api or stream replica can miss an outage (an idle pool sees no failure) and would forget live ones, so with no live worker left a dead one counts until it has not reported in for 10 s (was about 1 s; accepted by the owner 2026-11-12). The lead fixed Verify's three last findings directly (two reaper majors, image 500) with regression tests rather than a second attempt."
+      "notes": "A worker whose lock connection ends always goes on, claims nothing, takes its lock again and looks for its row; a store waits for Postgres rather than failing; stream requests wait for Postgres (db.Retry) rather than answer 400 or more; /healthz answers from the process. A worker forgets another only when its own lock is held, it has not lost its own lock within reapHold, and the other's lock was gone half a grace earlier; replicas write nothing and count a locked node only while its lock is held, re-asking for up to a grace before refusing. Measured: refusal 1.0-1.1 s after the last worker is killed; SIGKILL to the replacement's first segment 4.33 s. An administrator ending one worker's lock backend leaves its jobs running (owner, 2026-11-12). Designed by Fable 5.2 after the owner declined a 10 s refusal trade-off; built by an implementer agent, verified by the lead."
     },
     {
       "id": "JS-030",
