@@ -310,7 +310,7 @@
       "severity": "major",
       "title": "One slot pool counts a near-free copy the same as a multi-core re-encode (internal/transcode/worker.go slots); fold into JS-054's design and before JS-057's scaling signal",
       "status": "promoted",
-      "notes": "JS-054 design criterion"
+      "notes": "JS-054 design criterion Promoted to JS-087 (2026-11-12)."
     },
     {
       "id": "BL-035",
@@ -444,8 +444,8 @@
       "reviewer": "lead",
       "severity": "minor",
       "title": "A seek inside a long-showing image cue pays the cue's whole age, uncapped",
-      "status": "open",
-      "notes": "Measured 0.3 MB and 0.04 s per second of age at 640x360; a 4K film costs more and is unmeasured. A cap would drop a cue on screen, so it needs a viewer-visible decision."
+      "status": "promoted",
+      "notes": "Measured 0.3 MB and 0.04 s per second of age at 640x360; a 4K film costs more and is unmeasured. A cap would drop a cue on screen, so it needs a viewer-visible decision. Promoted to JS-089 (2026-11-12)."
     },
     {
       "id": "BL-050",
