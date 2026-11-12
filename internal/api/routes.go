@@ -34,6 +34,7 @@ func (s *Server) Routes() []Route {
 		{Method: "GET", Path: "/UserViews/GroupingOptions", Status: Stub, Role: RoleAPI, Handler: emptyList},
 		{Method: "GET", Path: "/Items", Status: Implemented, Role: RoleAPI, Handler: s.listItems},
 		{Method: "GET", Path: "/Items/Latest", Status: Implemented, Role: RoleAPI, Handler: s.latestItems},
+		{Method: "GET", Path: "/Items/Suggestions", Status: Implemented, Role: RoleAPI, Handler: s.suggestedItems},
 		{Method: "GET", Path: "/Items/Filters", Status: Stub, Role: RoleAPI, Handler: s.itemFilters},
 		{Method: "GET", Path: "/Items/Filters2", Status: Stub, Role: RoleAPI, Handler: s.itemFilters},
 		{Method: "GET", Path: "/Items/{itemId}", Status: Implemented, Role: RoleAPI, Handler: s.getItem},

@@ -144,6 +144,33 @@ func (s *Server) listItems(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, result)
 }
 
+// suggestedItems answers /Items/Suggestions, the row of picks Findroid's home
+// screen asks for (and stops on when it is missing): films and shows of the
+// types asked for, in random order. Its parameters are named type and
+// mediaType, not /Items' includeItemTypes and mediaTypes.
+func (s *Server) suggestedItems(w http.ResponseWriter, r *http.Request) {
+	q := items.Query{
+		UserID:    sessionOf(r).User.ID,
+		Recursive: true,
+		SortBy:    []string{"Random"},
+		Start:     queryInt(r, "startindex"),
+		Limit:     queryInt(r, "limit"),
+	}
+	types, ok := mediaTypeFilter(queryList(r, "mediatype"), queryList(r, "type"))
+	if !ok {
+		writeJSON(w, items.Empty())
+		return
+	}
+	q.IncludeTypes = types
+	withCount := r.URL.Query().Get("enabletotalrecordcount") != "false"
+	result, err := s.Items.Find(r.Context(), q, items.ParseFields(r.URL.Query().Get("fields")), withCount)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	writeJSON(w, result)
+}
+
 func (s *Server) latestItems(w http.ResponseWriter, r *http.Request) {
 	q, ok, err := s.itemQuery(r)
 	if err != nil {
