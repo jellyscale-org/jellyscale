@@ -159,6 +159,7 @@ func (r *Repo) hydrate(ctx context.Context, ids []string, userID string, fields 
 				source["MediaAttachments"] = []any{}
 			}
 		}
+		withItemSDKFields(dto)
 		if fields != nil {
 			for key, enabledBy := range optional {
 				if enabledBy == "" || !fields[enabledBy] {
@@ -378,6 +379,9 @@ func (r *Repo) MediaSources(ctx context.Context, itemID string) ([]map[string]an
 	var sources []map[string]any
 	if err := json.Unmarshal(raw, &sources); err != nil {
 		return nil, false, err
+	}
+	for _, source := range sources {
+		WithSDKFields(source)
 	}
 	return sources, true, nil
 }

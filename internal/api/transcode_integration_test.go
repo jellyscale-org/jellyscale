@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -467,9 +468,14 @@ func TestPlaybackInfoKeepsTheStreamsTheItemListed(t *testing.T) {
 		var types []string
 		for _, entry := range media["MediaStreams"].([]any) {
 			stream := entry.(map[string]any)
-			// What the decision stores and the item page never listed stays out.
-			if stream["Type"] == "Video" && len(stream) != 2 {
-				t.Errorf("%s: the video stream gained fields: %v", codec, stream)
+			// What the decision stores and the item page never listed stays out;
+			// only the fields the Kotlin SDK requires, at their defaults, are added.
+			if stream["Type"] == "Video" {
+				for key, value := range stream {
+					if key != "Index" && key != "Type" && !(slices.Contains(sdkStreamFields, key) && value == false) {
+						t.Errorf("%s: the video stream gained %s: %v", codec, key, stream)
+					}
+				}
 			}
 			types = append(types, stream["Type"].(string)+":"+strconv.Itoa(int(stream["Index"].(float64))))
 		}
