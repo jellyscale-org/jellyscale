@@ -298,6 +298,11 @@ func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
 		}
 		result = append(result, source)
 	}
+	// Streams planPlayback added from the full probe lack what the stored
+	// sources were given; Kotlin SDK clients refuse a reply without them.
+	for _, source := range result {
+		items.WithSDKFields(source)
+	}
 	writeJSON(w, map[string]any{"MediaSources": result, "PlaySessionId": playSession})
 }
 
