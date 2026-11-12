@@ -136,12 +136,14 @@ const reapHold = 10 * time.Second
 // when Reap commits, which still sees the old row, and the update after a store
 // that was in flight. That job is then taken over at its full lease.
 func Reap(ctx context.Context, pool *pgxpool.Pool, self string) (workers []string, jobs []int64, here bool, err error) {
-	return reap(ctx, pool, self, !db.Of(pool).Recent(reapHold))
+	return reap(ctx, pool, self, !db.Of(pool).Recent(reapHold), nil)
 }
 
-func reap(ctx context.Context, pool *pgxpool.Pool, self string, forget bool) (workers []string, jobs []int64, here bool, err error) {
+// reap forgets the dead nodes among only, or all of them when only is nil.
+func reap(ctx context.Context, pool *pgxpool.Pool, self string, forget bool, only []string) (workers []string, jobs []int64, here bool, err error) {
 	err = pool.QueryRow(ctx, `WITH dead AS (
-			SELECT id FROM transcode_nodes n WHERE $3 AND locked AND NOT `+lockHeld("n.id")+`),
+			SELECT id FROM transcode_nodes n WHERE $3 AND locked AND NOT `+lockHeld("n.id")+`
+				AND ($5::text[] IS NULL OR n.id = ANY($5))),
 		expired AS (
 			UPDATE transcode_jobs SET lease_expires_at = LEAST(lease_expires_at, now() + make_interval(secs => $1))
 			WHERE state = 'running' AND worker IN (SELECT id FROM dead) RETURNING id),
@@ -149,7 +151,7 @@ func reap(ctx context.Context, pool *pgxpool.Pool, self string, forget bool) (wo
 		SELECT COALESCE((SELECT array_agg(id) FROM forgot), '{}'), COALESCE((SELECT array_agg(id) FROM expired), '{}'),
 			EXISTS (SELECT 1 FROM transcode_nodes WHERE id = $2),
 			(SELECT count(pg_notify($4, 'forgot:' || id)) FROM forgot)`,
-		reapGrace.Seconds(), self, forget, channel).Scan(&workers, &jobs, &here, new(int))
+		reapGrace.Seconds(), self, forget, channel, only).Scan(&workers, &jobs, &here, new(int))
 	return workers, jobs, here, err
 }
 
@@ -392,10 +394,34 @@ func (w *Worker) rowPresent(held context.Context) (bool, error) {
 // lookForTheDead reaps, and says whether this worker is among the dead. The
 // look is bounded well inside reapGrace, and a database that does not answer
 // is not a loss.
+//
+// A node is forgotten only when this worker's earlier look, at least
+// reapGrace before, already found its lock gone. When Postgres ends every
+// session, an idle pool can meet it again on a fresh connection and see no
+// failure, so the outage hold-off can miss it; a live worker takes its lock
+// again within a lockCheck or two of Postgres answering, while a dead one never
+// does (JS-029: on two CPUs a worker forgot a live one and stopped its ffmpeg).
 func (w *Worker) lookForTheDead(held context.Context) bool {
 	ctx, cancel := context.WithTimeout(held, reapGrace/2)
 	defer cancel()
-	workers, jobs, here, err := Reap(ctx, w.Pool, w.ID)
+	var missing []string
+	if err := w.Pool.QueryRow(ctx, `SELECT COALESCE(array_agg(id), '{}') FROM transcode_nodes n WHERE locked AND NOT `+lockHeld("n.id")).Scan(&missing); err != nil {
+		return false
+	}
+	now, confirmed := time.Now(), []string{}
+	seen := map[string]time.Time{}
+	for _, id := range missing {
+		since, ok := w.lockGone[id]
+		if !ok {
+			since = now
+		}
+		seen[id] = since
+		if now.Sub(since) >= reapGrace {
+			confirmed = append(confirmed, id)
+		}
+	}
+	w.lockGone = seen
+	workers, jobs, here, err := reap(ctx, w.Pool, w.ID, !db.Of(w.Pool).Recent(reapHold), confirmed)
 	if err != nil {
 		return false
 	}
