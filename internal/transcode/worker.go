@@ -25,6 +25,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"jellyscale/internal/db"
 	"jellyscale/internal/items"
 	"jellyscale/internal/library"
 	"jellyscale/internal/playback"
@@ -85,9 +86,18 @@ type Worker struct {
 	slotCount atomic.Int64
 
 	idOnce sync.Once
-	// held ends when the liveness lock is lost, and is nil while it is not held.
+	// held ends when the worker's row is found gone, and is nil before the first
+	// lock; lock is the liveness lock while it is held, and nil while it is
+	// being taken again, when the jobs go on but none is claimed.
 	heldMu sync.Mutex
 	held   context.Context
+	lock   *liveness
+
+	// lockGone is when this worker's looks first found each node's lock gone,
+	// and lockLost when this worker's own lock last ended; only the liveness
+	// loop reads and writes them (keepRow, lookForTheDead).
+	lockGone map[string]time.Time
+	lockLost time.Time
 }
 
 // Run claims and runs jobs until ctx ends, then waits for ffmpeg to be gone.
@@ -286,8 +296,9 @@ func (w *Worker) run(ctx context.Context, job claimed) {
 	case err == nil:
 		jobsEnded.WithLabelValues("done").Inc()
 		log.Info("transcode ended", "elapsed", time.Since(began).Round(time.Millisecond))
-	case ctx.Err() != nil || errors.Is(err, errInterrupted):
+	case ctx.Err() != nil || errors.Is(err, errInterrupted) || db.IsAway(err):
 		// Cut short, not failed: viewers restart it, and the spec isn't refused.
+		// Postgres being away is not the job's fault.
 		state, reason = "cancelled", err.Error()
 		jobsEnded.WithLabelValues("interrupted").Inc()
 		log.Info("transcode interrupted", "reason", reason)
@@ -378,6 +389,10 @@ func writeFile(path string, body io.Reader) error {
 // errInterrupted marks a job that stopped before its work was done, because
 // the worker was going away or no longer owned the job.
 var errInterrupted = errors.New("interrupted")
+
+// errWaiting says a finished segment could not be stored because Postgres is
+// away. The job is not over: the segment is kept and tried again.
+var errWaiting = errors.New("waiting for Postgres")
 
 // encode runs ffmpeg and uploads segments as they finish. It returns nil when
 // the job is over for a good reason: the file ended, it caught up with stored
@@ -581,8 +596,12 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 				}
 				name := filepath.Join(dir, strconv.Itoa(next)+".m4s")
 				if gather != nil {
-					if built, err := gather.segment(ctx, next, final); err != nil || !built {
-						return false, err
+					// A segment gathered before, whose store waited for Postgres, is
+					// already built and its fragments are gone: store it as it is.
+					if _, err := os.Stat(name); err != nil {
+						if built, err := gather.segment(ctx, next, final); err != nil || !built {
+							return false, err
+						}
 					}
 				} else if _, err := os.Stat(name); err != nil {
 					return false, nil
@@ -603,6 +622,9 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 				// one ffmpeg, as it was before chunks.
 				if chunked && next%size == 0 {
 					free, err := w.chunkFree(ctx, job, next)
+					if db.IsAway(err) {
+						free, err = true, nil // The same ffmpeg goes on; it only does what a helper may also have done.
+					}
 					if err != nil {
 						return false, err
 					}
@@ -616,6 +638,7 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		defer poll.Stop()
 		beat := time.NewTicker(w.heartbeat())
 		loggedSlow := false
+		waiting := false // A finished segment is kept for Postgres.
 		defer beat.Stop()
 		// A helper cancelled for a new viewer (preemptHelper) beats at once, so
 		// it gives its slot back now rather than at its next heartbeat. It also
@@ -694,6 +717,14 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 			select {
 			case err := <-exited:
 				caughtUp, uploadErr := upload(true)
+				// What ffmpeg made waits for Postgres, for as long as the lease it last renewed lasts.
+				for errors.Is(uploadErr, errWaiting) && time.Since(lastBeat) <= w.lease() && ctx.Err() == nil {
+					time.Sleep(100 * time.Millisecond)
+					caughtUp, uploadErr = upload(true)
+				}
+				if errors.Is(uploadErr, errWaiting) {
+					uploadErr = fmt.Errorf("%w: %v", errInterrupted, uploadErr)
+				}
 				if err != nil {
 					return fmt.Errorf("ffmpeg: %w: %s", err, stderr.String())
 				}
@@ -711,6 +742,16 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 				return nil
 			case <-poll.C:
 				caughtUp, err := upload(false)
+				if errors.Is(err, errWaiting) {
+					// The segment stays where it is, and ffmpeg and the job go on; the heartbeat
+					// ends the job if the lease runs out first.
+					if !waiting {
+						log.Warn("a finished segment is kept until Postgres answers", "error", err)
+					}
+					waiting, caughtUp, err = true, false, nil
+				} else {
+					waiting = false
+				}
 				if err != nil {
 					stop("upload failed")
 					return err
@@ -948,6 +989,11 @@ func (w *Worker) upload(ctx context.Context, job claimed, n int, name string) er
 	err := w.Pool.QueryRow(fenced, `SELECT EXISTS (SELECT 1 FROM transcode_jobs
 		WHERE id = $1 AND worker = $2 AND state = 'running' AND lease_expires_at > now() AND `+registeredAs("$2")+`)`, job.ID, w.ID).Scan(&owned)
 	cancel()
+	if db.IsAway(err) {
+		// Nothing is stored until the check passes (invariant 37); the segment
+		// waits where it is, and the lease says how long.
+		return fmt.Errorf("%w: checking the job is still ours: %v", errWaiting, err)
+	}
 	if err != nil {
 		// Unknown is not failed: the job is cut short and restarted, and the
 		// spec is not refused for a database that was slow.
@@ -964,9 +1010,13 @@ func (w *Worker) upload(ctx context.Context, job claimed, n int, name string) er
 	if err := w.put(ctx, SegmentKey(job.Hash, n), name); err != nil {
 		return err
 	}
-	os.Remove(name)
 	tag, err := w.Pool.Exec(ctx, `UPDATE transcode_jobs SET next_segment = $2, lease_expires_at = now() + make_interval(secs => $4)
 		WHERE id = $1 AND worker = $3 AND state = 'running'`, job.ID, n+1, w.ID, w.lease().Seconds())
+	if db.IsAway(err) {
+		// Stored, and not yet recorded: the file stays, and the next try stores it again.
+		return fmt.Errorf("%w: recording the segment: %v", errWaiting, err)
+	}
+	os.Remove(name)
 	if err != nil {
 		return err
 	}

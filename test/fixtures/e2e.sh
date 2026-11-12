@@ -30,6 +30,19 @@ if [[ ! -f $nu ]]; then
     -metadata:s:a:0 language=eng -metadata:s:a:1 language=spa "$nu" || exit 1
 fi
 
+# Plays as it is, and is big enough that Chrome has not buffered all of it when
+# a scenario seeks to its last fifth: 120 seconds at a constant 4 Mbit/s, 60 MB
+# (the outage scenario of JS-029 seeks while Postgres is away and needs the browser to ask for a range).
+outage="$work/media/transcode/Outage Direct Film (2113)/Outage Direct Film (2113).mkv"
+if [[ ! -f $outage ]]; then
+  mkdir -p "$(dirname "$outage")"
+  ffmpeg -nostdin -v error -y \
+    -f lavfi -i "testsrc2=size=1280x720:rate=24:duration=120" \
+    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=120" \
+    -c:v libx264 -preset ultrafast -b:v 4M -minrate 4M -maxrate 4M -bufsize 4M -x264-params nal-hrd=cbr:force-cfr=1 -g 48 \
+    -c:a aac "$outage" || exit 1
+fi
+
 # Films whose video Chrome plays and whose audio it doesn't, with keyframes at
 # the irregular times of the captured fixture (compat/captures/transcode-12.4.md),
 # so a copied stream's playlist is no fixed grid: Matroska and MP4 (moov at the

@@ -131,7 +131,9 @@ check "api role doesn't serve downloads" 404 "$(code -H "Authorization: MediaBro
 # The same download link through the e2e router, which carries the compose Caddyfile's rule.
 router=$(free)
 node "$repo/test/e2e/router.mjs" "$router" "$stream" "$api1,$api2" >>"$logs/roles.log" 2>&1 & pids+=($!)
-for _ in $(seq 1 50); do [[ $(code "127.0.0.1:$router/healthz") != 000 ]] && break; sleep 0.1; done
+# Node can take seconds to start on a busy runner; 5 s was once too few in CI.
+for _ in $(seq 1 300); do [[ $(code "127.0.0.1:$router/healthz") != 000 ]] && break; sleep 0.1; done # A hang bound of 30 s.
+check "the router is up" yes "$([[ $(code "127.0.0.1:$router/healthz") != 000 ]] && echo yes || echo no)"
 check "the ingress sends a download to the stream role" "200 stream" "$(curl -s -o /dev/null -D - "127.0.0.1:$router/Items/$id/Download?ApiKey=$token" | tr -d '\r' | awk 'BEGIN{c=""} /^HTTP/{c=$2} tolower($1)=="x-routed-to:"{r=$2} END{print c, r}')"
 # UserData: written through one api replica, read through the other.
 curl -s -o /dev/null -X POST -H "Authorization: MediaBrowser Token=\"$token\"" -H 'Content-Type: application/json' -d '{"PlaybackPositionTicks":123000000,"IsFavorite":true}' "127.0.0.1:$api1/UserItems/$id/UserData"
@@ -313,23 +315,35 @@ main=$(curl -s "127.0.0.1:$stream$url" | sed -n 's/^\(main.m3u8.*\)$/\1/p')
 segment=$(curl -s "127.0.0.1:$stream$base/$main" | grep -m1 '^hls1/main/30.mp4') # Not made by the first session.
 curl -s -o /dev/null "127.0.0.1:$stream$base/$segment"
 check "ffmpeg runs for the second session" 1 "$(pgrep -f "ffmpeg.*$work/scratch" | wc -l)"
+killed=$(date +%s%N)
 kill -9 "${pids[0]}" "${pids[1]}" 2>/dev/null
 for _ in $(seq 1 20); do [[ $(pgrep -f "ffmpeg.*$work/scratch" | wc -l) -eq 0 ]] && break; sleep 0.25; done
 check "ffmpeg dies with a worker that was killed" 0 "$(pgrep -f "ffmpeg.*$work/scratch" | wc -l)"
-# Their locks went with them, so the first look for dead workers forgets them, where
-# their rows alone would count them for ten seconds. A PlaybackInfo for a spec with no
-# live job looks (the killed workers' job is live until their leases run out).
+# Their locks went with them, so a replica no longer counts them, and PlaybackInfo
+# refuses within about a second and a half of the kill. The replica deletes no
+# row: only a worker forgets a dead worker (JS-029: a replica can miss an outage
+# and would forget live ones).
 nodes() { docker exec "$pg" psql -U postgres -Atc "select count(*) from transcode_nodes where slots > 0"; }
-curl -s -o /dev/null -X POST -H "$header" -H 'Content-Type: application/json' "127.0.0.1:$api1/Items/$zeta/PlaybackInfo" \
-  -d "{\"DeviceProfile\":$profile,\"MaxStreamingBitrate\":1200000}"
-check "killed workers stop counting at once" 0 "$(nodes)"
+refused() {
+  curl -s -X POST -H "$header" -H 'Content-Type: application/json' "127.0.0.1:$api1/Items/$zeta/PlaybackInfo" \
+    -d "{\"DeviceProfile\":$profile,\"MaxStreamingBitrate\":1200000}" | python3 -I -c 'import json,sys;print(json.load(sys.stdin).get("ErrorCode",""))'
+}
+killed_rows=$(nodes) # One or both: the second may have forgotten the first before it died.
+until [[ $(refused) == RateLimitExceeded ]] || (( $(date +%s%N) - killed > 5000000000 )); do sleep 0.1; done # A hang bound.
+took=$(( ($(date +%s%N) - killed) / 1000000 ))
+echo "the kill to PlaybackInfo's refusal: $took ms"
+check "with every worker killed, PlaybackInfo refuses within about 2 s of the kill" RateLimitExceeded "$(refused)"
+check "the refusal came within 2 s" 1 "$(( took <= 2000 ))"
+check "a replica forgets no killed worker" "$killed_rows" "$(nodes)"
 
 # Rolling restart: a worker stops gracefully and its replacement arrives a few
 # seconds later. The request that comes in between waits for it, where it used
 # to be answered 503 at once.
 PATH="$work/bin:$PATH" start --roles=worker
 old=${pids[-1]}
-for _ in $(seq 1 60); do [[ $(nodes) -ge 1 ]] && break; sleep 0.5; done
+# Until the new worker reports in; its first look forgets the killed ones.
+live() { docker exec "$pg" psql -U postgres -Atc "select count(*) from transcode_nodes where slots > 0 and seen_at > now() - interval '2 seconds'"; }
+for _ in $(seq 1 60); do [[ $(live) -ge 1 ]] && break; sleep 0.5; done
 info=$(curl -s -X POST -H "$header" -H 'Content-Type: application/json' "127.0.0.1:$api1/Items/$zeta/PlaybackInfo" \
   -d "{\"DeviceProfile\":$profile,\"MaxStreamingBitrate\":1500000}")
 url=$(echo "$info" | python3 -I -c 'import json,sys;print(json.load(sys.stdin)["MediaSources"][0]["TranscodingUrl"])')
@@ -349,7 +363,7 @@ check "a request made while no worker runs waits for the replacement" 200 "$(cat
 # With every worker gone, a track that was extracted before still plays and one
 # that wasn't is neither listed nor left hanging.
 pkill -9 -f "$work/jellyscale --roles=worker"
-sleep 11 # A worker counts as running for ten seconds after it last reported.
+sleep 11 # The subtitle queue counts a worker as running for ten seconds after it last reported.
 phi=$(curl -s -H "$header" "127.0.0.1:$api2/Items?Recursive=true&IncludeItemTypes=Movie&SearchTerm=Phi" |
   python3 -I -c 'import json,sys;print(json.load(sys.stdin)["Items"][0]["Id"])')
 check "a cached track plays with no worker" 200 "$(code "127.0.0.1:$stream/Videos/$sigma/$sigma/Subtitles/3/0/Stream.vtt?ApiKey=$token")"

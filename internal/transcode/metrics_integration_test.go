@@ -176,16 +176,19 @@ func (r *rig) jobID(t *testing.T) string {
 	return strconv.Itoa(r.count(t, "SELECT id FROM transcode_jobs WHERE state = 'running'"))
 }
 
-// A replica that finds a dead worker counts it and its jobs once; a look that
-// finds nothing counts nothing.
+// A worker's look that finds a dead worker counts it and its jobs once; a look
+// that finds nothing counts nothing.
 func TestReapsAreCounted(t *testing.T) {
 	r := newRig(t, nil)
 	ctx := context.Background()
 	workers, jobs := reaped.WithLabelValues("workers"), reaped.WithLabelValues("jobs")
 	workersBefore, jobsBefore := counterValue(t, workers), counterValue(t, jobs)
-	j := r.jobs(t)
-	j.Log = r.log
-	if err := j.reap(ctx); err != nil {
+	look := func() error {
+		dead, cut, _, err := Reap(ctx, r.pool, "")
+		logReaped(r.log, dead, cut)
+		return err
+	}
+	if err := look(); err != nil {
 		t.Fatal(err)
 	}
 	if counterValue(t, workers) != workersBefore || counterValue(t, jobs) != jobsBefore {
@@ -198,8 +201,7 @@ func TestReapsAreCounted(t *testing.T) {
 		VALUES ('h', '{}', 'o', 0, 0, 'running', 'dead-x', now() + interval '10 seconds')`); err != nil {
 		t.Fatal(err)
 	}
-	j.reaped.Store(0) // Look now, not in a second.
-	if err := j.reap(ctx); err != nil {
+	if err := look(); err != nil {
 		t.Fatal(err)
 	}
 	if got := counterValue(t, workers) - workersBefore; got != 1 {
@@ -388,6 +390,11 @@ func TestAWorkerReapedByItsOwnLookIsCounted(t *testing.T) {
 	w := &Worker{ID: "lost-lock", Pool: r.pool, Log: r.log}
 	r.exec(t, `INSERT INTO transcode_nodes (id, roles, store, slots, locked) VALUES ($1, 'worker', '', 2, true)`, w.ID)
 	before := counterValue(t, workers)
+	// A node is forgotten on a second look, half a grace after the first found it dead.
+	if w.lookForTheDead(ctx) {
+		t.Fatal("the first look already forgot the worker")
+	}
+	time.Sleep(reapGrace / 2)
 	if !w.lookForTheDead(ctx) {
 		t.Fatal("a worker whose row is among the dead did not find itself lost")
 	}

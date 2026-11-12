@@ -50,9 +50,13 @@ func EnsureServerID(ctx context.Context, pool *pgxpool.Pool) (string, error) {
 
 func (s *Server) userByToken(ctx context.Context, token string) (User, error) {
 	var user User
-	err := s.Pool.QueryRow(ctx, `SELECT u.id::text, u.name, u.is_admin, u.last_login_at
-		FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1`, token).
-		Scan(&user.ID, &user.Name, &user.IsAdmin, &user.LastLoginAt)
+	// Never answered from memory: a token signed out is refused at once, and with
+	// Postgres away the request waits for it, which never lets a stranger in.
+	err := db.Retry(ctx, s.Pool, func() error {
+		return s.Pool.QueryRow(ctx, `SELECT u.id::text, u.name, u.is_admin, u.last_login_at
+			FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1`, token).
+			Scan(&user.ID, &user.Name, &user.IsAdmin, &user.LastLoginAt)
+	})
 	return user, err
 }
 

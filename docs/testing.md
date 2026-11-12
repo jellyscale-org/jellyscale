@@ -3,7 +3,7 @@
 ```sh
 go test ./...                               # Tests that need nothing outside Go
 test/integration.sh                         # Every test, with disposable Postgres, SeaweedFS, Garage and real ffmpeg
-INTEGRATION_SHARD=0/3 test/integration.sh   # One slice of it (0/3, 1/3, 2/3 of internal/transcode, or rest); CI runs them side by side
+INTEGRATION_SHARD=0/4 test/integration.sh   # One slice of it (0/4 to 3/4 of internal/transcode, or rest); CI runs them side by side
 test/roles.sh <workdir>                     # Each role as its own process (makes its own films and config in <workdir>)
 test/e2e/run.sh <workdir> <playwright_dir>  # Real jellyfin-web, two api replicas, S3, a router, a worker
 E2E_GATES=transcode E2E_SHARD=1/3 test/e2e/run.sh <workdir> <playwright_dir>  # One slice of one gate

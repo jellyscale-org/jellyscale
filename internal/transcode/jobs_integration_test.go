@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -160,10 +161,18 @@ func TestKillPathsEndFFmpeg(t *testing.T) {
 			if _, err := r.fetch(t, j, psid(0), 0); err != nil {
 				t.Fatal(err)
 			}
-			if len(r.ffmpegProcesses()) != 1 {
+			running := r.ffmpegProcesses()
+			if len(running) != 1 {
 				t.Fatal("ffmpeg isn't running")
 			}
 			c.end(t, r, j)
+			if name == "the lease is lost" {
+				// The viewer is still watching, so the worker may rightly start a new
+				// job for them; what must end is the ffmpeg of the job it lost (its
+				// command line names that job's own directory).
+				waitFor(t, "the lost job's ffmpeg to exit", 15*time.Second, func() bool { return !slices.Contains(r.ffmpegProcesses(), running[0]) })
+				return
+			}
 			waitFor(t, "ffmpeg to exit", 15*time.Second, func() bool { return len(r.ffmpegProcesses()) == 0 })
 			// A stopped viewer's late request must not start work again.
 			if name == "stop from the player" {

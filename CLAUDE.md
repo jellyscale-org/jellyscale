@@ -7,7 +7,7 @@ A horizontally scalable, Jellyfin-compatible video server in Go. Read [PRODUCT.m
 ```sh
 go test ./...                               # Tests that need nothing outside Go
 test/integration.sh                         # Every test, with Postgres, SeaweedFS, Garage and real ffmpeg
-INTEGRATION_SHARD=0/3 test/integration.sh   # A slice of it: i/3 of internal/transcode, or rest (CI runs the four side by side)
+INTEGRATION_SHARD=0/4 test/integration.sh   # A slice of it: i/4 of internal/transcode, or rest (CI runs the five side by side)
 test/roles.sh <workdir>                     # Each role as its own process
 test/e2e/run.sh <workdir> <playwright_dir>  # Real jellyfin-web in Chromium
 E2E_GATES=transcode E2E_SHARD=1/3 test/e2e/run.sh ...  # A slice of a gate; E2E_ONLY=regex picks scenarios

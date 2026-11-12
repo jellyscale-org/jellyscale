@@ -3,11 +3,12 @@
 // its own process, and the transcode ends when it should.
 // Usage: E2E_SCRATCH=<worker scratch dir> node transcode.mjs <base_url> <user> <password>
 // Run from a directory with playwright-core installed.
-import { execFileSync, spawn } from "node:child_process";
+import { execFile, execFileSync, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname } from "node:path";
+import { promisify } from "node:util";
 import { createRequire } from "node:module";
 import { runLater, schedule, shardLine } from "./shard.mjs";
 
@@ -60,11 +61,13 @@ async function login(page) {
   await page.waitForSelector(".card", { timeout: 30000 });
 }
 
+function clock() { return Date.now(); }
+
 // A signed-in browser that records what the server told it.
 async function viewer() {
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const page = await context.newPage();
-  const seen = { infos: [], hls: [], deletes: [], errors: [], console: [], failed: [] };
+  const seen = { infos: [], hls: [], deletes: [], errors: [], console: [], failed: [], requests: [], answers: [] };
   page.on("pageerror", (error) => seen.errors.push(error.message));
   // A request that ended without an answer: hls.js abandons one after ten seconds. A seek aborts some too, so a scenario that seeks looks before it does.
   page.on("requestfailed", (request) => { if (request.url().startsWith(base) && /\/hls1\//i.test(request.url())) seen.failed.push(`${request.method()} ${new URL(request.url()).pathname} ${request.failure()?.errorText}`); });
@@ -72,6 +75,9 @@ async function viewer() {
   // The player's playback requests, for a failure to show what it did and when.
   const start = Date.now();
   page.timeline = [];
+  // Every request to the server and every answer, whichever role gave it, for the scenarios that put Postgres away.
+  page.on("request", (request) => { if (request.url().startsWith(base)) seen.requests.push({ at: clock(), method: request.method(), url: request.url(), range: request.headers().range }); });
+  page.on("response", (response) => { if (response.url().startsWith(base)) seen.answers.push({ at: clock(), status: response.status(), method: response.request().method(), url: response.url(), routed: response.headers()["x-routed-to"] }); });
   page.on("request", (request) => {
     if (request.method() === "DELETE" && /ActiveEncodings/i.test(request.url())) seen.deletes.push(request.url());
     const url = new URL(request.url());
@@ -1358,6 +1364,77 @@ await scenario("a stream replica without transcodeStore: the dialog, and the log
     replica.kill("SIGTERM");
     await gone;
   }
+});
+
+// JS-029: Postgres is stopped and started again (docker stop and start: every
+// connection ends, and new ones are refused until it is back, which is what a
+// restart or a switchover does to the replicas and the worker) while a film
+// plays. The container keeps its host port and its data across the stop.
+const exec = promisify(execFile);
+async function postgres(action) {
+  await exec("docker", [action, process.env.E2E_PG]);
+  if (action === "start") {
+    await waitFor("Postgres to answer again", async () => {
+      try { await exec("docker", ["exec", process.env.E2E_PG, "psql", "-U", "postgres", "-h", "127.0.0.1", "-Atc", "select 1"]); return true; } catch { return false; }
+    }, 60000);
+  }
+}
+
+// Stops Postgres, runs during() if given, holds it away until the browser has made
+// at least one request that matches (and three seconds more, so that the replicas
+// have waited on it), then starts it again. It returns the requests the browser made
+// while Postgres was away.
+async function awayUntil(seen, matches, during) {
+  const downAt = clock();
+  await postgres("stop");
+  try {
+    if (during) await during();
+    await waitFor("the browser to ask for something while Postgres is away", async () => seen.requests.some((r) => r.at > downAt && matches(r)), 60000);
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+  } finally {
+    await postgres("start");
+  }
+  return seen.requests.filter((r) => r.at > downAt && matches(r));
+}
+
+// Nothing the browser asked for, of either role, was answered with an error.
+function noAnswerOf400OrMore(seen) {
+  const bad = seen.answers.filter((a) => a.status >= 400);
+  if (bad.length) throw new Error(`answers of 400 or more: ${JSON.stringify(bad.slice(0, 4).map((a) => `${a.status} ${a.method} ${new URL(a.url).pathname} from ${a.routed}`))}`);
+}
+
+await scenario("Postgres restarted in the middle of a transcode: the same player goes on past where it was, with no dialog and no new PlaybackInfo", async ({ page, seen }) => {
+  await play(page, "Transcode", "Outage Encode Film");
+  await advances(page, 2);
+  if (seen.infos.at(-1).source.TranscodingSubProtocol !== "hls") throw new Error("the film should be an HLS transcode");
+  await page.evaluate(() => { window.__outageVideo = document.querySelector("video"); });
+  const asked = seen.infos.length;
+  const reached = await time(page);
+  const segments = (r) => /\/hls1\//i.test(r.url) && !/m3u8/i.test(r.url);
+  const whileAway = await awayUntil(seen, segments);
+  console.log(`      the browser asked for ${whileAway.length} segments while Postgres was away (${whileAway.filter((r) => r.method === "GET").length} GETs)`);
+  const now = await time(page);
+  await waitFor(`the picture to pass ${Math.max(reached, now) + 3}`, async () => (await time(page)) > Math.max(reached, now) + 3, 90000);
+  if (await page.getByText("Playback Error").count()) throw new Error("the viewer got a Playback Error dialog");
+  if (!(await page.evaluate(() => document.querySelector("video") === window.__outageVideo))) throw new Error("the player was replaced");
+  if (seen.infos.length !== asked) throw new Error(`the client asked for PlaybackInfo again (${seen.infos.length} times, not ${asked})`);
+  noAnswerOf400OrMore(seen);
+  await leave(page);
+  await waitFor("ffmpeg to exit after Stopped", async () => ffmpegRuns().length === 0, 30000);
+});
+
+await scenario("Postgres restarted while a film direct plays: a seek to what is not buffered is answered, with no dialog", async ({ page, seen }) => {
+  await play(page, "Transcode", "Outage Direct Film");
+  if (seen.infos.at(-1).source.TranscodingUrl !== undefined) throw new Error("the film should direct play");
+  await advances(page, 1);
+  const target = (await duration(page)) * 0.8;
+  // The seek is to a place the browser has not got, so it must ask the stream replica for a range.
+  const whileAway = await awayUntil(seen, (r) => /\/stream/i.test(r.url) && r.method === "GET", () => page.evaluate((to) => { document.querySelector("video").currentTime = to; }, target));
+  console.log(`      the browser asked for ${whileAway.length} ranges while Postgres was away`);
+  await waitFor(`the picture to play on from ${target.toFixed(0)} s`, async () => (await time(page)) > target + 1, 90000);
+  if (await page.getByText("Playback Error").count()) throw new Error("the viewer got a Playback Error dialog");
+  noAnswerOf400OrMore(seen);
+  await leave(page);
 });
 
 // A worker killed while it serves a playing film. Two other workers run, and the

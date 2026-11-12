@@ -19,13 +19,13 @@ fails_with() { # name command...: the command must exit non-zero
 # --- shard.sh: every test of the tier lands in one shard, and only one.
 cd "$repo" || exit 1
 all=$(go test -tags integration -list '.*' ./... | grep -E '^(Test|Example|Fuzz)' | sort)
-dealt=$(for i in 0 1 2; do bash test/shard.sh args "$i/3" | sed -n 2p | sed 's/^\^(//; s/)\$$//' | tr '|' '\n'; done | sort)
+dealt=$(for i in 0 1 2 3; do bash test/shard.sh args "$i/4" | sed -n 2p | sed 's/^\^(//; s/)\$$//' | tr '|' '\n'; done | sort)
 rest_packages=$(bash test/shard.sh args rest)
 rest=$(go test -tags integration -list '.*' $rest_packages | grep -E '^(Test|Example|Fuzz)' | sort)
 check "the transcode shards and rest hold every test once" "$all" "$(printf '%s\n%s\n' "$dealt" "$rest" | sort)"
 check "no transcode test is dealt twice" "" "$(echo "$dealt" | uniq -d)"
 check "rest leaves out internal/transcode" "0" "$(echo "$rest_packages" | grep -c '/internal/transcode$')"
-counts=$(( $(bash test/shard.sh count 0/3) + $(bash test/shard.sh count 1/3) + $(bash test/shard.sh count 2/3) + $(bash test/shard.sh count rest) ))
+counts=$(( $(bash test/shard.sh count 0/4) + $(bash test/shard.sh count 1/4) + $(bash test/shard.sh count 2/4) + $(bash test/shard.sh count 3/4) + $(bash test/shard.sh count rest) ))
 check "the shards' counts add up to the tier" "$(echo "$all" | wc -l | tr -d ' ')" "$counts"
 fails_with "a shard past n is refused" bash test/shard.sh count 3/3
 
@@ -281,12 +281,12 @@ echo 'n=integration-${INTEGRATION_SHARD/\//of}; [[ $n == "${STUB_LOSE:-}" ]] && 
   tree=$(bash tools/snapshot.sh)
   export HOME=$tmp/home
   tiers() { bash tools/tiers.sh "$@" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["done"], " ".join(r["name"]+"="+r["status"] for r in d["records"]))'; }
-  check "tiers.sh runs every missing tier and reports each" "True unit=pass integration-rest=pass integration-0of3=pass integration-1of3=pass integration-2of3=pass" "$(tiers "$tree" 60)"
+  check "tiers.sh runs every missing tier and reports each" "True unit=pass integration-rest=pass integration-0of4=pass integration-1of4=pass integration-2of4=pass integration-3of4=pass" "$(tiers "$tree" 60)"
   check "tiers.sh leaves no state after a clean gate" "" "$(ls "$HOME/.cache/jellyscale/agents" 2>/dev/null)"
   check "tiers.sh refuses a tree that is not the working tree's" "True tree=fail" "$(tiers 0000 5)"
   rm -rf .results
-  check "tiers.sh reports a failing shard and one that ended without a record" "True unit=pass integration-rest=pass integration-0of3=pass integration-1of3=fail integration-2of3=fail" "$(STUB_FAIL=integration-1of3 STUB_LOSE=integration-2of3 tiers "$tree" 60)"
-  check "tiers.sh does not start a lost run again" "0" "$(STUB_LOSE=integration-2of3 tiers "$tree" 5 >/dev/null; pgrep -cf "$lab/test" || true)"
+  check "tiers.sh reports a failing shard and one that ended without a record" "True unit=pass integration-rest=pass integration-0of4=pass integration-1of4=fail integration-2of4=fail integration-3of4=pass" "$(STUB_FAIL=integration-1of4 STUB_LOSE=integration-2of4 tiers "$tree" 60)"
+  check "tiers.sh does not start a lost run again" "0" "$(STUB_LOSE=integration-2of4 tiers "$tree" 5 >/dev/null; pgrep -cf "$lab/test" || true)"
   rm -rf .results "$HOME/.cache"; mkdir -p ".results/$tree"
   printf 'status=pass\n' >".results/$tree/unit"; printf 'status=pass\n' >".results/$tree/integration"
   check "one record for the whole integration tier answers for its shards" "True unit=pass integration=pass" "$(tiers "$tree" 5)"
