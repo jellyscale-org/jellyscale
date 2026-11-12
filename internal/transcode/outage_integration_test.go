@@ -751,3 +751,101 @@ func deref(s *string) string {
 	}
 	return *s
 }
+
+// Postgres ends the three workers' lock connections one after another, 100 ms
+// apart (a switchover reaches each node's connections when it gets to them).
+// The first to lose its lock sees the others still holding theirs, and later
+// ones see it back: nobody takes anyone for dead, and no ffmpeg changes.
+func TestWorkersWhoseLockBackendsAreEndedOneByOneKeepEveryFfmpeg(t *testing.T) {
+	slowAt(t, "2")
+	s := newStack(t, 3)
+	r := s.r
+	enc := r.spec
+	r.copied(t, "film.mkv")
+	cp := r.spec
+	r.spec, r.hash = enc, enc.Hash()
+	low := enc
+	low.VideoBitrate = 1_000_000
+	s.play(s.jobs, enc, psid(0), 0, 40)
+	s.play(s.jobs, cp, psid(1), 0, 40)
+	s.play(s.jobs, low, psid(2), 0, 40)
+	waitFor(t, "each worker to run one job", 60*time.Second, func() bool {
+		for _, w := range s.workers {
+			if _, ok := r.ffmpegOf(w); !ok {
+				return false
+			}
+		}
+		return true
+	})
+	before := r.jobRows(t)
+	ffmpegBefore := map[string]ffmpegProcess{}
+	for _, w := range s.workers {
+		ffmpegBefore[w.id], _ = r.ffmpegOf(w)
+	}
+	locksBefore := s.lockPids()
+	nodes := s.watchNodes()
+	for _, w := range s.workers {
+		r.terminate(t, w.id)
+		time.Sleep(100 * time.Millisecond)
+	}
+	holders := s.allLocked(30*time.Second, s.workers...)
+	for id, pid := range holders {
+		if pid == locksBefore[id] {
+			t.Errorf("worker %s holds its lock on the backend it held before: it was not ended", id)
+		}
+	}
+	// Longer than a look and a confirmation, so a forgetting would have happened.
+	time.Sleep(3 * reapGrace)
+	if after := r.jobRows(t); fmt.Sprint(after) != fmt.Sprint(before) {
+		t.Errorf("the jobs changed:\nbefore %+v\nafter  %+v", before, after)
+	}
+	for _, w := range s.workers {
+		if p, ok := r.ffmpegOf(w); !ok || p.Pid != ffmpegBefore[w.id].Pid || p.Start != ffmpegBefore[w.id].Start {
+			t.Errorf("worker %s's ffmpeg was %+v and is %+v (running %v)", w.id, ffmpegBefore[w.id], p, ok)
+		}
+	}
+	if ids := nodes.forgotten(); len(ids) > 0 {
+		t.Errorf("workers that were alive had their rows forgotten: %v", ids)
+	}
+}
+
+// Every backend of a worker and of a replica ends, and a viewer's PlaybackInfo
+// comes while the worker's lock is still gone: the worker is taking it again,
+// so the replica waits a moment for it and counts the worker, and it forgets no
+// row (it may have missed this very outage).
+func TestAReplicaAsksAboutAWorkerWhoseLockIsGoneAndDeletesNothing(t *testing.T) {
+	s := newStack(t, 1)
+	r := s.r
+	w := s.workers[0]
+	waitFor(t, "the worker to register", 30*time.Second, func() bool { return r.locked(w.id) })
+	nodes := s.watchNodes()
+	before := s.lockPids()
+	w.away(true) // New connections are refused until it is back.
+	if _, err := s.replica.Terminate(context.Background(), r.pool); err != nil {
+		t.Fatal(err)
+	}
+	s.waitEnded(before, s.workers)
+	if _, held := s.lockPids()[w.id]; held {
+		t.Fatal("the worker still holds its lock")
+	}
+	time.AfterFunc(300*time.Millisecond, w.back)
+	var reason string
+	for attempt := 0; ; attempt++ {
+		var err error
+		if reason, err = s.jobs.Unavailable(context.Background(), r.hash, "", ""); err == nil {
+			break
+		} else if attempt == 20 {
+			t.Fatal(err) // The replica's own connections were ended too.
+		}
+	}
+	if reason != "" {
+		t.Errorf("PlaybackInfo refused with a live worker taking its lock again: %q", reason)
+	}
+	if n := r.count(t, "SELECT count(*) FROM transcode_nodes"); n != 1 {
+		t.Errorf("%d rows in transcode_nodes, want the worker's", n)
+	}
+	s.allLocked(30*time.Second, s.workers...)
+	if ids := nodes.forgotten(); len(ids) > 0 {
+		t.Errorf("rows were forgotten: %v", ids)
+	}
+}

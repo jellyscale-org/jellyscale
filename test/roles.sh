@@ -315,23 +315,26 @@ main=$(curl -s "127.0.0.1:$stream$url" | sed -n 's/^\(main.m3u8.*\)$/\1/p')
 segment=$(curl -s "127.0.0.1:$stream$base/$main" | grep -m1 '^hls1/main/30.mp4') # Not made by the first session.
 curl -s -o /dev/null "127.0.0.1:$stream$base/$segment"
 check "ffmpeg runs for the second session" 1 "$(pgrep -f "ffmpeg.*$work/scratch" | wc -l)"
+killed=$(date +%s%N)
 kill -9 "${pids[0]}" "${pids[1]}" 2>/dev/null
 for _ in $(seq 1 20); do [[ $(pgrep -f "ffmpeg.*$work/scratch" | wc -l) -eq 0 ]] && break; sleep 0.25; done
 check "ffmpeg dies with a worker that was killed" 0 "$(pgrep -f "ffmpeg.*$work/scratch" | wc -l)"
-# Their locks went with them, but only a worker forgets a dead worker (JS-029: a
-# replica can miss an outage and would forget live ones), so with no worker left
-# their rows count until they have not reported in for ten seconds, and then
-# PlaybackInfo refuses. A PlaybackInfo for a spec with no live job forgets nobody.
+# Their locks went with them, so a replica no longer counts them, and PlaybackInfo
+# refuses within about a second and a half of the kill. The replica deletes no
+# row: only a worker forgets a dead worker (JS-029: a replica can miss an outage
+# and would forget live ones).
 nodes() { docker exec "$pg" psql -U postgres -Atc "select count(*) from transcode_nodes where slots > 0"; }
 refused() {
   curl -s -X POST -H "$header" -H 'Content-Type: application/json' "127.0.0.1:$api1/Items/$zeta/PlaybackInfo" \
     -d "{\"DeviceProfile\":$profile,\"MaxStreamingBitrate\":1200000}" | python3 -I -c 'import json,sys;print(json.load(sys.stdin).get("ErrorCode",""))'
 }
-killed=$(nodes) # One or both: the second may have forgotten the first before it died.
-refused >/dev/null
-check "a replica forgets no killed worker" "$killed" "$(nodes)"
-for _ in $(seq 1 80); do [[ $(refused) == RateLimitExceeded ]] && break; sleep 0.25; done # A hang bound of 20 s.
-check "with every worker killed, PlaybackInfo refuses once they stop reporting in" RateLimitExceeded "$(refused)"
+killed_rows=$(nodes) # One or both: the second may have forgotten the first before it died.
+until [[ $(refused) == RateLimitExceeded ]] || (( $(date +%s%N) - killed > 5000000000 )); do sleep 0.1; done # A hang bound.
+took=$(( ($(date +%s%N) - killed) / 1000000 ))
+echo "the kill to PlaybackInfo's refusal: $took ms"
+check "with every worker killed, PlaybackInfo refuses within about 2 s of the kill" RateLimitExceeded "$(refused)"
+check "the refusal came within 2 s" 1 "$(( took <= 2000 ))"
+check "a replica forgets no killed worker" "$killed_rows" "$(nodes)"
 
 # Rolling restart: a worker stops gracefully and its replacement arrives a few
 # seconds later. The request that comes in between waits for it, where it used
@@ -360,7 +363,7 @@ check "a request made while no worker runs waits for the replacement" 200 "$(cat
 # With every worker gone, a track that was extracted before still plays and one
 # that wasn't is neither listed nor left hanging.
 pkill -9 -f "$work/jellyscale --roles=worker"
-sleep 11 # A worker counts as running for ten seconds after it last reported.
+sleep 11 # The subtitle queue counts a worker as running for ten seconds after it last reported.
 phi=$(curl -s -H "$header" "127.0.0.1:$api2/Items?Recursive=true&IncludeItemTypes=Movie&SearchTerm=Phi" |
   python3 -I -c 'import json,sys;print(json.load(sys.stdin)["Items"][0]["Id"])')
 check "a cached track plays with no worker" 200 "$(code "127.0.0.1:$stream/Videos/$sigma/$sigma/Subtitles/3/0/Stream.vtt?ApiKey=$token")"

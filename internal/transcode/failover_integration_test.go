@@ -299,6 +299,15 @@ func TestAKilledWorkerIsReplacedWithinSeconds(t *testing.T) {
 	}
 }
 
+// identities says which processes they are; their state (running, sleeping) changes.
+func identities(ps []ffmpegProcess) []string {
+	var found []string
+	for _, p := range ps {
+		found = append(found, fmt.Sprintf("%d@%s", p.Pid, p.Start))
+	}
+	return found
+}
+
 // terminate ends the backend that holds the node's liveness lock.
 func (r *rig) terminate(t *testing.T, id string) {
 	t.Helper()
@@ -310,10 +319,11 @@ func (r *rig) terminate(t *testing.T, id string) {
 	}
 }
 
-// A worker whose lock goes while it lives stops its ffmpeg at once, so that
-// nobody takes the job over a running one; a worker then continues it, and
-// the first is back once it holds the lock again.
-func TestAWorkerThatLosesItsLockStopsBeforeAnyoneTakesItsJobs(t *testing.T) {
+// A worker whose lock connection ends while Postgres stays up (the
+// administrator ends the backend) takes the lock again and goes on: the same
+// job, the same ffmpeg, one owner. A switchover ends that connection too, and
+// the worker cannot tell the two apart; it does not need to.
+func TestAWorkerWhoseLockBackendIsEndedTakesTheLockAgainAndGoesOn(t *testing.T) {
 	slowAt(t, "2")
 	r := newRig(t, nil)
 	r.worker(t, nil)
@@ -328,26 +338,75 @@ func TestAWorkerThatLosesItsLockStopsBeforeAnyoneTakesItsJobs(t *testing.T) {
 	owner := r.owner(t)
 	owned := r.watchOwners(t)
 	first := r.count(t, "SELECT max(id) FROM transcode_jobs")
+	before := r.ffmpegs()
+	if len(before) != 1 {
+		t.Fatalf("%d ffmpeg run, want the one", len(before))
+	}
 	r.terminate(t, owner)
-	terminated := time.Now()
-	waitFor(t, "the old worker's ffmpeg to stop", 5*time.Second, func() bool { return len(r.ffmpegProcesses()) == 0 })
-	t.Logf("backend terminated to ffmpeg gone: %v", time.Since(terminated).Round(time.Millisecond))
+	waitFor(t, "the worker to hold its lock again", 10*time.Second, func() bool {
+		return r.count(t, "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND classid = "+livenessClass+" AND objsubid = 2") == 2
+	})
+	// The worker looks for its row once the lock is back; give the others the
+	// time they would need to forget it, were that going to happen.
+	time.Sleep(2 * reapGrace)
 	if _, err := r.fetch(t, j, psid(0), 3); err != nil {
 		t.Fatal(err)
 	}
-	// Either worker may have it now: the one that lost its lock is back in
-	// milliseconds, and takes jobs again like any other.
-	if r.owner(t) == "" {
-		t.Error("no worker has the job")
+	if after := r.ffmpegs(); !slices.Equal(identities(before), identities(after)) {
+		t.Errorf("ffmpeg was %v, is now %v", before, after)
+	}
+	if got := r.count(t, "SELECT max(id) FROM transcode_jobs"); got != first {
+		t.Errorf("job %d was started; the job was %d", got, first)
+	}
+	if got := r.owner(t); got != owner {
+		t.Errorf("the job is %q's, want %q's", got, owner)
+	}
+	owned.check(t)
+}
+
+// A worker that lost its lock and cannot take it again is forgotten by another
+// after a moment, and stops its ffmpeg before that one may claim the job.
+func TestAWorkerThatCannotLockAgainStopsBeforeAnyoneClaimsItsJob(t *testing.T) {
+	slowAt(t, "2")
+	r := newRig(t, nil)
+	p := newProxy(t, r.dsn, false)
+	cfg, err := through(r.dsn, p.addr())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var id string
+	r.worker(t, func(w *Worker) { w.LivenessConfig = cfg; id = w.ID })
+	waitFor(t, "the worker to register", 10*time.Second, func() bool { return r.locked(id) })
+	j := r.jobs(t)
+	if _, err := r.fetch(t, j, psid(0), 0); err != nil {
+		t.Fatal(err)
+	}
+	r.worker(t, nil)
+	waitFor(t, "the other worker to register", 10*time.Second, func() bool {
+		return r.count(t, "SELECT count(*) FROM transcode_nodes WHERE locked") == 2
+	})
+	owned := r.watchOwners(t)
+	first := r.count(t, "SELECT max(id) FROM transcode_jobs")
+	p.refuse.Store(true)
+	r.terminate(t, id)
+	terminated := time.Now()
+	waitFor(t, "the old worker's ffmpeg to stop", 5*time.Second, func() bool { return len(r.ffmpegs()) == 0 })
+	t.Logf("backend terminated to ffmpeg gone: %v", time.Since(terminated).Round(time.Millisecond))
+	// Nobody has the job yet: it was nobody's to take while the first ran it.
+	if n := r.count(t, "SELECT count(*) FROM transcode_jobs WHERE state = 'running' AND worker <> $1", id); n != 0 {
+		t.Errorf("%d jobs run under another worker the moment ffmpeg was gone", n)
+	}
+	if _, err := r.fetch(t, j, psid(0), 3); err != nil {
+		t.Fatal(err)
+	}
+	if r.owner(t) == id || r.owner(t) == "" {
+		t.Errorf("the job is %q's, want the other worker's", r.owner(t))
 	}
 	if r.count(t, "SELECT max(id) FROM transcode_jobs") == first {
 		t.Error("the old job was not replaced")
 	}
-	if reason := mustScalar(t, r, fmt.Sprintf("SELECT COALESCE(error, '') FROM transcode_jobs WHERE id = %d", first)); !bytes.Contains([]byte(reason), []byte("liveness lock")) {
-		t.Errorf("the old job ended with %q, want the lost lock named", reason)
-	}
-	waitFor(t, "the old worker to hold a lock again and register", 10*time.Second, func() bool { return r.locked(owner) })
 	owned.check(t)
+	p.refuse.Store(false)
 }
 
 // refusing is a stand-in for the network between a worker and Postgres, which
@@ -449,9 +508,9 @@ func (p *proxy) cut() {
 
 func (p *proxy) addr() string { return p.ln.Addr().String() }
 
-// A worker that lost its lock and cannot take it again has no row and claims
-// nothing, so nobody counts on it; it is back when the lock is.
-func TestAWorkerWithoutItsLockClaimsNothingAndHasNoRow(t *testing.T) {
+// A worker that lost its lock and cannot take it again goes on with its job but
+// claims nothing; it takes the next when the lock is back.
+func TestAWorkerWithoutItsLockGoesOnButClaimsNothing(t *testing.T) {
 	slowAt(t, "2")
 	r := newRig(t, nil)
 	p := newProxy(t, r.dsn, false)
@@ -466,20 +525,17 @@ func TestAWorkerWithoutItsLockClaimsNothingAndHasNoRow(t *testing.T) {
 	if _, err := r.fetch(t, j, psid(0), 0); err != nil {
 		t.Fatal(err)
 	}
+	before := r.ffmpegs()
 	p.refuse.Store(true)
 	r.terminate(t, id)
-	waitFor(t, "ffmpeg to stop", 5*time.Second, func() bool { return len(r.ffmpegProcesses()) == 0 })
-	waitFor(t, "the worker's row to go", 3*time.Second, func() bool {
-		return r.count(t, "SELECT count(*) FROM transcode_nodes WHERE id = $1", id) == 0
-	})
 	// A new job, which the only worker must not take while its lock is gone.
 	go r.fetchAt(t, j, psid(1), 12, 12) //nolint:errcheck
 	for end := time.Now().Add(2500 * time.Millisecond); time.Now().Before(end); time.Sleep(100 * time.Millisecond) {
-		if r.count(t, "SELECT count(*) FROM transcode_nodes WHERE id = $1", id) != 0 {
-			t.Fatal("a worker without its lock has a node row")
+		if r.count(t, "SELECT count(*) FROM transcode_nodes WHERE id = $1", id) != 1 {
+			t.Fatal("the row of a worker that is the only one is gone")
 		}
-		if n := len(r.ffmpegProcesses()); n != 0 {
-			t.Fatalf("a worker without its lock runs %d ffmpeg", n)
+		if after := r.ffmpegs(); !slices.Equal(identities(before), identities(after)) {
+			t.Fatalf("ffmpeg was %v, is now %v", before, after)
 		}
 	}
 	if n := r.count(t, "SELECT count(*) FROM transcode_jobs WHERE state = 'queued'"); n != 1 {
@@ -487,7 +543,7 @@ func TestAWorkerWithoutItsLockClaimsNothingAndHasNoRow(t *testing.T) {
 	}
 	p.refuse.Store(false)
 	waitFor(t, "the worker to lock again and take the job", 10*time.Second, func() bool {
-		return r.locked(id) && len(r.ffmpegProcesses()) == 1
+		return r.locked(id) && len(r.ffmpegs()) == 2
 	})
 }
 
@@ -591,11 +647,12 @@ func TestAWorkerWhoseConnectionStaysOpenIsReplacedAtLeaseExpiry(t *testing.T) {
 	owned.check(t)
 }
 
-// The last worker, killed, stops counting once it has not reported in for 10
-// seconds. Only workers forget dead workers (JS-029: a replica that missed an
-// outage forgot live ones), so with none left its row is not forgotten at once;
-// the owner accepted the 10 s for this case, where it was about one before.
-func TestTheLastKilledWorkerStopsCountingOnceItHasNotReportedIn(t *testing.T) {
+// The last worker, killed, stops counting within about a second and a half: a
+// replica counts a worker only while its lock is held, and a locked row without
+// its lock is looked at again for a grace, in case the worker is taking it
+// again, before the viewer is told no worker is running. The row itself is the
+// workers' to forget, not the replica's.
+func TestAViewerIsRefusedWithinASecondAndAHalfOfTheLastWorkerBeingKilled(t *testing.T) {
 	segments := t.TempDir()
 	r := newRig(t, store.NewPosix(segments))
 	a := r.workerProcess(t, "worker-a", segments)
@@ -605,11 +662,25 @@ func TestTheLastKilledWorkerStopsCountingOnceItHasNotReportedIn(t *testing.T) {
 	}
 	a.Process.Kill() //nolint:errcheck
 	killed := time.Now()
-	waitFor(t, "the dead worker to stop counting", 20*time.Second, func() bool { // A hang bound.
-		reason, err := j.Unavailable(context.Background(), r.hash, r.user, "device")
-		return err == nil && reason == "no transcode worker is running"
-	})
-	t.Logf("SIGKILL to no worker counted: %v", time.Since(killed).Round(10*time.Millisecond))
+	var reason string
+	// The guarantee is 1.5 s; 3 s is the bound, with margin for a slow runner.
+	for ; time.Since(killed) < 3*time.Second; time.Sleep(50 * time.Millisecond) {
+		var err error
+		if reason, err = j.Unavailable(context.Background(), r.hash, r.user, "device"); err != nil {
+			t.Fatal(err)
+		}
+		if reason == "no transcode worker is running" {
+			break
+		}
+	}
+	refused := time.Since(killed)
+	t.Logf("SIGKILL to no worker counted: %v", refused.Round(10*time.Millisecond))
+	if reason != "no transcode worker is running" {
+		t.Fatalf("%v after the kill the last worker still counts: %q", refused.Round(time.Millisecond), reason)
+	}
+	if n := r.count(t, "SELECT count(*) FROM transcode_nodes"); n != 1 {
+		t.Errorf("%d rows in transcode_nodes: a replica must forget none, and no worker was left to", n)
+	}
 }
 
 // The key is the two-int form of the lock, matched on an unsigned oid.
@@ -896,8 +967,8 @@ func TestAWorkerWithoutItsRowRenewsClaimsAndStoresNothing(t *testing.T) {
 	}
 }
 
-// Reap gives a dead worker's jobs reapGrace to end, not a lease that is gone at
-// once: that second is what a worker that lost its lock while it lives needs to
+// Reap gives a dead worker's jobs reapLease to end, not a lease that is gone at
+// once: that half second is what a worker that lost its lock while it lives needs to
 // stop its ffmpeg before another takes the job.
 func TestReapLeavesADeadWorkersJobsAGraceToEnd(t *testing.T) {
 	r := newRig(t, nil)
@@ -925,7 +996,7 @@ func TestReapLeavesADeadWorkersJobsAGraceToEnd(t *testing.T) {
 		t.Fatalf("Reap forgot %v and cut %v, want [dead-x] and [%d]", workers, jobs, id)
 	}
 	// The lease was cut to a grace after the reap: not gone at once (it ends after
-	// the moment before Reap ran) and not left at its 10 s (it ends within a grace
+	// the moment before Reap ran) and not left at its 10 s (it ends within reapLease
 	// of the moment after). Both moments are the database's clock, read in order,
 	// so the runner's speed does not enter.
 	var lease time.Time
@@ -935,8 +1006,57 @@ func TestReapLeavesADeadWorkersJobsAGraceToEnd(t *testing.T) {
 	if !lease.After(startedAt) {
 		t.Error("the dead worker's job lease was gone at once: its worker has no time to stop ffmpeg")
 	}
-	if lease.After(finishedAt.Add(reapGrace)) {
-		t.Errorf("the dead worker's job lease was left at more than the %v grace after the reap", reapGrace)
+	if lease.After(finishedAt.Add(reapLease)) {
+		t.Errorf("the dead worker's job lease was left at more than %v after the reap", reapLease)
+	}
+}
+
+// A worker forgets another only when it holds its own lock in the same look,
+// and has not lost it within reapHold, and finds the other's lock gone twice,
+// half a grace apart. Each condition alone keeps a live worker from being
+// forgotten by one that cannot tell.
+func TestAWorkerForgetsAnotherOnlyOnTheConditionsOfALookThatCanBeTrusted(t *testing.T) {
+	r := newRig(t, nil)
+	ctx := context.Background()
+	for _, id := range []string{"me", "dead-x"} {
+		r.exec(t, `INSERT INTO transcode_nodes (id, roles, store, slots, locked) VALUES ($1, 'worker', '', 2, true)`, id)
+	}
+	w := &Worker{ID: "me", Pool: r.pool, Log: r.log}
+	forgotten := func() bool { return r.count(t, "SELECT count(*) FROM transcode_nodes WHERE id = 'dead-x'") == 0 }
+	look := func() {
+		t.Helper()
+		w.lookForTheDead(ctx)
+		time.Sleep(reapGrace/2 + 50*time.Millisecond)
+		w.lookForTheDead(ctx)
+	}
+
+	// Its own lock is not in the snapshot (a pooler), so it sees nobody's.
+	look()
+	if forgotten() {
+		t.Error("a worker that does not see its own lock forgot another")
+	}
+	if r.count(t, "SELECT count(*) FROM transcode_nodes WHERE id = 'me'") != 0 {
+		t.Error("a worker whose own lock is not shown did not forget itself")
+	}
+
+	// Its own lock is held, but ended a moment ago.
+	r.exec(t, `INSERT INTO transcode_nodes (id, roles, store, slots, locked) VALUES ('me', 'worker', '', 2, true)`)
+	live, err := holdLiveness(ctx, r.pool.Config().ConnConfig, "me")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer live.Close()
+	w.lockLost = time.Now()
+	look()
+	if forgotten() {
+		t.Error("a worker whose lock ended a moment ago forgot another")
+	}
+
+	// Held, and not lost within reapHold: the other's lock was gone in both looks.
+	w.lockLost = time.Now().Add(-reapHold)
+	look()
+	if !forgotten() {
+		t.Error("a worker that holds its lock did not forget a node whose lock was gone in two looks")
 	}
 }
 

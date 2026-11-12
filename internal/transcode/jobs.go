@@ -188,44 +188,60 @@ const failureMemory = 30 * time.Second
 // A viewer's own jobs don't count as busy: jellyfin-web asks for the new stream
 // before it deletes the old one, which is about to free its slot.
 func (j *Jobs) Unavailable(ctx context.Context, hash, userID, deviceID string) (reason string, err error) {
-	// Only workers look for dead workers (Reap). A replica that holds no
-	// liveness lock may have missed an outage altogether (an idle pool meets
-	// the returned Postgres on a fresh connection and sees no failure), and
-	// would then forget live workers still taking their lock again, which
-	// stops every transcode (JS-029). With no live worker left, a dead one's
-	// slots count until it has not reported in for 10 s.
+	// Only workers forget dead workers (lookForTheDead): a replica holds no
+	// liveness lock, so it may have missed an outage altogether, and would
+	// forget live workers still taking their lock again. It counts a worker
+	// only while its lock is held, and writes nothing.
 	if err := expireQueued(ctx, j.Pool, orDefault(j.QueueTimeout, queueTimeout)); err != nil {
 		return "", err
 	}
 	if live, err := LiveJob(ctx, j.Pool, hash); err != nil || live {
 		return "", err // A live job is joined, whatever failed before.
 	}
-	var workers, slots, taken int
-	var failure *string
-	err = j.Pool.QueryRow(ctx, `SELECT
-			(SELECT count(*) FROM transcode_nodes WHERE slots > 0 AND seen_at > now() - make_interval(secs => $2)),
-			(SELECT COALESCE(sum(slots), 0) FROM transcode_nodes WHERE seen_at > now() - make_interval(secs => $2)),
-			(SELECT count(*) FROM transcode_jobs WHERE (state = 'queued' OR (state = 'running' AND lease_expires_at > now()
-					AND worker IN (SELECT id FROM transcode_nodes WHERE seen_at > now() - make_interval(secs => $2))))
-				AND NOT helper AND owner NOT IN (SELECT play_session_id FROM transcode_viewers WHERE user_id::text = $4 AND device_id = $5)),
-			(SELECT error FROM transcode_jobs WHERE spec_hash = $1 AND state = 'failed' AND NOT helper
-				AND ended_at > now() - make_interval(secs => $3) ORDER BY id DESC LIMIT 1)`,
-		hash, workerAlive.Seconds(), failureMemory.Seconds(), userID, deviceID).Scan(&workers, &slots, &taken, &failure)
-	if err != nil {
-		return "", err
+	// A refusal that rests on a worker whose lock is gone is looked at again for
+	// a grace: it is either taking its lock again, or never will.
+	deadline := time.Now().Add(reapGrace)
+	for {
+		var workers, slots, taken, lockless int
+		var failure *string
+		err = j.Pool.QueryRow(ctx, `WITH counted AS (
+				SELECT id, slots FROM transcode_nodes WHERE seen_at > now() - make_interval(secs => $2)
+					AND (NOT locked OR `+lockHeld("id")+`))
+			SELECT
+				(SELECT count(*) FROM counted WHERE slots > 0),
+				(SELECT COALESCE(sum(slots), 0) FROM counted),
+				(SELECT count(*) FROM transcode_jobs WHERE (state = 'queued' OR (state = 'running' AND lease_expires_at > now()
+						AND worker IN (SELECT id FROM counted)))
+					AND NOT helper AND owner NOT IN (SELECT play_session_id FROM transcode_viewers WHERE user_id::text = $4 AND device_id = $5)),
+				(SELECT error FROM transcode_jobs WHERE spec_hash = $1 AND state = 'failed' AND NOT helper
+					AND ended_at > now() - make_interval(secs => $3) ORDER BY id DESC LIMIT 1),
+				(SELECT count(*) FROM transcode_nodes WHERE slots > 0 AND seen_at > now() - make_interval(secs => $2)
+					AND locked AND NOT `+lockHeld("transcode_nodes.id")+`)`,
+			hash, workerAlive.Seconds(), failureMemory.Seconds(), userID, deviceID).Scan(&workers, &slots, &taken, &failure, &lockless)
+		if err != nil {
+			return "", err
+		}
+		if failure == nil && (workers == 0 || taken >= slots) && lockless > 0 && time.Now().Before(deadline) {
+			select {
+			case <-ctx.Done():
+				return "", ctx.Err()
+			case <-time.After(100 * time.Millisecond):
+			}
+			continue
+		}
+		if reason, err := StoreMismatch(ctx, j.Pool); err != nil || reason != "" {
+			return reason, err
+		}
+		switch {
+		case failure != nil:
+			return "the last attempt failed: " + *failure, nil
+		case workers == 0:
+			return "no transcode worker is running", nil
+		case taken >= slots:
+			return fmt.Sprintf("all %d transcode slots are busy", slots), nil
+		}
+		return "", nil
 	}
-	if reason, err := StoreMismatch(ctx, j.Pool); err != nil || reason != "" {
-		return reason, err
-	}
-	switch {
-	case failure != nil:
-		return "the last attempt failed: " + *failure, nil
-	case workers == 0:
-		return "no transcode worker is running", nil
-	case taken >= slots:
-		return fmt.Sprintf("all %d transcode slots are busy", slots), nil
-	}
-	return "", nil
 }
 
 // Stop ends a user's viewing: every spec of the play session, or, when the

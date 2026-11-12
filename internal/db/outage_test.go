@@ -5,6 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"net"
+	"os"
+	"syscall"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -26,6 +30,9 @@ func TestWhichErrorsMeanPostgresIsAway(t *testing.T) {
 		{errors.New("conn closed"), true},
 		{&pgconn.PgError{Code: "57014"}, false}, // A cancelled query.
 		{&pgconn.PgError{Code: "23505"}, false}, // A unique violation.
+		{&net.OpError{Op: "read", Net: "tcp", Err: syscall.ECONNRESET}, true},
+		{fmt.Errorf("uploading: %w", missingFile()), false}, // A file's error, though syscall.Errno is a net.Error.
+		{&fs.PathError{Op: "write", Path: "g0.m4s", Err: syscall.ENOSPC}, false},
 		{context.Canceled, false},
 		{context.DeadlineExceeded, false},
 		{nil, false},
@@ -59,4 +66,9 @@ func TestRetryRunsAgainOnlyForAnOutage(t *testing.T) {
 	if err := Retry(ctx, nil, func() error { return io.EOF }); !errors.Is(err, io.EOF) {
 		t.Errorf("a request that was given up on: %v", err)
 	}
+}
+
+func missingFile() error {
+	_, err := os.Open("/nonexistent/g0.m4s")
+	return err
 }

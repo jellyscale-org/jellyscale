@@ -93,9 +93,11 @@ type Worker struct {
 	held   context.Context
 	lock   *liveness
 
-	// lockGone is when this worker's looks first found each node's lock gone;
-	// only the liveness loop reads and writes it (lookForTheDead).
+	// lockGone is when this worker's looks first found each node's lock gone,
+	// and lockLost when this worker's own lock last ended; only the liveness
+	// loop reads and writes them (keepRow, lookForTheDead).
 	lockGone map[string]time.Time
+	lockLost time.Time
 }
 
 // Run claims and runs jobs until ctx ends, then waits for ffmpeg to be gone.

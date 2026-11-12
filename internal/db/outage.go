@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net"
 	"strings"
@@ -133,9 +134,16 @@ func IsAway(err error) bool {
 	if errors.As(err, &pgErr) {
 		return strings.HasPrefix(pgErr.Code, "08") || (strings.HasPrefix(pgErr.Code, "57") && pgErr.Code != "57014") // 57014: a query cancelled.
 	}
+	// A file's error is never the database's, though syscall.Errno satisfies
+	// net.Error: a missing segment or a full disk must fail the job, not cancel
+	// it as if Postgres were away (JS-029, found in the merge queue).
+	var pathErr *fs.PathError
+	if errors.As(err, &pathErr) {
+		return false
+	}
 	var connectErr *pgconn.ConnectError
-	var netErr net.Error
-	return errors.As(err, &connectErr) || errors.As(err, &netErr) ||
+	var opErr *net.OpError
+	return errors.As(err, &connectErr) || errors.As(err, &opErr) ||
 		errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, net.ErrClosed) ||
 		strings.Contains(err.Error(), "conn closed")
 }
