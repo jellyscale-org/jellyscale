@@ -121,6 +121,7 @@ function noErrors(seen) {
 // E2E_ONLY picks scenarios by name and E2E_SHARD by call order (see shard.mjs).
 function scenario(name, run, options = {}) {
   return schedule(name, options, async () => {
+    const began = Date.now();
     const v = await viewer();
     let passed = false;
     try {
@@ -129,17 +130,17 @@ function scenario(name, run, options = {}) {
     } catch (error) {
       const why = error.message.split("\n").filter(Boolean).slice(0, 3).join(" / ");
       failures.push(`${name}: ${why}`);
-      console.log(`FAIL  ${name}: ${why}`);
+      console.log(`FAIL  ${name}: ${why} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
       await v.page.screenshot({ path: `${process.env.TMPDIR ?? "/tmp"}/jellyscale-e2e-subtitles.png` }).catch(() => {});
     } finally {
       await v.context.close().catch(() => {});
     }
     await waitFor("ffmpeg to exit between scenarios", async () => ffmpegRuns().length === 0, 90000).catch(() => {
       failures.push(`${name}: ffmpeg still running afterwards`);
-      console.log(`FAIL  ${name}: ffmpeg still running afterwards`);
+      console.log(`FAIL  ${name}: ffmpeg still running afterwards (${((Date.now() - began) / 1000).toFixed(1)}s)`);
       passed = false;
     });
-    if (passed) console.log(`ok    ${name}`);
+    if (passed) console.log(`ok    ${name} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
   });
 }
 

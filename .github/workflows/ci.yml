@@ -164,7 +164,11 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: integration-shard-${{ matrix.name }}
-          path: ${{ runner.temp }}/logs/shard-*.txt
+          # The test record too, pass or fail: test/shard-times.sh deals the shards
+          # by the times in it, measured on CI's own runners.
+          path: |
+            ${{ runner.temp }}/logs/shard-*.txt
+            ${{ runner.temp }}/logs/**/tests.json
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
@@ -178,6 +182,9 @@ jobs:
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read # For the shards' durations below.
     steps:
       - id: decide
         env:
@@ -202,6 +209,18 @@ jobs:
           path: shards
       - if: steps.decide.outputs.run == 'true'
         run: bash test/check-shards.sh integration shards ${{ needs.integration-total.outputs.total }}
+      # How long each shard took and how far apart they are: the slowest sets the
+      # wall time, and a spread is what test/shard-times.txt should be refreshed for.
+      - if: always() && steps.decide.outputs.run == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?per_page=100" --jq '
+            .jobs[] | select(.name | startswith("integration shard (")) | select(.completed_at != null) |
+            "\(.name) \((.completed_at | fromdate) - (.started_at | fromdate))"' |
+            awk '{ printf "%s: %dm%02ds\n", $0 ~ /\(/ ? substr($0, 1, index($0, ")")) : $1, $NF / 60, $NF % 60; if (min == "" || $NF < min) min = $NF; if ($NF > max) max = $NF }
+              END { printf "slowest shard %dm%02ds, fastest %dm%02ds, spread %dm%02ds\n", max / 60, max % 60, min / 60, min % 60, (max - min) / 60, (max - min) % 60 }' | tee -a "$GITHUB_STEP_SUMMARY"
 
   # Each role as its own process, against Postgres, with real ffmpeg.
   roles:

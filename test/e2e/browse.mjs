@@ -28,12 +28,13 @@ page.on("response", (response) => {
 let steps = 0;
 async function step(name, action) {
   steps++;
+  const began = Date.now();
   try {
     await action();
-    console.log(`ok    ${name}`);
+    console.log(`ok    ${name} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
   } catch (error) {
     failures.push(`${name}: ${error.message.split("\n")[0]}`);
-    console.log(`FAIL  ${name}`);
+    console.log(`FAIL  ${name} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
     await page.screenshot({ path: `${tmpdir()}/jellyscale-e2e-failure.png` }).catch(() => {});
   }
 }
