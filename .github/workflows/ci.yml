@@ -17,8 +17,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-# Three checks are required by branch protection: lint-and-unit, integration and
-# e2e. They report on every pull request. integration and e2e are the last jobs
+# Four checks are required by branch protection: lint-and-unit, integration,
+# e2e and roles. Every job runs on ubuntu-24.04, pinned: its ffmpeg 6.1 is the
+# oldest jellyscale supports, which ubuntu-latest would stop testing silently. They report on every pull request. integration and e2e are the last jobs
 # of a fan-out: their shards (the "integration shard" and "e2e shard" jobs) run
 # the tests side by side, and the job named integration or e2e fails if any shard
 # failed or was cancelled, or if the shards did not add up to every test and
@@ -33,7 +34,8 @@ concurrency:
 # e2e fixture cache, which only main's scope shares with every branch.
 jobs:
   changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     outputs:
       code: ${{ steps.diff.outputs.code }}
       why: ${{ steps.diff.outputs.why }}
@@ -68,7 +70,8 @@ jobs:
           echo "media tiers: $code${why:+ ($why)}"
 
   lint-and-unit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -76,7 +79,7 @@ jobs:
           go-version-file: go.mod
       - uses: actions/setup-node@v7
         with:
-          node-version: lts/*
+          node-version: '24'
       - name: gofmt
         run: test -z "$(gofmt -l cmd internal test)"
       - run: go vet ./...
@@ -106,7 +109,8 @@ jobs:
   integration-total:
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     outputs:
       total: ${{ steps.count.outputs.total }}
     steps:
@@ -125,7 +129,7 @@ jobs:
     name: integration shard (${{ matrix.name }})
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40 # The tests' own limit is 30, set in test/integration.sh.
     strategy:
       fail-fast: false
@@ -147,6 +151,12 @@ jobs:
           go-version-file: go.mod
       # ffmpeg from Ubuntu has libx264, libx265, libsvtav1 and libass; burn-in needs a font.
       - run: bash test/apt.sh ffmpeg fontconfig fonts-dejavu-core
+        timeout-minutes: 5 # A stalled mirror fails in minutes, not at the job's limit.
+      - name: CI tests ffmpeg 6.1 on a known number of CPUs
+        run: |
+          nproc
+          ffmpeg -version | head -1
+          ffmpeg -version | head -1 | grep -q '^ffmpeg version 6\.1' || { echo 'CI must test ffmpeg 6.1, the oldest jellyscale supports'; exit 1; }
       - run: bash test/integration.sh
         env:
           INTEGRATION_SHARD: ${{ matrix.shard }}
@@ -166,7 +176,8 @@ jobs:
   integration:
     needs: [changes, integration-total, integration-shard]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - id: decide
         env:
@@ -196,7 +207,7 @@ jobs:
   roles:
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
@@ -204,6 +215,12 @@ jobs:
         with:
           go-version-file: go.mod
       - run: bash test/apt.sh ffmpeg
+        timeout-minutes: 5 # A stalled mirror fails in minutes, not at the job's limit.
+      - name: CI tests ffmpeg 6.1 on a known number of CPUs
+        run: |
+          nproc
+          ffmpeg -version | head -1
+          ffmpeg -version | head -1 | grep -q '^ffmpeg version 6\.1' || { echo 'CI must test ffmpeg 6.1, the oldest jellyscale supports'; exit 1; }
       - run: bash test/roles.sh "$RUNNER_TEMP/roles"
         env:
           JELLYSCALE_LOG_DIR: ${{ runner.temp }}/logs
@@ -218,7 +235,8 @@ jobs:
   # A hit restores and stops; a miss makes the films (minutes) and saves them.
   fixture-cache:
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     env:
       E2E_FIXTURE_CACHE: /home/runner/e2e-fixtures
     steps:
@@ -227,6 +245,12 @@ jobs:
         with:
           go-version-file: go.mod
       - run: bash test/apt.sh ffmpeg
+        timeout-minutes: 5 # A stalled mirror fails in minutes, not at the job's limit.
+      - name: CI tests ffmpeg 6.1 on a known number of CPUs
+        run: |
+          nproc
+          ffmpeg -version | head -1
+          ffmpeg -version | head -1 | grep -q '^ffmpeg version 6\.1' || { echo 'CI must test ffmpeg 6.1, the oldest jellyscale supports'; exit 1; }
       - id: fixtures
         run: echo "key=$(bash test/fixtures/key.sh)" >> "$GITHUB_OUTPUT"
       - id: cache
@@ -246,7 +270,7 @@ jobs:
     name: e2e shard (${{ matrix.name }})
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -268,8 +292,14 @@ jobs:
           go-version-file: go.mod
       - uses: actions/setup-node@v7
         with:
-          node-version: lts/*
+          node-version: '24'
       - run: bash test/apt.sh ffmpeg
+        timeout-minutes: 5 # A stalled mirror fails in minutes, not at the job's limit.
+      - name: CI tests ffmpeg 6.1 on a known number of CPUs
+        run: |
+          nproc
+          ffmpeg -version | head -1
+          ffmpeg -version | head -1 | grep -q '^ffmpeg version 6\.1' || { echo 'CI must test ffmpeg 6.1, the oldest jellyscale supports'; exit 1; }
       # The films ffmpeg makes take minutes and are the same on every run, so
       # they are cached under the key test/fixtures/key.sh gives (the recipes and
       # ffmpeg's version), the same one test/e2e/run.sh looks them up by.
@@ -288,7 +318,7 @@ jobs:
         run: |
           mkdir -p /tmp/pw && cd /tmp/pw
           npm init -y >/dev/null
-          npm install playwright-core
+          npm install playwright-core@1.65.0
       # Chrome, because fixtures are H.264 and AAC, which Chromium builds can omit.
       - if: matrix.name != 'differential'
         run: bash test/e2e/run.sh /tmp/e2e /tmp/pw
@@ -320,7 +350,8 @@ jobs:
   e2e:
     needs: [changes, e2e-shard]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - id: decide
         env:

@@ -7,7 +7,7 @@ start_seaweed() {
 {"identities":[{"name":"it","credentials":[{"accessKey":"$seaweed_key","secretKey":"$seaweed_secret"}],"actions":["Admin","Read","Write","List"]}]}
 J
   docker run -d --rm --name "$name" -p 127.0.0.1::8333 -v "$work/s3.json:/s3.json:ro" \
-    chrislusf/seaweedfs:latest server -s3 -s3.config=/s3.json -volume.max=20 -dir=/data >/dev/null || return 1
+    chrislusf/seaweedfs:4.50 server -s3 -s3.config=/s3.json -volume.max=20 -dir=/data >/dev/null || return 1
   seaweed_port=$(docker port "$name" 8333/tcp | head -1 | sed 's/.*://')
   for _ in $(seq 1 60); do curl -s -m1 -o /dev/null "http://127.0.0.1:$seaweed_port/" && break; sleep 1; done
   sleep 4
