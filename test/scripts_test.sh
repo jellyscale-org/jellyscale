@@ -294,6 +294,21 @@ echo 'n=integration-${INTEGRATION_SHARD/\//of}; [[ $n == "${STUB_LOSE:-}" ]] && 
 )
 fails=$((fails + $?))
 
+# --- ci.yml: every job on the pinned runner, with a time limit, and every apt step bounded:
+# ubuntu-latest would change ffmpeg under CI silently, and a stalled mirror hung jobs for 40 min.
+unbounded=$(python3 -I - .github/workflows/ci.yml <<'EOF'
+import sys, yaml
+jobs = yaml.safe_load(open(sys.argv[1]))["jobs"]
+for name, job in jobs.items():
+    if job.get("runs-on") != "ubuntu-24.04" or "timeout-minutes" not in job:
+        print(name)
+    for step in job.get("steps", []):
+        if "apt.sh" in str(step.get("run", "")) and "timeout-minutes" not in step:
+            print(name + ": apt step")
+EOF
+)
+check "every CI job is pinned and bounded, and every apt step too" "" "$unbounded"
+
 echo
 [[ $fails -eq 0 ]] && echo "scripts: all passed" || echo "scripts: $fails failed"
 exit $((fails > 0))
