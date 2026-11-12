@@ -111,7 +111,7 @@ mkdir -p "$work/media/$t/Xi Film (2031)" && cp "$zeta" "$work/media/$t/Xi Film (
 # Two more of Zeta and of its interlaced twin, for the scenario that checks how far a
 # job runs ahead of the viewer: it needs segments nobody has made yet.
 # The same twice more for the scenarios that kill the worker playing a film.
-for pair in "Lead Copy Film (2094):Zeta Film (2023)" "Lead Encode Film (2095):Zeta Interlaced (2050)" "Failover Copy Film (2110):Zeta Film (2023)" "Failover Encode Film (2111):Zeta Interlaced (2050)" "Parallel Encode Film (2112):Zeta Interlaced (2050)"; do
+for pair in "Lead Copy Film (2094):Zeta Film (2023)" "Lead Encode Film (2095):Zeta Interlaced (2050)" "Failover Copy Film (2110):Zeta Film (2023)" "Failover Encode Film (2111):Zeta Interlaced (2050)" "Parallel Encode Film (2112):Zeta Interlaced (2050)" "Outage Encode Film (2114):Zeta Interlaced (2050)"; do
   to=${pair%%:*} from=${pair#*:}
   link "$t/$from/$from.mkv" "$t/$to/$to.mkv"
 done
@@ -128,8 +128,11 @@ link "$t/Stigma Film (2047)/Stigma Film (2047).mkv" "$t/Sho Film (2048)/Sho Film
 link "$t/Sigma Film (2034)/Sigma Film (2034).mkv" "$t/Pick Film (2130)/Pick Film (2130).mkv"
 
 
-docker run -d --rm --name "$pg" -e POSTGRES_PASSWORD=e2e -p 127.0.0.1::5432 postgres:18-alpine >/dev/null || exit 1
-port=$(docker port "$pg" 5432/tcp | head -1 | sed 's/.*://')
+# A scenario stops Postgres and starts it again (JS-029), so the container is not
+# removed when it stops (no --rm; cleanup removes it) and its host port is
+# chosen here, because a port Docker assigns can change when a container starts again.
+port=$(python3 -I -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])')
+docker run -d --name "$pg" -e POSTGRES_PASSWORD=e2e -p "127.0.0.1:$port:5432" postgres:18-alpine >/dev/null || exit 1
 start_seaweed "$sw" "$work" e2e || exit 1
 for _ in $(seq 1 60); do docker exec "$pg" psql -U postgres -Atc 'select 1' >/dev/null 2>&1 && break; sleep 0.5; done
 sleep 2

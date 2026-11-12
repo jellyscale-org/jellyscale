@@ -378,9 +378,16 @@ func (s *Server) itemImage(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		uri, key, found, err = s.Items.ChapterImage(r.Context(), id, n)
+		// A stream replica waits for a database that is briefly away (DOMAINS 37).
+		err = db.Retry(r.Context(), s.Pool, func() (err error) {
+			uri, key, found, err = s.Items.ChapterImage(r.Context(), id, n)
+			return err
+		})
 	} else {
-		uri, key, found, err = s.Items.Image(r.Context(), id)
+		err = db.Retry(r.Context(), s.Pool, func() (err error) {
+			uri, key, found, err = s.Items.Image(r.Context(), id)
+			return err
+		})
 	}
 	if err != nil {
 		s.fail(w, r, err)

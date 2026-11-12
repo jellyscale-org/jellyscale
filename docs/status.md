@@ -92,6 +92,7 @@ Every viewer-visible and operator-visible feature in scope, in one list. Status 
 
 - Kubernetes deployment, as example manifests for `kubectl` and as a Helm chart, with readiness and liveness: **not built**. Both are supported ways to install; there is no operator (decision).
 - Metrics (Prometheus): **not built**. In scope.
+- Postgres failover (JS-029): **done**. A switchover or restart keeps the transcodes (workers take their lock again and look for their row before stopping anything), segments finished meanwhile are stored when it answers, and stream and api replicas hold a request for the database instead of answering 500 (`GET /healthz` no longer asks it). Nothing is cached; `DOMAINS.md` invariants 25 and 37.
 - Backup and restore: **not built**. In scope as documented procedure: the operator backs up Postgres and the object stores, so Jellyfin's Backup API is a non-goal (decision).
 - Migration from Jellyfin: **not built**. In scope as a one-way import of users, watch state and libraries, so that viewers keep their history. Users arrive without passwords: they set one, or sign in through OIDC (decision).
 - Upgrades without downtime (workers replaced before `stream` and `api`, migrations that old replicas survive): **not built**. In scope. This includes the general fix for new spec fields: a worker from before a release that adds one (the tone mapping, copied audio) stores segments made without it under the new hash if it takes such a job, so workers report their `OutputVersion` and the api offers only specs every live worker supports.
