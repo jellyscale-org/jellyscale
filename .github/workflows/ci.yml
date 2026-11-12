@@ -119,7 +119,7 @@ jobs:
 
   # Everything the integration tier needs is installed here, so a test that
   # can't run fails, and test/report.sh fails the job if any test is skipped.
-  # internal/transcode holds most of the time and is dealt out in three; the
+  # internal/transcode holds most of the time and is dealt out in four; the
   # fourth shard is every other package (test/shard.sh).
   integration-shard:
     name: integration shard (${{ matrix.name }})
@@ -131,9 +131,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: 0of3, shard: 0/3 }
-          - { name: 1of3, shard: 1/3 }
-          - { name: 2of3, shard: 2/3 }
+          - { name: 0of4, shard: 0/4 }
+          - { name: 1of4, shard: 1/4 }
+          - { name: 2of4, shard: 2/4 }
+          - { name: 3of4, shard: 3/4 }
           - { name: rest, shard: rest }
     steps:
       - uses: actions/checkout@v7

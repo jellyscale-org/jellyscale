@@ -17,7 +17,7 @@ repo=$(git rev-parse --show-toplevel)
 cd "$repo"
 dir=.results/$tree
 out=$HOME/.cache/jellyscale/agents/tiers-$tree
-names=(unit integration-rest integration-0of3 integration-1of3 integration-2of3)
+names=(unit integration-rest integration-0of4 integration-1of4 integration-2of4 integration-3of4)
 
 report() { # report <done> <name:status:summary:log>...
   python3 - "$@" <<'EOF'
@@ -68,7 +68,7 @@ start() { # start <name>, detached, so it outlives this command
   case $1 in
     unit) ;;
     integration-rest) env=INTEGRATION_SHARD=rest ;;
-    integration-*of3) env=INTEGRATION_SHARD=${1#integration-}; env=${env/of//} ;;
+    integration-*of4) env=INTEGRATION_SHARD=${1#integration-}; env=${env/of//} ;;
   esac
   local script=test/integration.sh
   [[ $1 == unit ]] && script=test/unit.sh
