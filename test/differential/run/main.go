@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"jellyscale/compat/conform"
 	"jellyscale/test/differential"
 )
 
@@ -27,6 +28,13 @@ type server struct {
 	name, base, token, userID string
 	ids                       map[string]string // item id -> "Type/Name"
 	byKey                     map[string]string // "Type/Name" -> item id
+	password                  string
+
+	// conform holds every JSON answer of this server to Jellyfin 12.4's schema (JS-070); nil checks nothing.
+	conform *conform.Checker
+	found   []conform.Violation
+	label   string // what the answers are to, in a report; else the request line
+	kotlin  *kotlinCases
 }
 
 func main() {
@@ -36,6 +44,8 @@ func main() {
 	jsPass := flag.String("jellyscale-password", "", "password of jellyscale's admin")
 	requestsFile := flag.String("requests", "test/differential/requests.yaml", "")
 	allowFile := flag.String("allowlist", "compat/differences.yaml", "")
+	schemaFile := flag.String("schema", "compat/schema-12.4.json", "")
+	image := flag.String("image", "jellyfin/jellyfin:12.4", "the Jellyfin image the schema must come from")
 	flag.Parse()
 
 	reqs, err := differential.LoadRequests(*requestsFile)
@@ -46,13 +56,20 @@ func main() {
 
 	jf := &server{name: "jellyfin", base: *jfURL}
 	js := &server{name: "jellyscale", base: *jsURL}
+	schema, rules, clients := loadConformance(*schemaFile)
+	jf.conform = conform.NewChecker(schema, rules)
+	js.conform = conform.NewChecker(schema, rules)
+	js.kotlin = newKotlinCases()
+	defer js.kotlin.remove()
 	check(jf.setUp(*jfPass))
 	check(js.signIn("admin", *jsPass))
+	check(checkSchemaDrift(jf, *schemaFile, *image))
 	check(jf.waitForScan())
 	check(js.waitForScan())
 	check(jf.learnItems())
 	check(js.learnItems())
 	check(startWatching(jf, js))
+	check(showDevices(jf, js))
 
 	// A failure is reported under its route, once, with the requests that differ.
 	type failure struct {
@@ -104,6 +121,7 @@ func main() {
 		}
 	}
 	ran := len(reqs)
+	failed += reportConformance(jf, js, clients)
 	for _, e := range allow.Unused() {
 		fmt.Printf("note  compat/differences.yaml lists %s for the request %q, which no longer differs; remove it\n", e.Path, e.Requests[0])
 	}
@@ -135,10 +153,19 @@ func show(v any) string {
 }
 
 // do sends a request and returns the status and body. A token of "" sends none.
+// Every answer of a server that has a checker is held to the schema.
 func (s *server) do(method, path, body string) (int, []byte, error) {
+	status, contentType, data, err := s.send(method, path, body)
+	if err == nil {
+		s.record(method, path, status, contentType, data)
+	}
+	return status, data, err
+}
+
+func (s *server) send(method, path, body string) (int, string, []byte, error) {
 	req, err := http.NewRequest(method, s.base+path, strings.NewReader(body))
 	if err != nil {
-		return 0, nil, err
+		return 0, "", nil, err
 	}
 	auth := authHeader
 	if s.token != "" {
@@ -150,11 +177,11 @@ func (s *server) do(method, path, body string) (int, []byte, error) {
 	}
 	resp, err := (&http.Client{Timeout: 60 * time.Second}).Do(req)
 	if err != nil {
-		return 0, nil, err
+		return 0, "", nil, err
 	}
 	defer resp.Body.Close()
 	data, err := io.ReadAll(resp.Body)
-	return resp.StatusCode, data, err
+	return resp.StatusCode, resp.Header.Get("Content-Type"), data, err
 }
 
 func (s *server) mustDo(method, path, body string) ([]byte, error) {
@@ -221,9 +248,16 @@ func (s *server) signIn(user, password string) error {
 	body, _ := json.Marshal(map[string]string{"Username": user, "Pw": password})
 	var data []byte
 	var err error
-	for i := 0; i < 60; i++ { // jellyscale may still be starting
-		if data, err = s.mustDo("POST", "/Users/AuthenticateByName", string(body)); err == nil {
+	for i := 0; i < 60; i++ { // jellyscale may still be starting; only the answer that works is checked
+		var status int
+		var contentType string
+		if status, contentType, data, err = s.send("POST", "/Users/AuthenticateByName", string(body)); err == nil && status < 300 {
+			s.label = "sign-in"
+			s.record("POST", "/Users/AuthenticateByName", status, contentType, data)
+			s.label = ""
 			break
+		} else if err == nil {
+			err = fmt.Errorf("%s POST /Users/AuthenticateByName: status %d: %s", s.name, status, data)
 		}
 		time.Sleep(time.Second)
 	}
@@ -237,7 +271,10 @@ func (s *server) signIn(user, password string) error {
 	if err := json.Unmarshal(data, &auth); err != nil {
 		return err
 	}
-	s.token, s.userID = auth.AccessToken, auth.User.Id
+	s.token, s.userID, s.password = auth.AccessToken, auth.User.Id, password
+	if s.kotlin != nil {
+		return s.kotlin.add("AuthenticationResult", "sign-in", data)
+	}
 	return nil
 }
 
@@ -329,6 +366,17 @@ func startWatching(servers ...*server) error {
 	return nil
 }
 
+// showDevices has each server's device ping, which is how jellyscale learns of an idle session (the
+// web client pings from its socket); the requests that list sessions then find one that plays nothing.
+func showDevices(servers ...*server) error {
+	for _, s := range servers {
+		if _, err := s.mustDo("POST", "/Sessions/Playing/Ping?playSessionId=differential-idle", ""); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 var refPattern = regexp.MustCompile(`\{\{([^}]+)\}\}`)
 
 // fill puts this server's ids where the request names items.
@@ -361,9 +409,16 @@ func (s *server) answer(r differential.Request) (status int, doc any, err error)
 	if err != nil {
 		return 0, nil, err
 	}
+	s.label = r.Name
 	status, data, err := s.do(r.Method, path, body)
+	s.label = ""
 	if err != nil {
 		return 0, nil, err
+	}
+	if s.kotlin != nil && r.Kotlin != "" && status >= 200 && status < 300 {
+		if err := s.kotlin.add(r.Kotlin, r.Name, data); err != nil {
+			return 0, nil, err
+		}
 	}
 	if json.Unmarshal(data, &doc) != nil {
 		lines := []any{}
@@ -394,6 +449,9 @@ func compare(jf, js *server, r differential.Request) ([]differential.Difference,
 		}
 	}
 	var diffs []differential.Difference
+	if r.DecodeOnly {
+		return nil, nil
+	}
 	if jfStatus != jsStatus {
 		diffs = append(diffs, differential.Difference{Path: "(status)", Jellyfin: jfStatus, Jellyscale: jsStatus})
 	}
@@ -423,6 +481,8 @@ func merge(known, more map[string]string) map[string]string {
 // request, fetches the master and main playlists and the first segment of what
 // it was offered, and reports that playback began.
 func (s *server) play(info differential.Request) error {
+	s.label = "play: " + info.Name
+	defer func() { s.label = "" }()
 	path, err := s.fill(info.Path)
 	if err != nil {
 		return err

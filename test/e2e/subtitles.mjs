@@ -11,6 +11,7 @@ import { existsSync, readFileSync, readdirSync, rmSync, statSync, truncateSync, 
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
 import { runLater, schedule, shardLine } from "./shard.mjs";
+import { recordResponses } from "./conform.mjs";
 
 const require = createRequire(`${process.cwd()}/`);
 const { chromium } = require("playwright-core");
@@ -59,6 +60,7 @@ async function login(page) {
 async function viewer() {
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const page = await context.newPage();
+  recordResponses(page, base);
   const seen = { infos: [], playlists: [], subtitles: [], attachments: [], configs: 0, deletes: [], errors: [] };
   page.on("pageerror", (error) => seen.errors.push(error.message));
   page.on("request", (request) => {

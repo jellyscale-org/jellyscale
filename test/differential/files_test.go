@@ -65,7 +65,7 @@ func TestRequestListCoversBrowseAndPlaybackStart(t *testing.T) {
 		{"GET /Items/{itemId}", "", 3}, // a film, an episode and a Dolby Vision film
 		{"GET /Shows/{seriesId}/Seasons", "", 1},
 		{"GET /Shows/{seriesId}/Episodes", "", 1},
-		{"POST /Items/{itemId}/PlaybackInfo", "", 8}, // direct play and a transcode, and six for Dolby Vision and HDR10+ films
+		{"POST /Items/{itemId}/PlaybackInfo", "", 10}, // direct play and a transcode, and six for Dolby Vision and HDR10+ films, and two transcodes more
 		{"GET /Videos/{itemId}/master.m3u8", "", 1},
 	} {
 		if n := count(c.route, c.in); n < c.min {
@@ -87,9 +87,13 @@ func TestRequestListNamesOnlySyntheticFixtures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// A title in the file looks like "Name (2021)"; it must be one make.sh or e2e.sh generates.
+	run, err := os.ReadFile("run.sh") // Zeta Film, which the tier makes for itself
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A title in the file looks like "Name (2021)"; it must be one make.sh, e2e.sh or run.sh generates.
 	for _, title := range regexp.MustCompile(`[A-Z][A-Za-z.]+(?: [A-Za-z]+)* \(\d{4}\)`).FindAllString(string(data), -1) {
-		if !strings.Contains(string(make), title) && !strings.Contains(string(e2e), title) {
+		if !strings.Contains(string(make), title) && !strings.Contains(string(e2e), title) && !strings.Contains(string(run), title) {
 			t.Errorf("%q is no synthetic fixture", title)
 		}
 	}

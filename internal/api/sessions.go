@@ -210,8 +210,11 @@ func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
 			"NowPlayingQueue": []any{}, "NowPlayingQueueFullItems": []any{},
 			"PlayState": map[string]any{
 				"PositionTicks": position, "CanSeek": true, "IsPaused": paused, "IsMuted": false,
-				"RepeatMode": "RepeatNone", "PlaybackOrder": "Default", "PlayMethod": method,
+				"RepeatMode": "RepeatNone", "PlaybackOrder": "Default",
 			},
+		}
+		if method != "" { // the schema allows a PlayMethod of Transcode, DirectStream or DirectPlay, or none
+			info["PlayState"].(map[string]any)["PlayMethod"] = method
 		}
 		if state != nil {
 			job.State = *state

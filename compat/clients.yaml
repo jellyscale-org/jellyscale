@@ -1,0 +1,161 @@
+# The requests each SDK client sends on its main paths (JS-070). The differential tier sends every
+# one to a running jellyscale (test/differential/run/clients.go) and compat/clients_test.go holds the
+# list to compat/coverage-12.4.tsv; docs/status.md says what that is evidence of.
+#
+# route is the template as in compat/endpoints.yaml; query maps each name as the client's SDK
+# spells it to the values it sends ({userId}, {itemId}, {seriesId}, {parentId}, {mediaSourceId},
+# {imageType}, {imageIndex}, {userName}, {password} stand for what the running server has).
+# auth is "mediabrowser": every client's SDK sends Authorization: MediaBrowser Client=..., and
+# Token=... once signed in (jellyfin-sdk-kotlin AuthorizationHeaderBuilder, jellyfin-sdk-swift
+# PassthroughAPIClientDelegate, jellyfin-sdk-typescript getAuthorizationHeader); "emby"
+# (X-Emby-Authorization) and "none" are the other forms. from is "source" (read in the client's
+# code, the route taken from the SDK operation it calls) or "traffic" (seen on the dogfood
+# server). A request the client builds as a URL for a player or an image loader (the video
+# stream, the pictures) is not listed. version is the commit of the default branch read on
+# 2026-11-12. GET /MediaSegments/{itemId}, which all four call before playback, answers an empty
+# list until JS-052 finds intros and credits.
+clients:
+  - name: Findroid
+    version: "jarnedemeulemeester/findroid 013eb52 (2026-11-03); traffic from the dogfood server, #44, #47, #91, #94, #95"
+    paths:
+      startup:
+        - {method: GET, route: /System/Info/Public, auth: mediabrowser, from: traffic}
+        - {method: GET, route: /Users/Public, auth: mediabrowser, from: traffic}
+        - {method: GET, route: /Branding/Configuration, auth: mediabrowser, from: traffic}
+        - {method: GET, route: /QuickConnect/Enabled, auth: mediabrowser, from: traffic}
+      sign-in:
+        - {method: POST, route: /Users/AuthenticateByName, auth: mediabrowser, from: traffic, body: '{"Username":"{userName}","Pw":"{password}"}'}
+        - {method: GET, route: /Users/Me, auth: mediabrowser, from: source}
+        - {method: POST, route: /Sessions/Capabilities/Full, auth: mediabrowser, from: source, body: '{"PlayableMediaTypes":["Audio","Video"],"SupportsMediaControl":false}'}
+      home:
+        - {method: GET, route: /UserViews, auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
+        - {method: GET, route: /Items/Suggestions, auth: mediabrowser, from: traffic, query: {userId: ["{userId}"], mediaType: [Video], type: [Movie, Series], limit: ["6"]}}
+        - {method: GET, route: /UserItems/Resume, auth: mediabrowser, from: source, query: {userId: ["{userId}"], limit: ["12"], includeItemTypes: [Movie, Episode]}}
+        - {method: GET, route: /Items/Latest, auth: mediabrowser, from: source, query: {userId: ["{userId}"], parentId: ["{parentId}"], limit: ["16"]}}
+        - {method: GET, route: /Shows/NextUp, auth: mediabrowser, from: source, query: {userId: ["{userId}"], seriesId: ["{seriesId}"], limit: ["24"]}}
+      browse:
+        - {method: GET, route: /Items, auth: mediabrowser, from: source, query: {userId: ["{userId}"], parentId: ["{parentId}"], includeItemTypes: [Movie], recursive: ["true"], sortBy: [SortName], sortOrder: [Ascending]}}
+        - {method: GET, route: "/Shows/{seriesId}/Seasons", auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
+        - {method: GET, route: "/Shows/{seriesId}/Episodes", auth: mediabrowser, from: source, query: {userId: ["{userId}"], fields: [MediaSources]}}
+      detail:
+        - {method: GET, route: "/Items/{itemId}", auth: mediabrowser, from: traffic, query: {userId: ["{userId}"]}}
+      playback:
+        - {method: GET, route: "/MediaSegments/{itemId}", auth: mediabrowser, from: source}
+        - {method: POST, route: "/Items/{itemId}/PlaybackInfo", auth: mediabrowser, from: traffic, query: {userId: ["{userId}"], mediaSourceId: ["{mediaSourceId}"], startTimeTicks: ["0"]}, body: '{"DeviceProfile":{"Name":"Findroid","DirectPlayProfiles":[{"Container":"mkv,mp4","Type":"Video"}],"TranscodingProfiles":[{"Container":"ts","Type":"Video","VideoCodec":"h264","AudioCodec":"aac","Protocol":"hls"}]}}'}
+      progress:
+        - {method: POST, route: /Sessions/Playing, auth: mediabrowser, from: source, body: '{"ItemId":"{itemId}","MediaSourceId":"{mediaSourceId}","PositionTicks":0,"CanSeek":true,"IsPaused":false,"PlayMethod":"DirectPlay"}'}
+        - {method: POST, route: /Sessions/Playing/Progress, auth: mediabrowser, from: source, body: '{"ItemId":"{itemId}","MediaSourceId":"{mediaSourceId}","PositionTicks":50000000,"CanSeek":true,"IsPaused":false,"PlayMethod":"DirectPlay"}'}
+      stop:
+        - {method: POST, route: /Sessions/Playing/Stopped, auth: mediabrowser, from: source, body: '{"ItemId":"{itemId}","MediaSourceId":"{mediaSourceId}","PositionTicks":100000000}'}
+        - {method: POST, route: "/UserPlayedItems/{itemId}", auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
+
+  - name: Android TV
+    version: "jellyfin/jellyfin-androidtv e14b088 (2026-11-12)"
+    paths:
+      startup:
+        - {method: GET, route: /System/Info/Public, auth: mediabrowser, from: source}
+        - {method: GET, route: /Users/Public, auth: mediabrowser, from: source}
+        - {method: GET, route: /Branding/Configuration, auth: mediabrowser, from: source}
+      sign-in:
+        - {method: POST, route: /Users/AuthenticateByName, auth: mediabrowser, from: source, body: '{"Username":"{userName}","Pw":"{password}"}'}
+        - {method: GET, route: /Users/Me, auth: mediabrowser, from: source}
+        - {method: POST, route: /Sessions/Capabilities/Full, auth: mediabrowser, from: source, body: '{"PlayableMediaTypes":["Audio","Video"],"SupportsMediaControl":true}'}
+        - {method: GET, route: "/DisplayPreferences/{preferenceId}", auth: mediabrowser, from: source, query: {userId: ["{userId}"], client: [emby]}}
+      home:
+        - {method: GET, route: /UserViews, auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
+        - {method: GET, route: /UserItems/Resume, auth: mediabrowser, from: source, query: {userId: ["{userId}"], limit: ["50"], mediaTypes: [Video], imageTypeLimit: ["1"], enableTotalRecordCount: ["false"]}}
+        - {method: GET, route: /Shows/NextUp, auth: mediabrowser, from: source, query: {userId: ["{userId}"], limit: ["50"], imageTypeLimit: ["1"], enableTotalRecordCount: ["false"]}}
+        - {method: GET, route: /Items/Latest, auth: mediabrowser, from: source, query: {userId: ["{userId}"], parentId: ["{parentId}"], limit: ["50"], imageTypeLimit: ["1"]}}
+      browse:
+        - {method: GET, route: /Items, auth: mediabrowser, from: source, query: {userId: ["{userId}"], parentId: ["{parentId}"], includeItemTypes: [Movie], recursive: ["true"], sortBy: [SortName], sortOrder: [Ascending], startIndex: ["0"], limit: ["100"], imageTypeLimit: ["1"], enableTotalRecordCount: ["true"]}}
+        - {method: GET, route: "/Shows/{seriesId}/Seasons", auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
+        - {method: GET, route: "/Shows/{seriesId}/Episodes", auth: mediabrowser, from: source, query: {userId: ["{userId}"], fields: [MediaSources, Overview]}}
+        - {method: GET, route: /Genres, auth: mediabrowser, from: source, query: {userId: ["{userId}"], parentId: ["{parentId}"], includeItemTypes: [Movie]}}
+      detail:
+        - {method: GET, route: "/Items/{itemId}", auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
+        - {method: GET, route: "/Items/{itemId}/LocalTrailers", auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
+        - {method: GET, route: "/Items/{itemId}/SpecialFeatures", auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
+        - {method: GET, route: "/Items/{itemId}/Similar", auth: mediabrowser, from: source, query: {userId: ["{userId}"], limit: ["10"]}}
+      playback:
+        - {method: GET, route: "/MediaSegments/{itemId}", auth: mediabrowser, from: source}
+        - {method: POST, route: "/Items/{itemId}/PlaybackInfo", auth: mediabrowser, from: source, query: {userId: ["{userId}"], mediaSourceId: ["{mediaSourceId}"], startTimeTicks: ["0"]}, body: '{"DeviceProfile":{"Name":"Android TV","DirectPlayProfiles":[{"Container":"mkv,mp4","Type":"Video"}],"TranscodingProfiles":[{"Container":"ts","Type":"Video","VideoCodec":"h264","AudioCodec":"aac","Protocol":"hls"}]}}'}
+      progress:
+        - {method: POST, route: /Sessions/Playing, auth: mediabrowser, from: source, body: '{"ItemId":"{itemId}","MediaSourceId":"{mediaSourceId}","PositionTicks":0,"CanSeek":true,"IsPaused":false,"PlayMethod":"DirectPlay"}'}
+        - {method: POST, route: /Sessions/Playing/Progress, auth: mediabrowser, from: source, body: '{"ItemId":"{itemId}","MediaSourceId":"{mediaSourceId}","PositionTicks":50000000,"CanSeek":true,"IsPaused":false,"PlayMethod":"DirectPlay"}'}
+      stop:
+        - {method: POST, route: /Sessions/Playing/Stopped, auth: mediabrowser, from: source, body: '{"ItemId":"{itemId}","MediaSourceId":"{mediaSourceId}","PositionTicks":100000000}'}
+        - {method: POST, route: "/UserPlayedItems/{itemId}", auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
+        - {method: DELETE, route: /Videos/ActiveEncodings, auth: mediabrowser, from: source, query: {deviceId: ["differential"], playSessionId: ["0123456789abcdef"]}}
+
+  - name: Swiftfin
+    version: "jellyfin/Swiftfin ffc4398 (2026-11-12), jellyfin-sdk-swift 3.4.0"
+    paths:
+      startup:
+        - {method: GET, route: /System/Info/Public, auth: mediabrowser, from: source}
+        - {method: GET, route: /Users/Public, auth: mediabrowser, from: source}
+        - {method: GET, route: /QuickConnect/Enabled, auth: mediabrowser, from: source}
+      sign-in:
+        - {method: POST, route: /Users/AuthenticateByName, auth: mediabrowser, from: source, body: '{"Username":"{userName}","Pw":"{password}"}'}
+        - {method: GET, route: /Users/Me, auth: mediabrowser, from: source}
+        - {method: POST, route: /Sessions/Capabilities/Full, auth: mediabrowser, from: source, body: '{"PlayableMediaTypes":["Audio","Video"],"SupportsMediaControl":false}'}
+      home:
+        - {method: GET, route: /UserViews, auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
+        - {method: GET, route: /UserItems/Resume, auth: mediabrowser, from: source, query: {userId: ["{userId}"], limit: ["20"], fields: [PrimaryImageAspectRatio]}}
+        - {method: GET, route: /Shows/NextUp, auth: mediabrowser, from: source, query: {userId: ["{userId}"], limit: ["20"]}}
+        - {method: GET, route: /Items/Latest, auth: mediabrowser, from: source, query: {userId: ["{userId}"], parentId: ["{parentId}"], limit: ["20"]}}
+      browse:
+        - {method: GET, route: /Items, auth: mediabrowser, from: source, query: {userId: ["{userId}"], parentId: ["{parentId}"], includeItemTypes: [Movie], isRecursive: ["true"], sortBy: [SortName], sortOrder: [Ascending], startIndex: ["0"], limit: ["60"], fields: [PrimaryImageAspectRatio]}}
+        - {method: GET, route: "/Shows/{seriesId}/Seasons", auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
+        - {method: GET, route: "/Shows/{seriesId}/Episodes", auth: mediabrowser, from: source, query: {userId: ["{userId}"], fields: [Overview]}}
+        - {method: GET, route: /Items/Filters, auth: mediabrowser, from: source, query: {userId: ["{userId}"], parentId: ["{parentId}"]}}
+        - {method: GET, route: /Genres, auth: mediabrowser, from: source, query: {userId: ["{userId}"], parentId: ["{parentId}"]}}
+      detail:
+        - {method: GET, route: "/Items/{itemId}", auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
+        - {method: GET, route: "/Items/{itemId}/LocalTrailers", auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
+        - {method: GET, route: "/Items/{itemId}/SpecialFeatures", auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
+        - {method: GET, route: "/Items/{itemId}/Similar", auth: mediabrowser, from: source, query: {userId: ["{userId}"], limit: ["20"]}}
+      playback:
+        - {method: GET, route: "/MediaSegments/{itemId}", auth: mediabrowser, from: source}
+        - {method: POST, route: "/Items/{itemId}/PlaybackInfo", auth: mediabrowser, from: source, query: {userId: ["{userId}"]}, body: '{"UserId":"{userId}","MediaSourceId":"{mediaSourceId}","DeviceProfile":{"Name":"Swiftfin","DirectPlayProfiles":[{"Container":"mkv,mp4","Type":"Video"}],"TranscodingProfiles":[{"Container":"ts","Type":"Video","VideoCodec":"h264","AudioCodec":"aac","Protocol":"hls"}]}}'}
+      progress:
+        - {method: POST, route: /Sessions/Playing, auth: mediabrowser, from: source, body: '{"ItemId":"{itemId}","MediaSourceId":"{mediaSourceId}","PositionTicks":0,"CanSeek":true,"IsPaused":false,"PlayMethod":"DirectPlay"}'}
+        - {method: POST, route: /Sessions/Playing/Progress, auth: mediabrowser, from: source, body: '{"ItemId":"{itemId}","MediaSourceId":"{mediaSourceId}","PositionTicks":50000000,"CanSeek":true,"IsPaused":false,"PlayMethod":"DirectPlay"}'}
+      stop:
+        - {method: POST, route: /Sessions/Playing/Stopped, auth: mediabrowser, from: source, body: '{"ItemId":"{itemId}","MediaSourceId":"{mediaSourceId}","PositionTicks":100000000}'}
+        - {method: POST, route: "/UserPlayedItems/{itemId}", auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
+
+  - name: Streamyfin
+    version: "streamyfin/streamyfin c82f5bf (2026-11-12), @jellyfin/sdk"
+    paths:
+      startup:
+        - {method: GET, route: /System/Info/Public, auth: mediabrowser, from: source}
+        - {method: GET, route: /Users/Public, auth: mediabrowser, from: source}
+        - {method: GET, route: /QuickConnect/Enabled, auth: mediabrowser, from: source}
+      sign-in:
+        - {method: POST, route: /Users/AuthenticateByName, auth: mediabrowser, from: source, body: '{"Username":"{userName}","Pw":"{password}"}'}
+        - {method: GET, route: /Users/Me, auth: mediabrowser, from: source}
+        - {method: POST, route: /Sessions/Capabilities/Full, auth: mediabrowser, from: source, body: '{"PlayableMediaTypes":["Audio","Video"],"SupportsMediaControl":false}'}
+      home:
+        - {method: GET, route: /UserViews, auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
+        - {method: GET, route: /UserItems/Resume, auth: mediabrowser, from: source, query: {userId: ["{userId}"], limit: ["20"], mediaTypes: [Video], includeItemTypes: [Movie, Episode]}}
+        - {method: GET, route: /Shows/NextUp, auth: mediabrowser, from: source, query: {userId: ["{userId}"], limit: ["20"]}}
+        - {method: GET, route: /Items/Latest, auth: mediabrowser, from: source, query: {userId: ["{userId}"], parentId: ["{parentId}"], limit: ["20"]}}
+        - {method: GET, route: /Items/Suggestions, auth: mediabrowser, from: source, query: {userId: ["{userId}"], mediaType: [Video], limit: ["10"]}}
+      browse:
+        - {method: GET, route: /Items, auth: mediabrowser, from: source, query: {userId: ["{userId}"], parentId: ["{parentId}"], includeItemTypes: [Movie], recursive: ["true"], sortBy: [SortName], sortOrder: [Ascending], startIndex: ["0"], limit: ["36"], fields: [PrimaryImageAspectRatio]}}
+        - {method: GET, route: "/Shows/{seriesId}/Seasons", auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
+        - {method: GET, route: "/Shows/{seriesId}/Episodes", auth: mediabrowser, from: source, query: {userId: ["{userId}"], fields: [MediaSources, Overview]}}
+        - {method: GET, route: /Items/Filters, auth: mediabrowser, from: source, query: {userId: ["{userId}"], parentId: ["{parentId}"]}}
+      detail:
+        - {method: GET, route: "/Items/{itemId}", auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
+        - {method: GET, route: "/Items/{itemId}/Similar", auth: mediabrowser, from: source, query: {userId: ["{userId}"], limit: ["10"]}}
+        - {method: GET, route: "/Items/{itemId}/Collections", auth: mediabrowser, from: source, query: {userId: ["{userId}"], fields: [PrimaryImageAspectRatio]}}
+      playback:
+        - {method: GET, route: "/MediaSegments/{itemId}", auth: mediabrowser, from: source}
+        - {method: POST, route: "/Items/{itemId}/PlaybackInfo", auth: mediabrowser, from: source, query: {userId: ["{userId}"], mediaSourceId: ["{mediaSourceId}"], startTimeTicks: ["0"]}, body: '{"DeviceProfile":{"Name":"Streamyfin","DirectPlayProfiles":[{"Container":"mkv,mp4","Type":"Video"}],"TranscodingProfiles":[{"Container":"ts","Type":"Video","VideoCodec":"h264","AudioCodec":"aac","Protocol":"hls"}]}}'}
+      progress:
+        - {method: POST, route: /Sessions/Playing, auth: mediabrowser, from: source, body: '{"ItemId":"{itemId}","MediaSourceId":"{mediaSourceId}","PositionTicks":0,"CanSeek":true,"IsPaused":false,"PlayMethod":"DirectPlay"}'}
+        - {method: POST, route: /Sessions/Playing/Progress, auth: mediabrowser, from: source, body: '{"ItemId":"{itemId}","MediaSourceId":"{mediaSourceId}","PositionTicks":50000000,"CanSeek":true,"IsPaused":false,"PlayMethod":"DirectPlay"}'}
+      stop:
+        - {method: POST, route: /Sessions/Playing/Stopped, auth: mediabrowser, from: source, body: '{"ItemId":"{itemId}","MediaSourceId":"{mediaSourceId}","PositionTicks":100000000}'}
+        - {method: POST, route: "/UserPlayedItems/{itemId}", auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}

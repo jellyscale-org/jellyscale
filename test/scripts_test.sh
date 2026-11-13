@@ -328,6 +328,23 @@ EOF
 )
 check "every CI job is pinned and bounded, and every apt step too" "" "$unbounded"
 
+# --- JS-070: the conformance checker in the e2e gates and the SDK decoders. Names the task implies:
+# compat/conform/cmd/conform check -schema <file> -rules <file> -label <name> reads the JSONL the
+# gates record (test/e2e/conform.mjs) on stdin, prints "<label>: checked N JSON responses on M routes"
+# and fails on a violation or when it checked none; test/sdkjvm/decode.sh <Model> <file> decodes with
+# jellyfin-sdk-kotlin and fails, naming java, when java is missing.
+conform() { go run ./compat/conform/cmd/conform check -schema compat/schema-12.4.json -rules compat/conform.yaml -label "e2e test"; }
+line='{"request":"GET /System/Info/Public","method":"GET","path":"/System/Info/Public","status":200,"contentType":"application/json","body":"{\"ServerName\":5}"}'
+fails_with "the conform command fails on a response that breaks the schema" bash -c "printf '%s\n' '$line' | go run ./compat/conform/cmd/conform check -schema compat/schema-12.4.json -rules compat/conform.yaml -label t"
+check "the conform command names the field" "1" "$(printf '%s\n' "$line" | conform 2>&1 | grep -c 'GET /System/Info/Public.*ServerName\|ServerName.*GET /System/Info/Public')"
+fails_with "the conform command fails when it checked nothing" bash -c "go run ./compat/conform/cmd/conform check -schema compat/schema-12.4.json -rules compat/conform.yaml -label t </dev/null"
+for gate in browse play subtitles transcode; do
+  check "the $gate gate records its JSON responses for the checker" "1" "$(grep -c 'conform.mjs' test/e2e/$gate.mjs)"
+done
+check "run.sh checks each gate's recorded responses with the conform command" "1" "$(grep -c 'compat/conform/cmd/conform' test/e2e/run.sh | grep -c '^[1-9]')"
+fails_with "the Kotlin decoder fails, not skips, without java" env PATH=/nonexistent /bin/bash test/sdkjvm/decode.sh BaseItemDto /dev/null
+check "the Kotlin decoder names java when it is missing" "1" "$(env PATH=/nonexistent /bin/bash test/sdkjvm/decode.sh BaseItemDto /dev/null 2>&1 | grep -c java)"
+
 echo
 [[ $fails -eq 0 ]] && echo "scripts: all passed" || echo "scripts: $fails failed"
 exit $((fails > 0))

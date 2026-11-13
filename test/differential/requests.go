@@ -32,6 +32,13 @@ type Request struct {
 	Only string `yaml:"only"`
 	// Status is the status both servers must answer; 0 means any 2xx.
 	Status int `yaml:"status"`
+	// Kotlin is the model of org.jellyfin.sdk.model.api that jellyscale's answer is
+	// decoded as by jellyfin-sdk-kotlin's own serializers ("BaseItemDto", "SessionInfoDto[]").
+	Kotlin string `yaml:"kotlin"`
+	// DecodeOnly says both servers are asked and held to the schema, and jellyscale's answer is
+	// decoded, but the two answers are not compared: they differ in ways other tasks build away
+	// (the streams a scan lists), and the request is here for what the SDK decodes.
+	DecodeOnly bool `yaml:"decode_only"`
 }
 
 // CheckAnswer says why one server's answer is not what r expects, or nil.
