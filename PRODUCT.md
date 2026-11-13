@@ -6,6 +6,8 @@ What jellyscale should be, and the experience it exists to give. It guides every
 
 A self-hosted video server that speaks the Jellyfin client API and runs as a horizontally scalable service. Someone who has outgrown a single Jellyfin process keeps their viewers' apps, and gains a server that spreads across machines, survives losing any one of them, and keeps its films on local disks or in object storage.
 
+jellyscale ships with Fluster, a desktop client that plays the original file whenever it can and shows every conversion the server makes. Fluster is a Jellyfin client in its own right, and the first to adopt anything jellyscale offers beyond Jellyfin's API.
+
 ## Who it's for
 
 **Operators** running one library on Kubernetes for a household or a community, with tens to hundreds of people watching at once. They are comfortable with Kubernetes and Postgres, and want the server to be something they set up once and then mostly forget.
@@ -63,7 +65,7 @@ Jellyfin's behaviour shows what clients depend on, not what to copy. jellyscale 
 - **Music, photos, audiobooks, channels and Live TV.** Better tools exist for those.
 - **Plugins,** .NET or otherwise.
 - **Multi-tenancy.** One library, one operator.
-- **A jellyscale-branded client.** jellyfin-web is the reference app, unmodified.
+- **A client that works only with jellyscale.** Fluster, which ships with it, also plays from any Jellyfin server, and what jellyscale adds beyond Jellyfin's API is something it can use, never something it needs.
 - **Administration through the dashboard:** libraries, metadata, scheduled tasks and server settings are configuration.
 - **Fetching metadata from outside services,** editing items, and uploading or deleting media through the API. An operator supplies metadata as files beside the film.
 - **Routes Jellyfin marks obsolete,** apart from the exception below.
@@ -74,7 +76,8 @@ Jellyfin's behaviour shows what clients depend on, not what to copy. jellyscale 
 - **Future-facing:** a client that depends on obsolete routes isn't well suited to jellyscale.
 - **The one exception:** thin aliases for routes jellyfin-web still calls, flagged `alias` in `compat/endpoints.yaml`. Each one is removed when the web client stops calling it. Never add an alias for another client.
 - **Outside scope but called anyway:** answer with a valid empty response if the client breaks otherwise; otherwise 404.
-- **Clients in order:** jellyfin-web first, then the other apps built on Jellyfin's client libraries (Findroid, Android TV, Swiftfin, Streamyfin). Kodi isn't a stated target: it works if it happens to, and no work goes in solely for it.
+- **Beyond Jellyfin:** a feature Jellyfin's API has no place for lives under a jellyscale namespace of its own (`/jellyscale/v1/`), documented and versioned. Unmodified clients never see it, Fluster adopts it first, and every Jellyfin route answers as it would without it.
+- **Clients in order:** jellyfin-web first, then Fluster, then the other apps built on Jellyfin's client libraries (Findroid, Android TV, Swiftfin, Streamyfin). Kodi isn't a stated target: it works if it happens to, and no work goes in solely for it.
 
 ## Quality bar
 
