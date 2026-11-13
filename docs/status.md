@@ -78,7 +78,8 @@ Every viewer-visible and operator-visible feature in scope, in one list. Status 
 - Similar items (`/Items/{id}/Similar` and the movie, show and trailer variants): **not built**. In scope.
 - Next up and filters: **not built**. In scope.
 - Movie recommendations on the Movies page (`/Movies/Recommendations`; today a 404 hides its rows): **not built**. In scope, with an empty list as the first answer.
-- TV Shows Upcoming tab (`/Shows/Upcoming`) and Suggestions (`/Items/Suggestions`): **not built**. In scope (decision).
+- TV Shows Upcoming tab (`/Shows/Upcoming`): **not built**. In scope (decision).
+- Suggestions (`/Items/Suggestions`): **partial** (#91): random items of the types asked for, which Findroid's home screen needs; Jellyfin 12.4's own selection is not observed.
 - Multi-part films (`/Videos/{id}/AdditionalParts`): **not built**. In scope (decision).
 - Parental ratings (maximum rating per user, set under `identity` user management): **not built**. In scope here because ratings come from the scan: an item's official rating is read from the file's embedded tags or a sidecar `.nfo`, never fetched. `GET /Localization/ParentalRatings`, which fills the user-edit page's rating list, is built here too. Until then every item is unrated, so a maximum rating filters nothing and `BlockUnratedItems` would hide every film; `identity` therefore answers `POST /Users/{userId}/Policy` with 400 when it sets `MaxParentalRating` or `BlockUnratedItems`, and the control is never presented as working (decision).
 - Multiple versions of a film (4K and 1080p files grouped at scan by file name): **not built**. In scope; merging by hand through the API is a non-goal (decision).
