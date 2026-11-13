@@ -626,6 +626,78 @@
       "title": "Silent failures for abandoned requests also hide real errors from operators",
       "status": "open",
       "notes": "fail() now returns without any log whenever r.Context().Err() != nil, for every error and not only outage errors. A player that abandons a request after 10 seconds, and a request that fails for a bug (not Postgres), now both leave no 'request failed' line. Operators lose the diagnostic for real failures on abandoned requests. Reading only."
+    },
+    {
+      "id": "BL-070",
+      "source": "JS-070 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "e2e response recorder can drop bodies still in flight when a gate ends",
+      "status": "open",
+      "notes": "test/e2e/conform.mjs appends a response only after response.text() resolves, and returns silently on error. If the browser context closes before a body is read, that response is never checked, so the gate can pass without holding it to the schema."
+    },
+    {
+      "id": "BL-071",
+      "source": "JS-070 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "Schema check skips error statuses that carry no JSON body",
+      "status": "open",
+      "notes": "checker.go returns nil for a non-2xx answer whose content type is not JSON, before counting it. A 4xx or 5xx text body where the schema declares a JSON type for that status is not reported, although the spec says 'no JSON body where the schema gives one'."
+    },
+    {
+      "id": "BL-072",
+      "source": "JS-070 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "Client sweep excuses a non-2xx answer whenever Jellyfin gives the same status",
+      "status": "open",
+      "notes": "test/differential/run/clients.go sweep(): a listed request answered 400/404 by jellyscale passes if Jellyfin, asked the same, gives the same status. The criterion says each listed request must answer 2xx. A listed request built with a wrong fixture (id, body) that both servers reject therefore never fails. A real route that jellyscale breaks into a 404 for a client body Jellyfin also rejects stays"
+    },
+    {
+      "id": "BL-073",
+      "source": "JS-070 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "e2e recorder silently drops a response whose body cannot be read",
+      "status": "open",
+      "notes": "test/e2e/conform.mjs wraps `await response.text()` in try/catch and returns on any error. When a gate closes a context or the browser right after an action (play.mjs:135 `first.context.close()`, `browser.close()` at the end), responses still in flight are never recorded and never checked. A violation in such a response passes. The 'checked N responses' count cannot show the loss."
+    },
+    {
+      "id": "BL-074",
+      "source": "JS-070 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "Stub GET /Items/{itemId}/ThemeMedia is not on any differential request, and echoes a malformed id as OwnerId",
+      "status": "open",
+      "notes": "internal/api/items.go themeMedia sets OwnerId from CompactID(r.PathValue(\"itemId\")) with no validation, and test/differential/requests.yaml has no ThemeMedia request. Calling the handler directly with no path value (an empty id) makes the checker report `$.ThemeSongsResult field OwnerId: \"\" is not a uuid`. The same route with a malformed id such as /Items/abc/ThemeMedia gives OwnerId \"abc\", which "
+    },
+    {
+      "id": "BL-075",
+      "source": "JS-070 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "e2e recorder drops every non-JSON response, so 'no JSON body where the schema gives one' cannot fire in e2e",
+      "status": "open",
+      "notes": "The recorder returns early unless content-type matches /json/. If a route the schema types as JSON answers 200 with text/html (such as an SPA fallback) or an empty body with another content type, jellyfin-web receives it, nothing is recorded, and the gate passes. The differential tier does pass the content type, so only e2e has the hole. Reading evidence only: the filter sits at conform.mjs:14."
+    },
+    {
+      "id": "BL-076",
+      "source": "JS-070 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "Sweep sends every listed request, startup included, with the signed-in token, and ignores each row's auth field",
+      "status": "open",
+      "notes": "Startup requests (/System/Info/Public, /Users/Public, /QuickConnect/Enabled) are sent by clients before sign-in with no Token. The sweep always sends the user's token and never reads the row's `auth` field, so a regression that makes those routes require auth passes. This is the criterion's 'Authorization header form' item: it is listed but never sent."
+    },
+    {
+      "id": "BL-077",
+      "source": "JS-070 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "A listed request that answers non-2xx is excused when Jellyfin gives the same status",
+      "status": "open",
+      "notes": "The criterion says each listed request must answer 2xx and never 404. sweep() skips a failure when `reference.answers(r, status)` returns true, meaning Jellyfin answered the same status. A route that 404s on both servers (for example because of a fixture id mismatch) is excused, and the schema check never sees its answer."
     }
   ]
 }

@@ -11,6 +11,7 @@ import { dirname } from "node:path";
 import { promisify } from "node:util";
 import { createRequire } from "node:module";
 import { runLater, schedule, shardLine } from "./shard.mjs";
+import { recordResponses } from "./conform.mjs";
 
 const require = createRequire(`${process.cwd()}/`);
 const { chromium } = require("playwright-core");
@@ -67,6 +68,7 @@ function clock() { return Date.now(); }
 async function viewer() {
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const page = await context.newPage();
+  recordResponses(page, base);
   const seen = { infos: [], hls: [], deletes: [], errors: [], console: [], failed: [], requests: [], answers: [] };
   page.on("pageerror", (error) => seen.errors.push(error.message));
   // A request that ended without an answer: hls.js abandons one after ten seconds. A seek aborts some too, so a scenario that seeks looks before it does.

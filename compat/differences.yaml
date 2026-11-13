@@ -648,6 +648,7 @@
   reason: "SortBy=PremiereDate with SortOrder=Descending lists the oldest film first"
   path: "Items (ids)"
   jellyscale:
+    - "<id:Movie/Zeta Film (2023)>"
     - "<id:Movie/Gamma.Film.2015.1080p>"
     - "<id:Movie/The Beta Film (2019)>"
     - "<id:Movie/Alpha Film (2021)>"

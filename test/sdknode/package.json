@@ -1,0 +1,9 @@
+{
+  "name": "jellyscale-sdknode",
+  "private": true,
+  "type": "module",
+  "description": "Runs @jellyfin/sdk's server discovery against jellyscale (JS-070); see discover.mjs.",
+  "dependencies": {
+    "@jellyfin/sdk": "1.0.2"
+  }
+}

@@ -117,9 +117,52 @@ Every viewer-visible and operator-visible feature in scope, in one list. Status 
 - Routes no viewer-facing page calls and no client in scope needs, answered 404: `/FallbackFont/*`, `/Items/Counts`, `/Items/Root` (the user-scoped alias is served), `/System/Info/Storage`, `/Search/Hints` (jellyfin-web searches through `GET /Items`), `/Persons/{name}`, `/Studios/{name}`, `/Years` and `/Years/{year}`, `/Items/{itemId}/File` (the download link is `/Items/{itemId}/Download`), likes and ratings (`/UserItems/{itemId}/Rating`), `GET /UserItems/{itemId}/UserData` (decision).
 - Kodi is not a gate.
 
+## Client coverage
+
+`compat/clients.yaml` lists, for Findroid, Android TV, Swiftfin and Streamyfin and for each of startup, sign-in, home, browse, detail, playback, progress and stop, every request the client sends: method, route, the query names as the client's SDK spells them, the body, the form of the Authorization header, the client's commit and whether the request was read from source (in the client's code, the route taken from the SDK operation it calls) or seen in traffic (on the dogfood server; only Findroid's startup, sign-in, home, detail and playback requests of #44, #47, #91, #94 and #95). The differential tier (`test/differential/run.sh`, part of CI's `e2e` check) sends each one to a running jellyscale with a scanned library and a signed-in user and fails on any answer that is not 2xx, naming the client, the path and the route. Every JSON answer, there and in the four e2e gates, is also held to `compat/schema-12.4.json`, the types and response schemas of Jellyfin 12.4.0's OpenAPI document that `compat/gen-schema.sh` makes from the `jellyfin/jellyfin:12.4` container (the tier fails when the checked-in file differs from what the container it started gives). A field the document requires, whether it lists the field in `required` or leaves it non-nullable with no default, that is absent or null at any depth fails, as does a value of the wrong type, enum, uuid or date-time; a field the document does not list does not. Besides the schema, the tier decodes answers taken from the running jellyscale with jellyfin-sdk-kotlin 1.9.4's own serializers (`test/sdkjvm`, jars pinned by sha256) and asks `@jellyfin/sdk`'s server discovery (`test/sdknode`, pinned) which server it recommends.
+
+What this is evidence of: the routes answer, the answers fit the schema, and the Kotlin SDK decodes the answers it was given, for the requests as the list spells them, which come from source or from traffic as marked. It is not evidence that a client works. No client is called working until it has played on a device; Findroid has been tried on the dogfood and stopped on a missing route or a field its SDK requires (#44, #47, #91, #94, #95), and the other three clients have not been tried. One request all four clients send before playback, `GET /MediaSegments/{itemId}`, answers an empty list until JS-052 finds intros and credits, and is in the list like every other.
+
+Whether every listed request answers and passes the schema check (`yes`), and each route left unserved with its decision (`-` when none). `compat/clients_test.go` fails when this table disagrees with the list.
+
+| Client | Path | Every request answers | Unserved, with the decision |
+|---|---|---|---|
+| Findroid | startup | yes | - |
+| Findroid | sign-in | yes | - |
+| Findroid | home | yes | - |
+| Findroid | browse | yes | - |
+| Findroid | detail | yes | - |
+| Findroid | playback | yes | - |
+| Findroid | progress | yes | - |
+| Findroid | stop | yes | - |
+| Android TV | startup | yes | - |
+| Android TV | sign-in | yes | - |
+| Android TV | home | yes | - |
+| Android TV | browse | yes | - |
+| Android TV | detail | yes | - |
+| Android TV | playback | yes | - |
+| Android TV | progress | yes | - |
+| Android TV | stop | yes | - |
+| Swiftfin | startup | yes | - |
+| Swiftfin | sign-in | yes | - |
+| Swiftfin | home | yes | - |
+| Swiftfin | browse | yes | - |
+| Swiftfin | detail | yes | - |
+| Swiftfin | playback | yes | - |
+| Swiftfin | progress | yes | - |
+| Swiftfin | stop | yes | - |
+| Streamyfin | startup | yes | - |
+| Streamyfin | sign-in | yes | - |
+| Streamyfin | home | yes | - |
+| Streamyfin | browse | yes | - |
+| Streamyfin | detail | yes | - |
+| Streamyfin | playback | yes | - |
+| Streamyfin | progress | yes | - |
+| Streamyfin | stop | yes | - |
+
 ## Feature audit against Jellyfin 12.4
 
-`compat/coverage-12.4.tsv` has one row for each operation in Jellyfin 12.4.0's stable OpenAPI document (`https://repo.jellyfin.org/files/openapi/stable/jellyfin-openapi-12.4.json`, 364 operations: 346 plus 18 HEAD operations the document lists apart), each of the 55 routes in `compat/hidden-routes-12.4.txt`, and two routes outside the document: `/socket`, the WebSocket Jellyfin serves and jellyfin-web opens, and `/System/Configuration/encoding`, the one key of `/System/Configuration/{key}` that clients read, which jellyscale serves by its own route. The document is not kept in the repository; `compat/spec-operations-12.4.txt` lists its operations, one `METHOD path` per line, generated from it. Columns are method, path, class, slice, served_by, web_caller and evidence.
+`compat/coverage-12.4.tsv` has one row for each operation in Jellyfin 12.4.0's stable OpenAPI document (`https://repo.jellyfin.org/files/openapi/stable/jellyfin-openapi-12.4.json`, 364 operations: 346 plus 18 HEAD operations the document lists apart), each of the 55 routes in `compat/hidden-routes-12.4.txt`, and two routes outside the document: `/socket`, the WebSocket Jellyfin serves and jellyfin-web opens, and `/System/Configuration/encoding`, the one key of `/System/Configuration/{key}` that clients read, which jellyscale serves by its own route. `compat/spec-operations-12.4.txt` lists its operations, one `METHOD path` per line, generated from the document; `compat/schema-12.4.json` keeps its types and response schemas (see Client coverage). Columns are method, path, class, slice, served_by, web_caller and evidence.
 
 - Class is `done` (implemented or an alias in `compat/endpoints.yaml`), `stub-ok` (an empty answer is the final behaviour), `needed` (a client or feature above needs it) or `out-of-scope` (a non-goal above, or nothing calls it).
 - Slice is the slice that delivers a `needed` route, or a `stub-ok` route that is not built yet; otherwise `-`.

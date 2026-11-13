@@ -3,3 +3,4 @@
 /web-dist/
 /test/e2e/node_modules/
 /.results/
+/test/sdknode/node_modules/

@@ -1,0 +1,25 @@
+# What the schema (schema-12.4.json) cannot say by itself (JS-070); read by compat/conform.
+#
+# aliases: routes Jellyfin 12.4 no longer has in its OpenAPI document that jellyscale still
+# serves for older clients (status "alias" in endpoints.yaml). An answer on one is checked as the
+# route it stands for.
+aliases:
+  - {method: GET, route: "/Users/{userId}/Items", stands_for: "/Items"}
+  - {method: GET, route: "/Users/{userId}/Items/Latest", stands_for: "/Items/Latest"}
+  - {method: GET, route: "/Users/{userId}/Items/Resume", stands_for: "/UserItems/Resume"}
+  - {method: GET, route: "/Users/{userId}/Items/Root", stands_for: "/Items/Root"}
+  - {method: GET, route: "/Users/{userId}/Items/{itemId}", stands_for: "/Items/{itemId}"}
+  - {method: GET, route: "/Users/{userId}/Items/{itemId}/Intros", stands_for: "/Items/{itemId}/Intros"}
+  - {method: GET, route: "/Users/{userId}/Items/{itemId}/LocalTrailers", stands_for: "/Items/{itemId}/LocalTrailers"}
+  - {method: GET, route: "/Users/{userId}/Items/{itemId}/SpecialFeatures", stands_for: "/Items/{itemId}/SpecialFeatures"}
+  - {method: GET, route: "/Users/{userId}/GroupingOptions", stands_for: "/UserViews/GroupingOptions"}
+  - {method: POST, route: "/Users/{userId}/FavoriteItems/{itemId}", stands_for: "/UserFavoriteItems/{itemId}"}
+  - {method: DELETE, route: "/Users/{userId}/FavoriteItems/{itemId}", stands_for: "/UserFavoriteItems/{itemId}"}
+  - {method: POST, route: "/Users/{userId}/PlayedItems/{itemId}", stands_for: "/UserPlayedItems/{itemId}"}
+  - {method: DELETE, route: "/Users/{userId}/PlayedItems/{itemId}", stands_for: "/UserPlayedItems/{itemId}"}
+# unchecked: routes whose JSON answer the schema does not type, each with the reason.
+unchecked:
+  - {method: GET, route: "/web/config.json", reason: "jellyfin-web's own configuration file, served from the web directory for the page to read; it is no route of the Jellyfin API"}
+  - {method: GET, route: "/System/Configuration/encoding", reason: "the one key of GET /System/Configuration/{key} that clients read; the document types the route as a binary string, and Jellyfin answers the key's JSON object (EncodingOptions), as jellyscale does"}
+  - {method: GET, route: "/Videos/{itemId}/{mediaSourceId}/Subtitles/{index}/Stream.js", reason: "a subtitle track in Jellyfin's JSON format (TrackEvents); the document types the Stream.{format} routes as files, with no JSON type"}
+  - {method: GET, route: "/Videos/{itemId}/{mediaSourceId}/Subtitles/{index}/{startPositionTicks}/Stream.js", reason: "a subtitle track in Jellyfin's JSON format (TrackEvents); the document types the Stream.{format} routes as files, with no JSON type"}

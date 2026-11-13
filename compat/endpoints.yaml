@@ -27,6 +27,7 @@ routes:
   - {method: GET, path: "/Items/{itemId}/ThemeMedia", status: stub, role: api}
   - {method: GET, path: "/LiveTv/Programs", status: stub, role: api}
   - {method: GET, path: "/LiveTv/Programs/Recommended", status: stub, role: api}
+  - {method: GET, path: "/MediaSegments/{itemId}", status: stub, role: api}
   - {method: GET, path: "/Persons", status: stub, role: api}
   - {method: GET, path: "/Playback/BitrateTest", status: implemented, role: stream}
   - {method: GET, path: "/Plugins", status: stub, role: api}

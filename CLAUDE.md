@@ -16,6 +16,7 @@ test/differential/run.sh <workdir>          # A real Jellyfin 12.4 and jellyscal
 test/scripts_test.sh                        # Tests of the test scripts
 test/ffmpeg61.sh go test -tags integration ./internal/transcode -run X  # Under Ubuntu 24.04's ffmpeg 6.1, as CI
 go run ./cmd/jellyscale --print-routes > compat/endpoints.yaml
+compat/gen-schema.sh                        # compat/schema-12.4.json from the OpenAPI document of the jellyfin/jellyfin:12.4 container
 ```
 
 The scripts keep their temp files in the workdir you give them (else under `/tmp/jellyscale-test`) and clean up after themselves, and after killed runs, cache the e2e films (`E2E_FIXTURE_CACHE`), and record each whole run in `.results/<tree>/` for QA to reuse (see [docs/testing.md](docs/testing.md)). `test/e2e/run.sh` needs `web-dist` in the checkout it runs from, and says so at once if it is missing.
