@@ -370,7 +370,7 @@
         "Exported over OTLP to any backend, off by default; the dogfood runs a backend and the docs show reading a stall from it",
         "Checked with real processes: a test collector receives a playback's trace from three processes, with a stall and a failover in it"
       ],
-      "priority": 63,
+      "priority": 64,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -390,7 +390,7 @@
         "Each line of a playback carries its play session id and trace id (JS-021), and a helper's start, end and failure say they are a helper's and whose",
         "Metrics beyond the transcode path: HTTP requests by role, route and status with latency, store operations and bytes by store, scan durations and errors"
       ],
-      "priority": 62,
+      "priority": 63,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -881,7 +881,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 56,
+      "priority": 57,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -897,7 +897,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 57,
+      "priority": 58,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -913,7 +913,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 58,
+      "priority": 59,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -929,7 +929,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 59,
+      "priority": 60,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -950,7 +950,7 @@
         "Tested on real hardware in its own tier chosen explicitly (never skipped): Intel QSV/VAAPI on the dogfood cluster's iGPUs and NVENC on a developer machine; jellyfin-web plays, seeks and recovers from a killed GPU worker",
         "Operators see which encoder family and worker serve each stream (Sessions, metrics, JS-021 traces)"
       ],
-      "priority": 60,
+      "priority": 61,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -970,7 +970,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 61,
+      "priority": 62,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -991,7 +991,7 @@
         "An optional GPU worker pool requests gpu.intel.com/i915 or nvidia.com/gpu through the vendor's device plugin (JS-054); a cluster without one runs CPU workers only; documented in docs/running.md",
         "Each probe states what it depends on: liveness never depends on Postgres or a store, so a database failover restarts no pod; ffmpeg threads follow the pod's CPU limit, not the node's cores"
       ],
-      "priority": 64,
+      "priority": 65,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1008,7 +1008,7 @@
         "KEDA's maximum worker replicas stay within the Postgres connection budget (one liveness connection per worker, on top of the pools), so scaling up never exhausts max_connections",
         "It scales on the demand metric of JS-021 (jobs waiting for a slot, helpers refused for lack of one), so each scale-up can be read back with its reason"
       ],
-      "priority": 65,
+      "priority": 66,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1026,7 +1026,7 @@
       "acceptanceCriteria": [
         "A rolling upgrade under playback loses no picture"
       ],
-      "priority": 66,
+      "priority": 67,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1043,7 +1043,7 @@
       "acceptanceCriteria": [
         "Restore tested from a backup"
       ],
-      "priority": 67,
+      "priority": 68,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1058,7 +1058,7 @@
       "acceptanceCriteria": [
         "Viewers keep their history; users set a password or use OIDC"
       ],
-      "priority": 68,
+      "priority": 69,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1074,7 +1074,7 @@
         "Observe its calls on Jellyfin first",
         "Its dashboards fill from jellyscale"
       ],
-      "priority": 69,
+      "priority": 70,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1092,7 +1092,7 @@
       "acceptanceCriteria": [
         "200 mixed streams with stated rebuffer ratio and p95s"
       ],
-      "priority": 70,
+      "priority": 71,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1110,7 +1110,7 @@
         "Two viewers on different api replicas stay in sync in jellyfin-web",
         "compat/coverage-12.4.tsv phase7-syncplay routes built (23)"
       ],
-      "priority": 71,
+      "priority": 72,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1745,7 +1745,7 @@
         "A schedule trigger runs every CI job on main once a day, and test/changes.sh treats it as a full run",
         "A failing nightly run opens or updates one issue naming the failed tests"
       ],
-      "priority": 72,
+      "priority": 73,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1762,7 +1762,7 @@
         "Branch protection is the ruleset alone; the classic rule is removed",
         "A pull request touching .github/ or test/**/*.sh runs the media tiers as ci:full does, and only the ci:full label restarts a run"
       ],
-      "priority": 73,
+      "priority": 74,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1778,7 +1778,7 @@
         "An image with ffmpeg 6.1, Node and Chrome runs test/e2e/run.sh and test/roles.sh locally, and JS-083's gate uses it",
         "Its versions match CI's, checked by the gate"
       ],
-      "priority": 74,
+      "priority": 75,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1818,6 +1818,28 @@
       "dependsOn": [],
       "source": "Fluster issue #102, 2026-11-12",
       "notes": "Fluster, the client that ships with jellyscale (owner, 2026-11-12)."
+    },
+    {
+      "id": "JS-101",
+      "phase": "P5",
+      "title": "Recommendations from each viewer's own history, with a reason for each",
+      "description": "Fluster, the client that ships with jellyscale, asked (#110) for 'Because you watched...' suggestions. The owner decided (2026-11-12) to build them as the first feature beyond Jellyfin's API: a per-account viewer profile built from watch history on the user's own server, computed by workers and stored in Postgres, with nothing sent outside it, served under the jellyscale namespace (/jellyscale/v1/, PRODUCT.md, #112) that unmodified clients never see. It needs watch history that survives scans (JS-076) and the library's genres, people and similar items (JS-046, JS-049).",
+      "acceptanceCriteria": [
+        "A worker builds and updates each account's viewer profile from that account's watch history only, and nothing leaves the server",
+        "GET /jellyscale/v1/recommendations (authenticated as a Jellyfin token) answers suggestions for the signed-in viewer, each with a stated reason ('Because you watched X', a shared genre or person), documented and versioned",
+        "No Jellyfin route changes behaviour, and an unmodified Jellyfin client never sees the namespace",
+        "A viewer with no history gets a sensible answer (empty or popular in the library), and another account's history never shapes a viewer's suggestions"
+      ],
+      "priority": 56,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-076",
+        "JS-046",
+        "JS-049"
+      ],
+      "source": "Fluster issue #110; owner decision 2026-11-12",
+      "notes": "First feature under /jellyscale/v1/; Fluster adopts it first."
     }
   ]
 }
