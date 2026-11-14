@@ -1063,3 +1063,58 @@
   reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
   paths:
     - "Items[].MediaSources[].TranscodingSubProtocol"
+
+- requests:
+    - "search hints for a film, a series and an episode"
+  kind: gap
+  task: JS-068
+  reason: "Jellyfin names a film and an episode by its whole file name (the year, the series and the episode number) and jellyscale by its title, so the one-letter term finds different items, in a different order, with their own picture tags, years and run times; Jellyfin also lists a different number of matches"
+  paths:
+    - "SearchHints[]"
+    - "SearchHints[].Id"
+    - "SearchHints[].ItemId"
+    - "SearchHints[].Name"
+    - "SearchHints[].Type"
+    - "SearchHints[].MediaType"
+    - "SearchHints[].IsFolder"
+    - "SearchHints[].IndexNumber"
+    - "SearchHints[].ParentIndexNumber"
+    - "SearchHints[].Series"
+    - "SearchHints[].ProductionYear"
+    - "SearchHints[].RunTimeTicks"
+    - "SearchHints[].PrimaryImageTag"
+    - "SearchHints[].PrimaryImageAspectRatio"
+    - "TotalRecordCount"
+
+- requests:
+    - "search hints for a film, a series and an episode"
+  kind: gap
+  task: JS-068
+  reason: "the same matches as above, which the names make differ; the items jellyscale answers are pinned"
+  path: "SearchHints (ids)"
+  jellyscale:
+    - "<id:Episode/Delta Show S01E02 Second>"
+    - "<id:Episode/Delta Show S02E01 Return>"
+    - "<id:Movie/The Beta Film (2019)>"
+    - "<id:Series/Delta Show>"
+    - "<id:Movie/Dolby Eight Four Film (1998)>"
+    - "<id:Movie/Dolby Eight One Film (1996)>"
+    - "<id:Movie/Dolby Eight One Plus Film (2002)>"
+    - "<id:Movie/Dolby Eight Three Film (2000)>"
+    - "<id:Movie/Dolby Eight Two Film (1997)>"
+    - "<id:Movie/Dolby Eight Zero Film (1999)>"
+    - "<id:Movie/Dolby Five Film (1994)>"
+    - "<id:Movie/Dolby Five Plus Film (2004)>"
+    - "<id:Movie/Dolby Seven Film (1995)>"
+    - "<id:Movie/Dolby Seven Plus Film (2003)>"
+    - "<id:Movie/Dolby Ten Film (2001)>"
+    - "<id:Movie/Zeta Film (2023)>"
+
+- requests:
+    - "search hints for films named alike on both servers"
+  kind: gap
+  task: JS-068
+  reason: "Jellyfin keeps the year in a film's name and jellyscale does not, and the picture tags are each server's own"
+  paths:
+    - "SearchHints[].Name"
+    - "SearchHints[].PrimaryImageTag"

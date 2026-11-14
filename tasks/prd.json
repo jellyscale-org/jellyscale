@@ -1820,13 +1820,22 @@
       "title": "Search suggestions: GET /Search/Hints answers as Jellyfin 12.4 does",
       "description": "GET /Search/Hints answers 404, so a client that shows suggestions while the viewer types, Fluster among them (#102), shows none. compat/coverage-12.4.tsv calls it out of scope because jellyfin-web never calls it; Fluster, the client that ships with jellyscale, does. Observe Jellyfin 12.4's answer first.",
       "acceptanceCriteria": [
-        "GET /Search/Hints with searchTerm, limit, includeItemTypes and userId answers in Jellyfin 12.4's SearchHintResult shape, observed on a real Jellyfin 12.4: matching films, series and episodes, with PrimaryImageTag, and ParentIndexNumber and IndexNumber for episodes",
-        "A request without a token is refused as Jellyfin refuses it",
-        "compat/coverage-12.4.tsv marks the route done, and the differential tier compares it with Jellyfin's"
+        "GET /Search/Hints with searchTerm, limit, includeItemTypes=Movie,Series,Episode and userId (the signed-in viewer's), and no recursive, parentId or fields parameter, answers 200 in Jellyfin 12.4's SearchHintResult shape, observed on a real Jellyfin 12.4: one hint for each matching film, series and episode, with several matches of one type as well as one",
+        "A term typed part-way and in another case (a lowercase fragment of a title) finds the item, and an item whose name does not hold the term is never a hint",
+        "includeItemTypes narrows the hints to the types it names: Series alone answers the matching series and none of its episodes or any film",
+        "With more matches than limit the answer holds exactly limit hints, and TotalRecordCount is what Jellyfin 12.4 answers for the same request (observed: every match, or the page)",
+        "Each episode hint carries its own season as ParentIndexNumber and its own number as IndexNumber, checked on an episode where the two differ (S01E02 or S02E01), not only on S01E01",
+        "Each hint's PrimaryImageTag is the tag GET /Items/{itemId} gives that item in ImageTags.Primary, for a film, an episode and a series that has a picture; an item with no picture has no PrimaryImageTag (absent or null, never an empty string)",
+        "A term that matches nothing answers 200 with SearchHints an empty list (a list, not null) and TotalRecordCount 0",
+        "A request with no searchTerm, or an empty one, answers the status observed on Jellyfin 12.4 and never the whole library",
+        "A request without a token, and one with a token no device holds, is refused with the status observed on Jellyfin 12.4 (recorded in a capture) and gets no hints",
+        "An answer holding at least one film, one series and one episode hint passes the JS-070 schema checker (compat/conform) as SearchHintResult: SearchHints and TotalRecordCount present, and Artists, Id, ItemId, Name and Type in every hint",
+        "compat/coverage-12.4.tsv marks GET /Search/Hints done with evidence that names Fluster's call (#102) in place of 'nothing calls it', compat/endpoints.yaml lists the route as implemented, docs/status.md no longer lists it among the routes answered 404, and go test ./compat passes",
+        "The differential tier sends a GET /Search/Hints request whose term matches at least one film, one series and one episode of the fixtures to both servers, fails when either answers no hints, and compares which hints come back and their order; every difference left is listed in compat/differences.yaml under that request's name with its kind and reason"
       ],
       "priority": 11,
       "status": "todo",
-      "passes": false,
+      "passes": true,
       "dependsOn": [],
       "source": "Fluster issue #102, 2026-11-12",
       "notes": "Fluster, the client that ships with jellyscale (owner, 2026-11-12)."

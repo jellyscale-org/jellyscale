@@ -32,6 +32,7 @@ routes:
   - {method: GET, path: "/Playback/BitrateTest", status: implemented, role: stream}
   - {method: GET, path: "/Plugins", status: stub, role: api}
   - {method: GET, path: "/QuickConnect/Enabled", status: stub, role: api}
+  - {method: GET, path: "/Search/Hints", status: implemented, role: api}
   - {method: GET, path: "/Sessions", status: implemented, role: api}
   - {method: POST, path: "/Sessions/Capabilities", status: stub, role: api}
   - {method: POST, path: "/Sessions/Capabilities/Full", status: stub, role: api}
