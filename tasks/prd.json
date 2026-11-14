@@ -1634,6 +1634,33 @@
       "notes": ""
     },
     {
+      "id": "JS-104",
+      "phase": "OPS",
+      "title": "Two transcode integration flakes: a test that forgot live workers, and a segment stored after its lease ran out",
+      "description": "Two intermittent internal/transcode failures on main failed unrelated PRs' merge-queue runs (2026-11-14): TestEveryJobOfEveryWorkerGoesOnThroughAnOutage/restart, where the test's own reaping loop called the exported Reap and forgot live workers, and a fault schedule in which a worker began a put 3.5 s after its job's lease ran out because the upload did not fence the put against the lease.",
+      "acceptanceCriteria": [
+        "Failure 1 (TestEveryJobOfEveryWorkerGoesOnThroughAnOutage/restart, queue run 43587752815): the cause is recorded with the run or trace that shows it, naming which process deleted the two workers' transcode_nodes rows and at what moment of the outage; or 30 repetitions of that test under 4 CPUs with other load all pass and the cause is argued from the queue run's log.",
+        "That record rules each named suspect in or out with evidence, not by reading alone: the frozen-worker rule in worker.go, the reap logic in liveness.go (a worker's own look, and a reap asked for by a process that holds no lock), and a job paused at its lead whose beat is delayed.",
+        "Failure 2 (TestFaultSchedulesHoldTheLeaseAndFailoverInvariants, seed 15803960744879474315 schedule 1, queue run 43590049982): the cause is recorded with the run or trace that shows it, naming which step let the put begin (the stop-past-lease SIGSTOP of the worker, or the delay-past-half-lease round trip) and where between asking and storing the lease ran out; or 30 replays of that seed under 4 CPUs with other load all pass and the cause is argued from the queue run's log.",
+        "Each cause is fixed in product code; no existing assertion is removed or loosened, no allowance widened, and no retry or skip added to make a test pass.",
+        "Each fix has a test that forces the interleaving rather than waiting for it, so it fails on every run of today's tree and passes with the fix.",
+        "A worker begins no put for a job after that job's lease ran out when the database answers its ownership check late: asked while the lease stood, answered after it ran out, with a round trip inside the check's own timeout (half a lease) as well as beyond it.",
+        "A worker begins no put for a job after that job's lease ran out when the worker itself is late: stopped (SIGSTOP) after it asked and before it stored, for longer than the lease had left, then continued; the first put it could begin after continuing counts.",
+        "Both hold for every put of the upload, not only the first: the init segment stored with a job's first segment, and each of several finished segments waiting in scratch; measured against lease_expires_at as Postgres has it, within the fault test's existing 350 ms allowance, which grows neither with the round trip nor with the length of the stop.",
+        "The job a worker gives up this way ends cancelled, never failed: PlaybackInfo does not refuse the spec, and the viewer's next request starts a replacement at the first segment not stored.",
+        "A Postgres outage that ends every process's connections and is over, for each worker, before its jobs' leases run out forgets no live worker: no worker's transcode_nodes row is missing at any moment, in each shape (switchover, restart with connections refused, terminated by the server), with three workers returning at different times and however long after the first one returned.",
+        "Through such an outage every job is the same row on the same worker, still running, with the same ffmpeg process (pid and start time), for a re-encode, a copy and a re-encode paused at its lead alike; each spec has one job, none is cancelled or failed, and the viewers' next segments are served.",
+        "That holds when the connections end one after another rather than in one instant (within 0.5 s of each other): a process still connected after other workers' locks are gone, whether a worker holding its lock or a replica holding none that has not yet noticed the outage, forgets nobody and cuts no lease when it reaps in that moment, including when its own connection ends before the answer reaches it.",
+        "A worker that is really dead is forgotten as before: killed while Postgres is up, its row is gone and its jobs' leases cut after two looks 0.5 s apart by a live worker; killed during an outage, within reapHold (10 s) of the outage.",
+        "A worker that is in time stores as before: a put whose check is answered within the lease goes on, a 50 ms round trip changes nothing, and after a stop shorter than a lease less a heartbeat the job goes on with the same ffmpeg."
+      ],
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "Merge-queue runs 43587752815 and 43590049982 (2026-11-14)",
+      "notes": ""
+    },
+    {
       "id": "JS-085",
       "phase": "P4",
       "title": "Direct play and stored segments go on while Postgres is away",

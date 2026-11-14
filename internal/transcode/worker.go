@@ -993,30 +993,43 @@ func (w *Worker) upload(ctx context.Context, job claimed, n int, name string) er
 	// what the job's new owner stored. The replacement's first segment is
 	// seconds away when this passes; only a put slower than that can overlap.
 	// A database that does not answer is the same as a lease that is gone.
+	// The answer is how much lease Postgres says is left, measured when it ran
+	// the query, which was no earlier than now. So the lease ends no sooner than
+	// asked+left, whatever the round trip, and whatever stops this worker before
+	// a put (a database that answers late, a SIGSTOP): every put checks the
+	// clock against that.
 	fenced, cancel := context.WithTimeout(ctx, w.lease()/2)
-	var owned bool
-	err := w.Pool.QueryRow(fenced, `SELECT EXISTS (SELECT 1 FROM transcode_jobs
-		WHERE id = $1 AND worker = $2 AND state = 'running' AND lease_expires_at > now() AND `+registeredAs("$2")+`)`, job.ID, w.ID).Scan(&owned)
+	asked := time.Now()
+	var left float64
+	err := w.Pool.QueryRow(fenced, `SELECT EXTRACT(EPOCH FROM lease_expires_at - now())::float8 FROM transcode_jobs
+		WHERE id = $1 AND worker = $2 AND state = 'running' AND `+registeredAs("$2"), job.ID, w.ID).Scan(&left)
 	cancel()
 	if db.IsAway(err) {
 		// Nothing is stored until the check passes (invariant 37); the segment
 		// waits where it is, and the lease says how long.
 		return fmt.Errorf("%w: checking the job is still ours: %v", errWaiting, err)
 	}
+	if errors.Is(err, pgx.ErrNoRows) || err == nil && left <= 0 {
+		return fmt.Errorf("%w: %s", errInterrupted, w.lostReason(ctx, job))
+	}
 	if err != nil {
 		// Unknown is not failed: the job is cut short and restarted, and the
 		// spec is not refused for a database that was slow.
 		return fmt.Errorf("%w: checking the job is still ours: %v", errInterrupted, err)
 	}
-	if !owned {
-		return fmt.Errorf("%w: %s", errInterrupted, w.lostReason(ctx, job))
+	ownedUntil := asked.Add(time.Duration(left * float64(time.Second)))
+	put := func(key, file string) error {
+		if !time.Now().Before(ownedUntil) {
+			return fmt.Errorf("%w: the lease ran out before the segment could be stored", errInterrupted)
+		}
+		return w.put(ctx, key, file)
 	}
 	if n == job.Start {
-		if err := w.put(ctx, SegmentKey(job.Hash, -1), filepath.Join(filepath.Dir(name), "init.mp4")); err != nil {
+		if err := put(SegmentKey(job.Hash, -1), filepath.Join(filepath.Dir(name), "init.mp4")); err != nil {
 			return err
 		}
 	}
-	if err := w.put(ctx, SegmentKey(job.Hash, n), name); err != nil {
+	if err := put(SegmentKey(job.Hash, n), name); err != nil {
 		return err
 	}
 	tag, err := w.Pool.Exec(ctx, `UPDATE transcode_jobs SET next_segment = $2, lease_expires_at = now() + make_interval(secs => $4)

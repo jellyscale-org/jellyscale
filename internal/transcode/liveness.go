@@ -128,15 +128,14 @@ func forgotHint(id string) string { return "forgot:" + id }
 // worker that never comes back loses its jobs then anyway.
 const reapHold = 10 * time.Second
 
-// Reap makes the jobs of dead workers dead at once and forgets the workers: a
+// reap makes the jobs of dead workers dead at once and forgets the workers: a
 // node that took a liveness lock and no longer holds it is gone, so its row is
 // deleted (its slots stop counting) and its running jobs are left reapLease.
-// Everything that decides a job is dead already reads
-// lease_expires_at, so nothing else changes. Idempotent, so any replica may
-// call it at any time. It returns the nodes it forgot and the jobs it cut short,
-// and whether the row of the node self is there, from the same snapshot.
-// It forgets nobody while Postgres is away from the pool, nor for reapHold after.
-// A worker's own look (lookForTheDead) is the careful one, and the one in use.
+// Everything that decides a job is dead already reads lease_expires_at, so
+// nothing else changes. Only a worker's own look (lookForTheDead) calls it,
+// for a process that holds no lock cannot tell an outage from a death (JS-104).
+// It returns the nodes it forgot and the jobs it cut short, and whether the
+// row of the node self is there, from the same snapshot.
 //
 // A worker whose lock is gone but whose connection stands (a pooler recycled
 // the server's end, or Postgres dropped a vanished host's backend on its
@@ -145,12 +144,8 @@ const reapHold = 10 * time.Second
 // with its row gone it can neither renew a lease nor store a segment
 // (Worker.beat and Worker.upload check the row). Two renewals can still land
 // in the moments before the worker stops: one already waiting on the job's row
-// when Reap commits, which still sees the old row, and the update after a store
+// when reap commits, which still sees the old row, and the update after a store
 // that was in flight. That job is then taken over at its full lease.
-func Reap(ctx context.Context, pool *pgxpool.Pool, self string) (workers []string, jobs []int64, here bool, err error) {
-	return reap(ctx, pool, self, !db.Of(pool).Recent(reapHold), nil)
-}
-
 // reap forgets the dead nodes among only, or all of them when only is nil. When
 // self is set, only a snapshot in which self holds its own lock forgets anyone
 // but self: a worker that cannot see its own lock cannot see anyone's.
