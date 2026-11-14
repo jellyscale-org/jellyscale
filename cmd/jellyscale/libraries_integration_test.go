@@ -36,7 +36,7 @@ import (
 // that a slower machine can only make less than enough, never fail the check
 // on: the check is that nothing changed, and a tick that has not yet run
 // changes nothing.
-const hang = 90 * time.Second
+const libraryHang = 90 * time.Second
 
 type cluster struct {
 	t     *testing.T
@@ -188,7 +188,7 @@ func (p *process) stop() {
 // stream replica answers /healthz. It says nothing about when Sync ran.
 func (p *process) ready() {
 	p.c.t.Helper()
-	deadline := time.Now().Add(hang)
+	deadline := time.Now().Add(libraryHang)
 	for time.Now().Before(deadline) {
 		select {
 		case <-p.done:
@@ -324,7 +324,7 @@ func configOf(libraries []map[string]any, extra string) string {
 func (p *process) waitScans(n int) {
 	p.c.t.Helper()
 	want := p.count("scan finished") + n
-	deadline := time.Now().Add(hang)
+	deadline := time.Now().Add(libraryHang)
 	for p.count("scan finished") < want {
 		if time.Now().After(deadline) {
 			p.c.t.Fatalf("waiting for %d scans:\n%s", n, p.logged())
@@ -527,7 +527,7 @@ func TestAWorkerStillSyncsANonEmptyList(t *testing.T) {
 
 			// A worker with a short grace removes it on a tick.
 			c.start(roles, configOf([]map[string]any{entry("Alpha two", a, false), entry("Fresh", added, false)}, `, "missingGrace": "1s", "scanInterval": "200ms"`))
-			deadline := time.Now().Add(hang)
+			deadline := time.Now().Add(libraryHang)
 			for c.count("SELECT count(*) FROM libraries WHERE id = $1", ids["Beta"]) != 0 {
 				if time.Now().After(deadline) {
 					t.Fatal("the library left out was not removed after the grace")
@@ -562,7 +562,7 @@ func TestAWorkerListingNoLibrariesChangesNothingAndSaysSoOnce(t *testing.T) {
 				// The tick runs at the start; with the 200 ms ticks of the configs
 				// that have a file, several more follow. There is nothing a
 				// worker with no libraries logs per tick, so a fixed wait is all
-				// that lets one run (see hang).
+				// that lets one run (see libraryHang).
 				time.Sleep(3 * time.Second)
 				if after := c.libraryRows(); strings.Join(after, "\n") != strings.Join(before, "\n") {
 					t.Errorf("the libraries changed:\nbefore %v\nafter  %v", before, after)
