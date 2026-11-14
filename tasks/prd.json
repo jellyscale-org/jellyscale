@@ -1421,6 +1421,28 @@
       "notes": "Must land before JS-045 starts P5 scan work and before JS-060 imports history."
     },
     {
+      "id": "JS-102",
+      "phase": "P4",
+      "title": "Only a worker's config hides libraries, and a config with none hides nothing",
+      "description": "Since JS-076 every role runs library.Sync at start, and Sync hides every library its config leaves out. Only the worker uses the synced libraries, yet an api or stream replica, or a worker, started with a different or empty libraries list hides every other library from every viewer until a replica with the full config starts again, and removes it after missingGrace. Seen as a flake in JS-031's parallel tests.",
+      "acceptanceCriteria": [
+        "A process without the worker role (`api`, `stream` or `api,stream`) writes nothing to the libraries at start, whatever its config lists: it adds no library, renames none, changes no store or `chapterImages`, hides none and shows none again.",
+        "That holds for each list such a replica may have: no config file, no `libraries` key, an empty list, a subset of the worker's list, an entry under another name for a store the worker lists, and an entry the database lacks.",
+        "Shown with real processes on one database: with a worker listing two or more libraries, an api replica and a stream replica with differing lists (one empty, one a subset), started after the worker and at the same instant as one another, leave every library in /UserViews and every item in its listings, asked of that api replica, with no worker restart.",
+        "They stay so after missingGrace has passed and a worker scan tick has run with those replicas still up: no library, item or user_item_data row is removed, and no library's grace has started.",
+        "A process with the worker role, alone or beside others (`worker`, `api,worker`, `all`), still syncs a non-empty list as before: it adds a new library, keeps a renamed one's id, hides one the list leaves out, shows again one put back, and its tick removes a hidden one once missingGrace has passed since the first worker start without it.",
+        "A worker (alone or in `all`) whose config lists no libraries, whether by no config file, no `libraries` key or an empty list, changes no library: with two or more in the database, all stay in /UserViews with their items and watch state after missingGrace has passed and a tick has run, and one that a worker's earlier config hid stays hidden with the grace it had.",
+        "That worker logs, once per start and not on every scan tick, that its config lists no libraries and that the libraries in the database were kept; a process without the worker role logs no such line.",
+        "docs/running.md says that every worker must list the same libraries, and what happens otherwise: a worker whose list leaves a library out hides it from every viewer and starts its grace, whatever the other workers list.",
+        "docs/running.md says that the `libraries` of api and stream replicas are not read, that a worker listing none hides and removes nothing (so emptying the list does not remove the last library), and that a library's grace runs from the first worker start without it, no longer from any start."
+      ],
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "Escape from JS-076, found in JS-031's build (2026-11-13)",
+      "notes": ""
+    },
+    {
       "id": "JS-077",
       "phase": "P4",
       "title": "Stream segments to the viewer without holding them whole in memory",

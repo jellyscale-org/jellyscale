@@ -185,12 +185,19 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	libraries, err := library.Sync(ctx, pool, cfg.Libraries)
-	if err != nil {
-		return err
-	}
-
 	enabled := parseRoles(roleList)
+	// Only a worker uses the libraries, so only a worker writes them (a bad
+	// library entry stops only a worker); any other role's list would hide
+	// every library it leaves out from every viewer. A worker listing none
+	// changes none, so emptying the list does not remove the last library.
+	var libraries []library.Library
+	if slices.Contains(enabled, roleWorker) {
+		if len(cfg.Libraries) == 0 {
+			log.Info("config lists no libraries; the libraries in the database were kept")
+		} else if libraries, err = library.Sync(ctx, pool, cfg.Libraries); err != nil {
+			return err
+		}
+	}
 	transcodes, err := openTranscoding(ctx, cfg, enabled, pool, serverID, log)
 	if err != nil {
 		return err
@@ -204,7 +211,7 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 			return fmt.Errorf("metricsListen: %w", err)
 		}
 	}
-	if slices.Contains(enabled, roleWorker) {
+	if len(libraries) > 0 {
 		interval := 15 * time.Minute
 		if cfg.ScanInterval != "" {
 			if interval, err = time.ParseDuration(cfg.ScanInterval); err != nil {
