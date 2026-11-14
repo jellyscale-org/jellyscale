@@ -229,9 +229,10 @@ if (resolved) {
   touched = (await lockedChanged(head, 'locked checks after the resolved dispute')).filter((f) => !resolved.files.includes(f))
   lockBase = head
   // An implementer that stopped on its dispute left the build unfinished and the
-  // checks unrun: it finishes now, on the corrected checks. (JS-025 skipped this,
+  // checks unrun: it finishes now, on the corrected checks. One that finished
+  // first and disputed after is not run again. (JS-025 skipped this,
   // and a stale test reached the merge queue.)
-  if (built.disputes.length && !touched.length) {
+  if (built.disputes.length && !touched.length && !built.done) {
     const finished = await agent(`${read('implementer')}${brief}${designNotes}${locked}\n\n## Your dispute was settled\nYou stopped on a dispute. The lead settled it and corrected these files: ${resolved.files.join(', ')}. ${resolved.note}\n\n${unlocked.length ? `These files are not locked, whatever the list above says: ${unlocked.join(', ')}. ` : ''}Your partial build is in the working tree. Finish the task from it and run the checks and the tests of the packages you changed. Don't commit.`, { label: 'build after the resolved dispute', phase: 'Build', ...role('implementer'), schema: IMPLEMENTED })
     if (!finished) throw new Error('implementer returned nothing')
     built = finished
