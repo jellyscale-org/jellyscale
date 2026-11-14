@@ -1654,14 +1654,15 @@
       "id": "JS-103",
       "phase": "P4",
       "title": "A Postgres outage interrupts no viewer who was watching: paused films, subtitles, and films just started",
-      "description": "JS-085 keeps direct play and stored segments going while Postgres is away for viewers in each stream replica's snapshot (sessions active in the last 60 s, refreshed every 5 s). Three viewers still stop: one whose film was paused in a background tab long enough to drop out of the window (jellyfin-web reports every 10 s, a hidden tab may report less often), one who turns subtitles on or needs a font not yet fetched (the Subtitles and Attachments routes wait for Postgres), and one who started a film in the 5 s before the outage. Jellyfin stops every viewer in an outage; jellyscale should stop none who were watching.",
+      "description": "JS-085 keeps direct play and stored segments going while Postgres is away for viewers in each stream replica's snapshot (sessions active in the last 60 s, refreshed every 5 s). Three viewers still stop: one whose film was paused in a background tab long enough to drop out of the window (jellyfin-web reports every 10 s, a hidden tab may report less often), one who turns subtitles on or needs a font not yet fetched (the Subtitles and Attachments routes wait for Postgres), and one who started a film in the 5 s before the outage. Jellyfin stops every viewer in an outage; jellyscale should stop none who were watching. A viewer who played on through the outage must not get a restart when Postgres returns either.",
       "acceptanceCriteria": [
         "A viewer whose film was paused for up to 10 minutes before the outage resumes it during the outage, from any stream replica, and the snapshot window that allows this is stated in DOMAINS 37 with what it costs",
         "Subtitles and fonts already extracted to the store are served during the outage to a viewer in the snapshot, from any stream replica, in jellyfin-web in the e2e tier",
         "A film started in the last seconds before the outage plays on: the replica that answered its PlaybackInfo puts the viewer in the snapshot at once, or the gap is closed another way, shown with a film started 1 s before Postgres stops",
+        "When Postgres comes back, a film that played on through the outage goes on with the same player and no new PlaybackInfo, in jellyfin-web, direct play and HLS (in a queue run of JS-085's direct-play scenario the player asked for PlaybackInfo again about 60 s in, after Postgres was back, and left the film)",
         "Nothing that needs Postgres to decide is answered from memory, as in JS-085"
       ],
-      "priority": 16,
+      "priority": 10,
       "status": "todo",
       "passes": false,
       "dependsOn": [
