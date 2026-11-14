@@ -100,7 +100,7 @@ func newEnvOn(t *testing.T, s3Target string) *env {
 		}
 		t.Cleanup(pool.Close)
 		s := &Server{Pool: pool, Items: &items.Repo{Pool: pool, ServerID: "srv"}, Roles: []string{RoleAPI, RoleStream},
-			Log: slog.New(slog.DiscardHandler), SocketIdle: 700 * time.Millisecond}
+			Log: failureLog(t), SocketIdle: 700 * time.Millisecond}
 		server := httptest.NewServer(s.Handler())
 		t.Cleanup(server.Close)
 		e.apis = append(e.apis, s)
@@ -1049,4 +1049,31 @@ func TestChaptersAreInTheDetailsAndInListsThatAskForThem(t *testing.T) {
 	if got := chapters("/Items?Recursive=true"); got != nil {
 		t.Errorf("a list that didn't ask for chapters has them: %v", got)
 	}
+}
+
+// failureLog keeps what the test's servers log and prints it only if the test
+// fails, so a rare 500 names its cause without filling every passing run's
+// output (BL-123: the server's "request failed" line was discarded).
+func failureLog(t *testing.T) *slog.Logger {
+	var mu sync.Mutex
+	var buf bytes.Buffer
+	t.Cleanup(func() {
+		mu.Lock()
+		defer mu.Unlock()
+		if t.Failed() && buf.Len() > 0 {
+			t.Logf("the servers logged:\n%s", buf.String())
+		}
+	})
+	return slog.New(slog.NewTextHandler(lockedWriter{&mu, &buf}, &slog.HandlerOptions{Level: slog.LevelWarn}))
+}
+
+type lockedWriter struct {
+	mu  *sync.Mutex
+	buf *bytes.Buffer
+}
+
+func (w lockedWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.buf.Write(p)
 }
