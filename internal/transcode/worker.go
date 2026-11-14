@@ -777,6 +777,17 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 				beat.Reset(time.Millisecond)
 			case <-beat.C:
 				beat.Reset(w.heartbeat())
+				if time.Since(lastBeat) > w.lease() {
+					// The worker itself was stopped (a frozen host, a paused
+					// container) for longer than a lease: another worker may own
+					// the job now, as when the database was unreachable. It gives
+					// the job up as interrupted, never as failed: the time without
+					// a segment was the worker's, not a hung ffmpeg's, and a failed
+					// job refuses a good film to every viewer for failureMemory
+					// (JS-066's queue run).
+					stop("lease expired while the worker was stopped")
+					return fmt.Errorf("%w: lease expired while the worker was stopped", errInterrupted)
+				}
 				alive, wanted, err := w.beat(ctx, job)
 				switch {
 				case err == nil:

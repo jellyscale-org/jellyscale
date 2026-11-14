@@ -261,15 +261,21 @@ func (j *Jobs) Stop(ctx context.Context, userID, playSessionID, deviceID, item s
 	if playSessionID == "" && deviceID == "" {
 		return nil
 	}
-	_, err := j.Pool.Exec(ctx, `UPDATE transcode_viewers SET stopped = true WHERE user_id = $1::uuid
-		AND (($2 <> '' AND play_session_id = $2) OR ($2 = '' AND device_id = $3 AND ($4 = '' OR lower(item_id) = lower($4))))`,
-		userID, playSessionID, deviceID, item)
+	rows, err := j.Pool.Query(ctx, `UPDATE transcode_viewers SET stopped = true WHERE user_id = $1::uuid
+		AND (($2 <> '' AND play_session_id = $2) OR ($2 = '' AND device_id = $3 AND ($4 = '' OR lower(item_id) = lower($4))))
+		RETURNING spec_hash`, userID, playSessionID, deviceID, item)
 	if err != nil {
 		return err
 	}
+	specs, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return err
+	}
+	// Only the stopped viewers' specs: another spec's viewer may be between two jobs.
 	_, err = j.Pool.Exec(ctx, `UPDATE transcode_jobs j SET state = 'cancelled' WHERE state IN ('queued', 'running')
+		AND spec_hash = ANY($1)
 		AND NOT EXISTS (SELECT 1 FROM transcode_viewers v WHERE v.spec_hash = j.spec_hash AND NOT v.stopped
-			AND (j.helper OR v.job_id IN (j.id, 0)))`)
+			AND (j.helper OR v.job_id IN (j.id, 0)))`, specs)
 	return err
 }
 
@@ -489,7 +495,7 @@ func (j *Jobs) ensure(ctx context.Context, spec playback.Spec, hash, owner strin
 			return err
 		}
 		if found && n < 0 {
-			return nil
+			return namesJob(ctx, tx, owner, hash, id)
 		}
 		if !found {
 			// A client that asks again after a failure, as a browser does when it
@@ -513,14 +519,18 @@ func (j *Jobs) ensure(ctx context.Context, spec playback.Spec, hash, owner strin
 			return err
 		}
 		if found {
-			return nil
+			return namesJob(ctx, tx, owner, hash, id)
 		}
 		created = true
 		if preempted, err = preemptHelper(ctx, tx, orDefault(j.QueueTimeout, queueTimeout)); err != nil {
 			return err
 		}
-		return tx.QueryRow(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, output_version)
+		err = tx.QueryRow(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, output_version)
 			VALUES ($1, $2, $3, $4, $4, $5) RETURNING id`, hash, raw, owner, start, playback.OutputVersion).Scan(&id)
+		if err != nil {
+			return err
+		}
+		return namesJob(ctx, tx, owner, hash, id)
 	})
 	if err != nil {
 		return 0, false, err
@@ -531,8 +541,14 @@ func (j *Jobs) ensure(ctx context.Context, spec playback.Spec, hash, owner strin
 	if created {
 		Notify(ctx, j.Pool, jobHint)
 	}
-	_, err = j.Pool.Exec(ctx, "UPDATE transcode_viewers SET job_id = $3 WHERE play_session_id = $1 AND spec_hash = $2", owner, hash, id)
-	return id, created, err
+	return id, created, nil
+}
+
+// namesJob makes the viewer's row name its job in the transaction that chose or
+// inserted it, so a Stop never sees a new job that no viewer's row yet names.
+func namesJob(ctx context.Context, tx pgx.Tx, owner, hash string, id int64) error {
+	_, err := tx.Exec(ctx, "UPDATE transcode_viewers SET job_id = $3 WHERE play_session_id = $1 AND spec_hash = $2", owner, hash, id)
+	return err
 }
 
 type jobState struct {

@@ -63,7 +63,9 @@ func workerProcess(id string) {
 	w := &Worker{ID: id, Pool: pool, Items: &items.Repo{Pool: pool, ServerID: "srv"}, Log: log, Media: media.Open,
 		Segments: segments, Scratch: os.Getenv("JELLYSCALE_TEST_SCRATCH"),
 		Slots: 2, Idle: time.Minute, Lead: time.Hour,
-		Lease: duration("JELLYSCALE_TEST_LEASE", 10*time.Second), Heartbeat: duration("JELLYSCALE_TEST_HEARTBEAT", 3*time.Second)}
+		Lease: duration("JELLYSCALE_TEST_LEASE", 10*time.Second), Heartbeat: duration("JELLYSCALE_TEST_HEARTBEAT", 3*time.Second),
+		// Zero is production's 30 seconds, and a queue timeout of zero is production's 6.
+		Stall: duration("JELLYSCALE_TEST_STALL", 0), QueueTimeout: duration("JELLYSCALE_TEST_QUEUE_TIMEOUT", 0)}
 	helperSettings(w)
 	if addr := os.Getenv("JELLYSCALE_TEST_LIVENESS"); addr != "" {
 		if w.LivenessConfig, err = through(dsn, addr); err != nil {
