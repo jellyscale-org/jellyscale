@@ -91,7 +91,7 @@ func expireQueued(ctx context.Context, pool *pgxpool.Pool, timeout time.Duration
 func StoreMismatch(ctx context.Context, pool *pgxpool.Pool) (string, error) {
 	rows, err := pool.Query(ctx, `SELECT DISTINCT ON (store) roles, store FROM transcode_nodes
 		WHERE seen_at > now() - make_interval(secs => $1) AND NOT (store = '' AND roles = 'worker')
-		ORDER BY store, id LIMIT 2`, workerAlive.Seconds())
+		ORDER BY store, id LIMIT 2`, liveTiming("counted").Seconds())
 	if err != nil {
 		return "", err
 	}
@@ -131,7 +131,7 @@ func Register(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger, id, rol
 		}
 		select {
 		case <-ctx.Done():
-			gone, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			gone, cancel := context.WithTimeout(context.WithoutCancel(ctx), liveTiming("deleteBound"))
 			defer cancel()
 			pool.Exec(gone, "DELETE FROM transcode_nodes WHERE id = $1", id) //nolint:errcheck
 			return
@@ -176,9 +176,6 @@ func (j *Jobs) watch(ctx context.Context, v Viewer, hash string, segment int) (p
 // defaultIdle is how long a spec may go without a request before its jobs stop.
 const defaultIdle = 60 * time.Second
 
-// workerAlive is how recently a worker must have reported to count.
-const workerAlive = 10 * time.Second
-
 // failureMemory is how long a failed transcode keeps PlaybackInfo from
 // offering the same one again.
 const failureMemory = 30 * time.Second
@@ -203,7 +200,7 @@ func (j *Jobs) Unavailable(ctx context.Context, hash, userID, deviceID string) (
 	}
 	// A refusal that rests on a worker whose lock is gone is looked at again for
 	// a grace: it is either taking its lock again, or never will.
-	deadline := time.Now().Add(reapGrace)
+	deadline := time.Now().Add(liveTiming("grace"))
 	for {
 		var workers, versionWorkers, slots, taken, lockless int
 		var failure *string
@@ -224,7 +221,7 @@ func (j *Jobs) Unavailable(ctx context.Context, hash, userID, deviceID string) (
 					AND ended_at > now() - make_interval(secs => $3) ORDER BY id DESC LIMIT 1),
 				(SELECT count(*) FROM transcode_nodes WHERE slots > 0 AND seen_at > now() - make_interval(secs => $2)
 					AND locked AND NOT `+lockHeld("transcode_nodes.id")+`)`,
-			hash, workerAlive.Seconds(), failureMemory.Seconds(), userID, deviceID, playback.OutputVersion).Scan(&workers, &versionWorkers, &slots, &taken, &failure, &lockless)
+			hash, liveTiming("counted").Seconds(), failureMemory.Seconds(), userID, deviceID, playback.OutputVersion).Scan(&workers, &versionWorkers, &slots, &taken, &failure, &lockless)
 		if err != nil {
 			return "", err
 		}
@@ -232,7 +229,7 @@ func (j *Jobs) Unavailable(ctx context.Context, hash, userID, deviceID string) (
 			select {
 			case <-ctx.Done():
 				return "", ctx.Err()
-			case <-time.After(100 * time.Millisecond):
+			case <-time.After(liveTiming("refusalPoll")):
 			}
 			continue
 		}
@@ -431,7 +428,7 @@ func (j *Jobs) queuedTooLong(ctx context.Context, job int64, state jobState) err
 	var workers, versionWorkers int
 	err := j.Pool.QueryRow(ctx, `SELECT count(*), count(*) FILTER (WHERE output_version = $2) FROM transcode_nodes
 		WHERE slots > 0 AND seen_at > now() - make_interval(secs => $1)`,
-		workerAlive.Seconds(), playback.OutputVersion).Scan(&workers, &versionWorkers)
+		liveTiming("counted").Seconds(), playback.OutputVersion).Scan(&workers, &versionWorkers)
 	if err != nil {
 		return err
 	}

@@ -98,6 +98,10 @@ type Worker struct {
 	// loop reads and writes them (keepRow, lookForTheDead).
 	lockGone map[string]time.Time
 	lockLost time.Time
+
+	// state is the liveness state (heldMu). Its zero value is locked, so a
+	// worker the loop has not touched is judged by its lock alone.
+	state liveState
 }
 
 // Run claims and runs jobs until ctx ends, then waits for ffmpeg to be gone.
@@ -163,8 +167,12 @@ type claimed struct {
 	progress *progress // How fast ffmpeg goes; set by Run.
 }
 
-func (w *Worker) lease() time.Duration     { return orDefault(w.Lease, 10*time.Second) }
-func (w *Worker) heartbeat() time.Duration { return orDefault(w.Heartbeat, 3*time.Second) }
+// defaultLease is the lease a job gets unless the worker is told another, and
+// the one every liveness timing is written for (livenessTable).
+const defaultLease = 10 * time.Second
+
+func (w *Worker) lease() time.Duration     { return orDefault(w.Lease, defaultLease) }
+func (w *Worker) heartbeat() time.Duration { return orDefault(w.Heartbeat, liveTiming("heartbeat")) }
 func (w *Worker) idle() time.Duration      { return orDefault(w.Idle, defaultIdle) }
 func (w *Worker) lead() time.Duration      { return orDefault(w.Lead, defaultLead) }
 
@@ -259,7 +267,7 @@ func (w *Worker) claim(ctx context.Context) (claimed, bool, error) {
 					OR NOT EXISTS (SELECT 1 FROM transcode_jobs o WHERE o.spec_hash = transcode_jobs.spec_hash AND o.worker = $1 AND o.state = 'running'))))
 			ORDER BY id FOR UPDATE SKIP LOCKED LIMIT 1)
 		RETURNING id, spec_hash, spec, start_segment, helper`, w.ID, (w.lease()+startup).Seconds(), orDefault(w.QueueTimeout, queueTimeout).Seconds(),
-		workerAlive.Seconds(), playback.OutputVersion).Scan(&job.ID, &job.Hash, &raw, &job.Start, &job.Helper)
+		liveTiming("counted").Seconds(), playback.OutputVersion).Scan(&job.ID, &job.Hash, &raw, &job.Start, &job.Helper)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return job, false, nil
 	}
