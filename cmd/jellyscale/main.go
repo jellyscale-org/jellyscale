@@ -4,7 +4,6 @@ package main
 
 import (
 	"bytes"
-	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
@@ -56,8 +56,12 @@ type config struct {
 	TranscodeStore string `json:"transcodeStore"`
 	// TranscodeScratch is where a worker's ffmpeg writes before uploading.
 	TranscodeScratch string `json:"transcodeScratch"`
-	// TranscodeSlots bounds concurrent transcode jobs per worker, paused ones
-	// included.
+	// TranscodeCores is how many cores a worker gives its transcode jobs; each
+	// job costs some of them (docs/transcoding.md). Without it a worker has the
+	// processors it may use, and never fewer than one 4K tone mapped job needs.
+	TranscodeCores float64 `json:"transcodeCores"`
+	// TranscodeSlots is what TranscodeCores replaced. An old config that sets it
+	// and not TranscodeCores gives that many cores, one for each slot.
 	TranscodeSlots int `json:"transcodeSlots"`
 	// TranscodeIdle is how long a spec may go without a request before its
 	// ffmpeg stops, and TranscodeRetention how long its segments stay after.
@@ -323,6 +327,12 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 	if cfg.TranscodeSlots < 0 {
 		return result, errors.New("transcodeSlots: want a positive number, or leave it out for the default")
 	}
+	// No machine has more than a few thousand cores, and the row's slots column
+	// (the cores rounded up) is an integer: a larger value would fail every
+	// registration while the start succeeded.
+	if cfg.TranscodeCores < 0 || cfg.TranscodeCores > 10000 || math.IsNaN(cfg.TranscodeCores) {
+		return result, errors.New("transcodeCores: want a positive number of at most 10000, or leave it out for the default")
+	}
 	worker := slices.Contains(roles, roleWorker)
 	var segments store.Store
 	if cfg.TranscodeStore != "" {
@@ -355,10 +365,6 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 		host, _ := os.Hostname()
 		log.Info("worker started", "worker", id, "host", host)
 	}
-	slots := 0
-	if worker && segments != nil {
-		slots = cmp.Or(cfg.TranscodeSlots, 2)
-	}
 	var running sync.WaitGroup
 	// Called once nothing more will be added to running.
 	finish := func() {
@@ -379,7 +385,7 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 	var media store.Cache
 	w := &transcode.Worker{
 		ID: id, Pool: pool, Items: &items.Repo{Pool: pool, ServerID: serverID}, Segments: segments, Hub: result.hub, Log: log,
-		Media: media.Open, Scratch: scratch, Slots: slots, Idle: idle, Lead: lead, Retention: retention,
+		Media: media.Open, Scratch: scratch, Cores: cfg.TranscodeCores, Slots: cfg.TranscodeSlots, Idle: idle, Lead: lead, Retention: retention,
 		NoHelpers: cfg.TranscodeHelpers != nil && !*cfg.TranscodeHelpers,
 	}
 	if worker {
@@ -393,7 +399,7 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 		if worker {
 			w.Present(ctx, strings.Join(roles, ","), cfg.TranscodeStore, transcode.LivenessHeartbeat())
 		} else {
-			transcode.Register(ctx, pool, log, id, strings.Join(roles, ","), cfg.TranscodeStore, slots, transcode.LivenessHeartbeat())
+			transcode.Register(ctx, pool, log, id, strings.Join(roles, ","), cfg.TranscodeStore, 0, transcode.LivenessHeartbeat())
 		}
 	}()
 	if worker {

@@ -260,14 +260,17 @@ func TestAPreemptedHelpersChunkIsMadeByTheJobThatAskedForIt(t *testing.T) {
 			}
 		}
 		for n := row.Start; n < chunkEnd; n++ {
-			made := false
+			// A segment the helper stored before it was stopped is made: the
+			// viewer has it, and which segments a stopped helper got to store
+			// depends on timing as much as which job makes the rest.
+			made := n < row.Next
 			for _, other := range rows {
 				if other.ID != row.ID && other.Start <= n && n < other.Next {
 					made = true
 				}
 			}
 			if !made {
-				t.Errorf("segment %d of the stopped helper's chunk %d to %d was made by no other job: %+v", n, row.Start, chunkEnd-1, rows)
+				t.Errorf("segment %d of the stopped helper's chunk %d to %d was made by no job: %+v", n, row.Start, chunkEnd-1, rows)
 			}
 		}
 	}

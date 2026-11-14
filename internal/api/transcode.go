@@ -151,12 +151,12 @@ func (s *Server) hlsSegment(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, transcode.ErrNoWorker), errors.Is(err, transcode.ErrBusy), errors.Is(err, transcode.ErrOtherVersion):
 		headline := "a transcode job found no worker"
 		if errors.Is(err, transcode.ErrBusy) {
-			headline = "a transcode job found every slot busy"
+			headline = "a transcode job found the cores of every worker short"
 		}
 		if errors.Is(err, transcode.ErrOtherVersion) {
 			headline = "a transcode job waited for a worker of its output version, and only workers of another version run"
 		}
-		s.Log.Error(headline, "item", req.spec.Item, "spec", req.hash, "segment", n)
+		s.Log.Error(headline, "item", req.spec.Item, "spec", req.hash, "segment", n, "cost", req.spec.Cost())
 		w.Header().Set("Retry-After", "5")
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		return

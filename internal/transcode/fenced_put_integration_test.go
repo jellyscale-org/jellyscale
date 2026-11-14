@@ -189,7 +189,7 @@ func TestAWorkerBeginsNoPutOnceTheLeaseRanOutWhateverMadeItLate(t *testing.T) {
 			}
 			// PlaybackInfo does not refuse the spec, and the viewer's next request starts a replacement at the first segment not stored.
 			r.noFailed(t)
-			if reason, err := s.jobs.Unavailable(ctx, r.hash, "", ""); err != nil || reason != "" {
+			if reason, err := s.jobs.Unavailable(ctx, r.spec, "", ""); err != nil || reason != "" {
 				t.Errorf("PlaybackInfo would refuse the spec after the job was given up: %q %v", reason, err)
 			}
 			<-served // The first viewer's own wait ends one way or another.

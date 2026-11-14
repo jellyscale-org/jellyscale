@@ -246,7 +246,7 @@ func (d *driver) viewer(load, ctx context.Context, i int) {
 			go func() {
 				defer d.calls.Done()
 				d.rec.call(ctx, "Unavailable", callTimeout, func(ctx context.Context) error { //nolint:errcheck
-					_, err := d.jobs.Unavailable(ctx, hashOf(spec), stressUser, viewer.DeviceID)
+					_, err := d.jobs.Unavailable(ctx, d.specs[spec], stressUser, viewer.DeviceID)
 					return err
 				})
 			}()

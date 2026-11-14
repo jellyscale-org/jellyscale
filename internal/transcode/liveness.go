@@ -444,8 +444,11 @@ func (w *Worker) keepRow(held context.Context, lose context.CancelCauseFunc, liv
 		case stRegistering:
 			// A slow commit is no reason not to register, so this has longer than a look.
 			ctx, cancel := context.WithTimeout(held, every)
-			_, err := w.Pool.Exec(ctx, `INSERT INTO transcode_nodes (id, roles, store, slots, locked, output_version) VALUES ($1, $2, $3, $4, true, $5)
-				ON CONFLICT (id) DO UPDATE SET seen_at = now(), locked = true`, w.ID, roles, storeURI, w.Slots, playback.OutputVersion)
+			// The row carries the cores the worker declared from its first write, and
+			// slots as those cores rounded up for a replica of the release before (JS-087).
+			cores, slots := w.registered()
+			_, err := w.Pool.Exec(ctx, `INSERT INTO transcode_nodes (id, roles, store, slots, cores, locked, output_version) VALUES ($1, $2, $3, $4, $5, true, $6)
+				ON CONFLICT (id) DO UPDATE SET seen_at = now(), locked = true, slots = $4, cores = $5`, w.ID, roles, storeURI, slots, cores, playback.OutputVersion)
 			cancel()
 			if err == nil {
 				seen = time.Now()

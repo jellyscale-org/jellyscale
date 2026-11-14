@@ -17,7 +17,7 @@ import (
 // with a new one unless another job has it, so jobs meet only at chunk starts.
 // A job that runs below HelpBelow times real time asks for helpers: ordinary
 // jobs in transcode_jobs, flagged helper, for later chunks, which workers with
-// a slot claim, other workers first.
+// a claim of cores, other workers first.
 const (
 	// defaultChunkSegments is 16 seconds: a seek pays for the part of its chunk
 	// before the segment it wants (the encoder has to be warm), a chunk start
@@ -46,17 +46,6 @@ func (w *Worker) helpBelow() float64 {
 	return defaultHelpBelow
 }
 
-// freeSlots is SQL for the worker slots of one output version that no job holds
-// or waits for: a job of another version can use none of them. alive and queue
-// are the placeholders of the seconds a node and a queued job count for, version
-// the placeholder of the output version.
-func freeSlots(alive, queue, version string) string {
-	nodes := `SELECT id FROM transcode_nodes WHERE output_version = ` + version + ` AND seen_at > now() - make_interval(secs => ` + alive + `)`
-	return `((SELECT COALESCE(sum(slots), 0) FROM transcode_nodes WHERE output_version = ` + version + ` AND seen_at > now() - make_interval(secs => ` + alive + `))
-		- (SELECT count(*) FROM transcode_jobs a WHERE a.output_version = ` + version + ` AND ((a.state = 'queued' AND a.created_at > now() - make_interval(secs => ` + queue + `))
-			OR (a.state = 'running' AND a.lease_expires_at > now() AND a.worker IN (` + nodes + `)))))`
-}
-
 // live is SQL for a job someone is working on or has yet to claim.
 func live(j string) string {
 	return `(` + j + `.state = 'queued' AND ` + j + `.created_at > now() - make_interval(secs => ` + fmt.Sprint(queueTimeout.Seconds()) + `)
@@ -65,7 +54,7 @@ func live(j string) string {
 
 // startHelper starts a helper job for the first chunk ahead of the job that is
 // not made, claimed or about to be, and within the lead. next is the job's
-// next segment. It starts none unless a slot stays free for a new viewer.
+// next segment. It starts none unless room stays for a new viewer.
 func (w *Worker) startHelper(ctx context.Context, job claimed, next int, layout playback.Layout) error {
 	at, served, _, err := w.furthest(ctx, job, next)
 	if err != nil || !served {
@@ -105,44 +94,45 @@ func (w *Worker) firstMissing(ctx context.Context, hash string, from, to int) (i
 
 // insertHelper queues a helper that starts at segment start of the chunk. done
 // is false if the chunk is taken, so the next may be tried, and true if the
-// helper was queued or nothing more should be: no viewer, or no slot to spare. Under the lock that serializes every decision to
-// take a slot for a helper, as ensure's serializes a spec's jobs.
+// helper was queued or nothing more should be: no viewer, or no cores to spare.
+// Under the lock that serializes every decision to take cores for a helper, as
+// ensure's serializes a spec's jobs.
 func (w *Worker) insertHelper(ctx context.Context, job claimed, chunk, start int) (done bool, err error) {
 	raw, err := json.Marshal(job.Spec)
 	if err != nil {
 		return true, err
 	}
 	size := w.chunkSize()
-	alive := liveTiming("counted").Seconds()
 	err = pgx.BeginFunc(ctx, w.Pool, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended('helpers', 0)), pg_advisory_xact_lock(hashtextextended($1, 0))", job.Hash); err != nil {
 			return err
 		}
 		var taken, watched bool
-		var free int
 		err := tx.QueryRow(ctx, `SELECT
 			EXISTS (SELECT 1 FROM transcode_jobs j WHERE j.spec_hash = $1 AND `+live("j")+`
 				AND (j.start_segment / $3 = $2 OR (j.start_segment < $2 * $3 AND j.next_segment >= $2 * $3 - 1 AND j.next_segment < ($2 + 1) * $3)))
 			-- A helper that failed in the chunk lately is not tried again until
 			-- failureMemory has passed: the viewer's own job makes the chunk.
 			OR EXISTS (SELECT 1 FROM transcode_jobs f WHERE f.spec_hash = $1 AND f.helper AND f.state = 'failed'
-				AND f.start_segment / $3 = $2 AND f.ended_at > now() - make_interval(secs => $7)),
-			EXISTS (SELECT 1 FROM transcode_viewers v WHERE v.spec_hash = $1 AND NOT v.stopped AND v.last_seen_at > now() - make_interval(secs => $4)),
-			`+freeSlots("$5", "$6", "$8")+`::int`,
-			job.Hash, chunk, size, w.idle().Seconds(), alive, orDefault(w.QueueTimeout, queueTimeout).Seconds(), failureMemory.Seconds(), playback.OutputVersion).Scan(&taken, &watched, &free)
+				AND f.start_segment / $3 = $2 AND f.ended_at > now() - make_interval(secs => $5)),
+			EXISTS (SELECT 1 FROM transcode_viewers v WHERE v.spec_hash = $1 AND NOT v.stopped AND v.last_seen_at > now() - make_interval(secs => $4))`,
+			job.Hash, chunk, size, w.idle().Seconds(), failureMemory.Seconds()).Scan(&taken, &watched)
 		if err != nil {
 			return err
 		}
-		switch {
-		case taken:
-			return nil
-		case !watched, free < 2:
-			done = true // A slot stays free for a viewer who has not asked yet.
+		if taken {
 			return nil
 		}
 		done = true
-		_, err = tx.Exec(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, helper, output_version)
-			VALUES ($1, $2, 'helper', $3, $3, true, $4)`, job.Hash, raw, start, playback.OutputVersion)
+		if !watched {
+			return nil
+		}
+		fits, err := roomForHelper(ctx, tx, orDefault(w.QueueTimeout, queueTimeout), job.Spec.Cost())
+		if err != nil || !fits {
+			return err
+		}
+		_, err = tx.Exec(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, helper, output_version, cost)
+			VALUES ($1, $2, 'helper', $3, $3, true, $4, $5)`, job.Hash, raw, start, playback.OutputVersion, job.Spec.Cost())
 		return err
 	})
 	if err == nil && done {
@@ -164,26 +154,22 @@ func (w *Worker) chunkFree(ctx context.Context, job claimed, next int) (bool, er
 	return !taken, err
 }
 
-// preemptHelper cancels one helper if no slot is free for the viewer's job
-// about to be inserted, so a viewer never waits behind a helper. A queued
-// helper goes first, else the running one furthest ahead, and only one whose
-// slot freeSlots counts (queued, or running on a live worker): cancelling a
-// dead worker's helper would free nothing. Only helpers are cancelled; a
-// viewer's job is never. It reports whether it cancelled one, so the caller
-// can send preemptHint once the transaction commits and the helper stops at
-// once rather than at its next heartbeat. What the helper stored stays, and
-// the rest of its chunk is made when a viewer reaches it, as after a seek.
-// Only a helper of the viewer's output version is cancelled, and only the slots
-// of that version are counted: another version's free slots are none for the
-// viewer's job. Called under the helpers lock. The outer state test is not redundant: a
-// helper that finished after the subquery chose it is re-checked on its new
-// row, so it stays done rather than turning cancelled.
-func preemptHelper(ctx context.Context, tx pgx.Tx, queue time.Duration) (bool, error) {
-	tag, err := tx.Exec(ctx, `UPDATE transcode_jobs SET state = 'cancelled', error = 'a new viewer needed its slot', ended_at = now() WHERE id = (
-			SELECT h.id FROM transcode_jobs h WHERE h.helper AND h.output_version = $3 AND (h.state = 'queued' AND h.created_at > now() - make_interval(secs => $2)
-				OR h.state = 'running' AND h.lease_expires_at > now()
-					AND h.worker IN (SELECT id FROM transcode_nodes WHERE seen_at > now() - make_interval(secs => $1)))
-			ORDER BY h.state = 'queued' DESC, h.start_segment DESC LIMIT 1)
-		AND state IN ('queued', 'running') AND `+freeSlots("$1", "$2", "$3")+` < 1`, liveTiming("counted").Seconds(), queue.Seconds(), playback.OutputVersion)
-	return tag.RowsAffected() > 0, err
+// roomForHelper says whether a helper of the cost fits on a worker, with the
+// queued jobs counted as placed, and leaves room for a viewer who has not asked
+// yet: a job of the same cost still fits somewhere after it. Under the helpers
+// lock, so that helpers decided at once do not each see the room the others take.
+func roomForHelper(ctx context.Context, tx pgx.Tx, queue time.Duration, cost float64) (bool, error) {
+	nodes, jobs, err := readCapacity(ctx, tx, capQuery{Filter: "true", Queue: queue})
+	if err != nil {
+		return false, err
+	}
+	all := func(capJob) bool { return true }
+	l := newLedger(nodes, jobs, all)
+	l.placeQueued(jobs, all)
+	helper := capJob{Cost: cost}
+	if _, placed := l.place(helper); !placed {
+		return false, nil
+	}
+	_, spare := l.room(helper)
+	return spare, nil
 }

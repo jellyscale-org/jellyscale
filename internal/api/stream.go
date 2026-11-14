@@ -359,7 +359,7 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 			s.Log.Warn("offering a running transcode though the stores may differ", "item", spec.Item, "reason", mismatch, "error", mismatchErr)
 		}
 	case s.Transcode != nil:
-		reason, err = s.Transcode.Unavailable(r.Context(), spec.Hash(), user.User.ID, user.DeviceID)
+		reason, err = s.Transcode.Unavailable(r.Context(), spec, user.User.ID, user.DeviceID)
 	default: // A replica with no transcodeStore asks only whether the stores differ.
 		if reason, err = transcode.StoreMismatch(r.Context(), s.Pool); err == nil && reason == "" {
 			playbackDecisions.WithLabelValues("direct_play").Inc()

@@ -210,7 +210,7 @@ func (r *rig) insertRunning(t *testing.T, hash, worker string, version int, help
 
 // The worker of the viewer's version is full of a viewer and a helper, and a
 // worker of another version is idle: the next viewer preempts the helper,
-// since the idle slots are no slot for its job.
+// since the idle cores are none for its job.
 func TestAnIdleWorkerOfAnotherVersionIsNoSlotForAViewerSoAHelperIsPreempted(t *testing.T) {
 	r := newRig(t, nil)
 	r.insertNode(t, "own", 2, playback.OutputVersion)
@@ -290,7 +290,7 @@ func TestUnavailableCountsOnlySlotsOfTheViewersVersion(t *testing.T) {
 	r.insertNode(t, "other", 3, anotherVersion)
 	r.insertRunning(t, "specA", "own", playback.OutputVersion, false)
 	j := r.jobs(t)
-	reason, err := j.Unavailable(context.Background(), r.hash, r.user, "device")
+	reason, err := j.Unavailable(context.Background(), r.spec, r.user, "device")
 	if err != nil {
 		t.Fatal(err)
 	}
