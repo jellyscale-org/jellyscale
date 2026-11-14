@@ -70,6 +70,19 @@ func (o *Outage) Recent(d time.Duration) bool {
 	return o.away || time.Since(o.backAt) < d
 }
 
+// AwayFor is how long Postgres has been away without a break, 0 when it is not.
+func (o *Outage) AwayFor() time.Duration {
+	if o == nil {
+		return 0
+	}
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if !o.away {
+		return 0
+	}
+	return time.Since(o.since)
+}
+
 // Total is how long Postgres has been away in all, the present outage included.
 func (o *Outage) Total() time.Duration {
 	if o == nil {

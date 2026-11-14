@@ -1,44 +1,133 @@
 // A small reverse proxy standing in for the production ingress.
-// Media, images and file downloads go to the stream replica; everything else, WebSocket
+// Media, images and file downloads go to the stream replicas; everything else, WebSocket
 // included, round-robins across the api replicas. Paths match case-insensitively.
-// Usage: node router.mjs <listen_port> <stream_port> <api_port>[,<api_port>...]
+// Like an ingress, it polls GET /readyz of every replica every 250 ms and sends nothing to
+// one that does not answer (a refused connection) or answers 503, retries a GET or HEAD on
+// another replica when the first fails before it has sent a response header (as nginx does with
+// proxy_next_upstream error), and any request when the connection is refused, and answers 503
+// itself when no replica is ready. A replica that answers anything else (404 from one built before
+// /readyz existed) counts as ready.
+// Every response carries x-routed-to ("stream", "api1", "api2", by place in the list) and
+// x-backend, the replica's port, also on the 502 it answers when a replica dies under a request.
+// Usage: node router.mjs <listen_port> <stream_port>[,<stream_port>...] <api_port>[,<api_port>...]
+//
+// A scenario that kills or rolls replicas controls it on its own path, which no client uses:
+//   PUT /__router  {"api": [ports], "stream": [ports], "throttle": bytesPerSecond}   a part may be left out
+//   PUT /__router  {"reset": true}                                                   the lists the router started with
+//   GET /__router                                                                    {"api": [{port, up}], "stream": [...], "throttle": n}
+// throttle slows the direct-play response of every stream replica (/Videos/<id>/stream) to that
+// many bytes a second, so that a film is still being downloaded when a replica dies; 0 is off.
 import http from "node:http";
 import net from "node:net";
 
-const [listenPort, streamPort, apiPorts] = process.argv.slice(2);
-const apis = apiPorts.split(",").map(Number);
-let next = 0;
+const [listenPort, streamPorts, apiPorts] = process.argv.slice(2);
+const initial = { stream: streamPorts.split(",").map(Number), api: apiPorts.split(",").map(Number) };
+const backends = { stream: [], api: [] };
+let throttle = 0;
+const next = { stream: 0, api: 0 };
+
+function setBackends(role, ports) {
+  backends[role] = ports.map((port) => backends[role].find((b) => b.port === port) ?? { port, up: false });
+}
+for (const role of ["stream", "api"]) setBackends(role, initial[role]);
 
 const isStreamPath = (url) => /^\/(videos\/|playback\/bitratetest(\?|$)|items\/[^/]+\/(images(\/|\?|$)|download(\?|$)))/i.test(url);
+const isDirectPlay = (url) => /^\/videos\/[^/]+\/stream/i.test(url);
 
-function pick(url) {
-  if (isStreamPath(url)) return { port: Number(streamPort), name: "stream" };
-  const index = next++ % apis.length;
-  return { port: apis[index], name: `api${index + 1}` };
+function check(backend) {
+  return new Promise((resolve) => {
+    const request = http.get({ host: "127.0.0.1", port: backend.port, path: "/readyz", agent: false, timeout: 500 }, (response) => {
+      response.resume();
+      backend.up = response.statusCode !== 503;
+      resolve();
+    });
+    request.on("timeout", () => request.destroy());
+    request.on("error", () => { backend.up = false; resolve(); });
+  });
+}
+const pollAll = () => Promise.all([...backends.stream, ...backends.api].map(check));
+await pollAll();
+setInterval(pollAll, 250).unref();
+
+// The ready replicas of the role that were not tried yet, the next in turn first.
+function pick(url, tried = []) {
+  const role = isStreamPath(url) ? "stream" : "api";
+  const ready = backends[role].filter((b) => b.up && !tried.includes(b));
+  if (!ready.length) return null;
+  const backend = ready[next[role]++ % ready.length];
+  return { backend, name: role === "stream" ? "stream" : `api${backends.api.indexOf(backend) + 1}` };
+}
+
+function control(req, res) {
+  const chunks = [];
+  req.on("data", (c) => chunks.push(c));
+  req.on("end", () => {
+    if (req.method === "PUT") {
+      const body = JSON.parse(Buffer.concat(chunks).toString() || "{}");
+      if (body.reset) { setBackends("stream", initial.stream); setBackends("api", initial.api); throttle = 0; }
+      for (const role of ["stream", "api"]) if (body[role]) setBackends(role, body[role]);
+      if (body.throttle !== undefined) throttle = body.throttle;
+      pollAll();
+    }
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ stream: backends.stream, api: backends.api, throttle }));
+  });
 }
 
 const server = http.createServer((req, res) => {
-  const target = pick(req.url);
+  if (req.url.startsWith("/__router")) return control(req, res);
+  // The body is read first, so a request can go to another replica when the first one is not there.
+  const chunks = [];
+  req.on("data", (c) => chunks.push(c));
+  req.on("end", () => forward(req, res, Buffer.concat(chunks), []));
+});
+
+function forward(req, res, body, tried) {
+  const target = pick(req.url, tried);
+  if (!target) {
+    res.writeHead(tried.length ? 502 : 503, { "x-routed-to": "none" });
+    return res.end();
+  }
+  const { backend, name } = target;
   const upstream = http.request(
-    { host: "127.0.0.1", port: target.port, method: req.method, path: req.url, headers: req.headers },
+    { host: "127.0.0.1", port: backend.port, method: req.method, path: req.url, headers: req.headers, agent: false },
     (response) => {
-      res.writeHead(response.statusCode, { ...response.headers, "x-routed-to": target.name });
-      response.pipe(res);
+      res.writeHead(response.statusCode, { ...response.headers, "x-routed-to": name, "x-backend": String(backend.port) });
+      if (throttle && isDirectPlay(req.url)) {
+        response.on("data", (chunk) => {
+          res.write(chunk);
+          response.pause();
+          setTimeout(() => response.resume(), (chunk.length / throttle) * 1000);
+        });
+        response.on("end", () => res.end());
+      } else {
+        response.pipe(res);
+      }
+      // A replica that dies under a response ends it for the client too, as a dropped connection does.
+      response.on("aborted", () => res.destroy());
+      response.on("error", () => res.destroy());
       // A client that goes away must cancel the upstream read.
       res.on("close", () => response.destroy());
     });
-  upstream.on("error", () => {
-    if (!res.headersSent) res.writeHead(502);
+  upstream.on("error", (error) => {
+    if (res.headersSent) return res.destroy();
+    backend.up = false;
+    // A replica that refused the connection got nothing; a GET or HEAD is safe to ask another replica for.
+    if (error.code === "ECONNREFUSED" || req.method === "GET" || req.method === "HEAD") return forward(req, res, body, [...tried, backend]);
+    res.writeHead(502, { "x-routed-to": name, "x-backend": String(backend.port) });
     res.end();
   });
   res.on("close", () => upstream.destroy());
-  req.pipe(upstream);
-});
+  upstream.end(body);
+}
 
 // WebSocket upgrades are tunnelled byte for byte.
-server.on("upgrade", (req, socket, head) => {
-  const target = pick(req.url);
-  const upstream = net.connect(target.port, "127.0.0.1", () => {
+server.on("upgrade", (req, socket, head) => tunnel(req, socket, head, []));
+
+function tunnel(req, socket, head, tried) {
+  const target = pick(req.url, tried);
+  if (!target) return socket.destroy();
+  const upstream = net.connect(target.backend.port, "127.0.0.1", () => {
     let raw = `${req.method} ${req.url} HTTP/1.1\r\n`;
     for (let i = 0; i < req.rawHeaders.length; i += 2) raw += `${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}\r\n`;
     upstream.write(`${raw}\r\n`);
@@ -46,9 +135,13 @@ server.on("upgrade", (req, socket, head) => {
     socket.pipe(upstream);
     upstream.pipe(socket);
   });
-  upstream.on("error", () => socket.destroy());
+  upstream.on("error", (error) => {
+    target.backend.up = false;
+    if (error.code === "ECONNREFUSED" && !socket.destroyed) return tunnel(req, socket, head, [...tried, target.backend]);
+    socket.destroy();
+  });
   socket.on("error", () => upstream.destroy());
   socket.on("close", () => upstream.destroy());
-});
+}
 
 server.listen(Number(listenPort), "127.0.0.1", () => console.log(`router listening on ${listenPort}`));
