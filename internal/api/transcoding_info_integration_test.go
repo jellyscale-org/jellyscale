@@ -109,10 +109,7 @@ func specOf(t *testing.T, e *env, transcodingURL string) (playback.Spec, string)
 	if err != nil || !found {
 		t.Fatal(err)
 	}
-	media, err := playbackSource(source)
-	if err != nil {
-		t.Fatal(err)
-	}
+	media := playbackSource(source)
 	if media.Keyframes, media.VideoEnd, err = e.apis[0].Items.Keyframes(context.Background(), source.ID); err != nil {
 		t.Fatal(err)
 	}

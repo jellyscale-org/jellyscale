@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"jellyscale/internal/media"
 	"jellyscale/internal/store"
 )
 
@@ -127,12 +128,12 @@ func objects(keys ...string) []store.Object {
 
 // listing is externalStreams as the scan uses it: the paths and indices it gave
 // in index order, the streams to keep for the next scan, and the counter.
-func listing(files []store.Object, old []map[string]any, own, counter int) (string, []map[string]any, int) {
+func listing(files []store.Object, old []media.MediaStream, own, counter int) (string, []media.MediaStream, int) {
 	streams, next := externalStreams(store.Object{Key: "Film/Film.mkv"}, sidecarSet{files: files}, old, own, counter)
-	slices.SortFunc(streams, func(a, b map[string]any) int { return indexOf(a) - indexOf(b) })
+	slices.SortFunc(streams, func(a, b media.MediaStream) int { return a.Index - b.Index })
 	var out []string
 	for _, stream := range streams {
-		out = append(out, fmt.Sprintf("%d=%s", stream["Index"], strings.TrimSuffix(strings.TrimPrefix(stream["Path"].(string), "Film/Film."), ".srt")))
+		out = append(out, fmt.Sprintf("%d=%s", stream.Index, strings.TrimSuffix(strings.TrimPrefix(stream.Path, "Film/Film."), ".srt")))
 	}
 	return strings.Join(out, " "), streams, next
 }
@@ -195,21 +196,21 @@ func TestIndicesAreNeverReused(t *testing.T) {
 func TestUnreadableLastsUntilTheFileChanges(t *testing.T) {
 	files := objects("en")
 	_, streams, counter := listing(files, nil, 2, 0)
-	streams[0]["Unreadable"] = true
+	streams[0].Unreadable = true
 	again, next := externalStreams(store.Object{Key: "Film/Film.mkv"}, sidecarSet{files: files}, streams, 2, counter)
-	if again[0]["Unreadable"] != true || indexOf(again[0]) != 2 || next != counter {
+	if !again[0].Unreadable || again[0].Index != 2 || next != counter {
 		t.Errorf("same file: %v", again)
 	}
 	edited := []store.Object{{Key: files[0].Key, Size: 11, ETag: files[0].ETag}}
 	changed, _ := externalStreams(store.Object{Key: "Film/Film.mkv"}, sidecarSet{files: edited}, streams, 2, counter)
-	if changed[0]["Unreadable"] != nil || indexOf(changed[0]) != 2 || changed[0]["Fingerprint"] == again[0]["Fingerprint"] {
+	if changed[0].Unreadable || changed[0].Index != 2 || changed[0].Fingerprint == again[0].Fingerprint {
 		t.Errorf("edited file: %v", changed)
 	}
 	// It is out of the lists clients get.
 	if got := playableStreams(again); len(got) != 0 {
 		t.Errorf("an unreadable file is listed: %v", got)
 	}
-	if got := playableStreams(changed); len(got) != 1 || got[0]["Fingerprint"] != nil {
+	if got := playableStreams(changed); len(got) != 1 || got[0].Fingerprint != "" {
 		t.Errorf("a changed file: %v", got)
 	}
 }
@@ -219,17 +220,17 @@ func TestUnreadableLastsUntilTheFileChanges(t *testing.T) {
 // subtitle as a position in MediaStreams as well as an Index, and the two have
 // to agree for the file to be started with.
 func TestFilesAreNumberedWhereTheListedTracksEnd(t *testing.T) {
-	film := []map[string]any{
-		{"Index": 0, "Type": "Video"}, {"Index": 1, "Type": "Audio"},
-		{"Index": 2, "Type": "Attachment", "MimeType": "font/ttf"}, {"Index": 3, "Type": "Attachment", "MimeType": "font/ttf"},
+	film := []media.MediaStream{
+		{Index: 0, Type: "Video"}, {Index: 1, Type: "Audio"},
+		{Index: 2, Type: "Attachment", MimeType: "font/ttf"}, {Index: 3, Type: "Attachment", MimeType: "font/ttf"},
 	}
 	external, next := externalStreams(store.Object{Key: "Film/Film.mkv"}, sidecarSet{files: objects("en", "fr")}, nil, nextIndex(film), 0)
-	if got := indexOf(external[0]); got != 2 || next != 4 {
+	if got := external[0].Index; got != 2 || next != 4 {
 		t.Fatalf("first file %d, counter %d, want 2 and 4", got, next)
 	}
 	listed := playableStreams(append(film, external...))
 	for position, stream := range listed {
-		if indexOf(stream) != position {
+		if stream.Index != position {
 			t.Errorf("stream %v is at position %d", stream, position)
 		}
 	}

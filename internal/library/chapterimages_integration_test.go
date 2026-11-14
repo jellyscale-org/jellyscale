@@ -320,7 +320,7 @@ func TestChapterImagesSurviveAReprobe(t *testing.T) {
 	finishJobs(t, f)
 	// Stored before chapters were read: the scan probes the film again and
 	// rewrites its media source row.
-	if _, err := f.pool.Exec(context.Background(), "UPDATE media_sources SET chapters = NULL"); err != nil {
+	if _, err := f.pool.Exec(context.Background(), "UPDATE media_sources SET chapters = NULL, probe_version = 0"); err != nil {
 		t.Fatal(err)
 	}
 	f.scan(t)

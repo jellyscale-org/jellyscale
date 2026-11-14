@@ -5,20 +5,21 @@ import (
 	"testing"
 
 	"jellyscale/internal/items"
+	"jellyscale/internal/media"
 )
 
 // A file beside the film is named by its own fingerprint as well as the film's
 // ETag: an edit is read fresh, and another file taking its index is not
 // mistaken for it. A track inside the film keeps the key it always had.
 func TestKeyOfAFileHasItsFingerprint(t *testing.T) {
-	src := items.Source{ID: "s", ETag: "film", Streams: []byte(`[
-		{"Index": 2, "Type": "Subtitle"},
-		{"Index": 3, "Type": "Subtitle", "IsExternal": true, "Path": "a.srt", "Fingerprint": "one"}]`)}
+	src := items.Source{ID: "s", ETag: "film", Streams: []media.MediaStream{
+		{Index: 2, Type: "Subtitle"},
+		{Index: 3, Type: "Subtitle", IsExternal: true, Path: "a.srt", Fingerprint: "one"}}}
 	inside, beside := Key(src, 2), Key(src, 3)
 	if !strings.HasSuffix(inside, "/2.json") || !strings.HasSuffix(beside, "/3-one.json") {
 		t.Errorf("keys: %s %s", inside, beside)
 	}
-	src.Streams = []byte(strings.Replace(string(src.Streams), `"one"`, `"two"`, 1))
+	src.Streams[1].Fingerprint = "two"
 	if Key(src, 3) == beside || Key(src, 2) != inside {
 		t.Errorf("keys after the file changed: %s %s", Key(src, 3), Key(src, 2))
 	}

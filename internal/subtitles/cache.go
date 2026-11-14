@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"jellyscale/internal/items"
+	"jellyscale/internal/media"
 	"jellyscale/internal/store"
 )
 
@@ -45,16 +45,8 @@ func PassKey(src items.Source) string {
 // single pass over it extracts. Files beside the film, and tracks found
 // unreadable, are not in it.
 func TextTracks(src items.Source) []int {
-	var streams []struct {
-		Index                                        int
-		Type                                         string
-		IsTextSubtitleStream, IsExternal, Unreadable bool
-	}
-	if json.Unmarshal(src.Streams, &streams) != nil {
-		return nil
-	}
 	var indexes []int
-	for _, s := range streams {
+	for _, s := range src.Streams {
 		if s.Type == "Subtitle" && s.IsTextSubtitleStream && !s.IsExternal && !s.Unreadable {
 			indexes = append(indexes, s.Index)
 		}
@@ -233,17 +225,7 @@ func streamsIn(err error, re *regexp.Regexp) []int {
 // Unreadable says whether src's stream index has been found not to be
 // extractable (see library.MarkUnreadable).
 func Unreadable(src items.Source, index int) bool {
-	var streams []struct {
-		Index      int
-		Unreadable bool
-	}
-	if json.Unmarshal(src.Streams, &streams) != nil {
-		return false
-	}
-	return slices.ContainsFunc(streams, func(s struct {
-		Index      int
-		Unreadable bool
-	}) bool {
+	return slices.ContainsFunc(src.Streams, func(s media.MediaStream) bool {
 		return s.Index == index && s.Unreadable
 	})
 }

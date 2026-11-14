@@ -41,3 +41,4 @@ cmd/jellyscale/failover_integration_test.go	if failedAt.Sub(began) < 20*time.Sec
 cmd/jellyscale/failover_integration_test.go	if time.Since(killedAt) > 2*time.Minute+3*time.Second {	a hang bound: the sweep moves ownership about 35 s after the kill, and this ends the wait at more than three times that
 cmd/jellyscale/failover_integration_test.go	if time.Since(killedAt) > 70*time.Second && owner(t, pool, doomed) != dead {	a poll that ends once the product's own sweep timers (30 s of silence, a sweep every 5 s) have had time to run: it waits on timers, and a slower machine only makes it wait longer
 test/e2e/failover.mjs	ws.on("close", () => { socket.closedAt = Date.now(); });	records when the socket closed, for the log; nothing is compared with a bound here
+internal/library/probe_version_integration_test.go	if time.Since(began) > 30*time.Second {	a hang bound: the wait ends when the film is stored, which takes a moment; this only stops a scan that never stores it

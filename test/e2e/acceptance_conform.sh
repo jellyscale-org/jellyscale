@@ -24,7 +24,7 @@ for gate in $gates; do
   check "$gate leaves its responses" 1 "$([[ -s $work/logs-good/$gate/responses.jsonl ]] && echo 1 || echo 0)"
 done
 
-# mutate <name> <file> <sed script> <marker> <route> <json path> <field> [<regex a baseline response of the route must also match>]
+# mutate <name> <file or directory/> <sed script> <marker> <route> <json path> <field> [<regex a baseline response of the route must also match>]
 # A gate "receives" a response when its baseline responses.jsonl holds a line for the route that
 # matches the regex too (the #95 mutant only bites a reply that lists a second audio stream, which
 # only a transcode offer of a film with two audio tracks does).
@@ -34,8 +34,11 @@ mutate() {
   rm -rf "$mutant" && mkdir -p "$mutant"
   tar -C "$repo" --exclude=./.git --exclude=./.results --exclude=./web-dist -cf - . | tar -C "$mutant" -xf - || exit 1
   ln -s "$repo/web-dist" "$mutant/web-dist"
-  sed -i "$script" "$mutant/$file"
-  check "($name) the mutation is in place" 1 "$(grep -c -F -- "$marker" "$mutant/$file")"
+  # A file, or a directory (a name ending in /) whose non-test Go files are all the typed model's.
+  targets=("$mutant/$file")
+  [[ $file == */ ]] && targets=($(ls "$mutant/$file"*.go | grep -v '_test\.go$'))
+  sed -i "$script" "${targets[@]}"
+  check "($name) the mutation is in place" 1 "$([[ $(cat "${targets[@]}" | grep -c -F -- "$marker") -gt 0 ]] && echo 1 || echo 0)"
   want="" got=""
   rx=$(sed -E 's/\{[^}]*\}/[0-9a-fA-F-]{32,36}/g; s/^[A-Z]+ //' <<<"$route")
   for gate in $gates; do
@@ -56,10 +59,11 @@ mutate() {
   rm -rf "$mutant" "$work/bad-$name"
 }
 mutate lastcheckin internal/api/users.go 's/"LastPlaybackCheckIn": "0001/"LastPlaybackCheckInX": "0001/' '"LastPlaybackCheckInX"' 'POST /Users/AuthenticateByName' '$.SessionInfo' LastPlaybackCheckIn
-# The scan writes SupportsDirectPlay itself; the mutant drops the eight source fields it does not write.
-mutate itemfields internal/items/sdk.go 's/^\tfill(source, sourceDefaults)$/\t_ = sourceDefaults \/\/ mutant/' '_ = sourceDefaults // mutant' 'GET /Items/{itemId}' 'MediaSources[0]' HasSegments
-# #95: the audio streams planPlayback adds from the full probe get their fields from the loop at the end of
-# the PlaybackInfo handler; with it gone, the second and later streams of a film with two audio tracks lack them.
-# Which index they have depends on the film, so the report is asked for 'MediaStreams[' and the field only.
-mutate secondstream internal/api/stream.go 's/^\t\titems.WithSDKFields(source)$/\t\t_ = source \/\/ mutant/' '_ = source // mutant' 'POST /Items/{itemId}/PlaybackInfo' 'MediaStreams[' IsInterlaced 'Type[^A-Za-z]+Audio.*Type[^A-Za-z]+Audio'
+# #94: a required field of the typed MediaSource (internal/media, JS-086) that the item's details lose: the
+# model keeps each under a tag of its own and the mutant renames one.
+mutate itemfields internal/media/ 's/json:"HasSegments"/json:"HasSegmentsX"/' 'json:"HasSegmentsX"' 'GET /Items/{itemId}' 'MediaSources[0]' HasSegments
+# #95: a required field of the typed MediaStream, lost on the audio streams a transcode offer adds from the full
+# probe and on every other stream. Which index they have depends on the film, so the report is asked for
+# 'MediaStreams[' and the field only; only a reply that lists a second audio stream receives the route.
+mutate secondstream internal/media/ 's/json:"IsInterlaced"/json:"IsInterlacedX"/' 'json:"IsInterlacedX"' 'POST /Items/{itemId}/PlaybackInfo' 'MediaStreams[' IsInterlaced 'Type[^A-Za-z]+Audio.*Type[^A-Za-z]+Audio'
 exit $((fails > 0))

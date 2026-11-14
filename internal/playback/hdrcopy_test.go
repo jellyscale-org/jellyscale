@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"jellyscale/internal/media"
 )
 
 // hdrCopyCapture is compat/captures/hdr-copy-12.4.json: what Jellyfin 12.4 did
@@ -199,8 +201,8 @@ func TestStreamServesEveryCopyThePreviousReleaseOffered(t *testing.T) {
 		"hevc sdr":                 {"hevc", func(v *Stream) { v.VideoRangeType = "SDR" }},
 		"av1 sdr":                  {"av1", func(v *Stream) { v.VideoRangeType = "SDR" }},
 		"h264 sdr":                 {"h264", func(v *Stream) { v.VideoRangeType = "SDR" }},
-		"h264 hdr10":               {"h264", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "HDR10", PQ }},
-		"h264 hlg":                 {"h264", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "HLG", HLG }},
+		"h264 hdr10":               {"h264", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "HDR10", media.Ptr(PQ) }},
+		"h264 hlg":                 {"h264", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "HLG", media.Ptr(HLG) }},
 		"dolby vision 8.1":         {"hevc", func(v *Stream) { v.VideoRangeType = "DOVIWithHDR10" }},
 		"dolby vision 8.4":         {"hevc", func(v *Stream) { v.VideoRangeType = "DOVIWithHLG" }},
 		"dolby vision 8.2":         {"hevc", func(v *Stream) { v.VideoRangeType = "DOVIWithSDR" }},

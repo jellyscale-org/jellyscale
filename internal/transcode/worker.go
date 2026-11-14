@@ -407,11 +407,7 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	if !found || source.ETag != job.Spec.ETag {
 		return errors.New("the source file has changed or is gone")
 	}
-	streams, err := playback.ParseStreams(source.Streams)
-	if err != nil {
-		return err
-	}
-	film := playback.Source{RunTimeTicks: source.RunTimeTicks, Streams: streams}
+	film := playback.Source{RunTimeTicks: source.RunTimeTicks, Streams: source.Streams}
 	if job.Spec.Subtitle != nil && film.SubtitleFingerprint(*job.Spec.Subtitle) != job.Spec.SubtitleFingerprint {
 		return errors.New("the subtitle file has changed or is gone")
 	}

@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"jellyscale/internal/media"
 )
 
 // Unlimited is what jellyfin-web sends as MaxStreamingBitrate for Auto.
@@ -119,64 +121,7 @@ func ParseRequest(body []byte) (Request, error) {
 }
 
 // Stream is one probed stream, as the scanner stores it.
-type Stream struct {
-	Index        int
-	Type         string
-	Codec        string
-	Profile      string
-	Level        int
-	IsInterlaced bool
-	// VideoRangeType is Jellyfin's: SDR, HDR10, HDR10Plus, HLG, DOVI (profile 5)
-	// or one of the DOVIWith... types that name the base layer of the other
-	// Dolby Vision profiles. It is empty on a source scanned before the scanner
-	// recorded it; the level, field order and range then pass their conditions,
-	// so direct play continues until a rescan.
-	VideoRangeType string
-	// ColorTransfer is ffprobe's name for the transfer function: smpte2084 for
-	// PQ, arib-std-b67 for HLG. It is empty when the file doesn't say, and on a
-	// source scanned before it was recorded, which is never tone mapped.
-	ColorTransfer string
-	// DvProfile, DvLevel and DvBlSignalCompatibilityId are the Dolby Vision
-	// configuration, which name the stream in the master playlist.
-	DvProfile, DvLevel, DvBlSignalCompatibilityId int
-	// BitDepth is 8, 10 or 12, or 0 on a source scanned before it was recorded.
-	BitDepth      int
-	Width, Height int
-	Channels      int
-	// Bitrate is the stream's own bits per second, or 0 when the file doesn't
-	// say. A copied track is counted against the bitrate cap by it.
-	Bitrate          int64 `json:"BitRate"`
-	IsDefault        bool
-	AverageFrameRate float64
-	// DurationTicks is how long the video stream runs; 0 if the probe didn't
-	// say.
-	DurationTicks int64
-	// IsTextSubtitleStream is true for a subtitle track that can be extracted
-	// as text.
-	IsTextSubtitleStream bool
-	// IsImageSubtitleStream is true for a bitmap track that can be drawn into a
-	// transcode (PGS, VobSub, DVB), and so is listed.
-	IsImageSubtitleStream bool
-	// Fingerprint identifies the version of the subtitle file beside the film
-	// that the track is; empty for a track inside the film.
-	Fingerprint string
-	// Path is the subtitle file's key in the media store, and SubPath the .sub
-	// of a VobSub pair whose .idx Path is.
-	Path, SubPath string
-	// File is where a worker put a copy of the external image track to read it
-	// from. It is never stored.
-	File string `json:"-"`
-	// OpenAt is set by a worker for a track inside the film whose cue points
-	// the scan read. For a run whose first frame is at time t (seconds on the
-	// film's clock) it says when the run must open the film to read the picture
-	// showing there, t if none is. Nil: the times are not known, and the run
-	// opens the film a fixed time early (transcode.cueLookback). It is never
-	// stored.
-	OpenAt func(t float64) (float64, error) `json:"-"`
-	// Unreadable is a subtitle file a worker found it cannot read, which stays
-	// so until the file changes.
-	Unreadable bool
-}
+type Stream = media.MediaStream
 
 // Source is what the decision knows about a file.
 type Source struct {
@@ -241,7 +186,7 @@ func (s Source) VideoCodec() string {
 // H.264 in HDR, which the api never offered a copy of.
 func (s Source) CanCopy() bool {
 	video, _ := s.video()
-	_, dolbyVision := video.baseLayer()
+	_, dolbyVision := baseLayer(video)
 	return s.canServeCopy() && (video.VideoRangeType == "SDR" || dolbyVision || (video.Codec != "h264" && plainHDR(video.VideoRangeType)))
 }
 
@@ -263,14 +208,14 @@ func (s Source) canServeCopy() bool {
 	if !s.Copyable() || !cut || s.codecs() == "" {
 		return false
 	}
-	_, dolbyVision := video.baseLayer()
+	_, dolbyVision := baseLayer(video)
 	return video.Codec == "h264" || video.VideoRangeType == "SDR" || dolbyVision || plainHDR(video.VideoRangeType)
 }
 
 // baseLayer is the range type of the picture a copy of a Dolby Vision file
 // sends: its base layer, which a client without Dolby Vision plays. It is false
 // for any other file, and for profile 5, whose base layer is no picture.
-func (v Stream) baseLayer() (string, bool) {
+func baseLayer(v Stream) (string, bool) {
 	switch v.VideoRangeType {
 	case "DOVIWithHDR10", "DOVIWithEL":
 		return "HDR10", true
@@ -281,7 +226,7 @@ func (v Stream) baseLayer() (string, bool) {
 	case "DOVIWithSDR":
 		return "SDR", true
 	case "DOVIInvalid":
-		switch v.ColorTransfer {
+		switch v.Transfer() {
 		case PQ:
 			return "HDR10", true
 		case HLG:
@@ -297,7 +242,7 @@ func (v Stream) baseLayer() (string, bool) {
 // Dolby Vision may play it as, as Jellyfin writes them.
 func (s Source) copiedRange() (videoRange, supplemental string) {
 	video, _ := s.video()
-	base, dolbyVision := video.baseLayer()
+	base, dolbyVision := baseLayer(video)
 	if !dolbyVision {
 		base = video.VideoRangeType
 	}
@@ -311,12 +256,12 @@ func (s Source) copiedRange() (videoRange, supplemental string) {
 		}
 		return videoRange, supplemental
 	}
-	brand := map[int]string{1: "db1p", 4: "db4h"}[video.DvBlSignalCompatibilityId]
+	brand := map[int]string{1: "db1p", 4: "db4h"}[media.Val(video.DvBlSignalCompatibilityID)]
 	switch {
 	case video.VideoRangeType == "DOVIWithELHDR10Plus":
 		supplemental = s.codecs() + "/cdm4"
-	case brand != "" && strings.HasPrefix(video.VideoRangeType, "DOVIWith") && video.DvProfile != 7:
-		supplemental = fmt.Sprintf("%s.%02d.%02d/%s", map[string]string{"hevc": "dvh1", "av1": "dav1"}[video.Codec], video.DvProfile, video.DvLevel, brand)
+	case brand != "" && strings.HasPrefix(video.VideoRangeType, "DOVIWith") && media.Val(video.DvProfile) != 7:
+		supplemental = fmt.Sprintf("%s.%02d.%02d/%s", map[string]string{"hevc": "dvh1", "av1": "dav1"}[video.Codec], media.Val(video.DvProfile), media.Val(video.DvLevel), brand)
 	}
 	return videoRange, supplemental
 }
@@ -337,8 +282,8 @@ func (s Source) ToneMap() string {
 	if video.VideoRangeType == "DOVI" {
 		return ""
 	}
-	if video.ColorTransfer == PQ || video.ColorTransfer == HLG {
-		return video.ColorTransfer
+	if transfer := video.Transfer(); transfer == PQ || transfer == HLG {
+		return transfer
 	}
 	return ""
 }
@@ -456,10 +401,10 @@ const unknownAudioBitrate = 6_000_000
 func (s Source) copyAudio(p Params) (Stream, bool) {
 	stream, ok := s.audio(p.AudioIndex)
 	if !ok || !slices.Contains(p.AudioCodecs, stream.Codec) || audioCodecString(stream) == "" ||
-		stream.Channels < 1 || stream.Channels > p.MaxAudioChannels || stream.Bitrate > maxCopiedAudioBitrate {
+		stream.Channels < 1 || stream.Channels > p.MaxAudioChannels || stream.BitRate > maxCopiedAudioBitrate {
 		return Stream{}, false
 	}
-	bitrate := stream.Bitrate
+	bitrate := stream.BitRate
 	if bitrate <= 0 {
 		bitrate = unknownAudioBitrate
 	}
@@ -477,8 +422,8 @@ func (s Source) Ticks() int64 {
 }
 
 // ParseStreams reads media_sources.streams.
-func ParseStreams(raw []byte) ([]Stream, error) {
-	var streams []Stream
+func ParseStreams(raw []byte) ([]media.MediaStream, error) {
+	var streams []media.MediaStream
 	err := json.Unmarshal(raw, &streams)
 	return streams, err
 }
@@ -549,7 +494,7 @@ func (s Source) Stream(index int) *Stream {
 func (s Source) ImageSubtitle(index int) bool {
 	for _, stream := range s.Streams {
 		if stream.Type == "Subtitle" && stream.Index == index {
-			return stream.IsImageSubtitleStream
+			return stream.IsImage()
 		}
 	}
 	return false
@@ -711,7 +656,7 @@ func Decide(request Request, source Source, canTranscode bool) Decision {
 	// (HLG base) for a list of SDR and HDR10 and an 8.2 file (SDR base) for no
 	// list without HDR10 (compat/captures/dolby-vision-12.4.md).
 	sent := video
-	if _, ok := video.baseLayer(); ok {
+	if _, ok := baseLayer(video); ok {
 		sent.VideoRangeType = "HDR10"
 		if strings.HasSuffix(video.VideoRangeType, "HDR10Plus") {
 			sent.VideoRangeType = "HDR10Plus"
@@ -735,7 +680,7 @@ func Decide(request Request, source Source, canTranscode bool) Decision {
 		// A track that doesn't say its bitrate takes out of the cap what
 		// copyAudio assumed for it, and the URL's value stays within what
 		// ParseParams accepts, so a very low-rate track counts as the floor.
-		audio := copied.Bitrate
+		audio := copied.BitRate
 		if audio <= 0 {
 			audio = unknownAudioBitrate
 		}

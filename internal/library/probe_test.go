@@ -3,6 +3,8 @@ package library
 import (
 	"encoding/json"
 	"testing"
+
+	"jellyscale/internal/media"
 )
 
 // Two tracks in one language must read differently in a client's menu.
@@ -83,23 +85,28 @@ func TestChaptersAreNamedAndOrdered(t *testing.T) {
 // The item page and PlaybackInfo list the video stream with Jellyfin's range
 // labels and Dolby Vision fields, which jellyfin-web shows and decides by.
 func TestListedVideoStreamKeepsTheRangeLabels(t *testing.T) {
-	video := map[string]any{
-		"Index": 0, "Type": "Video", "Codec": "hevc", "Level": 63, "IsInterlaced": false, "DurationTicks": int64(200_000_000),
-		"VideoRange": "HDR", "VideoRangeType": "DOVIWithHDR10Plus", "VideoDoViTitle": "Dolby Vision Profile 8.1 (HDR10)",
-		"DvProfile": 8, "DvLevel": 10, "DvBlSignalCompatibilityId": 1, "Hdr10PlusPresentFlag": true,
-		"DisplayTitle": "360p HEVC Dolby Vision Profile 8.1 (HDR10)",
+	video := media.MediaStream{
+		Type: "Video", Codec: "hevc", Level: 63, DurationTicks: 200_000_000,
+		VideoRange: "HDR", VideoRangeType: "DOVIWithHDR10Plus", VideoDoViTitle: "Dolby Vision Profile 8.1 (HDR10)",
+		DvProfile: media.Ptr(8), DvLevel: media.Ptr(10), DvBlSignalCompatibilityID: media.Ptr(1), Hdr10PlusPresentFlag: media.Ptr(true),
+		DisplayTitle: "360p HEVC Dolby Vision Profile 8.1 (HDR10)",
 	}
-	listed := playableStreams([]map[string]any{video})
+	listed := playableStreams([]media.MediaStream{video})
 	if len(listed) != 1 {
 		t.Fatalf("%v", listed)
 	}
-	for key, want := range video {
-		switch key {
-		case "Level", "IsInterlaced", "DurationTicks":
-			continue // what the decision needs and no client listed
-		}
-		if listed[0][key] != want {
-			t.Errorf("%s is %v in the listed stream, want %v", key, listed[0][key], want)
-		}
+	// What the decision needs and no client listed is the only thing left out.
+	video.Level, video.DurationTicks = 0, 0
+	if got, want := encoded(t, listed[0]), encoded(t, video); got != want {
+		t.Errorf("the listed stream is %s, want %s", got, want)
 	}
+}
+
+func encoded(t *testing.T, stream media.MediaStream) string {
+	t.Helper()
+	raw, err := json.Marshal(stream)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(raw)
 }

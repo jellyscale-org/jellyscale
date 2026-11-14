@@ -11,6 +11,7 @@ import (
 
 	"jellyscale/internal/db"
 	"jellyscale/internal/items"
+	"jellyscale/internal/media"
 	"jellyscale/internal/store"
 )
 
@@ -252,35 +253,33 @@ func (s *Server) getItem(w http.ResponseWriter, r *http.Request) {
 
 // hideUndeliverable drops the text tracks from an item's DTO that no worker is
 // there to extract, and the fonts not stored yet (invariant 32). The DTO lists the first source's streams
-// twice, in MediaStreams and in MediaSources.
+// twice, in MediaStreams and in MediaSources. The repo leaves no attachments in
+// a DTO, so it is the stored sources that are made over: they have them, as
+// the candidates for listFonts.
 func (s *Server) hideUndeliverable(ctx context.Context, itemID string, dto map[string]any) error {
-	sources, _ := dto["MediaSources"].([]any)
-	stored, _, err := s.Items.MediaSources(ctx, itemID)
+	if _, ok := dto["MediaSources"]; !ok {
+		return nil
+	}
+	sources, _, err := s.Items.MediaSources(ctx, itemID)
 	if err != nil {
 		return err
 	}
-	for i, entry := range sources {
-		source, _ := entry.(map[string]any)
-		// The repo leaves no attachments in a DTO; the stored ones are the
-		// candidates for listFonts.
-		if k := slices.IndexFunc(stored, func(s map[string]any) bool { return s["Id"] == source["Id"] }); k >= 0 {
-			source["MediaAttachments"] = stored[k]["MediaAttachments"]
-		}
-		deliverable, err := s.deliverable(ctx, itemID, source)
+	for i := range sources {
+		source := &sources[i]
+		deliverable, err := s.deliverable(ctx, itemID, *source)
 		if err != nil {
 			return err
 		}
 		if err := s.listFonts(ctx, itemID, source, false); err != nil {
 			return err
 		}
-		streams, _ := source["MediaStreams"].([]any)
-		source["MediaStreams"] = slices.DeleteFunc(slices.Clone(streams), func(entry any) bool {
-			stream, _ := entry.(map[string]any)
-			return stream["Type"] == "Subtitle" && !deliverable(int(number(stream["Index"])))
+		source.MediaStreams = slices.DeleteFunc(slices.Clone(source.MediaStreams), func(stream media.MediaStream) bool {
+			return stream.Type == "Subtitle" && !deliverable(stream.Index)
 		})
-		if i == 0 {
-			dto["MediaStreams"] = source["MediaStreams"]
-		}
+	}
+	dto["MediaSources"] = sources
+	if len(sources) > 0 {
+		dto["MediaStreams"] = sources[0].MediaStreams
 	}
 	return nil
 }
