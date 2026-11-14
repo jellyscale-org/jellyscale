@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -31,6 +32,7 @@ type DBProxy struct {
 	refuse  bool
 	conns   map[net.Conn]struct{}
 	accepts int
+	delay   time.Duration // A round trip through the proxy takes this much longer, half in each direction.
 	trip    []byte        // When a statement holds this, the connections end instead of passing it on.
 	tripped chan struct{} // Closed when they did.
 }
@@ -81,6 +83,18 @@ func (p *DBProxy) Away() {
 func (p *DBProxy) Back() {
 	p.mu.Lock()
 	p.refuse = false
+	p.mu.Unlock()
+}
+
+// Delay makes every round trip through the proxy take d longer from now on, on
+// the connections that stand and the ones made later: what a congested network
+// or an overloaded database does, where nothing is refused and nothing ends. d
+// is split between the two directions, and zero ends the delay. Postgres is not
+// slowed: the test reads it directly, so what the delay did to the rows can be
+// looked at while it lasts.
+func (p *DBProxy) Delay(d time.Duration) {
+	p.mu.Lock()
+	p.delay = d
 	p.mu.Unlock()
 }
 
@@ -171,6 +185,12 @@ func (p *DBProxy) pipe(dst, src net.Conn, fromClient bool) {
 		n, err := src.Read(buf)
 		if n > 0 && fromClient && p.tripOn(buf[:n]) {
 			break
+		}
+		if n > 0 {
+			p.mu.Lock()
+			wait := p.delay / 2
+			p.mu.Unlock()
+			time.Sleep(wait)
 		}
 		if n > 0 {
 			if _, werr := dst.Write(buf[:n]); werr != nil {
