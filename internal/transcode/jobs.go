@@ -33,8 +33,8 @@ var (
 	ErrStopped = errors.New("playback session ended")
 	// ErrNoWorker: a job sat in the queue and no worker is running.
 	ErrNoWorker = errors.New("no transcode worker is running")
-	// ErrBusy: a job sat in the queue and every worker slot was taken.
-	ErrBusy = errors.New("all transcode slots are busy")
+	// ErrBusy: a job sat in the queue and no worker had the cores it costs.
+	ErrBusy = errors.New("no worker had the cores the transcode job costs")
 	// ErrOtherVersion: a job sat in the queue and only workers of another output
 	// version run, which may not take it.
 	ErrOtherVersion = errors.New("no transcode worker of the job's output version is running")
@@ -181,18 +181,22 @@ const defaultIdle = 60 * time.Second
 const failureMemory = 30 * time.Second
 
 // Unavailable says why a transcode of the spec can't be started right now, or
-// returns "" if it can. PlaybackInfo asks before offering a transcode: a client
+// returns "" if it can: no worker of the viewer's output version has the spec's
+// cost in cores free. PlaybackInfo asks before offering a transcode: a client
 // given a stream that then fails asks again forever, while one refused shows an
 // error.
 //
-// A viewer's own jobs don't count as busy: jellyfin-web asks for the new stream
-// before it deletes the old one, which is about to free its slot.
-func (j *Jobs) Unavailable(ctx context.Context, hash, userID, deviceID string) (reason string, err error) {
+// The viewer's own jobs don't count as busy: jellyfin-web asks for the new stream
+// before it deletes the old one, which is about to free its cores. Helpers
+// don't either: a new viewer stops them (preemptHelpers). A queued job no worker
+// has claimed yet does, on the worker with the most cores free.
+func (j *Jobs) Unavailable(ctx context.Context, spec playback.Spec, userID, deviceID string) (reason string, err error) {
 	// Only workers forget dead workers (lookForTheDead): a replica holds no
 	// liveness lock, so it may have missed an outage altogether, and would
 	// forget live workers still taking their lock again. It counts a worker
 	// only while its lock is held, and writes nothing.
-	if err := expireQueued(ctx, j.Pool, orDefault(j.QueueTimeout, queueTimeout)); err != nil {
+	queue, hash := orDefault(j.QueueTimeout, queueTimeout), spec.Hash()
+	if err := expireQueued(ctx, j.Pool, queue); err != nil {
 		return "", err
 	}
 	if live, err := LiveJob(ctx, j.Pool, hash); err != nil || live {
@@ -202,30 +206,36 @@ func (j *Jobs) Unavailable(ctx context.Context, hash, userID, deviceID string) (
 	// a grace: it is either taking its lock again, or never will.
 	deadline := time.Now().Add(liveTiming("grace"))
 	for {
-		var workers, versionWorkers, slots, taken, lockless int
+		var workers, versionWorkers, lockless int
 		var failure *string
-		// Only the slots of this replica's output version count: a worker of
+		// Only the cores of this replica's output version count: a worker of
 		// another version may not take the job. With no worker of the version
 		// at all the job is offered, and waits queueTimeout for one to start.
 		err = j.Pool.QueryRow(ctx, `WITH counted AS (
-				SELECT id, slots, output_version FROM transcode_nodes WHERE seen_at > now() - make_interval(secs => $2)
-					AND (NOT locked OR `+lockHeld("id")+`))
+				SELECT id, output_version FROM transcode_nodes WHERE seen_at > now() - make_interval(secs => $2)
+					AND (slots > 0 OR cores > 0) AND (NOT locked OR `+lockHeld("id")+`))
 			SELECT
-				(SELECT count(*) FROM counted WHERE slots > 0),
-				(SELECT count(*) FROM counted WHERE slots > 0 AND output_version = $6),
-				(SELECT COALESCE(sum(slots), 0) FROM counted WHERE output_version = $6),
-				(SELECT count(*) FROM transcode_jobs WHERE output_version = $6 AND (state = 'queued' OR (state = 'running' AND lease_expires_at > now()
-						AND worker IN (SELECT id FROM counted WHERE output_version = $6)))
-					AND NOT helper AND owner NOT IN (SELECT play_session_id FROM transcode_viewers WHERE user_id::text = $4 AND device_id = $5)),
+				(SELECT count(*) FROM counted),
+				(SELECT count(*) FROM counted WHERE output_version = $4),
 				(SELECT error FROM transcode_jobs WHERE spec_hash = $1 AND state = 'failed' AND NOT helper
 					AND ended_at > now() - make_interval(secs => $3) ORDER BY id DESC LIMIT 1),
-				(SELECT count(*) FROM transcode_nodes WHERE slots > 0 AND seen_at > now() - make_interval(secs => $2)
+				(SELECT count(*) FROM transcode_nodes WHERE (slots > 0 OR cores > 0) AND seen_at > now() - make_interval(secs => $2)
 					AND locked AND NOT `+lockHeld("transcode_nodes.id")+`)`,
-			hash, liveTiming("counted").Seconds(), failureMemory.Seconds(), userID, deviceID, playback.OutputVersion).Scan(&workers, &versionWorkers, &slots, &taken, &failure, &lockless)
+			hash, liveTiming("counted").Seconds(), failureMemory.Seconds(), playback.OutputVersion).Scan(&workers, &versionWorkers, &failure, &lockless)
 		if err != nil {
 			return "", err
 		}
-		if failure == nil && (workers == 0 || (versionWorkers > 0 && taken >= slots)) && lockless > 0 && time.Now().Before(deadline) {
+		short := ""
+		if versionWorkers > 0 {
+			nodes, jobs, err := readCapacity(ctx, j.Pool, capQuery{Filter: "NOT locked OR " + lockHeld("id"), Queue: queue, UserID: userID, DeviceID: deviceID})
+			if err != nil {
+				return "", err
+			}
+			l := newLedger(nodes, jobs, viewerJobs)
+			l.placeQueued(jobs, viewerJobs)
+			short, _ = l.room(capJob{Cost: spec.Cost(), Copy: spec.Copy})
+		}
+		if failure == nil && (workers == 0 || short != "") && lockless > 0 && time.Now().Before(deadline) {
 			select {
 			case <-ctx.Done():
 				return "", ctx.Err()
@@ -241,17 +251,15 @@ func (j *Jobs) Unavailable(ctx context.Context, hash, userID, deviceID string) (
 			return "the last attempt failed: " + *failure, nil
 		case workers == 0:
 			return "no transcode worker is running", nil
-		case versionWorkers > 0 && taken >= slots:
-			return fmt.Sprintf("all %d transcode slots are busy (output version %d)", slots, playback.OutputVersion), nil
 		}
-		return "", nil
+		return short, nil
 	}
 }
 
 // Stop ends a user's viewing: every spec of the play session, or, when the
 // client sent no session, of the device (and the item, if given). It is
 // idempotent, as clients send it twice. A job nobody is left watching is
-// cancelled now, so its slot is free and it stops at the next heartbeat. A
+// cancelled now, so its cores are free and it stops at the next heartbeat. A
 // viewer watches the job it last waited on, or any of the spec's if it has
 // only read segments (job_id 0); a helper is watched by every viewer of the spec.
 func (j *Jobs) Stop(ctx context.Context, userID, playSessionID, deviceID, item string) error {
@@ -434,7 +442,7 @@ func (j *Jobs) queuedTooLong(ctx context.Context, job int64, state jobState) err
 	}
 	var workers, versionWorkers int
 	err := j.Pool.QueryRow(ctx, `SELECT count(*), count(*) FILTER (WHERE output_version = $2) FROM transcode_nodes
-		WHERE slots > 0 AND seen_at > now() - make_interval(secs => $1)`,
+		WHERE (slots > 0 OR cores > 0) AND seen_at > now() - make_interval(secs => $1)`,
 		liveTiming("counted").Seconds(), playback.OutputVersion).Scan(&workers, &versionWorkers)
 	if err != nil {
 		return err
@@ -473,8 +481,8 @@ func (j *Jobs) ensure(ctx context.Context, spec playback.Spec, hash, owner strin
 	var failure string
 	created, preempted := false, false
 	err = pgx.BeginFunc(ctx, j.Pool, func(tx pgx.Tx) error {
-		// The helpers lock first, as insertHelper takes them, so that a free slot
-		// is not counted twice.
+		// The helpers lock first, as insertHelper takes them, so that free cores
+		// are not counted twice.
 		if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended('helpers', 0)), pg_advisory_xact_lock(hashtextextended($1, 0))", hash); err != nil {
 			return err
 		}
@@ -526,11 +534,11 @@ func (j *Jobs) ensure(ctx context.Context, spec playback.Spec, hash, owner strin
 			return namesJob(ctx, tx, owner, hash, id)
 		}
 		created = true
-		if preempted, err = preemptHelper(ctx, tx, orDefault(j.QueueTimeout, queueTimeout)); err != nil {
+		if preempted, err = preemptHelpers(ctx, tx, orDefault(j.QueueTimeout, queueTimeout), capJob{Cost: spec.Cost(), Copy: spec.Copy}); err != nil {
 			return err
 		}
-		err = tx.QueryRow(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, output_version)
-			VALUES ($1, $2, $3, $4, $4, $5) RETURNING id`, hash, raw, owner, start, playback.OutputVersion).Scan(&id)
+		err = tx.QueryRow(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, output_version, cost)
+			VALUES ($1, $2, $3, $4, $4, $5, $6) RETURNING id`, hash, raw, owner, start, playback.OutputVersion, spec.Cost()).Scan(&id)
 		if err != nil {
 			return err
 		}

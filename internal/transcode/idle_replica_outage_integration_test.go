@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"jellyscale/internal/db"
+	"jellyscale/internal/playback"
 	"jellyscale/internal/testenv"
 )
 
@@ -32,12 +33,12 @@ func TestAReplicaThatMissedTheOutageForgetsNoLiveWorker(t *testing.T) {
 	if _, err := r.pool.Exec(ctx, `INSERT INTO transcode_nodes (id, roles, store, slots, locked) VALUES ('retaking', 'worker', '', 2, true)`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := j.Unavailable(ctx, "h", "u", "d"); err != nil {
+	if _, err := j.Unavailable(ctx, playback.Spec{}, "u", "d"); err != nil {
 		t.Fatal(err)
 	}
 	time.Sleep(1500 * time.Millisecond) // Past pgxpool's idle ping: the next acquire replaces the connection quietly.
 	proxy.Sever()
-	if _, err := j.Unavailable(ctx, "h", "u", "d"); err != nil {
+	if _, err := j.Unavailable(ctx, playback.Spec{}, "u", "d"); err != nil {
 		t.Fatal(err)
 	}
 	if r.count(t, "SELECT count(*) FROM transcode_nodes WHERE id = 'retaking'") != 1 {

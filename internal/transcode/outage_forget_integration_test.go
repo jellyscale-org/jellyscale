@@ -124,7 +124,7 @@ func TestAReplicaForgetsNobodyWhileTheConnectionsEndOneByOne(t *testing.T) {
 
 			s.away(true, false, gone...)
 			for i := 0; i < 5; i++ { // Every look a replica makes in the moment, with its connection standing.
-				if _, err := s.jobs.Unavailable(ctx, r.hash, "", ""); err != nil {
+				if _, err := s.jobs.Unavailable(ctx, r.spec, "", ""); err != nil {
 					t.Fatal(err)
 				}
 			}

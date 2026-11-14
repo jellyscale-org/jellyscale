@@ -55,6 +55,9 @@ func helperSettings(w *Worker) {
 	if n, ok := number("JELLYSCALE_TEST_IDLE_SECONDS"); ok {
 		w.Idle = time.Duration(n) * time.Second
 	}
+	if v, err := strconv.ParseFloat(os.Getenv("JELLYSCALE_TEST_CORES"), 64); err == nil {
+		w.Cores = v // JS-087: the cores a worker process declares.
+	}
 	w.NoHelpers = os.Getenv("JELLYSCALE_TEST_NO_HELPERS") == "1"
 	if v, err := strconv.ParseFloat(os.Getenv("JELLYSCALE_TEST_HELP_BELOW"), 64); err == nil {
 		w.HelpBelow = v
@@ -676,7 +679,7 @@ func TestAFailedHelperDoesNotFailTheViewer(t *testing.T) {
 		t.Fatal(err)
 	}
 	j := r.jobs(t)
-	if reason, err := j.Unavailable(context.Background(), r.hash, r.user, "device"); err != nil || reason != "" {
+	if reason, err := j.Unavailable(context.Background(), r.spec, r.user, "device"); err != nil || reason != "" {
 		t.Errorf("with a failed helper, playback is unavailable: %q, %v", reason, err)
 	}
 	if _, err := r.fetch(t, j, psid(0), 4); err != nil {

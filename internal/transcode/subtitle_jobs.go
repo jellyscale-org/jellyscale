@@ -295,6 +295,7 @@ func (w *Worker) setID() {
 		if w.ID == "" {
 			w.ID = fmt.Sprintf("%d-%d", os.Getpid(), time.Now().UnixNano())
 		}
+		w.Cores, w.Slots = w.registered()
 	})
 }
 

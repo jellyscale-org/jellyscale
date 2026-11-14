@@ -149,7 +149,8 @@ type cluster struct {
 	dir     string
 	lead    string
 	slow    bool
-	slots   int // transcodeSlots of the next process started; 0 is the default.
+	slots   int    // transcodeSlots of the next process started; 0 is the default.
+	extra   string // Config keys of the next process started, each with a trailing comma (JS-087: transcodeCores).
 	procs   []*proc
 	workers map[string]int // Worker ID to the version of its build.
 	item    string
@@ -161,9 +162,7 @@ type cluster struct {
 // so that a job is slower than 1.2 times real time and asks for helpers.
 func newCluster(t *testing.T, slow bool, lead string) *cluster {
 	t.Helper()
-	if builds == nil {
-		t.Fatal("the builds are not there")
-	}
+	ensureBuilds(t)
 	c := &cluster{t: t, dsn: testenv.DatabaseURL(t), dir: t.TempDir(), lead: lead, slow: slow, workers: map[string]int{}}
 	// db.Open migrates, so the test passes alone on a fresh database too.
 	pool, err := db.Open(context.Background(), c.dsn)
@@ -246,6 +245,7 @@ func (c *cluster) launch(version int, roles string) *proc {
 	if c.slots > 0 {
 		slots = fmt.Sprintf(`"transcodeSlots": %d,`, c.slots)
 	}
+	slots += c.extra
 	config := fmt.Sprintf(`{"name": "versions", "adminUser": "admin", "scanInterval": "1h", %s
  "transcodeStore": "file://%s/segments", "transcodeScratch": "%s/scratch-%d", "transcodeIdle": "60s", "transcodeLead": %q,
  "libraries": [{"name": "Movies", "kind": "movies", "media": "file://%s/media", "assets": "file://%s/assets"}]}`,
@@ -547,26 +547,46 @@ func (c *cluster) storedUnder(hash string) bool {
 	return err == nil && len(entries) > 0
 }
 
-func TestOutputVersionAcrossProcesses(t *testing.T) {
+// ensureBuilds makes the film and the two binaries once for the package, in a
+// directory that outlives any one test (TMPDIR, which test/integration.sh
+// removes), so a test that starts a cluster passes in any order.
+func ensureBuilds(t *testing.T) {
+	t.Helper()
 	testenv.FFmpeg(t)
-	testenv.DatabaseURL(t)
-	dir := t.TempDir()
-	// A film no client plays as it is (MPEG-4 video), so that every play is a
-	// re-encode, which a helper can help.
-	filmFile = filepath.Join(dir, "film.mkv")
-	out, err := exec.Command("ffmpeg", "-nostdin", "-v", "error", "-y",
-		"-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=24:duration=240",
-		"-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=240",
-		"-c:v", "mpeg4", "-q:v", "6", "-g", "96", "-c:a", "aac", filmFile).CombinedOutput()
-	if err != nil {
-		t.Fatalf("the film: %v\n%s", err, out)
-	}
-	builds = map[int]string{}
-	for _, v := range []int{oldVersion, newVersion} {
-		if builds[v], err = buildWith(dir, v); err != nil {
-			t.Fatal(err)
+	buildsOnce.Do(func() {
+		dir, err := os.MkdirTemp("", "jellyscale-builds-")
+		if err != nil {
+			buildsErr = err
+			return
 		}
+		// A film no client plays as it is (MPEG-4 video), so that every play is a
+		// re-encode, which a helper can help.
+		filmFile = filepath.Join(dir, "film.mkv")
+		out, err := exec.Command("ffmpeg", "-nostdin", "-v", "error", "-y",
+			"-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=24:duration=240",
+			"-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=240",
+			"-c:v", "mpeg4", "-q:v", "6", "-g", "96", "-c:a", "aac", filmFile).CombinedOutput()
+		if err != nil {
+			buildsErr = fmt.Errorf("the film: %v\n%s", err, out)
+			return
+		}
+		built := map[int]string{}
+		for _, v := range []int{oldVersion, newVersion} {
+			if built[v], err = buildWith(dir, v); err != nil {
+				buildsErr = err
+				return
+			}
+		}
+		builds = built
+	})
+	if buildsErr != nil {
+		t.Fatal(buildsErr)
 	}
+}
+
+func TestOutputVersionAcrossProcesses(t *testing.T) {
+	testenv.DatabaseURL(t)
+	ensureBuilds(t)
 
 	// Viewers on both replicas get their segments, and each job's version is
 	// that of the replica that queued it and of the worker that ran it.

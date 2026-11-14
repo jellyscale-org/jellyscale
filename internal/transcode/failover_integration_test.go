@@ -659,7 +659,7 @@ func TestAViewerIsRefusedWithinASecondAndAHalfOfTheLastWorkerBeingKilled(t *test
 	r := newRig(t, store.NewPosix(segments))
 	a := r.workerProcess(t, "worker-a", segments)
 	j := r.jobs(t)
-	if reason, err := j.Unavailable(context.Background(), r.hash, r.user, "device"); err != nil || reason != "" {
+	if reason, err := j.Unavailable(context.Background(), r.spec, r.user, "device"); err != nil || reason != "" {
 		t.Fatalf("with a worker up: %q, %v", reason, err)
 	}
 	a.Process.Kill() //nolint:errcheck
@@ -668,7 +668,7 @@ func TestAViewerIsRefusedWithinASecondAndAHalfOfTheLastWorkerBeingKilled(t *test
 	// The guarantee is 1.5 s; 3 s is the bound, with margin for a slow runner.
 	for ; time.Since(killed) < 3*time.Second; time.Sleep(50 * time.Millisecond) {
 		var err error
-		if reason, err = j.Unavailable(context.Background(), r.hash, r.user, "device"); err != nil {
+		if reason, err = j.Unavailable(context.Background(), r.spec, r.user, "device"); err != nil {
 			t.Fatal(err)
 		}
 		if reason == "no transcode worker is running" {
