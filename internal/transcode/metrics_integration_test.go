@@ -84,8 +84,8 @@ func TestAWorkerReportsItsJobWhileItRuns(t *testing.T) {
 		t.Errorf("speed %q for a running job", speedLine.FindStringSubmatch(text)[1])
 	}
 	for series, want := range map[string]float64{
-		`jellyscale_transcode_slots`:                         2,
-		`jellyscale_transcode_slots_busy`:                    1,
+		`jellyscale_transcode_cores`:                         2,
+		`jellyscale_transcode_cores_busy`:                    r.spec.Cost(),
 		`jellyscale_transcode_jobs_running{kind="reencode"}`: 1,
 		`jellyscale_transcode_jobs_running{kind="copy"}`:     0,
 		`jellyscale_transcode_queue_depth`:                   0,
@@ -131,8 +131,8 @@ func TestAWorkerReportsItsJobWhileItRuns(t *testing.T) {
 		text = scrape(t, w)
 		return !strings.Contains(text, "jellyscale_transcode_job_speed_ratio{") && !strings.Contains(text, "jellyscale_transcode_job_paused{")
 	})
-	if got := value(text, `jellyscale_transcode_slots_busy`); got != 0 {
-		t.Errorf("busy slots %v after the job", got)
+	if got := value(text, `jellyscale_transcode_cores_busy`); got != 0 {
+		t.Errorf("busy cores %v after the job", got)
 	}
 	if got := value(text, `jellyscale_transcode_jobs_running{kind="reencode"}`); got != 0 {
 		t.Errorf("jobs running %v after the job", got)
@@ -158,15 +158,15 @@ func TestTheQueueDepthIsReadAtScrapeTime(t *testing.T) {
 		t.Fatal(err)
 	}
 	r.keepWatching(t, j, psid(0))
-	// A second spec waits for the only slot.
+	// A second spec waits for the only core, which the first of 0.8 leaves 0.2 of.
 	copyOf := *r
 	other := &copyOf
 	other.spec.VideoBitrate = 1_000_000
 	other.hash = other.spec.Hash()
 	go other.fetch(t, j, psid(1), 0) //nolint:errcheck
 	waitFor(t, "a queued job", 10*time.Second, func() bool { return value(scrape(t, w), `jellyscale_transcode_queue_depth`) == 1 })
-	if got := value(scrape(t, w), `jellyscale_transcode_slots_busy`); got != 1 {
-		t.Errorf("busy slots %v with the one slot taken", got)
+	if got := value(scrape(t, w), `jellyscale_transcode_cores_busy`); got != r.spec.Cost() {
+		t.Errorf("busy cores %v with the job running", got)
 	}
 }
 

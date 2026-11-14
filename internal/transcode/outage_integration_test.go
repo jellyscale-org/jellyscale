@@ -10,6 +10,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"jellyscale/internal/playback"
 )
 
 // JS-029: a Postgres failover, seen from the workers. The stream and api roles
@@ -29,7 +31,7 @@ func (s *stack) reaping(t *testing.T) {
 	go func() {
 		defer close(done)
 		for ctx.Err() == nil {
-			s.jobs.Unavailable(ctx, "unused", "", "") //nolint:errcheck // A PlaybackInfo: it reaps too.
+			s.jobs.Unavailable(ctx, playback.Spec{}, "", "") //nolint:errcheck // A PlaybackInfo: it reaps too.
 			time.Sleep(100 * time.Millisecond)
 		}
 	}()
@@ -69,7 +71,9 @@ func TestEveryJobOfEveryWorkerGoesOnThroughAnOutage(t *testing.T) {
 			slowAt(t, "2")
 			// Eight seconds of lead pauses the job whose viewer asks for nothing more. The
 			// others' viewers ask as soon as they are served, so theirs run on.
-			s := newStack(t, 3, "JELLYSCALE_TEST_LEAD_SECONDS=8")
+			// A worker has the cores of one re-encode, so that a copy, which costs
+			// next to nothing, still does not share a worker with one.
+			s := newStack(t, 3, "JELLYSCALE_TEST_LEAD_SECONDS=8", "JELLYSCALE_TEST_CORES=0.8")
 			r := s.r
 			enc := r.spec
 			r.copied(t, "film.mkv")
@@ -175,9 +179,9 @@ func TestEveryJobOfEveryWorkerGoesOnThroughAnOutage(t *testing.T) {
 			if ids := nodes.forgotten(); len(ids) > 0 {
 				t.Errorf("workers that were alive had their rows forgotten: %v", ids)
 			}
-			for _, spec := range []string{enc.Hash(), cp.Hash(), low.Hash()} {
+			for _, spec := range []playback.Spec{enc, cp, low} {
 				if reason, err := s.jobs.Unavailable(context.Background(), spec, "", ""); err != nil || reason != "" {
-					t.Errorf("PlaybackInfo would refuse spec %s after the outage: %q %v", spec, reason, err)
+					t.Errorf("PlaybackInfo would refuse spec %s after the outage: %q %v", spec.Hash(), reason, err)
 				}
 			}
 			r.noFailed(t)
@@ -351,7 +355,7 @@ func TestNoJobFailsAndNoSpecIsRefusedBecausePostgresWasAway(t *testing.T) {
 	before := viewer.got.Load()
 	waitFor(t, "the viewer to be served after the last outage", 90*time.Second, func() bool { return viewer.got.Load() >= before+3 })
 	r.noFailed(t)
-	if reason, err := s.jobs.Unavailable(context.Background(), r.hash, "", ""); err != nil || reason != "" {
+	if reason, err := s.jobs.Unavailable(context.Background(), r.spec, "", ""); err != nil || reason != "" {
 		t.Errorf("PlaybackInfo refuses the spec: %q %v", reason, err)
 	}
 	// A segment nobody has asked for starts a job at once and is served, not refused.
@@ -734,7 +738,7 @@ func TestAStoreWhoseRowCannotBeWrittenDoesNotFailTheJob(t *testing.T) {
 	waitFor(t, "the viewer to be served", 90*time.Second, func() bool { return viewer.got.Load() >= 6 })
 	s.logTranscodes()
 	r.noFailed(t)
-	if reason, err := s.jobs.Unavailable(context.Background(), r.hash, "", ""); err != nil || reason != "" {
+	if reason, err := s.jobs.Unavailable(context.Background(), r.spec, "", ""); err != nil || reason != "" {
 		t.Errorf("PlaybackInfo refuses the spec: %q %v", reason, err)
 	}
 }
@@ -837,7 +841,7 @@ func TestAReplicaAsksAboutAWorkerWhoseLockIsGoneAndDeletesNothing(t *testing.T) 
 	var reason string
 	for attempt := 0; ; attempt++ {
 		var err error
-		if reason, err = s.jobs.Unavailable(context.Background(), r.hash, "", ""); err == nil {
+		if reason, err = s.jobs.Unavailable(context.Background(), r.spec, "", ""); err == nil {
 			break
 		} else if attempt == 20 {
 			t.Fatal(err) // The replica's own connections were ended too.

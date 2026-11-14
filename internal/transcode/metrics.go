@@ -107,6 +107,7 @@ func observeSegment(began time.Time, copied bool, source string, err error) {
 // liveJob is what a worker knows of a job it is running, for /metrics.
 type liveJob struct {
 	copied   bool
+	cost     float64
 	progress *progress
 }
 
@@ -119,8 +120,21 @@ func (w *Worker) track(job claimed) *progress {
 		w.live = map[int64]liveJob{}
 	}
 	p := &progress{now: time.Now, began: time.Now()}
-	w.live[job.ID] = liveJob{copied: job.Spec.Copy, progress: p}
+	w.live[job.ID] = liveJob{copied: job.Spec.Copy, cost: job.Spec.Cost(), progress: p}
 	return p
+}
+
+// holding is the cores and the copies of the jobs the worker runs now.
+func (w *Worker) holding() (cores float64, copies int) {
+	w.liveMu.Lock()
+	defer w.liveMu.Unlock()
+	for _, job := range w.live {
+		cores += job.cost
+		if job.copied {
+			copies++
+		}
+	}
+	return cores, copies
 }
 
 func (w *Worker) untrack(id int64) {
@@ -133,14 +147,15 @@ var (
 	jobsRunningDesc = prometheus.NewDesc("jellyscale_transcode_jobs_running", "Transcode jobs this worker runs, paused ones included, by kind (reencode, copy).", []string{"kind"}, nil)
 	speedDesc       = prometheus.NewDesc("jellyscale_transcode_job_speed_ratio", "Seconds of film a running job encodes per second of its own running time, over its last 10 seconds. Time paused at the lead limit does not count. Absent until the job has run for a second.", []string{"job", "kind"}, nil)
 	pausedDesc      = prometheus.NewDesc("jellyscale_transcode_job_paused", "1 while a job's ffmpeg is paused at its lead limit.", []string{"job"}, nil)
-	slotsDesc       = prometheus.NewDesc("jellyscale_transcode_slots", "Transcode slots this worker has.", nil, nil)
-	busyDesc        = prometheus.NewDesc("jellyscale_transcode_slots_busy", "Transcode slots in use, paused jobs included.", nil, nil)
-	queueDesc       = prometheus.NewDesc("jellyscale_transcode_queue_depth", "Transcode jobs waiting for a worker, in the whole cluster: every worker reports the same number, so take one, not a sum.", nil, nil)
+	coresDesc       = prometheus.NewDesc("jellyscale_transcode_cores", "Cores this worker declared (transcodeCores).", nil, nil)
+	busyDesc        = prometheus.NewDesc("jellyscale_transcode_cores_busy", "Cores the jobs this worker runs cost, paused jobs included (docs/transcoding.md has the costs).", nil, nil)
+	queueCoresDesc  = prometheus.NewDesc("jellyscale_transcode_queue_cores", "Cores the queued jobs cost, in the whole cluster: every worker reports the same number, so take one, not a sum. The signal to scale workers on.", nil, nil)
+	queueDesc       = prometheus.NewDesc("jellyscale_transcode_queue_depth", "Transcode jobs waiting for a worker, in the whole cluster: every worker reports the same number, so take one, not a sum. Copies held back by their bound show here and hardly in queue_cores.", nil, nil)
 )
 
 func (w *Worker) Describe(chan<- *prometheus.Desc) {}
 
-// Collect reports the worker's jobs and slots, and the cluster's queue.
+// Collect reports the worker's jobs and cores, and the cluster's queue.
 func (w *Worker) Collect(ch chan<- prometheus.Metric) {
 	w.liveMu.Lock()
 	byKind := map[string]int{"reencode": 0, "copy": 0}
@@ -153,12 +168,13 @@ func (w *Worker) Collect(ch chan<- prometheus.Metric) {
 		}
 		ch <- prometheus.MustNewConstMetric(pausedDesc, prometheus.GaugeValue, job.progress.pausedValue(), name)
 	}
-	busy := len(w.live)
 	w.liveMu.Unlock()
+	busy, _ := w.holding()
 	for kind, n := range byKind {
 		ch <- prometheus.MustNewConstMetric(jobsRunningDesc, prometheus.GaugeValue, float64(n), kind)
 	}
-	ch <- prometheus.MustNewConstMetric(slotsDesc, prometheus.GaugeValue, float64(w.slotCount.Load()))
+	cores, _ := w.registered()
+	ch <- prometheus.MustNewConstMetric(coresDesc, prometheus.GaugeValue, cores)
 	ch <- prometheus.MustNewConstMetric(busyDesc, prometheus.GaugeValue, float64(busy))
 
 	// Queue depth is cluster state in Postgres, so it is asked for here and not
@@ -166,10 +182,29 @@ func (w *Worker) Collect(ch chan<- prometheus.Metric) {
 	// queue timeout are not waited for any more and do not count.
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
+	rows, err := w.Pool.Query(ctx, `SELECT cost::float8, CASE WHEN cost IS NULL THEN spec END FROM transcode_jobs WHERE state = 'queued'
+		AND created_at > now() - make_interval(secs => $1)`, orDefault(w.QueueTimeout, queueTimeout).Seconds())
+	if err != nil {
+		return
+	}
+	defer rows.Close()
 	var queued int
-	if err := w.Pool.QueryRow(ctx, `SELECT count(*) FROM transcode_jobs WHERE state = 'queued'
-		AND created_at > now() - make_interval(secs => $1)`, orDefault(w.QueueTimeout, queueTimeout).Seconds()).Scan(&queued); err == nil {
+	var queuedCores float64
+	for rows.Next() {
+		var cost *float64
+		var spec []byte
+		if rows.Scan(&cost, &spec) != nil {
+			return
+		}
+		queuedCost, err := costOf(cost, spec)
+		if err != nil {
+			return
+		}
+		queued, queuedCores = queued+1, queuedCores+queuedCost
+	}
+	if rows.Err() == nil {
 		ch <- prometheus.MustNewConstMetric(queueDesc, prometheus.GaugeValue, float64(queued))
+		ch <- prometheus.MustNewConstMetric(queueCoresDesc, prometheus.GaugeValue, queuedCores)
 	}
 }
 

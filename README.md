@@ -7,7 +7,7 @@ A video server that speaks the Jellyfin client API and scales out. Unmodified Je
 Jellyfin is one process: it scans, serves, transcodes and holds the sessions. That is simple, but it means one machine does everything, and when it is busy or down, so is everyone's film. jellyscale keeps Jellyfin's clients and splits the server into three roles that scale on their own, all in one binary (`--roles`): `api` answers the REST API and WebSockets, `stream` serves media, segments and images, and `worker` scans libraries and transcodes. So:
 
 - **More viewers:** add `stream` replicas. They keep no state of their own (it is in Postgres and the stores).
-- **More transcodes:** add workers, on any machine with CPU to spare. When a worker is killed mid-film, another worker with a free slot takes over within seconds and the viewer's picture goes on (the API replica half of failover is not built yet; see Status).
+- **More transcodes:** add workers, on any machine with CPU to spare. When a worker is killed mid-film, another worker with the cores free takes over within seconds and the viewer's picture goes on (the API replica half of failover is not built yet; see Status).
 - **Storage where you have it:** each library lives on a filesystem or on S3-compatible object storage.
 - **One thing to keep safe:** Postgres is the only service jellyscale needs besides its storage. Replicas and workers coordinate through it, and the video itself never passes through it.
 

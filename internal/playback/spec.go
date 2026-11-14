@@ -183,6 +183,11 @@ type Spec struct {
 	// and "" when it is re-encoded to AAC. It is the codec's name so AC3 and
 	// E-AC3 never share segments. Set with Copy, both streams are the source's own.
 	AudioCopy string
+	// SourceHeight is the picture's height in the file, which the output's
+	// Height (at most MaxHeight) hides. What a re-encode costs a worker depends
+	// on it (Cost), and it is no part of the hash: the segments are the same. A
+	// spec stored before it was recorded has none.
+	SourceHeight int
 }
 
 // NewSpec turns validated parameters into the output they ask for.
@@ -223,6 +228,7 @@ func NewSpec(item string, p Params, source Source) (Spec, error) {
 	return Spec{
 		Item: strings.ReplaceAll(strings.ToLower(item), "-", ""), Source: p.SourceID, ETag: source.ETag,
 		AudioIndex: p.AudioIndex, Subtitle: p.Subtitle, SubtitleFingerprint: subtitleFingerprint, AudioBitrate: audioBitrate, AudioCopy: audioCopy, Width: width, Height: height,
+		SourceHeight: video.Height,
 		// Six bits per pixel per second is about what 8-bit H.264 needs at its
 		// worst, so a larger cap buys nothing.
 		VideoBitrate: min(p.VideoBitrate, int64(width)*int64(height)*6),
