@@ -235,10 +235,7 @@ func (s *Server) segmentOffline(w http.ResponseWriter, r *http.Request, session 
 	if !ok || f.source.RunTimeTicks <= 0 {
 		return false
 	}
-	media, err := playbackSource(f.source)
-	if err != nil {
-		return false
-	}
+	media := playbackSource(f.source)
 	params, err := playback.ParseParams(r.URL.Query(), media)
 	if err != nil {
 		return false
