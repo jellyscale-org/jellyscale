@@ -226,15 +226,16 @@ func timings(t *testing.T) (window, refresh int) {
 	number := func(pattern string) int {
 		m := regexp.MustCompile(pattern).FindStringSubmatch(invariant)
 		if m == nil {
-			t.Fatalf("invariant 37 does not match %s: it must say \"window of N seconds\" and \"refresh every N seconds\"", pattern)
+			t.Fatalf("invariant 37 does not match %s: it must say \"window of N minutes\" and \"refresh every N seconds\"", pattern)
 		}
 		n, _ := strconv.Atoi(m[1])
 		return n
 	}
-	window = number(`(?i)\bwindow of (\d{1,3}) seconds`)
+	// JS-103: the window is in minutes, at least 10, so that a viewer whose tab paused the film and reports rarely is in it.
+	window = 60 * number(`(?i)\bwindow of (\d{1,3}) minutes`)
 	refresh = number(`(?i)\brefresh(?:es)?,? every (\d{1,2}) seconds`)
-	if window < 30 || window > 120 || refresh < 1 || refresh > 10 || window < 3*refresh+5 {
-		t.Fatalf("invariant 37 states a window of %d seconds and a refresh every %d seconds: want a window of 30 to 120 (jellyfin-web reports progress every ten seconds, paused or not) and a refresh of 1 to 10, and a window of at least three refreshes and 5 seconds", window, refresh)
+	if window < 600 || window > 3600 || refresh < 1 || refresh > 10 {
+		t.Fatalf("invariant 37 states a window of %d seconds and a refresh every %d seconds: want a window of 10 to 60 minutes (a film paused for up to 10 minutes is served through an outage) and a refresh of 1 to 10 seconds", window, refresh)
 	}
 	return window, refresh
 }
@@ -430,7 +431,7 @@ func TestAnyStreamReplicaServesAViewerWhoseRequestsWentElsewhere(t *testing.T) {
 func TestAReplicaServesNothingToATokenOutsideItsSnapshot(t *testing.T) {
 	p := newPlayAway(t, 1)
 	window, refresh := timings(t)
-	names := []string{"old", "justpast", "stillplaying", "abandoned", "neverplayed", "leftbefore", "fresh", "paused", "leftafter"}
+	names := []string{"old", "justpast", "stillplaying", "abandoned", "neverplayed", "leftbefore", "fresh", "paused", "leftafter", "stopped"}
 	tokens := map[string]string{"stranger": "not-a-token-at-all"}
 	for _, name := range names {
 		_, tokens[name] = p.addUser(t, name)
@@ -441,6 +442,12 @@ func TestAReplicaServesNothingToATokenOutsideItsSnapshot(t *testing.T) {
 				t.Fatalf("%s starting to play: %d %s", name, response.StatusCode, body)
 			}
 		}
+	}
+	// A session that reported Stopped plays nothing, and is recent: it gets nothing from the snapshot (JS-103: the
+	// window is minutes now, so being recent no longer says it is not served).
+	if response, body := p.env.do(t, 0, "POST", "/Sessions/Playing/Stopped", tokens["stopped"],
+		map[string]any{"ItemId": p.item, "PositionTicks": 0, "PlaySessionId": ""}); response.StatusCode/100 != 2 {
+		t.Fatalf("stopped reporting Stopped: %d %s", response.StatusCode, body)
 	}
 	p.seenAgo(t, tokens["old"], time.Hour)
 	p.seenAgo(t, tokens["justpast"], time.Duration(window+5)*time.Second)
@@ -473,8 +480,8 @@ func TestAReplicaServesNothingToATokenOutsideItsSnapshot(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 	var waiting []pending
-	signedIn := map[string]bool{"old": true, "justpast": true, "stillplaying": true, "abandoned": true, "neverplayed": true}
-	for _, name := range []string{"old", "justpast", "stillplaying", "abandoned", "neverplayed", "leftbefore", "stranger"} {
+	signedIn := map[string]bool{"old": true, "justpast": true, "stillplaying": true, "abandoned": true, "neverplayed": true, "stopped": true}
+	for _, name := range []string{"old", "justpast", "stillplaying", "abandoned", "neverplayed", "stopped", "leftbefore", "stranger"} {
 		for i, rp := range p.streams {
 			for _, rq := range kinds(tokens[name]) {
 				w := pending{what: fmt.Sprintf("%s on replica %d, %s", name, i, rq.what), ch: ask(ctx, rp, rq)}
@@ -508,12 +515,12 @@ func TestAReplicaServesNothingToATokenOutsideItsSnapshot(t *testing.T) {
 
 // A snapshot is replaced by the next refresh, and being served from it is not a
 // validation. A token signed out after the last refresh, served through an
-// outage longer than the window and not asked about once Postgres was back,
+// outage past readiness and not asked about once Postgres was back,
 // gets nothing in a second outage once a refresh has run in between: it waits,
 // and is answered 401 when Postgres is back.
 func TestBeingServedFromTheSnapshotIsNotAValidation(t *testing.T) {
 	p := newPlayAway(t, 2)
-	window, refresh := timings(t)
+	_, refresh := timings(t)
 	film := p.films[1]
 	segment := func(token string) string {
 		return strings.ReplaceAll(strings.Replace(film.segment[2], "PlaySessionId="+film.psid, fmt.Sprintf("PlaySessionId=%032x", 0x777), 1), p.token, token)
@@ -530,9 +537,12 @@ func TestBeingServedFromTheSnapshotIsNotAValidation(t *testing.T) {
 	for _, rp := range p.streams {
 		answeredWithin(t, "at the start of the first outage", rp, []served{direct, stored})
 	}
-	time.Sleep(max(0, time.Duration(window+10)*time.Second-time.Since(away))) // Longer than the window: only the snapshot can have served it so far.
+	// Past readiness (30 seconds) and three refresh intervals: a replica that checked the token with Postgres, or kept
+	// one validation, could not have served it for this long (the window is minutes now, JS-103, and not waited out;
+	// what a shorter wait could hide is a cache that lives only a minute, which the second outage below also refuses).
+	time.Sleep(max(0, time.Duration(max(45, 3*refresh+5))*time.Second-time.Since(away)))
 	for _, rp := range p.streams {
-		answeredWithin(t, "past the window into the first outage", rp, []served{direct, stored})
+		answeredWithin(t, "past readiness into the first outage", rp, []served{direct, stored})
 		rp.proxy.Back()
 	}
 	// Postgres is back, and each replica is told so by a request that needs it

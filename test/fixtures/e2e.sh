@@ -43,6 +43,18 @@ if [[ ! -f $outage ]]; then
     -c:a aac "$outage" || exit 1
 fi
 
+# Plays as it is and lasts 300 seconds at a constant 2 Mbit/s (75 MB): the scenario that holds Postgres away for over
+# a minute (JS-103) needs a film that is still playing after the outage and 35 seconds past it, with bytes left to seek to.
+returnfilm="$work/media/transcode/Return Source Film (2154)/Return Source Film (2154).mkv"
+if [[ ! -f $returnfilm ]]; then
+  mkdir -p "$(dirname "$returnfilm")"
+  ffmpeg -nostdin -v error -y \
+    -f lavfi -i "testsrc2=size=1280x720:rate=24:duration=300" \
+    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=300" \
+    -c:v libx264 -preset ultrafast -b:v 2M -minrate 2M -maxrate 2M -bufsize 2M -x264-params nal-hrd=cbr:force-cfr=1 -g 48 \
+    -c:a aac "$returnfilm" || exit 1
+fi
+
 # Films whose video Chrome plays and whose audio it doesn't, with keyframes at
 # the irregular times of the captured fixture (compat/captures/transcode-12.4.md),
 # so a copied stream's playlist is no fixed grid: Matroska and MP4 (moov at the

@@ -6,13 +6,15 @@
 // by a transcode otherwise, as VobSub always is. Needs the stack test/e2e/run.sh starts.
 // Usage: E2E_SCRATCH=<worker scratch dir> E2E_PG=<postgres container> node subtitles.mjs <base_url> <user> <password>
 // Run from a directory with playwright-core installed.
-import { execFileSync, spawn } from "node:child_process";
+import { execFile, execFileSync, spawn } from "node:child_process";
+import { promisify } from "node:util";
 import { existsSync, readFileSync, readdirSync, rmSync, statSync, truncateSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
 import { advances, seek, time, waitFor } from "./player.mjs";
 import { runLater, schedule, shardLine } from "./shard.mjs";
 import { recordResponses } from "./conform.mjs";
+import { everyReplicaReady, postgres, routerControl, withTwoStreamReplicas } from "./away.mjs";
 
 const require = createRequire(`${process.cwd()}/`);
 const { chromium } = require("playwright-core");
@@ -27,6 +29,7 @@ const browser = await chromium.launch({
 });
 const failures = [];
 
+const exec_ = async (cmd, args) => (await promisify(execFile)(cmd, args)).stdout;
 const sql = (text) => execFileSync("docker", ["exec", process.env.E2E_PG, "psql", "-U", "postgres", "-Atc", text]).toString().trim();
 // Specs with a job, not jobs: a seek past what the job has made (transcodeLead)
 // starts another job of the same spec, whereas picking a track that is drawn into
@@ -62,7 +65,7 @@ async function viewer() {
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const page = await context.newPage();
   recordResponses(page, base);
-  const seen = { infos: [], playlists: [], subtitles: [], attachments: [], configs: 0, deletes: [], errors: [] };
+  const seen = { infos: [], playlists: [], subtitles: [], attachments: [], configs: 0, deletes: [], errors: [], answers: [] };
   page.on("pageerror", (error) => seen.errors.push(error.message));
   page.on("request", (request) => {
     if (request.method() === "DELETE" && /ActiveEncodings/i.test(request.url())) seen.deletes.push(request.url());
@@ -70,10 +73,11 @@ async function viewer() {
   page.on("response", async (response) => {
     if (!response.url().startsWith(base)) return;
     const url = new URL(response.url());
+    seen.answers.push({ at: Date.now(), status: response.status(), url: response.url() });
     if (response.status() >= 500) seen.errors.push(`${response.status()} ${url.pathname}`);
     if (/\.m3u8$/i.test(url.pathname)) seen.playlists.push(url.pathname + url.search);
     if (/\/Subtitles\//i.test(url.pathname)) {
-      seen.subtitles.push({ status: response.status(), type: response.headers()["content-type"], path: url.pathname, index: Number(url.pathname.split("/")[5]) });
+      seen.subtitles.push({ at: Date.now(), status: response.status(), type: response.headers()["content-type"], path: url.pathname, index: Number(url.pathname.split("/")[5]) });
     }
     if (/\/Attachments\/\d+$/i.test(url.pathname)) {
       seen.attachments.push({ status: response.status(), type: response.headers()["content-type"], path: url.pathname, bytes: (await response.body().catch(() => Buffer.alloc(0))).length });
@@ -681,6 +685,79 @@ await burnedIn("POSIX burn-in: text is in the picture at the right time, after f
 await burnedIn("S3 burn-in: text is in the picture at the right time, after far seeks and track changes", "Cloud", "Omega Film");
 await burnedIn("POSIX burn-in of subtitle files beside the film: text is in the picture at the right time", "Transcode", "Burn Sub Film");
 await burnedIn("S3 burn-in of subtitle files beside the film: text is in the picture at the right time", "Cloud", "Beside Burn Film");
+
+// JS-103: a viewer who turns on a track the browser has not fetched while Postgres is stopped sees its cues, from a
+// stream replica that served the viewer nothing before: a text track, and an ASS track with its font. The tracks and the
+// fonts are in the asset store because another browser played the film and picked the track first, and the fonts job has
+// run (a film's fonts are listed to the player only once it has). The viewer starts with subtitles off, the snapshot
+// holds its session, Postgres is stopped, the router sends the stream role to the second replica only, and the pick is
+// the first request for the track. The player must not show a dialog, ask for PlaybackInfo again or be answered 400 or
+// more, and Postgres is still stopped when the cues are on screen.
+const OUTAGE_SNAPSHOT_REFRESHED = 22000; // Two refresh intervals and a margin (DOMAINS 37 says at most 10 seconds each).
+for (const flavour of [
+  { name: "a text track", film: "Outage Pick Film", index: 2, shown: async (page) => (await activeText(page)) === "English line 1", at: 12 },
+  { name: "an ASS track and its font", film: "Outage Font Film", index: 2, fonts: true, shown: async (page) => (await assPixels(page)) > 100, at: 5 },
+]) {
+  await scenario(`Postgres stopped: a viewer who turns on ${flavour.name} the browser has not fetched sees it, from a stream replica that served the viewer nothing before`, async (v) => {
+    const { page, seen } = v;
+    const warm = await viewer();
+    try {
+      await play(warm.page, "Transcode", flavour.film);
+      await pickSubtitle(warm.page, flavour.index);
+      await seek(warm.page, flavour.at);
+      await waitFor("the track to be shown to the first viewer", async () => flavour.shown(warm.page), 60000);
+      if (flavour.fonts) await fontsJobDone(flavour.film);
+      await leave(warm.page);
+    } finally {
+      await warm.context.close().catch(() => {});
+    }
+    let stopped = false;
+    try {
+      await withTwoStreamReplicas(base, async ({ a, b }) => {
+        await routerControl(base, { fallback: true, stream: [a] });
+        await play(page, "Transcode", flavour.film);
+        const listed = seen.infos.at(-1).source.MediaAttachments?.length ?? 0;
+        if (flavour.fonts && !listed) throw new Error("the film lists no font: the fonts job has not stored them");
+        await pickSubtitle(page, -1).catch(async (error) => { throw new Error(`${error.message}; the page: ${page.url()}, buttons ${JSON.stringify(await page.evaluate(() => [...document.querySelectorAll("button")].filter((b) => b.offsetParent).map((b) => b.className.slice(0, 40)).slice(0, 12)))}, a video at ${await time(page)} s`); });
+        await advances(page, 2);
+        // Paused while the snapshot is refreshed: the font film lasts 30 seconds, which the wait would play to its end.
+        await page.evaluate(() => { window.__awayVideo = document.querySelector("video"); document.querySelector("video").pause(); });
+        const asked = seen.infos.length;
+        const fetched = seen.subtitles.length, fonts = seen.attachments.length;
+        await new Promise((resolve) => setTimeout(resolve, OUTAGE_SNAPSHOT_REFRESHED));
+        const downAt = Date.now();
+        await postgres("stop");
+        stopped = true;
+        await routerControl(base, { stream: [b] });
+        await pickSubtitle(page, flavour.index).catch(async (error) => { throw new Error(`${error.message}; the page: ${page.url()}, buttons ${JSON.stringify(await page.evaluate(() => [...document.querySelectorAll("button")].filter((b) => b.offsetParent).map((b) => b.className.slice(0, 40)).slice(0, 12)))}, a video at ${await time(page)} s, paused ${await page.evaluate(() => document.querySelector("video")?.paused)}, ended ${await page.evaluate(() => document.querySelector("video")?.ended)}, dialog ${await page.getByText("Playback Error").count()}`); });
+        await waitFor("the track to be answered 200 while Postgres is stopped", async () => seen.subtitles.slice(fetched).find((r) => r.index === flavour.index && r.status === 200), 60000);
+        await page.evaluate(() => document.querySelector("video").play());
+        await seek(page, flavour.at);
+        await waitFor("the cues to be shown", async () => flavour.shown(page), 60000);
+        if (flavour.fonts) {
+          await waitFor("the font to be answered", async () => seen.attachments.length > fonts, 30000);
+          const bad = seen.attachments.slice(fonts).filter((f) => f.status !== 200 || f.bytes < 10000);
+          if (bad.length || seen.attachments.length - fonts !== listed) throw new Error(`the fonts: ${JSON.stringify(seen.attachments.slice(fonts))}, ${listed} listed`);
+        }
+        const running = (await exec_("docker", ["inspect", "-f", "{{.State.Running}}", process.env.E2E_PG])).trim();
+        if (running === "true") throw new Error("Postgres was running again before the checks: the cues did not come from the replica");
+        if (await page.getByText("Playback Error").count()) throw new Error("the viewer got a Playback Error dialog");
+        if (!(await page.evaluate(() => document.querySelector("video") === window.__awayVideo))) throw new Error("the player was replaced");
+        if (seen.infos.length !== asked) throw new Error(`the client asked for PlaybackInfo again (${seen.infos.length} times, not ${asked})`);
+        const refused = seen.answers.filter((x) => x.at > downAt && x.status >= 400);
+        if (refused.length) throw new Error(`answers of 400 or more: ${JSON.stringify(refused.slice(0, 4).map((x) => `${x.status} ${new URL(x.url).pathname}`))}`);
+        stopped = false;
+        await postgres("start");
+        await waitFor("every replica to be ready again", () => everyReplicaReady(base), 60000);
+        await leave(page);
+      });
+    } finally {
+      if (stopped) await postgres("start");
+      await routerControl(base, { reset: true });
+      await waitFor("every replica to be ready again", () => everyReplicaReady(base), 60000);
+    }
+  });
+}
 
 await runLater();
 await browser.close();

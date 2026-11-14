@@ -8,19 +8,28 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"jellyscale/internal/db"
 	"jellyscale/internal/items"
 	"jellyscale/internal/playback"
 )
 
 // Invariant 37: while Postgres is away a stream replica goes on serving direct
-// play and the segments in the transcode store to a token that was seen within
-// snapshotWindow, from a snapshot it refreshes every snapshotEvery. The numbers
-// are in DOMAINS.md, which the tests read.
+// play, the segments in the transcode store, and the subtitle tracks and fonts in
+// the asset store to a token that was seen within snapshotWindow, from a snapshot
+// it refreshes every snapshotEvery and adds to when an api replica reports a
+// start (startChannel). The numbers are in DOMAINS.md, which the tests read.
 const (
-	snapshotWindow = 60 * time.Second
+	snapshotWindow = 10 * time.Minute
 	snapshotEvery  = 5 * time.Second
 )
+
+// startChannel is where an api replica says, with the token as the payload, that
+// a session has just started a film, so that the stream replicas learn of it
+// between refreshes. The payload is a hint only: a replica reads the session
+// from Postgres, which has accepted the token, and adds what it finds.
+const startChannel = "jellyscale_session_started"
 
 // offlineHandler answers a request for a session in the snapshot, and says
 // whether it did; if not, the request waits for Postgres as usual.
@@ -43,6 +52,10 @@ type film struct {
 }
 
 type snapshot struct {
+	// reading is held from a read of Postgres to the write of what it said, so
+	// that a refresh that began before a start was reported cannot replace the
+	// snapshot after the start was added.
+	reading  sync.Mutex
 	mu       sync.RWMutex
 	sessions map[string]*offlineSession
 	films    map[string]*film // By media source id.
@@ -74,6 +87,9 @@ func compact(id string) string { return strings.ToLower(db.CompactID(id)) }
 // keepSnapshot refreshes the snapshot for as long as the pool lives, which is the
 // life of the process: a stream replica holds no other state.
 func (s *Server) keepSnapshot() {
+	ctx, stop := context.WithCancel(context.Background())
+	defer stop()
+	go s.listenForStarts(ctx)
 	for {
 		if !db.Of(s.Pool).Away() {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*snapshotEvery)
@@ -100,6 +116,8 @@ func (s *Server) keepSnapshot() {
 // the films they play. A source's streams and keyframes are read only when the
 // replica holds none or its row changed.
 func (s *Server) refreshSnapshot(ctx context.Context) error {
+	s.snapshot.reading.Lock()
+	defer s.snapshot.reading.Unlock()
 	rows, err := s.Pool.Query(ctx, `SELECT token, COALESCE(item_id::text, '')
 		FROM sessions
 		WHERE last_seen_at > now() - make_interval(secs => $1)`, snapshotWindow.Seconds())
@@ -127,11 +145,7 @@ func (s *Server) refreshSnapshot(ctx context.Context) error {
 		return err
 	}
 	for _, session := range sessions {
-		for _, f := range films {
-			if compact(f.itemID) == session.item {
-				session.films = append(session.films, f.film)
-			}
-		}
+		session.films = filmsOf(films, session.item)
 	}
 	byID := map[string]*film{}
 	for _, f := range films {
@@ -139,6 +153,85 @@ func (s *Server) refreshSnapshot(ctx context.Context) error {
 	}
 	s.snapshot.replace(sessions, byID)
 	return nil
+}
+
+// filmsOf is the films of an item, which is compact.
+func filmsOf(films []itemFilm, item string) []*film {
+	var found []*film
+	for _, f := range films {
+		if compact(f.itemID) == item {
+			found = append(found, f.film)
+		}
+	}
+	return found
+}
+
+// listenForStarts adds a session to the snapshot when an api replica says it
+// started a film, until ctx ends. A notification is lost while the connection is
+// down, and the next refresh then has the session instead. The connection is its
+// own, not the pool's, so that closing the pool does not wait for it.
+func (s *Server) listenForStarts(ctx context.Context) {
+	for ctx.Err() == nil {
+		s.listenOnce(ctx)
+		select {
+		case <-ctx.Done():
+		case <-time.After(time.Second):
+		}
+	}
+}
+
+func (s *Server) listenOnce(ctx context.Context) {
+	conn, err := pgx.ConnectConfig(ctx, s.Pool.Config().ConnConfig)
+	if err != nil {
+		return
+	}
+	defer conn.Close(context.Background())
+	if _, err := conn.Exec(ctx, "LISTEN "+startChannel); err != nil {
+		return
+	}
+	for {
+		notification, err := conn.WaitForNotification(ctx)
+		if err != nil {
+			return
+		}
+		if db.Of(s.Pool).Away() {
+			continue
+		}
+		read, cancel := context.WithTimeout(ctx, 2*snapshotEvery)
+		s.addStarted(read, notification.Payload)
+		cancel()
+	}
+}
+
+// addStarted reads the session of token, if Postgres has one seen within the
+// window, and the sources of the film it plays, and sets it in the snapshot.
+// What it cannot read waits for the next refresh.
+func (s *Server) addStarted(ctx context.Context, token string) {
+	s.snapshot.reading.Lock()
+	defer s.snapshot.reading.Unlock()
+	var item string
+	err := s.Pool.QueryRow(ctx, `SELECT COALESCE(item_id::text, '') FROM sessions
+		WHERE token = $1 AND last_seen_at > now() - make_interval(secs => $2)`, token, snapshotWindow.Seconds()).Scan(&item)
+	if err != nil {
+		return
+	}
+	session := &offlineSession{item: compact(item)}
+	var films []itemFilm
+	if item != "" {
+		if films, err = s.refreshFilms(ctx, []string{item}); err != nil {
+			return
+		}
+		session.films = filmsOf(films, session.item)
+	}
+	s.snapshot.mu.Lock()
+	defer s.snapshot.mu.Unlock()
+	if s.snapshot.sessions == nil {
+		s.snapshot.sessions, s.snapshot.films = map[string]*offlineSession{}, map[string]*film{}
+	}
+	s.snapshot.sessions[token] = session
+	for _, f := range films {
+		s.snapshot.films[f.film.source.ID] = f.film
+	}
 }
 
 type itemFilm struct {

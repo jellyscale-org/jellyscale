@@ -125,7 +125,7 @@ done
 # film of the outage scenario, which the router slows to a download of tens of seconds) and one
 # re-encode each for an api kill, a stream kill and a stream roll, and the three films that play on
 # through a Postgres outage from a stream replica's snapshot of active sessions (JS-085).
-for pair in "Api Kill Film (2140):Outage Direct Film (2113)" "Stream Kill Direct Film (2141):Outage Direct Film (2113)" "Stream Roll Direct Film (2142):Outage Direct Film (2113)" "Stream Kill Encode Film (2143):Zeta Interlaced (2050)" "Stream Roll Encode Film (2144):Zeta Interlaced (2050)" "Away Direct Film (2145):Outage Direct Film (2113)" "Away Late Film (2146):Outage Direct Film (2113)" "Away Encode Film (2147):Zeta Interlaced (2050)"; do
+for pair in "Api Kill Film (2140):Outage Direct Film (2113)" "Stream Kill Direct Film (2141):Outage Direct Film (2113)" "Stream Roll Direct Film (2142):Outage Direct Film (2113)" "Stream Kill Encode Film (2143):Zeta Interlaced (2050)" "Stream Roll Encode Film (2144):Zeta Interlaced (2050)" "Away Direct Film (2145):Outage Direct Film (2113)" "Away Late Film (2146):Outage Direct Film (2113)" "Away Encode Film (2147):Zeta Interlaced (2050)" "Return Direct Film (2148):Return Source Film (2154)" "Return Encode Film (2149):Zeta Interlaced (2050)" "Just Started Film (2152):Outage Direct Film (2113)" "Just Started Other Film (2153):Outage Direct Film (2113)" "Outage Pick Film (2155):Sigma Film (2034)" "Outage Font Film (2156):Font Film (2063)"; do
   to=${pair%%:*} from=${pair#*:}
   link "$t/$from/$from.mkv" "$t/$to/$to.mkv"
 done
@@ -291,7 +291,7 @@ done
 for _ in $(seq 1 120); do [[ $(grep -c 'scan finished' "$logs/server.log") -ge 5 ]] && break; sleep 0.5; done
 
 base="http://127.0.0.1:$router"
-cp "$repo/test/e2e/conform.mjs" "$repo/test/e2e/shard.mjs" "$repo/test/e2e/player.mjs" "$repo/test/e2e/browse.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/transcode.mjs" "$repo/test/e2e/subtitles.mjs" "$repo/test/e2e/failover.mjs" "$playwright/"
+cp "$repo/test/e2e/conform.mjs" "$repo/test/e2e/shard.mjs" "$repo/test/e2e/player.mjs" "$repo/test/e2e/browse.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/transcode.mjs" "$repo/test/e2e/subtitles.mjs" "$repo/test/e2e/failover.mjs" "$repo/test/e2e/away.mjs" "$playwright/"
 result=0
 export E2E_SCRATCH="$work/scratch" E2E_MEDIA="$work/media/transcode" E2E_ASSETS="$work/assets/transcode" E2E_PG="$pg" E2E_LOG="$logs/server.log"
 # Only a whole, ordinary run says what the tree does: a selection, a repeat, a
