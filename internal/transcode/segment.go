@@ -24,6 +24,9 @@ type StoredSegment struct {
 	reader *store.Reader
 	buf    []byte
 	n      int // Bytes of buf not yet sent.
+	// pending is an error the reader returned with the bytes of its last read
+	// (io.Reader allows both at once), given at the next read.
+	pending error
 }
 
 // openSegment finds a stored segment: store.ErrNotFound if it is absent, empty
@@ -52,10 +55,20 @@ func openSegment(ctx context.Context, s store.Store, key string) (*StoredSegment
 
 // read fills buf with at least one byte, or fails.
 func (s *StoredSegment) read() (int, error) {
+	if err := s.pending; err != nil {
+		s.pending = nil
+		return 0, err
+	}
 	for {
 		n, err := s.reader.Read(s.buf)
-		if n > 0 || err != nil {
-			return n, err
+		if n > 0 {
+			// The bytes first; an error that came with them (io.EOF on a small
+			// object's one read) is the next read's.
+			s.pending = err
+			return n, nil
+		}
+		if err != nil {
+			return 0, err
 		}
 	}
 }
