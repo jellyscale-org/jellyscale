@@ -38,7 +38,11 @@ finish() { local status=$?; clean; result_finish $status; rm -rf "$work"; }
 clean; trap finish EXIT
 result_start
 if [[ $# -eq 0 ]]; then result_name=integration; [[ -n $shard ]] && result_name=integration-${shard/\//of}; fi
-docker run -d --rm --name "$pg" -e POSTGRES_PASSWORD=it -p 127.0.0.1::5432 postgres:18-alpine >/dev/null || exit 1
+# One Postgres serves every package of a shard in turn, each test starting
+# servers and workers with pools of their own, and a burst of concurrent
+# requests on top: the default 100 connections ran out in merge-queue runs
+# ("too many clients already", SQLSTATE 53300), failing tests at random.
+docker run -d --rm --name "$pg" -e POSTGRES_PASSWORD=it -p 127.0.0.1::5432 postgres:18-alpine -c max_connections=1000 >/dev/null || exit 1
 port=$(docker port "$pg" 5432/tcp | head -1 | sed 's/.*://')
 # The image first runs a temporary server that listens on the unix socket only,
 # then restarts it on TCP. Wait for TCP, inside the container and then on the
