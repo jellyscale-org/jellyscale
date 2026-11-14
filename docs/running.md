@@ -28,6 +28,10 @@ MEDIA_DIR=/path/to/media JELLYSCALE_ADMIN_PASSWORD=change-me \
 
 Replace the `stream` replicas first, then the `api` replicas. An `api` replica of this release offers a copy of HDR10, HDR10+ and HLG video, and a `stream` replica of the previous release refuses that copy, so a viewer who is sent to it fails to play. A new `stream` replica serves every copy the previous `api` offered, so it is safe to be first.
 
+Every job records the output version of the replica that queued it, and a worker claims only jobs of the version it makes, so an upgrade must keep a running worker for every version a running replica queues. To upgrade, start the new workers first, then replace `stream`, then `api`, and stop the old workers last, so that at each step every version a running replica queues has a running worker that makes it. To roll back, start the old workers first, then put the old `api` back, then the old `stream`, and stop the new workers last, again with a worker for each version at every step: the old `stream` must never run while no worker of the old version does. When a release does not change the output version, the order matters only for the HDR10 rule above.
+
+When that order is not kept, a viewer whose job no running worker of its version takes waits `queueTimeout` (6 seconds) and no less, then gets a 503 with `Retry-After`, and the server log says that only workers of another output version run. Segments made by another version are never served under a spec of this one. A worker built before this release makes no such check, since it claims any queued job, so every such worker must be stopped before a replica of a later output version starts.
+
 ## Configuration
 
 A key the server does not know, at the top of the config or in a library, is refused at startup with its name, so a misspelt `chapterImages` can't silently leave the option off; so is anything after the config. Upgrading: a config that loaded before because the server ignored a stray key now stops the start, naming the key to remove.

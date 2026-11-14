@@ -247,17 +247,19 @@ func (w *Worker) claim(ctx context.Context) (claimed, bool, error) {
 	// to one that has, if none took it (a dead helper's replacement, with the
 	// other workers busy). It goes only while a slot stays free after it (it is
 	// counted, queued) for a viewer who has not asked yet; the slot count was
-	// right when it was queued, not necessarily now.
+	// right when it was queued, not necessarily now. A job of another output
+	// version is left for a worker that makes it, as if it were not there.
 	err := w.Pool.QueryRow(ctx, `UPDATE transcode_jobs SET state = 'running', worker = $1,
 			lease_expires_at = now() + make_interval(secs => $2)
 		WHERE `+registeredAs("$1")+` AND id = (SELECT id FROM transcode_jobs WHERE state = 'queued'
+			AND output_version = $5
 			AND created_at > now() - make_interval(secs => $3)
-			AND (NOT helper OR (`+freeSlots("$4", "$3")+` >= 1
+			AND (NOT helper OR (`+freeSlots("$4", "$3", "$5")+` >= 1
 				AND (created_at < now() - make_interval(secs => 1)
 					OR NOT EXISTS (SELECT 1 FROM transcode_jobs o WHERE o.spec_hash = transcode_jobs.spec_hash AND o.worker = $1 AND o.state = 'running'))))
 			ORDER BY id FOR UPDATE SKIP LOCKED LIMIT 1)
 		RETURNING id, spec_hash, spec, start_segment, helper`, w.ID, (w.lease()+startup).Seconds(), orDefault(w.QueueTimeout, queueTimeout).Seconds(),
-		workerAlive.Seconds()).Scan(&job.ID, &job.Hash, &raw, &job.Start, &job.Helper)
+		workerAlive.Seconds(), playback.OutputVersion).Scan(&job.ID, &job.Hash, &raw, &job.Start, &job.Helper)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return job, false, nil
 	}

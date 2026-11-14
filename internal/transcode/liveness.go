@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"jellyscale/internal/db"
+	"jellyscale/internal/playback"
 )
 
 // A worker proves it is alive by holding a session advisory lock on a
@@ -312,8 +313,8 @@ func (w *Worker) keepRow(held context.Context, lose context.CancelCauseFunc, liv
 		case inserted.IsZero():
 			// A slow commit is no reason not to register, so this has longer than a look.
 			ctx, cancel := context.WithTimeout(held, every)
-			_, err := w.Pool.Exec(ctx, `INSERT INTO transcode_nodes (id, roles, store, slots, locked) VALUES ($1, $2, $3, $4, true)
-				ON CONFLICT (id) DO UPDATE SET seen_at = now(), locked = true`, w.ID, roles, storeURI, w.Slots)
+			_, err := w.Pool.Exec(ctx, `INSERT INTO transcode_nodes (id, roles, store, slots, locked, output_version) VALUES ($1, $2, $3, $4, true, $5)
+				ON CONFLICT (id) DO UPDATE SET seen_at = now(), locked = true`, w.ID, roles, storeURI, w.Slots, playback.OutputVersion)
 			cancel()
 			if err == nil {
 				inserted, seen = time.Now(), time.Now()

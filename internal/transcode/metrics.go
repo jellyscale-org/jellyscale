@@ -34,7 +34,7 @@ var (
 	segmentStalls = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "jellyscale_segment_stalls_total", Help: "Segment requests that took longer than 5 seconds, whatever their outcome."}, []string{"kind"})
 	segmentRefused = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "jellyscale_segment_requests_refused_total", Help: "Requests refused: stopped (a playlist or segment of an ended session), no_worker or busy (a segment that needed a job)."}, []string{"reason"})
+		Name: "jellyscale_segment_requests_refused_total", Help: "Requests refused: stopped (a playlist or segment of an ended session), no_worker, other_version (workers run, none of the job's output version) or busy (a segment that needed a job)."}, []string{"reason"})
 )
 
 // stallAfter is how long a segment request may take before it counts as a
@@ -84,6 +84,9 @@ func observeSegment(began time.Time, copied bool, source string, err error) {
 	case errors.Is(err, ErrNoWorker):
 		outcome = "refused"
 		segmentRefused.WithLabelValues("no_worker").Inc()
+	case errors.Is(err, ErrOtherVersion):
+		outcome = "refused"
+		segmentRefused.WithLabelValues("other_version").Inc()
 	case errors.Is(err, ErrBusy):
 		outcome = "refused"
 		segmentRefused.WithLabelValues("busy").Inc()
