@@ -2,7 +2,7 @@
   "project": "jellyscale",
   "description": "A horizontally scalable, Jellyfin-compatible video server in Go. Every task below comes from PRODUCT.md (features and roadmap), the project plan, compat/coverage-12.4.tsv and the agreed work queue. PRODUCT.md stays the source of truth for status; update this file when a slice merges.",
   "conventions": {
-    "status": "done | in_progress | todo; passes is true only when done",
+    "status": "done | in_progress | todo | dropped; passes is true only when done",
     "priority": "1 is next; done tasks have none",
     "delivery": "each task goes through the build workflow (.claude/workflows/build.js): checks written first and locked, one implementer until they pass, QA and one blind adversarial review with evidence-gated findings, one fix round; then PR, CI, merge, redeploy the dogfood",
     "differential": "a task that adds or changes a route jellyfin-web or another client calls adds its requests to test/differential/requests.yaml, and any difference it keeps to compat/differences.yaml with a reason"
@@ -1533,12 +1533,11 @@
         "The gate fails on the commits before the JS-024 and JS-072 fixes, on JS-028's stale roles check, and on PR 96's copy-job wait (6dc9f54), and passes on their fixes",
         "The first-attempt merge-queue pass rate is recorded per task in .results/tasks.jsonl; the target is 90% or better"
       ],
-      "priority": 12,
-      "status": "todo",
+      "status": "dropped",
       "passes": false,
       "dependsOn": [],
       "source": "Fable 5.2 architecture review, 2026-11-12 (.results/architecture-review-2026-11-12.md); owner's answers 2026-11-12; amended by Fable 5.2 CI review, 2026-11-12 (.results/ci-review-2026-11-12.md); owner approved A, B, C, D and the later items",
-      "notes": ""
+      "notes": "Dropped 2026-11-13 (owner): rehearsing CI locally before every queue attempt cost more runs than the queue failures it saved. The merge queue is the gate; a failure there is fixed on a new commit. Spec drafts kept outside the repo."
     },
     {
       "id": "JS-084",
@@ -1785,10 +1784,10 @@
       "id": "JS-098",
       "phase": "OPS",
       "title": "e2e and roles run under ffmpeg 6.1 locally",
-      "description": "test/ffmpeg61.sh runs Go tests under Ubuntu 24.04's ffmpeg 6.1, but e2e and roles need Node and Chrome, so they run locally on ffmpeg 9 and meet 6.1 first in CI.",
+      "description": "test/ffmpeg61.sh runs Go tests under Ubuntu 24.04's ffmpeg 6.1, but e2e and roles need Node and Chrome, so they run locally on ffmpeg 9 and meet 6.1 first in CI. Used after a queue failure to reproduce it, not as a gate before the queue.",
       "acceptanceCriteria": [
-        "An image with ffmpeg 6.1, Node and Chrome runs test/e2e/run.sh and test/roles.sh locally, and JS-083's gate uses it",
-        "Its versions match CI's, checked by the gate"
+        "An image with ffmpeg 6.1, Node and Chrome runs test/e2e/run.sh and test/roles.sh locally, to reproduce a merge-queue failure",
+        "Its versions match CI's"
       ],
       "priority": 75,
       "status": "todo",

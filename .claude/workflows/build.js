@@ -5,7 +5,7 @@ export const meta = {
   phases: [
     { title: 'Spec', detail: 'acceptance criteria become executable checks that fail today' },
     { title: 'Check', detail: 'review the design and whether the checks can catch a wrong build' },
-    { title: 'Build', detail: 'one implementer, until the checks and tiers pass; checks are locked' },
+    { title: 'Build', detail: 'one implementer, until the checks pass; checks are locked' },
     { title: 'Verify', detail: 'QA runs it; one blind adversarial review; architecture when core' },
     { title: 'Fix', detail: 'one round, evidenced findings only' },
   ],
@@ -89,13 +89,6 @@ const LOCKED = {
   required: ['changed'],
 }
 
-const TIERS = {
-  type: 'object',
-  properties: {
-    records: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, status: { type: 'string' }, summary: { type: 'string' }, log: { type: 'string' } }, required: ['name', 'status', 'summary'] } },
-  },
-  required: ['records'],
-}
 
 const { task, tests = [], id = '', ux = false, core = false, resolved = null, refine = true } = args
 let { acceptance = [] } = args
@@ -234,10 +227,10 @@ if (resolved) {
   touched = (await lockedChanged(head, 'locked checks after the resolved dispute')).filter((f) => !resolved.files.includes(f))
   lockBase = head
   // An implementer that stopped on its dispute left the build unfinished and the
-  // tiers unrun: it finishes now, on the corrected checks. (JS-025 skipped this,
+  // checks unrun: it finishes now, on the corrected checks. (JS-025 skipped this,
   // and a stale test reached the merge queue.)
   if (built.disputes.length && !touched.length) {
-    const finished = await agent(`${read('implementer')}${brief}${designNotes}${locked}\n\n## Your dispute was settled\nYou stopped on a dispute. The lead settled it and corrected these files: ${resolved.files.join(', ')}. ${resolved.note}\n\n${unlocked.length ? `These files are not locked, whatever the list above says: ${unlocked.join(', ')}. ` : ''}Your partial build is in the working tree. Finish the task from it and run the tiers. Don't commit.`, { label: 'build after the resolved dispute', phase: 'Build', ...role('implementer'), schema: IMPLEMENTED })
+    const finished = await agent(`${read('implementer')}${brief}${designNotes}${locked}\n\n## Your dispute was settled\nYou stopped on a dispute. The lead settled it and corrected these files: ${resolved.files.join(', ')}. ${resolved.note}\n\n${unlocked.length ? `These files are not locked, whatever the list above says: ${unlocked.join(', ')}. ` : ''}Your partial build is in the working tree. Finish the task from it and run the checks and the tests of the packages you changed. Don't commit.`, { label: 'build after the resolved dispute', phase: 'Build', ...role('implementer'), schema: IMPLEMENTED })
     if (!finished) throw new Error('implementer returned nothing')
     built = finished
     head = await snapshot('snapshot of the finished build', 'Build')
@@ -257,7 +250,7 @@ const setNote = () => { reviewersNote = `Someone else has built the task above. 
 // ---- Verify: QA runs it, one adversarial reads to break it, architecture only for core changes.
 const reviewers = (round) => {
   const list = [
-    { key: 'qa', file: 'qa', focus: `${round === 1 ? 'Run the test commands, minus what a record covers, and check each acceptance criterion, including paths the checks skip. Then hunt flakes: run every integration test and e2e scenario the change adds or touches 5 times (`test/integration.sh -run \'<names>\' -count=5 <packages>`; `E2E_REPEAT=5` with `E2E_ONLY`), with another tier running beside it if you can. Timing races in new test rigs pass once on an idle machine and then fail in the merge queue; a failure in any repeat is a defect, with its output as evidence. If the change touches ffmpeg arguments, probing or the fixtures ffmpeg makes, also run the integration tests it adds or touches under `test/ffmpeg61.sh go test -tags integration -count=1 <packages> -run \'<names>\'`: ffmpeg 6.1 is the oldest supported and the one CI runs, and a newer local ffmpeg hides some of its defects.' : 'This round reviews fixes: rerun what the fixes touch and recheck the criteria they affect.'}\nHead tree: ${head}\nRecorded results: ${root}/.results/${head} (read-only; your role file says how to use them)` },
+    { key: 'qa', file: 'qa', focus: `${round === 1 ? 'Run the checks and the tests of the packages the change touches, once, and check each acceptance criterion, including paths the checks skip. Do not run whole tiers, repeat runs to hunt flakes, or rerun under ffmpeg 6.1: the merge queue runs every tier on CI, and a failure there is fixed then.' : 'This round reviews fixes: rerun what the fixes touch and recheck the criteria they affect.'}\nHead tree: ${head}\nRecorded results: ${root}/.results/${head} (read-only; your role file says how to use them)` },
     { key: 'adversarial', file: 'adversarial-reviewer', focus: 'Break it where the locked checks do not look: concurrency across replicas and workers, partial failure, disconnects, leaks, client input, security, and whether the checks can really fail.' },
   ]
   if (resolved?.light) return list
@@ -265,37 +258,15 @@ const reviewers = (round) => {
   if (ux) list.push({ key: 'ux', file: 'ux-reviewer', focus: 'Review what viewers and operators experience. Check the affected flow in jellyfin-web once if you need to see it.' })
   return list
 }
-// The whole unit and integration tiers on the head, from records the test
-// scripts write. Missing ones are run here, so no review rests on a build
-// whose tiers nobody ran; a failure blocks like any evidenced finding.
-const tiers = async (round) => {
-  // A tier agent sometimes ends its turn to wait on a shard, which returns no
-  // records; the shards go on, so a fresh agent waits for those and runs the rest.
-  let result = null
-  for (let attempt = 1; attempt <= 4 && !result; attempt++) {
-    // tools/tiers.sh does the work and prints the answer, so the agent only
-    // repeats one command and copies its output (the earlier prompt asked a small
-    // model to manage the runs, and it once reported a running shard as failed).
-    result = await agent(`In the repository root (${root}), run \`bash tools/tiers.sh ${head}\` in the foreground, with the Bash tool's timeout set to 600000 ms. It prints one JSON line. While its "done" is false, run the same command again, as many times as it takes (each call waits up to 9 minutes; a tier takes up to 20). When "done" is true, return its "records" exactly as printed. Do nothing else: never edit a file, start a test yourself, or end your turn before "done" is true.`,
-      { label: `tiers (round ${round})${attempt > 1 ? ` try ${attempt}` : ''}`, phase: 'Verify', schema: TIERS, model: 'haiku', effort: 'low' })
-      .catch(() => null)
-  }
-  if (!result) return [{ severity: 'major', kind: 'environment', title: 'the tier gate returned nothing', scenario: '', evidenceKind: 'reading', evidence: '', reviewer: 'tiers' }]
-  return result.records.filter((r) => r.status !== 'pass').map((r) => ({
-    severity: 'major', kind: 'defect', title: `${r.name} does not pass on the head`, file: r.log, scenario: r.summary,
-    evidenceKind: 'command-output', evidence: `.results/${head}/${r.name}: status=${r.status}; ${r.summary}; log ${r.log ?? ''}`, reviewer: 'tiers',
-  }))
-}
 const verify = async (round) => {
   phase('Verify')
-  const gate = await tiers(round)
   const roles = reviewers(round)
   const results = await parallel(roles.map((r) => () =>
     agent(`${read(r.file)}${brief}\n\n${reviewersNote}\n\n${r.focus}\n\n${evidenceRule} ${economy}`, { label: `${r.key} (round ${round})`, phase: 'Verify', ...role(r.file), schema: FINDINGS })
       .then((result) => ({ key: r.key, result }))))
   const answered = results.filter((x) => x && x.result)
   const missing = roles.map((r) => r.key).filter((k) => !answered.some((x) => x.key === k))
-  const findings = [...gate, ...answered.flatMap((x) => x.result.findings.map((f) => ({ ...f, reviewer: x.key })))]
+  const findings = [...answered.flatMap((x) => x.result.findings.map((f) => ({ ...f, reviewer: x.key })))]
   // The evidence gate: reading alone never blocks, and the environment is not the change.
   for (const f of findings) if (f.severity !== 'minor' && f.evidenceKind === 'reading') f.severity = 'minor'
   return { findings, missing }
