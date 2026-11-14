@@ -193,24 +193,33 @@ var ErrElsewhere = errors.New("the library is being scanned by another replica")
 // keeps one scan per library across all worker replicas; the one that loses
 // gets ErrElsewhere.
 func (s *Scanner) Scan(ctx context.Context, lib Library) error {
+	_, err := s.ScanCounting(ctx, lib)
+	return err
+}
+
+// ScanCounting is Scan, and says how many films it could not store: files that
+// failed to open, probe or write. A file skipped for having no season and
+// episode is not one. The count is set before the guard against mass loss, so
+// a scan that fails on it still says how many films failed.
+func (s *Scanner) ScanCounting(ctx context.Context, lib Library) (failed int, err error) {
 	conn, err := s.Pool.Acquire(ctx)
 	if err != nil {
-		return err
+		return failed, err
 	}
 	defer conn.Release()
 	var locked bool
 	if err := conn.QueryRow(ctx, "SELECT pg_try_advisory_lock(hashtextextended($1, 0))", "scan:"+lib.ID).Scan(&locked); err != nil {
-		return err
+		return failed, err
 	}
 	if !locked {
 		s.Log.Info("scan already running elsewhere", "library", lib.Name)
-		return ErrElsewhere
+		return 0, ErrElsewhere
 	}
 	defer conn.Exec(context.Background(), "SELECT pg_advisory_unlock(hashtextextended($1, 0))", "scan:"+lib.ID) //nolint:errcheck
 
 	objects, err := lib.Media.List(ctx, "")
 	if err != nil {
-		return err
+		return failed, err
 	}
 	sidecars := map[string]string{}
 	subtitleFiles := map[string][]store.Object{} // By directory.
@@ -232,16 +241,16 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 	}
 	hidden, err := s.loadHidden(ctx, lib.ID)
 	if err != nil {
-		return err
+		return failed, err
 	}
 	// A hidden item whose file is listed again as it was needs nothing but to be
 	// shown; it then goes through the scan like any item that was never hidden.
 	if err := s.restore(ctx, lib.ID, videos, hidden); err != nil {
-		return err
+		return failed, err
 	}
 	seen, err := s.loadSeen(ctx, lib.ID)
 	if err != nil {
-		return err
+		return failed, err
 	}
 
 	// A video is probed again when it changed. When only its subtitle files
@@ -295,7 +304,7 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 	// directory that is still there) than a library emptied on purpose: keep
 	// the films and their watch state, and say so.
 	if len(videos) == 0 && stored > 0 {
-		return fmt.Errorf("library %s: the media store lists no video, but the library has %d stored; keeping them (is the volume mounted?)", lib.Name, stored)
+		return failed, fmt.Errorf("library %s: the media store lists no video, but the library has %d stored; keeping them (is the volume mounted?)", lib.Name, stored)
 	}
 
 	// A new file that has the size and ETag of a lost item is that item, moved.
@@ -318,6 +327,7 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 		s.Log.Info("probing films", "library", lib.Name, "films", len(changed), "index kept", len(keepIndex))
 	}
 	done := map[string]bool{}
+	skipped := 0
 	for result := range s.probeAll(ctx, lib, changed, keepIndex) {
 		object, probe := result.object, result.probe
 		// A file that moved keeps its item, and so its watch state; so does one
@@ -348,6 +358,7 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 			continue
 		}
 		if !ok {
+			skipped++
 			continue
 		}
 		done[object.Key] = true
@@ -355,7 +366,7 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 			moved.taken = true
 			if !moved.hidden {
 				if err := s.dropSeen(ctx, lib.ID, moved.key); err != nil {
-					return err
+					return failed, err
 				}
 			}
 		}
@@ -374,13 +385,15 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 		}
 	}
 
+	failed = len(changed) - len(done) - skipped
+
 	// A scan that would lose most of a library fails like the empty mount does,
 	// before it hides or removes anything: the likelier cause is a disk or a
 	// mount that is away. The files hidden by earlier scans count, so that
 	// several small losses can't add up to a big one unseen.
 	lost := pool.lost()
 	if float64(len(lost)) > s.MaxLostShare*float64(stored) {
-		return fmt.Errorf("library %s: %d of its %d stored files are missing from the media store, more than the share allowed (maxLostShare %v); keeping them (is a disk or a mount away?)",
+		return failed, fmt.Errorf("library %s: %d of its %d stored files are missing from the media store, more than the share allowed (maxLostShare %v); keeping them (is a disk or a mount away?)",
 			lib.Name, len(lost), stored, s.MaxLostShare)
 	}
 	// A file that is listed and could not be read may be a lost item's, so an
@@ -396,11 +409,11 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 		switch {
 		case !item.hidden:
 			if err := s.hide(ctx, lib.ID, item); err != nil {
-				return err
+				return failed, err
 			}
 		case item.expired && !unread[item.size]:
 			if _, err := s.Pool.Exec(ctx, "DELETE FROM items WHERE id = $1", item.itemID); err != nil {
-				return err
+				return failed, err
 			}
 			removed++
 		}
@@ -408,7 +421,7 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 	for key, old := range seen {
 		if old.itemID == nil && !current[key] {
 			if err := s.dropSeen(ctx, lib.ID, key); err != nil {
-				return err
+				return failed, err
 			}
 		}
 	}
@@ -416,22 +429,22 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 	// statement can't see, so the second pass catches those.
 	if _, err := s.Pool.Exec(ctx, `DELETE FROM items parent WHERE library_id = $1 AND type IN ('Season', 'Series')
 		AND NOT EXISTS (SELECT 1 FROM items child WHERE child.parent_id = parent.id)`, lib.ID); err != nil {
-		return err
+		return failed, err
 	}
 	if _, err := s.Pool.Exec(ctx, `DELETE FROM items parent WHERE library_id = $1 AND type = 'Series'
 		AND NOT EXISTS (SELECT 1 FROM items child WHERE child.parent_id = parent.id)`, lib.ID); err != nil {
-		return err
+		return failed, err
 	}
 	if err := s.stampParents(ctx, lib.ID); err != nil {
-		return err
+		return failed, err
 	}
 	// Only jobs are queued here; a worker makes the pictures and deletes the
 	// ones not wanted, whether the option is on or off.
 	if err := EnqueueChapterImages(ctx, s.Pool, lib.ID); err != nil {
-		return err
+		return failed, err
 	}
-	s.Log.Info("scan finished", "library", lib.Name, "videos", len(current), "changed", len(changed), "sidecars", len(refreshed), "hidden", len(lost)-removed, "removed", removed)
-	return nil
+	s.Log.Info("scan finished", "library", lib.Name, "videos", len(current), "changed", len(changed), "sidecars", len(refreshed), "hidden", len(lost)-removed, "removed", removed, "failed", failed)
+	return failed, nil
 }
 
 // lostItem is an item the listing lacks: one whose key it no longer shows, or
