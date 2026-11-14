@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -476,11 +477,17 @@ func TestConcurrentStaleSyncsKeepTheNewestPosition(t *testing.T) {
 			request.Header.Set("Authorization", `MediaBrowser Token="`+e.token+`"`)
 			request.Header.Set("Content-Type", "application/json")
 			response, err := http.DefaultClient.Do(request)
-			if err != nil || response.StatusCode != 200 {
+			if err != nil {
 				t.Errorf("writer %d: %v", i, err)
 				return
 			}
-			response.Body.Close()
+			defer response.Body.Close()
+			if response.StatusCode != 200 {
+				// Say what the server answered, so a rare failure names its cause (BL-123).
+				answer, _ := io.ReadAll(io.LimitReader(response.Body, 2048))
+				t.Errorf("writer %d: %d %s", i, response.StatusCode, answer)
+				return
+			}
 		}()
 	}
 	wg.Wait()
