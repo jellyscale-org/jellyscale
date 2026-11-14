@@ -394,7 +394,7 @@ func TestAWorkerReapedByItsOwnLookIsCounted(t *testing.T) {
 	if w.lookForTheDead(ctx) {
 		t.Fatal("the first look already forgot the worker")
 	}
-	time.Sleep(reapGrace / 2)
+	time.Sleep(liveTiming("grace") / 2)
 	if !w.lookForTheDead(ctx) {
 		t.Fatal("a worker whose row is among the dead did not find itself lost")
 	}

@@ -160,7 +160,7 @@ func (s faultStep) reach() time.Duration {
 
 // quarrels says whether a Clean step c and another step p may not fall together. A clean step is
 // one whose own check needs the surroundings quiet: a kill's is that a restart of Postgres does not
-// fall within reapHold before it (a reaper forgets nobody then) nor within a lease after it (the
+// fall within hold before it (a reaper forgets nobody then) nor within a lease after it (the
 // replacement is claimed before the lease the dead worker held runs out, and a restart would
 // hold the claim up); a restart's is that no worker is taken away and no other restart falls
 // while it is judged; a stop's and a delay's is that no restart falls in them.
@@ -177,7 +177,7 @@ func quarrels(c, p faultStep, tm faultTiming) bool {
 		after := c.reach()
 		before := p.reach()
 		if c.Kind == faultKill {
-			after, before = tm.Lease, before+reapHold
+			after, before = tm.Lease, before+liveTiming("hold")
 		}
 		// A second more than the kill's own window: the stop's and the delay's checks are cut by
 		// hit(), which looks a second before the step as well.
