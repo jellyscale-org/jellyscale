@@ -698,6 +698,69 @@
       "title": "A listed request that answers non-2xx is excused when Jellyfin gives the same status",
       "status": "open",
       "notes": "The criterion says each listed request must answer 2xx and never 404. sweep() skips a failure when `reference.answers(r, status)` returns true, meaning Jellyfin answered the same status. A route that 404s on both servers (for example because of a fixture id mismatch) is excused, and the schema check never sees its answer."
+    },
+    {
+      "id": "BL-078",
+      "source": "JS-100 check, verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "The search-hints capture note states observations its JSON does not record",
+      "status": "open",
+      "notes": "compat/captures/search-hints-12.4.md describes limit=0, limit=-1, limit=3&startIndex=3, userId=zzz (400) and a one-letter 'a' request; compat/captures/search-hints-12.4.json holds none of them. Re-observe on Jellyfin 12.4 and record them, or drop the claims."
+    },
+    {
+      "id": "BL-079",
+      "source": "JS-100 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "/Search/Hints ignores startIndex",
+      "status": "open",
+      "notes": "The note says Jellyfin takes startIndex after the limit cut (limit=3&startIndex=3 gives no hints). internal/api/search_hints.go never reads it. Fluster does not send it."
+    },
+    {
+      "id": "BL-080",
+      "source": "JS-100 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "/Search/Hints reads a non-numeric limit as 0 and ignores a malformed userId",
+      "status": "open",
+      "notes": "limit, _ = strconv.Atoi(value): limit=abc answers 200 with no hints. The note says Jellyfin answers 400 for userId=zzz. Observe Jellyfin's answer for limit=abc first."
+    },
+    {
+      "id": "BL-081",
+      "source": "JS-100 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "/Search/Hints with no limit or no includeItemTypes answers unobserved behaviour",
+      "status": "open",
+      "notes": "defaultHintLimit = 100 is a guess (the code says so); with no includeItemTypes seasons and collections may come back. Observe both on Jellyfin 12.4."
+    },
+    {
+      "id": "BL-082",
+      "source": "JS-100 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "Hint order beyond episodes is not backed by a capture, and episode order is never compared with Jellyfin",
+      "status": "open",
+      "notes": "HintOrder puts names starting with the term first and mixes films and series by sort name; no capture covers a series sorting before a film. The three-type differential request is allowlisted element by element (names differ under JS-068), so season/number order is checked only by the integration test. Once JS-068 aligns names, drop the allowlist so order is compared."
+    },
+    {
+      "id": "BL-083",
+      "source": "JS-100 check",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "As-you-type search sends one- and two-letter terms the trigram index cannot serve",
+      "status": "open",
+      "notes": "A trigram index needs three characters; shorter terms scan items. Measure on a library the size of the dogfood's before deciding whether it matters."
+    },
+    {
+      "id": "BL-084",
+      "source": "JS-100 check",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "Series on an episode hint is observed but not required or checked",
+      "status": "open",
+      "notes": "Jellyfin 12.4 sends Series (the show's name) on each episode hint; a client shows it under the episode. No check holds jellyscale to it."
     }
   ]
 }

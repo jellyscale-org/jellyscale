@@ -56,6 +56,9 @@ func CheckAnswer(r Request, status int, doc any) error {
 	switch doc := doc.(type) {
 	case map[string]any:
 		list, _ = doc["Items"].([]any)
+		if hints, ok := doc["SearchHints"].([]any); ok {
+			list = hints
+		}
 	case []any:
 		list = doc
 	}

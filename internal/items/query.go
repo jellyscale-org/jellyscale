@@ -23,12 +23,15 @@ type Query struct {
 	SortBy       []string
 	Descending   []bool
 	Search       string
-	NameStarts   string
-	IsFavorite   *bool
-	IsPlayed     *bool
-	IsResumable  bool
-	Start        int
-	Limit        int
+	// HintOrder ranks the matches of Search as Jellyfin's /Search/Hints does:
+	// names that start with the term, then episodes by season and number, then by sort name.
+	HintOrder   bool
+	NameStarts  string
+	IsFavorite  *bool
+	IsPlayed    *bool
+	IsResumable bool
+	Start       int
+	Limit       int
 }
 
 // sortColumns is an allowlist, because ORDER BY can't take a bound parameter.
@@ -147,7 +150,13 @@ func (q Query) order() string {
 // PageSQL selects one page of item IDs.
 func (q Query) PageSQL() (string, []any) {
 	from, args := q.compile()
-	sql := "SELECT i.id::text " + from + "\nORDER BY " + q.order()
+	order := q.order()
+	if q.HintOrder {
+		args = append(args, escapeLike(q.Search)+"%")
+		order = "i.name ILIKE $" + strconv.Itoa(len(args)) + " DESC, (i.type = 'Episode') DESC, " +
+			"i.parent_index_number ASC NULLS LAST, i.index_number ASC NULLS LAST, " + order
+	}
+	sql := "SELECT i.id::text " + from + "\nORDER BY " + order
 	if q.Limit > 0 {
 		args = append(args, q.Limit)
 		sql += " LIMIT $" + strconv.Itoa(len(args))

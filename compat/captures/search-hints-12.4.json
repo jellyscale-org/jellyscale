@@ -1,0 +1,589 @@
+{
+ "about": "jellyfin/jellyfin:12.4 (server 12.4.0), disposable container. Library: films 'Alpha Film (2021)', 'The Beta Film (2019)', 'Gamma.Film.2015.1080p', 'Quartz Film (2022)', 'Quartz Quest (2018)'; shows 'Delta Show (2020)' (a poster.jpg beside it; S01E01 Pilot, S01E02 Second, S02E01 Return) and 'Quartz Show (2021)' (no picture; S01E01 'Quartz Opener'). Synthetic fixtures only. Observed 2026-11-13. Ids are Jellyfin's, tokens are not recorded. Every request carried the admin's token as Authorization: MediaBrowser Token=...; userId is the admin's.",
+ "requests": {
+  "Fluster's request, every type": {
+   "query": "searchTerm=quartz&limit=10&includeItemTypes=Movie,Series,Episode&userId=@U",
+   "status": 200,
+   "body": {
+    "SearchHints": [
+     {
+      "ItemId": "0ca23275f8e720bd419e8fa4304e4243",
+      "Id": "0ca23275f8e720bd419e8fa4304e4243",
+      "Name": "Quartz Show S01E01 Quartz Opener",
+      "IndexNumber": 1,
+      "ParentIndexNumber": 1,
+      "PrimaryImageTag": "2ae767e4e835ad41bf4e3745ef4d8647",
+      "Type": "Episode",
+      "RunTimeTicks": 50230000,
+      "MediaType": "Video",
+      "Series": "Quartz Show",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     },
+     {
+      "ItemId": "0f0cc44ef092bdbd144fdd3fcead176a",
+      "Id": "0f0cc44ef092bdbd144fdd3fcead176a",
+      "Name": "Quartz Film (2022)",
+      "ProductionYear": 2022,
+      "PrimaryImageTag": "493944ecde8d4dfebd30bd8fadf4de09",
+      "Type": "Movie",
+      "RunTimeTicks": 50230000,
+      "MediaType": "Video",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     },
+     {
+      "ItemId": "12b6a080900548c51ee122777707cb4e",
+      "Id": "12b6a080900548c51ee122777707cb4e",
+      "Name": "Quartz Quest (2018)",
+      "ProductionYear": 2018,
+      "PrimaryImageTag": "761f271aebab901db0af342c3dc8b290",
+      "Type": "Movie",
+      "RunTimeTicks": 50230000,
+      "MediaType": "Video",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     },
+     {
+      "ItemId": "3fccc76529fdd30d855367e12b787043",
+      "Id": "3fccc76529fdd30d855367e12b787043",
+      "Name": "Quartz Show",
+      "ProductionYear": 2021,
+      "Type": "Series",
+      "IsFolder": true,
+      "MediaType": "Unknown",
+      "Artists": [],
+      "ChannelId": null
+     }
+    ],
+    "TotalRecordCount": 4
+   }
+  },
+  "a lowercase fragment of a title": {
+   "query": "searchTerm=uart&limit=10&includeItemTypes=Movie,Series,Episode&userId=@U",
+   "status": 200,
+   "body": {
+    "SearchHints": [
+     {
+      "ItemId": "0ca23275f8e720bd419e8fa4304e4243",
+      "Id": "0ca23275f8e720bd419e8fa4304e4243",
+      "Name": "Quartz Show S01E01 Quartz Opener",
+      "IndexNumber": 1,
+      "ParentIndexNumber": 1,
+      "PrimaryImageTag": "2ae767e4e835ad41bf4e3745ef4d8647",
+      "Type": "Episode",
+      "RunTimeTicks": 50230000,
+      "MediaType": "Video",
+      "Series": "Quartz Show",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     },
+     {
+      "ItemId": "0f0cc44ef092bdbd144fdd3fcead176a",
+      "Id": "0f0cc44ef092bdbd144fdd3fcead176a",
+      "Name": "Quartz Film (2022)",
+      "ProductionYear": 2022,
+      "PrimaryImageTag": "493944ecde8d4dfebd30bd8fadf4de09",
+      "Type": "Movie",
+      "RunTimeTicks": 50230000,
+      "MediaType": "Video",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     },
+     {
+      "ItemId": "12b6a080900548c51ee122777707cb4e",
+      "Id": "12b6a080900548c51ee122777707cb4e",
+      "Name": "Quartz Quest (2018)",
+      "ProductionYear": 2018,
+      "PrimaryImageTag": "761f271aebab901db0af342c3dc8b290",
+      "Type": "Movie",
+      "RunTimeTicks": 50230000,
+      "MediaType": "Video",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     },
+     {
+      "ItemId": "3fccc76529fdd30d855367e12b787043",
+      "Id": "3fccc76529fdd30d855367e12b787043",
+      "Name": "Quartz Show",
+      "ProductionYear": 2021,
+      "Type": "Series",
+      "IsFolder": true,
+      "MediaType": "Unknown",
+      "Artists": [],
+      "ChannelId": null
+     }
+    ],
+    "TotalRecordCount": 4
+   }
+  },
+  "an upper-case fragment": {
+   "query": "searchTerm=QUA&limit=10&includeItemTypes=Movie,Series,Episode&userId=@U",
+   "status": 200,
+   "body": {
+    "SearchHints": [
+     {
+      "ItemId": "0ca23275f8e720bd419e8fa4304e4243",
+      "Id": "0ca23275f8e720bd419e8fa4304e4243",
+      "Name": "Quartz Show S01E01 Quartz Opener",
+      "IndexNumber": 1,
+      "ParentIndexNumber": 1,
+      "PrimaryImageTag": "2ae767e4e835ad41bf4e3745ef4d8647",
+      "Type": "Episode",
+      "RunTimeTicks": 50230000,
+      "MediaType": "Video",
+      "Series": "Quartz Show",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     },
+     {
+      "ItemId": "0f0cc44ef092bdbd144fdd3fcead176a",
+      "Id": "0f0cc44ef092bdbd144fdd3fcead176a",
+      "Name": "Quartz Film (2022)",
+      "ProductionYear": 2022,
+      "PrimaryImageTag": "493944ecde8d4dfebd30bd8fadf4de09",
+      "Type": "Movie",
+      "RunTimeTicks": 50230000,
+      "MediaType": "Video",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     },
+     {
+      "ItemId": "12b6a080900548c51ee122777707cb4e",
+      "Id": "12b6a080900548c51ee122777707cb4e",
+      "Name": "Quartz Quest (2018)",
+      "ProductionYear": 2018,
+      "PrimaryImageTag": "761f271aebab901db0af342c3dc8b290",
+      "Type": "Movie",
+      "RunTimeTicks": 50230000,
+      "MediaType": "Video",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     },
+     {
+      "ItemId": "3fccc76529fdd30d855367e12b787043",
+      "Id": "3fccc76529fdd30d855367e12b787043",
+      "Name": "Quartz Show",
+      "ProductionYear": 2021,
+      "Type": "Series",
+      "IsFolder": true,
+      "MediaType": "Unknown",
+      "Artists": [],
+      "ChannelId": null
+     }
+    ],
+    "TotalRecordCount": 4
+   }
+  },
+  "Series alone": {
+   "query": "searchTerm=quartz&limit=10&includeItemTypes=Series&userId=@U",
+   "status": 200,
+   "body": {
+    "SearchHints": [
+     {
+      "ItemId": "3fccc76529fdd30d855367e12b787043",
+      "Id": "3fccc76529fdd30d855367e12b787043",
+      "Name": "Quartz Show",
+      "ProductionYear": 2021,
+      "Type": "Series",
+      "IsFolder": true,
+      "MediaType": "Unknown",
+      "Artists": [],
+      "ChannelId": null
+     }
+    ],
+    "TotalRecordCount": 1
+   }
+  },
+  "Episode alone": {
+   "query": "searchTerm=quartz&limit=10&includeItemTypes=Episode&userId=@U",
+   "status": 200,
+   "body": {
+    "SearchHints": [
+     {
+      "ItemId": "0ca23275f8e720bd419e8fa4304e4243",
+      "Id": "0ca23275f8e720bd419e8fa4304e4243",
+      "Name": "Quartz Show S01E01 Quartz Opener",
+      "IndexNumber": 1,
+      "ParentIndexNumber": 1,
+      "PrimaryImageTag": "2ae767e4e835ad41bf4e3745ef4d8647",
+      "Type": "Episode",
+      "RunTimeTicks": 50230000,
+      "MediaType": "Video",
+      "Series": "Quartz Show",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     }
+    ],
+    "TotalRecordCount": 1
+   }
+  },
+  "Movie alone": {
+   "query": "searchTerm=quartz&limit=10&includeItemTypes=Movie&userId=@U",
+   "status": 200,
+   "body": {
+    "SearchHints": [
+     {
+      "ItemId": "0f0cc44ef092bdbd144fdd3fcead176a",
+      "Id": "0f0cc44ef092bdbd144fdd3fcead176a",
+      "Name": "Quartz Film (2022)",
+      "ProductionYear": 2022,
+      "PrimaryImageTag": "493944ecde8d4dfebd30bd8fadf4de09",
+      "Type": "Movie",
+      "RunTimeTicks": 50230000,
+      "MediaType": "Video",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     },
+     {
+      "ItemId": "12b6a080900548c51ee122777707cb4e",
+      "Id": "12b6a080900548c51ee122777707cb4e",
+      "Name": "Quartz Quest (2018)",
+      "ProductionYear": 2018,
+      "PrimaryImageTag": "761f271aebab901db0af342c3dc8b290",
+      "Type": "Movie",
+      "RunTimeTicks": 50230000,
+      "MediaType": "Video",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     }
+    ],
+    "TotalRecordCount": 2
+   }
+  },
+  "limit 3 of 4 matches": {
+   "query": "searchTerm=quartz&limit=3&includeItemTypes=Movie,Series,Episode&userId=@U",
+   "status": 200,
+   "body": {
+    "SearchHints": [
+     {
+      "ItemId": "0ca23275f8e720bd419e8fa4304e4243",
+      "Id": "0ca23275f8e720bd419e8fa4304e4243",
+      "Name": "Quartz Show S01E01 Quartz Opener",
+      "IndexNumber": 1,
+      "ParentIndexNumber": 1,
+      "PrimaryImageTag": "2ae767e4e835ad41bf4e3745ef4d8647",
+      "Type": "Episode",
+      "RunTimeTicks": 50230000,
+      "MediaType": "Video",
+      "Series": "Quartz Show",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     },
+     {
+      "ItemId": "0f0cc44ef092bdbd144fdd3fcead176a",
+      "Id": "0f0cc44ef092bdbd144fdd3fcead176a",
+      "Name": "Quartz Film (2022)",
+      "ProductionYear": 2022,
+      "PrimaryImageTag": "493944ecde8d4dfebd30bd8fadf4de09",
+      "Type": "Movie",
+      "RunTimeTicks": 50230000,
+      "MediaType": "Video",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     },
+     {
+      "ItemId": "12b6a080900548c51ee122777707cb4e",
+      "Id": "12b6a080900548c51ee122777707cb4e",
+      "Name": "Quartz Quest (2018)",
+      "ProductionYear": 2018,
+      "PrimaryImageTag": "761f271aebab901db0af342c3dc8b290",
+      "Type": "Movie",
+      "RunTimeTicks": 50230000,
+      "MediaType": "Video",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     }
+    ],
+    "TotalRecordCount": 3
+   }
+  },
+  "limit 1 of 4 matches": {
+   "query": "searchTerm=quartz&limit=1&includeItemTypes=Movie,Series,Episode&userId=@U",
+   "status": 200,
+   "body": {
+    "SearchHints": [
+     {
+      "ItemId": "0ca23275f8e720bd419e8fa4304e4243",
+      "Id": "0ca23275f8e720bd419e8fa4304e4243",
+      "Name": "Quartz Show S01E01 Quartz Opener",
+      "IndexNumber": 1,
+      "ParentIndexNumber": 1,
+      "PrimaryImageTag": "2ae767e4e835ad41bf4e3745ef4d8647",
+      "Type": "Episode",
+      "RunTimeTicks": 50230000,
+      "MediaType": "Video",
+      "Series": "Quartz Show",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     }
+    ],
+    "TotalRecordCount": 1
+   }
+  },
+  "limit 10 of 4 matches": {
+   "query": "searchTerm=quartz&limit=10&includeItemTypes=Movie,Series,Episode&userId=@U",
+   "status": 200,
+   "body": {
+    "SearchHints": [
+     {
+      "ItemId": "0ca23275f8e720bd419e8fa4304e4243",
+      "Id": "0ca23275f8e720bd419e8fa4304e4243",
+      "Name": "Quartz Show S01E01 Quartz Opener",
+      "IndexNumber": 1,
+      "ParentIndexNumber": 1,
+      "PrimaryImageTag": "2ae767e4e835ad41bf4e3745ef4d8647",
+      "Type": "Episode",
+      "RunTimeTicks": 50230000,
+      "MediaType": "Video",
+      "Series": "Quartz Show",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     },
+     {
+      "ItemId": "0f0cc44ef092bdbd144fdd3fcead176a",
+      "Id": "0f0cc44ef092bdbd144fdd3fcead176a",
+      "Name": "Quartz Film (2022)",
+      "ProductionYear": 2022,
+      "PrimaryImageTag": "493944ecde8d4dfebd30bd8fadf4de09",
+      "Type": "Movie",
+      "RunTimeTicks": 50230000,
+      "MediaType": "Video",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     },
+     {
+      "ItemId": "12b6a080900548c51ee122777707cb4e",
+      "Id": "12b6a080900548c51ee122777707cb4e",
+      "Name": "Quartz Quest (2018)",
+      "ProductionYear": 2018,
+      "PrimaryImageTag": "761f271aebab901db0af342c3dc8b290",
+      "Type": "Movie",
+      "RunTimeTicks": 50230000,
+      "MediaType": "Video",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     },
+     {
+      "ItemId": "3fccc76529fdd30d855367e12b787043",
+      "Id": "3fccc76529fdd30d855367e12b787043",
+      "Name": "Quartz Show",
+      "ProductionYear": 2021,
+      "Type": "Series",
+      "IsFolder": true,
+      "MediaType": "Unknown",
+      "Artists": [],
+      "ChannelId": null
+     }
+    ],
+    "TotalRecordCount": 4
+   }
+  },
+  "a series with a picture and its episodes": {
+   "query": "searchTerm=delta&limit=10&includeItemTypes=Movie,Series,Episode&userId=@U",
+   "status": 200,
+   "body": {
+    "SearchHints": [
+     {
+      "ItemId": "bc2db8e141aeafeeb2b4e7395714c551",
+      "Id": "bc2db8e141aeafeeb2b4e7395714c551",
+      "Name": "Delta Show S01E01 Pilot",
+      "IndexNumber": 1,
+      "ParentIndexNumber": 1,
+      "PrimaryImageTag": "d26d7319628f583fd3867a92b46b6b94",
+      "Type": "Episode",
+      "RunTimeTicks": 150210000,
+      "MediaType": "Video",
+      "Series": "Delta Show",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     },
+     {
+      "ItemId": "d3abbaddd6370badb4eec9bd5ab4a232",
+      "Id": "d3abbaddd6370badb4eec9bd5ab4a232",
+      "Name": "Delta Show S01E02 Second",
+      "IndexNumber": 2,
+      "ParentIndexNumber": 1,
+      "PrimaryImageTag": "e977cc751bdabe488ec22d4a350145cf",
+      "Type": "Episode",
+      "RunTimeTicks": 150210000,
+      "MediaType": "Video",
+      "Series": "Delta Show",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     },
+     {
+      "ItemId": "c7740e9c9db800265669878f0390c93c",
+      "Id": "c7740e9c9db800265669878f0390c93c",
+      "Name": "Delta Show S02E01 Return",
+      "IndexNumber": 1,
+      "ParentIndexNumber": 2,
+      "PrimaryImageTag": "47337a58d77f61bb0b519657f3a2aa13",
+      "Type": "Episode",
+      "RunTimeTicks": 150210000,
+      "MediaType": "Video",
+      "Series": "Delta Show",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 1.7777777777777777
+     },
+     {
+      "ItemId": "8e6eec7af4bd67a317ae76fa541a465b",
+      "Id": "8e6eec7af4bd67a317ae76fa541a465b",
+      "Name": "Delta Show",
+      "ProductionYear": 2020,
+      "PrimaryImageTag": "d8c8b0787e169015b11bb4cd8a26fef3",
+      "Type": "Series",
+      "IsFolder": true,
+      "MediaType": "Unknown",
+      "Artists": [],
+      "ChannelId": null,
+      "PrimaryImageAspectRatio": 0.6666666666666666
+     }
+    ],
+    "TotalRecordCount": 4
+   }
+  },
+  "a term that matches nothing": {
+   "query": "searchTerm=zzz&limit=10&includeItemTypes=Movie,Series,Episode&userId=@U",
+   "status": 200,
+   "body": {
+    "SearchHints": [],
+    "TotalRecordCount": 0
+   }
+  },
+  "empty searchTerm": {
+   "query": "searchTerm=&limit=10&userId=@U",
+   "status": 400,
+   "body": {
+    "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+    "title": "One or more validation errors occurred.",
+    "status": 400,
+    "errors": {
+     "searchTerm": [
+      "The searchTerm field is required."
+     ]
+    },
+    "traceId": "TRACE"
+   }
+  },
+  "no searchTerm": {
+   "query": "limit=10&userId=@U",
+   "status": 400,
+   "body": {
+    "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+    "title": "One or more validation errors occurred.",
+    "status": 400,
+    "errors": {
+     "searchTerm": [
+      "The searchTerm field is required."
+     ]
+    },
+    "traceId": "TRACE"
+   }
+  },
+  "no token": {
+   "query": "searchTerm=quartz&limit=10",
+   "status": 401,
+   "body": null
+  },
+  "a token no device holds": {
+   "query": "searchTerm=quartz&limit=10",
+   "status": 401,
+   "body": null
+  }
+ },
+ "items": {
+  "0ca23275f8e720bd419e8fa4304e4243": {
+   "Type": "Episode",
+   "Name": "Quartz Show S01E01 Quartz Opener",
+   "ImageTags": {
+    "Primary": "2ae767e4e835ad41bf4e3745ef4d8647"
+   },
+   "IndexNumber": 1,
+   "ParentIndexNumber": 1
+  },
+  "0f0cc44ef092bdbd144fdd3fcead176a": {
+   "Type": "Movie",
+   "Name": "Quartz Film (2022)",
+   "ImageTags": {
+    "Primary": "493944ecde8d4dfebd30bd8fadf4de09"
+   },
+   "IndexNumber": null,
+   "ParentIndexNumber": null
+  },
+  "12b6a080900548c51ee122777707cb4e": {
+   "Type": "Movie",
+   "Name": "Quartz Quest (2018)",
+   "ImageTags": {
+    "Primary": "761f271aebab901db0af342c3dc8b290"
+   },
+   "IndexNumber": null,
+   "ParentIndexNumber": null
+  },
+  "3fccc76529fdd30d855367e12b787043": {
+   "Type": "Series",
+   "Name": "Quartz Show",
+   "ImageTags": {},
+   "IndexNumber": null,
+   "ParentIndexNumber": null
+  },
+  "8e6eec7af4bd67a317ae76fa541a465b": {
+   "Type": "Series",
+   "Name": "Delta Show",
+   "ImageTags": {
+    "Primary": "d8c8b0787e169015b11bb4cd8a26fef3"
+   },
+   "IndexNumber": null,
+   "ParentIndexNumber": null
+  },
+  "bc2db8e141aeafeeb2b4e7395714c551": {
+   "Type": "Episode",
+   "Name": "Delta Show S01E01 Pilot",
+   "ImageTags": {
+    "Primary": "d26d7319628f583fd3867a92b46b6b94"
+   },
+   "IndexNumber": 1,
+   "ParentIndexNumber": 1
+  },
+  "c7740e9c9db800265669878f0390c93c": {
+   "Type": "Episode",
+   "Name": "Delta Show S02E01 Return",
+   "ImageTags": {
+    "Primary": "47337a58d77f61bb0b519657f3a2aa13"
+   },
+   "IndexNumber": 1,
+   "ParentIndexNumber": 2
+  },
+  "d3abbaddd6370badb4eec9bd5ab4a232": {
+   "Type": "Episode",
+   "Name": "Delta Show S01E02 Second",
+   "ImageTags": {
+    "Primary": "e977cc751bdabe488ec22d4a350145cf"
+   },
+   "IndexNumber": 2,
+   "ParentIndexNumber": 1
+  }
+ }
+}

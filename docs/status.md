@@ -79,6 +79,7 @@ Every viewer-visible and operator-visible feature in scope, in one list. Status 
 - Next up and filters: **not built**. In scope.
 - Movie recommendations on the Movies page (`/Movies/Recommendations`; today a 404 hides its rows): **not built**. In scope, with an empty list as the first answer.
 - TV Shows Upcoming tab (`/Shows/Upcoming`): **not built**. In scope (decision).
+- Search hints (`/Search/Hints`, Fluster #102): **done**: one hint for each film, series or episode whose name holds the term, in Jellyfin 12.4's shape (names that start with the term first, episodes ahead of the rest, then by name); `limit` cuts the matches and `TotalRecordCount` counts the cut, as Jellyfin does.
 - Suggestions (`/Items/Suggestions`): **partial** (#91): random items of the types asked for, which Findroid's home screen needs; Jellyfin 12.4's own selection is not observed.
 - Multi-part films (`/Videos/{id}/AdditionalParts`): **not built**. In scope (decision).
 - Parental ratings (maximum rating per user, set under `identity` user management): **not built**. In scope here because ratings come from the scan: an item's official rating is read from the file's embedded tags or a sidecar `.nfo`, never fetched. `GET /Localization/ParentalRatings`, which fills the user-edit page's rating list, is built here too. Until then every item is unrated, so a maximum rating filters nothing and `BlockUnratedItems` would hide every film; `identity` therefore answers `POST /Users/{userId}/Policy` with 400 when it sets `MaxParentalRating` or `BlockUnratedItems`, and the control is never presented as working (decision).
@@ -114,7 +115,7 @@ Every viewer-visible and operator-visible feature in scope, in one list. Status 
 - Server administration the operator does outside the API: restart, shutdown and log files (the orchestrator does them), custom device names, branding set through the API (splash screen, custom CSS), and the metadata country and language lists.
 - Extras: trailers, theme songs and videos and special features answer empty lists or 404.
 - Remote metadata and image providers, remote subtitle download, editing items, uploading images or subtitles and deleting media: an operator supplies metadata as files beside the film (decision).
-- Routes no viewer-facing page calls and no client in scope needs, answered 404: `/FallbackFont/*`, `/Items/Counts`, `/Items/Root` (the user-scoped alias is served), `/System/Info/Storage`, `/Search/Hints` (jellyfin-web searches through `GET /Items`), `/Persons/{name}`, `/Studios/{name}`, `/Years` and `/Years/{year}`, `/Items/{itemId}/File` (the download link is `/Items/{itemId}/Download`), likes and ratings (`/UserItems/{itemId}/Rating`), `GET /UserItems/{itemId}/UserData` (decision).
+- Routes no viewer-facing page calls and no client in scope needs, answered 404: `/FallbackFont/*`, `/Items/Counts`, `/Items/Root` (the user-scoped alias is served), `/System/Info/Storage`, `/Persons/{name}`, `/Studios/{name}`, `/Years` and `/Years/{year}`, `/Items/{itemId}/File` (the download link is `/Items/{itemId}/Download`), likes and ratings (`/UserItems/{itemId}/Rating`), `GET /UserItems/{itemId}/UserData` (decision).
 - Kodi is not a gate.
 
 ## Client coverage
