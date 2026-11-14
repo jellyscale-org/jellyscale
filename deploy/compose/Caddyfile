@@ -1,4 +1,5 @@
-# The ingress: media, images, file downloads and the bitrate test go to the stream role, everything else
+# The ingress: media, images, file downloads, the bitrate test and the encoding configuration (which jellyfin-web reads
+# before an ASS track, and a stream replica answers in an outage) go to the stream role, everything else
 # (WebSocket included) to the api role. Clients vary the case of paths, so the
 # match is case-insensitive.
 #
@@ -8,7 +9,7 @@
 # docs/running.md asks of an ingress: it polls /readyz, stops sending to a replica that answers 503 or
 # refuses, and tries a GET that failed before its response header on another replica.
 :8080 {
-	@stream path_regexp stream (?i)^/(videos/|playback/bitratetest$|items/[^/]+/(images(/|$)|download$))
+	@stream path_regexp stream (?i)^/(videos/|playback/bitratetest$|system/configuration/encoding$|items/[^/]+/(images(/|$)|download$))
 	handle @stream {
 		reverse_proxy stream:8096 stream2:8096 {
 			flush_interval -1
@@ -50,7 +51,7 @@
 	# a second name, because Caddy shares one health state between handlers that name a replica alike.
 	handle_errors {
 		@noready expression {err.status_code} == 503
-		@media path_regexp media (?i)^/(videos/|playback/bitratetest$|items/[^/]+/(images(/|$)|download$))
+		@media path_regexp media (?i)^/(videos/|playback/bitratetest$|system/configuration/encoding$|items/[^/]+/(images(/|$)|download$))
 		handle @noready {
 			handle @media {
 				reverse_proxy stream.:8096 stream2.:8096 {

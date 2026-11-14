@@ -198,7 +198,9 @@ check "the font is served by a stream replica with no ffmpeg" "200 font/ttf same
 check "a worker took the fonts out of the film once" "1 1" "$(sql "SELECT count(*) FROM subtitle_jobs WHERE kind = 'fonts'") $(grep -c -e '-dump_attachment' "$logs/ffmpeg.log")"
 check "a stream that is no attachment is not found" 404 "$(code "127.0.0.1:$counted1/Videos/$fontfilm/$fontfilm/Attachments/0?ApiKey=$token")"
 check "the api role doesn't serve fonts" 404 "$(code "127.0.0.1:$api1/Videos/$fontfilm/$fontfilm/Attachments/$attachment?ApiKey=$token")"
-check "the api role serves the encoding configuration" 200 "$(code -H "$header" "127.0.0.1:$api1/System/Configuration/encoding")"
+# JS-103: the stream role serves it, so jellyfin-web can draw ASS while Postgres is away.
+check "the stream role serves the encoding configuration" 200 "$(code -H "$header" "127.0.0.1:$stream/System/Configuration/encoding")"
+check "the api role doesn't serve the encoding configuration" 404 "$(code -H "$header" "127.0.0.1:$api1/System/Configuration/encoding")"
 
 profile=$(python3 -I -c 'import json,sys;print(json.dumps(json.load(open(sys.argv[1]))["deviceProfile"]))' "$repo/compat/captures/transcode-12.4.json")
 # Image subtitles. A PGS track is copied out of the film by one worker job,

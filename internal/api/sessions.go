@@ -52,7 +52,13 @@ func (s *Server) playbackStarted(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.finishReport(w, r, playstate.Started(r.Context(), s.Pool, sessionOf(r).User.ID, report.ItemID), func() error {
-		return s.saveSession(r, report)
+		if err := s.saveSession(r, report); err != nil {
+			return err
+		}
+		// Once the session is committed, so that a stream replica which reads it finds it. A lost
+		// notification costs the replica a refresh interval, not the report.
+		s.Pool.Exec(r.Context(), "SELECT pg_notify($1, $2)", startChannel, sessionOf(r).Token) //nolint:errcheck
+		return nil
 	})
 }
 

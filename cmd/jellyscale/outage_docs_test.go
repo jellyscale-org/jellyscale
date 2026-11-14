@@ -22,8 +22,9 @@ func read(t *testing.T, path string) string {
 }
 
 // DOMAINS invariant 37 states the window of recent activity as "window of N
-// seconds" (30 to 120: jellyfin-web reports progress every ten seconds, paused or not, so a live player is seen at least three times in it, and the tests wait it out), the refresh interval as "refresh every N seconds" (1 to 10, and the window at
-// least three refreshes and 5 seconds, which the integration tests wait on), that
+// minutes" (10 to 60, JS-103: a film paused in a background tab, which reports rarely or not at all, is served through an
+// outage for up to 10 minutes), the refresh interval as "refresh every N seconds" (1 to 10, which the integration tests
+// wait on), that
 // every stream replica keeps the snapshot, that direct play and the stored
 // segments are what it serves from it, that a token signed out after the last
 // refresh stays usable until Postgres is back, and that a failed refresh keeps
@@ -42,18 +43,18 @@ func TestDomainsSaysWhatIsServedFromTheSnapshotDuringAnOutage(t *testing.T) {
 	if strings.Contains(invariant, "Nothing is kept in memory") {
 		t.Error("invariant 37 still says nothing is kept in memory")
 	}
-	// The numbers are read from two fixed phrases, the same in internal/api/outage_memory_integration_test.go
-	// (windowPhrase, refreshPhrase): the invariant already holds other "N seconds" (the usual 90), so a pattern that
-	// took the nearest number to a word would read the wrong one.
-	window := regexp.MustCompile(`(?i)\bwindow of (\d{1,3}) seconds`).FindStringSubmatch(invariant)
+	// The numbers are read from two fixed phrases, the same in internal/api/outage_memory_integration_test.go (timings):
+	// the invariant already holds other "N seconds" (the usual 90), so a pattern that took the nearest number to a
+	// word would read the wrong one.
+	window := regexp.MustCompile(`(?i)\bwindow of (\d{1,3}) minutes`).FindStringSubmatch(invariant)
 	refresh := regexp.MustCompile(`(?i)\brefresh(?:es)?,? every (\d{1,2}) seconds`).FindStringSubmatch(invariant)
 	if window == nil || refresh == nil {
-		t.Fatalf("invariant 37 must say \"window of N seconds\" (30 to 120: jellyfin-web reports progress every ten seconds, paused or not, so a live player is seen at least three times in it, and the tests wait it out) and \"refresh every N seconds\" (or \"refreshes every N seconds\") (1 to 10): found %v and %v", window, refresh)
+		t.Fatalf("invariant 37 must say \"window of N minutes\" (10 to 60) and \"refresh every N seconds\" (or \"refreshes every N seconds\") (1 to 10): found %v and %v", window, refresh)
 	}
-	seconds, _ := strconv.Atoi(window[1])
+	minutes, _ := strconv.Atoi(window[1])
 	every, _ := strconv.Atoi(refresh[1])
-	if seconds < 30 || seconds > 120 || every < 1 || every > 10 || seconds < 3*every+5 {
-		t.Errorf("invariant 37 states a window of %d seconds and a refresh every %d seconds: want a window of 30 to 120 and a refresh of 1 to 10, and a window of at least three refreshes and 5 seconds", seconds, every)
+	if minutes < 10 || minutes > 60 || every < 1 || every > 10 {
+		t.Errorf("invariant 37 states a window of %d minutes and a refresh every %d seconds: want a window of 10 to 60 minutes and a refresh of 1 to 10 seconds", minutes, every)
 	}
 	for what, pattern := range map[string]string{
 		"a snapshot of tokens":                                                      `(?i)snapshot`,
@@ -83,7 +84,7 @@ func TestRunningDocSaysDirectPlayAndStoredSegmentsGoOnThroughAnOutage(t *testing
 		"the snapshot":             `(?i)snapshot`,
 		"direct play":              `(?i)direct play`,
 		"segments in the store":    `(?i)(stored|in the store|transcode store)`,
-		"the window in seconds":    `(?i)\bwindow of \d{1,3} seconds`,
+		"the window in minutes":    `(?i)\bwindow of \d{1,3} minutes`,
 		"a signed-out token stays": `(?is)signed out.{0,300}usable|usable.{0,300}signed out`,
 	} {
 		if !regexp.MustCompile(pattern).MatchString(paragraph) {

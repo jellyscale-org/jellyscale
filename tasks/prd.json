@@ -1650,6 +1650,34 @@
       "notes": "Lead design (2026-11-14): every stream replica refreshes a snapshot of the tokens of recently active sessions every 5 s, so no sticky routing is needed; per-replica memory failed under the shipped Caddy fallback (14 of 40 clients moved replica)."
     },
     {
+      "id": "JS-103",
+      "phase": "P4",
+      "title": "A Postgres outage interrupts no viewer who was watching: paused films, subtitles, and films just started",
+      "description": "JS-085 keeps direct play and stored segments going while Postgres is away for viewers in each stream replica's snapshot (sessions active in the last 60 s, refreshed every 5 s). Three viewers still stop: one whose film was paused in a background tab long enough to drop out of the window (jellyfin-web reports every 10 s, a hidden tab may report less often), one who turns subtitles on or needs a font not yet fetched (the Subtitles and Attachments routes wait for Postgres), and one who started a film in the 5 s before the outage. Jellyfin stops every viewer in an outage; jellyscale should stop none who were watching. A viewer who played on through the outage must not get a restart when Postgres returns either.",
+      "acceptanceCriteria": [
+        "A viewer whose film was paused up to 10 minutes before the outage, with no report from it reaching Postgres since the pause, resumes it during the outage from a stream replica that served it nothing before: direct play by a seek to bytes the player has not buffered, an HLS transcode as far as the segments the store holds; shown with a session last seen more than 60 s and less than the window before Postgres stops",
+        "A session last seen longer ago than the window, and one that reported Stopped (it plays nothing), still get nothing from the snapshot during the outage",
+        "DOMAINS 37 states the window (at least 10 minutes; the tests read the number from there) and what it costs at 1000 sessions in the window: what each refresh reads, what a replica holds, and who it now admits (a tab closed without a Stopped stays served for the window); docs/running.md says the same",
+        "During the outage a viewer in the snapshot who turns on a track the browser has not fetched sees its cues when the asset store holds the track: a text track, and an ASS track whose listed fonts are each answered 200 with the font's bytes; in jellyfin-web in the e2e tier, from a stream replica that served the viewer nothing before, on the same player with no dialog, no new PlaybackInfo and no answer of 400 or more",
+        "Every kind of subtitle answer the stores can give without a job (a text track in each format and cue window the route renders, a PGS .sup, a font and its 304) has, for a token in the snapshot during the outage, the status, headers and body it has with Postgres up",
+        "A track or font the store lacks, one of a film other than the session's, one extracted from a file replaced before the last refresh, and any subtitle request of a token outside the snapshot wait for Postgres and are answered as usual when it is back: no subtitle or fonts job is started or joined meanwhile, and nothing is answered 400 or more",
+        "A film whose picture began 1 s before Postgres stops plays on during the outage: a seek to bytes the player has not buffered is answered, on the same player with no dialog, no new PlaybackInfo and no answer of 400 or more; in jellyfin-web with api and stream as separate processes, and also when the seek reaches a stream replica that served the viewer nothing before",
+        "The same holds for several viewers who start within that second, and for a viewer already in the snapshot with another film who starts this one 1 s before (the new film is served, the old one no longer)",
+        "DOMAINS 37 and docs/running.md state the gap that remains for a film just started (under 1 s) and what closing it costs per start, in place of the 5 s gap they state today",
+        "When Postgres answers again after an outage longer than 60 s (past the readiness cut), a direct-play film that played on through it plays on for at least 30 s more in jellyfin-web, with the ingress behaving as the shipped Caddyfile does throughout (fallback on while /readyz is still 503): same player, no dialog, no new PlaybackInfo, no answer of 400 or more, a range in flight across the return is not cut, and a seek after the return to bytes not buffered is answered",
+        "The same for an HLS transcode, which also plays on past the last segment the store held when Postgres returned, though its viewer was not recorded for longer than transcodeIdle",
+        "The cause of the queue run's second PlaybackInfo is named (the request, the answer of 400 or more or the cut response the player got, and the process that gave it), fixed in the product, and the check of it fails on the build before the fix for that cause, every run",
+        "Nothing that needs Postgres to decide is answered from memory, as in JS-085: while it is away a token never valid, signed out before the last refresh or outside the window, a film other than the session's, a new job, a playlist, a login and every api route wait; a viewer is never added to a snapshot without Postgres having accepted its token; and once Postgres answers every request is decided by it again, so a token signed out just before the outage is refused on its first request after"
+      ],
+      "status": "done",
+      "passes": true,
+      "dependsOn": [
+        "JS-085"
+      ],
+      "source": "JS-085 review (2026-11-14): BL-107, BL-108, BL-109",
+      "notes": "Lead: the second PlaybackInfo after Postgres returned was the e2e scenario's teardown (it killed the second replica and reset the router while Postgres was still stopped), fixed in test/e2e/transcode.mjs; no product cause. GET /System/Configuration/encoding moved to the stream role; an ingress written before must route it to stream."
+    },
+    {
       "id": "JS-086",
       "phase": "P5",
       "title": "One typed media model from the probe to every reader",

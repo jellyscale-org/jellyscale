@@ -35,7 +35,7 @@ function setBackends(role, ports) {
 }
 for (const role of ["stream", "api"]) setBackends(role, initial[role]);
 
-const isStreamPath = (url) => /^\/(videos\/|playback\/bitratetest(\?|$)|items\/[^/]+\/(images(\/|\?|$)|download(\?|$)))/i.test(url);
+const isStreamPath = (url) => /^\/(videos\/|playback\/bitratetest(\?|$)|system\/configuration\/encoding(\?|$)|items\/[^/]+\/(images(\/|\?|$)|download(\?|$)))/i.test(url);
 const isDirectPlay = (url) => /^\/videos\/[^/]+\/stream/i.test(url);
 
 function check(backend) {
