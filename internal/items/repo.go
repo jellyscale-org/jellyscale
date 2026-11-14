@@ -119,7 +119,7 @@ func (r *Repo) hydrate(ctx context.Context, ids []string, userID string, fields 
 	}
 	rows, err := r.Pool.Query(ctx, `SELECT i.id::text, i.dto, COALESCE(d.played, false), COALESCE(d.favorite, false),
 			COALESCE(d.play_count, 0), COALESCE(d.position_ticks, 0), i.run_time_ticks, d.last_played_at, c.keys
-		FROM items i
+		FROM shown_items i
 		LEFT JOIN user_item_data d ON d.item_id = i.id AND d.user_id = $2::uuid
 		LEFT JOIN media_sources m ON m.id = i.id
 		LEFT JOIN chapter_images c ON c.source_id = m.id AND c.state = 'done' AND c.etag = m.object_etag
@@ -213,7 +213,7 @@ type Library struct {
 
 // Libraries lists every configured library.
 func (r *Repo) Libraries(ctx context.Context) ([]Library, error) {
-	rows, err := r.Pool.Query(ctx, "SELECT id::text, name, kind FROM libraries ORDER BY name")
+	rows, err := r.Pool.Query(ctx, "SELECT id::text, name, kind FROM libraries WHERE gone_at IS NULL ORDER BY name")
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +241,7 @@ func (r *Repo) LibraryDTO(library Library) map[string]any {
 // IsLibrary reports whether id names a library, and returns it.
 func (r *Repo) IsLibrary(ctx context.Context, id string) (Library, bool, error) {
 	var library Library
-	err := r.Pool.QueryRow(ctx, "SELECT id::text, name, kind FROM libraries WHERE id = $1::uuid", id).
+	err := r.Pool.QueryRow(ctx, "SELECT id::text, name, kind FROM libraries WHERE id = $1::uuid AND gone_at IS NULL", id).
 		Scan(&library.ID, &library.Name, &library.Kind)
 	if err == pgx.ErrNoRows {
 		return Library{}, false, nil
@@ -256,7 +256,7 @@ func (r *Repo) Ancestors(ctx context.Context, id, userID string) ([]map[string]a
 	current := id
 	for {
 		var parent *string
-		err := r.Pool.QueryRow(ctx, "SELECT parent_id::text, library_id::text FROM items WHERE id = $1::uuid", current).Scan(&parent, &libraryID)
+		err := r.Pool.QueryRow(ctx, "SELECT parent_id::text, library_id::text FROM shown_items WHERE id = $1::uuid", current).Scan(&parent, &libraryID)
 		if err == pgx.ErrNoRows {
 			return ancestors, nil
 		}
@@ -289,7 +289,7 @@ func (r *Repo) Ancestors(ctx context.Context, id, userID string) ([]map[string]a
 func (r *Repo) Image(ctx context.Context, id string) (assetURI, key string, found bool, err error) {
 	var imageKey *string
 	err = r.Pool.QueryRow(ctx, `SELECT l.asset_store_uri, i.primary_image_key
-		FROM items i JOIN libraries l ON l.id = i.library_id WHERE i.id = $1::uuid`, id).Scan(&assetURI, &imageKey)
+		FROM shown_items i JOIN libraries l ON l.id = i.library_id WHERE i.id = $1::uuid`, id).Scan(&assetURI, &imageKey)
 	if err == pgx.ErrNoRows || (err == nil && imageKey == nil) {
 		return "", "", false, nil
 	}
@@ -306,7 +306,7 @@ func (r *Repo) Image(ctx context.Context, id string) (assetURI, key string, foun
 func (r *Repo) ChapterImage(ctx context.Context, id string, n int) (assetURI, key string, found bool, err error) {
 	var keys []string
 	err = r.Pool.QueryRow(ctx, `SELECT l.asset_store_uri, c.keys
-		FROM media_sources m JOIN items i ON i.id = m.item_id JOIN libraries l ON l.id = i.library_id
+		FROM media_sources m JOIN shown_items i ON i.id = m.item_id JOIN libraries l ON l.id = i.library_id
 		JOIN chapter_images c ON c.source_id = m.id AND c.state = 'done' AND c.etag = m.object_etag
 		WHERE m.item_id = $1::uuid AND l.chapter_images`, id).Scan(&assetURI, &keys)
 	if err == pgx.ErrNoRows {
@@ -354,7 +354,7 @@ func (r *Repo) UserDataFor(ctx context.Context, userID, itemID string) (map[stri
 	var d UserData
 	err := r.Pool.QueryRow(ctx, `SELECT COALESCE(d.position_ticks, 0), i.run_time_ticks, COALESCE(d.play_count, 0),
 			COALESCE(d.favorite, false), COALESCE(d.played, false), d.last_played_at
-		FROM items i LEFT JOIN user_item_data d ON d.item_id = i.id AND d.user_id = $1::uuid
+		FROM shown_items i LEFT JOIN user_item_data d ON d.item_id = i.id AND d.user_id = $1::uuid
 		WHERE i.id = $2::uuid`, userID, itemID).
 		Scan(&d.Position, &d.Runtime, &d.PlayCount, &d.Favorite, &d.Played, &d.LastPlayed)
 	if err == pgx.ErrNoRows {
@@ -369,7 +369,7 @@ func (r *Repo) UserDataFor(ctx context.Context, userID, itemID string) (map[stri
 // MediaSources returns an item's stored media sources.
 func (r *Repo) MediaSources(ctx context.Context, itemID string) ([]map[string]any, bool, error) {
 	var raw []byte
-	err := r.Pool.QueryRow(ctx, "SELECT COALESCE(dto->'MediaSources', '[]'::jsonb) FROM items WHERE id = $1::uuid", itemID).Scan(&raw)
+	err := r.Pool.QueryRow(ctx, "SELECT COALESCE(dto->'MediaSources', '[]'::jsonb) FROM shown_items WHERE id = $1::uuid", itemID).Scan(&raw)
 	if err == pgx.ErrNoRows {
 		return nil, false, nil
 	}
@@ -399,7 +399,7 @@ type Source struct {
 // and where its last frame ends on the same clock. None if the file has no
 // index or hasn't been scanned for one.
 func (r *Repo) Keyframes(ctx context.Context, mediaSourceID string) (keyframes []int64, end int64, err error) {
-	err = r.Pool.QueryRow(ctx, "SELECT keyframes, video_end FROM media_sources WHERE id = $1::uuid", mediaSourceID).Scan(&keyframes, &end)
+	err = r.Pool.QueryRow(ctx, "SELECT m.keyframes, m.video_end FROM media_sources m JOIN shown_items i ON i.id = m.item_id WHERE m.id = $1::uuid", mediaSourceID).Scan(&keyframes, &end)
 	if err == pgx.ErrNoRows {
 		return nil, 0, nil
 	}
@@ -420,7 +420,7 @@ func (r *Repo) Source(ctx context.Context, itemID, mediaSourceID string) (Source
 	var s Source
 	err := r.Pool.QueryRow(ctx, `SELECT m.id::text, m.store_key, m.object_etag, m.container, l.media_store_uri, l.asset_store_uri, m.size,
 			COALESCE(i.run_time_ticks, 0), m.streams
-		FROM media_sources m JOIN items i ON i.id = m.item_id JOIN libraries l ON l.id = i.library_id
+		FROM media_sources m JOIN shown_items i ON i.id = m.item_id JOIN libraries l ON l.id = i.library_id
 		WHERE m.item_id = $1::uuid AND ($2 = '' OR m.id = NULLIF($2, '')::uuid)
 		ORDER BY m.id LIMIT 1`, itemID, mediaSourceID).
 		Scan(&s.ID, &s.Key, &s.ETag, &s.Container, &s.StoreURI, &s.AssetStoreURI, &s.Size, &s.RunTimeTicks, &s.Streams)

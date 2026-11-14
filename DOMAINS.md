@@ -48,7 +48,7 @@ The terms, boundaries and invariants of the system. Reviewers check changes agai
 
 ### Data
 
-5. Item IDs survive renames. A moved file keeps its item and watch state.
+5. Item IDs survive renames. A moved file keeps its item and watch state. So does a file missing from a scan: its item is hidden, with its rows, and removed only by the first scan after the grace (`missingGrace`); readers see items through `shown_items`, never `items`. A library's id survives a rename.
 6. Filtering and sorting use indexed columns. Response shaping happens in memory from `items.dto`.
 7. Client input reaches SQL only as bound parameters. Sort keys come from an allowlist.
 8. Migrations are forward-only, and an applied migration is never edited. Dropping a column breaks replicas still running the old code, so after the first release, removals ship one release after the code stops using them.

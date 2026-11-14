@@ -56,10 +56,16 @@ type Library struct {
 	Assets store.Store
 }
 
-// Sync upserts configured libraries. IDs derive from the name so every replica
-// agrees without coordinating.
+// Sync upserts configured libraries and marks the ones left out of config.
+// A library is the row its config entry finds: by its name or, when the name
+// is new, by its media store and kind, which is what lets a rename keep the
+// library's id and everything in it. A library new to the database gets the
+// hash of its name as its id, which is the id libraries have always had, or a
+// random one if a renamed library holds that. Replicas starting together take
+// turns under an advisory lock, so they agree on every row.
 func Sync(ctx context.Context, pool *pgxpool.Pool, configs []Config) ([]Library, error) {
 	libraries := make([]Library, 0, len(configs))
+	names := make([]string, 0, len(configs))
 	for _, config := range configs {
 		if config.Kind != "movies" && config.Kind != "tvshows" {
 			return nil, fmt.Errorf("library %q: unsupported kind %q", config.Name, config.Kind)
@@ -72,25 +78,82 @@ func Sync(ctx context.Context, pool *pgxpool.Pool, configs []Config) ([]Library,
 		if err != nil {
 			return nil, fmt.Errorf("library %q assets: %w", config.Name, err)
 		}
-		digest := md5.Sum([]byte("library:" + config.Name))
-		id := uuid.UUID(digest).String()
-		_, err = pool.Exec(ctx, `INSERT INTO libraries (id, name, kind, media_store_uri, asset_store_uri, chapter_images)
-			VALUES ($1, $2, $3, $4, $5, $6)
-			ON CONFLICT (id) DO UPDATE SET kind = $3, media_store_uri = $4, asset_store_uri = $5, chapter_images = $6`,
-			id, config.Name, config.Kind, config.Media, config.Assets, config.ChapterImages)
-		if err != nil {
-			return nil, err
+		libraries = append(libraries, Library{Name: config.Name, Kind: config.Kind, Media: media, Assets: assets})
+		names = append(names, config.Name)
+	}
+	err := pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended('libraries', 0))"); err != nil {
+			return err
 		}
-		libraries = append(libraries, Library{ID: id, Name: config.Name, Kind: config.Kind, Media: media, Assets: assets})
+		ids := []string{}
+		for i, config := range configs {
+			var id string
+			err := tx.QueryRow(ctx, "SELECT id::text FROM libraries WHERE name = $1 ORDER BY created_at, id LIMIT 1", config.Name).Scan(&id)
+			if errors.Is(err, pgx.ErrNoRows) {
+				// Renamed, if a library of this store is left that no entry names.
+				err = tx.QueryRow(ctx, `SELECT id::text FROM libraries WHERE media_store_uri = $1 AND kind = $2
+					AND name <> ALL($3) AND id::text <> ALL($4) ORDER BY created_at, id LIMIT 1`,
+					config.Media, config.Kind, names, ids).Scan(&id)
+			}
+			if errors.Is(err, pgx.ErrNoRows) {
+				id = uuid.UUID(md5.Sum([]byte("library:" + config.Name))).String()
+				var taken bool
+				if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM libraries WHERE id = $1)", id).Scan(&taken); err != nil {
+					return err
+				}
+				if taken {
+					id = uuid.NewString()
+				}
+			} else if err != nil {
+				return err
+			}
+			_, err = tx.Exec(ctx, `INSERT INTO libraries (id, name, kind, media_store_uri, asset_store_uri, chapter_images)
+				VALUES ($1, $2, $3, $4, $5, $6)
+				ON CONFLICT (id) DO UPDATE SET name = $2, kind = $3, media_store_uri = $4, asset_store_uri = $5, chapter_images = $6, gone_at = NULL`,
+				id, config.Name, config.Kind, config.Media, config.Assets, config.ChapterImages)
+			if err != nil {
+				return err
+			}
+			libraries[i].ID = id
+			ids = append(ids, id)
+		}
+		// The first start without a library stamps it; later ones keep that time.
+		_, err := tx.Exec(ctx, "UPDATE libraries SET gone_at = COALESCE(gone_at, now()) WHERE id::text <> ALL($1)", ids)
+		return err
+	})
+	if err != nil {
+		return nil, err
 	}
 	return libraries, nil
+}
+
+// RemoveGone deletes the libraries that have been out of config for longer
+// than grace, with their items and everyone's watch state. A worker calls it
+// on every tick of its scan loop, which is one cheap query when nothing is due.
+func RemoveGone(ctx context.Context, pool *pgxpool.Pool, grace time.Duration) error {
+	_, err := pool.Exec(ctx, "DELETE FROM libraries WHERE gone_at <= now() - make_interval(secs => $1)", grace.Seconds())
+	return err
 }
 
 // Scanner reconciles a library's items with its media store.
 type Scanner struct {
 	Pool *pgxpool.Pool
 	Log  *slog.Logger
+	// Grace is how long an item whose file is missing stays, hidden, with its
+	// watch state, before a scan removes it. It runs on Postgres's clock from the
+	// first scan that missed the file.
+	Grace time.Duration
+	// MaxLostShare is the most of a library's stored files a scan may find
+	// missing before it fails and changes nothing.
+	MaxLostShare float64
 }
+
+// DefaultGrace and DefaultMaxLostShare are what the config's missingGrace and
+// maxLostShare default to.
+const (
+	DefaultGrace        = 7 * 24 * time.Hour
+	DefaultMaxLostShare = 0.2
+)
 
 type seenObject struct {
 	size   int64
@@ -146,11 +209,6 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 	if err != nil {
 		return err
 	}
-	seen, err := s.loadSeen(ctx, lib.ID)
-	if err != nil {
-		return err
-	}
-
 	sidecars := map[string]string{}
 	subtitleFiles := map[string][]store.Object{} // By directory.
 	current := map[string]bool{}
@@ -169,6 +227,20 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 			subtitleFiles[path.Dir(object.Key)] = append(subtitleFiles[path.Dir(object.Key)], object)
 		}
 	}
+	hidden, err := s.loadHidden(ctx, lib.ID)
+	if err != nil {
+		return err
+	}
+	// A hidden item whose file is listed again as it was needs nothing but to be
+	// shown; it then goes through the scan like any item that was never hidden.
+	if err := s.restore(ctx, lib.ID, videos, hidden); err != nil {
+		return err
+	}
+	seen, err := s.loadSeen(ctx, lib.ID)
+	if err != nil {
+		return err
+	}
+
 	// A video is probed again when it changed. When only its subtitle files
 	// did, the film isn't read again: its tracks are listed anew from them.
 	sets := map[string]sidecarSet{}
@@ -193,18 +265,46 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 			cuesUnread = append(cuesUnread, object)
 		}
 	}
-	gone := map[string]seenObject{}
+	// What the listing lacks: the items of keys it no longer shows, and those
+	// already hidden. A hidden item whose key is listed is not lost; its file
+	// came back changed.
+	pool := &lostPool{bySize: map[int64][]*lostItem{}, claims: map[string]*lostItem{}}
+	stored := 0
 	for key, old := range seen {
+		if old.itemID == nil {
+			continue
+		}
+		stored++
 		if !current[key] {
-			gone[key] = old
+			pool.add(&lostItem{key: key, itemID: *old.itemID, size: old.size, etag: old.etag})
+		}
+	}
+	for key, item := range hidden {
+		stored++
+		if !current[key] {
+			pool.add(item)
 		}
 	}
 	// A store that lists no video at all, for a library that has some, is far
 	// more likely an empty mount point (a volume that isn't mounted under a
 	// directory that is still there) than a library emptied on purpose: keep
 	// the films and their watch state, and say so.
-	if len(videos) == 0 && len(seen) > 0 {
-		return fmt.Errorf("library %s: the media store lists no video, but the library has %d stored; keeping them (is the volume mounted?)", lib.Name, len(seen))
+	if len(videos) == 0 && stored > 0 {
+		return fmt.Errorf("library %s: the media store lists no video, but the library has %d stored; keeping them (is the volume mounted?)", lib.Name, stored)
+	}
+
+	// A new file that has the size and ETag of a lost item is that item, moved.
+	// Those are settled first, so that a file with the item's ETag is not
+	// beaten to it by another whose bytes only look the same.
+	candidates := map[string]bool{} // Keys of files no item has been stored for.
+	for _, object := range changed {
+		if _, ok := seen[object.Key]; ok || hidden[object.Key] != nil {
+			continue
+		}
+		candidates[object.Key] = true
+		if item := pool.sameFile(object); item != nil {
+			pool.claim(item, object.Key)
+		}
 	}
 
 	// Each film is stored as its probe finishes, so a long first scan shows
@@ -212,22 +312,23 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 	if len(changed) > 0 {
 		s.Log.Info("probing films", "library", lib.Name, "films", len(changed), "index kept", len(attachmentsOnly))
 	}
-	stored := 0
+	done := map[string]bool{}
 	for result := range s.probeAll(ctx, lib, changed, attachmentsOnly) {
 		object, probe := result.object, result.probe
-		// A file that moved keeps its item, and so its watch state.
+		// A file that moved keeps its item, and so its watch state; so does one
+		// that comes back to the key of a hidden item, changed.
 		var keep *string
+		var moved *lostItem
 		if old, ok := seen[object.Key]; ok {
 			keep = old.itemID
-		}
-		for key, old := range gone {
-			if keep == nil && old.size == object.Size && old.etag == object.ETag {
-				keep = old.itemID
-				delete(gone, key)
-				if err := s.dropSeen(ctx, lib.ID, key); err != nil {
-					return err
-				}
-				break
+		} else if item := hidden[object.Key]; item != nil {
+			keep = &item.itemID
+		} else if candidates[object.Key] {
+			if moved = pool.claims[object.Key]; moved == nil {
+				moved = pool.match(ctx, s, object, probe)
+			}
+			if moved != nil {
+				keep = &moved.itemID
 			}
 		}
 		if attachmentsOnly[object.Key] {
@@ -236,12 +337,25 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 				continue
 			}
 		}
-		if err := s.upsert(ctx, lib, object, probe, sidecars, s.describe(ctx, lib.Media, sets[object.Key]), keep); err != nil {
+		ok, err := s.upsert(ctx, lib, object, probe, sidecars, s.describe(ctx, lib.Media, sets[object.Key]), keep)
+		if err != nil {
 			s.Log.Error("store item failed", "key", object.Key, "error", err)
 			continue
 		}
-		if stored++; stored%100 == 0 {
-			s.Log.Info("films probed", "library", lib.Name, "done", stored, "of", len(changed))
+		if !ok {
+			continue
+		}
+		done[object.Key] = true
+		if moved != nil {
+			moved.taken = true
+			if !moved.hidden {
+				if err := s.dropSeen(ctx, lib.ID, moved.key); err != nil {
+					return err
+				}
+			}
+		}
+		if len(done)%100 == 0 {
+			s.Log.Info("films probed", "library", lib.Name, "done", len(done), "of", len(changed))
 		}
 	}
 	for _, object := range cuesUnread {
@@ -255,14 +369,42 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 		}
 	}
 
-	for key, old := range gone {
-		if old.itemID != nil {
-			if _, err := s.Pool.Exec(ctx, "DELETE FROM items WHERE id = $1", *old.itemID); err != nil {
+	// A scan that would lose most of a library fails like the empty mount does,
+	// before it hides or removes anything: the likelier cause is a disk or a
+	// mount that is away. The files hidden by earlier scans count, so that
+	// several small losses can't add up to a big one unseen.
+	lost := pool.lost()
+	if float64(len(lost)) > s.MaxLostShare*float64(stored) {
+		return fmt.Errorf("library %s: %d of its %d stored files are missing from the media store, more than the share allowed (maxLostShare %v); keeping them (is a disk or a mount away?)",
+			lib.Name, len(lost), stored, s.MaxLostShare)
+	}
+	// A file that is listed and could not be read may be a lost item's, so an
+	// item of its size is kept for a later scan to match.
+	unread := map[int64]bool{}
+	for _, object := range changed {
+		if !done[object.Key] {
+			unread[object.Size] = true
+		}
+	}
+	removed := 0
+	for _, item := range lost {
+		switch {
+		case !item.hidden:
+			if err := s.hide(ctx, lib.ID, item); err != nil {
 				return err
 			}
+		case item.expired && !unread[item.size]:
+			if _, err := s.Pool.Exec(ctx, "DELETE FROM items WHERE id = $1", item.itemID); err != nil {
+				return err
+			}
+			removed++
 		}
-		if err := s.dropSeen(ctx, lib.ID, key); err != nil {
-			return err
+	}
+	for key, old := range seen {
+		if old.itemID == nil && !current[key] {
+			if err := s.dropSeen(ctx, lib.ID, key); err != nil {
+				return err
+			}
 		}
 	}
 	// A series is empty only once its empty seasons are gone, which one
@@ -275,12 +417,204 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 		AND NOT EXISTS (SELECT 1 FROM items child WHERE child.parent_id = parent.id)`, lib.ID); err != nil {
 		return err
 	}
+	if err := s.stampParents(ctx, lib.ID); err != nil {
+		return err
+	}
 	// Only jobs are queued here; a worker makes the pictures and deletes the
 	// ones not wanted, whether the option is on or off.
 	if err := EnqueueChapterImages(ctx, s.Pool, lib.ID); err != nil {
 		return err
 	}
-	s.Log.Info("scan finished", "library", lib.Name, "videos", len(current), "changed", len(changed), "sidecars", len(refreshed), "removed", len(gone))
+	s.Log.Info("scan finished", "library", lib.Name, "videos", len(current), "changed", len(changed), "sidecars", len(refreshed), "hidden", len(lost)-removed, "removed", removed)
+	return nil
+}
+
+// lostItem is an item the listing lacks: one whose key it no longer shows, or
+// one an earlier scan hid.
+type lostItem struct {
+	key, itemID string
+	size        int64
+	etag        string
+	hidden      bool // Hidden by an earlier scan.
+	expired     bool // Hidden for longer than the grace.
+	// claimed: a new file has been set aside for the item; taken: one has been
+	// stored as it.
+	claimed, taken bool
+	look           string // The fingerprint, once read.
+	read           bool
+}
+
+// lostPool holds the lost items a new file may be.
+type lostPool struct {
+	all    []*lostItem
+	bySize map[int64][]*lostItem
+	claims map[string]*lostItem // By the key of the file.
+}
+
+func (p *lostPool) add(item *lostItem) {
+	p.all = append(p.all, item)
+	p.bySize[item.size] = append(p.bySize[item.size], item)
+}
+
+func (p *lostPool) claim(item *lostItem, key string) {
+	item.claimed = true
+	p.claims[key] = item
+}
+
+// sameFile returns an item nothing has claimed with the object's size and ETag.
+func (p *lostPool) sameFile(object store.Object) *lostItem {
+	for _, item := range p.bySize[object.Size] {
+		if !item.claimed && item.etag == object.ETag {
+			return item
+		}
+	}
+	return nil
+}
+
+// match gives a probed file the item of the same size and fingerprint that no
+// other file has, which is how bytes that were copied or uploaded again (and so
+// have another ETag) find their item. Size alone never matches.
+func (p *lostPool) match(ctx context.Context, s *Scanner, object store.Object, probe Probe) *lostItem {
+	streams, _ := json.Marshal(probe.Streams)
+	want := fingerprint(probe.Container, probe.RunTimeTicks, streams)
+	for _, item := range p.bySize[object.Size] {
+		if item.claimed {
+			continue
+		}
+		if !item.read {
+			var err error
+			if item.look, err = s.fingerprintOf(ctx, item.itemID); err != nil {
+				s.Log.Warn("reading a lost film's fingerprint failed", "key", item.key, "error", err)
+				continue
+			}
+			item.read = true
+		}
+		if item.look == want {
+			p.claim(item, object.Key)
+			return item
+		}
+	}
+	return nil
+}
+
+// lost lists the items no file was stored for.
+func (p *lostPool) lost() []*lostItem {
+	var lost []*lostItem
+	for _, item := range p.all {
+		if !item.taken {
+			lost = append(lost, item)
+		}
+	}
+	return lost
+}
+
+// fingerprint says what a file is apart from its name, date and ETag: its
+// container, length and the layout of its own tracks (not the subtitle files
+// beside it, which move apart from it). It is made alike from a new probe and
+// from the row stored for the item, so it uses only fields a scan has always
+// stored.
+func fingerprint(container string, ticks int64, streamsJSON []byte) string {
+	var streams []map[string]any
+	_ = json.Unmarshal(streamsJSON, &streams) // A row that can't be read matches nothing it shouldn't: it is the same on both sides.
+	hash := sha256.New()
+	fmt.Fprint(hash, container, ticks)
+	for _, stream := range streams {
+		if stream["IsExternal"] == true || stream["Type"] == "Attachment" {
+			continue
+		}
+		for _, key := range []string{"Type", "Codec", "Width", "Height", "Channels", "SampleRate"} {
+			fmt.Fprint(hash, "|", stream[key])
+		}
+		fmt.Fprint(hash, "\n")
+	}
+	return hex.EncodeToString(hash.Sum(nil))
+}
+
+// fingerprintOf is the fingerprint of an item's stored file.
+func (s *Scanner) fingerprintOf(ctx context.Context, itemID string) (string, error) {
+	var container string
+	var ticks int64
+	var streams []byte
+	err := s.Pool.QueryRow(ctx, "SELECT m.container, COALESCE(i.run_time_ticks, 0), m.streams FROM media_sources m JOIN items i ON i.id = m.item_id WHERE i.id = $1", itemID).
+		Scan(&container, &ticks, &streams)
+	if err != nil {
+		return "", err
+	}
+	return fingerprint(container, ticks, streams), nil
+}
+
+// loadHidden lists the items an earlier scan hid, by the key of their file.
+// Their scan_objects rows were dropped when they were hidden, so a scan of an
+// earlier release that knows nothing of hiding finds nothing to delete.
+func (s *Scanner) loadHidden(ctx context.Context, libraryID string) (map[string]*lostItem, error) {
+	rows, err := s.Pool.Query(ctx, `SELECT m.store_key, i.id::text, m.size, m.object_etag,
+			i.missing_since <= now() - make_interval(secs => $2)
+		FROM items i JOIN media_sources m ON m.item_id = i.id WHERE i.library_id = $1 AND i.missing_since IS NOT NULL`,
+		libraryID, s.Grace.Seconds())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	hidden := map[string]*lostItem{}
+	for rows.Next() {
+		item := &lostItem{hidden: true}
+		if err := rows.Scan(&item.key, &item.itemID, &item.size, &item.etag, &item.expired); err != nil {
+			return nil, err
+		}
+		hidden[item.key] = item
+	}
+	return hidden, rows.Err()
+}
+
+// restore shows again the hidden items whose file is listed as it was.
+func (s *Scanner) restore(ctx context.Context, libraryID string, videos []store.Object, hidden map[string]*lostItem) error {
+	for _, object := range videos {
+		item := hidden[object.Key]
+		if item == nil || item.size != object.Size || item.etag != object.ETag {
+			continue
+		}
+		err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+			if _, err := tx.Exec(ctx, "UPDATE items SET missing_since = NULL WHERE id = $1", item.itemID); err != nil {
+				return err
+			}
+			_, err := tx.Exec(ctx, `INSERT INTO scan_objects (library_id, key, size, etag, item_id) VALUES ($1, $2, $3, $4, $5)
+				ON CONFLICT (library_id, key) DO UPDATE SET size = $3, etag = $4, item_id = $5`, libraryID, object.Key, object.Size, object.ETag, item.itemID)
+			return err
+		})
+		if err != nil {
+			return err
+		}
+		delete(hidden, object.Key)
+	}
+	return s.stampParents(ctx, libraryID)
+}
+
+// hide stamps an item whose file is missing, and drops what the scan knew of
+// the file. Everything else of the item stays: its watch state, its media source.
+func (s *Scanner) hide(ctx context.Context, libraryID string, item *lostItem) error {
+	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, "UPDATE items SET missing_since = COALESCE(missing_since, now()) WHERE id = $1", item.itemID); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, "DELETE FROM scan_objects WHERE library_id = $1 AND key = $2", libraryID, item.key)
+		return err
+	})
+}
+
+// stampParents hides the seasons and series that have no episode shown, and
+// shows the others, seasons first for the series' sake. A hidden parent keeps
+// its id and its own watch state.
+func (s *Scanner) stampParents(ctx context.Context, libraryID string) error {
+	for _, kind := range []string{"Season", "Series"} {
+		if _, err := s.Pool.Exec(ctx, `UPDATE items parent SET missing_since = NULL WHERE library_id = $1 AND type = $2
+			AND missing_since IS NOT NULL AND EXISTS (SELECT 1 FROM items child WHERE child.parent_id = parent.id AND child.missing_since IS NULL)`, libraryID, kind); err != nil {
+			return err
+		}
+		if _, err := s.Pool.Exec(ctx, `UPDATE items parent SET missing_since = now() WHERE library_id = $1 AND type = $2
+			AND missing_since IS NULL AND NOT EXISTS (SELECT 1 FROM items child WHERE child.parent_id = parent.id AND child.missing_since IS NULL)`, libraryID, kind); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -456,7 +790,8 @@ type record struct {
 	dto                              map[string]any
 }
 
-func (s *Scanner) upsert(ctx context.Context, lib Library, object store.Object, probe Probe, sidecars map[string]string, subtitleFiles sidecarSet, keep *string) error {
+// upsert stores the file as an item; false if it is not one (a show's file with no season and episode).
+func (s *Scanner) upsert(ctx context.Context, lib Library, object store.Object, probe Probe, sidecars map[string]string, subtitleFiles sidecarSet, keep *string) (bool, error) {
 	var item record
 	switch lib.Kind {
 	case "movies":
@@ -469,16 +804,16 @@ func (s *Scanner) upsert(ctx context.Context, lib Library, object store.Object, 
 		episode, ok := ParseEpisode(object.Key)
 		if !ok {
 			s.Log.Warn("skipping file with no season and episode", "key", object.Key)
-			return nil
+			return false, nil
 		}
 		parts := strings.SplitN(object.Key, "/", 2)
 		seriesID, err := s.ensureSeries(ctx, lib, parts[0], episode.Series, sidecars)
 		if err != nil {
-			return err
+			return false, err
 		}
 		seasonID, err := s.ensureSeason(ctx, lib, seriesID, episode.Series, episode.Season)
 		if err != nil {
-			return err
+			return false, err
 		}
 		name := episode.Title
 		if name == "" {
@@ -507,7 +842,7 @@ func (s *Scanner) upsert(ctx context.Context, lib Library, object store.Object, 
 		}
 	}
 
-	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		// The film's own tracks keep their indices; the files beside it follow,
 		// and a file that was listed before keeps the index it had.
 		var raw []byte
@@ -555,6 +890,7 @@ func (s *Scanner) upsert(ctx context.Context, lib Library, object store.Object, 
 			lib.ID, object.Key, object.Size, object.ETag, stored)
 		return err
 	})
+	return err == nil, err
 }
 
 func writeItem(ctx context.Context, tx pgx.Tx, libraryID string, item record) error {
@@ -563,14 +899,15 @@ func writeItem(ctx context.Context, tx pgx.Tx, libraryID string, item record) er
 		return err
 	}
 	// Writing by natural key means a repeat scan updates in place, and a moved
-	// file (same id, new key) updates through the id conflict.
+	// file (same id, new key, perhaps another season) updates through the id
+	// conflict, shown again if it was hidden.
 	_, err = tx.Exec(ctx, `INSERT INTO items (id, library_id, parent_id, series_id, season_id, type, name, sort_name,
 			natural_key, production_year, run_time_ticks, index_number, parent_index_number,
 			primary_image_key, primary_image_tag, dto)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-		ON CONFLICT (id) DO UPDATE SET name = $7, sort_name = $8, natural_key = $9, production_year = $10,
-			run_time_ticks = $11, index_number = $12, parent_index_number = $13,
-			primary_image_key = $14, primary_image_tag = $15, dto = $16`,
+		ON CONFLICT (id) DO UPDATE SET parent_id = $3, series_id = $4, season_id = $5, name = $7, sort_name = $8, natural_key = $9,
+			production_year = $10, run_time_ticks = $11, index_number = $12, parent_index_number = $13,
+			primary_image_key = $14, primary_image_tag = $15, dto = $16, missing_since = NULL`,
 		*item.id, libraryID, item.parentID, item.seriesID, item.seasonID, item.kind, item.name, SortName(item.name),
 		item.naturalKey, item.year, item.ticks, item.index, item.parentIndex, item.imageKey, item.imageTag, dto)
 	return err

@@ -1,5 +1,6 @@
 # JS-081. Lines of test files that compare a time or speed with a bound and may stay, with why. path, line, reason, separated by tabs.
 # A bar has no entry: cmd/testreport/timing_test.go fails on it. docs/testing.md has the rule.
+cmd/jellyscale/main_test.go	if library.DefaultGrace < 48*time.Hour {	a constant compared with a constant (the default grace is at least two days), not a measured time
 internal/api/external_subtitles_integration_test.go	if time.Since(began) > 30*time.Second {	a wait for film.mkv to be stored, polled every 50 ms: it ends the wait when the scan never stores it (a hang)
 internal/api/playback_integration_test.go	if row.position == 0 || row.progressAt == nil || time.Since(*row.progressAt) > 10*time.Second {	the age of a row this test wrote moments before: a stale value is one the build never wrote; the bound is a thousand times the few ms between the post and the read (unverified)
 internal/api/smallroutes_integration_test.go	if got := scalar[time.Time](t, e.pool, "SELECT last_played_at FROM user_item_data"); time.Since(got) > time.Minute {	the age of a row this test wrote moments before: a stale value is one the build never wrote; the bound is a thousand times the few ms between the post and the read (unverified)

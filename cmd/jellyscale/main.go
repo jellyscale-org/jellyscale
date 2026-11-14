@@ -37,12 +37,18 @@ import (
 const roleWorker = "worker"
 
 type config struct {
-	Name          string           `json:"name"`
-	AdminUser     string           `json:"adminUser"`
-	AdminPassword string           `json:"adminPassword"`
-	WebDir        string           `json:"webDir"`
-	ScanInterval  string           `json:"scanInterval"`
-	Libraries     []library.Config `json:"libraries"`
+	Name          string `json:"name"`
+	AdminUser     string `json:"adminUser"`
+	AdminPassword string `json:"adminPassword"`
+	WebDir        string `json:"webDir"`
+	ScanInterval  string `json:"scanInterval"`
+	// MissingGrace is how long a file or library that is gone keeps its watch
+	// state, hidden, before it is removed (a Go duration, default 168h).
+	MissingGrace string `json:"missingGrace"`
+	// MaxLostShare is the most of a library's files a scan may find missing
+	// before it fails and changes nothing (0 to 1, default 0.2).
+	MaxLostShare *float64         `json:"maxLostShare"`
+	Libraries    []library.Config `json:"libraries"`
 
 	// TranscodeStore is where transcoded segments live, a store URI such as
 	// file:///var/lib/jellyscale/segments or s3://bucket/segments?endpoint=...
@@ -174,6 +180,11 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 			return err
 		}
 	}
+	// Every role reads the keys, so a bad one stops every start.
+	scanner, err := newScanner(cfg, pool, log)
+	if err != nil {
+		return err
+	}
 	libraries, err := library.Sync(ctx, pool, cfg.Libraries)
 	if err != nil {
 		return err
@@ -200,7 +211,7 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 				return fmt.Errorf("scanInterval: %w", err)
 			}
 		}
-		go scanLoop(ctx, pool, libraries, interval, log)
+		go scanLoop(ctx, scanner, libraries, interval, log)
 	}
 	if !slices.Contains(enabled, api.RoleAPI) && !slices.Contains(enabled, api.RoleStream) {
 		<-ctx.Done()
@@ -385,11 +396,32 @@ var (
 		Name: "jellyscale_scan_last_success", Help: "1 if this process's last scan of the library succeeded, 0 if it failed."}, []string{"library"})
 )
 
-func scanLoop(ctx context.Context, pool *pgxpool.Pool, libraries []library.Library, interval time.Duration, log *slog.Logger) {
-	scanner := &library.Scanner{Pool: pool, Log: log}
+// newScanner reads the scan's grace and loss share from the config.
+func newScanner(cfg config, pool *pgxpool.Pool, log *slog.Logger) (*library.Scanner, error) {
+	scanner := &library.Scanner{Pool: pool, Log: log, Grace: library.DefaultGrace, MaxLostShare: library.DefaultMaxLostShare}
+	if cfg.MissingGrace != "" {
+		grace, err := time.ParseDuration(cfg.MissingGrace)
+		if err != nil || grace < 0 {
+			return nil, fmt.Errorf("missingGrace: want a duration such as 72h, not %q", cfg.MissingGrace)
+		}
+		scanner.Grace = grace
+	}
+	if cfg.MaxLostShare != nil {
+		if share := *cfg.MaxLostShare; !(share >= 0 && share <= 1) {
+			return nil, fmt.Errorf("maxLostShare: want a number from 0 to 1, not %v", share)
+		}
+		scanner.MaxLostShare = *cfg.MaxLostShare
+	}
+	return scanner, nil
+}
+
+func scanLoop(ctx context.Context, scanner *library.Scanner, libraries []library.Library, interval time.Duration, log *slog.Logger) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
+		if err := library.RemoveGone(ctx, scanner.Pool, scanner.Grace); err != nil && ctx.Err() == nil {
+			log.Error("removing the libraries left out of config failed", "error", err)
+		}
 		for _, lib := range libraries {
 			began := time.Now()
 			err := scanner.Scan(ctx, lib)

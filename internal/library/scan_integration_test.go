@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -69,7 +70,8 @@ func setup(t *testing.T, kind string) fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return fixture{pool, &library.Scanner{Pool: pool, Log: slog.New(slog.DiscardHandler)}, libs[0], media}
+	// A long grace and a guard that cannot trip, so a test that wants either sets it.
+	return fixture{pool, &library.Scanner{Pool: pool, Log: slog.New(slog.DiscardHandler), Grace: time.Hour, MaxLostShare: 1}, libs[0], media}
 }
 
 func (f fixture) scan(t *testing.T) {
@@ -164,6 +166,8 @@ func TestRepeatScanChangesNothing(t *testing.T) {
 	}
 }
 
+// A removed file is hidden at the scan that misses it and removed by the first
+// scan after the grace (JS-076), so the parents are pruned by that scan.
 func TestDeletionPrunesEmptyParents(t *testing.T) {
 	f := setup(t, "tvshows")
 	first := filepath.Join(f.media, "Show", "Season 01", "Show S01E01.mkv")
@@ -182,6 +186,7 @@ func TestDeletionPrunesEmptyParents(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.scan(t)
+	f.scanAfterGrace(t)
 	if s, se, e := f.count(t, "Series"), f.count(t, "Season"), f.count(t, "Episode"); s != 2 || se != 2 || e != 2 {
 		t.Fatalf("after one removal: series=%d seasons=%d episodes=%d", s, se, e)
 	}
@@ -190,6 +195,7 @@ func TestDeletionPrunesEmptyParents(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.scan(t)
+	f.scanAfterGrace(t)
 	if s, se, e := f.count(t, "Series"), f.count(t, "Season"), f.count(t, "Episode"); s != 1 || se != 1 || e != 1 {
 		t.Fatalf("after all removals: series=%d seasons=%d episodes=%d", s, se, e)
 	}

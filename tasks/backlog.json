@@ -761,6 +761,60 @@
       "title": "Series on an episode hint is observed but not required or checked",
       "status": "open",
       "notes": "Jellyfin 12.4 sends Series (the show's name) on each episode hint; a client shows it under the episode. No check holds jellyscale to it."
+    },
+    {
+      "id": "BL-085",
+      "source": "JS-076 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "The lost-share guard trips on a loss of exactly the share, from float rounding",
+      "status": "open",
+      "notes": "float64(len(lost)) > MaxLostShare*float64(stored): with 0.35 and 180 stored, losing exactly 63 fails the scan. The default 0.2 showed no case up to 2000 files. Compare integers."
+    },
+    {
+      "id": "BL-086",
+      "source": "JS-076 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "A scan stopped by the guard can leave a new episode shown under a hidden season and series",
+      "status": "open",
+      "notes": "Upserts run before the guard; stampParents runs only after it. Lasts until a scan passes the guard."
+    },
+    {
+      "id": "BL-087",
+      "source": "JS-076 verify",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "shown_items is SELECT i.*, frozen to items' columns when the view was made",
+      "status": "open",
+      "notes": "Postgres expands * at CREATE VIEW. A migration that adds a column to items must recreate shown_items, or readers never see it. JS-045 and every later items migration."
+    },
+    {
+      "id": "BL-088",
+      "source": "JS-076 verify",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "A listed file that never probes keeps expired items of its size forever",
+      "status": "open",
+      "notes": "case item.expired && !unread[item.size]: a corrupt file of the same size holds the removal back with no log. Bound the wait or log it."
+    },
+    {
+      "id": "BL-089",
+      "source": "JS-076 verify",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "A library rename is inferred from media store and kind",
+      "status": "open",
+      "notes": "Removing library A and adding B over the same store in one config change gives B A's id, items and watch state. An explicit former-name or id key would make it deliberate."
+    },
+    {
+      "id": "BL-090",
+      "source": "JS-076 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "missingGrace set to an empty string uses the default instead of stopping the start",
+      "status": "open",
+      "notes": "newScanner parses only when cfg.MissingGrace != \"\"."
     }
   ]
 }

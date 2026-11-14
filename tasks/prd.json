@@ -804,7 +804,7 @@
       "passes": false,
       "dependsOn": [],
       "source": "PRODUCT.md phase5-library",
-      "notes": ""
+      "notes": "A migration that adds a column to items recreates the shown_items view (SELECT i.* is fixed when it is made; BL-087)."
     },
     {
       "id": "JS-046",
@@ -1391,15 +1391,31 @@
       "title": "Watch state survives a file missing from one scan, and libraries keep their identity",
       "description": "A scan deletes the item of every file the listing no longer shows, and a user's watch state cascades from the item (internal/library/scan.go, migration 0001 user_item_data ON DELETE CASCADE); a file that returns gets a new id. The only guard is a store that lists no video at all. So one disk of a pooled mount dropping out, a half-finished sync, a file replaced in two steps or an S3 re-upload under a new key loses positions, played flags and favourites for good, and changes ids clients hold. A library's id is a hash of its name, so renaming it in config creates a second library, and a library removed from config is never removed.",
       "acceptanceCriteria": [
-        "A file absent from a scan is hidden, not deleted, for a configurable grace (default days, not minutes), and a file that returns within it keeps its item id and every user's watch state",
-        "A file that reappears under another key with the same size and content identity (ETag, or the probe's fingerprint) inside the grace is matched to its old item across scans, not only within one",
-        "A scan that loses more than a set share of a library's files keeps them all and says so, as the empty-mount guard does",
-        "Renaming a library in config keeps its id and items; a library removed from config is hidden and later removed, documented in docs/running.md",
-        "Tests show each case loses no user_item_data row"
+        "A film or episode whose file a scan no longer lists is hidden, not deleted: its item, its media source and every user's user_item_data row stay in the database unchanged.",
+        "While it is hidden a viewer sees what they would if it had been deleted: no listing, search, search hint, Latest, Suggestions, Resume, season list or episode list shows it, no TotalRecordCount counts it, and GET /Items/{id} answers as for an unknown id.",
+        "A series or season whose every episode is hidden is hidden with them and keeps its id and its own watch state (a favourite on the series); one with an episode still listed stays and shows only the episodes still there.",
+        "A file listed again at its old key inside the grace, unchanged or replaced by new content, is shown again as the same item: same item id, media source id and date added, with every user's row as it was (position, played, favourite, play count, last played) for two or more users, and it is not probed again when its size and ETag are unchanged.",
+        "The grace is configurable and its default is days long (at least two days); a value that cannot be read or is negative stops the start with an error naming the key.",
+        "The grace runs from the first scan that missed the file and is kept in the database: however many scans run in between, on whichever worker and across worker restarts, none removes a hidden item before the grace has passed, and a file that returns and goes missing again starts a new grace.",
+        "The first successful scan after the grace has passed removes the item with its watch state, and then any season or series left with no episode at all, hidden or not; a file that returns after that is a new item.",
+        "A file listed under another key of the same library with the same size and ETag as a hidden item, in any later scan inside the grace, takes that item's id and watch state and is named and placed by its new key; a move seen within one scan still does (DOMAINS invariant 5).",
+        "The same holds when the bytes are the same but the ETag is not (a POSIX copy with a new modification time, an S3 upload with another part size): the file is matched by its size and the probe's fingerprint.",
+        "A new file whose content differs from every hidden item's gets a new item with no watch state, even when its size equals a hidden item's: nothing is matched on size alone.",
+        "A hidden item goes to at most one file and a file takes at most one item: two identical files appearing for one hidden item give one old item and one new one, and a copy of a file that is still listed never takes that file's item.",
+        "An item whose key is listed is never hidden or removed, and a returning or moved file whose probe fails (the file's fault or the store's) creates no second item and loses no row: the next scan tries again and matches it then.",
+        "A scan that would lose more than the set share of a library's stored files fails as the empty-mount guard does: Scan returns an error naming the library, how many files are lost and how many are stored (so the scan is logged as failed and jellyscale_scan_last_success is 0), and it hides nothing and removes nothing, not even a hidden item whose grace has passed.",
+        "Lost means absent from the listing and matched to no listed file, files already hidden included: a library whose every file moved in one scan passes the guard and keeps every id, a loss of exactly the share passes (the files are hidden), one file more trips it, and two scans each under the share but together over it trip it on the second.",
+        "The first scan after the files are back succeeds with every item id and every user_item_data row as before the loss, and a tripped guard in one library changes nothing in another library's scan.",
+        "The empty-mount guard (a store that lists no video) and a listing that fails (store error, timeout, cancelled scan) still hide nothing and remove nothing.",
+        "A library stored before this change keeps the id it has today (the hash of its name) when the server starts with the same config, and replicas that start at the same instant with one config leave one row per library and agree on its id.",
+        "A config that changes only a library's name leaves one library with the same id and the new name in /UserViews, every item id and user_item_data row unchanged, the other libraries untouched and nothing removed when the grace later passes; twelve replicas starting at once with the renamed config still leave one row, and a new library that then takes the old name is a second library with an id of its own.",
+        "A library left out of config is hidden, not deleted: /UserViews and GET /Items/{its id} no longer show it and its items are hidden as a missing file's are; put back in config inside the grace it returns with its id, items and every user's watch state.",
+        "A library left out of config is removed, with its items and their watch state, only once the grace has passed since the first start without it, never earlier, whichever replica or restart comes in between.",
+        "docs/running.md states the grace's key and default, the share and what the operator sees when the guard trips, what to do after removing that many files on purpose, what identifies a library across a rename, and when a library left out of config is removed together with its watch state.",
+        "Each case above has a test that seeds user_item_data rows for at least two users (position, played, favourite, and a favourite on a series) and asserts the same rows, by count and content, afterwards; the only tests in which a row goes are the removals after the grace."
       ],
-      "priority": 14,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [],
       "source": "Fable 5.2 state review, 2026-11-10",
       "notes": "Must land before JS-045 starts P5 scan work and before JS-060 imports history."
@@ -1832,8 +1848,7 @@
         "compat/coverage-12.4.tsv marks GET /Search/Hints done with evidence that names Fluster's call (#102) in place of 'nothing calls it', compat/endpoints.yaml lists the route as implemented, docs/status.md no longer lists it among the routes answered 404, and go test ./compat passes",
         "The differential tier sends a GET /Search/Hints request whose term matches at least one film, one series and one episode of the fixtures to both servers, fails when either answers no hints, and compares which hints come back and their order; every difference left is listed in compat/differences.yaml under that request's name with its kind and reason"
       ],
-      "priority": 11,
-      "status": "todo",
+      "status": "done",
       "passes": true,
       "dependsOn": [],
       "source": "Fluster issue #102, 2026-11-12",

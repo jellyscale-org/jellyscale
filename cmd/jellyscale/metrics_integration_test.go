@@ -74,7 +74,8 @@ func TestScanLoopReportsEachLibraryScan(t *testing.T) {
 	}
 
 	began := time.Now()
-	go scanLoop(ctx, pool, []library.Library{taken, broken, good}, time.Hour, slog.New(slog.DiscardHandler))
+	log := slog.New(slog.DiscardHandler)
+	go scanLoop(ctx, &library.Scanner{Pool: pool, Log: log, Grace: time.Hour, MaxLostShare: 1}, []library.Library{taken, broken, good}, time.Hour, log)
 	deadline := time.Now().Add(20 * time.Second)
 	for _, ok := gaugeOf(t, scanOK, good.ID); !ok; _, ok = gaugeOf(t, scanOK, good.ID) {
 		if time.Now().After(deadline) {
