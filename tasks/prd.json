@@ -1639,16 +1639,15 @@
       "title": "Direct play and stored segments go on while Postgres is away",
       "description": "Authentication reads Postgres on every request, so during an outage even direct play and segments already in the store stop, though their bytes need nothing from Postgres. The owner chose (2026-11-12) to keep them playing: a stream replica honours a token it validated shortly before Postgres went away, only while it is away. A token revoked in the last seconds before the outage stays usable until Postgres returns, which the owner accepted.",
       "acceptanceCriteria": [
-        "While Postgres is away, a stream replica serves direct play bytes and stored segments to a token it validated within a short window before the outage (stated in DOMAINS 37), shown in jellyfin-web in the e2e tier with a direct play and a seek into stored segments",
-        "A token never validated, or validated before the window, gets nothing while Postgres is away, and every token is checked again as soon as Postgres is back",
+        "While Postgres is away, any stream replica serves direct play bytes and stored segments to a token that was active within a short window before the outage (stated in DOMAINS 37), whichever replica served it before; shown in jellyfin-web in the e2e tier with a direct play and a seek into stored segments, past the 30 s readiness cut",
+        "A token not active within the window, or never valid, gets nothing while Postgres is away, and every token is checked again as soon as Postgres is back",
         "Nothing that needs Postgres to decide (a new job, a new token) is answered from memory"
       ],
-      "priority": 20,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [],
       "source": "Fable 5.2 architecture review, 2026-11-12 (.results/architecture-review-2026-11-12.md); owner's answers 2026-11-12",
-      "notes": ""
+      "notes": "Lead design (2026-11-14): every stream replica refreshes a snapshot of the tokens of recently active sessions every 5 s, so no sticky routing is needed; per-replica memory failed under the shipped Caddy fallback (14 of 40 clients moved replica)."
     },
     {
       "id": "JS-086",

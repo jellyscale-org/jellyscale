@@ -13,7 +13,7 @@ One binary, chosen with `--roles`, run as separate Deployments. Roles version to
 | Role | Job | State | Scales on | Runtime needs |
 |---|---|---|---|---|
 | `api` | REST, WebSocket, PlaybackInfo | Connections | CPU, connections | Postgres, and the asset store to see which subtitles are cached while no worker runs |
-| `stream` | Sends bytes: direct play, playlists, segments, images, subtitles | None | Bandwidth | Postgres, stores |
+| `stream` | Sends bytes: direct play, playlists, segments, images, subtitles | A snapshot of recently active sessions' tokens and their films, refreshed every 5 seconds, which only an outage reads (DOMAINS 37) | Bandwidth | Postgres, stores |
 | `worker` | Runs media tools: transcodes, burn-in, subtitle extraction, chapter pictures, scans, probes | Scratch only | Slots, queue depth | Postgres (plus one direct, session-mode connection for its liveness lock), stores, ffmpeg |
 
 ## Rules

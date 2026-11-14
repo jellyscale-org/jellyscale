@@ -123,8 +123,9 @@ for pair in "Lead Copy Film (2094):Zeta Film (2023)" "Lead Encode Film (2095):Ze
 done
 # The films the failover gate (JS-031) kills and rolls replicas under: one direct play (the 60 MB
 # film of the outage scenario, which the router slows to a download of tens of seconds) and one
-# re-encode each for an api kill, a stream kill and a stream roll.
-for pair in "Api Kill Film (2140):Outage Direct Film (2113)" "Stream Kill Direct Film (2141):Outage Direct Film (2113)" "Stream Roll Direct Film (2142):Outage Direct Film (2113)" "Stream Kill Encode Film (2143):Zeta Interlaced (2050)" "Stream Roll Encode Film (2144):Zeta Interlaced (2050)"; do
+# re-encode each for an api kill, a stream kill and a stream roll, and the three films that play on
+# through a Postgres outage from a stream replica's snapshot of active sessions (JS-085).
+for pair in "Api Kill Film (2140):Outage Direct Film (2113)" "Stream Kill Direct Film (2141):Outage Direct Film (2113)" "Stream Roll Direct Film (2142):Outage Direct Film (2113)" "Stream Kill Encode Film (2143):Zeta Interlaced (2050)" "Stream Roll Encode Film (2144):Zeta Interlaced (2050)" "Away Direct Film (2145):Outage Direct Film (2113)" "Away Late Film (2146):Outage Direct Film (2113)" "Away Encode Film (2147):Zeta Interlaced (2050)"; do
   to=${pair%%:*} from=${pair#*:}
   link "$t/$from/$from.mkv" "$t/$to/$to.mkv"
 done

@@ -48,14 +48,23 @@ func EnsureServerID(ctx context.Context, pool *pgxpool.Pool) (string, error) {
 	return id, err
 }
 
+func (s *Server) queryUser(ctx context.Context, token string) (User, error) {
+	var user User
+	err := s.Pool.QueryRow(ctx, `SELECT u.id::text, u.name, u.is_admin, u.last_login_at
+		FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1`, token).
+		Scan(&user.ID, &user.Name, &user.IsAdmin, &user.LastLoginAt)
+	return user, err
+}
+
+// userByToken asks Postgres, and waits for it while it is away. Only a route
+// that can serve from the snapshot goes on without it (invariant 37); a token
+// is otherwise refused at once when signed out, and never accepted without
+// Postgres saying its device is signed in.
 func (s *Server) userByToken(ctx context.Context, token string) (User, error) {
 	var user User
-	// Never answered from memory: a token signed out is refused at once, and with
-	// Postgres away the request waits for it, which never lets a stranger in.
-	err := db.Retry(ctx, s.Pool, func() error {
-		return s.Pool.QueryRow(ctx, `SELECT u.id::text, u.name, u.is_admin, u.last_login_at
-			FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1`, token).
-			Scan(&user.ID, &user.Name, &user.IsAdmin, &user.LastLoginAt)
+	err := db.Retry(ctx, s.Pool, func() (err error) {
+		user, err = s.queryUser(ctx, token)
+		return
 	})
 	return user, err
 }

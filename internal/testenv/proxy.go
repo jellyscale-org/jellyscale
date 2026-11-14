@@ -28,13 +28,14 @@ type DBProxy struct {
 	dsn    string
 	name   string // The application_name of every session that came through the proxy.
 
-	mu      sync.Mutex
-	refuse  bool
-	conns   map[net.Conn]struct{}
-	accepts int
-	delay   time.Duration // A round trip through the proxy takes this much longer, half in each direction.
-	trip    []byte        // When a statement holds this, the connections end instead of passing it on.
-	tripped chan struct{} // Closed when they did.
+	mu       sync.Mutex
+	refuse   bool
+	conns    map[net.Conn]struct{}
+	accepts  int
+	delay    time.Duration // A round trip through the proxy takes this much longer, half in each direction.
+	received int64         // Bytes Postgres sent to its clients.
+	trip     []byte        // When a statement holds this, the connections end instead of passing it on.
+	tripped  chan struct{} // Closed when they did.
 }
 
 // NewDBProxy listens on a port of its own and forwards to the database of dsn.
@@ -151,6 +152,14 @@ func (p *DBProxy) Accepted() int {
 	return p.accepts
 }
 
+// Received counts the bytes Postgres has sent through the proxy to its clients,
+// for a test of what a process reads.
+func (p *DBProxy) Received() int64 {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.received
+}
+
 func (p *DBProxy) accept() {
 	for {
 		client, err := p.ln.Accept()
@@ -185,6 +194,11 @@ func (p *DBProxy) pipe(dst, src net.Conn, fromClient bool) {
 		n, err := src.Read(buf)
 		if n > 0 && fromClient && p.tripOn(buf[:n]) {
 			break
+		}
+		if n > 0 && !fromClient {
+			p.mu.Lock()
+			p.received += int64(n)
+			p.mu.Unlock()
 		}
 		if n > 0 {
 			p.mu.Lock()
