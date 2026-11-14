@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand/v2"
-	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -17,34 +16,24 @@ import (
 // have their own checks in internal/api/outage_integration_test.go.
 
 // reaping runs what an api or stream replica runs while it waits, through the
-// replica's own pool (so it is away when the replica is), and remembers every
-// worker it forgot.
-func (s *stack) reaping(t *testing.T) (forgot func() []string) {
+// replica's own pool (so it is away when the replica is): PlaybackInfo's
+// Unavailable, which writes nothing (jobs.go: only workers forget workers). It
+// It used to call the
+// exported Reap with no lock holder as well, which no role does and which, in
+// the moment the connections ended one by one, forgot live workers (JS-104,
+// merge queue run 43587752815).
+func (s *stack) reaping(t *testing.T) {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
-	var mu sync.Mutex
-	var forgotten []string
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
 		for ctx.Err() == nil {
-			if workers, _, _, err := Reap(ctx, s.jobs.Pool, ""); err == nil && len(workers) > 0 {
-				mu.Lock()
-				forgotten = append(forgotten, workers...)
-				mu.Unlock()
-			}
 			s.jobs.Unavailable(ctx, "unused", "", "") //nolint:errcheck // A PlaybackInfo: it reaps too.
 			time.Sleep(100 * time.Millisecond)
 		}
 	}()
-	stop := func() { cancel(); <-done }
-	t.Cleanup(stop)
-	return func() []string {
-		stop()
-		mu.Lock()
-		defer mu.Unlock()
-		return slices.Clone(forgotten)
-	}
+	t.Cleanup(func() { cancel(); <-done })
 }
 
 // Three workers each run a job (a re-encode, a copy, and a re-encode paused at
@@ -70,6 +59,8 @@ func TestEveryJobOfEveryWorkerGoesOnThroughAnOutage(t *testing.T) {
 		{"switchover", false, 0, []time.Duration{0, 0, 0}, false},
 		// Every connection ended, new ones refused for some seconds: a restart.
 		{"restart", true, 1500 * time.Millisecond, []time.Duration{0, time.Second, 2 * time.Second}, false},
+		// The last worker returns long after the first (JS-104), still inside its job's lease.
+		{"restart, the last worker long after the first", true, 1500 * time.Millisecond, []time.Duration{0, 2 * time.Second, 4 * time.Second}, false},
 		// What a CNPG switchover does to a session: the server says it is shutting down.
 		{"terminated by the server", false, 0, []time.Duration{0, 0, 0}, true},
 	}
@@ -127,7 +118,7 @@ func TestEveryJobOfEveryWorkerGoesOnThroughAnOutage(t *testing.T) {
 			}
 			locksBefore := s.lockPids()
 			nodes := s.watchNodes()
-			forgot := s.reaping(t)
+			s.reaping(t)
 			servedBefore := encViewer.got.Load() + cpViewer.got.Load()
 
 			s.afterRenewal()
@@ -183,9 +174,6 @@ func TestEveryJobOfEveryWorkerGoesOnThroughAnOutage(t *testing.T) {
 			}
 			if ids := nodes.forgotten(); len(ids) > 0 {
 				t.Errorf("workers that were alive had their rows forgotten: %v", ids)
-			}
-			if ids := forgot(); len(ids) > 0 {
-				t.Errorf("a reap forgot live workers that were taking their lock again: %v", ids)
 			}
 			for _, spec := range []string{enc.Hash(), cp.Hash(), low.Hash()} {
 				if reason, err := s.jobs.Unavailable(context.Background(), spec, "", ""); err != nil || reason != "" {
@@ -628,7 +616,7 @@ func TestNoJobHasTwoOwnersWhileLockConnectionsAreEndedOverAndOver(t *testing.T) 
 	waitFor(t, "the job to run", 60*time.Second, func() bool { return viewer.got.Load() >= 1 && r.owner(t) != "" })
 	owned := r.watchOwners(t)
 	nodes := s.watchNodes()
-	forgot := s.reaping(t)
+	s.reaping(t)
 	rng := rand.New(rand.NewPCG(25, 2))
 	type round struct {
 		name string
@@ -710,7 +698,7 @@ func TestNoJobHasTwoOwnersWhileLockConnectionsAreEndedOverAndOver(t *testing.T) 
 		}
 	}
 	nodes.mu.Unlock()
-	t.Logf("rows forgotten during the rounds: %v; forgotten by the replica's reap: %v", nodes.forgotten(), forgot())
+	t.Logf("rows forgotten during the rounds: %v", nodes.forgotten())
 }
 
 // terminateQuietly ends the backend that holds a worker's lock, if it holds one: a

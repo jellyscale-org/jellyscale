@@ -36,6 +36,16 @@ type DBProxy struct {
 	received int64         // Bytes Postgres sent to its clients.
 	trip     []byte        // When a statement holds this, the connections end instead of passing it on.
 	tripped  chan struct{} // Closed when they did.
+
+	stmt *statementHook // Armed by OnStatement.
+}
+
+// statementHook is a pair of steps around one statement, see OnStatement.
+type statementHook struct {
+	match         func(sent []byte) bool
+	before, after func()
+	server        net.Conn // The server side of the connection the statement came on, once it has.
+	done          chan struct{}
 }
 
 // NewDBProxy listens on a port of its own and forwards to the database of dsn.
@@ -144,6 +154,22 @@ func (p *DBProxy) SeverOn(text string) <-chan struct{} {
 	return p.tripped
 }
 
+// OnStatement runs before once, just before the first statement a client sends
+// for which match is true goes on to Postgres, and after once Postgres has
+// answered it, just before the answer goes on to the client. Postgres runs the
+// statement between the two, so what before changed is what the statement
+// saw, and what after waits for (a pause, a SIGSTOP of the client, an
+// Away or a Sever) is what the client lives through between asking and
+// being answered. Both run on the proxy's own goroutines and block the
+// connection while they do. The channel is closed when after has returned.
+// Needs a client that sends each statement's text (a statement cache sends it once).
+func (p *DBProxy) OnStatement(match func(sent []byte) bool, before, after func()) <-chan struct{} {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.stmt = &statementHook{match: match, before: before, after: after, done: make(chan struct{})}
+	return p.stmt.done
+}
+
 // Accepted counts the connections the proxy let through, for a test that must
 // know whether a process tried again.
 func (p *DBProxy) Accepted() int {
@@ -195,6 +221,12 @@ func (p *DBProxy) pipe(dst, src net.Conn, fromClient bool) {
 		if n > 0 && fromClient && p.tripOn(buf[:n]) {
 			break
 		}
+		if n > 0 && fromClient {
+			p.beforeStatement(dst, buf[:n])
+		}
+		if n > 0 && !fromClient {
+			p.afterStatement(src)
+		}
 		if n > 0 && !fromClient {
 			p.mu.Lock()
 			p.received += int64(n)
@@ -232,4 +264,35 @@ func (p *DBProxy) tripOn(sent []byte) bool {
 	p.Sever()
 	close(tripped)
 	return true
+}
+
+// beforeStatement runs the armed hook's before step if sent is the statement it waits for.
+func (p *DBProxy) beforeStatement(server net.Conn, sent []byte) {
+	p.mu.Lock()
+	h := p.stmt
+	if h == nil || h.server != nil || !h.match(sent) {
+		p.mu.Unlock()
+		return
+	}
+	h.server = server
+	p.mu.Unlock()
+	if h.before != nil {
+		h.before()
+	}
+}
+
+// afterStatement runs the armed hook's after step when the first answer comes from the connection the statement went on.
+func (p *DBProxy) afterStatement(server net.Conn) {
+	p.mu.Lock()
+	h := p.stmt
+	if h == nil || h.server != server {
+		p.mu.Unlock()
+		return
+	}
+	p.stmt = nil
+	p.mu.Unlock()
+	if h.after != nil {
+		h.after()
+	}
+	close(h.done)
 }
