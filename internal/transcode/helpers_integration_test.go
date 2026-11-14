@@ -175,7 +175,7 @@ func (r *rig) play(ctx context.Context, j *Jobs, psid string, from, to int) (slo
 		if err := j.Watch(ctx, r.viewer(psid), r.hash, n); err != nil {
 			return slowest, time.Since(began), err
 		}
-		body, err := j.Segment(ctx, r.spec, r.hash, r.viewer(psid), n, 0)
+		body, err := bytesOf(j.Segment(ctx, r.spec, r.hash, r.viewer(psid), n, 0))
 		if err != nil {
 			return slowest, time.Since(began), fmt.Errorf("segment %d after %v: %w", n, time.Since(asked).Round(time.Millisecond), err)
 		}
@@ -397,7 +397,7 @@ func TestHelpersNeverTakeTheLastFreeSlot(t *testing.T) {
 		if err := j.Watch(ctx, viewer, hash, 0); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := j.Segment(ctx, other, hash, viewer, 0, 0); err != nil {
+		if _, err := bytesOf(j.Segment(ctx, other, hash, viewer, 0, 0)); err != nil {
 			t.Fatalf("the new viewer was refused (%v) though a slot stayed free for it", err)
 		}
 	})

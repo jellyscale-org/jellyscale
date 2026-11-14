@@ -469,7 +469,7 @@ func (s *stack) fetch(ctx context.Context, j *Jobs, spec playback.Spec, ps strin
 	if err := j.Watch(ctx, v, hash, n); err != nil {
 		return nil, err
 	}
-	return j.Segment(ctx, spec, hash, v, n, 0)
+	return bytesOf(j.Segment(ctx, spec, hash, v, n, 0))
 }
 
 // viewerLoop is a player: it asks for segment after segment, from the first, and

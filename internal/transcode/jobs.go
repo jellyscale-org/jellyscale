@@ -5,9 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
-	"math"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -276,23 +274,11 @@ func (j *Jobs) Stop(ctx context.Context, userID, playSessionID, deviceID, item s
 	return err
 }
 
-// readSegment reads a segment whole. Its size isn't known, so the Reader is
-// told it is as large as can be, and ends at the object's end. An empty segment
-// or one still cut after the Reader's resumes counts as not there yet, so the
-// caller's wait reads it again.
-func readSegment(ctx context.Context, s store.Store, key string) ([]byte, error) {
-	body, err := io.ReadAll(store.NewReader(ctx, s, key, math.MaxInt64))
-	if errors.Is(err, io.ErrUnexpectedEOF) || (err == nil && len(body) == 0) {
-		return nil, store.ErrNotFound
-	}
-	return body, err
-}
-
 // Stored returns segment n of a spec (-1 is the init segment) if the store
-// holds it, and store.ErrNotFound if not. It starts and joins no job and asks
+// holds it, for the caller to send and close, and store.ErrNotFound if not. It starts and joins no job and asks
 // Postgres nothing.
-func (j *Jobs) Stored(ctx context.Context, hash string, n int) ([]byte, error) {
-	return readSegment(ctx, j.Segments, SegmentKey(hash, n))
+func (j *Jobs) Stored(ctx context.Context, hash string, n int) (*StoredSegment, error) {
+	return openSegment(ctx, j.Segments, SegmentKey(hash, n))
 }
 
 // Segment returns segment n of a spec (-1 is the init segment): from the
@@ -301,17 +287,18 @@ func (j *Jobs) Stored(ctx context.Context, hash string, n int) ([]byte, error) {
 // Any job's first segment brings the init segment with it, so a request for
 // the init joins a live job, or starts one at startAt, where the viewer
 // starts.
-func (j *Jobs) Segment(ctx context.Context, spec playback.Spec, hash string, viewer Viewer, n, startAt int) ([]byte, error) {
+// The caller sends the segment and closes it; the wait is over when it is found.
+func (j *Jobs) Segment(ctx context.Context, spec playback.Spec, hash string, viewer Viewer, n, startAt int) (*StoredSegment, error) {
 	began := time.Now()
 	var source string
-	body, err := j.segment(ctx, spec, hash, viewer, n, startAt, &source)
+	seg, err := j.segment(ctx, spec, hash, viewer, n, startAt, &source)
 	observeSegment(began, spec.Copy, source, err)
-	return body, err
+	return seg, err
 }
 
 // segment is Segment. source says where the segment came from: the store, a job
 // that was running, or a job this request started; the first of them to apply.
-func (j *Jobs) segment(ctx context.Context, spec playback.Spec, hash string, viewer Viewer, n, startAt int, source *string) ([]byte, error) {
+func (j *Jobs) segment(ctx context.Context, spec playback.Spec, hash string, viewer Viewer, n, startAt int, source *string) (*StoredSegment, error) {
 	wake, unsubscribe := j.Hub.Subscribe(segmentHint(hash))
 	defer unsubscribe()
 	ticker := time.NewTicker(pollInterval)
@@ -326,16 +313,23 @@ func (j *Jobs) segment(ctx context.Context, spec playback.Spec, hash string, vie
 	starts, unreadable := 0, 0
 	var awayAtJob time.Duration // How long Postgres had been away when the job was found.
 	watched := time.Now()
+	// The store is looked at first, and again only when Postgres says the
+	// segment is stored or the job that would make it has ended: a waiting
+	// request asks the store nothing on each poll.
+	look := true
 	for {
-		body, err := readSegment(ctx, j.Segments, SegmentKey(hash, n))
-		if err == nil {
-			if *source == "" {
-				*source = "store"
+		if look {
+			seg, err := openSegment(ctx, j.Segments, SegmentKey(hash, n))
+			if err == nil {
+				if *source == "" {
+					*source = "store"
+				}
+				return seg, nil
 			}
-			return body, nil
-		}
-		if !errors.Is(err, store.ErrNotFound) {
-			return nil, err
+			if !errors.Is(err, store.ErrNotFound) {
+				return nil, err
+			}
+			look = false
 		}
 		if job == 0 {
 			if err := j.Watch(ctx, viewer, hash, -1); err != nil {
@@ -349,7 +343,7 @@ func (j *Jobs) segment(ctx context.Context, spec playback.Spec, hash string, vie
 				start = startAt
 			}
 			var created bool
-			err = db.Retry(ctx, j.Pool, func() (err error) {
+			err := db.Retry(ctx, j.Pool, func() (err error) {
 				job, created, err = j.ensure(ctx, spec, hash, viewer.PlaySessionID, n, start)
 				return
 			})
@@ -365,7 +359,7 @@ func (j *Jobs) segment(ctx context.Context, spec playback.Spec, hash string, vie
 			}
 		} else {
 			var state jobState
-			err := db.Retry(ctx, j.Pool, func() (err error) { state, err = j.state(ctx, job); return })
+			err := db.Retry(ctx, j.Pool, func() (err error) { state, err = j.state(ctx, job, hash, n); return })
 			if err != nil {
 				return nil, err
 			}
@@ -380,8 +374,8 @@ func (j *Jobs) segment(ctx context.Context, spec playback.Spec, hash string, vie
 			case state.State == "done" && state.covers(n):
 				// The worker says it stored this segment and we can't find it.
 				// Look once more, in case it landed since we last looked.
-				if body, err := readSegment(ctx, j.Segments, SegmentKey(hash, n)); err == nil {
-					return body, nil
+				if seg, err := openSegment(ctx, j.Segments, SegmentKey(hash, n)); err == nil {
+					return seg, nil
 				}
 				if unreadable++; unreadable >= 2 {
 					reason := fmt.Sprintf("a worker stored segment %d but this replica cannot read it: transcodeStore must be the same on every role, and a directory shared by them", n)
@@ -389,10 +383,20 @@ func (j *Jobs) segment(ctx context.Context, spec playback.Spec, hash string, vie
 					return nil, FailedError{reason}
 				}
 				job = 0
+				look = true
 				continue
 			case state.State == "done" || state.State == "cancelled" || state.Dead:
-				job = 0 // Look in the store once more, then start again.
+				job, look = 0, true // Look in the store once more, then start again.
 				continue
+			case state.Stored:
+				// Some job of the spec, this one or another viewer's or a
+				// helper's, has recorded the segment. If it cannot be read yet,
+				// the next poll looks again.
+				if seg, err := openSegment(ctx, j.Segments, SegmentKey(hash, n)); err == nil {
+					return seg, nil
+				} else if !errors.Is(err, store.ErrNotFound) {
+					return nil, err
+				}
 			}
 		}
 		// A viewer waiting on a slow start is still watching, and the job
@@ -560,6 +564,7 @@ type jobState struct {
 	Start, Next  int
 	Dead         bool // Running, but its lease ran out.
 	Age          time.Duration
+	Stored       bool // Some job of the spec has recorded segment n as stored.
 }
 
 // covers reports whether the job went far enough to have stored segment n.
@@ -570,12 +575,17 @@ func (s jobState) covers(n int) bool {
 	return s.Start <= n && n < s.Next
 }
 
-func (j *Jobs) state(ctx context.Context, id int64) (jobState, error) {
+// state reads a job, and whether any job of the spec has recorded segment n as
+// stored: the init segment comes with any job's first.
+func (j *Jobs) state(ctx context.Context, id int64, hash string, n int) (jobState, error) {
 	var s jobState
 	var age float64
 	err := j.Pool.QueryRow(ctx, `SELECT state, COALESCE(error, ''), state = 'running' AND lease_expires_at <= now(),
-			extract(epoch FROM now() - created_at), start_segment, next_segment FROM transcode_jobs WHERE id = $1`, id).
-		Scan(&s.State, &s.Error, &s.Dead, &age, &s.Start, &s.Next)
+			extract(epoch FROM now() - created_at), start_segment, next_segment,
+			EXISTS (SELECT 1 FROM transcode_jobs WHERE spec_hash = $2
+				AND CASE WHEN $3 < 0 THEN next_segment > start_segment ELSE start_segment <= $3 AND $3 < next_segment END)
+		FROM transcode_jobs WHERE id = $1`, id, hash, n).
+		Scan(&s.State, &s.Error, &s.Dead, &age, &s.Start, &s.Next, &s.Stored)
 	s.Age = time.Duration(age * float64(time.Second))
 	return s, err
 }

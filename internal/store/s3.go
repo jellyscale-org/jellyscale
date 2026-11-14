@@ -84,6 +84,22 @@ func (s *S3) List(ctx context.Context, prefix string) ([]Object, error) {
 	return objects, nil
 }
 
+// Stat asks for the size alone, with a HEAD.
+func (s *S3) Stat(ctx context.Context, key string) (int64, error) {
+	objectKey := s.objectKey(key)
+	output, err := s.client.HeadObject(ctx, &s3.HeadObjectInput{Bucket: &s.bucket, Key: &objectKey})
+	if err != nil {
+		var missing *types.NotFound
+		var noKey *types.NoSuchKey
+		var api smithy.APIError
+		if errors.As(err, &missing) || errors.As(err, &noKey) || (errors.As(err, &api) && api.ErrorCode() == "NotFound") {
+			return 0, ErrNotFound
+		}
+		return 0, fmt.Errorf("head %s: %w", key, err)
+	}
+	return aws.ToInt64(output.ContentLength), nil
+}
+
 // Open reads from offset to the end of the object in one GET.
 func (s *S3) Open(ctx context.Context, key string, offset int64) (io.ReadCloser, error) {
 	objectKey := s.objectKey(key)
