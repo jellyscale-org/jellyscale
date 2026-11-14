@@ -815,6 +815,15 @@
       "title": "missingGrace set to an empty string uses the default instead of stopping the start",
       "status": "open",
       "notes": "newScanner parses only when cfg.MissingGrace != \"\"."
+    },
+    {
+      "id": "BL-098",
+      "source": "JS-102 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "The empty-list worker test says a tick runs, but no scan loop starts for an empty list",
+      "status": "open",
+      "notes": "TestAWorkerListingNoLibrariesChangesNothingAndSaysSoOnce: the comment and the refined criterion speak of a tick; main.go starts scanLoop only when the list is not empty. The removal assertion still guards it."
     }
   ]
 }
