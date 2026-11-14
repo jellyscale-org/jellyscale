@@ -338,7 +338,7 @@ line='{"request":"GET /System/Info/Public","method":"GET","path":"/System/Info/P
 fails_with "the conform command fails on a response that breaks the schema" bash -c "printf '%s\n' '$line' | go run ./compat/conform/cmd/conform check -schema compat/schema-12.4.json -rules compat/conform.yaml -label t"
 check "the conform command names the field" "1" "$(printf '%s\n' "$line" | conform 2>&1 | grep -c 'GET /System/Info/Public.*ServerName\|ServerName.*GET /System/Info/Public')"
 fails_with "the conform command fails when it checked nothing" bash -c "go run ./compat/conform/cmd/conform check -schema compat/schema-12.4.json -rules compat/conform.yaml -label t </dev/null"
-for gate in browse play subtitles transcode; do
+for gate in browse play subtitles failover transcode; do
   check "the $gate gate records its JSON responses for the checker" "1" "$(grep -c 'conform.mjs' test/e2e/$gate.mjs)"
 done
 check "run.sh checks each gate's recorded responses with the conform command" "1" "$(grep -c 'compat/conform/cmd/conform' test/e2e/run.sh | grep -c '^[1-9]')"

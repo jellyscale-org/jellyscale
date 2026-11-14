@@ -47,6 +47,15 @@ services:
     <<: *app
     command: [--roles=stream, --config=/etc/jellyscale/config.json]
 
+  # Second replicas, so that one can be rolled or lost while the other serves (see the Caddyfile).
+  api2:
+    <<: *app
+    command: [--roles=api, --config=/etc/jellyscale/config.json]
+
+  stream2:
+    <<: *app
+    command: [--roles=stream, --config=/etc/jellyscale/config.json]
+
   # Routes /Videos/, /Items/*/Images/, /Items/*/Download and /Playback/BitrateTest to stream and the rest to api.
   ingress:
     image: caddy:2-alpine
@@ -56,7 +65,9 @@ services:
       - 127.0.0.1:8096:8080
     depends_on:
       - api
+      - api2
       - stream
+      - stream2
 
   worker:
     <<: *app
