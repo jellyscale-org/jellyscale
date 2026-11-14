@@ -75,6 +75,13 @@ type config struct {
 	// every role in it together. Zero means db.DefaultMaxConns.
 	DatabaseMaxConns int `json:"databaseMaxConns"`
 
+	// ShutdownGrace is how long a replica that got SIGTERM takes to stop, counted
+	// from the signal (a Go duration, default 30s): readiness fails at once, new
+	// requests are still taken for drainLead, and what is in flight is then
+	// given the rest. Set the pod's termination grace period above it.
+	ShutdownGrace string `json:"shutdownGrace"`
+	grace         time.Duration
+
 	// MetricsListen is where /metrics is served, such as ":9090", by every role
 	// in the process and apart from the public port. Empty serves none.
 	MetricsListen string `json:"metricsListen"`
@@ -99,8 +106,24 @@ func parseConfig(raw []byte) (config, error) {
 	if n := cfg.DatabaseMaxConns; n < 0 || n == 1 || n > maxDatabaseConns {
 		return cfg, fmt.Errorf("databaseMaxConns must be 0 (the default, %d) or 2 to %d, not %d", db.DefaultMaxConns, maxDatabaseConns, n)
 	}
+	cfg.grace = defaultShutdownGrace
+	if cfg.ShutdownGrace != "" {
+		grace, err := time.ParseDuration(cfg.ShutdownGrace)
+		if err != nil || grace < 0 {
+			return cfg, fmt.Errorf("shutdownGrace: want a duration such as 30s, not %q", cfg.ShutdownGrace)
+		}
+		cfg.grace = grace
+	}
 	return cfg, nil
 }
+
+const (
+	defaultShutdownGrace = 30 * time.Second
+	// drainLead is how long, after readiness first answers 503, a replica
+	// still takes new requests, so that a router polling every second or two has
+	// stopped sending before any is refused. It is part of the grace.
+	drainLead = 5 * time.Second
+)
 
 // maxDatabaseConns is far above any Postgres max_connections worth running.
 const maxDatabaseConns = 10000
@@ -137,8 +160,12 @@ func main() {
 }
 
 func run(roleList, listen, configPath string, log *slog.Logger) error {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	signalled, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	// What the process runs (the hub, the worker, its registration) outlives the
+	// signal while requests drain, and ends after them.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	var cfg config
 	if configPath != "" {
@@ -214,7 +241,8 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 		go scanLoop(ctx, scanner, libraries, interval, log)
 	}
 	if !slices.Contains(enabled, api.RoleAPI) && !slices.Contains(enabled, api.RoleStream) {
-		<-ctx.Done()
+		<-signalled.Done()
+		cancel()
 		<-transcodes.stopped
 		return nil
 	}
@@ -223,19 +251,50 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 		Pool: pool, Items: &items.Repo{Pool: pool, ServerID: serverID}, ServerID: serverID,
 		Name: cfg.Name, WebDir: cfg.WebDir, Roles: enabled, Log: log, Transcode: transcodes.jobs, Hub: transcodes.hub,
 	}
+	if slices.Contains(enabled, api.RoleAPI) {
+		go server.KeepReplica(ctx)
+	}
 	httpServer := &http.Server{Addr: listen, Handler: server.Handler(), ReadHeaderTimeout: 10 * time.Second}
+	drained := make(chan struct{})
 	go func() {
-		<-ctx.Done()
-		shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		httpServer.Shutdown(shutdown) //nolint:errcheck
+		defer close(drained)
+		<-signalled.Done()
+		drain(httpServer, server, cfg.grace, log)
 	}()
 	log.Info("listening", "addr", listen, "roles", enabled)
 	if err := httpServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
+	<-drained
+	cancel()
 	<-transcodes.stopped // ffmpeg is gone before we exit.
 	return nil
+}
+
+// drain stops serving within grace of the signal. Readiness fails first and
+// requests are taken as before for drainLead, so the router has stopped
+// sending when the listener closes. Then the sockets are closed with their rows
+// removed, and the responses in flight are sent whole if they end in time, and
+// cut at the end of the grace if not.
+func drain(httpServer *http.Server, server *api.Server, grace time.Duration, log *slog.Logger) {
+	deadline, cancel := context.WithTimeout(context.Background(), grace)
+	defer cancel()
+	server.BeginDrain()
+	log.Info("stopping: readiness fails, and requests are taken for a moment longer", "grace", grace)
+	select {
+	case <-time.After(drainLead):
+	case <-deadline.Done():
+	}
+	socketsClosed := make(chan struct{})
+	go func() {
+		server.CloseSockets(deadline)
+		close(socketsClosed)
+	}()
+	if err := httpServer.Shutdown(deadline); err != nil {
+		log.Warn("responses still in flight at the end of the grace are cut", "error", err)
+		httpServer.Close() //nolint:errcheck
+	}
+	<-socketsClosed
 }
 
 // transcoding is what this process runs for transcodes.

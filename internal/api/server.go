@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -78,6 +79,25 @@ type Server struct {
 	stores      store.Cache
 	replicaOnce sync.Once
 	replicaID   string
+
+	draining atomic.Bool // Set once the process has been told to stop: readiness fails.
+	// sockets counts the WebSocket handlers still running, and closeSockets, once
+	// closed, tells them to end.
+	sockets      sync.WaitGroup
+	socketsOnce  sync.Once
+	closeSockets chan struct{}
+}
+
+// postgresAwayLimit is how long Postgres may be away without a break before
+// readiness fails: a switchover is over by then, so a replica that is still cut
+// off is the one to stop sending to. Several shorter outages never add up to it.
+const postgresAwayLimit = 30 * time.Second
+
+// BeginDrain makes /readyz answer 503 from now on. Requests are still served.
+func (s *Server) BeginDrain() { s.draining.Store(true) }
+
+func (s *Server) ready() bool {
+	return !s.draining.Load() && db.Of(s.Pool).AwayFor() < postgresAwayLimit
 }
 
 type contextKey struct{}
@@ -112,6 +132,15 @@ func (s *Server) Handler() http.Handler {
 		// The process alone: a probe that failed for Postgres being away would
 		// take every replica out of service, or restart them, at once.
 		w.WriteHeader(http.StatusNoContent)
+	})
+	// Readiness is for the router: whether to send this replica requests. Unlike
+	// liveness it fails in a drain, and when Postgres has been away for good.
+	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
+		if !s.ready() {
+			http.Error(w, "not ready", http.StatusServiceUnavailable)
+			return
+		}
+		w.Write([]byte("ok")) //nolint:errcheck
 	})
 	if s.WebDir != "" {
 		web := http.StripPrefix("/web/", http.FileServer(http.Dir(s.WebDir)))

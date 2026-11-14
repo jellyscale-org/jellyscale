@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Runs the browse, play, subtitles and transcode gates against disposable
+# Runs the browse, play, subtitles, failover and transcode gates against disposable
 # infrastructure, with each role as its own process behind a router, as in
 # production: Postgres, S3 (SeaweedFS), two api replicas, a stream replica and a worker.
 # Usage: run.sh <workdir> <dir_with_playwright>
-# E2E_GATES picks which gates run, default "browse play subtitles transcode".
+# E2E_GATES picks which gates run, default "browse play subtitles failover transcode".
+# The failover gate (JS-031) kills and rolls api and stream replicas it starts itself, behind the router.
 # E2E_SHARD=i/n runs every n-th scenario of the subtitles and transcode gates,
 # starting at the i-th (test/e2e/shard.mjs): CI runs the shards side by side.
 # The scenarios that stop the worker run last, on the last shard. browse and play
@@ -63,6 +64,8 @@ gate_results=() # name|exit status|summary|log of each gate that ran whole
 leaked=0
 cleanup() {
   [[ ${#pids[@]} -gt 0 ]] && kill "${pids[@]}" 2>/dev/null
+  # Replicas a failover scenario started and a gate that was killed left behind: they belong to this workdir.
+  pkill -f "^$work/jellyscale --roles=(api|stream) --listen" 2>/dev/null
   docker rm -fv "$pg" "$sw" >/dev/null 2>&1
   local entry name gate_status summary log
   for entry in "${gate_results[@]}"; do
@@ -115,6 +118,13 @@ mkdir -p "$work/media/$t/Xi Film (2031)" && cp "$zeta" "$work/media/$t/Xi Film (
 # job runs ahead of the viewer: it needs segments nobody has made yet.
 # The same twice more for the scenarios that kill the worker playing a film.
 for pair in "Lead Copy Film (2094):Zeta Film (2023)" "Lead Encode Film (2095):Zeta Interlaced (2050)" "Failover Copy Film (2110):Zeta Film (2023)" "Failover Encode Film (2111):Zeta Interlaced (2050)" "Parallel Encode Film (2112):Zeta Interlaced (2050)" "Outage Encode Film (2114):Zeta Interlaced (2050)"; do
+  to=${pair%%:*} from=${pair#*:}
+  link "$t/$from/$from.mkv" "$t/$to/$to.mkv"
+done
+# The films the failover gate (JS-031) kills and rolls replicas under: one direct play (the 60 MB
+# film of the outage scenario, which the router slows to a download of tens of seconds) and one
+# re-encode each for an api kill, a stream kill and a stream roll.
+for pair in "Api Kill Film (2140):Outage Direct Film (2113)" "Stream Kill Direct Film (2141):Outage Direct Film (2113)" "Stream Roll Direct Film (2142):Outage Direct Film (2113)" "Stream Kill Encode Film (2143):Zeta Interlaced (2050)" "Stream Roll Encode Film (2144):Zeta Interlaced (2050)"; do
   to=${pair%%:*} from=${pair#*:}
   link "$t/$from/$from.mkv" "$t/$to/$to.mkv"
 done
@@ -265,13 +275,22 @@ printf '#!/bin/sh\nPATH="%s:%s" exec "%s" --roles=worker --config "%s" >>"%s" 2>
   "$work/bin" "$PATH" "$work/jellyscale" "$work/config-s3.json" "$logs/server.log" >"$work/bin/worker"
 chmod +x "$work/bin/worker"
 export E2E_WORKER="$work/bin/worker"
+# More api and stream replicas, for the failover gate: each scenario starts its own on ports it
+# chooses (the launcher takes the port) and tells the router, then kills or rolls them.
+# Like the others they have no ffmpeg on their PATH.
+for role in api stream; do
+  printf '#!/bin/sh\nPATH="%s" exec "%s" --roles=%s --listen "127.0.0.1:$1" --config "%s" >>"%s" 2>&1\n' \
+    "$work/nobin" "$work/jellyscale" "$role" "$work/config-s3.json" "$logs/server.log" >"$work/bin/$role-replica"
+  chmod +x "$work/bin/$role-replica"
+done
+export E2E_API_REPLICA="$work/bin/api-replica" E2E_STREAM_REPLICA="$work/bin/stream-replica"
 for p in $api1 $api2 $stream; do
   for _ in $(seq 1 60); do curl -fs -o /dev/null "http://127.0.0.1:$p/healthz" && break; sleep 0.25; done
 done
 for _ in $(seq 1 120); do [[ $(grep -c 'scan finished' "$logs/server.log") -ge 5 ]] && break; sleep 0.5; done
 
 base="http://127.0.0.1:$router"
-cp "$repo/test/e2e/conform.mjs" "$repo/test/e2e/shard.mjs" "$repo/test/e2e/browse.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/transcode.mjs" "$repo/test/e2e/subtitles.mjs" "$playwright/"
+cp "$repo/test/e2e/conform.mjs" "$repo/test/e2e/shard.mjs" "$repo/test/e2e/browse.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/transcode.mjs" "$repo/test/e2e/subtitles.mjs" "$repo/test/e2e/failover.mjs" "$playwright/"
 result=0
 export E2E_SCRATCH="$work/scratch" E2E_MEDIA="$work/media/transcode" E2E_ASSETS="$work/assets/transcode" E2E_PG="$pg" E2E_LOG="$logs/server.log"
 # Only a whole, ordinary run says what the tree does: a selection, a repeat, a
@@ -354,7 +373,7 @@ repeat_outs=()
 for ((iteration = 1; iteration <= repeat; iteration++)); do
   export E2E_ITERATION=$iteration
   [[ $iteration -gt 1 ]] && reset_state
-  for gate in ${E2E_GATES:-browse play subtitles transcode}; do
+  for gate in ${E2E_GATES:-browse play subtitles failover transcode}; do
     echo "=== $gate${E2E_REPEAT:+ (iteration $iteration of $repeat)}"
     dir=$logs/$gate; [[ $repeat -gt 1 ]] && dir=$logs/$gate-$iteration
     run_gate "$gate" "$dir"

@@ -297,6 +297,7 @@ jobs:
         include:
           - { name: browse-play-subtitles-0of2, gates: browse play subtitles, shard: 0/2 }
           - { name: subtitles-1of2, gates: subtitles, shard: 1/2 }
+          - { name: failover, gates: failover, shard: 0/1 }
           - { name: transcode-0of3, gates: transcode, shard: 0/3 }
           - { name: transcode-1of3, gates: transcode, shard: 1/3 }
           - { name: transcode-2of3, gates: transcode, shard: 2/3 }
@@ -392,4 +393,4 @@ jobs:
           merge-multiple: true
           path: shards
       - if: steps.decide.outputs.run == 'true'
-        run: bash test/check-shards.sh e2e shards "browse play subtitles transcode differential"
+        run: bash test/check-shards.sh e2e shards "browse play subtitles failover transcode differential"

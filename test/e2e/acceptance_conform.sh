@@ -13,7 +13,7 @@ repo=$(cd "$(dirname "$0")/../.." && pwd)
 work=${1:?usage: acceptance_conform.sh <workdir> <playwright_dir>}
 playwright=${2:?usage: acceptance_conform.sh <workdir> <playwright_dir>}
 mkdir -p "$work" && work=$(cd "$work" && pwd)
-gates="browse play subtitles transcode"
+gates="browse play subtitles failover transcode"
 fails=0
 check() { if [[ $2 == "$3" ]]; then echo "ok    $1"; else echo "FAIL  $1: want '$2', got '$3'"; fails=$((fails + 1)); fi; }
 
