@@ -914,6 +914,78 @@
       "title": "The JS-099 fix was verified under ffmpeg 9 only, not CI's 6.1",
       "status": "open",
       "notes": "The merge queue runs it under 6.1."
+    },
+    {
+      "id": "BL-102",
+      "source": "JS-066 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "A Stop that matches no viewer row no longer sweeps jobs with no unstopped viewer",
+      "status": "open",
+      "notes": "Jobs.Stop cancels only jobs of the specs its UPDATE returned. An orphan job then runs until its lease or the viewer-expiry sweep ends it. Listed as a changed guarantee in the PR."
+    },
+    {
+      "id": "BL-103",
+      "source": "JS-066 verify",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "DBProxy.Delay sleeps once per read chunk, not once per round trip",
+      "status": "open",
+      "notes": "A result larger than one 32K read is delayed several times, so the schedules' 'up to 300 ms' is approximate."
+    },
+    {
+      "id": "BL-104",
+      "source": "JS-085 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "A snapshot refresh that times out while Postgres is not marked away keeps the snapshot",
+      "status": "open",
+      "notes": "keepSnapshot keeps it for db.IsAway(err) || DeadlineExceeded; DOMAINS 37 says only while Postgres is away. Align code or doc, with a test."
+    },
+    {
+      "id": "BL-105",
+      "source": "JS-085 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "An offline HLS segment with no mediasourceid answers 200 where the online route answers 404",
+      "status": "open",
+      "notes": "session.pick(itemID, \"\") takes the first film; hlsRequestFor rejects an invalid source id."
+    },
+    {
+      "id": "BL-106",
+      "source": "JS-085 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "A stream replica started during an outage has no snapshot and serves no token until Postgres returns",
+      "status": "open",
+      "notes": "By design no refresh runs while Postgres is away. A replica could ask a peer for its snapshot; decide whether it matters for pod restarts during an outage."
+    },
+    {
+      "id": "BL-107",
+      "source": "JS-085 verify",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "A paused film in a background tab may drop out of the 60 s window",
+      "status": "open",
+      "notes": "jellyfin-web reports progress every 10 s (setInterval 1e4); a throttled hidden tab may report less often. A wider window (minutes) costs nothing but snapshot size, since revocation exposure is the refresh interval. Unverified that throttling reaches 60 s."
+    },
+    {
+      "id": "BL-108",
+      "source": "JS-085 verify",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "Subtitle and font requests wait during an outage",
+      "status": "open",
+      "notes": "The Subtitles and Attachments routes have no Offline handler; a viewer who turns subtitles on during an outage gets none until Postgres is back. docs/running.md now says so; serving stored subtitles from the snapshot would close it."
+    },
+    {
+      "id": "BL-109",
+      "source": "JS-085 verify",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "A film started in the 5 s before an outage is in no snapshot",
+      "status": "open",
+      "notes": "Stated in DOMAINS 37; the viewer waits for Postgres. A refresh after each PlaybackInfo, or a shorter interval, would narrow it."
     }
   ]
 }
