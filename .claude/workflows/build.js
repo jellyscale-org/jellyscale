@@ -92,6 +92,8 @@ const LOCKED = {
 
 const { task, tests = [], id = '', ux = false, core = false, resolved = null, refine = true } = args
 let { acceptance = [] } = args
+// args.root runs the task in its own worktree, so two tasks can build side by side.
+const where = args.root ? `Work only in the checkout at ${args.root}: cd there before anything else, run every command from it, and never read or change another checkout of this repository.\n\n` : ''
 // Told to every later reviewer and fixer, so a corrected check is not reported or restored as tampering.
 const resolvedNote = resolved ? `\n\nThe lead corrected these locked check files after a dispute, on purpose; review the corrected version and never restore the original: ${resolved.files.join(', ')}. ${resolved.note}` : ''
 if (!task) throw new Error('build needs args.task')
@@ -110,7 +112,7 @@ const REFINED = {
   required: ['acceptance', 'changes'],
 }
 if (refine) {
-  const refined = await agent(`You sharpen the acceptance criteria of one jellyscale task before its checks are written. Read PRODUCT.md, the parts of DOMAINS.md and ARCHITECTURE.md the task touches, and the code it will change (targeted reads, not whole trees). Then rewrite the criteria so a spec writer can turn each into a check that fails on a plausible wrong build:\n- Name the cases a wrong build would get wrong: counts and bounds (how many reads, runs, jobs; "at most", "each"), failures that are the file's and failures that are not (store, timeout, signal, lost lease), several of a thing as well as one, a replaced or changed file, two replicas or workers at once, and what the viewer or operator sees.\n- Split a criterion that holds several claims; state an "always" or "whatever X does" claim only with the bound it really has.\n- Keep every guarantee the criteria give: never drop, weaken or narrow one, and never add a feature the task did not ask for. If a criterion seems wrong, keep it and say why in changes.\n- Keep the criteria few and plain: one line each, no implementation.\nDo not edit any file, and do not run tests, Docker or servers.\n\n## Task${id ? ` ${id}` : ''}\n${task}\n\n## Acceptance criteria\n${acceptance.map((line) => `- ${line}`).join('\n')}`,
+  const refined = await agent(`${where}You sharpen the acceptance criteria of one jellyscale task before its checks are written. Read PRODUCT.md, the parts of DOMAINS.md and ARCHITECTURE.md the task touches, and the code it will change (targeted reads, not whole trees). Then rewrite the criteria so a spec writer can turn each into a check that fails on a plausible wrong build:\n- Name the cases a wrong build would get wrong: counts and bounds (how many reads, runs, jobs; "at most", "each"), failures that are the file's and failures that are not (store, timeout, signal, lost lease), several of a thing as well as one, a replaced or changed file, two replicas or workers at once, and what the viewer or operator sees.\n- Split a criterion that holds several claims; state an "always" or "whatever X does" claim only with the bound it really has.\n- Keep every guarantee the criteria give: never drop, weaken or narrow one, and never add a feature the task did not ask for. If a criterion seems wrong, keep it and say why in changes.\n- Keep the criteria few and plain: one line each, no implementation.\nDo not edit any file, and do not run tests, Docker or servers.\n\n## Task${id ? ` ${id}` : ''}\n${task}\n\n## Acceptance criteria\n${acceptance.map((line) => `- ${line}`).join('\n')}`,
     { label: 'refine criteria', phase: 'Spec', model: 'claude-fable-5-2', effort: 'high', schema: REFINED })
   if (refined && refined.acceptance.length) {
     acceptance = refined.acceptance
@@ -138,13 +140,13 @@ const MODELS = {
 }
 // Roles are read from their files, so a role added in this session works too.
 const role = (name) => ({ agentType: 'general-purpose', ...MODELS[name] })
-const read = (name) => `First read .claude/agents/${name}.md. It defines your role and its limits, and you must follow it exactly.\n\n`
+const read = (name) => `${where}First read .claude/agents/${name}.md. It defines your role and its limits, and you must follow it exactly.\n\n`
 
 let root = null
 // note is for a snapshot whose prompt would repeat an earlier run's: on a resume
 // a repeated prompt replays the old tree from the cache.
 const snapshot = async (label, phase, note = '') => {
-  const result = await agent(`Run \`bash tools/snapshot.sh\` from the repository root and return the printed tree hash, and the absolute path of the repository root (\`pwd\`). Do nothing else.${note}`,
+  const result = await agent(`${where}Run \`bash tools/snapshot.sh\` from the repository root and return the printed tree hash, and the absolute path of the repository root (\`pwd\`). Do nothing else.${note}`,
     { label, phase, schema: SNAPSHOT, model: 'haiku', effort: 'low' })
   if (!result) throw new Error(`snapshot failed: ${label}`)
   root = result.root
@@ -191,7 +193,7 @@ const designNotes = design.findings.length
   : ''
 // The checks are what the spec writer wrote. A file a check only cites, such as an
 // existing script the task must change, stays open to the implementer.
-const written = await agent(`Run \`git diff --name-only ${base} ${specTree}\` in the repository root and return the files it lists. Do nothing else.`,
+const written = await agent(`${where}Run \`git diff --name-only ${base} ${specTree}\` in the repository root and return the files it lists. Do nothing else.`,
   { label: 'checks written', phase: 'Spec', schema: LOCKED, model: 'haiku', effort: 'low' })
 if (!written) throw new Error('could not list the files the spec writer wrote')
 const lockedFiles = written.changed
@@ -204,7 +206,7 @@ let lockBase = specTree
 // tree only by accident): the implementer may change them.
 const unlocked = resolved?.unlock ?? []
 const lockedChanged = async (head, label) => {
-  const result = await agent(`Run \`git diff --name-only ${lockBase} ${head} -- ${lockedFiles.map((f) => `'${f}'`).join(' ')}\` in the repository root and return the files it lists. Do nothing else.`,
+  const result = await agent(`${where}Run \`git diff --name-only ${lockBase} ${head} -- ${lockedFiles.map((f) => `'${f}'`).join(' ')}\` in the repository root and return the files it lists. Do nothing else.`,
     { label, phase: 'Build', schema: LOCKED, model: 'haiku', effort: 'low' })
   return result ? result.changed.filter((f) => !unlocked.includes(f)) : ['(could not check)']
 }
@@ -258,9 +260,11 @@ const reviewers = (round) => {
   if (ux) list.push({ key: 'ux', file: 'ux-reviewer', focus: 'Review what viewers and operators experience. Check the affected flow in jellyfin-web once if you need to see it.' })
   return list
 }
-const verify = async (round) => {
+// only: the reviewers to ask. Round 2 asks only those whose findings were fixed
+// or who returned nothing, so a fix is not reviewed again by everyone.
+const verify = async (round, only = null) => {
   phase('Verify')
-  const roles = reviewers(round)
+  const roles = reviewers(round).filter((r) => !only || only.includes(r.key))
   const results = await parallel(roles.map((r) => () =>
     agent(`${read(r.file)}${brief}\n\n${reviewersNote}\n\n${r.focus}\n\n${evidenceRule} ${economy}`, { label: `${r.key} (round ${round})`, phase: 'Verify', ...role(r.file), schema: FINDINGS })
       .then((result) => ({ key: r.key, result }))))
@@ -281,7 +285,14 @@ let open = blocking(result)
 log(`Verify 1: ${result.findings.length} finding(s), ${open.length} evidenced and blocking`)
 
 // ---- Fix: one round, then back to Spec if anything evidenced remains.
-if (open.length || result.missing.length) {
+if (!open.length && result.missing.length) {
+  // A reviewer that returned nothing is asked again; nothing needs fixing.
+  const again = await verify(1, result.missing)
+  history.push({ round: 1, ...again })
+  result = { findings: [...result.findings, ...again.findings], missing: again.missing }
+  open = blocking(result)
+}
+if (open.length) {
   phase('Fix')
   const list = open.map((f, i) => `${i + 1}. [${f.severity}] ${f.title} (${f.file ?? 'no file'})\nScenario: ${f.scenario}\nEvidence (${f.evidenceKind}): ${f.evidence}`).join('\n\n')
   const fixed = await agent(`${read('implementer')}${brief}${locked}${resolvedNote}\n\n## Evidenced findings\n${list}\n\nFor each real defect, find the cause that let it through, not only the case reported: if a design would let other cases of the same kind through, fix the design and test it with a second case of that kind, not just the one reported. Add a test that catches it. If a finding is wrong, say why with evidence rather than changing code. Don't commit.`, { label: 'fix', phase: 'Fix', ...role('implementer'), schema: IMPLEMENTED })
@@ -293,7 +304,8 @@ if (open.length || result.missing.length) {
     return { clean: false, stoppedAt: 'Fix', reason: touched.length ? 'locked checks changed' : 'checks disputed', touched, disputes: fixed.disputes, spec, base, specTree, head, history }
   }
   setNote()
-  result = await verify(2)
+  const askAgain = [...new Set([...open.map((f) => f.reviewer), ...result.missing])].filter((k) => k !== 'lead')
+  result = await verify(2, askAgain)
   history.push({ round: 2, ...result })
   open = blocking(result)
   log(`Verify 2: ${result.findings.length} finding(s), ${open.length} evidenced and blocking`)
