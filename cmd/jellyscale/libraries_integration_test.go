@@ -38,7 +38,7 @@ import (
 // changes nothing.
 const libraryHang = 90 * time.Second
 
-type cluster struct {
+type libCluster struct {
 	t     *testing.T
 	bin   string
 	dsn   string
@@ -46,8 +46,8 @@ type cluster struct {
 	media string
 }
 
-// newCluster builds the binary and creates an empty database for the test.
-func newCluster(t *testing.T) *cluster {
+// newLibCluster builds the binary and creates an empty database for the test.
+func newLibCluster(t *testing.T) *libCluster {
 	t.Helper()
 	ctx := context.Background()
 	bin := filepath.Join(t.TempDir(), "jellyscale")
@@ -85,11 +85,11 @@ func newCluster(t *testing.T) *cluster {
 		t.Fatal(err)
 	}
 	t.Cleanup(pool.Close)
-	return &cluster{t: t, bin: bin, dsn: u.String(), pool: pool, media: t.TempDir()}
+	return &libCluster{t: t, bin: bin, dsn: u.String(), pool: pool, media: t.TempDir()}
 }
 
 // folder is a library folder, with n one-second films in it.
-func (c *cluster) folder(name string, n int) string {
+func (c *libCluster) folder(name string, n int) string {
 	c.t.Helper()
 	dir := filepath.Join(c.media, name)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -112,7 +112,7 @@ func entry(name, dir string, chapterImages bool) map[string]any {
 }
 
 type process struct {
-	c     *cluster
+	c     *libCluster
 	cmd   *exec.Cmd
 	port  int
 	token string
@@ -139,14 +139,14 @@ func (p *process) count(text string) int { return strings.Count(p.logged(), text
 // It returns once the process is serving. That is not proof that a worker has
 // synced: where it logs "worker started" relative to library.Sync is the
 // build's to choose, so a test that reads what Sync wrote uses syncedStart.
-func (c *cluster) start(roles, config string) *process {
+func (c *libCluster) start(roles, config string) *process {
 	c.t.Helper()
 	p := c.launch(roles, config)
 	p.ready()
 	return p
 }
 
-func (c *cluster) launch(roles, config string) *process {
+func (c *libCluster) launch(roles, config string) *process {
 	c.t.Helper()
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -268,7 +268,7 @@ func (p *process) films(libraryID string) int {
 	return out.TotalRecordCount
 }
 
-func (c *cluster) text(sql string, args ...any) []string {
+func (c *libCluster) text(sql string, args ...any) []string {
 	c.t.Helper()
 	rows, err := c.pool.Query(context.Background(), sql, args...)
 	if err != nil {
@@ -286,7 +286,7 @@ func (c *cluster) text(sql string, args ...any) []string {
 	return out
 }
 
-func (c *cluster) count(sql string, args ...any) int {
+func (c *libCluster) count(sql string, args ...any) int {
 	c.t.Helper()
 	var n int
 	if err := c.pool.QueryRow(context.Background(), sql, args...).Scan(&n); err != nil {
@@ -297,11 +297,11 @@ func (c *cluster) count(sql string, args ...any) int {
 
 // libraryRows is every column of every library row, which is what "writes
 // nothing to the libraries" is measured against.
-func (c *cluster) libraryRows() []string {
+func (c *libCluster) libraryRows() []string {
 	return c.text("SELECT to_jsonb(l)::text FROM libraries l ORDER BY id")
 }
 
-func (c *cluster) exec(sql string, args ...any) {
+func (c *libCluster) exec(sql string, args ...any) {
 	c.t.Helper()
 	if _, err := c.pool.Exec(context.Background(), sql, args...); err != nil {
 		c.t.Fatal(err)
@@ -309,7 +309,7 @@ func (c *cluster) exec(sql string, args ...any) {
 }
 
 // seedWatchState gives the admin a row on every item, so a removal shows in a count.
-func (c *cluster) seedWatchState() {
+func (c *libCluster) seedWatchState() {
 	c.t.Helper()
 	c.exec(`INSERT INTO user_item_data (user_id, item_id, played, favorite, play_count, position_ticks, last_played_at)
 		SELECT (SELECT id FROM users WHERE name = 'admin'), id, true, true, 2, 1000, now() FROM items ON CONFLICT DO NOTHING`)
@@ -336,7 +336,7 @@ func (p *process) waitScans(n int) {
 // syncedStart starts a worker with a non-empty list and returns once it has
 // finished a scan of each of its n libraries. The scan loop runs on what Sync
 // returned, so Sync has written by then wherever the build calls it.
-func (c *cluster) syncedStart(roles, config string, n int) *process {
+func (c *libCluster) syncedStart(roles, config string, n int) *process {
 	c.t.Helper()
 	p := c.start(roles, config)
 	p.waitScans(n - p.count("scan finished"))
@@ -346,7 +346,7 @@ func (c *cluster) syncedStart(roles, config string, n int) *process {
 // seeded starts a worker over three libraries, lets it scan them, and stops it:
 // Alpha and Beta have films and Gamma has none. Gamma is then hidden, as if an
 // earlier config had left it out, 8 days ago, which is past the default grace.
-func (c *cluster) seeded() (alpha, beta, gamma string) {
+func (c *libCluster) seeded() (alpha, beta, gamma string) {
 	c.t.Helper()
 	alpha, beta, gamma = c.folder("Alpha", 2), c.folder("Beta", 3), c.folder("Gamma", 0)
 	w := c.start("worker", configOf([]map[string]any{entry("Alpha", alpha, false), entry("Beta", beta, false), entry("Gamma", gamma, false)}, ""))
@@ -366,7 +366,7 @@ func (c *cluster) seeded() (alpha, beta, gamma string) {
 // the worker lists, and one the database lacks. Gamma is hidden, and a list
 // that has it must not show it again.
 func TestAProcessWithoutTheWorkerRoleWritesNothingToTheLibraries(t *testing.T) {
-	c := newCluster(t)
+	c := newLibCluster(t)
 	alpha, _, gamma := c.seeded()
 	other := c.folder("Delta", 0)
 	before := c.libraryRows()
@@ -411,7 +411,7 @@ func TestAProcessWithoutTheWorkerRoleWritesNothingToTheLibraries(t *testing.T) {
 // every library and item in what the api replica lists, with no worker restart;
 // and they still do after the grace has passed and the worker has ticked.
 func TestReplicasWithOtherListsStartedBesideAWorkerHideNothingEvenAfterTheGrace(t *testing.T) {
-	c := newCluster(t)
+	c := newLibCluster(t)
 	alpha, beta := c.folder("Alpha", 2), c.folder("Beta", 3)
 	// A grace of a second and a tick of 200 ms are what the production 7 days
 	// and 15 minutes are made to look like here; they could hide a removal that
@@ -481,7 +481,7 @@ func TestReplicasWithOtherListsStartedBesideAWorkerHideNothingEvenAfterTheGrace(
 func TestAWorkerStillSyncsANonEmptyList(t *testing.T) {
 	for _, roles := range []string{"worker", "api,worker", "all"} {
 		t.Run(roles, func(t *testing.T) {
-			c := newCluster(t)
+			c := newLibCluster(t)
 			a, b := c.folder("Alpha", 1), c.folder("Beta", 0)
 			added := c.folder("Fresh", 0)
 			w := c.syncedStart(roles, configOf([]map[string]any{entry("Alpha", a, false), entry("Beta", b, false)}, ""), 2)
@@ -551,7 +551,7 @@ func TestAWorkerListingNoLibrariesChangesNothingAndSaysSoOnce(t *testing.T) {
 	for _, roles := range []string{"worker", "all"} {
 		for _, list := range lists {
 			t.Run(roles+"/"+list.name, func(t *testing.T) {
-				c := newCluster(t)
+				c := newLibCluster(t)
 				c.seeded()
 				before := c.libraryRows()
 				items, state := c.count("SELECT count(*) FROM items"), c.count("SELECT count(*) FROM user_item_data")
