@@ -833,6 +833,87 @@
       "title": "The empty-list worker test says a tick runs, but no scan loop starts for an empty list",
       "status": "open",
       "notes": "TestAWorkerListingNoLibrariesChangesNothingAndSaysSoOnce: the comment and the refined criterion speak of a tick; main.go starts scanLoop only when the list is not empty. The removal assertion still guards it."
+    },
+    {
+      "id": "BL-092",
+      "source": "JS-031 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "A live api replica whose beat is delayed over 3 s loses ownership of its devices",
+      "status": "open",
+      "notes": "ws_replica names only replicas that beat in the last 3 s; a GC pause or a slow commit longer than that hands devices to no one until the next frame."
+    },
+    {
+      "id": "BL-093",
+      "source": "JS-031 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "The sockets WaitGroup Add can race with Wait during drain",
+      "status": "open",
+      "notes": "A socket accepted as the drain starts may Add after Wait began."
+    },
+    {
+      "id": "BL-094",
+      "source": "JS-031 verify",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "The compose stack never gives a replica its 30 s grace: docker stop kills it at 10 s",
+      "status": "open",
+      "notes": "Set stop_grace_period in compose.yaml to match shutdownGrace."
+    },
+    {
+      "id": "BL-095",
+      "source": "JS-031 verify",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "The first POST after a replica dies waits about 3 s before Caddy retries it",
+      "status": "open",
+      "notes": "lb_retry_match retries GET and HEAD only; a POST waits for the passive health check."
+    },
+    {
+      "id": "BL-096",
+      "source": "JS-031 verify",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "The readiness lead is not tied to the grace or the documented polling interval",
+      "status": "open",
+      "notes": "Nothing checks that the documented health interval is shorter than the 5 s lead."
+    },
+    {
+      "id": "BL-097",
+      "source": "JS-031 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "ws_replica can stay NULL on a live device after a Postgres outage until its next keepalive",
+      "status": "open",
+      "notes": "Up to 30 s with jellyfin-web's keepalive."
+    },
+    {
+      "id": "BL-099",
+      "source": "JS-099 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "scripts_test.sh checks the JS-099 record in docs/testing.md only for substrings",
+      "status": "open",
+      "notes": "'passed 20 of 20' is matched inside the sentence saying the run was not made; the evidence lines can't fail."
+    },
+    {
+      "id": "BL-100",
+      "source": "JS-099 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "The burn-in stall ('timed out waiting for playback past 22') was not reproduced or explained",
+      "status": "open",
+      "notes": "Jobs.segment waits for a job within catchUpSegments; a plausible mechanism for the stall in seeCue. Watch the failure ledger."
+    },
+    {
+      "id": "BL-101",
+      "source": "JS-099 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "The JS-099 fix was verified under ffmpeg 9 only, not CI's 6.1",
+      "status": "open",
+      "notes": "The merge queue runs it under 6.1."
     }
   ]
 }
