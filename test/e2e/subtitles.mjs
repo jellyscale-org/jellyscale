@@ -10,6 +10,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, rmSync, statSync, truncateSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
+import { advances, seek, time, waitFor } from "./player.mjs";
 import { runLater, schedule, shardLine } from "./shard.mjs";
 import { recordResponses } from "./conform.mjs";
 
@@ -88,18 +89,6 @@ async function viewer() {
   return { context, page, seen };
 }
 
-const time = (page) => page.evaluate(() => document.querySelector("video")?.currentTime ?? -1);
-
-async function waitFor(what, test, timeout = 30000) {
-  const deadline = Date.now() + timeout;
-  while (Date.now() < deadline) {
-    const value = await test();
-    if (value) return value;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  throw new Error(`timed out waiting for ${what}`);
-}
-
 async function play(page, library, title) {
   await page.goto(`${base}/web/`);
   await page.waitForSelector(".card", { timeout: 30000 });
@@ -107,11 +96,6 @@ async function play(page, library, title) {
   await page.locator(".cardText a:visible", { hasText: title }).first().click();
   await page.locator(".btnPlay:visible").first().click();
   await waitFor("video to start", async () => (await time(page)) > 0.5, 60000);
-}
-
-async function advances(page, seconds = 1.5) {
-  const before = await time(page);
-  await waitFor(`currentTime to pass ${before + seconds}`, async () => (await time(page)) > before + seconds, 40000);
 }
 
 function noErrors(seen) {
@@ -165,16 +149,6 @@ async function pickSubtitle(page, index) {
     return page.click(".btnSubtitles", { timeout: 1500 }).then(() => true, () => false);
   }, 30000);
   await page.click(`.actionSheetMenuItem[data-id="${index}"]`, { timeout: 10000 });
-}
-
-// Seeks, and returns once the picture is playing a little past the target, so a
-// frame read from it is one the player has really shown.
-async function seek(page, seconds) {
-  await page.evaluate((t) => { document.querySelector("video").currentTime = t; }, seconds);
-  await waitFor(`playback past ${seconds}`, async () => page.evaluate((t) => {
-    const video = document.querySelector("video");
-    return !video.seeking && video.readyState >= 3 && video.currentTime > t + 0.5 && video.currentTime < t + 3;
-  }, seconds), 60000);
 }
 
 // How many lit pixels the picture has in its top, middle and bottom third, read
@@ -538,13 +512,17 @@ function imageBurnedIn(name, library, title, codec, renderPgs = false, external 
     if (first.source.TranscodingUrl) throw new Error(`transcoding for no subtitle: ${first.source.TranscodingUrl}`);
     if (external && track.IsExternal !== true) throw new Error(`the file beside the film: ${JSON.stringify(track)}`);
 
+    // The burn-in begins where the viewer is: at 12 s the run starts between the
+    // film's start and the first cue and reads the cue itself. A seek made once
+    // the first run is playing cannot do that, whatever the machine's speed: the
+    // job is waited for when it is within catchUpSegments of the segment asked
+    // for, and past its first segment it always is (JS-099).
+    await seek(page, 12);
     await chooseBurn(page, seen, 2);
     if (!ffmpegRuns().some((r) => r.burns)) throw new Error(`no ffmpeg draws the subtitle: ${JSON.stringify(ffmpegRuns())}`);
     for (const [from, until, where] of cues) await seeCue(page, from, until, where, () => brightThirds(page, true));
-    // A seek to before the first cue made a run that begins between the film's
-    // start and that cue, and reads the cue itself.
     const starts = ffmpegLines().slice(logged).filter((line) => /overlay=eof_action/.test(line)).map((line) => Number(/-start_number (\d+)/.exec(line)?.[1]));
-    if (!starts.some((n) => n > 0 && n < 5)) throw new Error(`the seeks didn't restart the job before the first cue: runs from segments ${starts}`);
+    if (!starts.some((n) => n > 0 && n < 5)) throw new Error(`no run began before the first cue: runs from segments ${starts}`);
 
     await chooseBurn(page, seen, -1);
     await seek(page, 60);

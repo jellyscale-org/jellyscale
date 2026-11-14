@@ -10,6 +10,7 @@ import { tmpdir } from "node:os";
 import { dirname } from "node:path";
 import { promisify } from "node:util";
 import { createRequire } from "node:module";
+import { advances, time, waitFor } from "./player.mjs";
 import { runLater, schedule, shardLine } from "./shard.mjs";
 import { recordResponses } from "./conform.mjs";
 
@@ -104,18 +105,7 @@ async function viewer() {
   return { context, page, seen };
 }
 
-const time = (page) => page.evaluate(() => document.querySelector("video")?.currentTime ?? -1);
 const duration = (page) => page.evaluate(() => document.querySelector("video")?.duration ?? 0);
-
-async function waitFor(what, test, timeout = 30000) {
-  const deadline = Date.now() + timeout;
-  while (Date.now() < deadline) {
-    const value = await test();
-    if (value) return value;
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  throw new Error(`timed out waiting for ${what}`);
-}
 
 async function play(page, library, title) {
   await page.goto(`${base}/web/`);
@@ -124,11 +114,6 @@ async function play(page, library, title) {
   await page.locator(".cardText a:visible", { hasText: title }).first().click();
   await page.locator(".btnPlay:visible").first().click();
   await waitFor("video to start", async () => (await time(page)) > 0.5, 60000);
-}
-
-async function advances(page, seconds = 1.5) {
-  const before = await time(page);
-  await waitFor(`currentTime to pass ${before + seconds}`, async () => (await time(page)) > before + seconds, 40000);
 }
 
 function noErrors(seen) {

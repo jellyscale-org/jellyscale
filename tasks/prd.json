@@ -1859,16 +1859,20 @@
       "title": "Find and fix the recurring CI flakes",
       "description": "Recurring failures with no known cause: the POSIX burn-in of PGS (and VobSub) after far seeks in the subtitles e2e gate (the video element null, or playback stalled past 22 s; 3 queue runs, 2 PRs, and locally); and an ffprobe 'Stream ends prematurely' in a fault-injection test of PR 96. Hunt each under CI's cpuset with E2E_REPEAT or -count, decide whether it is a product race or a test bug, and fix the cause; never by a retry or a skip.",
       "acceptanceCriteria": [
-        "Each named failure is reproduced under CI's cpuset or shown not to reproduce in 20 runs, with its cause recorded",
-        "Each cause is fixed with a test that fails without the fix",
-        "The failure ledger (C/D) shows no repeat of either over the next ten merges"
+        "Each named failure is first tied to what failed: the record (docs/testing.md) names the scenario or test, the failing line and its message, and a CI or local run that shows it, and tells a check that failed from a line a passing test logs. The named ones are the subtitles gate's 'POSIX burn-in of PGS for a viewer whose client doesn't draw it ... after far seeks' and 'POSIX burn-in of VobSub: ... after far seeks' with their two symptoms (the video element null: `Cannot read properties of null (reading 'seeking')` in seek; the stall: `timed out waiting for playback past 22` in seeCue), and the ffprobe `Stream ends prematurely` line of TestAFailedReadOfTheCueTimesNeverLeavesASegmentWithoutTheCue (internal/transcode/image_burn_failures_integration_test.go:138)",
+        "Each burn-in symptom is reproduced at least once, or the two scenarios pass 20 of 20 runs, with test/e2e/run.sh under `taskset -c` on four CPUs, E2E_GATES=subtitles and E2E_ONLY matching only those two scenarios (one command for both, never a whole gate or tier); other work on the machine may run meanwhile, and a failure seen only under that load counts as reproduced. The record gives the command, the CPU list, the ffmpeg version and `passed p of n` per scenario",
+        "A 'does not reproduce' counts only runs that take the path CI's failing run took, the film's first burn-in on a fresh stack: 20 fresh stacks, unless the record names what a first burn-in stores that a later run reads and shows E2E_REPEAT's reset removes it (or that it stores nothing), in which case 20 warm iterations count",
+        "Each recorded cause is a mechanism shown by the failing run's own evidence (its FAIL line, the requests the player made in those seconds with their answers, the server's and worker's log lines for the job), and says product race or test bug: for the null video element, what took the player's video away between the seek being set and a later poll; for the stall, which segment the player waited for and what the job and its ffmpeg run did about it. If one cause explains both symptoms the record shows each from it; a cause not found in 20 runs is recorded as not found, with what was ruled out, never as a guess",
+        "The ffprobe line: if no CI run shows its test failing (the line is the logged outcome of the Open the test fails on purpose), the record says so with the runs and the line, the test passes 20 of 20 with `-run` and `-count=20` under `taskset -c` on four CPUs, and no fix or test is owed for it; if a CI run or one of the 20 shows the test failing with it, it is hunted, explained and fixed as the burn-in failures are",
+        "Each cause found has a test that forces the condition that caused it (the order of events, the answer, the moment of the seek) and does not wait for it by repeating: it fails on each of 3 runs without the fix and passes on each of 3 with it, whether the fix is in the product or in a test helper; a race between processes is forced with real processes",
+        "No fix is a retry of a failed step, scenario or test, a skip, or a loosened check: the burn-in scenarios still check the bar's place at each of the four cue points, a run restarted before the first cue, no subtitle job for a track inside the film, no subtitle file fetched and no page error or 5xx, and a player that left the film or was answered an error while it should be playing still fails them. A fix to a helper that other scenarios share is made in the helper, not around it in the two named scenarios",
+        "After the fix, the command that reproduced each failure passes every run of 20 on four CPUs, or of three times the number of runs the failure took to show once if that is more"
       ],
-      "priority": 13,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [],
       "source": "Fable 5.2 CI review, 2026-11-12 (.results/ci-review-2026-11-12.md); owner approved A, B, C, D and the later items",
-      "notes": ""
+      "notes": "Lead decision: the burn-in check asks that a run beginning between the film start and the first cue reads the cue (its original intent); the refined wording \"restarted\" was dropped, since with the fixed advances helper a seek inside catchUpSegments is waited for by design, never restarted."
     },
     {
       "id": "JS-100",

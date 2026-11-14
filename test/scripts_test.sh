@@ -52,6 +52,14 @@ check "every scenario ran once over the three shards" "$(printf 'kill A\nkill B\
 check "E2E_ONLY filters after the count" "run   s4 ran s4 shard 0/3: ran 1 of 11" "$(E2E_SHARD=0/3 E2E_ONLY='^s4$' node test/e2e/shard_test.mjs | tr '\n' ' ' | sed 's/ $//')"
 fails_with "a shard past n is refused by the gate" env E2E_SHARD=3/3 node test/e2e/shard_test.mjs
 
+# --- player.mjs (JS-099): the e2e helpers wait out a player that reloads its source, in a page that does it in the order CI's failing run saw.
+check "the shared player helpers pass test/e2e/player_test.mjs" ok "$(node test/e2e/player_test.mjs >"$tmp/player" 2>&1 && echo ok || tail -20 "$tmp/player")"
+check "run.sh copies player.mjs next to the gates, which import it" 1 "$(grep -c 'test/e2e/player.mjs' test/e2e/run.sh | awk '{print ($1>0)}')"
+# The record of JS-099 (docs/testing.md) ties each named failure to what failed.
+for line in "reading 'seeking'" "timed out waiting for playback past 22" "Stream ends prematurely" "image_burn_failures_integration_test.go:138" "passed 20 of 20"; do
+  check "docs/testing.md records: $line" 1 "$(grep -cF -- "$line" docs/testing.md | awk '{print ($1>0)}')"
+done
+
 # --- report.sh lines: a failed scenario is one greppable line on the job summary, without its duration.
 printf 'ok    first (1.0s)\nFAIL  second: it broke (2.5s)\n' | GITHUB_STEP_SUMMARY="$tmp/summary" bash test/report.sh lines test/e2e/play.mjs "e2e play" >/dev/null 2>&1
 check "report.sh lines writes 'failed: <gate>.<scenario>' for a failure" "failed: e2e play.second: it broke" "$(grep '^failed: ' "$tmp/summary")"
