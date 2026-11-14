@@ -286,3 +286,23 @@ func TestRunningDocSaysWhatTheIngressMustDo(t *testing.T) {
 		}
 	}
 }
+
+// JS-108: docs/running.md names the gauge of the films a scan could not store,
+// and says that they make the library's last scan a failure.
+func TestRunningDocNamesTheFailedFilmsGaugeAndWhatItDoesToSuccess(t *testing.T) {
+	raw, err := os.ReadFile("../../docs/running.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := strings.ToLower(strings.Join(strings.Fields(string(raw)), " "))
+	inTable := false
+	for _, line := range strings.Split(string(raw), "\n") {
+		inTable = inTable || (strings.HasPrefix(line, "|") && strings.Contains(line, "jellyscale_scan_last_failed_films"))
+	}
+	if !inTable {
+		t.Error("the metrics table does not name `jellyscale_scan_last_failed_films`")
+	}
+	if !strings.Contains(text, "jellyscale_scan_last_success") || !strings.Contains(text, "0 when any film could not be stored") {
+		t.Error("docs/running.md does not say jellyscale_scan_last_success is 0 when any film could not be stored")
+	}
+}

@@ -235,7 +235,7 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 	}
 	if cfg.MetricsListen != "" {
 		// Before the worker-only return below: a worker is where most of them are.
-		collectors := append([]prometheus.Collector{metrics.Pool{Pool: pool}, scanDuration, scanOK, scanTime}, api.Collectors()...)
+		collectors := append([]prometheus.Collector{metrics.Pool{Pool: pool}, scanDuration, scanOK, scanTime, scanFailed}, api.Collectors()...)
 		collectors = append(collectors, transcode.Collectors()...)
 		collectors = append(collectors, transcodes.collectors...)
 		if _, err := metrics.Serve(ctx, cfg.MetricsListen, log, collectors...); err != nil {
@@ -464,8 +464,10 @@ var (
 		Name: "jellyscale_scan_last_timestamp_seconds", Help: "When this process's last scan of the library ended, in seconds since the epoch."}, []string{"library"})
 	scanDuration = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "jellyscale_scan_last_duration_seconds", Help: "How long this process's last scan of the library took."}, []string{"library"})
+	scanFailed = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "jellyscale_scan_last_failed_films", Help: "How many films this process's last scan of the library could not store."}, []string{"library"})
 	scanOK = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "jellyscale_scan_last_success", Help: "1 if this process's last scan of the library succeeded, 0 if it failed."}, []string{"library"})
+		Name: "jellyscale_scan_last_success", Help: "1 if this process's last scan of the library succeeded, 0 if it failed or could not store a film."}, []string{"library"})
 )
 
 // newScanner reads the scan's grace and loss share from the config.
@@ -496,16 +498,20 @@ func scanLoop(ctx context.Context, scanner *library.Scanner, libraries []library
 		}
 		for _, lib := range libraries {
 			began := time.Now()
-			err := scanner.Scan(ctx, lib)
+			failed, err := scanner.ScanCounting(ctx, lib)
 			if errors.Is(err, library.ErrElsewhere) || ctx.Err() != nil {
 				continue // Another replica's scan is the one to report.
 			}
 			scanDuration.WithLabelValues(lib.ID).Set(time.Since(began).Seconds())
 			scanTime.WithLabelValues(lib.ID).SetToCurrentTime()
 			result := 1.0
+			scanFailed.WithLabelValues(lib.ID).Set(float64(failed))
 			if err != nil {
 				log.Error("scan failed", "library", lib.Name, "error", err)
 				result = 0
+			}
+			if failed > 0 {
+				result = 0 // Each film's own line says why; the scan's line says how many.
 			}
 			scanOK.WithLabelValues(lib.ID).Set(result)
 		}
