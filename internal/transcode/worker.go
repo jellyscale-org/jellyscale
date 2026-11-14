@@ -19,7 +19,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -44,7 +43,11 @@ type Worker struct {
 
 	// Scratch holds ffmpeg's output until it is uploaded.
 	Scratch string
-	Slots   int
+	// Cores is what the worker has to give its jobs, in the unit of
+	// playback.Spec.Cost. Slots, if set instead, stands for as many cores; with
+	// neither the worker has the processors it may use (cores).
+	Cores float64
+	Slots int
 	// Idle is how long a spec may go without a request before its jobs stop.
 	Idle time.Duration
 	// Lead is how far, in film time, a job may get ahead of the furthest
@@ -81,9 +84,10 @@ type Worker struct {
 	LivenessConfig *pgx.ConnConfig
 
 	// live is what the worker runs now, for /metrics.
-	liveMu    sync.Mutex
-	live      map[int64]liveJob
-	slotCount atomic.Int64
+	liveMu sync.Mutex
+	live   map[int64]liveJob
+	// freed wakes Run when a job ends, which frees cores for the next claim.
+	freed chan struct{}
 
 	idOnce sync.Once
 	// held ends when the worker's row is found gone, and is nil before the first
@@ -109,8 +113,7 @@ type Worker struct {
 // context that ends when the lock is lost.
 func (w *Worker) Run(ctx context.Context) {
 	w.setID()
-	slots := make(chan struct{}, max(w.Slots, 1))
-	w.slotCount.Store(int64(cap(slots)))
+	w.freed = make(chan struct{}, 1)
 	var running sync.WaitGroup
 	defer running.Wait()
 	go w.sweepLoop(ctx)
@@ -120,13 +123,8 @@ func (w *Worker) Run(ctx context.Context) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	for {
-		select {
-		case slots <- struct{}{}:
-			jobCtx, held := w.jobContext()
-			if !held {
-				<-slots
-				break
-			}
+		jobCtx, held := w.jobContext()
+		if held {
 			job, ok, err := w.claim(ctx)
 			if err != nil && ctx.Err() == nil {
 				w.Log.Error("claiming a transcode job failed", "error", err)
@@ -136,22 +134,28 @@ func (w *Worker) Run(ctx context.Context) {
 				running.Add(1)
 				go func() {
 					defer running.Done()
-					defer func() { <-slots }()
+					defer w.freeCores()
 					defer w.untrack(job.ID)
 					w.run(jobCtx, job)
 				}()
 				continue // There may be more queued.
 			}
-			<-slots
-		case <-ctx.Done():
-			return
 		}
 		select {
 		case <-wake:
+		case <-w.freed:
 		case <-ticker.C:
 		case <-ctx.Done():
 			return
 		}
+	}
+}
+
+// freeCores tells Run that a job has ended.
+func (w *Worker) freeCores() {
+	select {
+	case w.freed <- struct{}{}:
+	default:
 	}
 }
 
@@ -194,7 +198,7 @@ const leadCheck = 500 * time.Millisecond
 // film ends sooner.
 func limitFor(layout playback.Layout, from int, lead time.Duration) int {
 	if from < 0 || from >= layout.Count() {
-		return layout.Count() // A job asked to start past the end fails when ffmpeg does.
+		return layout.Count() // encode ends a job that starts past the end before it gets here.
 	}
 	start, _ := layout.Segment(from)
 	for n := from + 1; n < layout.Count(); n++ {
@@ -250,31 +254,63 @@ const startup = 20 * time.Second
 
 func (w *Worker) claim(ctx context.Context) (claimed, bool, error) {
 	var job claimed
-	var raw []byte
-	// A helper goes to a worker that has no job of its spec, or after a second
-	// to one that has, if none took it (a dead helper's replacement, with the
-	// other workers busy). It goes only while a slot stays free after it (it is
-	// counted, queued) for a viewer who has not asked yet; the slot count was
-	// right when it was queued, not necessarily now. A job of another output
-	// version is left for a worker that makes it, as if it were not there.
-	err := w.Pool.QueryRow(ctx, `UPDATE transcode_jobs SET state = 'running', worker = $1,
-			lease_expires_at = now() + make_interval(secs => $2)
-		WHERE `+registeredAs("$1")+` AND id = (SELECT id FROM transcode_jobs WHERE state = 'queued'
-			AND output_version = $5
-			AND created_at > now() - make_interval(secs => $3)
-			AND (NOT helper OR (`+freeSlots("$4", "$3", "$5")+` >= 1
-				AND (created_at < now() - make_interval(secs => 1)
-					OR NOT EXISTS (SELECT 1 FROM transcode_jobs o WHERE o.spec_hash = transcode_jobs.spec_hash AND o.worker = $1 AND o.state = 'running'))))
-			ORDER BY id FOR UPDATE SKIP LOCKED LIMIT 1)
-		RETURNING id, spec_hash, spec, start_segment, helper`, w.ID, (w.lease()+startup).Seconds(), orDefault(w.QueueTimeout, queueTimeout).Seconds(),
-		liveTiming("counted").Seconds(), playback.OutputVersion).Scan(&job.ID, &job.Hash, &raw, &job.Start, &job.Helper)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return job, false, nil
+	queue := orDefault(w.QueueTimeout, queueTimeout)
+	// Most looks find nothing queued, and read one indexed row to say so.
+	var waiting bool
+	if err := w.Pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM transcode_jobs WHERE state = 'queued' AND output_version = $1
+		AND created_at > now() - make_interval(secs => $2))`, playback.OutputVersion, queue.Seconds()).Scan(&waiting); err != nil || !waiting {
+		return job, false, err
 	}
+	nodes, jobs, err := readCapacity(ctx, w.Pool, capQuery{Filter: "true", Queue: queue, Self: w.ID})
 	if err != nil {
 		return job, false, err
 	}
-	return job, true, json.Unmarshal(raw, &job.Spec)
+	// What the worker holds is what its rows say, and what it still runs: a job
+	// someone cancelled keeps its cores until ffmpeg is gone.
+	mine := newLedger(nodes, jobs, func(j capJob) bool { return j.Worker == w.ID })
+	running := newLedger(nodes, jobs, func(capJob) bool { return true })
+	running.placeQueued(jobs, func(j capJob) bool { return !j.Helper })
+	if _, registered := mine.free[w.ID]; !registered {
+		return job, false, nil
+	}
+	local, copies := w.holding()
+	mine.free[w.ID] = min(mine.free[w.ID], mine.cores[w.ID]-local)
+	mine.copies[w.ID] = max(mine.copies[w.ID], copies)
+	// A helper goes to a worker that has no job of its spec, or after a second
+	// to one that has, if none took it (a dead helper's replacement, with the
+	// other workers busy). It goes only while room stays for a viewer who has not
+	// asked yet; that was so when it was queued, not necessarily now. A job of
+	// another output version is not here, as if it were not there; one that does
+	// not fit is left for a worker that has the cores, and a later one that fits
+	// goes first.
+	for _, queued := range jobs {
+		if queued.Worker != "" || !mine.fits(w.ID, queued) {
+			continue
+		}
+		if queued.Helper {
+			after := running.clone()
+			after.take(w.ID, queued)
+			if _, spare := after.room(capJob{Cost: queued.Cost}); !spare {
+				continue
+			}
+		}
+		var raw []byte
+		err := w.Pool.QueryRow(ctx, `UPDATE transcode_jobs SET state = 'running', worker = $1,
+				lease_expires_at = now() + make_interval(secs => $2)
+			WHERE `+registeredAs("$1")+` AND id = $3 AND state = 'queued' AND created_at > now() - make_interval(secs => $4)
+				AND (NOT helper OR created_at < now() - make_interval(secs => 1)
+					OR NOT EXISTS (SELECT 1 FROM transcode_jobs o WHERE o.spec_hash = transcode_jobs.spec_hash AND o.worker = $1 AND o.state = 'running'))
+			RETURNING id, spec_hash, spec, start_segment, helper`, w.ID, (w.lease()+startup).Seconds(), queued.ID, queue.Seconds()).
+			Scan(&job.ID, &job.Hash, &raw, &job.Start, &job.Helper)
+		if errors.Is(err, pgx.ErrNoRows) {
+			continue // Another worker took it first.
+		}
+		if err != nil {
+			return job, false, err
+		}
+		return job, true, json.Unmarshal(raw, &job.Spec)
+	}
+	return job, false, nil
 }
 
 // run runs one job and records how it ended. A job someone else already
@@ -427,6 +463,13 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	layout := film.Layout(job.Spec.Copy)
 	if layout.Count() == 0 {
 		return errors.New("the file has no keyframe index to copy from")
+	}
+	if job.Start >= layout.Count() {
+		// Nothing is left to make: a job taken over or queued at the film's end. It
+		// ends done, not failed (a failed job refuses the film to every viewer for
+		// failureMemory), and a copy never reaches copyStart, which indexes the layout.
+		log.Info("transcode has nothing left to make", "start", job.Start, "segments", layout.Count())
+		return nil
 	}
 	media, err := w.Media(source.StoreURI)
 	if err != nil {
@@ -647,7 +690,7 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		waiting := false // A finished segment is kept for Postgres.
 		defer beat.Stop()
 		// A helper cancelled for a new viewer (preemptHelper) beats at once, so
-		// it gives its slot back now rather than at its next heartbeat. It also
+		// it gives its cores back now rather than at its next heartbeat. It also
 		// beats as soon as it listens, for a cancel that came before it did (a
 		// helper is often the newest job, cancelled as it starts).
 		var preempted <-chan struct{}
@@ -873,7 +916,7 @@ func (w *Worker) extractSubtitle(ctx context.Context, job claimed, log *slog.Log
 
 // awaitJob runs fetch, which waits for a subtitle job (the track, or the film's
 // fonts), which can take minutes. It keeps the lease alive meanwhile, and stops
-// waiting when the job is lost or nobody wants it, so it doesn't hold a slot
+// waiting when the job is lost or nobody wants it, so it doesn't hold any cores
 // for a cancelled job.
 func (w *Worker) awaitJob(ctx context.Context, job claimed, log *slog.Logger, fetch func(ctx context.Context) error) error {
 	ctx, cancel := context.WithCancel(ctx)

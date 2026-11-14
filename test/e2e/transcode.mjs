@@ -1946,7 +1946,7 @@ await scenario("worker lost mid-film: the player gets an answer in time and stop
   await new Promise((resolve) => setTimeout(resolve, 12000));
   if (seen.hls.length !== asked[0] || seen.infos.length !== asked[1]) throw new Error("the client kept asking after the refusal");
   // A killed worker's lock is gone, so it counts at once for nothing.
-  if (!/a transcode job found (no worker|every slot busy)/.test(readFileSync(process.env.E2E_LOG, "utf8"))) throw new Error("the log doesn't say why the job found no worker");
+  if (!/a transcode job found (no worker|[^\n]*cores)/.test(readFileSync(process.env.E2E_LOG, "utf8"))) throw new Error("the log doesn't say why the job found no worker");
 }, { stopsWorker: true });
 
 await scenario("no worker: the viewer gets a playback error dialog, and the client stops asking", async ({ page, seen }) => {

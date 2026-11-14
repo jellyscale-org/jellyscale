@@ -286,7 +286,7 @@ check "first segment comes from a worker's output" "styp" "$(curl -s "127.0.0.1:
 workers=$(pgrep -f "ffmpeg.*$work/scratch" | wc -l)
 check "a worker is running ffmpeg for it" 1 "$workers"
 # Both workers are scraped while the job runs: the one with it shows its speed
-# and a busy slot, and the stream role shows the wait for the segments.
+# and the cores it holds, and the stream role shows the wait for the segments.
 scrape() { curl -s "127.0.0.1:$1/metrics"; }
 speed=""
 for _ in $(seq 1 40); do
@@ -295,12 +295,13 @@ for _ in $(seq 1 40); do
   sleep 0.5
 done
 check "a running job's speed is on a worker" 1 "$(echo "$speed" | grep -c '^jellyscale_transcode_job_speed_ratio{')"
-check "a worker has a busy slot of its 2" "1 2" "$(echo "$speed" | awk '/^jellyscale_transcode_slots_busy / {b+=$2} /^jellyscale_transcode_slots / {t=$2} END {print b, t}')"
+# The job is a copy, which costs a little (JS-087): some cores busy, of the cores declared.
+check "a worker holds the cores of its copy" "yes" "$(echo "$speed" | awk '/^jellyscale_transcode_cores_busy / {b+=$2} /^jellyscale_transcode_cores / {if ($2 > t) t=$2} END {print (b > 0 && b <= 0.1 && t > 0) ? "yes" : "no " b " " t}')"
 check "the job is counted by kind (the AC3 film is a copy)" "1 0" "$(echo "$speed" | awk '/^jellyscale_transcode_jobs_running\{kind="copy"\}/ {c+=$2} /^jellyscale_transcode_jobs_running\{kind="reencode"\}/ {r+=$2} END {print c, r}')"
 check "the stream role counts the waits for segments" "yes" "$(scrape "$stream_metrics" | grep -q '^jellyscale_segment_wait_seconds_count{kind="reencode",outcome="ok",source="started"} [1-9]' && echo yes)"
 check "the public port has no /metrics" 404 "$(code "127.0.0.1:$stream/metrics")"
 echo "--- /metrics of the worker running the job, trimmed:" >&2
-echo "$speed" | grep -E '^jellyscale_transcode_(job_speed_ratio|slots|slots_busy|jobs_running|queue_depth)' >&2
+echo "$speed" | grep -E '^jellyscale_transcode_(job_speed_ratio|cores|cores_busy|jobs_running|queue_depth|queue_cores)' >&2
 scrape "$stream_metrics" | grep -E '^jellyscale_segment_wait_seconds_(count|sum)' >&2
 check "DELETE ActiveEncodings answers 204" 204 "$(code -X DELETE -H "$header" "127.0.0.1:$stream/Videos/ActiveEncodings?deviceId=i&PlaySessionId=$session")"
 for _ in $(seq 1 40); do [[ $(pgrep -f "ffmpeg.*$work/scratch" | wc -l) -eq 0 ]] && break; sleep 0.5; done

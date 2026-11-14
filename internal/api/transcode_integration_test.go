@@ -400,12 +400,12 @@ func TestPlaybackInfoRefusesATranscodeThatCannotStart(t *testing.T) {
 	mustExec(t, e.pool, "UPDATE transcode_nodes SET seen_at = now()")
 	offered("worker back")
 
-	// All slots busy refuses a spec nobody is already making...
+	// A worker whose cores are taken refuses a spec nobody is already making...
 	for i := range 2 {
 		mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, lease_expires_at, worker)
 			VALUES ($1, '{}', 'o', 0, 0, 'running', now() + interval '1 minute', 'w1')`, "other"+string(rune('a'+i)))
 	}
-	refused("slots busy")
+	refused("cores busy")
 	// ...but joins a transcode of its own spec that already runs.
 	mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, lease_expires_at, worker)
 		VALUES ($1, '{}', 'o', 0, 0, 'running', now() + interval '1 minute', 'w1')`, hash)

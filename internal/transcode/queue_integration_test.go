@@ -55,13 +55,13 @@ func TestStaleQueuedJobsAreDead(t *testing.T) {
 	if _, err := r.pool.Exec(ctx, "INSERT INTO transcode_nodes (id, slots) VALUES ('gone', 2)"); err != nil {
 		t.Fatal(err)
 	}
-	if reason, err := j.Unavailable(ctx, r.hash, "", ""); err != nil || reason != "" {
+	if reason, err := j.Unavailable(ctx, r.spec, "", ""); err != nil || reason != "" {
 		t.Fatalf("a fresh queued job is joined: %q %v", reason, err)
 	}
 	if _, err := r.pool.Exec(ctx, "DELETE FROM transcode_nodes; UPDATE transcode_jobs SET created_at = now() - interval '5 minutes'"); err != nil {
 		t.Fatal(err)
 	}
-	if reason, err := j.Unavailable(ctx, r.hash, "", ""); err != nil || !strings.Contains(reason, "no transcode worker") {
+	if reason, err := j.Unavailable(ctx, r.spec, "", ""); err != nil || !strings.Contains(reason, "no transcode worker") {
 		t.Fatalf("a queued job nobody took for minutes still counts as live: %q %v", reason, err)
 	}
 
@@ -86,7 +86,7 @@ func TestFullWorkersAreBusyNotMissing(t *testing.T) {
 	}
 	j := r.jobs(t)
 	j.QueueTimeout = time.Second
-	if reason, _ := j.Unavailable(ctx, r.hash, "", ""); !strings.Contains(reason, "slots are busy") {
+	if reason, _ := j.Unavailable(ctx, r.spec, "", ""); !strings.Contains(reason, "cores are short") {
 		t.Fatalf("refusal: %q", reason)
 	}
 	if _, err := r.fetch(t, j, psid(0), 0); !errors.Is(err, ErrBusy) {
@@ -107,7 +107,7 @@ func TestStoreMismatchIsFoundInTheNodes(t *testing.T) {
 		('w', 'worker', 'file:///var/segments', 2), ('a', 'api', 's3://bucket/segments', 0)`); err != nil {
 		t.Fatal(err)
 	}
-	reason, err := j.Unavailable(ctx, r.hash, "", "")
+	reason, err := j.Unavailable(ctx, r.spec, "", "")
 	if err != nil || !strings.Contains(reason, "file:///var/segments") || !strings.Contains(reason, "s3://bucket/segments") ||
 		!strings.Contains(reason, "api") || !strings.Contains(reason, "worker") {
 		t.Fatalf("got %q %v", reason, err)
@@ -115,21 +115,21 @@ func TestStoreMismatchIsFoundInTheNodes(t *testing.T) {
 	if _, _, err := j.ensure(ctx, r.spec, r.hash, psid(0), 0, 0); err != nil {
 		t.Fatal(err)
 	}
-	if reason, err := j.Unavailable(ctx, r.hash, "", ""); err != nil || reason != "" {
+	if reason, err := j.Unavailable(ctx, r.spec, "", ""); err != nil || reason != "" {
 		t.Fatalf("a live job is joined whatever the stores say: %q %v", reason, err)
 	}
 	// One store everywhere is fine.
 	if _, err := r.pool.Exec(ctx, "UPDATE transcode_nodes SET store = 'file:///var/segments'; TRUNCATE transcode_jobs"); err != nil {
 		t.Fatal(err)
 	}
-	if reason, err := j.Unavailable(ctx, r.hash, "", ""); err != nil || reason != "" {
+	if reason, err := j.Unavailable(ctx, r.spec, "", ""); err != nil || reason != "" {
 		t.Fatalf("matching stores: %q %v", reason, err)
 	}
 	// A worker with no store only extracts subtitles, and shares no segments.
 	if _, err := r.pool.Exec(ctx, `INSERT INTO transcode_nodes (id, roles, store, slots) VALUES ('sub', 'worker', '', 0)`); err != nil {
 		t.Fatal(err)
 	}
-	if reason, err := j.Unavailable(ctx, r.hash, "", ""); err != nil || reason != "" {
+	if reason, err := j.Unavailable(ctx, r.spec, "", ""); err != nil || reason != "" {
 		t.Fatalf("a subtitle-only worker refused transcodes: %q %v", reason, err)
 	}
 }
@@ -153,7 +153,7 @@ func TestSeekBackBeforeTheResumePoint(t *testing.T) {
 }
 
 // jellyfin-web asks for the new stream before it deletes the old one, and a
-// viewer must not be refused for the slot their own stream is about to free.
+// viewer must not be refused for the cores their own stream is about to free.
 func TestChangingStreamIsNotRefusedByTheViewersOwnJob(t *testing.T) {
 	r := newRig(t, nil)
 	ctx := context.Background()
@@ -167,17 +167,17 @@ func TestChangingStreamIsNotRefusedByTheViewersOwnJob(t *testing.T) {
 		t.Fatal(err)
 	}
 	j := r.jobs(t)
-	if reason, err := j.Unavailable(ctx, r.hash, r.user, "device"); err != nil || reason != "" {
+	if reason, err := j.Unavailable(ctx, r.spec, r.user, "device"); err != nil || reason != "" {
 		t.Fatalf("the viewer's own job fills the only slot: %q %v", reason, err)
 	}
-	if reason, _ := j.Unavailable(ctx, r.hash, r.user, "another device"); !strings.Contains(reason, "slots are busy") {
+	if reason, _ := j.Unavailable(ctx, r.spec, r.user, "another device"); !strings.Contains(reason, "cores are short") {
 		t.Fatalf("someone else's job isn't busy: %q", reason)
 	}
 	// Stopping frees the slot at once, not at the job's next heartbeat.
 	if err := j.Stop(ctx, r.user, "old", "", ""); err != nil {
 		t.Fatal(err)
 	}
-	if reason, _ := j.Unavailable(ctx, r.hash, r.user, "another device"); reason != "" {
+	if reason, _ := j.Unavailable(ctx, r.spec, r.user, "another device"); reason != "" {
 		t.Fatalf("a stopped viewer's job still holds the slot: %q", reason)
 	}
 }
@@ -204,7 +204,7 @@ func TestHungFFmpegFailsTheJob(t *testing.T) {
 	if time.Since(began) > 15*time.Second {
 		t.Fatalf("took %v", time.Since(began))
 	}
-	if reason, _ := j.Unavailable(context.Background(), r.hash, "", ""); !strings.Contains(reason, "failed") {
+	if reason, _ := j.Unavailable(context.Background(), r.spec, "", ""); !strings.Contains(reason, "failed") {
 		t.Fatalf("PlaybackInfo keeps offering the hung stream: %q", reason)
 	}
 }
@@ -276,7 +276,7 @@ func TestShutdownInterruptsRatherThanFinishesOrFails(t *testing.T) {
 	if state := mustScalar(t, r, "SELECT state FROM transcode_jobs"); state != "cancelled" {
 		t.Fatalf("a job cut short by shutdown is %s", state)
 	}
-	if reason, err := j.Unavailable(context.Background(), r.hash, "", ""); err != nil || strings.Contains(reason, "failed") {
+	if reason, err := j.Unavailable(context.Background(), r.spec, "", ""); err != nil || strings.Contains(reason, "failed") {
 		t.Fatalf("shutdown counts as a failure: %q %v", reason, err)
 	}
 	r.worker(t, nil)
@@ -355,7 +355,7 @@ func TestRecentFailureIsNotRestartedByAnotherRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 	j := r.jobs(t)
-	if reason, _ := j.Unavailable(ctx, r.hash, "", ""); !strings.Contains(reason, "no segment") {
+	if reason, _ := j.Unavailable(ctx, r.spec, "", ""); !strings.Contains(reason, "no segment") {
 		t.Fatalf("a job that ran for minutes and failed just now is forgotten: %q", reason)
 	}
 	var failed FailedError
@@ -430,7 +430,7 @@ func TestSweepingADeadWorkersJobDoesNotRefuseTheSpec(t *testing.T) {
 	if state := mustScalar(t, r, "SELECT state FROM transcode_jobs"); state != "cancelled" {
 		t.Fatalf("a job whose worker died is %s", state)
 	}
-	if reason, err := j.Unavailable(ctx, r.hash, "", ""); err != nil || reason != "" {
+	if reason, err := j.Unavailable(ctx, r.spec, "", ""); err != nil || reason != "" {
 		t.Fatalf("PlaybackInfo refuses the spec: %q %v", reason, err)
 	}
 	if _, _, err := j.ensure(ctx, r.spec, r.hash, psid(0), 0, 0); err != nil {
