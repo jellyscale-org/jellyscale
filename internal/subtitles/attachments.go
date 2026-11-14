@@ -64,22 +64,10 @@ func ReadFonts(ctx context.Context, assets store.Store, src items.Source) (map[i
 	return listed, json.NewDecoder(body).Decode(&listed) == nil, nil
 }
 
-// attachment is a stream of type Attachment in media_sources.streams, which the
-// scan lists from its probe of the film.
-type attachment struct {
-	Index    int
-	Type     string
-	MimeType string
-}
-
 // Fonts are the fonts attached to src, by index, with their MIME types.
 func Fonts(src items.Source) map[int]string {
-	var streams []attachment
-	if json.Unmarshal(src.Streams, &streams) != nil {
-		return nil
-	}
 	fonts := map[int]string{}
-	for _, stream := range streams {
+	for _, stream := range src.Streams {
 		if stream.Type == "Attachment" && IsFont(stream.MimeType) {
 			fonts[stream.Index] = stream.MimeType
 		}
@@ -98,10 +86,6 @@ func FillFonts(ctx context.Context, src items.Source, media, assets store.Store,
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	var streams []attachment
-	if err := json.Unmarshal(src.Streams, &streams); err != nil {
-		return err
-	}
 	dir, err := os.MkdirTemp("", "attachments-")
 	if err != nil {
 		return err
@@ -110,7 +94,7 @@ func FillFonts(ctx context.Context, src items.Source, media, assets store.Store,
 	// ffmpeg names an attachment by its position among them.
 	args := []string{"-nostdin", "-v", "error"}
 	position := 0
-	for _, stream := range streams {
+	for _, stream := range src.Streams {
 		if stream.Type != "Attachment" {
 			continue
 		}

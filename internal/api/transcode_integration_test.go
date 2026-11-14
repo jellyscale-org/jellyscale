@@ -282,10 +282,7 @@ func specHash(t *testing.T, e *env, values url.Values) string {
 	if err != nil || !found {
 		t.Fatal(err)
 	}
-	media, err := playbackSource(source)
-	if err != nil {
-		t.Fatal(err)
-	}
+	media := playbackSource(source)
 	params, err := playback.ParseParams(values, media)
 	if err != nil {
 		t.Fatal(err)

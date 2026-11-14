@@ -18,6 +18,7 @@ import (
 
 	"jellyscale/internal/db"
 	"jellyscale/internal/items"
+	"jellyscale/internal/media"
 	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
 	"jellyscale/internal/subtitles"
@@ -78,11 +79,7 @@ func (s *Server) subtitleStream(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	media, err := playbackSource(source)
-	if err != nil {
-		s.fail(w, r, err)
-		return
-	}
+	media := playbackSource(source)
 	// As Jellyfin 12.4 answers: a track asked for in a format it doesn't have is a
 	// bad request.
 	switch {
@@ -184,7 +181,7 @@ func (s *Server) supStream(w http.ResponseWriter, r *http.Request, itemID string
 
 // externalSup sends a .sup file beside the film as it is, from the media store.
 // It is a few hundred kilobytes, and no worker has anything to do to it.
-func (s *Server) externalSup(w http.ResponseWriter, r *http.Request, source items.Source, file subtitles.ExternalStream) {
+func (s *Server) externalSup(w http.ResponseWriter, r *http.Request, source items.Source, file media.MediaStream) {
 	media, err := s.stores.Open(source.StoreURI)
 	if err != nil {
 		s.fail(w, r, err)
@@ -326,14 +323,13 @@ func (s *Server) startFonts(ctx context.Context, itemID string, source items.Sou
 // jellyfin-web draws ASS in its fallback font. With start, the fonts job is
 // started if the manifest is missing, without waiting for it. A store that
 // can't be asked lists none.
-func (s *Server) listFonts(ctx context.Context, itemID string, source map[string]any, start bool) error {
-	attachments, _ := source["MediaAttachments"].([]any)
+func (s *Server) listFonts(ctx context.Context, itemID string, source *media.MediaSource, start bool) error {
+	attachments := source.MediaAttachments
 	if len(attachments) == 0 {
 		return nil
 	}
-	source["MediaAttachments"] = []any{}
-	sourceID, _ := source["Id"].(string)
-	stored, found, err := s.Items.Source(ctx, itemID, sourceID)
+	source.MediaAttachments = nil
+	stored, found, err := s.Items.Source(ctx, itemID, source.ID)
 	if err != nil || !found {
 		return err
 	}
@@ -355,9 +351,8 @@ func (s *Server) listFonts(ctx context.Context, itemID string, source map[string
 		}
 		return nil
 	}
-	source["MediaAttachments"] = slices.DeleteFunc(attachments, func(entry any) bool {
-		attachment, _ := entry.(map[string]any)
-		return fonts[int(number(attachment["Index"]))] == ""
+	source.MediaAttachments = slices.DeleteFunc(attachments, func(attachment media.MediaAttachment) bool {
+		return fonts[attachment.Index] == ""
 	})
 	return nil
 }
@@ -385,12 +380,11 @@ func (s *Server) sendFont(w http.ResponseWriter, r *http.Request, body io.Reader
 // deliverAttachments gives each attachment of a PlaybackInfo source the URL
 // to fetch it from, with the caller's token like a subtitle's: Jellyfin sends
 // none and allows the fetch without, and this server does not (DOMAINS 50).
-func deliverAttachments(source map[string]any, itemID, token string) {
-	attachments, _ := source["MediaAttachments"].([]any)
-	for _, entry := range attachments {
-		attachment, _ := entry.(map[string]any)
-		attachment["DeliveryUrl"] = "/Videos/" + db.DashedID(itemID) + "/" + source["Id"].(string) + "/Attachments/" +
-			strconv.Itoa(int(number(attachment["Index"]))) + "?ApiKey=" + url.QueryEscape(token)
+func deliverAttachments(source *media.MediaSource, itemID, token string) {
+	for i := range source.MediaAttachments {
+		attachment := &source.MediaAttachments[i]
+		attachment.DeliveryURL = "/Videos/" + db.DashedID(itemID) + "/" + source.ID + "/Attachments/" +
+			strconv.Itoa(attachment.Index) + "?ApiKey=" + url.QueryEscape(token)
 	}
 }
 
@@ -402,41 +396,37 @@ func deliverAttachments(source map[string]any, itemID, token string) {
 // for download, and if this server can't transcode, it is not offered at all,
 // because no track may be listed that can't be delivered. deliverable says
 // whether a track can be fetched (see s.deliverable).
-func deliverSubtitles(source map[string]any, itemID, token string, request playback.Request, burn bool, deliverable func(index int) bool) {
-	streams, _ := source["MediaStreams"].([]any)
-	kept := make([]any, 0, len(streams))
-	for _, entry := range streams {
-		stream, _ := entry.(map[string]any)
-		index := int(number(stream["Index"]))
-		codec, _ := stream["Codec"].(string)
-		fetched := !burn && (stream["IsImageSubtitleStream"] != true || codec == "PGSSUB" && request.ShowsPgs())
+func deliverSubtitles(source *media.MediaSource, itemID, token string, request playback.Request, burn bool, deliverable func(index int) bool) {
+	kept := make([]media.MediaStream, 0, len(source.MediaStreams))
+	for _, stream := range source.MediaStreams {
+		fetched := !burn && (!stream.IsImage() || stream.Codec == "PGSSUB" && request.ShowsPgs())
 		// A request with no profile is never given a transcode (playback.Decide).
-		canBurn := source["SupportsTranscoding"] == true && request.DeviceProfile != nil
+		canBurn := source.SupportsTranscoding && request.DeviceProfile != nil
 		switch {
-		case stream["Type"] != "Subtitle":
-		case !fetched && !canBurn, fetched && !deliverable(index):
+		case stream.Type != "Subtitle":
+		case !fetched && !canBurn, fetched && !deliverable(stream.Index):
 			continue
 		case !fetched:
-			stream["DeliveryMethod"] = "Encode"
+			stream.DeliveryMethod = "Encode"
 		default:
 			// ass and ssa keep their styles in the one format jellyfin-web
 			// renders them from, PGS is the file, and everything else is plain
 			// cues.
 			format := "vtt"
 			switch {
-			case codec == "ass" || codec == "ssa":
+			case stream.Codec == "ass" || stream.Codec == "ssa":
 				format = "ass"
-			case codec == "PGSSUB":
+			case stream.Codec == "PGSSUB":
 				format = "pgssub"
 			}
-			stream["DeliveryMethod"] = "External"
-			stream["IsExternalUrl"] = false
-			stream["DeliveryUrl"] = "/Videos/" + db.DashedID(itemID) + "/" + source["Id"].(string) + "/Subtitles/" +
-				strconv.Itoa(index) + "/0/Stream." + format + "?ApiKey=" + url.QueryEscape(token)
+			stream.DeliveryMethod = "External"
+			stream.IsExternalURL = media.Ptr(false)
+			stream.DeliveryURL = "/Videos/" + db.DashedID(itemID) + "/" + source.ID + "/Subtitles/" +
+				strconv.Itoa(stream.Index) + "/0/Stream." + format + "?ApiKey=" + url.QueryEscape(token)
 		}
-		kept = append(kept, entry)
+		kept = append(kept, stream)
 	}
-	source["MediaStreams"] = kept
+	source.MediaStreams = kept
 }
 
 // deliverable returns whether a text track of the DTO's source can be fetched:
@@ -444,17 +434,15 @@ func deliverSubtitles(source map[string]any, itemID, token string, request playb
 // asset store, since nothing can extract the rest. The answer can go stale
 // when a worker returns, which only hides a track for a moment. Callers list
 // one item's source; a list would cost a store request for every track.
-func (s *Server) deliverable(ctx context.Context, itemID string, source map[string]any) (func(index int) bool, error) {
+func (s *Server) deliverable(ctx context.Context, itemID string, source media.MediaSource) (func(index int) bool, error) {
 	yes := func(int) bool { return true }
-	streams, _ := source["MediaStreams"].([]any)
-	if !slices.ContainsFunc(streams, func(entry any) bool { stream, _ := entry.(map[string]any); return stream["Type"] == "Subtitle" }) {
+	if !slices.ContainsFunc(source.MediaStreams, func(stream media.MediaStream) bool { return stream.Type == "Subtitle" }) {
 		return yes, nil
 	}
 	if alive, err := transcode.WorkerAlive(ctx, s.Pool); alive || err != nil {
 		return yes, err
 	}
-	sourceID, _ := source["Id"].(string)
-	stored, found, err := s.Items.Source(ctx, itemID, sourceID)
+	stored, found, err := s.Items.Source(ctx, itemID, source.ID)
 	if err != nil || !found {
 		return func(int) bool { return false }, err
 	}
@@ -470,23 +458,21 @@ func (s *Server) deliverable(ctx context.Context, itemID string, source map[stri
 	ctx, cancel := context.WithTimeout(ctx, storeCheckTimeout)
 	defer cancel()
 	checked := map[int]bool{}
-	for _, entry := range streams {
-		stream, _ := entry.(map[string]any)
-		if stream["Type"] != "Subtitle" {
+	for _, stream := range source.MediaStreams {
+		if stream.Type != "Subtitle" {
 			continue
 		}
-		index := int(number(stream["Index"]))
-		switch codec, _ := stream["Codec"].(string); {
-		case stream["IsExternal"] == true:
+		switch {
+		case stream.IsExternal:
 			// A subtitle file is read as it is, or drawn by a transcode, and
 			// needs nothing in the asset store.
-			checked[index] = stream["IsTextSubtitleStream"] != true || subtitles.Exists(ctx, assets, subtitles.Key(stored, index))
-		case codec == "PGSSUB":
-			checked[index] = subtitles.Exists(ctx, assets, subtitles.SupKey(stored, index))
-		case stream["IsImageSubtitleStream"] == true:
+			checked[stream.Index] = !stream.IsTextSubtitleStream || subtitles.Exists(ctx, assets, subtitles.Key(stored, stream.Index))
+		case stream.Codec == "PGSSUB":
+			checked[stream.Index] = subtitles.Exists(ctx, assets, subtitles.SupKey(stored, stream.Index))
+		case stream.IsImage():
 			// Only a transcode draws it, and with no worker none can run.
 		default:
-			checked[index] = subtitles.Exists(ctx, assets, subtitles.Key(stored, index))
+			checked[stream.Index] = subtitles.Exists(ctx, assets, subtitles.Key(stored, stream.Index))
 		}
 	}
 	if slices.Contains(slices.Collect(maps.Values(checked)), false) {

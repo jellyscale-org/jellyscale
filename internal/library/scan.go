@@ -14,7 +14,6 @@ import (
 	_ "image/png"  // Sidecar decoding.
 	"io"
 	"log/slog"
-	"maps"
 	"os/exec"
 	"path"
 	"slices"
@@ -27,10 +26,19 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"jellyscale/internal/db"
+	"jellyscale/internal/media"
 	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
 	"jellyscale/internal/subtitles"
 )
+
+// ProbeVersion is the version of the probe: what a probe finds in a file, and
+// how that is stored. Each media source stores the version of the probe that
+// last wrote it, and a scan probes a source again, though its file is the same,
+// when it was written by an older one. Raise it when a release probes more or
+// differently (a field it reads, the label it gives one), and every source is
+// brought up to date once. Sources stored before it existed are 0.
+const ProbeVersion = 1
 
 const probeConcurrency = 4
 
@@ -159,23 +167,18 @@ type seenObject struct {
 	size   int64
 	etag   string
 	itemID *string
-	// unprobed: stored before the probe recorded level, field order and range,
-	// which transcode decisions need, or which subtitle tracks are text, or
-	// before keyframes were read from a file in a codec that is copied. A scan probes it again.
-	unprobed bool
 	// sidecars is the fingerprint of the subtitle files read at the last scan,
 	// kept with the media source row; nil if the scan was before they were read,
 	// or an older version's scan has rewritten the row since.
 	sidecars *string
-	// attachmentsUnread: a Matroska film stored before its attachments were
-	// listed (sidecars is NULL), the only container whose attachments matter, or
-	// one whose image subtitle tracks were stored before they were listed
-	// (IsImageSubtitleStream is missing). Its probe is repeated, but its
-	// keyframe index and video end are kept.
-	attachmentsUnread bool
-	// chaptersUnread: stored before chapters were read (media_sources.chapters
-	// is NULL). Probed again like attachmentsUnread, keeping the index.
-	chaptersUnread bool
+	// older: the probe that wrote the source is older than this binary's
+	// (ProbeVersion), so the file is probed again though it is unchanged. Its
+	// keyframe index and video end are kept when it has one (hasIndex), which a
+	// probe again does not read.
+	older, hasIndex bool
+	// indexUnread: the index of a copied codec in mkv or mp4 is NULL, because a
+	// read of it failed. The next scan reads it, with a probe.
+	indexUnread bool
 	// imageCuesUnread: a Matroska film whose image subtitle tracks' cue points
 	// were never read (media_sources.image_cues is NULL). The next scan reads
 	// them, from the file's Cues alone and not by probing the film again.
@@ -245,17 +248,19 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 	// did, the film isn't read again: its tracks are listed anew from them.
 	sets := map[string]sidecarSet{}
 	var changed, refreshed, cuesUnread []store.Object
-	attachmentsOnly := map[string]bool{} // Keys in changed whose stored index is kept.
+	keepIndex := map[string]bool{} // Keys in changed whose stored index is kept.
 	for _, object := range videos {
 		found := sidecarsOf(object.Key, subtitleFiles[path.Dir(object.Key)])
 		sets[object.Key] = found
 		old, ok := seen[object.Key]
 		switch {
-		case !ok || old.etag != object.ETag || old.size != object.Size || old.unprobed:
+		case !ok || old.etag != object.ETag || old.size != object.Size || old.indexUnread:
 			changed = append(changed, object)
-		case old.attachmentsUnread || old.chaptersUnread:
+		case old.older:
 			changed = append(changed, object)
-			attachmentsOnly[object.Key] = true
+			if old.hasIndex {
+				keepIndex[object.Key] = true
+			}
 		case old.itemID != nil && (old.sidecars == nil || *old.sidecars != found.fingerprint):
 			refreshed = append(refreshed, object)
 			if old.imageCuesUnread {
@@ -310,10 +315,10 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 	// Each film is stored as its probe finishes, so a long first scan shows
 	// progress and a restart keeps the films done.
 	if len(changed) > 0 {
-		s.Log.Info("probing films", "library", lib.Name, "films", len(changed), "index kept", len(attachmentsOnly))
+		s.Log.Info("probing films", "library", lib.Name, "films", len(changed), "index kept", len(keepIndex))
 	}
 	done := map[string]bool{}
-	for result := range s.probeAll(ctx, lib, changed, attachmentsOnly) {
+	for result := range s.probeAll(ctx, lib, changed, keepIndex) {
 		object, probe := result.object, result.probe
 		// A file that moved keeps its item, and so its watch state; so does one
 		// that comes back to the key of a hidden item, changed.
@@ -331,7 +336,7 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 				keep = &moved.itemID
 			}
 		}
-		if attachmentsOnly[object.Key] {
+		if keepIndex[object.Key] {
 			if err := s.keepIndex(ctx, *keep, &probe); err != nil {
 				s.Log.Error("reading the stored keyframe index failed", "key", object.Key, "error", err)
 				continue
@@ -475,8 +480,7 @@ func (p *lostPool) sameFile(object store.Object) *lostItem {
 // other file has, which is how bytes that were copied or uploaded again (and so
 // have another ETag) find their item. Size alone never matches.
 func (p *lostPool) match(ctx context.Context, s *Scanner, object store.Object, probe Probe) *lostItem {
-	streams, _ := json.Marshal(probe.Streams)
-	want := fingerprint(probe.Container, probe.RunTimeTicks, streams)
+	want := fingerprint(probe.Container, probe.RunTimeTicks, probe.Streams)
 	for _, item := range p.bySize[object.Size] {
 		if item.claimed {
 			continue
@@ -512,20 +516,15 @@ func (p *lostPool) lost() []*lostItem {
 // container, length and the layout of its own tracks (not the subtitle files
 // beside it, which move apart from it). It is made alike from a new probe and
 // from the row stored for the item, so it uses only fields a scan has always
-// stored.
-func fingerprint(container string, ticks int64, streamsJSON []byte) string {
-	var streams []map[string]any
-	_ = json.Unmarshal(streamsJSON, &streams) // A row that can't be read matches nothing it shouldn't: it is the same on both sides.
+// stored, and a field a stream lacks counts as zero on both sides.
+func fingerprint(container string, ticks int64, streams []media.MediaStream) string {
 	hash := sha256.New()
 	fmt.Fprint(hash, container, ticks)
 	for _, stream := range streams {
-		if stream["IsExternal"] == true || stream["Type"] == "Attachment" {
+		if stream.IsExternal || stream.Type == "Attachment" {
 			continue
 		}
-		for _, key := range []string{"Type", "Codec", "Width", "Height", "Channels", "SampleRate"} {
-			fmt.Fprint(hash, "|", stream[key])
-		}
-		fmt.Fprint(hash, "\n")
+		fmt.Fprintf(hash, "|%s|%s|%d|%d|%d|%d\n", stream.Type, stream.Codec, stream.Width, stream.Height, stream.Channels, stream.SampleRate)
 	}
 	return hex.EncodeToString(hash.Sum(nil))
 }
@@ -534,10 +533,14 @@ func fingerprint(container string, ticks int64, streamsJSON []byte) string {
 func (s *Scanner) fingerprintOf(ctx context.Context, itemID string) (string, error) {
 	var container string
 	var ticks int64
-	var streams []byte
+	var raw []byte
 	err := s.Pool.QueryRow(ctx, "SELECT m.container, COALESCE(i.run_time_ticks, 0), m.streams FROM media_sources m JOIN items i ON i.id = m.item_id WHERE i.id = $1", itemID).
-		Scan(&container, &ticks, &streams)
+		Scan(&container, &ticks, &raw)
 	if err != nil {
+		return "", err
+	}
+	var streams []media.MediaStream
+	if err := json.Unmarshal(raw, &streams); err != nil {
 		return "", err
 	}
 	return fingerprint(container, ticks, streams), nil
@@ -619,21 +622,17 @@ func (s *Scanner) stampParents(ctx context.Context, libraryID string) error {
 }
 
 func (s *Scanner) loadSeen(ctx context.Context, libraryID string) (map[string]seenObject, error) {
-	// A Matroska film scanned before its subtitle files and attachments were
-	// listed (sidecars is NULL) is probed again to list the attachments; any
-	// other container only has its subtitle files listed, which needs no probe.
-	// So is a film with an image subtitle track stored before they were listed,
-	// and a film stored before its chapters were read.
+	// A source is probed again when the probe that wrote it is older than this
+	// binary's, whatever it holds. What a failed read left unset is retried
+	// apart from that: the keyframe index of a copied codec, and the cue points
+	// of the image tracks of a Matroska film.
 	rows, err := s.Pool.Query(ctx, `SELECT o.key, o.size, o.etag, o.item_id::text, m.sidecars,
-			COALESCE(m.sidecars IS NULL AND m.container = 'mkv'
-				OR jsonb_path_exists(m.streams, '$[*] ? (@.Type == "Subtitle" && @.IsTextSubtitleStream == false && !exists(@.IsImageSubtitleStream))'), false),
-			COALESCE(jsonb_path_exists(m.streams, '$[*] ? ((@.Type == "Video" && !exists(@.VideoRange)) || (@.Type == "Subtitle" && !exists(@.IsTextSubtitleStream)))')
-				OR (m.keyframes IS NULL AND m.container IN ('mkv', 'mp4')
-					AND EXISTS (SELECT 1 FROM jsonb_array_elements(m.streams) v WHERE v->>'Type' = 'Video' AND v->>'Codec' = ANY($2))), false),
-			COALESCE(m.item_id IS NOT NULL AND m.chapters IS NULL, false),
-			COALESCE(m.image_cues IS NULL AND m.container = 'mkv'
-				AND jsonb_path_exists(m.streams, '$[*] ? (@.Type == "Subtitle" && @.IsImageSubtitleStream == true && !exists(@.Fingerprint))'), false)
-		FROM scan_objects o LEFT JOIN media_sources m ON m.item_id = o.item_id WHERE o.library_id = $1`, libraryID, playback.CopyCodecs())
+			COALESCE(m.probe_version < $2, false),
+			COALESCE(m.keyframes IS NOT NULL, false),
+			COALESCE(m.keyframes IS NULL AND m.container IN ('mkv', 'mp4')
+				AND EXISTS (SELECT 1 FROM jsonb_array_elements(m.streams) v WHERE v->>'Type' = 'Video' AND v->>'Codec' = ANY($3)), false),
+			COALESCE(m.image_cues IS NULL AND m.container = 'mkv', false)
+		FROM scan_objects o LEFT JOIN media_sources m ON m.item_id = o.item_id WHERE o.library_id = $1`, libraryID, ProbeVersion, playback.CopyCodecs())
 	if err != nil {
 		return nil, err
 	}
@@ -642,7 +641,7 @@ func (s *Scanner) loadSeen(ctx context.Context, libraryID string) (map[string]se
 	for rows.Next() {
 		var key string
 		var old seenObject
-		if err := rows.Scan(&key, &old.size, &old.etag, &old.itemID, &old.sidecars, &old.attachmentsUnread, &old.unprobed, &old.chaptersUnread, &old.imageCuesUnread); err != nil {
+		if err := rows.Scan(&key, &old.size, &old.etag, &old.itemID, &old.sidecars, &old.older, &old.hasIndex, &old.indexUnread, &old.imageCuesUnread); err != nil {
 			return nil, err
 		}
 		seen[key] = old
@@ -736,11 +735,11 @@ func (s *Scanner) readIndex(ctx context.Context, lib Library, object store.Objec
 // readImageCues reads where the packets of the image tracks of a Matroska film
 // lie, for those of the streams that are image tracks inside the film. A failed
 // read gives nil, so that the next scan tries again.
-func (s *Scanner) readImageCues(ctx context.Context, lib Library, object store.Object, streams []map[string]any) ImageCues {
+func (s *Scanner) readImageCues(ctx context.Context, lib Library, object store.Object, streams []media.MediaStream) ImageCues {
 	cues := ImageCues{}
 	image := false
 	for _, stream := range streams {
-		image = image || stream["Type"] == "Subtitle" && stream["IsImageSubtitleStream"] == true && stream["Fingerprint"] == nil
+		image = image || isFilmImageTrack(stream)
 	}
 	if !image {
 		return cues
@@ -751,11 +750,17 @@ func (s *Scanner) readImageCues(ctx context.Context, lib Library, object store.O
 		return nil
 	}
 	for _, stream := range streams {
-		if track, ok := found[indexOf(stream)]; ok && stream["IsImageSubtitleStream"] == true && stream["Fingerprint"] == nil {
-			cues[indexOf(stream)] = track
+		if track, ok := found[stream.Index]; ok && isFilmImageTrack(stream) {
+			cues[stream.Index] = track
 		}
 	}
 	return cues
+}
+
+// isFilmImageTrack says whether a stream is a bitmap subtitle track inside the
+// film, not a file beside it.
+func isFilmImageTrack(stream media.MediaStream) bool {
+	return stream.Type == "Subtitle" && stream.IsImage() && stream.Fingerprint == ""
 }
 
 // refreshImageCues stores the cue points of a film that was scanned without
@@ -766,7 +771,7 @@ func (s *Scanner) refreshImageCues(ctx context.Context, lib Library, object stor
 	if err := s.Pool.QueryRow(ctx, "SELECT streams FROM media_sources WHERE item_id = $1", itemID).Scan(&raw); err != nil {
 		return err
 	}
-	var streams []map[string]any
+	var streams []media.MediaStream
 	if err := json.Unmarshal(raw, &streams); err != nil {
 		return err
 	}
@@ -849,7 +854,7 @@ func (s *Scanner) upsert(ctx context.Context, lib Library, object store.Object, 
 		var counter int
 		err := tx.QueryRow(ctx, `SELECT m.streams, m.next_index FROM media_sources m JOIN items i ON i.id = m.item_id
 			WHERE i.id = $1::uuid OR (i.library_id = $2 AND i.natural_key = $3) FOR UPDATE OF m`, keep, lib.ID, item.naturalKey).Scan(&raw, &counter)
-		var old []map[string]any
+		var old []media.MediaStream
 		if err == nil {
 			err = json.Unmarshal(raw, &old)
 		}
@@ -858,7 +863,7 @@ func (s *Scanner) upsert(ctx context.Context, lib Library, object store.Object, 
 		}
 		external, next := externalStreams(object, subtitleFiles, old, nextIndex(probe.Streams), counter)
 		probe.Streams = append(probe.Streams, external...)
-		slices.SortFunc(probe.Streams, func(a, b map[string]any) int { return indexOf(a) - indexOf(b) })
+		slices.SortFunc(probe.Streams, func(a, b media.MediaStream) int { return a.Index - b.Index })
 		item.dto = videoDTO(item, object, probe)
 		if err := writeItem(ctx, tx, lib.ID, item); err != nil {
 			return err
@@ -880,9 +885,9 @@ func (s *Scanner) upsert(ctx context.Context, lib Library, object store.Object, 
 		if _, err := tx.Exec(ctx, "DELETE FROM media_sources WHERE item_id = $1", stored); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO media_sources (id, item_id, store_key, size, object_etag, container, streams, keyframes, video_end, next_index, sidecars, chapters, image_cues)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-			stored, stored, object.Key, object.Size, object.ETag, probe.Container, streams, probe.Keyframes, probe.VideoEnd, next, subtitleFiles.fingerprint, chapters, probe.ImageCues); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO media_sources (id, item_id, store_key, size, object_etag, container, streams, keyframes, video_end, next_index, sidecars, chapters, image_cues, probe_version)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+			stored, stored, object.Key, object.Size, object.ETag, probe.Container, streams, probe.Keyframes, probe.VideoEnd, next, subtitleFiles.fingerprint, chapters, probe.ImageCues, ProbeVersion); err != nil {
 			return err
 		}
 		_, err = tx.Exec(ctx, `INSERT INTO scan_objects (library_id, key, size, etag, item_id) VALUES ($1, $2, $3, $4, $5)
@@ -1066,28 +1071,25 @@ func folderDTO(item record) map[string]any {
 func videoDTO(item record, object store.Object, probe Probe) map[string]any {
 	dto := baseDTO(item)
 	streams := playableStreams(probe.Streams)
-	sources := []map[string]any{{
-		"Id":                   db.CompactID(*item.id),
-		"Protocol":             "File",
-		"Type":                 "Default",
-		"Name":                 item.name,
-		"Path":                 object.Key,
-		"Container":            probe.Container,
-		"Size":                 object.Size,
-		"ETag":                 etag(object.ETag),
-		"RunTimeTicks":         probe.RunTimeTicks,
-		"Bitrate":              probe.Bitrate,
-		"IsRemote":             false,
-		"VideoType":            "VideoFile",
-		"SupportsDirectPlay":   true,
-		"SupportsDirectStream": true,
-		"SupportsTranscoding":  true,
-		"SupportsProbing":      true,
-		"RequiresOpening":      false,
-		"RequiresClosing":      false,
-		"MediaStreams":         streams,
-		"MediaAttachments":     attachmentsOf(probe.Streams),
-		"Formats":              []string{},
+	sources := []media.MediaSource{{
+		ID:                   db.CompactID(*item.id),
+		Protocol:             "File",
+		Type:                 "Default",
+		Name:                 item.name,
+		Path:                 object.Key,
+		Container:            probe.Container,
+		Size:                 object.Size,
+		ETag:                 etag(object.ETag),
+		RunTimeTicks:         probe.RunTimeTicks,
+		Bitrate:              probe.Bitrate,
+		VideoType:            "VideoFile",
+		SupportsDirectPlay:   true,
+		SupportsDirectStream: true,
+		SupportsTranscoding:  true,
+		SupportsProbing:      true,
+		MediaStreams:         streams,
+		MediaAttachments:     attachmentsOf(probe.Streams),
+		Formats:              []string{},
 	}}
 	dto["IsFolder"] = false
 	// Jellyfin sends true for a film or episode, for a user allowed to download
@@ -1111,13 +1113,11 @@ func videoDTO(item record, object store.Object, probe Probe) map[string]any {
 
 // attachmentsOf lists the fonts among the streams, as Jellyfin lists a film's
 // attachments. Others are ones no client draws.
-func attachmentsOf(streams []map[string]any) []map[string]any {
-	list := []map[string]any{}
+func attachmentsOf(streams []media.MediaStream) []media.MediaAttachment {
+	list := []media.MediaAttachment{}
 	for _, stream := range streams {
-		if mimeType, _ := stream["MimeType"].(string); stream["Type"] == "Attachment" && subtitles.IsFont(mimeType) {
-			list = append(list, map[string]any{
-				"CodecTag": "[0][0][0][0]", "Index": stream["Index"], "FileName": stream["FileName"], "MimeType": mimeType,
-			})
+		if stream.Type == "Attachment" && subtitles.IsFont(stream.MimeType) {
+			list = append(list, media.MediaAttachment{CodecTag: "[0][0][0][0]", Index: stream.Index, FileName: stream.FileName, MimeType: stream.MimeType})
 		}
 	}
 	return list
@@ -1135,14 +1135,14 @@ func (s *Scanner) refreshSidecars(ctx context.Context, libraryID string, object 
 		if err := tx.QueryRow(ctx, "SELECT streams, next_index FROM media_sources WHERE item_id = $1 FOR UPDATE", itemID).Scan(&raw, &counter); err != nil {
 			return err
 		}
-		var streams []map[string]any
+		var streams []media.MediaStream
 		if err := json.Unmarshal(raw, &streams); err != nil {
 			return err
 		}
-		own := slices.DeleteFunc(slices.Clone(streams), func(stream map[string]any) bool { return stream["IsExternal"] == true })
+		own := slices.DeleteFunc(slices.Clone(streams), func(stream media.MediaStream) bool { return stream.IsExternal })
 		external, next := externalStreams(object, files, streams, nextIndex(own), counter)
 		streams = append(own, external...)
-		slices.SortFunc(streams, func(a, b map[string]any) int { return indexOf(a) - indexOf(b) })
+		slices.SortFunc(streams, func(a, b media.MediaStream) int { return a.Index - b.Index })
 		if err := storeStreams(ctx, tx, itemID, streams, next); err != nil {
 			return err
 		}
@@ -1159,37 +1159,31 @@ func (s *Scanner) refreshSidecars(ctx context.Context, libraryID string, object 
 // media_sources.streams keeps the full list, and the probe's fields for
 // transcode decisions, which the DTO leaves out so direct play replies stay as
 // they were.
-func playableStreams(streams []map[string]any) []map[string]any {
+func playableStreams(streams []media.MediaStream) []media.MediaStream {
 	audio := -1
 	for i, stream := range streams {
-		if stream["Type"] != "Audio" {
+		if stream.Type != "Audio" {
 			continue
 		}
-		if audio == -1 || stream["IsDefault"] == true {
+		if audio == -1 || stream.IsDefault {
 			audio = i
 		}
-		if stream["IsDefault"] == true {
+		if stream.IsDefault {
 			break
 		}
 	}
-	playable := make([]map[string]any, 0, len(streams))
+	playable := make([]media.MediaStream, 0, len(streams))
 	for i, stream := range streams {
-		if stream["Type"] == "Video" {
+		if stream.Type == "Video" {
 			// What the decision needs and the item page never listed.
-			stream = maps.Clone(stream)
-			for _, key := range []string{"Level", "IsInterlaced", "DurationTicks"} {
-				delete(stream, key)
-			}
+			stream.Level, stream.IsInterlaced, stream.DurationTicks = 0, false, 0
 		}
-		if stream["Type"] == "Subtitle" && stream["Fingerprint"] != nil {
+		if stream.Type == "Subtitle" && stream.Fingerprint != "" {
 			// Keys the cached track and says where the file is; no client has use for it.
-			stream = maps.Clone(stream)
-			for _, key := range []string{"Fingerprint", "FileSize", "FileETag", "SubPath", "SubSize"} {
-				delete(stream, key)
-			}
+			stream.Fingerprint, stream.FileSize, stream.FileETag, stream.SubPath, stream.SubSize = "", 0, "", "", 0
 		}
-		listed := stream["IsTextSubtitleStream"] == true || stream["IsImageSubtitleStream"] == true
-		if stream["Type"] == "Video" || i == audio || (stream["Type"] == "Subtitle" && listed && stream["Unreadable"] != true) {
+		listed := stream.IsTextSubtitleStream || stream.IsImage()
+		if stream.Type == "Video" || i == audio || (stream.Type == "Subtitle" && listed && !stream.Unreadable) {
 			playable = append(playable, stream)
 		}
 	}

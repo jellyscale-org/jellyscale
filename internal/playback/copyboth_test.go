@@ -60,7 +60,7 @@ func copyBothFilm(container string, streams []struct {
 	source.Streams = nil
 	source.Bitrate = 0
 	for _, s := range streams {
-		stream := Stream{Index: s.Index, Type: s.Type, Codec: s.Codec, Profile: s.Profile, Channels: s.Channels, Bitrate: s.BitRate}
+		stream := Stream{Index: s.Index, Type: s.Type, Codec: s.Codec, Profile: s.Profile, Channels: s.Channels, BitRate: s.BitRate}
 		if s.Type == "Video" {
 			stream.Level, stream.VideoRangeType, stream.Width, stream.Height, stream.AverageFrameRate = 41, "SDR", 640, 360, 24
 			if s.Codec == "hevc" {
@@ -176,11 +176,11 @@ func TestDecideCopiesBothStreamsAsJellyfinDid(t *testing.T) {
 				if strconv.FormatInt(d.AudioBitrate, 10) != want.AudioBitrate || strconv.FormatInt(d.VideoBitrate, 10) != want.VideoBitrate {
 					t.Errorf("bitrates video %d audio %d, Jellyfin %s and %s", d.VideoBitrate, d.AudioBitrate, want.VideoBitrate, want.AudioBitrate)
 				}
-				if spec.AudioCopy != stream.Codec || spec.AudioBitrate != stream.Bitrate {
-					t.Errorf("spec audio %q at %d, the track is %s at %d", spec.AudioCopy, spec.AudioBitrate, stream.Codec, stream.Bitrate)
+				if spec.AudioCopy != stream.Codec || spec.AudioBitrate != stream.BitRate {
+					t.Errorf("spec audio %q at %d, the track is %s at %d", spec.AudioCopy, spec.AudioBitrate, stream.Codec, stream.BitRate)
 				}
-				if bandwidth := regexp.MustCompile(`BANDWIDTH=(\d+)`).FindStringSubmatch(master); bandwidth[1] != strconv.FormatInt(source.FileBitrate()+stream.Bitrate, 10) {
-					t.Errorf("BANDWIDTH %s, want the file's %d and the track's %d", bandwidth[1], source.FileBitrate(), stream.Bitrate)
+				if bandwidth := regexp.MustCompile(`BANDWIDTH=(\d+)`).FindStringSubmatch(master); bandwidth[1] != strconv.FormatInt(source.FileBitrate()+stream.BitRate, 10) {
+					t.Errorf("BANDWIDTH %s, want the file's %d and the track's %d", bandwidth[1], source.FileBitrate(), stream.BitRate)
 				}
 			}
 		})
@@ -276,7 +276,7 @@ func TestCopyOfBothFollowsTheCapAndTheURL(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			// 2 Mbps in an AVI with 960 kbps of FLAC: the container is what the client lacks.
 			source := copyable("avi", "flac")
-			source.Streams[1].Profile, source.Streams[1].Bitrate = "", 960_000
+			source.Streams[1].Profile, source.Streams[1].BitRate = "", 960_000
 			d := Decide(Request{DeviceProfile: chrome, AudioStreamIndex: ptr(Number(1)), MaxStreamingBitrate: ptr(Number(test.cap))}, source, true)
 			if d.DirectPlay || !d.Copy {
 				t.Fatalf("got %+v", d)
@@ -325,7 +325,7 @@ func TestCopyOfBothLeavesAnAudioTheClientCannotTake(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			source := copyable("avi", test.codec)
-			source.Streams[1].Channels, source.Streams[1].Bitrate = test.channels, 128_000
+			source.Streams[1].Channels, source.Streams[1].BitRate = test.channels, 128_000
 			if test.codec == "aac" {
 				source.Streams[1].Profile = "LC"
 			}

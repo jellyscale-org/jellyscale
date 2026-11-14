@@ -13,6 +13,7 @@ import (
 	"slices"
 	"testing"
 
+	"jellyscale/internal/media"
 	"jellyscale/internal/testenv"
 )
 
@@ -33,14 +34,14 @@ func TestProbeReportsVideoDuration(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		var video int64
+		var video media.MediaStream
 		for _, s := range probe.Streams {
-			if s["Type"] == "Video" {
-				video, _ = s["DurationTicks"].(int64)
+			if s.Type == "Video" {
+				video = s
 			}
 		}
-		if video < 19_000_000 || video > 21_000_000 {
-			t.Errorf("%s: video DurationTicks %d, want about 20000000", name, video)
+		if video.DurationTicks < 19_000_000 || video.DurationTicks > 21_000_000 {
+			t.Errorf("%s: video DurationTicks %d, want about 20000000", name, video.DurationTicks)
 		}
 		if probe.RunTimeTicks < 45_000_000 {
 			t.Errorf("%s: RunTimeTicks %d should stay the format's", name, probe.RunTimeTicks)
@@ -79,11 +80,11 @@ func TestProbeRecordsLevelFieldOrderAndRange(t *testing.T) {
 		}
 		video := probe.Streams[0]
 		// Always recorded, even empty, so a scan can tell a film that was never asked.
-		if transfer, ok := video["ColorTransfer"]; !ok || transfer != c.transfer {
-			t.Errorf("%s: ColorTransfer %v (set %v), want %q", c.name, transfer, ok, c.transfer)
+		if video.ColorTransfer == nil || *video.ColorTransfer != c.transfer {
+			t.Errorf("%s: ColorTransfer %v, want %q", c.name, video.ColorTransfer, c.transfer)
 		}
-		if (video["Level"] != c.level && c.level >= 0) || video["IsInterlaced"] != c.interlace || video["VideoRangeType"] != c.rangeType {
-			t.Errorf("%s: level %v interlaced %v range %v, want %d %v %s", c.name, video["Level"], video["IsInterlaced"], video["VideoRangeType"], c.level, c.interlace, c.rangeType)
+		if (video.Level != c.level && c.level >= 0) || video.IsInterlaced != c.interlace || video.VideoRangeType != c.rangeType {
+			t.Errorf("%s: level %v interlaced %v range %v, want %d %v %s", c.name, video.Level, video.IsInterlaced, video.VideoRangeType, c.level, c.interlace, c.rangeType)
 		}
 	}
 }
@@ -105,7 +106,7 @@ func TestProbeRecordsBitDepth(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := probe.Streams[0]["BitDepth"]; got != c.depth {
+		if got := probe.Streams[0].BitDepth; got != c.depth {
 			t.Errorf("%s: bit depth %v, want %d", c.pixFmt, got, c.depth)
 		}
 		if !probe.wantsKeyframes() {
@@ -134,12 +135,14 @@ func TestProbeRecordsImageSubtitles(t *testing.T) {
 		t.Fatal(err)
 	}
 	for index, want := range map[int]map[string]any{
-		1: {"Codec": "PGSSUB", "DisplayTitle": "eng - Default - Forced - PGSSUB", "Language": "eng", "Width": 1920, "Height": 1080, "SupportsExternalStream": true},
-		2: {"Codec": "DVDSUB", "DisplayTitle": "DVDSUB", "Width": 1920, "Height": 1080, "SupportsExternalStream": false},
+		1: {"Codec": "PGSSUB", "DisplayTitle": "eng - Default - Forced - PGSSUB", "Language": "eng", "Width": 1920.0, "Height": 1080.0, "SupportsExternalStream": true},
+		2: {"Codec": "DVDSUB", "DisplayTitle": "DVDSUB", "Width": 1920.0, "Height": 1080.0, "SupportsExternalStream": false},
 		3: {"Codec": "DVBSUB", "DisplayTitle": "DVBSUB", "SupportsExternalStream": false},
 	} {
-		got := probe.Streams[index]
-		want["Index"], want["Type"], want["IsTextSubtitleStream"], want["IsImageSubtitleStream"] = index, "Subtitle", false, true
+		encoded, _ := json.Marshal(probe.Streams[index])
+		var got map[string]any
+		_ = json.Unmarshal(encoded, &got)
+		want["Index"], want["Type"], want["IsTextSubtitleStream"], want["IsImageSubtitleStream"] = float64(index), "Subtitle", false, true
 		for key, value := range want {
 			if got[key] != value {
 				t.Errorf("stream %d: %s is %v, want %v (%v)", index, key, got[key], value, got)
@@ -180,8 +183,8 @@ func TestProbeRecordsAudioBitrate(t *testing.T) {
 		}
 		var got int64
 		for _, s := range probe.Streams {
-			if s["Type"] == "Audio" {
-				got, _ = s["BitRate"].(int64)
+			if s.Type == "Audio" {
+				got = s.BitRate
 			}
 		}
 		// mp4 reports what the encoder wrote, close to the asked-for rate.
@@ -304,7 +307,7 @@ func TestProbeReadsQuickTimeChapterTrack(t *testing.T) {
 		t.Errorf("chapters %v", probe.Chapters)
 	}
 	for _, stream := range probe.Streams {
-		if stream["Type"] == "Subtitle" {
+		if stream.Type == "Subtitle" {
 			t.Errorf("the chapter track is listed as a subtitle track: %v", stream)
 		}
 	}

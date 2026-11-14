@@ -73,6 +73,7 @@ Every viewer-visible and operator-visible feature in scope, in one list. Status 
 ### `phase5-library`
 
 - Library scanning from configured libraries with keyframe index and probe: **partial** (done for films and episodes, no metadata providers).
+- One typed media model (JS-086, `internal/media`): **done**: the probe, the scan, the playback decision, the subtitle code, the transcode worker and every answer share one `MediaSource`, `MediaStream` and `MediaAttachment` type, which sends each field `compat/schema-12.4.json` requires and only the others a source has. A source stores the integer version of the probe that wrote it (`media_sources.probe_version`, `library.ProbeVersion`); a scan probes an unchanged file again when its source is older, keeping the item, the subtitle files' indexes and a stored keyframe index. Raise `ProbeVersion` when a release probes more or differently. A probe that fails leaves the source as it was, and the next scan tries again.
 - Genres, studios, persons and their pages and images: **not built**. In scope. The pages list them through `GET /Items` filters; `GET /Persons/{name}` and `GET /Studios/{name}` are non-goals, because nothing calls them.
 - Collections and playlists of films and episodes: **not built**. In scope.
 - Similar items (`/Items/{id}/Similar` and the movie, show and trailer variants): **not built**. In scope.

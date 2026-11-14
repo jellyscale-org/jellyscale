@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -16,6 +15,7 @@ import (
 
 	"jellyscale/internal/db"
 	"jellyscale/internal/items"
+	"jellyscale/internal/media"
 	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
 	"jellyscale/internal/transcode"
@@ -259,29 +259,23 @@ func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
 		wanted = request.MediaSourceID
 	}
 	playSession := randomHex(16)
-	result := make([]map[string]any, 0, len(sources))
+	result := make([]media.MediaSource, 0, len(sources))
 	for _, source := range sources {
-		if wanted != "" && db.CompactID(wanted) != source["Id"] {
+		if wanted != "" && db.CompactID(wanted) != source.ID {
 			continue
 		}
-		source["SupportsTranscoding"] = false
-		source["RequiredHttpHeaders"] = map[string]string{}
-		source["TranscodingSubProtocol"] = "http"
-		source["HasSegments"] = false
-		source["IsInfiniteStream"] = false
-		source["DefaultSubtitleStreamIndex"] = -1
-		if source["MediaAttachments"] == nil {
-			source["MediaAttachments"] = []any{}
-		}
-		if err := s.listFonts(r.Context(), id, source, true); err != nil {
+		source.SupportsTranscoding = false
+		source.RequiredHTTPHeaders = &media.Headers{}
+		source.TranscodingSubProtocol = "http"
+		source.HasSegments = false
+		source.IsInfiniteStream = false
+		source.DefaultSubtitleStreamIndex = media.Ptr(-1)
+		if err := s.listFonts(r.Context(), id, &source, true); err != nil {
 			s.fail(w, r, err)
 			return
 		}
-		deliverAttachments(source, id, sessionOf(r).Token)
-		if source["Formats"] == nil {
-			source["Formats"] = []any{}
-		}
-		refused, err := s.planPlayback(r, id, playSession, request, source)
+		deliverAttachments(&source, id, sessionOf(r).Token)
+		refused, err := s.planPlayback(r, id, playSession, request, &source)
 		if err != nil {
 			s.fail(w, r, err)
 			return
@@ -291,28 +285,23 @@ func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
 			// can't start instead makes it retry without end. Its "rate limits"
 			// text says the media can't play now, where "no compatible stream"
 			// would blame the client.
-			writeJSON(w, map[string]any{"MediaSources": []any{}, "PlaySessionId": playSession, "ErrorCode": "RateLimitExceeded"})
+			writeJSON(w, map[string]any{"MediaSources": []media.MediaSource{}, "PlaySessionId": playSession, "ErrorCode": "RateLimitExceeded"})
 			return
 		}
-		burn := request.NoSubtitleProfiles() || (request.AlwaysBurnInSubtitleWhenTranscoding && source["TranscodingUrl"] != nil)
+		burn := request.NoSubtitleProfiles() || (request.AlwaysBurnInSubtitleWhenTranscoding && source.TranscodingURL != "")
 		deliverable, err := s.deliverable(r.Context(), id, source)
 		if err != nil {
 			s.fail(w, r, err)
 			return
 		}
-		deliverSubtitles(source, id, sessionOf(r).Token, request, burn, deliverable)
+		deliverSubtitles(&source, id, sessionOf(r).Token, request, burn, deliverable)
 		if index, ok := defaultAudio(source); ok {
-			source["DefaultAudioStreamIndex"] = index
+			source.DefaultAudioStreamIndex = media.Ptr(index)
 		}
 		if index, ok := chosenSubtitle(source, request.SubtitleStreamIndex); ok {
-			source["DefaultSubtitleStreamIndex"] = index
+			source.DefaultSubtitleStreamIndex = media.Ptr(index)
 		}
 		result = append(result, source)
-	}
-	// Streams planPlayback added from the full probe lack what the stored
-	// sources were given; Kotlin SDK clients refuse a reply without them.
-	for _, source := range result {
-		items.WithSDKFields(source)
 	}
 	writeJSON(w, map[string]any{"MediaSources": result, "PlaySessionId": playSession})
 }
@@ -321,21 +310,17 @@ func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
 // Where transcoding is on, the source lists every audio stream, because
 // transcoding can deliver any of them, and a stream change then asks for one.
 // refused is true when the source needs a transcode that can't start now.
-func (s *Server) planPlayback(r *http.Request, itemID, playSession string, request playback.Request, source map[string]any) (refused bool, err error) {
+func (s *Server) planPlayback(r *http.Request, itemID, playSession string, request playback.Request, source *media.MediaSource) (refused bool, err error) {
 	if s.Transcode == nil && request.DeviceProfile == nil {
 		playbackDecisions.WithLabelValues("direct_play").Inc()
 		return false, nil
 	}
-	sourceID, _ := source["Id"].(string)
-	stored, found, err := s.Items.Source(r.Context(), itemID, sourceID)
+	stored, found, err := s.Items.Source(r.Context(), itemID, source.ID)
 	if err != nil || !found || stored.RunTimeTicks <= 0 {
 		return false, err
 	}
-	media, err := playbackSource(stored)
-	if err != nil {
-		return false, err
-	}
-	media.Bitrate = int64(number(source["Bitrate"]))
+	media := playbackSource(stored)
+	media.Bitrate = source.Bitrate
 	if media.Copyable() {
 		if media.Keyframes, media.VideoEnd, err = s.Items.Keyframes(r.Context(), stored.ID); err != nil {
 			return false, err
@@ -343,13 +328,11 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 	}
 	decision := playback.Decide(request, media, true)
 	if s.Transcode != nil {
-		err = offerTranscoding(source, stored.Streams)
+		offerTranscoding(source, stored.Streams)
 	}
-	if err != nil || decision.DirectPlay {
-		if err == nil {
-			playbackDecisions.WithLabelValues("direct_play").Inc()
-		}
-		return false, err
+	if decision.DirectPlay {
+		playbackDecisions.WithLabelValues("direct_play").Inc()
+		return false, nil
 	}
 	user := sessionOf(r)
 	params := playback.Params{SourceID: media.ID, AudioIndex: decision.AudioIndex, Subtitle: decision.Subtitle, VideoBitrate: decision.VideoBitrate,
@@ -371,7 +354,7 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 	switch {
 	case live:
 		// jellyfin-web ignores TranscodingUrl unless SupportsTranscoding is set.
-		err = offerTranscoding(source, stored.Streams)
+		offerTranscoding(source, stored.Streams)
 		if mismatch, mismatchErr := transcode.StoreMismatch(r.Context(), s.Pool); mismatch != "" || mismatchErr != nil {
 			s.Log.Warn("offering a running transcode though the stores may differ", "item", spec.Item, "reason", mismatch, "error", mismatchErr)
 		}
@@ -394,7 +377,7 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 		if playback.Decide(request, media, true).DirectPlay {
 			s.Log.Warn("cannot switch audio tracks or burn in subtitles, so the default plays on", "item", spec.Item, "reason", reason)
 			// So no subtitle is listed that only a transcode could draw.
-			source["SupportsTranscoding"] = false
+			source.SupportsTranscoding = false
 			playbackDecisions.WithLabelValues("direct_play").Inc()
 			return false, nil
 		}
@@ -407,11 +390,11 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 	} else {
 		playbackDecisions.WithLabelValues("reencode").Inc()
 	}
-	source["SupportsDirectPlay"] = false
-	source["SupportsDirectStream"] = false
-	source["TranscodingUrl"] = playback.MasterURL(db.DashedID(itemID), params, user.Token, stored.ETag, decision, media.FrameRate())
-	source["TranscodingSubProtocol"] = "hls"
-	source["TranscodingContainer"] = "mp4"
+	source.SupportsDirectPlay = false
+	source.SupportsDirectStream = false
+	source.TranscodingURL = playback.MasterURL(db.DashedID(itemID), params, user.Token, stored.ETag, decision, media.FrameRate())
+	source.TranscodingSubProtocol = "hls"
+	source.TranscodingContainer = "mp4"
 	// The session lists these reasons later (TranscodingInfo). They only label
 	// the dashboard, so failing to keep them never fails the play.
 	if _, err := s.Pool.Exec(r.Context(), `WITH pruned AS (DELETE FROM transcode_reasons WHERE created_at < now() - interval '1 day')
@@ -427,39 +410,27 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 // audio streams in the reply, which the item's own DTO lists only the default
 // of (invariant 32). Everything else the DTO lists, subtitles included, stays
 // as it was.
-func offerTranscoding(source map[string]any, storedStreams []byte) error {
-	var all []map[string]any
-	if err := json.Unmarshal(storedStreams, &all); err != nil {
-		return err
-	}
+func offerTranscoding(source *media.MediaSource, stored []media.MediaStream) {
 	// The DTO's own entries are kept as they are: the stored ones carry what
 	// the decision needs and the item page never showed.
 	type position struct {
-		kind  any
+		kind  string
 		index int
 	}
-	listed := map[position]any{}
-	current, _ := source["MediaStreams"].([]any)
-	for _, entry := range current {
-		stream, _ := entry.(map[string]any)
-		listed[position{stream["Type"], int(number(stream["Index"]))}] = entry
+	listed := map[position]media.MediaStream{}
+	for _, stream := range source.MediaStreams {
+		listed[position{stream.Type, stream.Index}] = stream
 	}
-	streams := []any{}
-	for _, stream := range all {
-		if entry, ok := listed[position{stream["Type"], int(number(stream["Index"]))}]; ok {
+	streams := []media.MediaStream{}
+	for _, stream := range stored {
+		if entry, ok := listed[position{stream.Type, stream.Index}]; ok {
 			streams = append(streams, entry)
-		} else if stream["Type"] == "Audio" {
+		} else if stream.Type == "Audio" {
 			streams = append(streams, stream)
 		}
 	}
-	source["MediaStreams"] = streams
-	source["SupportsTranscoding"] = true
-	return nil
-}
-
-func number(v any) float64 {
-	n, _ := v.(float64)
-	return n
+	source.MediaStreams = streams
+	source.SupportsTranscoding = true
 }
 
 // chosenSubtitle returns the subtitle track the client asked for, if the source
@@ -467,14 +438,13 @@ func number(v any) float64 {
 // position in MediaStreams, so it is only given where position and Index agree;
 // otherwise the client would find another stream, or none. The track is still
 // in the menu and can be picked by hand.
-func chosenSubtitle(source map[string]any, wanted *playback.Number) (int, bool) {
+func chosenSubtitle(source media.MediaSource, wanted *playback.Number) (int, bool) {
 	if wanted == nil {
 		return 0, false
 	}
-	streams, _ := source["MediaStreams"].([]any)
-	if position := int(*wanted); position >= 0 && position < len(streams) {
-		stream, _ := streams[position].(map[string]any)
-		if stream["Type"] == "Subtitle" && int(number(stream["Index"])) == position {
+	if position := int(*wanted); position >= 0 && position < len(source.MediaStreams) {
+		stream := source.MediaStreams[position]
+		if stream.Type == "Subtitle" && stream.Index == position {
 			return position, true
 		}
 	}
@@ -482,20 +452,17 @@ func chosenSubtitle(source map[string]any, wanted *playback.Number) (int, bool) 
 }
 
 // defaultAudio picks the flagged audio stream, else the first.
-func defaultAudio(source map[string]any) (int, bool) {
-	streams, _ := source["MediaStreams"].([]any)
+func defaultAudio(source media.MediaSource) (int, bool) {
 	first, found := 0, false
-	for _, entry := range streams {
-		stream, _ := entry.(map[string]any)
-		if stream["Type"] != "Audio" {
+	for _, stream := range source.MediaStreams {
+		if stream.Type != "Audio" {
 			continue
 		}
-		index, _ := stream["Index"].(float64)
-		if isDefault, _ := stream["IsDefault"].(bool); isDefault {
-			return int(index), true
+		if stream.IsDefault {
+			return stream.Index, true
 		}
 		if !found {
-			first, found = int(index), true
+			first, found = stream.Index, true
 		}
 	}
 	return first, found

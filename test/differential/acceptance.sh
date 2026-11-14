@@ -64,7 +64,7 @@ mutate sortname internal/items/query.go 's/"sortname": *"i.sort_name"/"sortname"
 # a timestamp mask over every string would hide it as it hid nothing else.
 mutate premieredate internal/library/scan.go '/dto\["IsHD"\] = probe.Height >= 720/a\	dto["PremiereDate"] = "2001-01-01T00:00:00.0000000Z" // mutant' 'dto["PremiereDate"] = "2001-01-01T00:00:00.0000000Z" // mutant' "a film's details"
 
-# conform_mutate <name> <file> <sed script> <marker> <text the report must hold>... [-- <file to append to compat/differences.yaml>]
+# conform_mutate <name> <file or directory/> <sed script> <marker> <text the report must hold>... [-- <file to append to compat/differences.yaml>]
 # The tier must fail and its report must hold each text (route, JSON path, field).
 conform_mutate() {
   local name=$1 file=$2 script=$3 marker=$4; shift 4
@@ -72,8 +72,11 @@ conform_mutate() {
   rm -rf "$mutant" && mkdir -p "$mutant"
   tar -C "$repo" --exclude=./.git --exclude=./.results --exclude=./web-dist -cf - . | tar -C "$mutant" -xf - || exit 1
   [[ -e $repo/web-dist ]] && ln -s "$repo/web-dist" "$mutant/web-dist"
-  sed -i "$script" "$mutant/$file"
-  check "($name) the mutation is in place" 1 "$(grep -c -F -- "$marker" "$mutant/$file")"
+  # A file, or a directory (a name ending in /) whose non-test Go files are all the typed model's.
+  targets=("$mutant/$file")
+  [[ $file == */ ]] && targets=($(ls "$mutant/$file"*.go | grep -v '_test\.go$'))
+  sed -i "$script" "${targets[@]}"
+  check "($name) the mutation is in place" 1 "$([[ $(cat "${targets[@]}" | grep -c -F -- "$marker") -gt 0 ]] && echo 1 || echo 0)"
   if [[ ${ALLOW_GAP:-} ]]; then printf '%s\n' "$ALLOW_GAP" >>"$mutant/compat/differences.yaml"; fi
   run_tier "$work/logs-$name" "$mutant/test/differential/run.sh" "$work/bad-$name" "$work/$name.out"
   check "($name) the tier fails" 1 "$([[ $status -ne 0 ]] && echo 1 || echo 0)"
@@ -88,12 +91,13 @@ conform_mutate lastcheckin internal/api/users.go 's/"LastPlaybackCheckIn": "0001
 conform_mutate playbackorder internal/api/users.go 's/"PlaybackOrder": "Default"},/"PlaybackOrderX": "Default"},/' '"PlaybackOrderX"' "$signin" 'SessionInfo.PlayState' 'PlaybackOrder'
 conform_mutate authprovider internal/api/users.go 's/"AuthenticationProviderId":/"AuthenticationProviderIdX":/' '"AuthenticationProviderIdX"' "$signin" 'User.Policy' 'AuthenticationProviderId'
 conform_mutate resetprovider internal/api/users.go 's/"PasswordResetProviderId": /"PasswordResetProviderIdX": /' '"PasswordResetProviderIdX"' "$signin" 'User.Policy' 'PasswordResetProviderId'
-# The scan writes SupportsDirectPlay itself; the mutant drops the eight source fields it does not write.
-conform_mutate itemfields internal/items/sdk.go 's/^\tfill(source, sourceDefaults)$/\t_ = sourceDefaults \/\/ mutant/' '_ = sourceDefaults // mutant' 'GET /Items/{itemId}' 'MediaSources[0]' 'HasSegments'
-# #95: the audio streams planPlayback adds from the full probe get their fields from the loop at the end of the
-# PlaybackInfo handler (internal/api/stream.go); only a film with a second audio track shows its loss. The index of
-# the stream depends on the film, so the report is asked for 'MediaStreams[' and the field.
-conform_mutate secondstream internal/api/stream.go 's/^\t\titems.WithSDKFields(source)$/\t\t_ = source \/\/ mutant/' '_ = source // mutant' 'POST /Items/{itemId}/PlaybackInfo' 'MediaStreams[' 'IsInterlaced'
+# #94: a required field of the typed MediaSource that the item's details lose. The model keeps each required field
+# under a tag of its own (internal/media, JS-086); the mutant renames one, so the key is missing from the answer.
+conform_mutate itemfields internal/media/ 's/json:"HasSegments"/json:"HasSegmentsX"/' 'json:"HasSegmentsX"' 'GET /Items/{itemId}' 'MediaSources[0]' 'HasSegments'
+# #95: a required field of the typed MediaStream, lost on the audio streams a transcode offer adds from the full probe
+# (and on every other stream). The index of the stream depends on the film, so the report is asked for 'MediaStreams['
+# and the field.
+conform_mutate secondstream internal/media/ 's/json:"IsInterlaced"/json:"IsInterlacedX"/' 'json:"IsInterlacedX"' 'POST /Items/{itemId}/PlaybackInfo' 'MediaStreams[' 'IsInterlaced'
 # #91: a route a client calls on its home path and jellyscale does not serve. The sweep of compat/clients.yaml
 # against the running jellyscale names the client, the path and the route.
 conform_mutate suggestions internal/api/routes.go 's|^.*Path: "/Items/Suggestions".*$|\t\t// mutant: no suggestions route|' '// mutant: no suggestions route' 'Findroid' 'home' '/Items/Suggestions'

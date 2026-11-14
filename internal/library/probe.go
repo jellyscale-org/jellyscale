@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"jellyscale/internal/media"
 	"jellyscale/internal/playback"
 )
 
@@ -36,7 +37,7 @@ type Probe struct {
 	Bitrate      int64
 	Width        int
 	Height       int
-	Streams      []map[string]any
+	Streams      []media.MediaStream
 	// Chapters are the file's, as the item DTO lists them. Never nil once
 	// probed: an empty list means the file has none.
 	Chapters []map[string]any
@@ -60,9 +61,8 @@ func (p Probe) wantsKeyframes() bool {
 		return false
 	}
 	for _, stream := range p.Streams {
-		if stream["Type"] == "Video" {
-			codec, _ := stream["Codec"].(string)
-			return playback.CopyCodec(codec)
+		if stream.Type == "Video" {
+			return playback.CopyCodec(stream.Codec)
 		}
 	}
 	return false
@@ -150,15 +150,15 @@ func ProbeInput(ctx context.Context, input string) (Probe, error) {
 		Container:    containerName(parsed.Format.FormatName),
 		RunTimeTicks: int64(duration * ticksPerSecond),
 		Bitrate:      bitrate,
-		Streams:      []map[string]any{},
+		Streams:      []media.MediaStream{},
 		Chapters:     chaptersOf(parsed),
 	}
 	for _, stream := range parsed.Streams {
 		if stream.CodecType == "attachment" {
 			// Fonts, mostly. The scan lists them; a worker takes them out when
 			// somebody asks (subtitles.FillFonts).
-			probe.Streams = append(probe.Streams, map[string]any{
-				"Index": stream.Index, "Type": "Attachment", "FileName": stream.Tags["filename"], "MimeType": stream.Tags["mimetype"],
+			probe.Streams = append(probe.Streams, media.MediaStream{
+				Index: stream.Index, Type: "Attachment", FileName: stream.Tags["filename"], MimeType: stream.Tags["mimetype"],
 			})
 			continue
 		}
@@ -166,45 +166,41 @@ func ProbeInput(ctx context.Context, input string) (Probe, error) {
 		if !ok {
 			continue
 		}
-		entry := map[string]any{
-			"Index":                  stream.Index,
-			"Type":                   kind,
-			"Codec":                  stream.CodecName,
-			"IsDefault":              stream.Disposition.Default == 1,
-			"IsForced":               stream.Disposition.Forced == 1,
-			"IsExternal":             false,
-			"SupportsExternalStream": false,
-		}
-		if stream.Profile != "" {
-			entry["Profile"] = stream.Profile
+		entry := media.MediaStream{
+			Index:     stream.Index,
+			Type:      kind,
+			Codec:     stream.CodecName,
+			IsDefault: stream.Disposition.Default == 1,
+			IsForced:  stream.Disposition.Forced == 1,
+			Profile:   stream.Profile,
 		}
 		if language := stream.Tags["language"]; language != "" && language != "und" {
-			entry["Language"] = language
+			entry.Language = language
 		}
 		// Matroska has no bit rate field; mkvmerge and MakeMKV write it as a BPS tag
 		// ("BPS-eng" when the track has a language), which ffprobe leaves in the
 		// tags. A copied audio track is counted against the bitrate cap by it.
 		bps := cmp.Or(stream.BitRate, stream.Tags["BPS"], stream.Tags["BPS-"+stream.Tags["language"]])
 		if rate, err := strconv.ParseInt(bps, 10, 64); err == nil && rate > 0 {
-			entry["BitRate"] = rate
+			entry.BitRate = rate
 		}
 		switch kind {
 		case "Video":
-			entry["Width"], entry["Height"] = stream.Width, stream.Height
+			entry.Width, entry.Height = stream.Width, stream.Height
 			// What a client's CodecProfile can rule out. Level is ffprobe's
 			// number, 52 for H.264 level 5.2, as profiles write it.
-			entry["Level"] = max(stream.Level, 0)
-			entry["IsInterlaced"] = slices.Contains([]string{"tt", "bb", "tb", "bt"}, stream.FieldOrder)
-			// Always set, empty or not, so a source scanned before it was recorded is found.
-			entry["ColorTransfer"] = stream.Transfer
+			entry.Level = max(stream.Level, 0)
+			entry.IsInterlaced = slices.Contains([]string{"tt", "bb", "tb", "bt"}, stream.FieldOrder)
+			// Always set on a video, empty or not.
+			entry.ColorTransfer = media.Ptr(stream.Transfer)
 			// HDR10+ is in the frames, not the stream, so one is read, for
 			// the films that can have it.
 			side := stream.SideData
 			if stream.CodecName == "hevc" && stream.Transfer == playback.PQ && hasHDR10Plus(ctx, input) {
 				side = append(side, sideData{Type: hdr10PlusSideData})
 			}
-			addRangeLabels(entry, stream.Transfer, side)
-			entry["BitDepth"] = bitDepth(stream.PixFmt)
+			addRangeLabels(&entry, stream.Transfer, side)
+			entry.BitDepth = bitDepth(stream.PixFmt)
 			// The video can end before the audio does, and an HLS playlist
 			// has to stop where the video does. Matroska keeps the duration
 			// in a tag, as the end on the file's clock, so a video that
@@ -218,41 +214,41 @@ func ProbeInput(ctx context.Context, input string) (Probe, error) {
 				ticks -= int64(max(start, 0) * ticksPerSecond)
 			}
 			if ticks > 0 {
-				entry["DurationTicks"] = ticks
+				entry.DurationTicks = ticks
 			}
-			entry["DisplayTitle"] = fmt.Sprintf("%dp %s %s", stream.Height, strings.ToUpper(stream.CodecName), cmp.Or(entry["VideoDoViTitle"], entry["VideoRange"]))
+			entry.DisplayTitle = fmt.Sprintf("%dp %s %s", stream.Height, strings.ToUpper(stream.CodecName), cmp.Or(entry.VideoDoViTitle, entry.VideoRange))
 			if fps := frameRate(stream.AvgFrame); fps > 0 {
-				entry["AverageFrameRate"] = fps
+				entry.AverageFrameRate = fps
 				// jellyfin-web divides a transcode's frame rate by this to show its speed.
-				entry["ReferenceFrameRate"] = fps
+				entry.ReferenceFrameRate = fps
 			}
 			if probe.Width == 0 {
 				probe.Width, probe.Height = stream.Width, stream.Height
 			}
 		case "Audio":
 			// Jellyfin gives the audio stream the range keys too.
-			entry["VideoRange"], entry["VideoRangeType"] = "Unknown", "Unknown"
-			entry["Channels"] = stream.Channels
-			entry["DisplayTitle"] = displayAudio(stream.Tags["language"], stream.CodecName, stream.Channels, stream.Disposition.Default == 1)
+			entry.VideoRange, entry.VideoRangeType = "Unknown", "Unknown"
+			entry.Channels = stream.Channels
+			entry.DisplayTitle = displayAudio(stream.Tags["language"], stream.CodecName, stream.Channels, stream.Disposition.Default == 1)
 			if rate, err := strconv.Atoi(stream.SampleRate); err == nil {
-				entry["SampleRate"] = rate
+				entry.SampleRate = rate
 			}
 		case "Subtitle":
 			text := slices.Contains(textSubtitleCodecs, stream.CodecName)
 			name, image := imageSubtitleCodecs[stream.CodecName]
 			if image {
-				entry["Codec"] = name
+				entry.Codec = name
 				// The canvas the bitmaps are placed on, which burning needs.
 				if stream.Width > 0 && stream.Height > 0 {
-					entry["Width"], entry["Height"] = stream.Width, stream.Height
+					entry.Width, entry.Height = stream.Width, stream.Height
 				}
 			}
-			entry["DisplayTitle"] = displaySubtitle(stream.Tags["language"], cmp.Or(name, stream.CodecName), stream.Disposition.Default == 1, stream.Disposition.Forced == 1)
+			entry.DisplayTitle = displaySubtitle(stream.Tags["language"], cmp.Or(name, stream.CodecName), stream.Disposition.Default == 1, stream.Disposition.Forced == 1)
 			// Text tracks are extracted and PGS ones copied out for the client;
 			// VobSub and DVB are only drawn into a transcode, and every other
 			// image codec stays in media_sources.streams alone.
-			entry["IsTextSubtitleStream"], entry["IsImageSubtitleStream"] = text, image
-			entry["SupportsExternalStream"] = text || stream.CodecName == "hdmv_pgs_subtitle"
+			entry.IsTextSubtitleStream, entry.IsImageSubtitleStream = text, media.Ptr(image)
+			entry.SupportsExternalStream = text || stream.CodecName == "hdmv_pgs_subtitle"
 		}
 		probe.Streams = append(probe.Streams, entry)
 	}
@@ -306,24 +302,25 @@ const hdr10PlusSideData = "HDR10+"
 // addRangeLabels sets the keys Jellyfin 12.4 puts on a video stream to say what
 // kind of HDR it is: VideoRange and VideoRangeType, the Dolby Vision fields of a
 // file that has them, and the HDR10+ flag.
-func addRangeLabels(entry map[string]any, transfer string, side []sideData) {
+func addRangeLabels(entry *media.MediaStream, transfer string, side []sideData) {
 	for _, d := range side {
 		switch {
 		case d.isDolbyVision():
-			entry["DvVersionMajor"], entry["DvVersionMinor"] = d.VersionMajor, d.VersionMinor
-			entry["DvProfile"], entry["DvLevel"] = d.Profile, d.Level
-			entry["RpuPresentFlag"], entry["ElPresentFlag"], entry["BlPresentFlag"] = d.RPUPresent, d.ELPresent, d.BLPresent
-			entry["DvBlSignalCompatibilityId"], _ = dolbyVisionBlCompatibility(side)
-			entry["VideoDoViTitle"] = dolbyVisionTitle(d)
+			entry.DvVersionMajor, entry.DvVersionMinor = media.Ptr(d.VersionMajor), media.Ptr(d.VersionMinor)
+			entry.DvProfile, entry.DvLevel = media.Ptr(d.Profile), media.Ptr(d.Level)
+			entry.RpuPresentFlag, entry.ElPresentFlag, entry.BlPresentFlag = media.Ptr(d.RPUPresent), media.Ptr(d.ELPresent), media.Ptr(d.BLPresent)
+			compatibility, _ := dolbyVisionBlCompatibility(side)
+			entry.DvBlSignalCompatibilityID = media.Ptr(compatibility)
+			entry.VideoDoViTitle = dolbyVisionTitle(d)
 		case d.Type == hdr10PlusSideData:
-			entry["Hdr10PlusPresentFlag"] = true
+			entry.Hdr10PlusPresentFlag = media.Ptr(true)
 		}
 	}
 	kind := rangeType(transfer, side)
-	entry["VideoRangeType"] = kind
-	entry["VideoRange"] = "HDR"
+	entry.VideoRangeType = kind
+	entry.VideoRange = "HDR"
 	if kind == "SDR" || kind == "DOVIWithSDR" {
-		entry["VideoRange"] = "SDR"
+		entry.VideoRange = "SDR"
 	}
 }
 

@@ -297,15 +297,7 @@
   reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
   paths:
     - "MediaSources[].DefaultAudioStreamIndex"
-    - "MediaSources[].GenPtsInput"
-    - "MediaSources[].HasSegments"
-    - "MediaSources[].IgnoreDts"
-    - "MediaSources[].IgnoreIndex"
-    - "MediaSources[].IsInfiniteStream"
-    - "MediaSources[].ReadAtNativeFramerate"
     - "MediaSources[].RequiredHttpHeaders"
-    - "MediaSources[].RequiresLooping"
-    - "MediaSources[].TranscodingSubProtocol"
     - "MediaSources[].UseMostCompatibleTranscodingProfile"
 
 - requests:
@@ -374,10 +366,6 @@
     - "MediaSources[].MediaStreams[].ColorTransfer"
     - "MediaSources[].MediaStreams[].IsAVC"
     - "MediaSources[].MediaStreams[].IsAnamorphic"
-    - "MediaSources[].MediaStreams[].IsHearingImpaired"
-    - "MediaSources[].MediaStreams[].IsInterlaced"
-    - "MediaSources[].MediaStreams[].IsOriginal"
-    - "MediaSources[].MediaStreams[].IsTextSubtitleStream"
     - "MediaSources[].MediaStreams[].Level"
     - "MediaSources[].MediaStreams[].LocalizedDefault"
     - "MediaSources[].MediaStreams[].LocalizedExternal"
@@ -397,10 +385,6 @@
     - "MediaStreams[].ColorTransfer"
     - "MediaStreams[].IsAVC"
     - "MediaStreams[].IsAnamorphic"
-    - "MediaStreams[].IsHearingImpaired"
-    - "MediaStreams[].IsInterlaced"
-    - "MediaStreams[].IsOriginal"
-    - "MediaStreams[].IsTextSubtitleStream"
     - "MediaStreams[].Level"
     - "MediaStreams[].LocalizedDefault"
     - "MediaStreams[].LocalizedExternal"
@@ -530,11 +514,6 @@
   task: JS-068
   reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
   paths:
-    - "MediaSources[].GenPtsInput"
-    - "MediaSources[].IgnoreDts"
-    - "MediaSources[].IgnoreIndex"
-    - "MediaSources[].ReadAtNativeFramerate"
-    - "MediaSources[].RequiresLooping"
     - "MediaSources[].UseMostCompatibleTranscodingProfile"
 
 - requests:
@@ -551,10 +530,6 @@
     - "MediaSources[].MediaStreams[].ColorTransfer"
     - "MediaSources[].MediaStreams[].IsAVC"
     - "MediaSources[].MediaStreams[].IsAnamorphic"
-    - "MediaSources[].MediaStreams[].IsHearingImpaired"
-    - "MediaSources[].MediaStreams[].IsInterlaced"
-    - "MediaSources[].MediaStreams[].IsOriginal"
-    - "MediaSources[].MediaStreams[].IsTextSubtitleStream"
     - "MediaSources[].MediaStreams[].Level"
     - "MediaSources[].MediaStreams[].LocalizedDefault"
     - "MediaSources[].MediaStreams[].LocalizedExternal"
@@ -714,14 +689,7 @@
   reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
   paths:
     - "Items[].MediaSources[].DefaultAudioStreamIndex"
-    - "Items[].MediaSources[].GenPtsInput"
-    - "Items[].MediaSources[].HasSegments"
-    - "Items[].MediaSources[].IgnoreDts"
-    - "Items[].MediaSources[].IgnoreIndex"
-    - "Items[].MediaSources[].IsInfiniteStream"
-    - "Items[].MediaSources[].ReadAtNativeFramerate"
     - "Items[].MediaSources[].RequiredHttpHeaders"
-    - "Items[].MediaSources[].RequiresLooping"
     - "Items[].MediaSources[].UseMostCompatibleTranscodingProfile"
 
 - requests:
@@ -735,10 +703,6 @@
     - "Items[].MediaSources[].MediaStreams[].ChannelLayout"
     - "Items[].MediaSources[].MediaStreams[].CodecTag"
     - "Items[].MediaSources[].MediaStreams[].IsAnamorphic"
-    - "Items[].MediaSources[].MediaStreams[].IsHearingImpaired"
-    - "Items[].MediaSources[].MediaStreams[].IsInterlaced"
-    - "Items[].MediaSources[].MediaStreams[].IsOriginal"
-    - "Items[].MediaSources[].MediaStreams[].IsTextSubtitleStream"
     - "Items[].MediaSources[].MediaStreams[].Language"
     - "Items[].MediaSources[].MediaStreams[].Level"
     - "Items[].MediaSources[].MediaStreams[].LocalizedDefault"
@@ -748,17 +712,12 @@
     - "Items[].MediaSources[].MediaStreams[].PixelFormat"
     - "Items[].MediaSources[].MediaStreams[].RealFrameRate"
     - "Items[].MediaSources[].MediaStreams[].RefFrames"
-    - "Items[].MediaSources[].MediaStreams[].ReferenceFrameRate"
     - "Items[].MediaSources[].MediaStreams[].TimeBase"
     - "Items[].MediaStreams[].AspectRatio"
     - "Items[].MediaStreams[].AudioSpatialFormat"
     - "Items[].MediaStreams[].ChannelLayout"
     - "Items[].MediaStreams[].CodecTag"
     - "Items[].MediaStreams[].IsAnamorphic"
-    - "Items[].MediaStreams[].IsHearingImpaired"
-    - "Items[].MediaStreams[].IsInterlaced"
-    - "Items[].MediaStreams[].IsOriginal"
-    - "Items[].MediaStreams[].IsTextSubtitleStream"
     - "Items[].MediaStreams[].Language"
     - "Items[].MediaStreams[].Level"
     - "Items[].MediaStreams[].LocalizedDefault"
@@ -768,7 +727,6 @@
     - "Items[].MediaStreams[].PixelFormat"
     - "Items[].MediaStreams[].RealFrameRate"
     - "Items[].MediaStreams[].RefFrames"
-    - "Items[].MediaStreams[].ReferenceFrameRate"
     - "Items[].MediaStreams[].TimeBase"
 
 - requests:
@@ -821,14 +779,7 @@
     - "EnableMediaSourceDisplay"
     - "IsHD"
     - "MediaSources[].DefaultAudioStreamIndex"
-    - "MediaSources[].GenPtsInput"
-    - "MediaSources[].HasSegments"
-    - "MediaSources[].IgnoreDts"
-    - "MediaSources[].IgnoreIndex"
-    - "MediaSources[].IsInfiniteStream"
-    - "MediaSources[].ReadAtNativeFramerate"
     - "MediaSources[].RequiredHttpHeaders"
-    - "MediaSources[].RequiresLooping"
     - "MediaSources[].UseMostCompatibleTranscodingProfile"
     - "ParentId"
 
@@ -852,10 +803,6 @@
     - "MediaSources[].MediaStreams[].ChannelLayout"
     - "MediaSources[].MediaStreams[].CodecTag"
     - "MediaSources[].MediaStreams[].IsAnamorphic"
-    - "MediaSources[].MediaStreams[].IsHearingImpaired"
-    - "MediaSources[].MediaStreams[].IsInterlaced"
-    - "MediaSources[].MediaStreams[].IsOriginal"
-    - "MediaSources[].MediaStreams[].IsTextSubtitleStream"
     - "MediaSources[].MediaStreams[].Language"
     - "MediaSources[].MediaStreams[].Level"
     - "MediaSources[].MediaStreams[].LocalizedDefault"
@@ -865,17 +812,12 @@
     - "MediaSources[].MediaStreams[].PixelFormat"
     - "MediaSources[].MediaStreams[].RealFrameRate"
     - "MediaSources[].MediaStreams[].RefFrames"
-    - "MediaSources[].MediaStreams[].ReferenceFrameRate"
     - "MediaSources[].MediaStreams[].TimeBase"
     - "MediaStreams[].AspectRatio"
     - "MediaStreams[].AudioSpatialFormat"
     - "MediaStreams[].ChannelLayout"
     - "MediaStreams[].CodecTag"
     - "MediaStreams[].IsAnamorphic"
-    - "MediaStreams[].IsHearingImpaired"
-    - "MediaStreams[].IsInterlaced"
-    - "MediaStreams[].IsOriginal"
-    - "MediaStreams[].IsTextSubtitleStream"
     - "MediaStreams[].Language"
     - "MediaStreams[].Level"
     - "MediaStreams[].LocalizedDefault"
@@ -885,7 +827,6 @@
     - "MediaStreams[].PixelFormat"
     - "MediaStreams[].RealFrameRate"
     - "MediaStreams[].RefFrames"
-    - "MediaStreams[].ReferenceFrameRate"
     - "MediaStreams[].TimeBase"
 
 - requests:
@@ -960,11 +901,6 @@
   task: JS-068
   reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
   paths:
-    - "MediaSources[].GenPtsInput"
-    - "MediaSources[].IgnoreDts"
-    - "MediaSources[].IgnoreIndex"
-    - "MediaSources[].ReadAtNativeFramerate"
-    - "MediaSources[].RequiresLooping"
     - "MediaSources[].UseMostCompatibleTranscodingProfile"
 
 - requests:
@@ -983,10 +919,6 @@
     - "MediaSources[].MediaStreams[].ChannelLayout"
     - "MediaSources[].MediaStreams[].CodecTag"
     - "MediaSources[].MediaStreams[].IsAnamorphic"
-    - "MediaSources[].MediaStreams[].IsHearingImpaired"
-    - "MediaSources[].MediaStreams[].IsInterlaced"
-    - "MediaSources[].MediaStreams[].IsOriginal"
-    - "MediaSources[].MediaStreams[].IsTextSubtitleStream"
     - "MediaSources[].MediaStreams[].Language"
     - "MediaSources[].MediaStreams[].Level"
     - "MediaSources[].MediaStreams[].LocalizedDefault"
@@ -996,7 +928,6 @@
     - "MediaSources[].MediaStreams[].PixelFormat"
     - "MediaSources[].MediaStreams[].RealFrameRate"
     - "MediaSources[].MediaStreams[].RefFrames"
-    - "MediaSources[].MediaStreams[].ReferenceFrameRate"
     - "MediaSources[].MediaStreams[].TimeBase"
 
 - requests:
@@ -1047,22 +978,6 @@
   reason: "the TranscodingUrl and the master playlist's stream line and playlist URI carry other query parameters and other BANDWIDTH and CODECS values"
   paths:
     - "MediaSources[].TranscodingUrl"
-
-- requests:
-    - "a Dolby Vision 8.1 film's details"
-  kind: gap
-  task: JS-068
-  reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
-  paths:
-    - "MediaSources[].TranscodingSubProtocol"
-
-- requests:
-    - "the HDR films with their streams"
-  kind: gap
-  task: JS-068
-  reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
-  paths:
-    - "Items[].MediaSources[].TranscodingSubProtocol"
 
 - requests:
     - "search hints for a film, a series and an episode"

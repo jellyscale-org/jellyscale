@@ -200,7 +200,7 @@ func NewSpec(item string, p Params, source Source) (Spec, error) {
 		}
 		audioBitrate, audioCopy := min(p.AudioBitrate, MaxAudioBitrate), ""
 		if stream, ok := source.copyAudio(p); ok {
-			audioBitrate, audioCopy = stream.Bitrate, stream.Codec
+			audioBitrate, audioCopy = stream.BitRate, stream.Codec
 		}
 		return Spec{
 			Item: strings.ReplaceAll(strings.ToLower(item), "-", ""), Source: p.SourceID, ETag: source.ETag,
@@ -218,7 +218,7 @@ func NewSpec(item string, p Params, source Source) (Spec, error) {
 	// doesn't make new segments.
 	audioBitrate, audioCopy := min(p.AudioBitrate, MaxAudioBitrate), ""
 	if stream, ok := source.copyAudio(p); ok {
-		audioBitrate, audioCopy = stream.Bitrate, stream.Codec
+		audioBitrate, audioCopy = stream.BitRate, stream.Codec
 	}
 	return Spec{
 		Item: strings.ReplaceAll(strings.ToLower(item), "-", ""), Source: p.SourceID, ETag: source.ETag,

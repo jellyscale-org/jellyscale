@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"jellyscale/internal/media"
 	"jellyscale/internal/playback"
 	"jellyscale/internal/testenv"
 )
@@ -61,7 +62,7 @@ func TestBurnedImageSubtitleIsAtTheRightTime(t *testing.T) {
 			index := 2
 			spec := testSpec
 			spec.Subtitle = &index
-			image := &playback.Stream{Index: 2, Type: "Subtitle", IsImageSubtitleStream: true}
+			image := &playback.Stream{Index: 2, Type: "Subtitle", IsImageSubtitleStream: media.Ptr(true)}
 			if tc.name != "DVB" {
 				image.Width, image.Height = 1920, 1080
 			}
@@ -189,7 +190,7 @@ func TestBurnedImageSubtitleDoesNotWaitForTheNextCue(t *testing.T) {
 	out := t.TempDir()
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	cmd, err := Command(ctx, server.URL+"/film.mkv", spec, 0, out, "", &playback.Stream{Index: 2, Width: 1920, Height: 1080, IsImageSubtitleStream: true})
+	cmd, err := Command(ctx, server.URL+"/film.mkv", spec, 0, out, "", &playback.Stream{Index: 2, Width: 1920, Height: 1080, IsImageSubtitleStream: media.Ptr(true)})
 	if err != nil {
 		t.Fatal(err)
 	}
