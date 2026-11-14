@@ -198,7 +198,7 @@ const leadCheck = 500 * time.Millisecond
 // film ends sooner.
 func limitFor(layout playback.Layout, from int, lead time.Duration) int {
 	if from < 0 || from >= layout.Count() {
-		return layout.Count() // A job asked to start past the end fails when ffmpeg does.
+		return layout.Count() // encode ends a job that starts past the end before it gets here.
 	}
 	start, _ := layout.Segment(from)
 	for n := from + 1; n < layout.Count(); n++ {
@@ -463,6 +463,13 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	layout := film.Layout(job.Spec.Copy)
 	if layout.Count() == 0 {
 		return errors.New("the file has no keyframe index to copy from")
+	}
+	if job.Start >= layout.Count() {
+		// Nothing is left to make: a job taken over or queued at the film's end. It
+		// ends done, not failed (a failed job refuses the film to every viewer for
+		// failureMemory), and a copy never reaches copyStart, which indexes the layout.
+		log.Info("transcode has nothing left to make", "start", job.Start, "segments", layout.Count())
+		return nil
 	}
 	media, err := w.Media(source.StoreURI)
 	if err != nil {
