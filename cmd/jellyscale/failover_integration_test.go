@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -84,16 +83,6 @@ type replica struct {
 	exited chan struct{}
 	status error
 	id     string // What it calls itself in session_sockets.replica, once a socket on it has been seen.
-}
-
-func freeAddr(t *testing.T) string {
-	t.Helper()
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer l.Close()
-	return l.Addr().String()
 }
 
 // start runs a replica of the role against dsn, with the extra config keys, and
