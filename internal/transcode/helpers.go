@@ -46,13 +46,15 @@ func (w *Worker) helpBelow() float64 {
 	return defaultHelpBelow
 }
 
-// freeSlots is SQL for the worker slots no job holds or waits for. alive and
-// queue are the placeholders of the seconds a node and a queued job count for.
-func freeSlots(alive, queue string) string {
-	nodes := `SELECT id FROM transcode_nodes WHERE seen_at > now() - make_interval(secs => ` + alive + `)`
-	return `((SELECT COALESCE(sum(slots), 0) FROM transcode_nodes WHERE seen_at > now() - make_interval(secs => ` + alive + `))
-		- (SELECT count(*) FROM transcode_jobs a WHERE (a.state = 'queued' AND a.created_at > now() - make_interval(secs => ` + queue + `))
-			OR (a.state = 'running' AND a.lease_expires_at > now() AND a.worker IN (` + nodes + `))))`
+// freeSlots is SQL for the worker slots of one output version that no job holds
+// or waits for: a job of another version can use none of them. alive and queue
+// are the placeholders of the seconds a node and a queued job count for, version
+// the placeholder of the output version.
+func freeSlots(alive, queue, version string) string {
+	nodes := `SELECT id FROM transcode_nodes WHERE output_version = ` + version + ` AND seen_at > now() - make_interval(secs => ` + alive + `)`
+	return `((SELECT COALESCE(sum(slots), 0) FROM transcode_nodes WHERE output_version = ` + version + ` AND seen_at > now() - make_interval(secs => ` + alive + `))
+		- (SELECT count(*) FROM transcode_jobs a WHERE a.output_version = ` + version + ` AND ((a.state = 'queued' AND a.created_at > now() - make_interval(secs => ` + queue + `))
+			OR (a.state = 'running' AND a.lease_expires_at > now() AND a.worker IN (` + nodes + `)))))`
 }
 
 // live is SQL for a job someone is working on or has yet to claim.
@@ -126,8 +128,8 @@ func (w *Worker) insertHelper(ctx context.Context, job claimed, chunk, start int
 			OR EXISTS (SELECT 1 FROM transcode_jobs f WHERE f.spec_hash = $1 AND f.helper AND f.state = 'failed'
 				AND f.start_segment / $3 = $2 AND f.ended_at > now() - make_interval(secs => $7)),
 			EXISTS (SELECT 1 FROM transcode_viewers v WHERE v.spec_hash = $1 AND NOT v.stopped AND v.last_seen_at > now() - make_interval(secs => $4)),
-			`+freeSlots("$5", "$6")+`::int`,
-			job.Hash, chunk, size, w.idle().Seconds(), alive, orDefault(w.QueueTimeout, queueTimeout).Seconds(), failureMemory.Seconds()).Scan(&taken, &watched, &free)
+			`+freeSlots("$5", "$6", "$8")+`::int`,
+			job.Hash, chunk, size, w.idle().Seconds(), alive, orDefault(w.QueueTimeout, queueTimeout).Seconds(), failureMemory.Seconds(), playback.OutputVersion).Scan(&taken, &watched, &free)
 		if err != nil {
 			return err
 		}
@@ -139,8 +141,8 @@ func (w *Worker) insertHelper(ctx context.Context, job claimed, chunk, start int
 			return nil
 		}
 		done = true
-		_, err = tx.Exec(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, helper)
-			VALUES ($1, $2, 'helper', $3, $3, true)`, job.Hash, raw, start)
+		_, err = tx.Exec(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, helper, output_version)
+			VALUES ($1, $2, 'helper', $3, $3, true, $4)`, job.Hash, raw, start, playback.OutputVersion)
 		return err
 	})
 	if err == nil && done {
@@ -171,15 +173,17 @@ func (w *Worker) chunkFree(ctx context.Context, job claimed, next int) (bool, er
 // can send preemptHint once the transaction commits and the helper stops at
 // once rather than at its next heartbeat. What the helper stored stays, and
 // the rest of its chunk is made when a viewer reaches it, as after a seek.
-// Called under the helpers lock. The outer state test is not redundant: a
+// Only a helper of the viewer's output version is cancelled, and only the slots
+// of that version are counted: another version's free slots are none for the
+// viewer's job. Called under the helpers lock. The outer state test is not redundant: a
 // helper that finished after the subquery chose it is re-checked on its new
 // row, so it stays done rather than turning cancelled.
 func preemptHelper(ctx context.Context, tx pgx.Tx, queue time.Duration) (bool, error) {
 	tag, err := tx.Exec(ctx, `UPDATE transcode_jobs SET state = 'cancelled', error = 'a new viewer needed its slot', ended_at = now() WHERE id = (
-			SELECT h.id FROM transcode_jobs h WHERE h.helper AND (h.state = 'queued' AND h.created_at > now() - make_interval(secs => $2)
+			SELECT h.id FROM transcode_jobs h WHERE h.helper AND h.output_version = $3 AND (h.state = 'queued' AND h.created_at > now() - make_interval(secs => $2)
 				OR h.state = 'running' AND h.lease_expires_at > now()
 					AND h.worker IN (SELECT id FROM transcode_nodes WHERE seen_at > now() - make_interval(secs => $1)))
 			ORDER BY h.state = 'queued' DESC, h.start_segment DESC LIMIT 1)
-		AND state IN ('queued', 'running') AND `+freeSlots("$1", "$2")+` < 1`, workerAlive.Seconds(), queue.Seconds())
+		AND state IN ('queued', 'running') AND `+freeSlots("$1", "$2", "$3")+` < 1`, workerAlive.Seconds(), queue.Seconds(), playback.OutputVersion)
 	return tag.RowsAffected() > 0, err
 }

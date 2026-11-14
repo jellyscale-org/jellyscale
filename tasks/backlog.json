@@ -815,6 +815,15 @@
       "title": "missingGrace set to an empty string uses the default instead of stopping the start",
       "status": "open",
       "notes": "newScanner parses only when cfg.MissingGrace != \"\"."
+    },
+    {
+      "id": "BL-091",
+      "source": "JS-082 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "The docs check for the rollback order accepts any sentence naming rollback, api, stream and worker",
+      "status": "open",
+      "notes": "TestRunningMdGivesTheUpgradeAndRollbackOrderForWorkersStreamAndApi passed a rollback order that left the old api with no old worker (fixed in the fix round). Pin the order, not the words."
     }
   ]
 }

@@ -35,6 +35,9 @@ var (
 	ErrNoWorker = errors.New("no transcode worker is running")
 	// ErrBusy: a job sat in the queue and every worker slot was taken.
 	ErrBusy = errors.New("all transcode slots are busy")
+	// ErrOtherVersion: a job sat in the queue and only workers of another output
+	// version run, which may not take it.
+	ErrOtherVersion = errors.New("no transcode worker of the job's output version is running")
 	// ErrTimeout: the segment didn't appear in time.
 	ErrTimeout = errors.New("timed out waiting for the segment")
 )
@@ -122,8 +125,8 @@ func Register(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger, id, rol
 	ticker := time.NewTicker(every)
 	defer ticker.Stop()
 	for {
-		if _, err := pool.Exec(ctx, `INSERT INTO transcode_nodes (id, roles, store, slots) VALUES ($1, $2, $3, $4)
-			ON CONFLICT (id) DO UPDATE SET seen_at = now()`, id, roles, store, slots); err != nil && ctx.Err() == nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO transcode_nodes (id, roles, store, slots, output_version) VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT (id) DO UPDATE SET seen_at = now()`, id, roles, store, slots, playback.OutputVersion); err != nil && ctx.Err() == nil {
 			log.Warn("registering with the transcode nodes failed", "error", err)
 		}
 		select {
@@ -202,26 +205,30 @@ func (j *Jobs) Unavailable(ctx context.Context, hash, userID, deviceID string) (
 	// a grace: it is either taking its lock again, or never will.
 	deadline := time.Now().Add(reapGrace)
 	for {
-		var workers, slots, taken, lockless int
+		var workers, versionWorkers, slots, taken, lockless int
 		var failure *string
+		// Only the slots of this replica's output version count: a worker of
+		// another version may not take the job. With no worker of the version
+		// at all the job is offered, and waits queueTimeout for one to start.
 		err = j.Pool.QueryRow(ctx, `WITH counted AS (
-				SELECT id, slots FROM transcode_nodes WHERE seen_at > now() - make_interval(secs => $2)
+				SELECT id, slots, output_version FROM transcode_nodes WHERE seen_at > now() - make_interval(secs => $2)
 					AND (NOT locked OR `+lockHeld("id")+`))
 			SELECT
 				(SELECT count(*) FROM counted WHERE slots > 0),
-				(SELECT COALESCE(sum(slots), 0) FROM counted),
-				(SELECT count(*) FROM transcode_jobs WHERE (state = 'queued' OR (state = 'running' AND lease_expires_at > now()
-						AND worker IN (SELECT id FROM counted)))
+				(SELECT count(*) FROM counted WHERE slots > 0 AND output_version = $6),
+				(SELECT COALESCE(sum(slots), 0) FROM counted WHERE output_version = $6),
+				(SELECT count(*) FROM transcode_jobs WHERE output_version = $6 AND (state = 'queued' OR (state = 'running' AND lease_expires_at > now()
+						AND worker IN (SELECT id FROM counted WHERE output_version = $6)))
 					AND NOT helper AND owner NOT IN (SELECT play_session_id FROM transcode_viewers WHERE user_id::text = $4 AND device_id = $5)),
 				(SELECT error FROM transcode_jobs WHERE spec_hash = $1 AND state = 'failed' AND NOT helper
 					AND ended_at > now() - make_interval(secs => $3) ORDER BY id DESC LIMIT 1),
 				(SELECT count(*) FROM transcode_nodes WHERE slots > 0 AND seen_at > now() - make_interval(secs => $2)
 					AND locked AND NOT `+lockHeld("transcode_nodes.id")+`)`,
-			hash, workerAlive.Seconds(), failureMemory.Seconds(), userID, deviceID).Scan(&workers, &slots, &taken, &failure, &lockless)
+			hash, workerAlive.Seconds(), failureMemory.Seconds(), userID, deviceID, playback.OutputVersion).Scan(&workers, &versionWorkers, &slots, &taken, &failure, &lockless)
 		if err != nil {
 			return "", err
 		}
-		if failure == nil && (workers == 0 || taken >= slots) && lockless > 0 && time.Now().Before(deadline) {
+		if failure == nil && (workers == 0 || (versionWorkers > 0 && taken >= slots)) && lockless > 0 && time.Now().Before(deadline) {
 			select {
 			case <-ctx.Done():
 				return "", ctx.Err()
@@ -237,8 +244,8 @@ func (j *Jobs) Unavailable(ctx context.Context, hash, userID, deviceID string) (
 			return "the last attempt failed: " + *failure, nil
 		case workers == 0:
 			return "no transcode worker is running", nil
-		case taken >= slots:
-			return fmt.Sprintf("all %d transcode slots are busy", slots), nil
+		case versionWorkers > 0 && taken >= slots:
+			return fmt.Sprintf("all %d transcode slots are busy (output version %d)", slots, playback.OutputVersion), nil
 		}
 		return "", nil
 	}
@@ -415,14 +422,18 @@ func (j *Jobs) queuedTooLong(ctx context.Context, job int64, state jobState) err
 		WHERE id = $1 AND state = 'queued'`, job); err != nil {
 		return err
 	}
-	var workers int
-	err := j.Pool.QueryRow(ctx, `SELECT count(*) FROM transcode_nodes WHERE slots > 0 AND seen_at > now() - make_interval(secs => $1)`,
-		workerAlive.Seconds()).Scan(&workers)
+	var workers, versionWorkers int
+	err := j.Pool.QueryRow(ctx, `SELECT count(*), count(*) FILTER (WHERE output_version = $2) FROM transcode_nodes
+		WHERE slots > 0 AND seen_at > now() - make_interval(secs => $1)`,
+		workerAlive.Seconds(), playback.OutputVersion).Scan(&workers, &versionWorkers)
 	if err != nil {
 		return err
 	}
-	if workers == 0 {
+	switch {
+	case workers == 0:
 		return ErrNoWorker
+	case versionWorkers == 0:
+		return ErrOtherVersion
 	}
 	return ErrBusy
 }
@@ -508,8 +519,8 @@ func (j *Jobs) ensure(ctx context.Context, spec playback.Spec, hash, owner strin
 		if preempted, err = preemptHelper(ctx, tx, orDefault(j.QueueTimeout, queueTimeout)); err != nil {
 			return err
 		}
-		return tx.QueryRow(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment)
-			VALUES ($1, $2, $3, $4, $4) RETURNING id`, hash, raw, owner, start).Scan(&id)
+		return tx.QueryRow(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, output_version)
+			VALUES ($1, $2, $3, $4, $4, $5) RETURNING id`, hash, raw, owner, start, playback.OutputVersion).Scan(&id)
 	})
 	if err != nil {
 		return 0, false, err
