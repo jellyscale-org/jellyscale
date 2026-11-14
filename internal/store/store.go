@@ -26,6 +26,9 @@ type Object struct {
 type Store interface {
 	// List returns every object under prefix, ordered by key.
 	List(ctx context.Context, prefix string) ([]Object, error)
+	// Stat returns an object's size without transferring its body, and
+	// ErrNotFound for a key that is not there. An empty object has size 0.
+	Stat(ctx context.Context, key string) (int64, error)
 	// Open reads an object from offset to its end.
 	Open(ctx context.Context, key string, offset int64) (io.ReadCloser, error)
 	// Put writes an object, replacing any existing one.

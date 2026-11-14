@@ -83,6 +83,22 @@ func (p *Posix) List(ctx context.Context, prefix string) ([]Object, error) {
 	return objects, nil
 }
 
+// Stat returns the size of the file at key.
+func (p *Posix) Stat(_ context.Context, key string) (int64, error) {
+	file, err := p.resolve(key)
+	if err != nil {
+		return 0, err
+	}
+	info, err := os.Stat(file)
+	if errors.Is(err, fs.ErrNotExist) || (err == nil && !info.Mode().IsRegular()) {
+		return 0, ErrNotFound
+	}
+	if err != nil {
+		return 0, err
+	}
+	return info.Size(), nil
+}
+
 // Open reads key from offset to the end of the file.
 func (p *Posix) Open(_ context.Context, key string, offset int64) (io.ReadCloser, error) {
 	file, err := p.resolve(key)

@@ -1,10 +1,12 @@
 package transcode
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
 	"jellyscale/internal/playback"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,8 +44,28 @@ func TestCheckLast(t *testing.T) {
 	}
 }
 
+// bytesOf is what a viewer is sent of a segment found: its bytes, whole.
+func bytesOf(seg *StoredSegment, err error) ([]byte, error) {
+	if err != nil {
+		return nil, err
+	}
+	defer seg.Close()
+	rec := httptest.NewRecorder()
+	if err := seg.Send(rec, false); err != nil {
+		return nil, err
+	}
+	return rec.Body.Bytes(), nil
+}
+
+// readSegment is a stored segment's bytes, or an error if it is not there yet.
+func readSegment(ctx context.Context, s store.Store, key string) ([]byte, error) {
+	return bytesOf(openSegment(ctx, s, key))
+}
+
 // cutStore's objects end early however often they are reopened.
 type cutStore struct{ store.Store }
+
+func (cutStore) Stat(context.Context, string) (int64, error) { return 1000, nil }
 
 func (cutStore) Open(context.Context, string, int64) (io.ReadCloser, error) {
 	return io.NopCloser(iotest.ErrReader(io.ErrUnexpectedEOF)), nil
@@ -66,5 +88,31 @@ func TestEmptySegmentIsNotThereYet(t *testing.T) {
 	}
 	if _, err := readSegment(ctx, segments, "empty"); !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("got %v, want ErrNotFound", err)
+	}
+}
+
+// eofStore's reader hands back an object's last bytes with io.EOF in the same
+// call, as io.Reader allows and as a small object (an init segment) is read.
+type eofStore struct {
+	store.Store
+	data []byte
+}
+
+func (s eofStore) Stat(context.Context, string) (int64, error) { return int64(len(s.data)), nil }
+
+func (s eofStore) Open(context.Context, string, int64) (io.ReadCloser, error) {
+	return io.NopCloser(iotest.DataErrReader(bytes.NewReader(s.data))), nil
+}
+
+// A segment whose bytes come with io.EOF in one read is whole, not missing:
+// every init segment is smaller than a read, and JS-077's queue run refused
+// every transcode because it took the init segment for one not stored yet.
+func TestASegmentReadWithItsEndInOneCallIsWhole(t *testing.T) {
+	for _, size := range []int{1, 900, chunk - 1, chunk, chunk + 1, 3*chunk + 7} {
+		data := bytes.Repeat([]byte{'x'}, size)
+		got, err := readSegment(context.Background(), eofStore{data: data}, "init")
+		if err != nil || !bytes.Equal(got, data) {
+			t.Errorf("%d bytes: got %d bytes, %v; want the %d bytes", size, len(got), err, size)
+		}
 	}
 }

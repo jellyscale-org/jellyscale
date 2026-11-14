@@ -39,7 +39,7 @@ func (r *rig) firstSegment(j *Jobs, spec playback.Spec, hash, psid string) (time
 	if err := j.Watch(ctx, v, hash, 0); err != nil {
 		return 0, err
 	}
-	_, err := j.Segment(ctx, spec, hash, v, 0, 0)
+	_, err := bytesOf(j.Segment(ctx, spec, hash, v, 0, 0))
 	return time.Since(began), err
 }
 

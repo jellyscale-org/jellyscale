@@ -236,7 +236,7 @@ func (d *driver) viewer(load, ctx context.Context, i int) {
 				return
 			}
 			d.rec.call(ctx, "Segment", 12*time.Second, func(ctx context.Context) error { //nolint:errcheck
-				_, err := d.jobs.Segment(ctx, d.specs[spec], hashOf(spec), viewer, n, 0)
+				_, err := bytesOf(d.jobs.Segment(ctx, d.specs[spec], hashOf(spec), viewer, n, 0))
 				return err
 			})
 		}()

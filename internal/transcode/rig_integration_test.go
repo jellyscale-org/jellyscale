@@ -232,7 +232,7 @@ func (r *rig) fetchAt(t *testing.T, j *Jobs, psid string, n, startAt int) ([]byt
 	if err := j.Watch(ctx, r.viewer(psid), r.hash, n); err != nil {
 		return nil, err
 	}
-	return j.Segment(ctx, r.spec, r.hash, r.viewer(psid), n, startAt)
+	return bytesOf(j.Segment(ctx, r.spec, r.hash, r.viewer(psid), n, startAt))
 }
 
 func (r *rig) count(t *testing.T, sql string, args ...any) int {

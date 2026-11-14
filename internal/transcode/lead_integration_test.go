@@ -259,7 +259,7 @@ func TestAJobIsNotStoppedForAViewerThatRecordsNoSegment(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	// Segment waits Watch with no segment, as an old replica's every request does.
-	if _, err := j.Segment(ctx, r.spec, r.hash, r.viewer(psid(0)), 0, 0); err != nil {
+	if _, err := bytesOf(j.Segment(ctx, r.spec, r.hash, r.viewer(psid(0)), 0, 0)); err != nil {
 		t.Fatal(err)
 	}
 	r.keepWatching(t, j, psid(0))

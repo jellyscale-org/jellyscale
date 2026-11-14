@@ -40,6 +40,12 @@ func TestSegmentWaitIsNotChargedForPostgresBeingAway(t *testing.T) {
 	if err := r.segments.Put(context.Background(), SegmentKey(r.hash, 0), bytes.NewReader(want)); err != nil {
 		t.Fatal(err)
 	}
+	// As a worker records it: the row says segment 0 is stored, and a hint says
+	// so at once (a waiter reads the store only then, JS-077).
+	if _, err := r.pool.Exec(context.Background(), "UPDATE transcode_jobs SET next_segment = 1 WHERE spec_hash = $1", r.hash); err != nil {
+		t.Fatal(err)
+	}
+	Notify(context.Background(), r.pool, segmentHint(r.hash))
 	select {
 	case a := <-done:
 		if a.err != nil || !bytes.Equal(a.body, want) {

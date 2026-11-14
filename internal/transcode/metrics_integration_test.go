@@ -246,7 +246,7 @@ func TestAStoppedWaitingRequestIsCountedOnce(t *testing.T) {
 	before := counterValue(t, stopped)
 	result := make(chan error, 1)
 	go func() {
-		_, err := j.Segment(context.Background(), r.spec, r.hash, r.viewer(psid(0)), 0, 0) // No worker to make it.
+		_, err := bytesOf(j.Segment(context.Background(), r.spec, r.hash, r.viewer(psid(0)), 0, 0)) // No worker to make it.
 		result <- err
 	}()
 	time.Sleep(1500 * time.Millisecond)
