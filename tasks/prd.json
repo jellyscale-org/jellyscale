@@ -1526,13 +1526,22 @@
       "title": "A worker claims only specs it can make",
       "description": "Every dogfood deploy is a mixed-version cluster for a while: an older worker can claim a newer spec and store segments made the old way under the new hash, served for 24 h. Put the output version on the job row and in the worker's claim predicate, so an old worker leaves a new spec queued for a new one. Split out of JS-079, which keeps the rest.",
       "acceptanceCriteria": [
-        "A job row records the output version of the replica that queued it, and a worker claims only jobs of a version it makes; shown with two worker builds of different versions and real processes",
-        "During a rolling upgrade no segment is stored by a worker of another version, and a viewer's job waits at most queueTimeout for a new worker before the usual 503",
-        "docs/running.md states the roll order this needs"
+        "Every transcode job row records an output version: a viewer's job the OutputVersion of the stream or api replica that queued it, a helper the version of the job it helps.",
+        "A worker claims a queued job, helper or not, only if the row's version is one the worker makes; a job of another version is never run by it, neither while it is queued nor after it has expired.",
+        "A queued job of another version does not hold up a worker: with one or with several such jobs ahead of it in the queue, a job of the worker's own version is claimed at once, not when the others expire.",
+        "Shown with real processes on one Postgres and one transcode store, using two builds of the binary that are the same source with OutputVersion changed (the server gains no flag, environment variable or config key for it): with a replica and a worker of each build running at once, viewers on both replicas get their segments, and every job row's version is that of the replica that queued it and of the worker that ran it.",
+        "A slow job's helper is made by a worker of the job's version or by none: an idle worker of another version beside it makes no segment of the spec, and in a cluster of one version a helper still starts on another worker.",
+        "A viewer's job that no worker of its version takes, while a worker of another version runs with a free slot, waits queueTimeout (6 s) and no less: the segment request is then answered 503 with Retry-After as an untaken job's is today, the row ends cancelled with no worker, and no object is stored under its hash.",
+        "A worker of the job's version that starts within queueTimeout claims the waiting job, and the same request is answered with the segment.",
+        "The server log line for that 503 names the cause: it does not say that every slot was busy or that no worker runs when a worker of another version had a free slot.",
+        "A job queued by a replica built before this release, which writes no version, is still inserted after the migration and counts as version 4, the last output version before rows recorded one: a worker that makes 4 claims it and a worker of a later version does not.",
+        "docs/running.md gives, for workers, stream and api, the order to upgrade and the order to roll back in which every version a running replica queues has a running worker that makes it at each step, and keeps its rule that stream is replaced before api.",
+        "docs/running.md says what viewers get when that order is not kept (the 503 after queueTimeout, never segments made by another version), and that a worker built before this release makes no such check, so every such worker must be stopped before a replica of a later output version starts.",
+        "Walking the documented upgrade order with the two builds as real processes, a viewer who starts playback at each step gets a segment and not a 503, and each job is run by a worker of its version.",
+        "DOMAINS.md states the rule the guarantee rests on, that a release whose workers make any spec differently (a new spec field included) bumps OutputVersion, and ARCHITECTURE.md's known departure and docs/status.md's upgrades line say what is now true."
       ],
-      "priority": 15,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [],
       "source": "Fable 5.2 architecture review, 2026-11-12 (.results/architecture-review-2026-11-12.md); owner's answers 2026-11-12",
       "notes": ""
