@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"jellyscale/internal/library"
 )
@@ -99,5 +100,66 @@ func TestConfigMetricsListen(t *testing.T) {
 	}
 	if cfg, err = parseConfig([]byte(`{}`)); err != nil || cfg.MetricsListen != "" {
 		t.Fatalf("%+v: %v", cfg, err)
+	}
+}
+
+// JS-076. The grace a missing file or library keeps its watch state for, and
+// the share of a library a scan may lose, are config keys; a value that can't
+// be read stops the start naming the key. newScanner is what the worker builds
+// its scanner with (the names it and the keys use are the task's).
+func TestScannerReadsTheGraceAndTheShareFromConfig(t *testing.T) {
+	log := slog.New(slog.DiscardHandler)
+	read := func(raw string) (*library.Scanner, error) {
+		cfg, err := parseConfig([]byte(raw))
+		if err != nil {
+			return nil, err
+		}
+		return newScanner(cfg, nil, log)
+	}
+	scanner, err := read(`{"missingGrace": "72h", "maxLostShare": 0.4}`)
+	if err != nil || scanner.Grace != 72*time.Hour || scanner.MaxLostShare != 0.4 {
+		t.Fatalf("%+v: %v", scanner, err)
+	}
+	scanner, err = read(`{}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if scanner.Grace != library.DefaultGrace || scanner.MaxLostShare != library.DefaultMaxLostShare {
+		t.Fatalf("defaults %v and %v, want %v and %v", scanner.Grace, scanner.MaxLostShare, library.DefaultGrace, library.DefaultMaxLostShare)
+	}
+	if library.DefaultGrace < 48*time.Hour {
+		t.Fatalf("the default grace is %v, want at least two days", library.DefaultGrace)
+	}
+	if library.DefaultMaxLostShare <= 0 || library.DefaultMaxLostShare >= 1 {
+		t.Fatalf("the default share is %v, want between 0 and 1", library.DefaultMaxLostShare)
+	}
+}
+
+func TestUnreadableOrNegativeGraceStopsTheStartNamingTheKey(t *testing.T) {
+	log := slog.New(slog.DiscardHandler)
+	if _, err := parseConfig([]byte(`{"missingGrace": "72h"}`)); err != nil {
+		t.Fatalf("a grace of 72h: %v", err)
+	}
+	for _, value := range []string{`"soon"`, `"-1h"`, `"-1ns"`, `5`, `true`, `"2 days"`} {
+		cfg, err := parseConfig([]byte(`{"missingGrace": ` + value + `}`))
+		if err == nil {
+			_, err = newScanner(cfg, nil, log)
+		}
+		if err == nil || !strings.Contains(err.Error(), "missingGrace") {
+			t.Errorf("missingGrace %s: %v", value, err)
+		}
+	}
+}
+
+// docs/running.md says what an operator needs: the keys, and what to do.
+func TestRunningDocNamesTheKeys(t *testing.T) {
+	raw, err := os.ReadFile("../../docs/running.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"missingGrace", "maxLostShare"} {
+		if !strings.Contains(string(raw), "`"+want+"`") {
+			t.Errorf("docs/running.md does not name `%s`", want)
+		}
 	}
 }

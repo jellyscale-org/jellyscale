@@ -96,7 +96,7 @@ func chapterFixtureAt(t *testing.T, on bool, assetsURI string) (fixture, store.S
 	if err != nil {
 		t.Fatal(err)
 	}
-	return fixture{pool, &library.Scanner{Pool: pool, Log: slog.New(slog.DiscardHandler)}, libs[0], media}, assets
+	return fixture{pool, &library.Scanner{Pool: pool, Log: slog.New(slog.DiscardHandler), Grace: time.Hour, MaxLostShare: 1}, libs[0], media}, assets
 }
 
 // setOption turns the library's option on or off, as a changed config would.
@@ -772,7 +772,9 @@ func TestARemovedSourceLeavesNothing(t *testing.T) {
 			if err := os.Remove(film); err != nil {
 				t.Fatal(err)
 			}
+			// The scan hides the film; the first one after the grace removes it (JS-076).
 			f.scan(t)
+			f.scanAfterGrace(t)
 			if n := scalar[int](t, f.pool, "SELECT count(*) FROM media_sources"); n != 1 {
 				t.Fatalf("%d sources left by the scan, want the other film's", n)
 			}

@@ -134,7 +134,7 @@ func (s *Server) saveSession(r *http.Request, report playbackReport) error {
 	_, err := s.Pool.Exec(r.Context(), `INSERT INTO sessions (token, user_id, client, device_id, device_name, app_version,
 			item_id, position_ticks, is_paused, play_method, play_session_id)
 		SELECT d.token, d.user_id, d.client, d.device_id, d.device_name, d.app_version,
-			(SELECT id FROM items WHERE id = $2::uuid), $3, $4, NULLIF(left($5, 32), ''), NULLIF(left($6, 64), '')
+			(SELECT id FROM shown_items WHERE id = $2::uuid), $3, $4, NULLIF(left($5, 32), ''), NULLIF(left($6, 64), '')
 		FROM devices d WHERE d.token = $1
 		ON CONFLICT (token) DO UPDATE SET item_id = EXCLUDED.item_id, position_ticks = EXCLUDED.position_ticks,
 			is_paused = EXCLUDED.is_paused, play_method = EXCLUDED.play_method,
@@ -149,7 +149,7 @@ const listSessionsSQL = `SELECT s.token, s.user_id::text, u.name, s.client, s.de
 			s.app_version, s.item_id::text, s.position_ticks, s.is_paused, COALESCE(s.play_method, ''), s.last_seen_at,
 			COALESCE(i.run_time_ticks, 0), t.spec, t.streams, t.state, t.worker, COALESCE(t.next_segment, 0), t.encode_speed, t.reasons
 		FROM sessions s JOIN users u ON u.id = s.user_id
-		LEFT JOIN items i ON i.id = s.item_id
+		LEFT JOIN shown_items i ON i.id = s.item_id
 		-- The newest job of the play session's viewer, if it watches a transcode.
 		LEFT JOIN LATERAL (SELECT j.spec, j.state, j.worker, j.next_segment, j.encode_speed,
 				(SELECT m.streams FROM media_sources m WHERE m.id = (j.spec->>'Source')::uuid) AS streams,

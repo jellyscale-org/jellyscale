@@ -78,7 +78,7 @@ func EnqueueChapterImages(ctx context.Context, pool *pgxpool.Pool, libraryID str
 	_, err := pool.Exec(ctx, `INSERT INTO subtitle_jobs (key, kind, item_id, source_id, idx)
 		SELECT 'chapters/' || id, 'chapters', id, id, 0 FROM (
 			SELECT m.id::text AS id
-			FROM media_sources m JOIN items i ON i.id = m.item_id JOIN libraries l ON l.id = i.library_id
+			FROM media_sources m JOIN shown_items i ON i.id = m.item_id JOIN libraries l ON l.id = i.library_id
 				LEFT JOIN chapter_images c ON c.source_id = m.id
 			WHERE i.library_id = $1 AND CASE WHEN `+wantedSQL+`
 				THEN c.source_id IS NULL OR c.etag <> m.object_etag OR c.state <> 'done'

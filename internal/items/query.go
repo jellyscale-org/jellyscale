@@ -72,7 +72,7 @@ func (b *builder) add(format string, values ...any) {
 func (q Query) compile() (string, []any) {
 	var b builder
 	userID := b.bind(nullable(q.UserID))
-	from := fmt.Sprintf(`FROM items i
+	from := fmt.Sprintf(`FROM shown_items i
 		LEFT JOIN user_item_data d ON d.item_id = i.id AND d.user_id = %s::uuid`, userID)
 
 	switch {

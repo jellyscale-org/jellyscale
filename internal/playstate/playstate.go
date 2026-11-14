@@ -27,7 +27,7 @@ func ClampTicks(ticks int64) int64 { return min(max(ticks, 0), MaxTicks) }
 // no longer exists is ignored, not an error: the client can't act on it.
 func Started(ctx context.Context, pool *pgxpool.Pool, userID, itemID string) error {
 	_, err := pool.Exec(ctx, `INSERT INTO user_item_data (user_id, item_id, last_played_at, data_at)
-		SELECT $1::uuid, i.id, now(), now() FROM items i WHERE i.id = $2::uuid
+		SELECT $1::uuid, i.id, now(), now() FROM shown_items i WHERE i.id = $2::uuid
 		ON CONFLICT (user_id, item_id) DO UPDATE SET last_played_at = now(), data_at = now()`, userID, itemID)
 	return err
 }
@@ -37,7 +37,7 @@ func Started(ctx context.Context, pool *pgxpool.Pool, userID, itemID string) err
 // flush logic.
 func Progress(ctx context.Context, pool *pgxpool.Pool, userID, itemID string, ticks int64) error {
 	_, err := pool.Exec(ctx, `INSERT INTO user_item_data (user_id, item_id, position_ticks, last_played_at, data_at, progress_at)
-		SELECT $1::uuid, i.id, $3, now(), now(), now() FROM items i WHERE i.id = $2::uuid
+		SELECT $1::uuid, i.id, $3, now(), now(), now() FROM shown_items i WHERE i.id = $2::uuid
 		ON CONFLICT (user_id, item_id) DO UPDATE
 		SET position_ticks = EXCLUDED.position_ticks, last_played_at = now(), data_at = now(), progress_at = now()
 		WHERE user_item_data.progress_at IS NULL OR user_item_data.progress_at < now() - make_interval(secs => $4)`,
@@ -59,7 +59,7 @@ func Stopped(ctx context.Context, pool *pgxpool.Pool, userID, itemID string, tic
 					WHEN $3::bigint::numeric * 20 < i.run_time_ticks::numeric THEN 'restart'
 					ELSE 'keep'
 				END AS result
-			FROM items i WHERE i.id = $2::uuid)
+			FROM shown_items i WHERE i.id = $2::uuid)
 		INSERT INTO user_item_data (user_id, item_id, position_ticks, played, play_count, last_played_at, data_at, progress_at)
 		SELECT $1::uuid, id, CASE WHEN result = 'keep' THEN $3::bigint ELSE 0 END,
 			result = 'finished', CASE WHEN result = 'finished' THEN 1 ELSE 0 END, now(), now(), now()
@@ -78,7 +78,7 @@ func Stopped(ctx context.Context, pool *pgxpool.Pool, userID, itemID string, tic
 func SetPlayed(ctx context.Context, pool *pgxpool.Pool, userID, itemID string, played bool) (bool, error) {
 	tag, err := pool.Exec(ctx, `INSERT INTO user_item_data (user_id, item_id, played, play_count, last_played_at, data_at)
 		SELECT $1::uuid, i.id, $3, CASE WHEN $3 THEN 1 ELSE 0 END, CASE WHEN $3 THEN now() END, now()
-		FROM items i WHERE i.id = $2::uuid OR i.series_id = $2::uuid OR i.season_id = $2::uuid OR i.parent_id = $2::uuid
+		FROM shown_items i WHERE i.id = $2::uuid OR i.series_id = $2::uuid OR i.season_id = $2::uuid OR i.parent_id = $2::uuid
 		ON CONFLICT (user_id, item_id) DO UPDATE
 		SET played = $3, position_ticks = 0,
 			play_count = CASE WHEN $3 THEN GREATEST(user_item_data.play_count, 1) ELSE 0 END,
@@ -90,7 +90,7 @@ func SetPlayed(ctx context.Context, pool *pgxpool.Pool, userID, itemID string, p
 // SetFavorite flags or unflags an item. It reports whether the item exists.
 func SetFavorite(ctx context.Context, pool *pgxpool.Pool, userID, itemID string, favorite bool) (bool, error) {
 	tag, err := pool.Exec(ctx, `INSERT INTO user_item_data (user_id, item_id, favorite)
-		SELECT $1::uuid, i.id, $3 FROM items i WHERE i.id = $2::uuid
+		SELECT $1::uuid, i.id, $3 FROM shown_items i WHERE i.id = $2::uuid
 		ON CONFLICT (user_id, item_id) DO UPDATE SET favorite = $3`,
 		userID, itemID, favorite)
 	return tag.RowsAffected() > 0, err
@@ -129,7 +129,7 @@ func SetUserData(ctx context.Context, pool *pgxpool.Pool, userID, itemID string,
 	const lastPlayed = `COALESCE(` + dated + `, CASE WHEN $3::boolean IS TRUE OR $5::bigint IS NOT NULL THEN now() END)`
 	tag, err := pool.Exec(ctx, `INSERT INTO user_item_data (user_id, item_id, played, favorite, position_ticks, last_played_at, data_at)
 		SELECT $1::uuid, i.id, COALESCE($3::boolean, false), COALESCE($4::boolean, false), COALESCE($5::bigint, 0), `+lastPlayed+`, `+dataAt+`
-		FROM items i WHERE i.id = $2::uuid
+		FROM shown_items i WHERE i.id = $2::uuid
 		ON CONFLICT (user_id, item_id) DO UPDATE
 		SET favorite = COALESCE($4::boolean, user_item_data.favorite),
 			played = CASE WHEN `+fresh+` THEN COALESCE($3::boolean, user_item_data.played) ELSE user_item_data.played END,

@@ -130,6 +130,9 @@ func subtitleEnv(t *testing.T, target string) *subtitleFixture {
 	})
 	ctx := context.Background()
 	films := map[string][]byte{"Text": subtitleFilm(t, false, testSRT), "Image": subtitleFilm(t, true, testSRT)}
+	// One Sync for both: a library left out of it is hidden.
+	var configs []library.Config
+	medias := map[string]string{}
 	for name, data := range films {
 		media, assets := "file://"+t.TempDir(), "file://"+t.TempDir()
 		if target != "" {
@@ -142,16 +145,20 @@ func subtitleEnv(t *testing.T, target string) *subtitleFixture {
 		if err := files.Put(ctx, "film.mkv", bytes.NewReader(data)); err != nil {
 			t.Fatal(err)
 		}
-		libs, err := library.Sync(ctx, f.pool, []library.Config{{Name: name, Kind: "movies", Media: media, Assets: assets}})
-		if err != nil {
+		configs = append(configs, library.Config{Name: name, Kind: "movies", Media: media, Assets: assets})
+		medias[name] = media
+	}
+	libs, err := library.Sync(ctx, f.pool, configs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, lib := range libs {
+		if err := (&library.Scanner{Pool: f.pool, Log: slog.New(slog.DiscardHandler)}).Scan(ctx, lib); err != nil {
 			t.Fatal(err)
 		}
-		if err := (&library.Scanner{Pool: f.pool, Log: slog.New(slog.DiscardHandler)}).Scan(ctx, libs[0]); err != nil {
-			t.Fatal(err)
-		}
-		id := scalar[string](t, f.pool, "SELECT id::text FROM items WHERE library_id = $1 AND type = 'Movie'", libs[0].ID)
-		if name == "Text" {
-			f.text, f.textStore = id, media
+		id := scalar[string](t, f.pool, "SELECT id::text FROM items WHERE library_id = $1 AND type = 'Movie'", lib.ID)
+		if lib.Name == "Text" {
+			f.text, f.textStore = id, medias[lib.Name]
 		} else {
 			f.image = id
 		}
@@ -734,7 +741,7 @@ func TestDistinctTracksRunFourAtATime(t *testing.T) {
 	f.startWorker(t, 0)
 	ctx := context.Background()
 	// One library for each film, each with its own text track: stream 2.
-	var ids []string
+	var configs []library.Config
 	for i := range films {
 		media, assets := "file://"+t.TempDir(), "file://"+t.TempDir()
 		files, err := store.Open(media)
@@ -744,14 +751,19 @@ func TestDistinctTracksRunFourAtATime(t *testing.T) {
 		if err := files.Put(ctx, "film.mkv", bytes.NewReader(data)); err != nil {
 			t.Fatal(err)
 		}
-		libs, err := library.Sync(ctx, f.pool, []library.Config{{Name: fmt.Sprint("Many", i), Kind: "movies", Media: media, Assets: assets}})
-		if err != nil {
+		configs = append(configs, library.Config{Name: fmt.Sprint("Many", i), Kind: "movies", Media: media, Assets: assets})
+	}
+	// One Sync for all: a library left out of it is hidden.
+	libs, err := library.Sync(ctx, f.pool, configs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ids []string
+	for _, lib := range libs {
+		if err := (&library.Scanner{Pool: f.pool, Log: slog.New(slog.DiscardHandler)}).Scan(ctx, lib); err != nil {
 			t.Fatal(err)
 		}
-		if err := (&library.Scanner{Pool: f.pool, Log: slog.New(slog.DiscardHandler)}).Scan(ctx, libs[0]); err != nil {
-			t.Fatal(err)
-		}
-		ids = append(ids, scalar[string](t, f.pool, "SELECT id::text FROM items WHERE library_id = $1 AND type = 'Movie'", libs[0].ID))
+		ids = append(ids, scalar[string](t, f.pool, "SELECT id::text FROM items WHERE library_id = $1 AND type = 'Movie'", lib.ID))
 	}
 
 	// Each ffmpeg notes its start and end; it waits first so that runs overlap.
