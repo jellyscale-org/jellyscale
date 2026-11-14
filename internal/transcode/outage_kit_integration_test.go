@@ -164,7 +164,10 @@ func (s *stack) addWorker(env ...string) *outageWorker {
 		// Without a statement cache every statement sends its text, which is how
 		// a proxy can end the connection as one particular statement runs.
 		"JELLYSCALE_TEST_DATABASE_URL="+w.db.DSN()+"&default_query_exec_mode=exec", "JELLYSCALE_TEST_LIVENESS="+w.live.Addr(),
-		"JELLYSCALE_TEST_SLOTS=1", "JELLYSCALE_TEST_NO_HELPERS=1", "JELLYSCALE_TEST_PUTLOG="+s.putlog)
+		"JELLYSCALE_TEST_SLOTS=1", "JELLYSCALE_TEST_NO_HELPERS=1", "JELLYSCALE_TEST_PUTLOG="+s.putlog,
+		// One re-encode (0.8 cores) a worker, as one slot was before JS-087: with a
+		// whole core, a re-encode and a copy (0.05) fit on one worker and leave another idle.
+		"JELLYSCALE_TEST_CORES=0.81")
 	cmd.Env = append(cmd.Env, env...)
 	cmd.Stderr = &w.log
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGKILL}
