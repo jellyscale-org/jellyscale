@@ -399,8 +399,19 @@ for (const flavour of [{ name: "HLS", film: "Stream Roll Encode Film", hls: true
       const bad = v.seen.answers.filter((a) => a.at > v.seen.answers[0].at && (hlsPath(a.path) || /m3u8/i.test(a.path)) && a.status >= 400);
       if (bad.length) throw new Error(`playlist or segment requests answered 400 or more: ${JSON.stringify(bad.slice(0, 3).map((a) => [a.status, a.path, a.backend]))}`);
     }
-    // The replacement serves the film once it is ready.
-    await waitFor("the replacement to serve the film", async () => v.seen.answers.some((a) => a.backend === replacement.port && a.status < 400 && /^\/videos\//i.test(a.path)), 120000);
+    // The replacement serves the film once it is ready. The player may never ask
+    // it: in direct play the draining replica can send the rest of the film within
+    // its grace (as on CI's runners), so the scenario asks for a range of the film
+    // itself, with the player's own URL and token, through the router, until the
+    // replacement answers one.
+    const filmUrl = v.seen.answers.filter((a) => /^\/videos\//i.test(a.path) && a.status < 400).at(-1)?.url;
+    if (!filmUrl) throw new Error("the player asked for no film request to repeat");
+    await waitFor("the replacement to serve the film", async () => {
+      const answer = await fetch(filmUrl, { headers: { range: "bytes=0-1023" } }).catch(() => null);
+      if (!answer) return false;
+      await answer.arrayBuffer();
+      return Number(answer.headers.get("x-backend")) === replacement.port && answer.status < 400;
+    }, 120000);
     // And the one that got SIGTERM leaves by itself.
     await Promise.race([victim.exited, sleep(180000).then(() => { throw new Error("the replica that got SIGTERM was still running 180 s later"); })]);
     void later;
