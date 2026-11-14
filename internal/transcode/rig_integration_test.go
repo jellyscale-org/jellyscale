@@ -190,6 +190,10 @@ func (r *rig) worker(t *testing.T, change func(*Worker)) (stop func()) {
 		})
 	}
 	t.Cleanup(stop)
+	// Registration runs beside the worker, and a slow commit on a loaded machine
+	// delays it by a heartbeat or more; a test that asks for a slot before then
+	// finds no worker at all (TestAFailedHelperDoesNotFailTheViewer in CI).
+	waitFor(t, "worker "+w.ID+" to register", 30*time.Second, func() bool { return r.locked(w.ID) })
 	return stop
 }
 
