@@ -824,6 +824,15 @@
       "title": "The docs check for the rollback order accepts any sentence naming rollback, api, stream and worker",
       "status": "open",
       "notes": "TestRunningMdGivesTheUpgradeAndRollbackOrderForWorkersStreamAndApi passed a rollback order that left the old api with no old worker (fixed in the fix round). Pin the order, not the words."
+    },
+    {
+      "id": "BL-098",
+      "source": "JS-102 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "The empty-list worker test says a tick runs, but no scan loop starts for an empty list",
+      "status": "open",
+      "notes": "TestAWorkerListingNoLibrariesChangesNothingAndSaysSoOnce: the comment and the refined criterion speak of a tick; main.go starts scanLoop only when the list is not empty. The removal assertion still guards it."
     }
   ]
 }

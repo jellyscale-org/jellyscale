@@ -163,3 +163,29 @@ func TestRunningDocNamesTheKeys(t *testing.T) {
 		}
 	}
 }
+
+// docs/running.md tells an operator who reads `libraries`, and what a list
+// that differs between workers or is empty does. The wording is the task's:
+// each phrase is one of its sentences, compared without case or line breaks.
+func TestRunningDocSaysWhoReadsLibrariesAndWhatAnEmptyListDoes(t *testing.T) {
+	raw, err := os.ReadFile("../../docs/running.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc := strings.ToLower(strings.Join(strings.Fields(string(raw)), " "))
+	for _, want := range []string{
+		"every worker must list the same libraries",
+		"hides it from every viewer",
+		"`libraries` of api and stream replicas are not read",
+		"hides and removes nothing",
+		"emptying the list does not remove the last library",
+		"first worker start without it",
+	} {
+		if !strings.Contains(doc, want) {
+			t.Errorf("docs/running.md does not say %q", want)
+		}
+	}
+	if strings.Contains(doc, "since the first start without it") {
+		t.Error("docs/running.md still counts a library's grace from any start, not the first worker start")
+	}
+}
