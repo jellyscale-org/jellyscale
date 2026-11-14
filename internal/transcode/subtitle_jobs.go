@@ -60,7 +60,7 @@ var (
 // WorkerAlive says whether a process with the worker role has reported lately.
 // Unlike the transcode check it doesn't need slots or a transcode store.
 func WorkerAlive(ctx context.Context, pool *pgxpool.Pool) (alive bool, err error) {
-	err = pool.QueryRow(ctx, "SELECT "+workerAliveSQL, workerAlive.Seconds()).Scan(&alive)
+	err = pool.QueryRow(ctx, "SELECT "+workerAliveSQL, liveTiming("counted").Seconds()).Scan(&alive)
 	return alive, err
 }
 
@@ -193,7 +193,7 @@ func awaitJob(ctx context.Context, pool *pgxpool.Pool, hub *Hub, job subtitleJob
 		err := pool.QueryRow(ctx, `SELECT COALESCE(j.state, ''), COALESCE(j.error, ''), COALESCE(j.permanent, false), `+workerAliveSQL+`,
 				COALESCE(j.state = 'queued' OR (j.state = 'running' AND j.lease_expires_at < now()), false),
 				EXISTS (SELECT 1 FROM subtitle_jobs WHERE state = 'running' AND lease_expires_at > now() AND kind <> 'chapters')
-			FROM (SELECT 1) one LEFT JOIN subtitle_jobs j ON j.key = $2`, workerAlive.Seconds(), job.Key).Scan(&state, &reason, &permanent, &alive, &unclaimed, &extracting)
+			FROM (SELECT 1) one LEFT JOIN subtitle_jobs j ON j.key = $2`, liveTiming("counted").Seconds(), job.Key).Scan(&state, &reason, &permanent, &alive, &unclaimed, &extracting)
 		if err != nil {
 			return err
 		}

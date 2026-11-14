@@ -113,7 +113,7 @@ func (w *Worker) insertHelper(ctx context.Context, job claimed, chunk, start int
 		return true, err
 	}
 	size := w.chunkSize()
-	alive := workerAlive.Seconds()
+	alive := liveTiming("counted").Seconds()
 	err = pgx.BeginFunc(ctx, w.Pool, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended('helpers', 0)), pg_advisory_xact_lock(hashtextextended($1, 0))", job.Hash); err != nil {
 			return err
@@ -184,6 +184,6 @@ func preemptHelper(ctx context.Context, tx pgx.Tx, queue time.Duration) (bool, e
 				OR h.state = 'running' AND h.lease_expires_at > now()
 					AND h.worker IN (SELECT id FROM transcode_nodes WHERE seen_at > now() - make_interval(secs => $1)))
 			ORDER BY h.state = 'queued' DESC, h.start_segment DESC LIMIT 1)
-		AND state IN ('queued', 'running') AND `+freeSlots("$1", "$2", "$3")+` < 1`, workerAlive.Seconds(), queue.Seconds(), playback.OutputVersion)
+		AND state IN ('queued', 'running') AND `+freeSlots("$1", "$2", "$3")+` < 1`, liveTiming("counted").Seconds(), queue.Seconds(), playback.OutputVersion)
 	return tag.RowsAffected() > 0, err
 }

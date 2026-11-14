@@ -183,7 +183,7 @@ func TestAWorkerWhoseConnectionsEndWithinHalfASecondOfTheOthersForgetsNobody(t *
 // cut so another worker may take it: killed while Postgres is up, by a live
 // worker's two looks; killed during an outage, once every process is back and
 // the outage is over (a live worker may not forget it while its own lock is
-// being taken again: reapHold).
+// being taken again: the table's hold).
 func TestAWorkerThatIsReallyDeadIsForgottenAndItsJobsLeaseCut(t *testing.T) {
 	for _, duringOutage := range []bool{false, true} {
 		t.Run(fmt.Sprintf("killed during an outage %v", duringOutage), func(t *testing.T) {
@@ -204,7 +204,7 @@ func TestAWorkerThatIsReallyDeadIsForgottenAndItsJobsLeaseCut(t *testing.T) {
 			} else {
 				owner.kill()
 			}
-			// A hang bound: reapHold, two looks and the lease are well inside it.
+			// A hang bound: the table's hold, two looks and the lease are well inside it.
 			waitFor(t, "the dead worker to be forgotten", 90*time.Second, func() bool {
 				return r.count(t, "SELECT count(*) FROM transcode_nodes WHERE id = '"+owner.id+"'") == 0
 			})
