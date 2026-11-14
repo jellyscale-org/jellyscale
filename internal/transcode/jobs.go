@@ -291,6 +291,13 @@ func readSegment(ctx context.Context, s store.Store, key string) ([]byte, error)
 	return body, err
 }
 
+// Stored returns segment n of a spec (-1 is the init segment) if the store
+// holds it, and store.ErrNotFound if not. It starts and joins no job and asks
+// Postgres nothing.
+func (j *Jobs) Stored(ctx context.Context, hash string, n int) ([]byte, error) {
+	return readSegment(ctx, j.Segments, SegmentKey(hash, n))
+}
+
 // Segment returns segment n of a spec (-1 is the init segment): from the
 // store if it's there, else once the active job that will make it has, else
 // after starting a job at n. It gives up with an error rather than hang.

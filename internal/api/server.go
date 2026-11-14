@@ -56,6 +56,9 @@ type Route struct {
 	Role    string
 	Public  bool
 	Handler http.HandlerFunc
+	// Offline, if set, answers a request from the snapshot of active sessions
+	// while Postgres is away (invariant 37), and says whether it did.
+	Offline offlineHandler
 }
 
 // Server holds what handlers need.
@@ -76,9 +79,11 @@ type Server struct {
 	// Defaults to 60 seconds, the interval ForceKeepAlive promises.
 	SocketIdle time.Duration
 
-	stores      store.Cache
-	replicaOnce sync.Once
-	replicaID   string
+	stores       store.Cache
+	snapshot     snapshot
+	snapshotOnce sync.Once
+	replicaOnce  sync.Once
+	replicaID    string
 
 	draining atomic.Bool // Set once the process has been told to stop: readiness fails.
 	// sockets counts the WebSocket handlers still running, and closeSockets, once
@@ -116,7 +121,10 @@ func sessionOf(r *http.Request) Session {
 
 // Handler builds the HTTP handler for this server's roles.
 func (s *Server) Handler() http.Handler {
-	db.Of(s.Pool).SetLog(s.Log) // Where it says Postgres went away, and came back.
+	db.Of(s.Pool).SetLog(s.Log)                                // Where it says Postgres went away, and came back.
+	if s.Pool != nil && slices.Contains(s.Roles, RoleStream) { // Handler tests of routes run with no database.
+		s.snapshotOnce.Do(func() { go s.keepSnapshot() })
+	}
 	mux := http.NewServeMux()
 	for _, route := range s.Routes() {
 		if !slices.Contains(s.Roles, route.Role) {
@@ -124,7 +132,7 @@ func (s *Server) Handler() http.Handler {
 		}
 		handler := route.Handler
 		if !route.Public {
-			handler = s.requireAuth(handler)
+			handler = s.requireAuth(handler, route.Offline)
 		}
 		mux.HandleFunc(route.Method+" "+lowerLiterals(route.Path), handler)
 	}
@@ -216,14 +224,27 @@ func (s *Server) logRequests(next http.Handler) http.Handler {
 	})
 }
 
-func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
+func (s *Server) requireAuth(next http.HandlerFunc, offline offlineHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		info := compat.ParseAuth(r)
 		if info.Token == "" {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-		user, err := s.userByToken(r.Context(), info.Token)
+		// Postgres decides, unless it is away and the route can go on from the snapshot.
+		var user User
+		var err error
+		away := db.Of(s.Pool).Away()
+		if !away {
+			user, err = s.queryUser(r.Context(), info.Token)
+			away = db.IsAway(err)
+		}
+		if away {
+			if offline != nil && s.snapshot.serve(w, r, info.Token, offline) {
+				return
+			}
+			user, err = s.userByToken(r.Context(), info.Token)
+		}
 		if errors.Is(err, pgx.ErrNoRows) {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return

@@ -7,6 +7,7 @@ import { execFile, execFileSync, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { createServer } from "node:net";
 import { dirname } from "node:path";
 import { promisify } from "node:util";
 import { createRequire } from "node:module";
@@ -80,7 +81,7 @@ async function viewer() {
   page.timeline = [];
   // Every request to the server and every answer, whichever role gave it, for the scenarios that put Postgres away.
   page.on("request", (request) => { if (request.url().startsWith(base)) seen.requests.push({ at: clock(), method: request.method(), url: request.url(), range: request.headers().range }); });
-  page.on("response", (response) => { if (response.url().startsWith(base)) seen.answers.push({ at: clock(), status: response.status(), method: response.request().method(), url: response.url(), routed: response.headers()["x-routed-to"] }); });
+  page.on("response", (response) => { if (response.url().startsWith(base)) seen.answers.push({ at: clock(), status: response.status(), method: response.request().method(), url: response.url(), routed: response.headers()["x-routed-to"], backend: response.headers()["x-backend"] }); });
   page.on("request", (request) => {
     if (request.method() === "DELETE" && /ActiveEncodings/i.test(request.url())) seen.deletes.push(request.url());
     const url = new URL(request.url());
@@ -1423,6 +1424,198 @@ await scenario("Postgres restarted while a film direct plays: a seek to what is 
   if (await page.getByText("Playback Error").count()) throw new Error("the viewer got a Playback Error dialog");
   noAnswerOf400OrMore(seen);
   await leave(page);
+});
+
+// JS-085: with Postgres stopped, a stream replica goes on serving the token of a recently active playback session. The film starts, Postgres is stopped (docker stop, as above), and the viewer seeks to a place
+// the browser does not have: a range of the file for a direct play, segments in the transcode store for an HLS
+// transcode. The picture must play on from there while Postgres is still stopped, on the same player, with no dialog,
+// no new PlaybackInfo and no answer of 400 or more to anything the browser asked. The scenarios check that Postgres is
+// still stopped when they look, and say how many ranges or segments were answered meanwhile.
+const routerControl = async (body) => (await fetch(`${home}/__router`, body ? { method: "PUT", body: JSON.stringify(body) } : {})).json();
+
+async function postgresRunning() {
+  return (await exec("docker", ["inspect", "-f", "{{.State.Running}}", process.env.E2E_PG])).stdout.trim() === "true";
+}
+
+const bufferedAt = (page, at) => page.evaluate((t) => {
+  const ranges = document.querySelector("video").buffered;
+  return Array.from({ length: ranges.length }, (_, i) => [ranges.start(i), ranges.end(i)]).some(([a, b]) => t >= a - 0.1 && t <= b + 0.1);
+}, at);
+
+// Where the player's buffer ends, from the current time on.
+const bufferEnd = (page) => page.evaluate(() => {
+  const v = document.querySelector("video");
+  for (let i = 0; i < v.buffered.length; i++) if (v.buffered.start(i) <= v.currentTime + 0.5 && v.buffered.end(i) >= v.currentTime) return v.buffered.end(i);
+  return v.currentTime;
+});
+
+// Requests that need Postgres from each replica of both roles, which find it away at once and so, 30 seconds later,
+// fail their readiness. They get no answer before Postgres is back; the signal ends them.
+function findPostgresAway(signal) {
+  const asked = [];
+  for (let i = 0; i < 8; i++) {
+    const headers = { authorization: 'MediaBrowser Token="not-a-token"' };
+    asked.push(fetch(`${home}/Users/Me`, { headers, signal }).catch(() => {}));
+    asked.push(fetch(`${home}/Videos/00000000000000000000000000000001/stream?ApiKey=not-a-token`, { headers, signal }).catch(() => {}));
+  }
+  return asked;
+}
+
+// The state every scenario below checks at the end, with Postgres still stopped.
+async function playedOnWhileStopped({ page, seen }, { asked, downAt, target, answered }) {
+  if (await postgresRunning()) throw new Error("Postgres was running again before the checks: the film did not play on from its own replica");
+  if (await page.getByText("Playback Error").count()) throw new Error("the viewer got a Playback Error dialog");
+  if (!(await page.evaluate(() => document.querySelector("video") === window.__awayVideo))) throw new Error("the player was replaced");
+  if (seen.infos.length !== asked) throw new Error(`the client asked for PlaybackInfo again (${seen.infos.length} times, not ${asked})`);
+  const meanwhile = seen.answers.filter((a) => a.at > downAt && answered(a));
+  if (!meanwhile.length) throw new Error("nothing the player asked for after Postgres stopped was answered as it should be");
+  console.log(`      ${meanwhile.length} answers came from the replica while Postgres was stopped, the picture was at ${(await time(page)).toFixed(1)} s after a seek to ${target.toFixed(1)} s`);
+  noAnswerOf400OrMore(seen);
+}
+
+// Every stream replica refreshes a snapshot of the tokens of recently active playback sessions and serves a token in
+// it, while Postgres is away, for direct play bytes and stored segments (JS-085). So the film is played through one
+// stream replica only, and the seek during the outage reaches the other, which never saw the viewer: the router
+// sends to one replica at a time, which no ingress setting can make a build depend on. The snapshot is refreshed
+// every few seconds (DOMAINS 37 says how many, at most 10), so the scenario waits twice that after the player's
+// first reports before it stops Postgres; jellyfin-web reports the start and then every ten seconds, so the
+// session is recent for the whole outage's first minutes at least.
+const SNAPSHOT_REFRESHED = 22000;
+
+// Starts a second stream replica, B, and hands the body the ports of A (the one the stack started) and B. The router
+// sends the stream role to A alone until the body says otherwise.
+async function withTwoStreamReplicas(body) {
+  const port = await new Promise((resolve) => {
+    const probe = createServer();
+    probe.listen(0, "127.0.0.1", () => { const { port } = probe.address(); probe.close(() => resolve(port)); });
+  });
+  const child = spawn(process.env.E2E_STREAM_REPLICA, [String(port)], { stdio: "ignore" });
+  try {
+    await waitFor("the second stream replica to answer /healthz", async () => {
+      try { return (await fetch(`http://127.0.0.1:${port}/healthz`)).ok; } catch { return false; }
+    }, 60000);
+    const [a] = (await routerControl()).stream.map((b) => b.port);
+    return await body({ a, b: port });
+  } finally {
+    await routerControl({ reset: true });
+    child.kill("SIGKILL");
+  }
+}
+
+// A direct play: the router slows the film to a download of tens of seconds, so the seek is to bytes the browser does not have.
+for (const flavour of [{ name: "within the window of the film starting", film: "Away Direct Film", late: false }, { name: "past readiness, with every replica's /readyz at 503 and the router sending to all of them as the shipped Caddyfile does", film: "Away Late Film", late: true }]) {
+  await scenario("Postgres stopped while a film direct plays: a seek to what is not buffered plays on, from another stream replica, while it is still stopped" + `: ${flavour.name}`, async (v) => {
+    const { page, seen } = v;
+    const probes = new AbortController();
+    let stopped = false;
+    try {
+     await withTwoStreamReplicas(async ({ a, b }) => {
+      await routerControl({ throttle: 1_500_000, fallback: true, stream: [a] });
+      await play(page, "Transcode", flavour.film);
+      if (seen.infos.at(-1).source.TranscodingUrl !== undefined) throw new Error("the film should direct play");
+      await advances(page, 1);
+      await page.evaluate(() => { window.__awayVideo = document.querySelector("video"); });
+      const asked = seen.infos.length;
+      const target = (await duration(page)) * 0.8;
+      if (await bufferedAt(page, target)) throw new Error(`the browser already has ${target.toFixed(0)} s: the seek would need no request`);
+      const before = seen.answers.filter((x) => /\/videos\/[^/]+\/stream/i.test(x.url) && x.backend);
+      if (!before.length || before.some((x) => Number(x.backend) !== a)) throw new Error(`the film's ranges before the outage should all come from replica ${a}: ${before.map((x) => x.backend)}`);
+      await new Promise((resolve) => setTimeout(resolve, SNAPSHOT_REFRESHED));
+      const downAt = clock();
+      await postgres("stop");
+      stopped = true;
+      if (flavour.late) {
+        // Both replicas find Postgres away through probes that take turns, and fail readiness 30 seconds on.
+        await routerControl({ stream: [a, b] });
+        findPostgresAway(probes.signal);
+        await waitFor("every replica's /readyz to answer 503", async () => {
+          const state = await routerControl();
+          return state.stream.length === 2 && [...state.api, ...state.stream].every((x) => !x.up);
+        }, 120000);
+        console.log(`      every replica failed readiness ${((clock() - downAt) / 1000).toFixed(0)} s after Postgres stopped`);
+      }
+      // From here the stream role is replica B alone, which never served this viewer.
+      await routerControl({ stream: [b] });
+      const seekAt = clock();
+      await page.evaluate((to) => { document.querySelector("video").currentTime = to; }, target);
+      await waitFor("a range of the film to be answered 206 while Postgres is stopped", async () => seen.answers.some((x) => x.at > seekAt && /\/stream/i.test(x.url) && x.status === 206), 60000);
+      await waitFor(`the picture to play on from ${target.toFixed(0)} s`, async () => (await time(page)) > target + 1, 60000);
+      await playedOnWhileStopped(v, { asked, downAt, target, answered: (x) => /\/stream/i.test(x.url) && x.status === 206 });
+      const after = seen.answers.filter((x) => x.at > seekAt && /\/videos\/[^/]+\/stream/i.test(x.url) && x.status === 206 && x.backend);
+      if (!after.length || after.some((x) => Number(x.backend) !== b)) throw new Error(`the ranges after the seek should come from replica ${b}, which never served the viewer: ${after.map((x) => x.backend)}`);
+     });
+    } finally {
+      probes.abort();
+      if (stopped) await postgres("start");
+      await routerControl({ reset: true });
+    // Readiness comes back only once each replica has seen Postgres answer again; until then the router answers 503
+    // itself (fallback is off after the reset), and the Stopped of leave() below would get it (JS-085's queue run).
+    await waitFor("every replica to be ready again", async () => {
+      const state = await routerControl();
+      return [...state.api, ...state.stream].every((x) => x.up);
+    }, 60000);
+    }
+    await leave(page);
+  });
+}
+
+// HLS: the first seconds of the film are made and stored, the player has fetched what its buffer holds, and the seek is to
+// segments the job stored beyond that, past the 30 seconds after which readiness fails, asked of a replica that never saw
+// the viewer. The scenario takes Postgres down only when the store holds a segment past the buffer.
+await scenario("Postgres stopped while a film plays as an HLS transcode: a seek to segments in the transcode store that the player has not buffered plays on, from another stream replica, while it is still stopped", async (v) => {
+  const { page, seen } = v;
+  const probes = new AbortController();
+  let stopped = false;
+  try {
+   await withTwoStreamReplicas(async ({ a, b }) => {
+    await routerControl({ fallback: true, stream: [a] });
+    await play(page, "Transcode", "Away Encode Film");
+    if (seen.infos.at(-1).source.TranscodingSubProtocol !== "hls") throw new Error("the film should be an HLS transcode");
+    await advances(page, 1);
+    await page.evaluate(() => { window.__awayVideo = document.querySelector("video"); document.querySelector("video").pause(); });
+    const asked = seen.infos.length;
+    const session = seen.infos.at(-1).session;
+    const storedEnd = () => 4 * Number(sql(`SELECT COALESCE(max(next_segment), 0) FROM transcode_jobs WHERE owner = '${session}'`));
+    // The job runs on until its lead, past what the paused player asks for.
+    await waitFor("segments in the store past the player's buffer", async () => storedEnd() >= (await bufferEnd(page)) + 8, 90000);
+    const end = await bufferEnd(page);
+    const m = Math.floor(end / 4) + 1;
+    const target = 4 * m + 0.5;
+    if (await bufferedAt(page, target) || storedEnd() < 4 * (m + 1)) throw new Error(`the target ${target} s is buffered, or its segment is not stored (stored to ${storedEnd()} s, buffered to ${end} s)`);
+    console.log(`      the store holds the film to ${storedEnd()} s, the player's buffer ends at ${end.toFixed(1)} s, the seek is to ${target} s (segment ${m})`);
+    await new Promise((resolve) => setTimeout(resolve, SNAPSHOT_REFRESHED));
+    const downAt = clock();
+    await postgres("stop");
+    stopped = true;
+    // Past readiness: both replicas find Postgres away and answer 503 on /readyz; the router then sends to them as the shipped Caddyfile does.
+    await routerControl({ stream: [a, b] });
+    findPostgresAway(probes.signal);
+    await waitFor("every replica's /readyz to answer 503", async () => {
+      const state = await routerControl();
+      return state.stream.length === 2 && [...state.api, ...state.stream].every((x) => !x.up);
+    }, 120000);
+    await routerControl({ stream: [b] });
+    const seekAt = clock();
+    await page.evaluate((to) => { const video = document.querySelector("video"); video.currentTime = to; video.play(); }, target);
+    await waitFor(`segment ${m} to be answered 200 while Postgres is stopped`, async () => seen.hls.find((r) => r.at > seekAt && r.status === 200 && r.path.endsWith(`/${m}.mp4`)), 60000);
+    await waitFor(`the picture to play on from ${target} s`, async () => (await time(page)) > target + 1, 60000);
+    await playedOnWhileStopped(v, { asked, downAt, target, answered: (x) => /\/hls1\//i.test(x.url) && /\/\d+\.mp4/i.test(x.url) && x.status === 200 });
+    const after = seen.answers.filter((x) => x.at > seekAt && /\/hls1\//i.test(x.url) && /\/\d+\.mp4/i.test(x.url) && x.status === 200 && x.backend);
+    if (!after.length || after.some((x) => Number(x.backend) !== b)) throw new Error(`the segments after the seek should come from replica ${b}, which never served the viewer: ${after.map((x) => x.backend)}`);
+   });
+  } finally {
+    probes.abort();
+    if (stopped) await postgres("start");
+    await routerControl({ reset: true });
+    // Readiness comes back only once each replica has seen Postgres answer again; until then the router answers 503
+    // itself (fallback is off after the reset), and the Stopped of leave() below would get it (JS-085's queue run).
+    await waitFor("every replica to be ready again", async () => {
+      const state = await routerControl();
+      return [...state.api, ...state.stream].every((x) => x.up);
+    }, 60000);
+  }
+  await leave(page);
+  await waitFor("ffmpeg to exit after Stopped", async () => ffmpegRuns().length === 0, 30000);
 });
 
 // A worker killed while it serves a playing film. Two other workers run, and the

@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -68,8 +69,10 @@ func newReplica(t *testing.T, e *env, segments store.Store, role string) *replic
 	t.Cleanup(pool.Close)
 	rp := &replica{role: role, proxy: proxy, log: &syncBuffer{}}
 	log := slog.New(slog.NewTextHandler(rp.log, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	s := &Server{Pool: pool, Items: &items.Repo{Pool: pool, ServerID: "srv"}, Roles: []string{role}, Log: log, SocketIdle: time.Minute}
-	if role == RoleStream {
+	// A role is "api", "stream", or "api,stream" for a process that runs both (JS-085).
+	roles := strings.Split(role, ",")
+	s := &Server{Pool: pool, Items: &items.Repo{Pool: pool, ServerID: "srv"}, Roles: roles, Log: log, SocketIdle: time.Minute}
+	if slices.Contains(roles, RoleStream) {
 		// A queued job older than two seconds is one nobody took: the outage below lasts far longer.
 		s.Transcode = &transcode.Jobs{Pool: pool, Segments: segments, QueueTimeout: 2 * time.Second, Log: log}
 	}
