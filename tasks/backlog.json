@@ -914,6 +914,204 @@
       "title": "The JS-099 fix was verified under ffmpeg 9 only, not CI's 6.1",
       "status": "open",
       "notes": "The merge queue runs it under 6.1."
+    },
+    {
+      "id": "BL-102",
+      "source": "JS-066 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "A Stop that matches no viewer row no longer sweeps jobs with no unstopped viewer",
+      "status": "open",
+      "notes": "Jobs.Stop cancels only jobs of the specs its UPDATE returned. An orphan job then runs until its lease or the viewer-expiry sweep ends it. Listed as a changed guarantee in the PR."
+    },
+    {
+      "id": "BL-103",
+      "source": "JS-066 verify",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "DBProxy.Delay sleeps once per read chunk, not once per round trip",
+      "status": "open",
+      "notes": "A result larger than one 32K read is delayed several times, so the schedules' 'up to 300 ms' is approximate."
+    },
+    {
+      "id": "BL-104",
+      "source": "JS-085 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "A snapshot refresh that times out while Postgres is not marked away keeps the snapshot",
+      "status": "open",
+      "notes": "keepSnapshot keeps it for db.IsAway(err) || DeadlineExceeded; DOMAINS 37 says only while Postgres is away. Align code or doc, with a test."
+    },
+    {
+      "id": "BL-105",
+      "source": "JS-085 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "An offline HLS segment with no mediasourceid answers 200 where the online route answers 404",
+      "status": "open",
+      "notes": "session.pick(itemID, \"\") takes the first film; hlsRequestFor rejects an invalid source id."
+    },
+    {
+      "id": "BL-106",
+      "source": "JS-085 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "A stream replica started during an outage has no snapshot and serves no token until Postgres returns",
+      "status": "open",
+      "notes": "By design no refresh runs while Postgres is away. A replica could ask a peer for its snapshot; decide whether it matters for pod restarts during an outage."
+    },
+    {
+      "id": "BL-107",
+      "source": "JS-085 verify",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "A paused film in a background tab may drop out of the 60 s window",
+      "status": "promoted",
+      "notes": "jellyfin-web reports progress every 10 s (setInterval 1e4); a throttled hidden tab may report less often. A wider window (minutes) costs nothing but snapshot size, since revocation exposure is the refresh interval. Unverified that throttling reaches 60 s. Promoted to JS-103, done (#139)."
+    },
+    {
+      "id": "BL-108",
+      "source": "JS-085 verify",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "Subtitle and font requests wait during an outage",
+      "status": "promoted",
+      "notes": "The Subtitles and Attachments routes have no Offline handler; a viewer who turns subtitles on during an outage gets none until Postgres is back. docs/running.md now says so; serving stored subtitles from the snapshot would close it. Promoted to JS-103, done (#139)."
+    },
+    {
+      "id": "BL-109",
+      "source": "JS-085 verify",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "A film started in the 5 s before an outage is in no snapshot",
+      "status": "promoted",
+      "notes": "Stated in DOMAINS 37; the viewer waits for Postgres. A refresh after each PlaybackInfo, or a shorter interval, would narrow it. Promoted to JS-103, done (#139)."
+    },
+    {
+      "id": "BL-110",
+      "source": "JS-086 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "The item DTO is still a map[string]any that holds the typed sources",
+      "status": "open",
+      "notes": "internal/items/repo.go typeMedia and internal/api/items.go put media.MediaSource values into a map[string]any item. A typed BaseItemDto would carry the same guarantee to the rest of the item."
+    },
+    {
+      "id": "BL-111",
+      "source": "JS-086 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "An unchecked type assertion on PlayState is left in internal/api/sessions.go",
+      "status": "open",
+      "notes": "sessions.go: info[\"PlayState\"].(map[string]any)[\"PlayMethod\"] = method. Outside JS-086's media scope."
+    },
+    {
+      "id": "BL-112",
+      "source": "JS-086 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "The #94/#95 acceptance mutants rename a tag on the whole type, so they no longer exercise a field missing on later streams only",
+      "status": "open",
+      "notes": "With one typed MediaStream such a per-element loss cannot be built, so the mutant is harmless but no longer tests what it is named for. Rename or retire it."
+    },
+    {
+      "id": "BL-113",
+      "source": "JS-084 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "keepRow's registration bound is the caller's heartbeat argument, not a table row",
+      "status": "open",
+      "notes": "context.WithTimeout(held, every) and the warning throttle use the heartbeat main.go passes; the table has no registration row."
+    },
+    {
+      "id": "BL-114",
+      "source": "JS-084 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "No check that a SIGKILLed worker's job is claimed before its 10 s lease runs out",
+      "status": "open",
+      "notes": "TestAKilledWorkerIsReplacedWithinSeconds only logs the time; the before-lease claim is asserted at a 30 s lease only."
+    },
+    {
+      "id": "BL-115",
+      "source": "JS-084 verify",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "Two of the state-permission actions are never consulted by code",
+      "status": "open",
+      "notes": "actForget and actReadOwnRow are in liveState.allows but keepRow's switch decides them; drive the switch from allows() or drop them."
+    },
+    {
+      "id": "BL-116",
+      "source": "JS-084 verify",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "liveTiming looks a row up by string name and panics on a missing one",
+      "status": "open",
+      "notes": "A typo in a rare path would crash a worker at run time; typed vars computed once from the table would fail the build instead. It is also called in a 2 ms poll."
+    },
+    {
+      "id": "BL-117",
+      "source": "JS-086 rebase (lead)",
+      "reviewer": "lead",
+      "severity": "minor",
+      "title": "TestBeingServedFromTheSnapshotIsNotAValidation failed once in two full runs of JS-085's outage tests",
+      "status": "open",
+      "notes": "internal/api/outage_memory_integration_test.go; passed alone and in the next full run. A flake to hunt before it reaches the queue often."
+    },
+    {
+      "id": "BL-118",
+      "source": "JS-104 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "An idle worker returning more than reapHold after an outage began may be forgotten by a live worker's look",
+      "status": "open",
+      "notes": "lookForTheDead forgets once time.Since(lockLost) >= reapHold, and lockLost is not reset on relock. Hypothesis from reading; a scratch test was written at ~/.cache/jellyscale/agents/js104-qa/internal/transcode/scratch_late_return_integration_test.go, not run. Run it first."
+    },
+    {
+      "id": "BL-119",
+      "source": "JS-104 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "TestNoReplicaCodePathForgetsAWorker only catches reap called with a literal \"\" or from an exported function",
+      "status": "open",
+      "notes": "An unexported helper calling reap(ctx, pool, someVar) from a process without a lock would pass it. The removed forgot() assertion in the outage test was the behavioural guard."
+    },
+    {
+      "id": "BL-120",
+      "source": "JS-104 verify",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "The fenced put checks the clock before each put, so a slow put that began in time can finish after the lease",
+      "status": "open",
+      "notes": "Bounded by put duration, not by the 350 ms allowance; a context deadline at ownedUntil on the put would close it."
+    },
+    {
+      "id": "BL-121",
+      "source": "JS-103 verify",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "A failed start-notification LISTEN or NOTIFY is silent, so the under-1-second gap quietly becomes the 5 s refresh",
+      "status": "open",
+      "notes": "listenOnce returns on a failed connect or LISTEN without logging; sessions.go discards the pg_notify error. Behind a transaction-mode pooler notifications never arrive. Log it once, and list the session-mode connection for the stream role in ARCHITECTURE.md and docs/running.md."
+    },
+    {
+      "id": "BL-122",
+      "source": "JS-103 lead",
+      "reviewer": "lead",
+      "severity": "minor",
+      "title": "No check that every stream-role route is routed to stream by the shipped Caddyfile, test/e2e/router.mjs and docs/running.md",
+      "status": "open",
+      "notes": "JS-103 moved /System/Configuration/encoding to stream and updated the Caddyfile and router but not the docs; a test comparing the stream routes with the three rules would catch the next one."
+    },
+    {
+      "id": "BL-123",
+      "source": "merge queue run 43606031119 (lead)",
+      "reviewer": "lead",
+      "severity": "minor",
+      "title": "TestConcurrentStaleSyncsKeepTheNewestPosition: one of 40 concurrent UserData writes answered non-200 in CI",
+      "status": "open",
+      "notes": "internal/api/smallroutes_integration_test.go:480 'writer 26: <nil>' (status not printed). Passed 30 of 30 locally under 4 CPUs. A non-200 there is a viewer's position save failing: print the status and body, then look for a deadlock or serialization error in the UserData upsert. Log saved in ~/.cache/jellyscale/js104-evidence/."
     }
   ]
 }
