@@ -41,7 +41,10 @@ import (
 // polls readiness every second or two needs this much.
 const readinessLead = 3 * time.Second
 
-const adminPassword = "failover-pass"
+// The tests of this package share one database, and an admin made by another
+// test keeps its own password (EnsureAdmin only creates one), so these sign in
+// as a user of their own.
+const adminUser, adminPassword = "failover-admin", "failover-pass"
 
 var buildOnce sync.Once
 var builtDir string
@@ -89,7 +92,7 @@ type replica struct {
 // waits for its liveness route. Its PATH holds no ffmpeg, as in production.
 func start(t *testing.T, role, dsn string, extra map[string]any) *replica {
 	t.Helper()
-	config := map[string]any{"name": "failover", "adminUser": "admin"}
+	config := map[string]any{"name": "failover", "adminUser": adminUser}
 	for k, v := range extra {
 		config[k] = v
 	}
@@ -186,7 +189,7 @@ func tokenFor(t *testing.T, dsn string) string { return start(t, "api", dsn, nil
 func (r *replica) signIn(t *testing.T) string {
 	t.Helper()
 	device := uuid.NewString()
-	request, _ := http.NewRequest("POST", r.url("/Users/AuthenticateByName"), strings.NewReader(`{"Username":"admin","Pw":"`+adminPassword+`"}`))
+	request, _ := http.NewRequest("POST", r.url("/Users/AuthenticateByName"), strings.NewReader(`{"Username":"`+adminUser+`","Pw":"`+adminPassword+`"}`))
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", `MediaBrowser Client="failover", Device="d", DeviceId="`+device+`", Version="1"`)
 	response, err := http.DefaultClient.Do(request)

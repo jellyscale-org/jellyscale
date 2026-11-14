@@ -35,14 +35,22 @@ const isStreamPath = (url) => /^\/(videos\/|playback\/bitratetest(\?|$)|items\/[
 const isDirectPlay = (url) => /^\/videos\/[^/]+\/stream/i.test(url);
 
 function check(backend) {
-  return new Promise((resolve) => {
-    const request = http.get({ host: "127.0.0.1", port: backend.port, path: "/readyz", agent: false, timeout: 500 }, (response) => {
+  if (backend.checking) return Promise.resolve();
+  backend.checking = true;
+  return new Promise((done) => {
+    const resolve = () => { backend.checking = false; done(); };
+    let slow = false;
+    const request = http.get({ host: "127.0.0.1", port: backend.port, path: "/readyz", agent: false, timeout: 2000 }, (response) => {
       response.resume();
       backend.up = response.statusCode !== 503;
       resolve();
     });
-    request.on("timeout", () => request.destroy());
-    request.on("error", () => { backend.up = false; resolve(); });
+    // A slow answer is not a refusal: on a runner whose CPUs are busy with ffmpeg
+    // a live replica can take more than a poll to answer, and marking it down
+    // took every stream replica out mid-seek (JS-031's queue run). It keeps the
+    // state it had; a refused or reset connection, or a 503, takes it out.
+    request.on("timeout", () => { slow = true; request.destroy(); });
+    request.on("error", () => { if (!slow) backend.up = false; resolve(); });
   });
 }
 const pollAll = () => Promise.all([...backends.stream, ...backends.api].map(check));
@@ -109,7 +117,13 @@ function forward(req, res, body, tried) {
       // A client that goes away must cancel the upstream read.
       res.on("close", () => response.destroy());
     });
+  // A client that leaves before the header (hls.js aborts its pending segment on
+  // every seek) destroys the upstream request, which errors: that says nothing
+  // about the replica, and marking it down answered the next segments 503
+  // (JS-031's first queue run).
+  let clientGone = false;
   upstream.on("error", (error) => {
+    if (clientGone) return;
     if (res.headersSent) return res.destroy();
     backend.up = false;
     // A replica that refused the connection got nothing; a GET or HEAD is safe to ask another replica for.
@@ -117,7 +131,7 @@ function forward(req, res, body, tried) {
     res.writeHead(502, { "x-routed-to": name, "x-backend": String(backend.port) });
     res.end();
   });
-  res.on("close", () => upstream.destroy());
+  res.on("close", () => { if (!res.writableFinished) clientGone = true; upstream.destroy(); });
   upstream.end(body);
 }
 
