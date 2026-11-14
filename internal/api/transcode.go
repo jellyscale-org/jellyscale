@@ -130,7 +130,7 @@ func (s *Server) hlsSegment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	began := time.Now()
-	body, err := s.Transcode.Segment(r.Context(), req.spec, req.hash, req.viewer, n, req.params.StartSegment(req.layout))
+	segment, err := s.Transcode.Segment(r.Context(), req.spec, req.hash, req.viewer, n, req.params.StartSegment(req.layout))
 	var failed transcode.FailedError
 	switch {
 	case err == nil:
@@ -168,8 +168,17 @@ func (s *Server) hlsSegment(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
-	w.Header().Set("Content-Type", "video/mp4")
-	w.Write(body) //nolint:errcheck // A client that goes away is not a fault.
+	defer segment.Close()
+	s.sendSegment(w, r, segment)
+}
+
+// sendSegment sends a stored segment while it is read. One that fails part of
+// the way ends the response short of its Content-Length, so the player never
+// takes it for whole; a viewer who left is not a fault.
+func (s *Server) sendSegment(w http.ResponseWriter, r *http.Request, segment *transcode.StoredSegment) {
+	if err := segment.Send(w, r.Method == http.MethodHead); err != nil && r.Context().Err() == nil {
+		s.Log.Warn("a segment was cut short", "path", r.URL.Path, "error", err)
+	}
 }
 
 // deleteActiveEncodings is how jellyfin-web says it is replacing a stream. It

@@ -344,11 +344,11 @@ func (s *Server) segmentOffline(w http.ResponseWriter, r *http.Request, session 
 	if !valid {
 		return false
 	}
-	body, err := s.Transcode.Stored(r.Context(), spec.Hash(), n)
+	segment, err := s.Transcode.Stored(r.Context(), spec.Hash(), n)
 	if err != nil {
-		return false // Not in the store: a job is Postgres's to decide.
+		return false // Not in the store, or the store failed: a job is Postgres's to decide.
 	}
-	w.Header().Set("Content-Type", "video/mp4")
-	w.Write(body) //nolint:errcheck // A client that goes away is not a fault.
+	defer segment.Close()
+	s.sendSegment(w, r, segment)
 	return true
 }

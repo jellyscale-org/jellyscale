@@ -394,7 +394,7 @@ func (s *scannedFilm) firstSegment(t *testing.T, j *Jobs, read func() int64, n, 
 			failed <- err
 			return
 		}
-		_, err := j.Segment(ctx, s.spec, s.hash, s.viewer(psid(viewer)), n, n)
+		_, err := bytesOf(j.Segment(ctx, s.spec, s.hash, s.viewer(psid(viewer)), n, n))
 		failed <- err
 	}()
 	deadline := time.After(2 * time.Minute)

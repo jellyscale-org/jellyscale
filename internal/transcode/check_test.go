@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"jellyscale/internal/playback"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,8 +43,28 @@ func TestCheckLast(t *testing.T) {
 	}
 }
 
+// bytesOf is what a viewer is sent of a segment found: its bytes, whole.
+func bytesOf(seg *StoredSegment, err error) ([]byte, error) {
+	if err != nil {
+		return nil, err
+	}
+	defer seg.Close()
+	rec := httptest.NewRecorder()
+	if err := seg.Send(rec, false); err != nil {
+		return nil, err
+	}
+	return rec.Body.Bytes(), nil
+}
+
+// readSegment is a stored segment's bytes, or an error if it is not there yet.
+func readSegment(ctx context.Context, s store.Store, key string) ([]byte, error) {
+	return bytesOf(openSegment(ctx, s, key))
+}
+
 // cutStore's objects end early however often they are reopened.
 type cutStore struct{ store.Store }
+
+func (cutStore) Stat(context.Context, string) (int64, error) { return 1000, nil }
 
 func (cutStore) Open(context.Context, string, int64) (io.ReadCloser, error) {
 	return io.NopCloser(iotest.ErrReader(io.ErrUnexpectedEOF)), nil
