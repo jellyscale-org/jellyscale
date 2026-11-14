@@ -800,7 +800,7 @@ func TestWorkersWhoseLockBackendsAreEndedOneByOneKeepEveryFfmpeg(t *testing.T) {
 		}
 	}
 	// Longer than a look and a confirmation, so a forgetting would have happened.
-	time.Sleep(3 * reapGrace)
+	time.Sleep(3 * liveTiming("grace"))
 	if after := r.jobRows(t); fmt.Sprint(after) != fmt.Sprint(before) {
 		t.Errorf("the jobs changed:\nbefore %+v\nafter  %+v", before, after)
 	}

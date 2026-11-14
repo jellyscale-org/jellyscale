@@ -350,7 +350,7 @@ func TestAWorkerWhoseLockBackendIsEndedTakesTheLockAgainAndGoesOn(t *testing.T) 
 	})
 	// The worker looks for its row once the lock is back; give the others the
 	// time they would need to forget it, were that going to happen.
-	time.Sleep(2 * reapGrace)
+	time.Sleep(2 * liveTiming("grace"))
 	if _, err := r.fetch(t, j, psid(0), 3); err != nil {
 		t.Fatal(err)
 	}
@@ -747,7 +747,7 @@ func TestAnotherDatabasesLockDoesNotKeepANodeAlive(t *testing.T) {
 // A lock that goes while the connection stands, which no closed socket tells
 // the worker, is found by looking: a worker whose lock Postgres does not show
 // stops its ffmpeg, before the other worker may take its job, and takes the
-// lock again. The look runs at lockCheck whatever the rig's heartbeat.
+// lock again. The look runs at lookPeriod whatever the rig's heartbeat.
 func TestAWorkerWhoseLockIsGoneWithItsConnectionOpenStopsAndLocksAgain(t *testing.T) {
 	// Slow enough that no segment is stored, and so no lease checked, for
 	// seconds, and a production heartbeat: only the look at pg_locks is left
@@ -789,11 +789,11 @@ func TestAWorkerWhoseLockIsGoneWithItsConnectionOpenStopsAndLocksAgain(t *testin
 	p.cut()
 	cut := time.Now()
 	waitFor(t, "ffmpeg to stop", 5*time.Second, func() bool { return len(r.ffmpegProcesses()) == 0 })
-	// Reap may give the job to the other worker reapGrace after it sees the
+	// Reap may give the job to the other worker grace after it sees the
 	// lock gone, which can be at once: ffmpeg must be gone by then.
 	// That is owned.check below: never two ffmpeg at once, and no job under two
 	// workers. The time is logged.
-	t.Logf("lock gone to ffmpeg gone: %v (the grace is %v)", time.Since(cut).Round(time.Millisecond), reapGrace)
+	t.Logf("lock gone to ffmpeg gone: %v (the grace is %v)", time.Since(cut).Round(time.Millisecond), liveTiming("grace"))
 	// A viewer waiting on a later segment reaps the worker and has the job
 	// queued again, for whichever worker holds its lock.
 	if _, err := r.fetch(t, j, psid(0), 3); err != nil {
@@ -908,7 +908,7 @@ func TestAWorkerWhoseRowIsDeletedStopsItsJobs(t *testing.T) {
 	}
 	deleted := time.Now()
 	waitFor(t, "ffmpeg to stop", 5*time.Second, func() bool { return len(r.ffmpegProcesses()) == 0 })
-	t.Logf("row deleted to ffmpeg gone: %v (the grace is %v)", time.Since(deleted).Round(time.Millisecond), reapGrace)
+	t.Logf("row deleted to ffmpeg gone: %v (the grace is %v)", time.Since(deleted).Round(time.Millisecond), liveTiming("grace"))
 	waitFor(t, "the job to end", 5*time.Second, func() bool {
 		return r.count(t, "SELECT count(*) FROM transcode_jobs WHERE id = $1 AND state = 'running'", first) == 0
 	})
@@ -969,7 +969,7 @@ func TestAWorkerWithoutItsRowRenewsClaimsAndStoresNothing(t *testing.T) {
 	}
 }
 
-// Reap gives a dead worker's jobs reapLease to end, not a lease that is gone at
+// Reap gives a dead worker's jobs forgottenLease to end, not a lease that is gone at
 // once: that half second is what a worker that lost its lock while it lives needs to
 // stop its ffmpeg before another takes the job.
 func TestReapLeavesADeadWorkersJobsAGraceToEnd(t *testing.T) {
@@ -998,7 +998,7 @@ func TestReapLeavesADeadWorkersJobsAGraceToEnd(t *testing.T) {
 		t.Fatalf("Reap forgot %v and cut %v, want [dead-x] and [%d]", workers, jobs, id)
 	}
 	// The lease was cut to a grace after the reap: not gone at once (it ends after
-	// the moment before Reap ran) and not left at its 10 s (it ends within reapLease
+	// the moment before Reap ran) and not left at its 10 s (it ends within forgottenLease
 	// of the moment after). Both moments are the database's clock, read in order,
 	// so the runner's speed does not enter.
 	var lease time.Time
@@ -1008,13 +1008,13 @@ func TestReapLeavesADeadWorkersJobsAGraceToEnd(t *testing.T) {
 	if !lease.After(startedAt) {
 		t.Error("the dead worker's job lease was gone at once: its worker has no time to stop ffmpeg")
 	}
-	if lease.After(finishedAt.Add(reapLease)) {
-		t.Errorf("the dead worker's job lease was left at more than %v after the reap", reapLease)
+	if lease.After(finishedAt.Add(liveTiming("forgottenLease"))) {
+		t.Errorf("the dead worker's job lease was left at more than %v after the reap", liveTiming("forgottenLease"))
 	}
 }
 
 // A worker forgets another only when it holds its own lock in the same look,
-// and has not lost it within reapHold, and finds the other's lock gone twice,
+// and has not lost it within hold, and finds the other's lock gone twice,
 // half a grace apart. Each condition alone keeps a live worker from being
 // forgotten by one that cannot tell.
 func TestAWorkerForgetsAnotherOnlyOnTheConditionsOfALookThatCanBeTrusted(t *testing.T) {
@@ -1028,7 +1028,7 @@ func TestAWorkerForgetsAnotherOnlyOnTheConditionsOfALookThatCanBeTrusted(t *test
 	look := func() {
 		t.Helper()
 		w.lookForTheDead(ctx)
-		time.Sleep(reapGrace/2 + 50*time.Millisecond)
+		time.Sleep(liveTiming("grace")/2 + 50*time.Millisecond)
 		w.lookForTheDead(ctx)
 	}
 
@@ -1054,8 +1054,8 @@ func TestAWorkerForgetsAnotherOnlyOnTheConditionsOfALookThatCanBeTrusted(t *test
 		t.Error("a worker whose lock ended a moment ago forgot another")
 	}
 
-	// Held, and not lost within reapHold: the other's lock was gone in both looks.
-	w.lockLost = time.Now().Add(-reapHold)
+	// Held, and not lost within hold: the other's lock was gone in both looks.
+	w.lockLost = time.Now().Add(-liveTiming("hold"))
 	look()
 	if !forgotten() {
 		t.Error("a worker that holds its lock did not forget a node whose lock was gone in two looks")

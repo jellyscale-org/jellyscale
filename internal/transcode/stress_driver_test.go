@@ -335,12 +335,12 @@ func (d *driver) startWorkers(ctx context.Context, t testing.TB, dsn string) (*f
 	return f, nil
 }
 
-// reapLoop is keepRow's look every lockCheck.
+// reapLoop is keepRow's look every lookPeriod.
 func (d *driver) reapLoop(ctx context.Context, w *Worker) {
-	if !sleep(ctx, rand.N(lockCheck)) {
+	if !sleep(ctx, rand.N(liveTiming("lookPeriod"))) {
 		return
 	}
-	ticker := time.NewTicker(lockCheck)
+	ticker := time.NewTicker(liveTiming("lookPeriod"))
 	defer ticker.Stop()
 	for {
 		d.rec.want("Reap")

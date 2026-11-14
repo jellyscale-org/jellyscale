@@ -391,9 +391,9 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 	go func() {
 		defer running.Done()
 		if worker {
-			w.Present(ctx, strings.Join(roles, ","), cfg.TranscodeStore, 3*time.Second)
+			w.Present(ctx, strings.Join(roles, ","), cfg.TranscodeStore, transcode.LivenessHeartbeat())
 		} else {
-			transcode.Register(ctx, pool, log, id, strings.Join(roles, ","), cfg.TranscodeStore, slots, 3*time.Second)
+			transcode.Register(ctx, pool, log, id, strings.Join(roles, ","), cfg.TranscodeStore, slots, transcode.LivenessHeartbeat())
 		}
 	}()
 	if worker {

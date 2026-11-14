@@ -526,7 +526,7 @@ func (c *chaos) judge(jobs []jobSnap, nodes map[string]bool, viewers []viewerSna
 	if c.noLive == nil {
 		c.noLive = map[string]time.Time{}
 	}
-	pgNear := c.pgAway || earlier(time.Since(c.pgEnded), reapHold+5*time.Second)
+	pgNear := c.pgAway || earlier(time.Since(c.pgEnded), liveTiming("hold")+5*time.Second)
 	for _, hash := range c.hashes {
 		waiting := false
 		for _, v := range c.viewers {
@@ -690,7 +690,7 @@ func (c *chaos) kill(i int, step faultStep) {
 		}
 	}
 	c.mu.Lock()
-	recent := c.pgAway || earlier(time.Since(c.pgEnded), reapHold+time.Second)
+	recent := c.pgAway || earlier(time.Since(c.pgEnded), liveTiming("hold")+time.Second)
 	c.mu.Unlock()
 	pgSoon := false
 	for _, other := range c.plan.Steps {
@@ -712,7 +712,7 @@ func (c *chaos) kill(i int, step faultStep) {
 		}
 	}()
 	if err != nil || !free || recent || pgSoon || !waiting {
-		c.t.Logf("the kill of %s is not held to the resume check: lease read %v, another worker free %v, Postgres away in the last %v: %v, a restart planned within a lease %v, a viewer waiting on the job %v", w.id, err == nil, free, reapHold, recent, pgSoon, waiting)
+		c.t.Logf("the kill of %s is not held to the resume check: lease read %v, another worker free %v, Postgres away in the last %v: %v, a restart planned within a lease %v, a viewer waiting on the job %v", w.id, err == nil, free, liveTiming("hold"), recent, pgSoon, waiting)
 		return
 	}
 	c.t.Logf("the kill of %s is held to the resume check: job %d with its lease to %v", w.id, job, lease.Format(time.StampMilli))
