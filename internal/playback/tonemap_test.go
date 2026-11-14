@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"jellyscale/internal/media"
 )
 
 // hdrFilm is a copyable film whose video is the stream given.
@@ -26,17 +28,17 @@ func TestToneMapFollowsTheTransferFunction(t *testing.T) {
 		want   string
 	}{
 		{"sdr", func(v *Stream) {}, ""},
-		{"hdr10", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "HDR10", PQ }, PQ},
-		{"hlg", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "HLG", HLG }, HLG},
-		{"dolby vision 8.1 with an hdr10 base", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "DOVIWithHDR10", PQ }, PQ},
-		{"dolby vision 8.1 with hdr10+", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "DOVIWithHDR10Plus", PQ }, PQ},
-		{"dolby vision 8.4 with an hlg base", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "DOVIWithHLG", HLG }, HLG},
-		{"dolby vision 7 with an hdr10 base", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "DOVIWithEL", PQ }, PQ},
+		{"hdr10", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "HDR10", media.Ptr(PQ) }, PQ},
+		{"hlg", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "HLG", media.Ptr(HLG) }, HLG},
+		{"dolby vision 8.1 with an hdr10 base", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "DOVIWithHDR10", media.Ptr(PQ) }, PQ},
+		{"dolby vision 8.1 with hdr10+", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "DOVIWithHDR10Plus", media.Ptr(PQ) }, PQ},
+		{"dolby vision 8.4 with an hlg base", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "DOVIWithHLG", media.Ptr(HLG) }, HLG},
+		{"dolby vision 7 with an hdr10 base", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "DOVIWithEL", media.Ptr(PQ) }, PQ},
 		// Profile 5's base layer is IPTPQc2, which is neither: mapped as PQ it comes
 		// out green and purple, so it is left as before even if the file says PQ.
-		{"dolby vision 5", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "DOVI", PQ }, ""},
+		{"dolby vision 5", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "DOVI", media.Ptr(PQ) }, ""},
 		{"dolby vision 5 that says nothing", func(v *Stream) { v.VideoRangeType = "DOVI" }, ""},
-		{"dolby vision 8.2 with an sdr base", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "DOVIWithSDR", "bt709" }, ""},
+		{"dolby vision 8.2 with an sdr base", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "DOVIWithSDR", media.Ptr("bt709") }, ""},
 		{"hdr scanned before the transfer was recorded", func(v *Stream) { v.VideoRangeType = "HDR10" }, ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -54,8 +56,8 @@ func TestHDRH264IsNotCopied(t *testing.T) {
 	for _, c := range profile.CodecProfiles {
 		c.Conditions = slicesDeleteRange(c.Conditions)
 	}
-	hdr10 := hdrFilm("h264", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "HDR10", PQ })
-	hlg := hdrFilm("h264", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "HLG", HLG })
+	hdr10 := hdrFilm("h264", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "HDR10", media.Ptr(PQ) })
+	hlg := hdrFilm("h264", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "HLG", media.Ptr(HLG) })
 	unscanned := hdrFilm("h264", func(v *Stream) { v.VideoRangeType = "" })
 	sdr := hdrFilm("h264", func(v *Stream) { v.VideoRangeType = "SDR" })
 	for name, test := range map[string]struct {
@@ -101,8 +103,8 @@ func TestToneMapIsInTheSpecFromTheSource(t *testing.T) {
 		return s
 	}
 	sdr := hdrFilm("hevc", func(v *Stream) { v.VideoRangeType = "SDR" })
-	pq := hdrFilm("hevc", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "HDR10", PQ })
-	hlg := hdrFilm("hevc", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "HLG", HLG })
+	pq := hdrFilm("hevc", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "HDR10", media.Ptr(PQ) })
+	hlg := hdrFilm("hevc", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "HLG", media.Ptr(HLG) })
 	if got := spec(pq, "").ToneMap; got != PQ {
 		t.Errorf("an HDR10 film has ToneMap %q", got)
 	}
@@ -139,7 +141,7 @@ func TestToneMapIsInTheSpecFromTheSource(t *testing.T) {
 // a copy, so an older api replica's copy keeps playing during an upgrade, while
 // the new api's Decide never offers one for an HDR film (TestHDRH264IsNotCopied).
 func TestStreamReplicaServesAnOlderAPIsH264HDRCopy(t *testing.T) {
-	hdr := hdrFilm("h264", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "HDR10", PQ })
+	hdr := hdrFilm("h264", func(v *Stream) { v.VideoRangeType, v.ColorTransfer = "HDR10", media.Ptr(PQ) })
 	p, err := params(t, "mediasourceid="+sourceID+"&playsessionid=abc&videocodec=copy", hdr)
 	if err != nil {
 		t.Fatal(err)
@@ -186,7 +188,7 @@ func TestDecideMatchesJellyfinForHDR(t *testing.T) {
 			source := copyable("mkv", "aac")
 			video := &source.Streams[0]
 			video.Codec, video.Profile, video.Level, video.BitDepth = want.Video.Codec, want.Video.Profile, want.Video.Level, want.Video.BitDepth
-			video.VideoRangeType, video.ColorTransfer = want.Video.VideoRangeType, want.Video.ColorTransfer
+			video.VideoRangeType, video.ColorTransfer = want.Video.VideoRangeType, media.Ptr(want.Video.ColorTransfer)
 			d := Decide(request(t, `{"AudioStreamIndex": 1}`), source, true)
 			if d.DirectPlay != want.SupportsDirectPlay {
 				t.Fatalf("direct play %v, Jellyfin %v", d.DirectPlay, want.SupportsDirectPlay)

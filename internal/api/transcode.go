@@ -51,10 +51,7 @@ func (s *Server) hlsRequestFor(w http.ResponseWriter, r *http.Request) (hlsReque
 		return req, false
 	}
 	req.source = source
-	if req.media, err = playbackSource(source); err != nil {
-		s.fail(w, r, err)
-		return req, false
-	}
+	req.media = playbackSource(source)
 	req.params, err = playback.ParseParams(r.URL.Query(), req.media)
 	if err == nil && req.params.Copy {
 		// The request names the copy, so it is the one place that reads the index.
@@ -94,10 +91,9 @@ func (s *Server) hlsRequestFor(w http.ResponseWriter, r *http.Request) (hlsReque
 	return req, true
 }
 
-func playbackSource(source items.Source) (playback.Source, error) {
-	streams, err := playback.ParseStreams(source.Streams)
+func playbackSource(source items.Source) playback.Source {
 	return playback.Source{ID: db.CompactID(source.ID), ETag: source.ETag, Container: source.Container,
-		Size: source.Size, RunTimeTicks: source.RunTimeTicks, Streams: streams}, err
+		Size: source.Size, RunTimeTicks: source.RunTimeTicks, Streams: source.Streams}
 }
 
 // query is what every playlist line carries. The client's token goes in it

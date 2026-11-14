@@ -353,7 +353,7 @@ func TestPlaybackInfoDeliversFilesAndFontsWithTheToken(t *testing.T) {
 	}
 	// The details page chooses none either.
 	sources, _, err := f.apis[0].Items.MediaSources(context.Background(), f.text)
-	if err != nil || sources[0]["DefaultSubtitleStreamIndex"] != nil {
+	if err != nil || sources[0].DefaultSubtitleStreamIndex != nil {
 		t.Errorf("the stored item has a default: %v %v", sources, err)
 	}
 	_, raw := f.do(t, 0, "GET", "/Items/"+f.text, f.token, nil)
@@ -865,7 +865,8 @@ func TestKilledConversionKeepsTheTrack(t *testing.T) {
 // fingerprint, and its next scan reads the film again to list them.
 func TestRescanListsTheFilesOfAFilmScannedBefore(t *testing.T) {
 	f := externalEnv(t, "")
-	mustExec(t, f.pool, "UPDATE media_sources SET sidecars = NULL")
+	// As the previous release left it: JS-086 gives every source it stored a probe version below the binary's.
+	mustExec(t, f.pool, "UPDATE media_sources SET sidecars = NULL, probe_version = 0")
 	mustExec(t, f.pool, `UPDATE media_sources SET streams = jsonb_path_query_array(streams, '$[*] ? (@.IsExternal != true && @.Type != "Attachment")'), next_index = 0`)
 	mustExec(t, f.pool, `UPDATE items SET dto = jsonb_set(jsonb_set(dto, '{MediaSources,0,MediaAttachments}', '[]'), '{MediaSources,0,MediaStreams}',
 		jsonb_path_query_array(dto, '$.MediaSources[0].MediaStreams[*] ? (@.IsExternal != true)'))`)
@@ -877,8 +878,8 @@ func TestRescanListsTheFilesOfAFilmScannedBefore(t *testing.T) {
 		t.Errorf("after the scan: %s", got)
 	}
 	sources, _, err := f.apis[0].Items.MediaSources(context.Background(), f.text)
-	if err != nil || len(sources[0]["MediaAttachments"].([]any)) != 1 {
-		t.Errorf("attachments %v: %v", sources[0]["MediaAttachments"], err)
+	if err != nil || len(sources[0].MediaAttachments) != 1 {
+		t.Errorf("attachments %v: %v", sources[0].MediaAttachments, err)
 	}
 	before := len(f.tools())
 	f.scan(t)
@@ -936,7 +937,9 @@ func TestUpgradeScanProbesMatroskaAndKeepsItsWork(t *testing.T) {
 	// As the previous release left them: no fingerprints, and an index that
 	// would show if it were read again. Other tests' rows share the database,
 	// so the checks below name the scanned item, not just the object key.
-	mustExec(t, f.pool, "UPDATE media_sources SET sidecars = NULL")
+	// The Matroska films were stored by the previous release, so they are older than this binary's probe;
+	// the mp4, which that release listed the files of without opening, is what a scan lists again without a probe.
+	mustExec(t, f.pool, "UPDATE media_sources SET sidecars = NULL, probe_version = CASE WHEN container = 'mkv' THEN 0 ELSE probe_version END")
 	mustExec(t, f.pool, "UPDATE media_sources SET keyframes = '{0,5000000}', video_end = 777")
 	keyframes := func(key string) string {
 		return scalar[string](t, f.pool, "SELECT m.keyframes::text || ' ' || m.video_end FROM media_sources m JOIN items i ON i.id = m.item_id WHERE m.store_key = $1 AND i.natural_key = 'video:' || $1", key)

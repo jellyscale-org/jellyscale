@@ -295,7 +295,7 @@ func TestScanProbesAgainWhatWasStoredWithoutRange(t *testing.T) {
 		t.Fatal("a fresh scan didn't record the range")
 	}
 	if _, err := f.pool.Exec(context.Background(),
-		`UPDATE media_sources SET streams = '[{"Index":0,"Type":"Video","Codec":"h264"}]'`); err != nil {
+		`UPDATE media_sources SET probe_version = 0, streams = '[{"Index":0,"Type":"Video","Codec":"h264"}]'`); err != nil {
 		t.Fatal(err)
 	}
 	f.scan(t)
@@ -312,7 +312,7 @@ func TestScanProbesAgainWhatWasStoredWithoutRange(t *testing.T) {
 		t.Fatal("a fresh scan didn't record the transfer function")
 	}
 	if _, err := f.pool.Exec(context.Background(),
-		`UPDATE media_sources SET streams = '[{"Index":0,"Type":"Video","Codec":"h264","VideoRangeType":"SDR"}]'`); err != nil {
+		`UPDATE media_sources SET probe_version = 0, streams = '[{"Index":0,"Type":"Video","Codec":"h264","VideoRangeType":"SDR"}]'`); err != nil {
 		t.Fatal(err)
 	}
 	f.scan(t)
@@ -408,7 +408,7 @@ func TestScanReadsTheKeyframeIndex(t *testing.T) {
 	}
 	// A library scanned before these were copied has no index, and no bit depth
 	// in its streams; the next scan reads both without the file changing.
-	if _, err := f.pool.Exec(context.Background(), `UPDATE media_sources SET keyframes = NULL,
+	if _, err := f.pool.Exec(context.Background(), `UPDATE media_sources SET keyframes = NULL, probe_version = 0,
 		streams = (SELECT jsonb_agg(s - 'BitDepth') FROM jsonb_array_elements(streams) s) WHERE container IN ('mkv', 'mp4')`); err != nil {
 		t.Fatal(err)
 	}
@@ -512,7 +512,7 @@ func TestScanListsImageSubtitles(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	mustExec(`UPDATE media_sources SET keyframes = '{7}', streams = (SELECT jsonb_agg(s - 'IsImageSubtitleStream') FROM jsonb_array_elements(streams) s)`)
+	mustExec(`UPDATE media_sources SET keyframes = '{7}', probe_version = 0, streams = (SELECT jsonb_agg(s - 'IsImageSubtitleStream') FROM jsonb_array_elements(streams) s)`)
 	mustExec(`UPDATE items SET dto = jsonb_set(jsonb_set(dto, '{MediaStreams}', (SELECT jsonb_agg(s) FROM jsonb_array_elements(dto->'MediaStreams') s WHERE s->>'Type' <> 'Subtitle')), '{MediaSources,0,MediaStreams}', (SELECT jsonb_agg(s) FROM jsonb_array_elements(dto->'MediaStreams') s WHERE s->>'Type' <> 'Subtitle'))`)
 	if scalar[bool](t, f.pool, listed) {
 		t.Fatal("the test did not hide the track")
@@ -610,7 +610,7 @@ func TestScanStoresChapters(t *testing.T) {
 	// had, and the column is NULL. The scan reads the chapters, keeps the
 	// keyframe index it has (a value a read would not write) and the item.
 	id := scalar[string](t, f.pool, "SELECT id::text FROM items WHERE name = 'Chaptered Film kept'")
-	if _, err := f.pool.Exec(context.Background(), `UPDATE media_sources SET chapters = NULL, keyframes = ARRAY[12345]::bigint[];
+	if _, err := f.pool.Exec(context.Background(), `UPDATE media_sources SET chapters = NULL, probe_version = 0, keyframes = ARRAY[12345]::bigint[];
 		UPDATE items SET dto = jsonb_set(dto, '{Chapters}', '[]')`); err != nil {
 		t.Fatal(err)
 	}
@@ -693,7 +693,7 @@ func TestScanProbesAgainFilmsScannedBeforeTheRangeLabels(t *testing.T) {
 		"Plus":      `[{"Index":0,"Type":"Video","Codec":"hevc","VideoRangeType":"HDR10","ColorTransfer":"smpte2084"}]`,
 		"Plain":     `[{"Index":0,"Type":"Video","Codec":"h264","VideoRangeType":"SDR","ColorTransfer":""}]`,
 	} {
-		if _, err := f.pool.Exec(ctx, `UPDATE media_sources SET streams = $2::jsonb WHERE item_id = (SELECT id FROM items WHERE name LIKE $1 || '%')`, name, old); err != nil {
+		if _, err := f.pool.Exec(ctx, `UPDATE media_sources SET probe_version = 0, streams = $2::jsonb WHERE item_id = (SELECT id FROM items WHERE name LIKE $1 || '%')`, name, old); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := f.pool.Exec(ctx, `UPDATE items SET dto = jsonb_set(jsonb_set(dto, '{MediaStreams}', $2::jsonb), '{MediaSources,0,MediaStreams}', $2::jsonb) WHERE name LIKE $1 || '%'`, name, old); err != nil {

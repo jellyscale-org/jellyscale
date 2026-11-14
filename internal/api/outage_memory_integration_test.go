@@ -145,10 +145,7 @@ func (p *playAway) hashOf(t *testing.T, values url.Values) string {
 	if err != nil || !found {
 		t.Fatal(err)
 	}
-	media, err := playbackSource(source)
-	if err != nil {
-		t.Fatal(err)
-	}
+	media := playbackSource(source)
 	if media.Keyframes, media.VideoEnd, err = p.env.apis[0].Items.Keyframes(ctx, source.ID); err != nil {
 		t.Fatal(err)
 	}

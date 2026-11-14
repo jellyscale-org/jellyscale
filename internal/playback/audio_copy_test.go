@@ -39,7 +39,7 @@ func audioFilm(t *testing.T, capture audioCopyCapture, file string, bitrate int6
 	source := film(container, "h264", "x")
 	source.Streams[0].IsInterlaced = true
 	a := capture.SourceAudio[file]
-	source.Streams[1] = Stream{Index: 1, Type: "Audio", Codec: a.Codec, Profile: a.Profile, Channels: a.Channels, Bitrate: bitrate, IsDefault: true}
+	source.Streams[1] = Stream{Index: 1, Type: "Audio", Codec: a.Codec, Profile: a.Profile, Channels: a.Channels, BitRate: bitrate, IsDefault: true}
 	return source
 }
 
@@ -118,7 +118,7 @@ func TestAudioCopyMatchesJellyfin(t *testing.T) {
 func audioSource(codec, profile string, channels int, bitrate int64) Source {
 	source := film("mkv", "h264", "x")
 	source.Streams[0].IsInterlaced = true
-	source.Streams[1] = Stream{Index: 1, Type: "Audio", Codec: codec, Profile: profile, Channels: channels, Bitrate: bitrate, IsDefault: true}
+	source.Streams[1] = Stream{Index: 1, Type: "Audio", Codec: codec, Profile: profile, Channels: channels, BitRate: bitrate, IsDefault: true}
 	return source
 }
 
@@ -188,9 +188,9 @@ func TestDecideCopiesAudioWhenTheProfileTakesIt(t *testing.T) {
 			// A copied track counts against the cap by its own bitrate; the parts
 			// still sum to the cap, and the spec has the track's own bitrate.
 			if test.cap != Unlimited && d.VideoBitrate+d.AudioBitrate != test.cap {
-				t.Errorf("split %d + %d of %d for a %d track", d.VideoBitrate, d.AudioBitrate, test.cap, stream.Bitrate)
+				t.Errorf("split %d + %d of %d for a %d track", d.VideoBitrate, d.AudioBitrate, test.cap, stream.BitRate)
 			}
-			want := stream.Bitrate
+			want := stream.BitRate
 			if want == 0 {
 				want = unknownAudioBitrate
 			}
@@ -200,7 +200,7 @@ func TestDecideCopiesAudioWhenTheProfileTakesIt(t *testing.T) {
 			if d.AudioBitrate < MinAudioBitrate || d.AudioBitrate > maxCopiedAudioBitrate {
 				t.Errorf("the URL's audio bitrate %d is out of range", d.AudioBitrate)
 			}
-			if spec.AudioBitrate != stream.Bitrate || spec.AudioCopy != stream.Codec {
+			if spec.AudioBitrate != stream.BitRate || spec.AudioCopy != stream.Codec {
 				t.Errorf("spec %+v", spec)
 			}
 		})
@@ -263,7 +263,7 @@ func TestAudioCopyIsInTheHashAndOnlyThere(t *testing.T) {
 // the hash it had before JS-026.
 func TestVideoCopyCopiesTheAudioTheURLLists(t *testing.T) {
 	source := copyable("mkv", "aac")
-	source.Streams[1].Profile, source.Streams[1].Bitrate = "LC", 128_000
+	source.Streams[1].Profile, source.Streams[1].BitRate = "LC", 128_000
 	p, err := params(t, "mediasourceid="+sourceID+"&playsessionid=abc&videocodec=copy&audiocodec=aac,flac", source)
 	if err != nil {
 		t.Fatal(err)

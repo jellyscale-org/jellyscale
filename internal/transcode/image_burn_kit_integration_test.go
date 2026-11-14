@@ -332,7 +332,7 @@ func (s *scannedFilm) besideTrack(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, stream := range streams {
-		if stream.IsImageSubtitleStream && stream.Fingerprint != "" {
+		if stream.IsImage() && stream.Fingerprint != "" {
 			s.track, s.fingerprint = stream.Index, stream.Fingerprint
 			s.burnt()
 			return

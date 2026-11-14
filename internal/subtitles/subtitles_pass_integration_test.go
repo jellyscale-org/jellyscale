@@ -70,7 +70,7 @@ func threeTrackFilm(t *testing.T, broken int) (dir string, src items.Source) {
 	for i := 1; i <= 3; i++ {
 		streams += fmt.Sprintf(`, {"Index": %d, "Type": "Subtitle", "Codec": "subrip", "IsTextSubtitleStream": true}`, i)
 	}
-	return dir, items.Source{ID: "src", Key: "film.mkv", ETag: "v1", Size: info.Size(), Streams: []byte(streams + "]")}
+	return dir, items.Source{ID: "src", Key: "film.mkv", ETag: "v1", Size: info.Size(), Streams: jsonStreams(t, streams+"]")}
 }
 
 // A film with one text track ffmpeg refuses costs at most two reads, not one

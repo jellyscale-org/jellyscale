@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"jellyscale/internal/media"
 )
 
 // capturedProfile is the DeviceProfile jellyfin-web 12.4 sent from Chrome,
@@ -378,7 +380,7 @@ func withSubtitles(source Source) Source {
 	text, unlisted := stream("Subtitle", "subrip", 10), stream("Subtitle", "hdmv_text_subtitle", 11)
 	pgs, vobsub := stream("Subtitle", "PGSSUB", 12), stream("Subtitle", "DVDSUB", 13)
 	text.IsTextSubtitleStream = true
-	pgs.IsImageSubtitleStream, vobsub.IsImageSubtitleStream = true, true
+	pgs.IsImageSubtitleStream, vobsub.IsImageSubtitleStream = media.Ptr(true), media.Ptr(true)
 	source.Streams = append(source.Streams, text, unlisted, pgs, vobsub)
 	return source
 }

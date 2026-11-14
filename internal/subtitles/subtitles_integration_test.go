@@ -5,6 +5,7 @@ package subtitles
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -19,6 +20,7 @@ import (
 	"golang.org/x/text/encoding/japanese"
 
 	"jellyscale/internal/items"
+	model "jellyscale/internal/media"
 	"jellyscale/internal/store"
 	"jellyscale/internal/testenv"
 )
@@ -231,11 +233,11 @@ func TestFillFontsPutsTheFontsInTheStore(t *testing.T) {
 		t.Fatalf("ffmpeg: %v: %s", err, out)
 	}
 	media, assets := store.NewPosix(dir), store.NewPosix(t.TempDir())
-	src := items.Source{ID: "src", Key: "film.mkv", ETag: "v1", Streams: []byte(`[
-		{"Index": 0, "Type": "Video"},
-		{"Index": 1, "Type": "Attachment", "FileName": "notes.txt", "MimeType": "text/plain"},
-		{"Index": 2, "Type": "Attachment", "FileName": "Regular.ttf", "MimeType": "font/ttf"},
-		{"Index": 3, "Type": "Attachment", "FileName": "Bold.otf", "MimeType": "font/otf"}]`)}
+	src := items.Source{ID: "src", Key: "film.mkv", ETag: "v1", Streams: []model.MediaStream{
+		{Index: 0, Type: "Video"},
+		{Index: 1, Type: "Attachment", FileName: "notes.txt", MimeType: "text/plain"},
+		{Index: 2, Type: "Attachment", FileName: "Regular.ttf", MimeType: "font/ttf"},
+		{Index: 3, Type: "Attachment", FileName: "Bold.otf", MimeType: "font/otf"}}}
 	ctx := context.Background()
 	if _, found, _ := ReadFonts(ctx, assets, src); found {
 		t.Fatal("done before it began")
@@ -350,7 +352,7 @@ func TestFillFontsStoreFailingMidReadIsNotRemembered(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	src := items.Source{ID: "src", Key: "film.mkv", ETag: "v1", Size: info.Size(), Streams: []byte(`[
+	src := items.Source{ID: "src", Key: "film.mkv", ETag: "v1", Size: info.Size(), Streams: jsonStreams(t, `[
 		{"Index": 0, "Type": "Video"},
 		{"Index": 1, "Type": "Attachment", "FileName": "Regular.ttf", "MimeType": "font/ttf"}]`)}
 	assets := store.NewPosix(t.TempDir())
@@ -391,7 +393,7 @@ func TestFillStoreFailingMidReadIsNotTheFilesFault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	src := items.Source{ID: "src", Key: "film.mkv", ETag: "v1", Size: info.Size(), Streams: []byte(`[{"Index": 0, "Type": "Video"}, {"Index": 1, "Type": "Subtitle", "Codec": "subrip"}]`)}
+	src := items.Source{ID: "src", Key: "film.mkv", ETag: "v1", Size: info.Size(), Streams: jsonStreams(t, `[{"Index": 0, "Type": "Video"}, {"Index": 1, "Type": "Subtitle", "Codec": "subrip"}]`)}
 	assets := store.NewPosix(t.TempDir())
 	ctx := context.Background()
 	log := slog.New(slog.DiscardHandler)
@@ -438,7 +440,7 @@ func TestFillFontsSkipsAFontFfmpegDidNotWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 	media, assets := store.NewPosix(dir), store.NewPosix(t.TempDir())
-	src := items.Source{ID: "src", Key: "film.mkv", ETag: "v1", Streams: []byte(`[
+	src := items.Source{ID: "src", Key: "film.mkv", ETag: "v1", Streams: jsonStreams(t, `[
 		{"Index": 0, "Type": "Video"},
 		{"Index": 1, "Type": "Attachment", "FileName": "Regular.ttf", "MimeType": "font/ttf"},
 		{"Index": 2, "Type": "Attachment", "FileName": "Empty.ttf", "MimeType": "font/ttf"}]`)}
@@ -485,7 +487,7 @@ func TestFillTextLeavesOutATrackFFmpegRefuses(t *testing.T) {
 	for i := 1; i <= 3; i++ {
 		streams += fmt.Sprintf(`, {"Index": %d, "Type": "Subtitle", "Codec": "subrip", "IsTextSubtitleStream": true}`, i)
 	}
-	src := items.Source{ID: "src", Key: "film.mkv", ETag: "v1", Size: info.Size(), Streams: []byte(streams + "]")}
+	src := items.Source{ID: "src", Key: "film.mkv", ETag: "v1", Size: info.Size(), Streams: jsonStreams(t, streams+"]")}
 	assets := store.NewPosix(t.TempDir())
 	ctx := context.Background()
 	if _, err := ExtractAll(ctx, filepath.Join(dir, "film.mkv"), []int{1, 2, 3}); !errors.Is(err, ErrBadFile) {
@@ -500,4 +502,14 @@ func TestFillTextLeavesOutATrackFFmpegRefuses(t *testing.T) {
 			t.Errorf("track %d: stored %v, err %v; want stored %v", index, found, err, want)
 		}
 	}
+}
+
+// jsonStreams reads a list of streams written as a stored row has it.
+func jsonStreams(t *testing.T, raw string) []model.MediaStream {
+	t.Helper()
+	var streams []model.MediaStream
+	if err := json.Unmarshal([]byte(raw), &streams); err != nil {
+		t.Fatal(err)
+	}
+	return streams
 }

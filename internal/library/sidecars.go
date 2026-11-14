@@ -17,6 +17,7 @@ import (
 	"golang.org/x/text/language"
 	"golang.org/x/text/language/display"
 
+	"jellyscale/internal/media"
 	"jellyscale/internal/store"
 )
 
@@ -221,11 +222,11 @@ func fingerprintOf(file store.Object) string {
 // counter, which only grows, so the index of a removed file is never given
 // again. floor is the number of the film's own streams, which the files come
 // after, and counter the last next. next is the counter to store.
-func externalStreams(video store.Object, set sidecarSet, old []map[string]any, floor, counter int) (streams []map[string]any, next int) {
-	before := map[string]map[string]any{}
+func externalStreams(video store.Object, set sidecarSet, old []media.MediaStream, floor, counter int) (streams []media.MediaStream, next int) {
+	before := map[string]media.MediaStream{}
 	for _, stream := range old {
-		if path, ok := stream["Path"].(string); ok && stream["IsExternal"] == true {
-			before[path] = stream
+		if stream.IsExternal && stream.Path != "" {
+			before[stream.Path] = stream
 		}
 	}
 	next = max(counter, floor, nextIndex(old))
@@ -242,44 +243,38 @@ func externalStreams(video store.Object, set sidecarSet, old []map[string]any, f
 		index, unreadable := -1, false
 		// A film that was replaced by one with more streams of its own can
 		// have taken the index; the file is then numbered again.
-		if prev, ok := before[file.Key]; ok && indexOf(prev) >= floor {
-			index = indexOf(prev)
-			unreadable = prev["Unreadable"] == true && prev["Fingerprint"] == fingerprint
+		if prev, ok := before[file.Key]; ok && prev.Index >= floor {
+			index = prev.Index
+			unreadable = prev.Unreadable && prev.Fingerprint == fingerprint
 		}
 		if index < 0 {
 			index, next = next, next+1
 		}
-		stream := map[string]any{
-			"Index": index, "Type": "Subtitle", "Codec": name.Codec,
-			"IsDefault": name.Default, "IsForced": name.Forced, "IsHearingImpaired": name.Hears,
-			"IsExternal": true, "IsTextSubtitleStream": true, "SupportsExternalStream": true,
-			"Path": file.Key, "Fingerprint": fingerprint, "DisplayTitle": name.displayTitle(),
+		stream := media.MediaStream{
+			Index: index, Type: "Subtitle", Codec: name.Codec,
+			IsDefault: name.Default, IsForced: name.Forced, IsHearingImpaired: name.Hears,
+			IsExternal: true, IsTextSubtitleStream: true, SupportsExternalStream: true,
+			Path: file.Key, Fingerprint: fingerprint, DisplayTitle: name.displayTitle(),
 		}
 		if isImage {
-			stream["IsTextSubtitleStream"], stream["IsImageSubtitleStream"] = false, true
-			stream["FileSize"], stream["FileETag"] = file.Size, file.ETag
+			stream.IsTextSubtitleStream, stream.IsImageSubtitleStream = false, media.Ptr(true)
+			stream.FileSize, stream.FileETag = file.Size, file.ETag
 			if image.Width > 0 && image.Height > 0 {
-				stream["Width"], stream["Height"] = image.Width, image.Height
+				stream.Width, stream.Height = image.Width, image.Height
 			}
 			if sub, paired := set.partners[file.Key]; paired {
-				stream["SubPath"], stream["SubSize"] = sub.Key, sub.Size
+				stream.SubPath, stream.SubSize = sub.Key, sub.Size
 				// A pair's language is the one in its .idx, as Jellyfin has it, and
 				// not the file name's.
 				name.Language, name.LanguageName = image.Language, image.LanguageName
-				stream["DisplayTitle"] = name.displayTitle()
+				stream.DisplayTitle = name.displayTitle()
 			}
 		}
-		if name.Language != "" {
-			stream["Language"] = name.Language
-		}
-		if name.Title != "" {
-			stream["Title"] = name.Title
-		}
-		if unreadable {
-			// A file that can't be read for good stays hidden until it changes,
-			// and so does not cost a job at every scan.
-			stream["Unreadable"] = true
-		}
+		stream.Language = name.Language
+		stream.Title = name.Title
+		// A file that can't be read for good stays hidden until it changes,
+		// and so does not cost a job at every scan.
+		stream.Unreadable = unreadable
 		streams = append(streams, stream)
 	}
 	return streams, next
@@ -287,21 +282,32 @@ func externalStreams(video store.Object, set sidecarSet, old []map[string]any, f
 
 // storeStreams replaces the streams of the film's media source and rebuilds the
 // item's lists of them from the new ones. next is the media source's counter.
-func storeStreams(ctx context.Context, tx pgx.Tx, itemID string, streams []map[string]any, next int) error {
+// It does not touch the source's probe version: only a probe raises that.
+func storeStreams(ctx context.Context, tx pgx.Tx, itemID string, streams []media.MediaStream, next int) error {
 	var raw []byte
 	if err := tx.QueryRow(ctx, "SELECT dto FROM items WHERE id = $1 FOR UPDATE", itemID).Scan(&raw); err != nil {
 		return err
 	}
-	var dto map[string]any
+	var dto map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &dto); err != nil {
 		return err
 	}
-	sources, _ := dto["MediaSources"].([]any)
+	var sources []media.MediaSource
+	if err := json.Unmarshal(dto["MediaSources"], &sources); err != nil {
+		return err
+	}
 	if len(sources) != 1 {
 		return fmt.Errorf("the item has %d media sources, not 1", len(sources))
 	}
 	playable := playableStreams(streams)
-	sources[0].(map[string]any)["MediaStreams"], dto["MediaStreams"] = playable, playable
+	sources[0].MediaStreams = playable
+	var err error
+	if dto["MediaStreams"], err = json.Marshal(playable); err != nil {
+		return err
+	}
+	if dto["MediaSources"], err = json.Marshal(sources); err != nil {
+		return err
+	}
 	newStreams, err := json.Marshal(streams)
 	if err != nil {
 		return err
@@ -338,15 +344,14 @@ func MarkUnreadable(ctx context.Context, pool *pgxpool.Pool, itemID string, inde
 		if etag != "" && have != etag {
 			return nil
 		}
-		var streams []map[string]any
+		var streams []media.MediaStream
 		if err := json.Unmarshal(raw, &streams); err != nil {
 			return err
 		}
 		changed := false
-		for _, stream := range streams {
-			got, _ := stream["Fingerprint"].(string)
-			if indexOf(stream) == index && got == fingerprint && stream["Unreadable"] != true {
-				stream["Unreadable"] = true
+		for i, stream := range streams {
+			if stream.Index == index && stream.Fingerprint == fingerprint && !stream.Unreadable {
+				streams[i].Unreadable = true
 				changed = true
 			}
 		}
@@ -357,27 +362,15 @@ func MarkUnreadable(ctx context.Context, pool *pgxpool.Pool, itemID string, inde
 	})
 }
 
-// indexOf is the index of a stream, which is an int when just made and a
-// float64 when read back from the database.
-func indexOf(stream map[string]any) int {
-	switch index := stream["Index"].(type) {
-	case int:
-		return index
-	case float64:
-		return int(index)
-	}
-	return -1
-}
-
 // nextIndex is the index after the last of streams that are listed as tracks.
 // Attachments are not: ffprobe numbers them after the tracks, they are listed
 // apart (MediaAttachments), and counting them would leave a gap in the
 // MediaStreams a client reads DefaultSubtitleStreamIndex from by position.
-func nextIndex(streams []map[string]any) int {
+func nextIndex(streams []media.MediaStream) int {
 	next := 0
 	for _, stream := range streams {
-		if stream["Type"] != "Attachment" {
-			next = max(next, indexOf(stream)+1)
+		if stream.Type != "Attachment" {
+			next = max(next, stream.Index+1)
 		}
 	}
 	return next

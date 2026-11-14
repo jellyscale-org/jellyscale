@@ -2,7 +2,6 @@ package subtitles
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -10,39 +9,23 @@ import (
 	"unicode/utf8"
 
 	"jellyscale/internal/items"
+	"jellyscale/internal/media"
 )
 
 // MaxFile is the largest subtitle file read. Real ones are kilobytes; this only
 // stops a stray large file from filling a worker's memory.
 const MaxFile = 16 << 20
 
-// ExternalStream is what media_sources.streams says about a subtitle file
-// beside the film: where it is, and a fingerprint of the version that was
-// listed (its key, size and ETag).
-type ExternalStream struct {
-	Index       int
-	IsExternal  bool
-	Path        string
-	Fingerprint string
-	Unreadable  bool
-	// FileSize and FileETag are the version of a .sup that was listed.
-	FileSize int64
-	FileETag string
-	Language string // ISO 639-3 from the file's name, or empty
-}
-
-// External finds stream index of src if it is a file beside the film.
-func External(src items.Source, index int) (ExternalStream, bool) {
-	var streams []ExternalStream
-	if json.Unmarshal(src.Streams, &streams) != nil {
-		return ExternalStream{}, false
-	}
-	for _, stream := range streams {
+// External finds stream index of src if it is a subtitle file beside the film:
+// where it is (Path), and a fingerprint of the version that was listed (its
+// key, size and ETag).
+func External(src items.Source, index int) (media.MediaStream, bool) {
+	for _, stream := range src.Streams {
 		if stream.IsExternal && stream.Index == index {
 			return stream, true
 		}
 	}
-	return ExternalStream{}, false
+	return media.MediaStream{}, false
 }
 
 // ExtractFile converts the text of a subtitle file; ext is its extension,

@@ -3,6 +3,8 @@ package library
 import (
 	"slices"
 	"testing"
+
+	"jellyscale/internal/media"
 )
 
 func TestParseMovie(t *testing.T) {
@@ -66,18 +68,18 @@ func TestSortName(t *testing.T) {
 }
 
 func TestPlayableStreams(t *testing.T) {
-	stream := func(kind string, isDefault bool) map[string]any {
-		return map[string]any{"Type": kind, "IsDefault": isDefault}
+	stream := func(kind string, isDefault bool) media.MediaStream {
+		return media.MediaStream{Type: kind, IsDefault: isDefault}
 	}
 	video, first, flagged, subtitle := stream("Video", true), stream("Audio", false), stream("Audio", true), stream("Subtitle", true)
 	cases := []struct {
 		name string
-		in   []map[string]any
+		in   []media.MediaStream
 		want int
 	}{
-		{"flagged audio wins", []map[string]any{video, first, flagged, subtitle}, 2},
-		{"first audio without a flag", []map[string]any{video, first, stream("Audio", false)}, 2},
-		{"no audio", []map[string]any{video, subtitle}, 1},
+		{"flagged audio wins", []media.MediaStream{video, first, flagged, subtitle}, 2},
+		{"first audio without a flag", []media.MediaStream{video, first, stream("Audio", false)}, 2},
+		{"no audio", []media.MediaStream{video, subtitle}, 1},
 	}
 	for _, tc := range cases {
 		got := playableStreams(tc.in)
@@ -85,16 +87,17 @@ func TestPlayableStreams(t *testing.T) {
 			t.Errorf("%s: got %d streams", tc.name, len(got))
 		}
 		for _, entry := range got {
-			if entry["Type"] == "Subtitle" {
+			if entry.Type == "Subtitle" {
 				t.Errorf("%s: subtitle offered", tc.name)
 			}
 		}
 	}
-	probed := map[string]any{"Type": "Video", "Level": 41, "IsInterlaced": false, "VideoRangeType": "SDR", "DurationTicks": 5, "Width": 1}
-	if got := playableStreams([]map[string]any{probed}); len(got[0]) != 3 || probed["Level"] != 41 {
+	probed := media.MediaStream{Type: "Video", Level: 41, VideoRangeType: "SDR", DurationTicks: 5, Width: 1}
+	got := playableStreams([]media.MediaStream{probed})
+	if got[0].Level != 0 || got[0].DurationTicks != 0 || got[0].VideoRangeType != "SDR" || got[0].Width != 1 || probed.Level != 41 {
 		t.Errorf("the DTO's video stream carries the probe's decision fields (the range labels it lists), or the stored one lost them: %v %v", got[0], probed)
 	}
-	if got := playableStreams([]map[string]any{video, first, flagged}); got[1]["IsDefault"] != true {
+	if got := playableStreams([]media.MediaStream{video, first, flagged}); !got[1].IsDefault {
 		t.Error("kept the wrong audio stream")
 	}
 }
@@ -102,15 +105,15 @@ func TestPlayableStreams(t *testing.T) {
 // Subtitle tracks are listed when something delivers them: text ones, and the
 // image ones a transcode draws. Any other bitmap codec stays out.
 func TestPlayableStreamsListsTheImageTracksThatAreDelivered(t *testing.T) {
-	text := map[string]any{"Type": "Subtitle", "Index": 1, "IsTextSubtitleStream": true, "IsImageSubtitleStream": false}
-	pgs := map[string]any{"Type": "Subtitle", "Index": 2, "Codec": "PGSSUB", "IsTextSubtitleStream": false, "IsImageSubtitleStream": true}
-	dvb := map[string]any{"Type": "Subtitle", "Index": 3, "Codec": "DVBSUB", "IsTextSubtitleStream": false, "IsImageSubtitleStream": true}
-	other := map[string]any{"Type": "Subtitle", "Index": 4, "Codec": "hdmv_text_subtitle", "IsTextSubtitleStream": false, "IsImageSubtitleStream": false}
+	text := media.MediaStream{Type: "Subtitle", Index: 1, IsTextSubtitleStream: true, IsImageSubtitleStream: media.Ptr(false)}
+	pgs := media.MediaStream{Type: "Subtitle", Index: 2, Codec: "PGSSUB", IsImageSubtitleStream: media.Ptr(true)}
+	dvb := media.MediaStream{Type: "Subtitle", Index: 3, Codec: "DVBSUB", IsImageSubtitleStream: media.Ptr(true)}
+	other := media.MediaStream{Type: "Subtitle", Index: 4, Codec: "hdmv_text_subtitle", IsImageSubtitleStream: media.Ptr(false)}
 	// Stored by a version that didn't know image tracks.
-	old := map[string]any{"Type": "Subtitle", "Index": 5, "Codec": "hdmv_pgs_subtitle", "IsTextSubtitleStream": false}
+	old := media.MediaStream{Type: "Subtitle", Index: 5, Codec: "hdmv_pgs_subtitle"}
 	var listed []int
-	for _, stream := range playableStreams([]map[string]any{text, pgs, dvb, other, old}) {
-		listed = append(listed, stream["Index"].(int))
+	for _, stream := range playableStreams([]media.MediaStream{text, pgs, dvb, other, old}) {
+		listed = append(listed, stream.Index)
 	}
 	if !slices.Equal(listed, []int{1, 2, 3}) {
 		t.Errorf("listed tracks %v, want 1, 2 and 3", listed)

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"jellyscale/internal/media"
 	"jellyscale/internal/store"
 )
 
@@ -29,11 +30,9 @@ func TestFillTextServesGoodTracksWhateverTheFileLacksOrCannotDecode(t *testing.T
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			dir, src := threeTrackFilm(t, c.broken)
-			streams := strings.TrimSuffix(string(src.Streams), "]")
 			for _, i := range c.extra {
-				streams += fmt.Sprintf(`, {"Index": %d, "Type": "Subtitle", "Codec": "subrip", "IsTextSubtitleStream": true}`, i)
+				src.Streams = append(src.Streams, media.MediaStream{Index: i, Type: "Subtitle", Codec: "subrip", IsTextSubtitleStream: true})
 			}
-			src.Streams = []byte(streams + "]")
 			assets := store.NewPosix(t.TempDir())
 			ctx := context.Background()
 			if err := FillText(ctx, src, store.NewPosix(dir), assets, 0, slog.New(slog.DiscardHandler)); err != nil {

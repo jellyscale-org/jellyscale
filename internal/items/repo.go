@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"jellyscale/internal/db"
+	"jellyscale/internal/media"
 )
 
 // Repo reads items for one server.
@@ -150,16 +151,9 @@ func (r *Repo) hydrate(ctx context.Context, ids []string, userID string, fields 
 		compact := db.CompactID(id)
 		dto["Id"] = compact
 		dto["ServerId"] = r.ServerID
-		// A font is listed only once it is stored (invariant 32), which takes a
-		// look in the asset store that a list of items or sessions can't afford.
-		// Item details and PlaybackInfo make that look and list the fonts.
-		sources, _ := dto["MediaSources"].([]any)
-		for _, entry := range sources {
-			if source, ok := entry.(map[string]any); ok {
-				source["MediaAttachments"] = []any{}
-			}
+		if err := typeMedia(raw, dto); err != nil {
+			return nil, err
 		}
-		withItemSDKFields(dto)
 		if fields != nil {
 			for key, enabledBy := range optional {
 				if enabledBy == "" || !fields[enabledBy] {
@@ -180,6 +174,37 @@ func (r *Repo) hydrate(ctx context.Context, ids []string, userID string, fields 
 		}
 	}
 	return hydrated, nil
+}
+
+// typeMedia replaces the sources and the streams in an item's DTO, which
+// decoded as untyped JSON, with the typed ones. Where the DTO has none, it
+// still has none.
+func typeMedia(raw []byte, dto map[string]any) error {
+	var stored struct {
+		MediaSources []media.MediaSource
+		MediaStreams []media.MediaStream
+	}
+	if _, ok := dto["MediaSources"]; !ok {
+		if _, ok := dto["MediaStreams"]; !ok {
+			return nil
+		}
+	}
+	if err := json.Unmarshal(raw, &stored); err != nil {
+		return err
+	}
+	if _, ok := dto["MediaSources"]; ok {
+		// A font is listed only once it is stored (invariant 32), which takes a
+		// look in the asset store that a list of items or sessions can't afford.
+		// Item details and PlaybackInfo make that look and list the fonts.
+		for i := range stored.MediaSources {
+			stored.MediaSources[i].MediaAttachments = nil
+		}
+		dto["MediaSources"] = stored.MediaSources
+	}
+	if _, ok := dto["MediaStreams"]; ok {
+		dto["MediaStreams"] = stored.MediaStreams
+	}
+	return nil
 }
 
 // ChapterTag is the ImageTag of the chapter picture stored at key. The key has
@@ -367,7 +392,7 @@ func (r *Repo) UserDataFor(ctx context.Context, userID, itemID string) (map[stri
 }
 
 // MediaSources returns an item's stored media sources.
-func (r *Repo) MediaSources(ctx context.Context, itemID string) ([]map[string]any, bool, error) {
+func (r *Repo) MediaSources(ctx context.Context, itemID string) ([]media.MediaSource, bool, error) {
 	var raw []byte
 	err := r.Pool.QueryRow(ctx, "SELECT COALESCE(dto->'MediaSources', '[]'::jsonb) FROM shown_items WHERE id = $1::uuid", itemID).Scan(&raw)
 	if err == pgx.ErrNoRows {
@@ -376,23 +401,20 @@ func (r *Repo) MediaSources(ctx context.Context, itemID string) ([]map[string]an
 	if err != nil {
 		return nil, false, err
 	}
-	var sources []map[string]any
+	var sources []media.MediaSource
 	if err := json.Unmarshal(raw, &sources); err != nil {
 		return nil, false, err
-	}
-	for _, source := range sources {
-		WithSDKFields(source)
 	}
 	return sources, true, nil
 }
 
 // Source is the playable object behind a media source, with the media store
-// of its library. Streams is the full probed list as JSON, subtitles included.
+// of its library. Streams is the full probed list, subtitles included.
 type Source struct {
 	ID, Key, ETag, Container, StoreURI string
 	AssetStoreURI                      string
 	Size, RunTimeTicks                 int64
-	Streams                            []byte
+	Streams                            []media.MediaStream
 }
 
 // Keyframes returns the video's keyframe times in ticks from the file's index,
@@ -418,14 +440,18 @@ func (r *Repo) DropKeyframes(ctx context.Context, mediaSourceID, etag string) (b
 // Source finds an item's media source, a specific one if mediaSourceID is set.
 func (r *Repo) Source(ctx context.Context, itemID, mediaSourceID string) (Source, bool, error) {
 	var s Source
+	var streams []byte
 	err := r.Pool.QueryRow(ctx, `SELECT m.id::text, m.store_key, m.object_etag, m.container, l.media_store_uri, l.asset_store_uri, m.size,
 			COALESCE(i.run_time_ticks, 0), m.streams
 		FROM media_sources m JOIN shown_items i ON i.id = m.item_id JOIN libraries l ON l.id = i.library_id
 		WHERE m.item_id = $1::uuid AND ($2 = '' OR m.id = NULLIF($2, '')::uuid)
 		ORDER BY m.id LIMIT 1`, itemID, mediaSourceID).
-		Scan(&s.ID, &s.Key, &s.ETag, &s.Container, &s.StoreURI, &s.AssetStoreURI, &s.Size, &s.RunTimeTicks, &s.Streams)
+		Scan(&s.ID, &s.Key, &s.ETag, &s.Container, &s.StoreURI, &s.AssetStoreURI, &s.Size, &s.RunTimeTicks, &streams)
 	if err == pgx.ErrNoRows {
 		return Source{}, false, nil
 	}
-	return s, err == nil, err
+	if err != nil {
+		return Source{}, false, err
+	}
+	return s, true, json.Unmarshal(streams, &s.Streams)
 }
