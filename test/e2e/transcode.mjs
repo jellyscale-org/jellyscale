@@ -1548,6 +1548,12 @@ for (const flavour of [{ name: "within the window of the film starting", film: "
       probes.abort();
       if (stopped) await postgres("start");
       await routerControl({ reset: true });
+    // Readiness comes back only once each replica has seen Postgres answer again; until then the router answers 503
+    // itself (fallback is off after the reset), and the Stopped of leave() below would get it (JS-085's queue run).
+    await waitFor("every replica to be ready again", async () => {
+      const state = await routerControl();
+      return [...state.api, ...state.stream].every((x) => x.up);
+    }, 60000);
     }
     await leave(page);
   });
@@ -1601,6 +1607,12 @@ await scenario("Postgres stopped while a film plays as an HLS transcode: a seek 
     probes.abort();
     if (stopped) await postgres("start");
     await routerControl({ reset: true });
+    // Readiness comes back only once each replica has seen Postgres answer again; until then the router answers 503
+    // itself (fallback is off after the reset), and the Stopped of leave() below would get it (JS-085's queue run).
+    await waitFor("every replica to be ready again", async () => {
+      const state = await routerControl();
+      return [...state.api, ...state.stream].every((x) => x.up);
+    }, 60000);
   }
   await leave(page);
   await waitFor("ffmpeg to exit after Stopped", async () => ffmpegRuns().length === 0, 30000);
