@@ -30,7 +30,7 @@ const maxBitrateTest = 10_000_000
 func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 	file := r.PathValue("file")
 	if file != "stream" && !strings.HasPrefix(file, "stream.") {
-		http.NotFound(w, r)
+		notFound(w, r)
 		return
 	}
 	s.serveFile(w, r, false)
@@ -50,21 +50,21 @@ func (s *Server) serveFile(w http.ResponseWriter, r *http.Request, attachment bo
 	itemID := r.PathValue("itemId")
 	sourceID := r.URL.Query().Get("mediasourceid")
 	if !db.ValidID(itemID) || (sourceID != "" && !db.ValidID(sourceID)) {
-		http.NotFound(w, r)
+		notFound(w, r)
 		return
 	}
-	source, found, err := s.source(r.Context(), itemID, sourceID)
+	source, found, err := s.film(r, itemID, sourceID, s.source)
 	if err == nil && !found && attachment && sourceID != "" {
 		// Jellyfin sends the item's own file when the source id matches none, and
 		// a saved-file link has no better answer than that.
-		source, found, err = s.source(r.Context(), itemID, "")
+		source, found, err = s.film(r, itemID, "", s.source)
 	}
 	if err != nil {
 		s.fail(w, r, err)
 		return
 	}
 	if !found {
-		http.NotFound(w, r)
+		notFound(w, r)
 		return
 	}
 	media, err := s.stores.Open(source.StoreURI)

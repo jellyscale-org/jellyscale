@@ -56,9 +56,9 @@ type Route struct {
 	Role    string
 	Public  bool
 	Handler http.HandlerFunc
-	// Offline, if set, answers a request from the snapshot of active sessions
-	// while Postgres is away (invariant 37), and says whether it did.
-	Offline offlineHandler
+	// Snapshot says the handler may run from the snapshot of active sessions
+	// while Postgres is away (invariant 37), for a token it holds.
+	Snapshot bool
 }
 
 // Server holds what handlers need.
@@ -132,7 +132,7 @@ func (s *Server) Handler() http.Handler {
 		}
 		handler := route.Handler
 		if !route.Public {
-			handler = s.requireAuth(handler, route.Offline)
+			handler = s.requireAuth(handler, route.Snapshot)
 		}
 		mux.HandleFunc(route.Method+" "+lowerLiterals(route.Path), handler)
 	}
@@ -224,7 +224,7 @@ func (s *Server) logRequests(next http.Handler) http.Handler {
 	})
 }
 
-func (s *Server) requireAuth(next http.HandlerFunc, offline offlineHandler) http.HandlerFunc {
+func (s *Server) requireAuth(next http.HandlerFunc, snapshot bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		info := compat.ParseAuth(r)
 		if info.Token == "" {
@@ -240,7 +240,7 @@ func (s *Server) requireAuth(next http.HandlerFunc, offline offlineHandler) http
 			away = db.IsAway(err)
 		}
 		if away {
-			if offline != nil && s.snapshot.serve(w, r, info.Token, offline) {
+			if snapshot && s.serveFromSnapshot(next, w, r, info) {
 				return
 			}
 			user, err = s.userByToken(r.Context(), info.Token)
@@ -259,6 +259,7 @@ func (s *Server) requireAuth(next http.HandlerFunc, offline offlineHandler) http
 }
 
 func (s *Server) fail(w http.ResponseWriter, r *http.Request, err error) {
+	waitForPostgres(r) // From the snapshot, a failure is not an answer.
 	if r.Context().Err() != nil {
 		return // The client gave up, as a player does on a request that waits for Postgres; nobody is left to hear.
 	}

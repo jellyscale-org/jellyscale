@@ -13,7 +13,7 @@ func (s *Server) Routes() []Route {
 		{Method: "POST", Path: "/System/Ping", Status: Implemented, Role: RoleAPI, Public: true, Handler: s.ping},
 		// On the stream role, with the subtitles it comes before: jellyfin-web reads it before it asks for an ASS
 		// track, so a viewer in the snapshot gets the track in an outage only if this is answered too.
-		{Method: "GET", Path: "/System/Configuration/encoding", Status: Implemented, Role: RoleStream, Handler: encodingConfiguration, Offline: encodingConfigurationOffline},
+		{Method: "GET", Path: "/System/Configuration/encoding", Status: Implemented, Role: RoleStream, Handler: encodingConfiguration, Snapshot: true},
 		{Method: "GET", Path: "/System/Endpoint", Status: Implemented, Role: RoleAPI, Handler: s.systemEndpoint},
 		{Method: "GET", Path: "/Branding/Configuration", Status: Stub, Role: RoleAPI, Public: true, Handler: s.branding},
 		{Method: "GET", Path: "/Branding/Css", Status: Stub, Role: RoleAPI, Public: true, Handler: noContent},
@@ -75,16 +75,16 @@ func (s *Server) Routes() []Route {
 		// handler splits the file name, since patterns can't match part of one.
 		// The only playlist is main, and naming it keeps this pattern from
 		// overlapping the attachments one below, which Go's mux refuses.
-		{Method: "GET", Path: "/Videos/{itemId}/hls1/main/{segmentId}", Status: Implemented, Role: RoleStream, Handler: s.hlsSegment, Offline: s.segmentOffline},
+		{Method: "GET", Path: "/Videos/{itemId}/hls1/main/{segmentId}", Status: Implemented, Role: RoleStream, Handler: s.hlsSegment, Snapshot: true},
 		{Method: "DELETE", Path: "/Videos/ActiveEncodings", Status: Implemented, Role: RoleStream, Handler: s.deleteActiveEncodings},
-		{Method: "GET", Path: "/Videos/{itemId}/{sourceId}/Subtitles/{index}/{startPositionTicks}/{file}", Status: Implemented, Role: RoleStream, Handler: s.subtitleStream, Offline: s.subtitleOffline},
+		{Method: "GET", Path: "/Videos/{itemId}/{sourceId}/Subtitles/{index}/{startPositionTicks}/{file}", Status: Implemented, Role: RoleStream, Handler: s.subtitleStream, Snapshot: true},
 		// Without a start offset the name is Stream.{format}, or subtitles.m3u8,
 		// the playlist of segments that are requests for Stream.vtt.
-		{Method: "GET", Path: "/Videos/{itemId}/{sourceId}/Subtitles/{index}/{file}", Status: Implemented, Role: RoleStream, Handler: s.subtitleStream, Offline: s.subtitleOffline},
+		{Method: "GET", Path: "/Videos/{itemId}/{sourceId}/Subtitles/{index}/{file}", Status: Implemented, Role: RoleStream, Handler: s.subtitleStream, Snapshot: true},
 		// jellyfin-web fetches the fonts for ASS from the DeliveryUrl of a media
 		// source's attachment, which carries the token (Jellyfin's does not).
-		{Method: "GET", Path: "/Videos/{itemId}/{sourceId}/Attachments/{index}", Status: Implemented, Role: RoleStream, Handler: s.attachment, Offline: s.attachmentOffline},
-		{Method: "GET", Path: "/Videos/{itemId}/{file}", Status: Implemented, Role: RoleStream, Handler: s.stream, Offline: s.streamOffline},
+		{Method: "GET", Path: "/Videos/{itemId}/{sourceId}/Attachments/{index}", Status: Implemented, Role: RoleStream, Handler: s.attachment, Snapshot: true},
+		{Method: "GET", Path: "/Videos/{itemId}/{file}", Status: Implemented, Role: RoleStream, Handler: s.stream, Snapshot: true},
 		{Method: "GET", Path: "/Items/{itemId}/PlaybackInfo", Status: Implemented, Role: RoleAPI, Handler: s.playbackInfo},
 		{Method: "POST", Path: "/Items/{itemId}/PlaybackInfo", Status: Implemented, Role: RoleAPI, Handler: s.playbackInfo},
 		{Method: "GET", Path: "/Items/{itemId}/Download", Status: Implemented, Role: RoleStream, Handler: s.download},

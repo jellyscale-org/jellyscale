@@ -34,20 +34,20 @@ func (s *Server) hlsRequestFor(w http.ResponseWriter, r *http.Request) (hlsReque
 		// Another replica offered this stream, because this one has no
 		// transcodeStore; PlaybackInfo logs the difference it finds in
 		// transcode_nodes.
-		http.Error(w, "transcoding is not set up on this server", http.StatusServiceUnavailable)
+		refuse(w, r, http.StatusServiceUnavailable, "transcoding is not set up on this server")
 		return req, false
 	}
 	if !db.ValidID(itemID) || !db.ValidID(sourceID) {
-		http.NotFound(w, r)
+		notFound(w, r)
 		return req, false
 	}
-	source, found, err := s.source(r.Context(), itemID, sourceID)
+	source, found, err := s.film(r, itemID, sourceID, s.source)
 	if err != nil {
 		s.fail(w, r, err)
 		return req, false
 	}
 	if !found || source.RunTimeTicks <= 0 {
-		http.NotFound(w, r)
+		notFound(w, r)
 		return req, false
 	}
 	req.source = source
@@ -55,10 +55,8 @@ func (s *Server) hlsRequestFor(w http.ResponseWriter, r *http.Request) (hlsReque
 	req.params, err = playback.ParseParams(r.URL.Query(), req.media)
 	if err == nil && req.params.Copy {
 		// The request names the copy, so it is the one place that reads the index.
-		dbErr := db.Retry(r.Context(), s.Pool, func() (err error) {
-			req.media.Keyframes, req.media.VideoEnd, err = s.Items.Keyframes(r.Context(), source.ID)
-			return
-		})
+		var dbErr error
+		req.media.Keyframes, req.media.VideoEnd, dbErr = s.keyframes(r, itemID, source)
 		if dbErr != nil {
 			s.fail(w, r, dbErr)
 			return req, false
@@ -68,11 +66,14 @@ func (s *Server) hlsRequestFor(w http.ResponseWriter, r *http.Request) (hlsReque
 		req.spec, err = playback.NewSpec(itemID, req.params, req.media)
 	}
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		refuse(w, r, http.StatusBadRequest, err.Error())
 		return req, false
 	}
 	req.hash = req.spec.Hash()
 	req.layout = req.media.Layout(req.spec.Copy)
+	if snapshotOf(r.Context()) != nil {
+		return req, true // No viewer is recorded and no job started: the snapshot only reads.
+	}
 	req.viewer = transcode.Viewer{PlaySessionID: req.params.PlaySessionID, DeviceID: req.params.DeviceID, UserID: sessionOf(r).User.ID, Item: req.spec.Item}
 	// The segment rides on the write every request makes, for the worker to
 	// bound the job by.
@@ -126,7 +127,19 @@ func (s *Server) hlsSegment(w http.ResponseWriter, r *http.Request) {
 	}
 	n, valid := playback.ParseSegment(r.PathValue("segmentId"), req.layout.Count())
 	if !valid {
-		http.NotFound(w, r)
+		notFound(w, r)
+		return
+	}
+	if snapshotOf(r.Context()) != nil {
+		// A segment the store holds, for the hash the request's spec has: no job
+		// is started or joined. Not in the store, or the store failed, is
+		// Postgres's to decide.
+		segment, err := s.Transcode.Stored(r.Context(), req.hash, n)
+		if err != nil {
+			waitForPostgres(r)
+		}
+		defer segment.Close()
+		s.sendSegment(w, r, segment)
 		return
 	}
 	began := time.Now()

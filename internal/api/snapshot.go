@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"maps"
 	"net/http"
 	"strings"
 	"sync"
@@ -10,9 +11,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"jellyscale/internal/compat"
 	"jellyscale/internal/db"
 	"jellyscale/internal/items"
-	"jellyscale/internal/playback"
 )
 
 // Invariant 37: while Postgres is away a stream replica goes on serving direct
@@ -30,10 +31,6 @@ const (
 // between refreshes. The payload is a hint only: a replica reads the session
 // from Postgres, which has accepted the token, and adds what it finds.
 const startChannel = "jellyscale_session_started"
-
-// offlineHandler answers a request for a session in the snapshot, and says
-// whether it did; if not, the request waits for Postgres as usual.
-type offlineHandler func(w http.ResponseWriter, r *http.Request, session offlineSession) bool
 
 // offlineSession is what the snapshot knows of a token: the film its session plays.
 type offlineSession struct {
@@ -61,12 +58,93 @@ type snapshot struct {
 	films    map[string]*film // By media source id.
 }
 
-// serve answers r from the snapshot if it holds the token.
-func (sn *snapshot) serve(w http.ResponseWriter, r *http.Request, token string, offline offlineHandler) bool {
-	sn.mu.RLock()
-	session := sn.sessions[token]
-	sn.mu.RUnlock()
-	return session != nil && offline(w, r, *session)
+type snapshotKey struct{}
+
+// snapshotOf is the session of the token when the snapshot, not Postgres, is
+// standing in for it, else nil.
+func snapshotOf(ctx context.Context) *offlineSession {
+	session, _ := ctx.Value(snapshotKey{}).(*offlineSession)
+	return session
+}
+
+// errWait is what a handler stops with, before it has sent anything, when the
+// snapshot cannot decide the request.
+var errWait = errors.New("waiting for Postgres")
+
+// waitForPostgres stops a handler that runs from the snapshot, so that serveFromSnapshot
+// leaves the request for Postgres, which decides it as it would have with no
+// outage. It does nothing for a request Postgres is deciding. A refusal, a store
+// failure, and a job to start or join are all for Postgres: the snapshot only
+// answers what the stores hold.
+func waitForPostgres(r *http.Request) {
+	if snapshotOf(r.Context()) != nil {
+		panic(errWait)
+	}
+}
+
+// refuse answers as http.Error does, unless it runs from the snapshot, which
+// never refuses a request: Postgres may know of a reason to answer otherwise.
+func refuse(w http.ResponseWriter, r *http.Request, code int, text string) {
+	waitForPostgres(r)
+	http.Error(w, text, code)
+}
+
+func notFound(w http.ResponseWriter, r *http.Request) {
+	refuse(w, r, http.StatusNotFound, "404 page not found")
+}
+
+// serveFromSnapshot runs the handler of a request whose token the snapshot holds,
+// with the snapshot in Postgres's place, and says whether it answered. A handler
+// that waits sent nothing, and the headers it set are taken back.
+func (s *Server) serveFromSnapshot(next http.HandlerFunc, w http.ResponseWriter, r *http.Request, info compat.ClientInfo) (answered bool) {
+	s.snapshot.mu.RLock()
+	session := s.snapshot.sessions[info.Token]
+	s.snapshot.mu.RUnlock()
+	if session == nil {
+		return false
+	}
+	before := w.Header().Clone()
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			if recovered != errWait {
+				panic(recovered)
+			}
+			clear(w.Header())
+			maps.Copy(w.Header(), before)
+			answered = false
+		}
+	}()
+	ctx := context.WithValue(r.Context(), snapshotKey{}, session)
+	ctx = context.WithValue(ctx, contextKey{}, Session{Token: info.Token, ClientInfo: info})
+	next(w, r.WithContext(ctx))
+	return true
+}
+
+// film is Items.Source for a request: from Postgres, as read says, or from the
+// snapshot's session. A film the session does not play is not found, and the
+// handler's refusal then waits for Postgres.
+func (s *Server) film(r *http.Request, itemID, sourceID string, read func(context.Context, string, string) (items.Source, bool, error)) (items.Source, bool, error) {
+	if session := snapshotOf(r.Context()); session != nil {
+		f, ok := session.pick(itemID, sourceID)
+		if !ok {
+			return items.Source{}, false, nil
+		}
+		return f.source, true, nil
+	}
+	return read(r.Context(), itemID, sourceID)
+}
+
+// keyframes reads the keyframe index of a source, which only a copy asks for.
+func (s *Server) keyframes(r *http.Request, itemID string, source items.Source) (keyframes []int64, end int64, err error) {
+	if session := snapshotOf(r.Context()); session != nil {
+		f, _ := session.pick(itemID, source.ID) // The source came from this session's films.
+		return f.keyframes, f.videoEnd, nil
+	}
+	err = db.Retry(r.Context(), s.Pool, func() (err error) {
+		keyframes, end, err = s.Items.Keyframes(r.Context(), source.ID)
+		return
+	})
+	return
 }
 
 // pick is items.Source for the session's film: the named source, else the first.
@@ -299,56 +377,4 @@ func (sn *snapshot) replace(sessions map[string]*offlineSession, films map[strin
 	sn.mu.Lock()
 	sn.sessions, sn.films = sessions, films
 	sn.mu.Unlock()
-}
-
-// streamOffline is serveFile for a token in the snapshot, of the film its session plays.
-func (s *Server) streamOffline(w http.ResponseWriter, r *http.Request, session offlineSession) bool {
-	if file := r.PathValue("file"); file != "stream" && !strings.HasPrefix(file, "stream.") {
-		return false
-	}
-	f, ok := session.pick(r.PathValue("itemId"), r.URL.Query().Get("mediasourceid"))
-	if !ok {
-		return false
-	}
-	media, err := s.stores.Open(f.source.StoreURI)
-	if err != nil {
-		return false
-	}
-	s.serveSource(w, r, media, f.source)
-	return true
-}
-
-// segmentOffline answers a segment the transcode store holds, for the hash the
-// request's spec has: no job is started or joined, and no viewer recorded.
-func (s *Server) segmentOffline(w http.ResponseWriter, r *http.Request, session offlineSession) bool {
-	if s.Transcode == nil {
-		return false
-	}
-	f, ok := session.pick(r.PathValue("itemId"), r.URL.Query().Get("mediasourceid"))
-	if !ok || f.source.RunTimeTicks <= 0 {
-		return false
-	}
-	media := playbackSource(f.source)
-	params, err := playback.ParseParams(r.URL.Query(), media)
-	if err != nil {
-		return false
-	}
-	if params.Copy {
-		media.Keyframes, media.VideoEnd = f.keyframes, f.videoEnd
-	}
-	spec, err := playback.NewSpec(r.PathValue("itemId"), params, media)
-	if err != nil {
-		return false
-	}
-	n, valid := playback.ParseSegment(r.PathValue("segmentId"), media.Layout(spec.Copy).Count())
-	if !valid {
-		return false
-	}
-	segment, err := s.Transcode.Stored(r.Context(), spec.Hash(), n)
-	if err != nil {
-		return false // Not in the store, or the store failed: a job is Postgres's to decide.
-	}
-	defer segment.Close()
-	s.sendSegment(w, r, segment)
-	return true
 }
