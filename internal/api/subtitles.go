@@ -29,38 +29,10 @@ import (
 // subtitleStream serves one text track of a file as vtt, srt, js (jellyfin-web's
 // JSON cues) or ass. The first request for a track asks a worker to read the
 // whole file and waits for the result in the asset store (see
-// transcode.FetchSubtitle); this role runs no media tools.
+// transcode.FetchSubtitle); this role runs no media tools. Served from the
+// snapshot (invariant 37), only the track, the .sup or the font the stores hold
+// is answered, which needs no job; anything else waits for Postgres.
 func (s *Server) subtitleStream(w http.ResponseWriter, r *http.Request) {
-	s.serveSubtitle(w, r, nil)
-}
-
-// subtitleOffline answers a request for a session in the snapshot (invariant 37)
-// with what the stores hold, as subtitleStream does with Postgres up.
-func (s *Server) subtitleOffline(w http.ResponseWriter, r *http.Request, session offlineSession) bool {
-	return s.serveSubtitle(w, r, &session)
-}
-
-// failOrWait answers err as fail does, except for a request answered from the
-// snapshot, which is left for Postgres to answer once it is back.
-func (s *Server) failOrWait(w http.ResponseWriter, r *http.Request, err error, offline bool) bool {
-	if !offline {
-		s.fail(w, r, err)
-	}
-	return !offline
-}
-
-// serveSubtitle answers r and says whether it did. With a session, the request
-// is answered from the snapshot while Postgres is away: only with the track, the
-// .sup or the font the stores hold, which needs no job. Anything else, an
-// error status included, is not answered, so it waits for Postgres.
-func (s *Server) serveSubtitle(w http.ResponseWriter, r *http.Request, session *offlineSession) bool {
-	offline := session != nil
-	reject := func(code int, text string) bool {
-		if !offline {
-			http.Error(w, text, code)
-		}
-		return !offline
-	}
 	// Without a start offset in the path, the same name is also the playlist
 	// of segments, and the offset may come in the query.
 	playlist := r.PathValue("file") == "subtitles.m3u8" && r.PathValue("startPositionTicks") == ""
@@ -75,12 +47,12 @@ func (s *Server) serveSubtitle(w http.ResponseWriter, r *http.Request, session *
 	// that isn't Stream.* is not found, and the playlist is for GET alone.
 	switch {
 	case playlist && r.Method == http.MethodHead:
-		if !offline {
-			w.Header().Set("Allow", http.MethodGet)
-		}
-		return reject(http.StatusMethodNotAllowed, "")
+		w.Header().Set("Allow", http.MethodGet)
+		refuse(w, r, http.StatusMethodNotAllowed, "")
+		return
 	case !playlist && ok && !known:
-		return reject(http.StatusBadRequest, "unknown subtitle format")
+		refuse(w, r, http.StatusBadRequest, "unknown subtitle format")
+		return
 	}
 	index, indexErr := strconv.Atoi(r.PathValue("index"))
 	query := r.URL.Query()
@@ -93,29 +65,22 @@ func (s *Server) serveSubtitle(w http.ResponseWriter, r *http.Request, session *
 	itemID, sourceID := r.PathValue("itemId"), r.PathValue("sourceId")
 	if !playlist && (!ok || !known) || indexErr != nil || shiftErr != nil || endErr != nil || index < 0 ||
 		shift < 0 || shift > playback.MaxStartTicks || end < 0 || end > playback.MaxStartTicks || !db.ValidID(itemID) || !db.ValidID(sourceID) {
-		return reject(http.StatusNotFound, "404 page not found")
+		notFound(w, r)
+		return
 	}
 	segmentLength, segmentErr := strconv.ParseInt(query.Get("segmentlength"), 10, 64)
 	if playlist && (segmentErr != nil || segmentLength < 1 || segmentLength > playback.MaxStartTicks/ticksPerSecond) {
-		return reject(http.StatusBadRequest, "segmentLength is required")
+		refuse(w, r, http.StatusBadRequest, "segmentLength is required")
+		return
 	}
-	var source items.Source
-	if offline {
-		film, ok := session.pick(itemID, sourceID)
-		if !ok {
-			return false
-		}
-		source = film.source
-	} else {
-		var found bool
-		var err error
-		source, found, err = s.Items.Source(r.Context(), itemID, sourceID)
-		if err != nil {
-			return s.failOrWait(w, r, err, false)
-		}
-		if !found {
-			return reject(http.StatusNotFound, "404 page not found")
-		}
+	source, found, err := s.film(r, itemID, sourceID, s.Items.Source)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	if !found {
+		notFound(w, r)
+		return
 	}
 	media := playbackSource(source)
 	// As Jellyfin 12.4 answers: a track asked for in a format it doesn't have is a
@@ -124,34 +89,38 @@ func (s *Server) serveSubtitle(w http.ResponseWriter, r *http.Request, session *
 	case sup && media.SubtitleCodec(index) == "PGSSUB":
 		if file, external := subtitles.External(source, index); external {
 			if file.Unreadable {
-				return reject(http.StatusNotFound, "404 page not found") // Hidden, as an unreadable text file is.
+				notFound(w, r) // Hidden, as an unreadable text file is.
+				return
 			}
-			return s.externalSup(w, r, source, file, offline)
+			s.externalSup(w, r, source, file)
+			return
 		}
-		return s.supStream(w, r, itemID, source, index, offline)
+		s.supStream(w, r, itemID, source, index)
+		return
 	case sup && media.Burnable(index), !playlist && media.ImageSubtitle(index):
-		return reject(http.StatusBadRequest, "the track is not in that format")
+		refuse(w, r, http.StatusBadRequest, "the track is not in that format")
+		return
 	case !media.TextSubtitle(index):
-		return reject(http.StatusNotFound, "404 page not found")
+		notFound(w, r)
+		return
 	}
 	if playlist {
-		if offline {
-			return false
-		}
+		waitForPostgres(r) // The playlist carries the token of the user Postgres knows.
 		w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
 		w.Write([]byte(subtitlePlaylist(segmentLength, source.RunTimeTicks, sessionOf(r).Token))) //nolint:errcheck // A client that goes away is not a fault.
-		return true
+		return
 	}
 	assets, err := s.stores.Open(source.AssetStoreURI)
 	if err != nil {
-		return s.failOrWait(w, r, err, offline)
+		s.fail(w, r, err)
+		return
 	}
 	var track subtitles.Track
-	if offline {
+	if snapshotOf(r.Context()) != nil {
 		var found bool
 		track, found, err = subtitles.Read(r.Context(), assets, subtitles.Key(source, index))
 		if err != nil || !found {
-			return false
+			waitForPostgres(r)
 		}
 	} else {
 		if format == "ass" {
@@ -159,7 +128,7 @@ func (s *Server) serveSubtitle(w http.ResponseWriter, r *http.Request, session *
 		}
 		track, err = transcode.FetchSubtitle(r.Context(), s.Pool, s.Hub, assets, itemID, source, index)
 		if s.extractionFailed(w, r, err, itemID, source, index) {
-			return true
+			return
 		}
 	}
 	// A segment of the playlist asks for the cues in its window, which keep
@@ -178,7 +147,6 @@ func (s *Server) serveSubtitle(w http.ResponseWriter, r *http.Request, session *
 	}
 	w.Header().Set("Content-Type", contentType)
 	w.Write([]byte(body)) //nolint:errcheck // A client that goes away is not a fault.
-	return true
 }
 
 // extractionFailed answers a request whose subtitle job ended badly, and says
@@ -201,17 +169,18 @@ func (s *Server) extractionFailed(w http.ResponseWriter, r *http.Request, err er
 // supStream sends a PGS track as the .sup file a worker copied out of the film,
 // answering ranges as jellyfin-web asks (it probes with bytes=0-0). The bytes
 // go from the asset store to the client as they are; this role runs no media
-// tools and holds none of the file in memory. Offline, only a track already in
-// the store is sent.
-func (s *Server) supStream(w http.ResponseWriter, r *http.Request, itemID string, source items.Source, index int, offline bool) bool {
+// tools and holds none of the file in memory. From the snapshot, only a track
+// already in the store is sent.
+func (s *Server) supStream(w http.ResponseWriter, r *http.Request, itemID string, source items.Source, index int) {
 	assets, err := s.stores.Open(source.AssetStoreURI)
 	if err != nil {
-		return s.failOrWait(w, r, err, offline)
+		s.fail(w, r, err)
+		return
 	}
 	key := subtitles.SupKey(source, index)
-	if !offline {
+	if snapshotOf(r.Context()) == nil {
 		if _, err := transcode.FetchSup(r.Context(), s.Pool, s.Hub, assets, itemID, source, index); s.extractionFailed(w, r, err, itemID, source, index) {
-			return true
+			return
 		}
 	}
 	// The object's size and ETag, which the client's ranges and caches need, from
@@ -219,23 +188,21 @@ func (s *Server) supStream(w http.ResponseWriter, r *http.Request, itemID string
 	objects, err := assets.List(r.Context(), path.Dir(key))
 	i := slices.IndexFunc(objects, func(o store.Object) bool { return o.Key == key })
 	if err != nil || i < 0 {
-		if offline {
-			return false
-		}
+		waitForPostgres(r)
 		s.Log.Error("the copied PGS track is not in the asset store", "item", itemID, "index", index, "error", err)
 		http.Error(w, "the subtitle track could not be read", http.StatusInternalServerError)
-		return true
+		return
 	}
 	s.serveSource(w, r, assets, items.Source{Key: key, Size: objects[i].Size, ETag: objects[i].ETag})
-	return true
 }
 
 // externalSup sends a .sup file beside the film as it is, from the media store.
 // It is a few hundred kilobytes, and no worker has anything to do to it.
-func (s *Server) externalSup(w http.ResponseWriter, r *http.Request, source items.Source, file media.MediaStream, offline bool) bool {
+func (s *Server) externalSup(w http.ResponseWriter, r *http.Request, source items.Source, file media.MediaStream) {
 	media, err := s.stores.Open(source.StoreURI)
 	if err != nil {
-		return s.failOrWait(w, r, err, offline)
+		s.fail(w, r, err)
+		return
 	}
 	// The size and ETag as the store has them now, not as the last scan listed
 	// them: a file replaced since would be cut or padded at its old size.
@@ -246,17 +213,15 @@ func (s *Server) externalSup(w http.ResponseWriter, r *http.Request, source item
 	}
 	objects, err := media.List(r.Context(), dir)
 	if err != nil {
-		return s.failOrWait(w, r, err, offline)
+		s.fail(w, r, err)
+		return
 	}
 	i := slices.IndexFunc(objects, func(o store.Object) bool { return o.Key == file.Path })
 	if i < 0 {
-		if !offline {
-			http.NotFound(w, r)
-		}
-		return !offline
+		notFound(w, r)
+		return
 	}
 	s.serveSource(w, r, media, items.Source{Key: file.Path, Size: objects[i].Size, ETag: objects[i].ETag})
-	return true
 }
 
 // ticksPerSecond is the unit of every position in the API.
@@ -286,71 +251,43 @@ func subtitlePlaylist(segmentLength, runtime int64, token string) string {
 // as one whose object is gone from the store, is answered with an empty font
 // (emptyFont), and for a gone object the fonts job is run again to put it back.
 func (s *Server) attachment(w http.ResponseWriter, r *http.Request) {
-	s.serveAttachment(w, r, nil)
-}
-
-// attachmentOffline answers a request for a session in the snapshot (invariant
-// 37) with a font the store holds, as attachment does with Postgres up. A font it
-// would have to start a job for, or send empty, waits for Postgres.
-func (s *Server) attachmentOffline(w http.ResponseWriter, r *http.Request, session offlineSession) bool {
-	return s.serveAttachment(w, r, &session)
-}
-
-func (s *Server) serveAttachment(w http.ResponseWriter, r *http.Request, session *offlineSession) bool {
-	offline := session != nil
 	itemID, sourceID := r.PathValue("itemId"), r.PathValue("sourceId")
 	index, err := strconv.Atoi(r.PathValue("index"))
 	if err != nil || index < 0 || !db.ValidID(itemID) || !db.ValidID(sourceID) {
-		if !offline {
-			http.NotFound(w, r)
-		}
-		return !offline
+		notFound(w, r)
+		return
 	}
-	var source items.Source
-	if offline {
-		film, ok := session.pick(itemID, sourceID)
-		if !ok {
-			return false
-		}
-		source = film.source
-	} else {
-		var found bool
-		source, found, err = s.Items.Source(r.Context(), itemID, sourceID)
-		if err != nil {
-			return s.failOrWait(w, r, err, false)
-		}
-		if !found {
-			http.NotFound(w, r)
-			return true
-		}
+	source, found, err := s.film(r, itemID, sourceID, s.Items.Source)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	if !found {
+		notFound(w, r)
+		return
 	}
 	mimeType, listed := subtitles.Fonts(source)[index]
 	if !listed {
-		if !offline {
-			http.NotFound(w, r)
-		}
-		return !offline
+		notFound(w, r)
+		return
 	}
 	assets, err := s.stores.Open(source.AssetStoreURI)
 	if err != nil {
-		return s.failOrWait(w, r, err, offline)
+		s.fail(w, r, err)
+		return
 	}
 	fonts, manifest, err := subtitles.ReadFonts(r.Context(), assets, source)
 	if err != nil {
-		if !offline {
-			s.emptyFont(w, r, "the fonts of the film could not be read", err, mimeType)
-		}
-		return !offline
+		s.emptyFont(w, r, "the fonts of the film could not be read", err, mimeType)
+		return
 	}
 	sum, kept := fonts[index]
-	if !manifest && !offline {
+	if !manifest {
 		s.startFonts(r.Context(), itemID, source, assets, false)
 	}
 	if !kept { // The list went after it was listed, or the font was left out.
-		if !offline {
-			s.emptyFont(w, r, "a listed font is not in the film's fonts", nil, mimeType)
-		}
-		return !offline
+		s.emptyFont(w, r, "a listed font is not in the film's fonts", nil, mimeType)
+		return
 	}
 	// The URL names an attachment index, not a font: the same index is another
 	// font when the film is replaced. So it is not cached unasked, and the font's
@@ -360,34 +297,20 @@ func (s *Server) serveAttachment(w http.ResponseWriter, r *http.Request, session
 		w.Header().Set("ETag", etag)
 		w.Header().Set("Cache-Control", "no-cache")
 		w.WriteHeader(http.StatusNotModified)
-		return true
+		return
 	}
 	body, err := assets.Open(r.Context(), subtitles.FontKey(sum), 0)
-	if errors.Is(err, store.ErrNotFound) && !offline {
+	if errors.Is(err, store.ErrNotFound) {
 		s.startFonts(r.Context(), itemID, source, assets, true)
 	}
 	if err != nil {
-		if !offline {
-			s.emptyFont(w, r, "a listed font could not be read", err, mimeType)
-		}
-		return !offline
+		s.emptyFont(w, r, "a listed font could not be read", err, mimeType)
+		return
 	}
 	defer body.Close()
-	if offline {
-		font, err := readFont(body, sum)
-		if err != nil {
-			return false
-		}
-		w.Header().Set("ETag", etag)
-		w.Header().Set("Cache-Control", "no-cache")
-		w.Header().Set("Content-Type", mimeType)
-		w.Write(font) //nolint:errcheck // The client went away.
-		return true
-	}
 	w.Header().Set("ETag", etag)
 	w.Header().Set("Cache-Control", "no-cache")
 	s.sendFont(w, r, body, sum, mimeType)
-	return true
 }
 
 // emptyFont answers for a listed font that can't be delivered right now. A
@@ -395,6 +318,7 @@ func (s *Server) serveAttachment(w http.ResponseWriter, r *http.Request, session
 // to load (an error status stalls it), but it draws with an empty one as it
 // does with none. No store, so no client keeps the empty body.
 func (s *Server) emptyFont(w http.ResponseWriter, r *http.Request, why string, err error, mimeType string) {
+	waitForPostgres(r) // From the snapshot, a font that can't be delivered is for Postgres to answer.
 	if r.Context().Err() != nil {
 		return
 	}
@@ -408,7 +332,7 @@ func (s *Server) emptyFont(w http.ResponseWriter, r *http.Request, why string, e
 // (see transcode.StartFonts). A failure is only logged: the film plays without
 // its fonts, and the next request asks again.
 func (s *Server) startFonts(ctx context.Context, itemID string, source items.Source, assets store.Store, lost bool) {
-	if len(subtitles.Fonts(source)) == 0 {
+	if len(subtitles.Fonts(source)) == 0 || snapshotOf(ctx) != nil {
 		return
 	}
 	if err := transcode.StartFonts(ctx, s.Pool, assets, itemID, source, lost); err != nil {
@@ -608,11 +532,4 @@ const storeCheckTimeout = 5 * time.Second
 // whether to fetch fallback fonts, which this server doesn't have.
 func encodingConfiguration(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, map[string]any{"EnableFallbackFont": false})
-}
-
-// encodingConfigurationOffline is the same constant, for a token in the snapshot
-// while Postgres is away (invariant 37).
-func encodingConfigurationOffline(w http.ResponseWriter, r *http.Request, _ offlineSession) bool {
-	encodingConfiguration(w, r)
-	return true
 }
