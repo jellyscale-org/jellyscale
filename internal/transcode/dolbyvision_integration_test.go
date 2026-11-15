@@ -28,7 +28,7 @@ func TestReencodedDolbyVisionCarriesNoDolbyVisionBox(t *testing.T) {
 	for _, audio := range []string{"", "aac"} {
 		dir := t.TempDir()
 		spec := playback.Spec{AudioIndex: 1, VideoBitrate: 1_000_000, Width: 640, Height: 360, AudioCopy: audio}
-		cmd, err := Command(context.Background(), source, spec, 0, dir, "", nil)
+		cmd, err := Command(context.Background(), source, spec, 0, dir, "", nil, x264)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -29,9 +29,6 @@ const (
 	// A restarted audio run begins this many AAC frames early, on the same grid
 	// as a run from the start, so the encoder is warm at the cut.
 	warmupFrames = 4
-	// The encoder holds back this many frames before it emits a keyframe; it is
-	// tied to bframes below.
-	reorderFrames = 2
 	// Keeps timestamps away from zero, where the muxer would clamp negatives.
 	tsOffset = 100
 )
@@ -60,9 +57,10 @@ const (
 // which is after the packet of a cue that began earlier and is still showing; so
 // the run opens early enough to read that packet (cueStart), and drops the
 // frames before the cut, and draws the cue as a run from zero does (DOMAINS 51).
-func Command(ctx context.Context, input string, spec playback.Spec, start int, dir, ass string, image *playback.Stream) (*exec.Cmd, error) {
+func Command(ctx context.Context, input string, spec playback.Spec, start int, dir, ass string, image *playback.Stream, enc encoder) (*exec.Cmd, error) {
 	seek := float64(start * playback.SegmentSeconds)
 	hasAudio := spec.AudioIndex >= 0
+	copied := spec.AudioCopy != ""
 	burn := spec.Subtitle != nil && image == nil
 	// A track beside the film is a file of its own, read from its start.
 	external := image != nil && image.File != ""
@@ -74,62 +72,40 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		}
 	}
 	// A restart's video has to begin at the first frame at or after the cut, as a
-	// run from zero's segment does. -ss drops the frames before its time, but
-	// ffmpeg 9 keeps a frame from its own time on and ffmpeg 6 from a half frame
-	// before it, so a cut that falls inside a frame gives ffmpeg 6 one frame more.
-	// A quarter frame before the first frame is read as that frame by both. (A
-	// negative start time doesn't move the cut, a positive one does.)
+	// run from zero's segment does; seamPlan says where to seek for that.
 	var keyframe float64
-	videoSeek := seek
+	var grid int64
 	trim := ""
+	early := math.Inf(1) // The start of the earliest cue still showing at the cut, when there is one
 	if start > 0 {
 		var err error
 		if keyframe, err = firstFrameAt(ctx, input, seek+max(base, 0)); err != nil {
 			return nil, err
 		}
-		videoSeek = keyframe - max(base, 0) - frameDuration/4
 		if image != nil && !external {
 			// The frames before the cut are decoded and dropped by trim, not -ss,
 			// so the first one kept is the same on every ffmpeg.
 			trim = fmt.Sprintf("trim=start=%s,", seconds(keyframe-frameDuration/4))
-			early, err := cueStart(image, keyframe)
-			if err != nil {
+			if early, err = cueStart(image, keyframe); err != nil {
 				return nil, err
 			}
-			if early < keyframe {
-				// A second before the packet, so that the demuxer's seek lands before it.
-				videoSeek = max(min(videoSeek, early-max(base, 0)-1), 0)
+		}
+		if hasAudio && !copied {
+			// A run from the start puts its AAC packets on a grid that begins where the
+			// track does, which is not on a multiple of a frame for every file, so the
+			// restart is asked for where that grid has a packet and cuts on it.
+			if grid, err = audioGrid(ctx, input, spec); err != nil {
+				return nil, err
 			}
 		}
 	}
-	var audioSeek float64
-	var drop string
-	copied := spec.AudioCopy != ""
-	if start > 0 && hasAudio && copied {
-		audioSeek, drop = copiedAudioCut(keyframe, seek, frameDuration)
+	videoSeek, audioSeek, drop := seamPlan(enc, base, frameDuration, keyframe, grid, copied, start)
+	if !hasAudio {
+		audioSeek, drop = 0, ""
 	}
-	if start > 0 && hasAudio && !copied {
-		// A run from the start puts its AAC packets on a grid that begins where the
-		// track does, which is not on a multiple of a frame for every file, so the
-		// restart is asked for where that grid has a packet and cuts on it.
-		grid, err := audioGrid(ctx, input, spec)
-		if err != nil {
-			return nil, err
-		}
-		// The grid's phase on the file's own clock, which is what -ss counts.
-		phase := float64(grid) - base*audioRate
-		// The muxer cuts audio at the keyframe's DTS. x264 sees frame numbers,
-		// so the keyframe's time rounds to a whole frame before the delay is
-		// taken off; a source that doesn't start on a frame boundary would
-		// otherwise be off by a fraction of a frame, enough to move the cut by
-		// an audio packet.
-		cut := (math.Round(keyframe/frameDuration)-reorderFrames)*frameDuration - base
-		// The run starts warmupFrames before the cut: the encoder emits nothing
-		// for a frame's worth, and the delay is more than a frame of 12.5 fps.
-		firstFrame := max(int(math.Floor((cut*audioRate-phase)/1024+1e-9))-warmupFrames, int(math.Ceil(-phase/1024)))
-		audioSeek = (float64(firstFrame)*1024 + phase) / audioRate
-		first := math.Ceil((cut*audioRate-phase)/1024 - 1e-6)
-		drop = fmt.Sprintf("noise=drop=lt(pts\\,%d)", int64(first)*1024+grid)
+	if early < keyframe {
+		// A second before the packet, so that the demuxer's seek lands before it.
+		videoSeek = max(min(videoSeek, early-max(base, 0)-1), 0)
 	}
 
 	args := []string{"-nostdin", "-v", "warning", "-progress", "pipe:1", "-nostats", "-y", "-copyts", "-ss", seconds(videoSeek)}
@@ -198,11 +174,10 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		args = append(args, "-filter_complex", fmt.Sprintf("[0:v:0]%s%s[v];[%s]scale=%d:%d[s];[v][s]overlay=eof_action=pass:repeatlast=0,format=yuv420p[o]",
 			trim, picture, track, spec.Width, spec.Height), "-map", "[o]")
 	}
+	args = append(args, enc.videoArgs...)
 	args = append(args,
-		"-c:v", "libx264", "-preset", "veryfast", "-profile:v", "high", "-level", "51",
 		"-crf", "23", "-maxrate", vb, "-bufsize", strconv.FormatInt(2*spec.VideoBitrate, 10),
-		// Fixed B-frames and a closed GOP, so a restart makes the same frames.
-		"-x264-params", "bframes=2:b-adapt=0:open-gop=0:scenecut=0", "-forced-idr", "1",
+		"-x264-params", enc.params, "-forced-idr", "1",
 		"-force_key_frames", fmt.Sprintf("expr:gte(t,n_forced*%d)", playback.SegmentSeconds),
 	)
 	if spec.ToneMap != "" {
@@ -261,18 +236,63 @@ func audioGrid(ctx context.Context, input string, spec playback.Spec) (int64, er
 	return 0, errors.New("finding where the audio's packets fall: ffmpeg made no packet")
 }
 
-// copiedAudioCut says where a restarted run reads copied audio from and which
-// packets it drops. The packets are the source's own, so no grid or warm-up is
-// needed: the run only has to start with the packet a run from zero puts first
-// in the segment, the first at or after the video's cut (the keyframe's DTS, as
-// in Command's AAC case), and drop what comes before. It reads from two seconds
-// earlier than the segment, more than a packet or the first keyframe's delay,
-// and the drop compares time in seconds so no timebase is needed.
-func copiedAudioCut(keyframe, seek, frameDuration float64) (audioSeek float64, drop string) {
-	cut := (math.Round(keyframe/frameDuration) - reorderFrames) * frameDuration
-	// A packet exactly at the cut stays; a microsecond of slack covers the
-	// product's rounding.
-	return max(seek-2, 0), fmt.Sprintf("noise=drop=lt(pts*tb\\,%s)", seconds(cut-1e-6))
+// encoder is what belongs to the video encoder: its ffmpeg arguments, and how
+// many frames it holds back before a keyframe, which is tied to its B-frames.
+type encoder struct {
+	videoArgs     []string // From -c:v to the level
+	params        string   // The value of -x264-params: fixed B-frames and a closed GOP, so a restart makes the same frames
+	reorderFrames int
+}
+
+var x264 = encoder{
+	videoArgs:     []string{"-c:v", "libx264", "-preset", "veryfast", "-profile:v", "high", "-level", "51"},
+	params:        "bframes=2:b-adapt=0:open-gop=0:scenecut=0",
+	reorderFrames: 2,
+}
+
+// seamPlan is where a run for segment N seeks the video and the audio, and
+// which audio packets it drops, so that its segments splice with those of a run
+// from zero. It does no I/O: base is the source's start time, frameDuration the
+// video's, keyframe the first video frame at or after the cut, and grid the
+// time in samples of the first AAC packet a run from zero makes (not read for
+// copied audio).
+func seamPlan(enc encoder, base, frameDuration, keyframe float64, grid int64, copiedAudio bool, segment int) (videoSeek, audioSeek float64, drop string) {
+	if segment == 0 {
+		return 0, 0, ""
+	}
+	seek := float64(segment * playback.SegmentSeconds)
+	// -ss drops the frames before its time, but ffmpeg 9 keeps a frame from its
+	// own time on and ffmpeg 6 from a half frame before it, so a cut that falls
+	// inside a frame gives ffmpeg 6 one frame more. A quarter frame before the
+	// first frame is read as that frame by both. (A negative start time doesn't
+	// move the cut, a positive one does.)
+	videoSeek = keyframe - max(base, 0) - frameDuration/4
+	if copiedAudio {
+		// The packets are the source's own, so no grid or warm-up is needed: the
+		// run starts with the packet a run from zero puts first in the segment,
+		// the first at or after the video's cut (the keyframe's DTS), and drops
+		// what comes before. It reads from two seconds earlier than the segment,
+		// more than a packet or the first keyframe's delay, and the drop compares
+		// time in seconds so no timebase is needed.
+		cut := (math.Round(keyframe/frameDuration) - float64(enc.reorderFrames)) * frameDuration
+		// A packet exactly at the cut stays; a microsecond of slack covers the
+		// product's rounding.
+		return videoSeek, max(seek-2, 0), fmt.Sprintf("noise=drop=lt(pts*tb\\,%s)", seconds(cut-1e-6))
+	}
+	// The grid's phase on the file's own clock, which is what -ss counts.
+	phase := float64(grid) - base*audioRate
+	// The muxer cuts audio at the keyframe's DTS. The encoder sees frame numbers,
+	// so the keyframe's time rounds to a whole frame before the delay is
+	// taken off; a source that doesn't start on a frame boundary would
+	// otherwise be off by a fraction of a frame, enough to move the cut by
+	// an audio packet.
+	cut := (math.Round(keyframe/frameDuration)-float64(enc.reorderFrames))*frameDuration - base
+	// The run starts warmupFrames before the cut: the encoder emits nothing
+	// for a frame's worth, and the delay is more than a frame of 12.5 fps.
+	firstFrame := max(int(math.Floor((cut*audioRate-phase)/1024+1e-9))-warmupFrames, int(math.Ceil(-phase/1024)))
+	audioSeek = (float64(firstFrame)*1024 + phase) / audioRate
+	first := math.Ceil((cut*audioRate-phase)/1024 - 1e-6)
+	return videoSeek, audioSeek, fmt.Sprintf("noise=drop=lt(pts\\,%d)", int64(first)*1024+grid)
 }
 
 // copyReadRate is how many times the film's speed a copy reads its input.

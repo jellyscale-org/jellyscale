@@ -1849,12 +1849,11 @@
         "Table tests reproduce the values the seam tests rely on, for a source starting at 0, at a positive start and at a negative one",
         "Command takes an encoder description, and the seam integration tests pass unchanged"
       ],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [],
       "source": "Fable 5.2 blind audit, 2026-11-14 (.results/audit-2026-11-14.md)",
-      "notes": "",
-      "priority": 21
+      "notes": ""
     },
     {
       "id": "JS-114",

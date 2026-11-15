@@ -149,7 +149,7 @@ func (r *rig) reference(t *testing.T, upTo int) string {
 	t.Helper()
 	dir := t.TempDir()
 	ctx, cancel := context.WithCancel(context.Background())
-	cmd, err := Command(ctx, filepath.Join(film(t), "film.mkv"), r.spec, 0, dir, "", nil)
+	cmd, err := Command(ctx, filepath.Join(film(t), "film.mkv"), r.spec, 0, dir, "", nil, x264)
 	if err != nil {
 		t.Fatal(err)
 	}
