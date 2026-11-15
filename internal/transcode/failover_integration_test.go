@@ -72,6 +72,11 @@ func workerProcess(id string) {
 			fail("liveness address", err)
 		}
 	}
+	if addr := os.Getenv("JELLYSCALE_TEST_KEEPER"); addr != "" { // The lease keeper's own connection (JS-105).
+		if w.KeeperConfig, err = through(dsn, addr); err != nil {
+			fail("lease keeper address", err)
+		}
+	}
 	w.Hub = &Hub{Pool: pool, Log: log}
 	go w.Hub.Run(ctx)
 	go w.Present(ctx, "worker", "", 200*time.Millisecond)

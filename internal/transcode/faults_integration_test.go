@@ -232,7 +232,7 @@ func (c *chaos) violate(invariant, format string, args ...any) {
 
 func (c *chaos) spawn() (*chaosWorker, error) {
 	t := c.t
-	w := &outageWorker{id: uuid.NewString(), db: testenv.NewDBProxy(t, c.r.dsn), live: testenv.NewDBProxy(t, c.r.dsn), reaped: make(chan struct{})}
+	w := &outageWorker{id: uuid.NewString(), db: testenv.NewDBProxy(t, c.r.dsn), live: testenv.NewDBProxy(t, c.r.dsn), keep: testenv.NewDBProxy(t, c.r.dsn), reaped: make(chan struct{})}
 	cmd := execWorker(w, c.s, "JELLYSCALE_TEST_LEASE="+faultClock.Lease.String(), "JELLYSCALE_TEST_HEARTBEAT="+faultClock.Heartbeat.String(),
 		"JELLYSCALE_TEST_QUEUE_TIMEOUT=20s")
 	cmd.Stderr = &w.log
@@ -260,7 +260,7 @@ func execWorker(w *outageWorker, s *stack, env ...string) *exec.Cmd {
 	cmd.Env = append(os.Environ(), "JELLYSCALE_TEST_WORKER="+w.id, "JELLYSCALE_TEST_SEGMENTS="+s.seg, "JELLYSCALE_TEST_SCRATCH="+s.r.scratch,
 		// Without a statement cache every statement sends its text, which is how a proxy can end
 		// the connection as one particular statement runs.
-		"JELLYSCALE_TEST_DATABASE_URL="+w.db.DSN()+"&default_query_exec_mode=exec", "JELLYSCALE_TEST_LIVENESS="+w.live.Addr(),
+		"JELLYSCALE_TEST_DATABASE_URL="+w.db.DSN()+"&default_query_exec_mode=exec", "JELLYSCALE_TEST_LIVENESS="+w.live.Addr(), "JELLYSCALE_TEST_KEEPER="+w.keep.Addr(),
 		"JELLYSCALE_TEST_SLOTS=1", "JELLYSCALE_TEST_NO_HELPERS=1", "JELLYSCALE_TEST_PUTLOG="+s.putlog)
 	cmd.Env = append(cmd.Env, env...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGKILL}
@@ -981,12 +981,14 @@ func (c *chaos) delayWorker(i int, step faultStep) {
 	began := time.Now()
 	w.db.Delay(step.RoundTrip)
 	w.live.Delay(step.RoundTrip)
+	w.keep.Delay(step.RoundTrip)
 	c.mu.Lock()
 	c.delays = append(c.delays, delayWindow{worker: w.id, from: began, to: began.Add(step.Length), roundTrip: step.RoundTrip, longerThan: step.Kind == faultDelayLong})
 	c.mu.Unlock()
 	c.sleep(step.Length)
 	w.db.Delay(0)
 	w.live.Delay(0)
+	w.keep.Delay(0)
 	c.hitWorker(w.id, began, time.Now())
 	c.sleep(3 * time.Second)
 	if step.Kind != faultDelaySmall || c.hitByPostgres(i, 3*time.Second) || c.ctx.Err() != nil {

@@ -82,6 +82,9 @@ type Worker struct {
 	// pool's own, which is right except in a test that wants the lock's
 	// connection to go through something else.
 	LivenessConfig *pgx.ConnConfig
+	// KeeperConfig connects the lease keeper (lease_keeper.go), apart from the
+	// liveness lock's connection. It defaults to the pool's own.
+	KeeperConfig *pgx.ConnConfig
 
 	// live is what the worker runs now, for /metrics.
 	liveMu sync.Mutex
@@ -106,6 +109,10 @@ type Worker struct {
 	// state is the liveness state (heldMu). Its zero value is locked, so a
 	// worker the loop has not touched is judged by its lock alone.
 	state liveState
+
+	// leases keeps the lease of every job the worker runs (lease_keeper.go).
+	keeperOnce sync.Once
+	leases     *leaseKeeper
 }
 
 // Run claims and runs jobs until ctx ends, then waits for ffmpeg to be gone.
@@ -168,7 +175,8 @@ type claimed struct {
 	// spec's viewers, and its limit follows the furthest of them.
 	Helper bool
 
-	progress *progress // How fast ffmpeg goes; set by Run.
+	progress *progress  // How fast ffmpeg goes; set by Run.
+	lease    *leasedJob // Keeps the job's lease; set by run.
 }
 
 // defaultLease is the lease a job gets unless the worker is told another, and
@@ -323,9 +331,29 @@ func (w *Worker) run(ctx context.Context, job claimed) {
 	runtime.LockOSThread()
 	log := w.Log.With("job", job.ID, "spec", job.Hash, "item", job.Spec.Item, "start", job.Start)
 	log.Info("transcode started", "copy", job.Spec.Copy)
+	// A helper cancelled for a new viewer (preemptHelper) renews at once, so it
+	// gives its cores back now rather than at its next heartbeat. The first
+	// renewal is at once too, for a cancel that came before the job listened (a
+	// helper is often the newest job, cancelled as it starts).
+	var preempted <-chan struct{}
+	if job.Helper {
+		wake, unsubscribe := w.Hub.Subscribe(preemptHint)
+		defer unsubscribe()
+		preempted = wake
+	}
+	// From here the keeper cancels ctx when the job is no longer to be run, and
+	// the job's every stage, a fetch or a call that hangs included, ends with it.
+	ctx, job.lease = w.keepJobLease(ctx, job, preempted)
+	ctx = withTurn(ctx, job.lease)
+	defer job.lease.stop()
 	began := time.Now()
 	jobsStarted.Inc()
-	err := w.encode(ctx, job, log)
+	err := cause(ctx, w.encode(ctx, job, log))
+	if errors.Is(err, errNoViewer) {
+		// Nobody watches: the slot is given back and the job is no failure.
+		w.cancelUnwanted(ctx, job)
+		err = nil
+	}
 	// Only this error says the index is wrong; a cancelled or failed run says
 	// nothing of it. The next PlaybackInfo re-encodes the film.
 	if errors.Is(err, errWrongIndex) && ctx.Err() == nil {
@@ -378,7 +406,7 @@ func fetchImageFile(ctx context.Context, media store.Store, dir string, track pl
 		if err != nil {
 			return "", err
 		}
-		err = writeFile(local, body)
+		err = writeFile(local, turning(ctx, body))
 		body.Close()
 		if err != nil {
 			return "", err
@@ -396,8 +424,9 @@ func fetchImageFile(ctx context.Context, media store.Store, dir string, track pl
 // killed by a signal, timed out or could not start says nothing about the file,
 // so the burn goes on and ffmpeg judges it.
 func (w *Worker) checkImageFile(ctx context.Context, job claimed, track playback.Stream, log *slog.Logger) error {
-	probed, stop := context.WithTimeout(ctx, 10*time.Second)
-	defer stop()
+	probed, stopProbe := context.WithTimeout(ctx, 10*time.Second)
+	defer stopProbe()
+	defer w.turnWhile(ctx)() // The probe is bounded by its own timeout; a long one is no stall.
 	out, err := ffprobe(probed, "-count_packets", "-show_entries", "stream=nb_read_packets", "-of", "csv=p=0", track.File)
 	var exited *exec.ExitError
 	switch {
@@ -628,6 +657,7 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		// film's real last one.
 		upload := func(final bool) (caughtUp bool, err error) {
 			for {
+				job.lease.turn() // A backlog is many calls to Postgres, each of which can be slow.
 				if next >= layout.Count() {
 					return false, nil // A copied run has fragments past the end.
 				}
@@ -678,29 +708,18 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 						return false, err
 					}
 					chunkDone = !free
-					return false, nil
+					if chunkDone || !final {
+						return false, nil
+					}
+					// ffmpeg has exited with segments still waiting for Postgres: store the rest.
 				}
 			}
 		}
 
 		poll := time.NewTicker(100 * time.Millisecond)
 		defer poll.Stop()
-		beat := time.NewTicker(w.heartbeat())
 		loggedSlow := false
 		waiting := false // A finished segment is kept for Postgres.
-		defer beat.Stop()
-		// A helper cancelled for a new viewer (preemptHelper) beats at once, so
-		// it gives its cores back now rather than at its next heartbeat. It also
-		// beats as soon as it listens, for a cancel that came before it did (a
-		// helper is often the newest job, cancelled as it starts).
-		var preempted <-chan struct{}
-		if job.Helper {
-			wake, unsubscribe := w.Hub.Subscribe(preemptHint)
-			defer unsubscribe()
-			preempted = wake
-			beat.Reset(time.Millisecond)
-		}
-		lastBeat := time.Now()
 		progressed, progressAt := next, time.Now()
 		// gate pauses ffmpeg once everything below the limit is made, so what it
 		// reads past the limit is what it reads before the next look, and lets it
@@ -763,11 +782,13 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 			return true
 		}
 		for {
+			job.lease.turn()
 			select {
 			case err := <-exited:
 				caughtUp, uploadErr := upload(true)
-				// What ffmpeg made waits for Postgres, for as long as the lease it last renewed lasts.
-				for errors.Is(uploadErr, errWaiting) && time.Since(lastBeat) <= w.lease() && ctx.Err() == nil {
+				// What ffmpeg made waits for Postgres, until the keeper gives the job up.
+				for errors.Is(uploadErr, errWaiting) && ctx.Err() == nil {
+					job.lease.turn()
 					time.Sleep(100 * time.Millisecond)
 					caughtUp, uploadErr = upload(true)
 				}
@@ -779,6 +800,9 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 				}
 				if uploadErr != nil {
 					return fmt.Errorf("%w: %s", uploadErr, stderr.String())
+				}
+				if chunkDone {
+					return nil // The segments that follow are another job's.
 				}
 				if next <= begin {
 					return fmt.Errorf("ffmpeg ended without a segment: %s", stderr.String())
@@ -792,8 +816,8 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 			case <-poll.C:
 				caughtUp, err := upload(false)
 				if errors.Is(err, errWaiting) {
-					// The segment stays where it is, and ffmpeg and the job go on; the heartbeat
-					// ends the job if the lease runs out first.
+					// The segment stays where it is, and ffmpeg and the job go on; the lease
+					// keeper ends the job if the lease runs out first.
 					if !waiting {
 						log.Warn("a finished segment is kept until Postgres answers", "error", err)
 					}
@@ -816,29 +840,13 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 				if !gate() {
 					// What it made stays stored, and a viewer who comes back to
 					// the rest starts a job there.
-					w.Pool.Exec(context.WithoutCancel(ctx), "UPDATE transcode_jobs SET state = 'cancelled' WHERE id = $1 AND state = 'running'", job.ID) //nolint:errcheck
 					stop("its viewers have left it behind")
+					w.cancelUnwanted(ctx, job)
 					return nil
 				}
-			case <-preempted:
-				beat.Reset(time.Millisecond)
-			case <-beat.C:
-				beat.Reset(w.heartbeat())
-				if time.Since(lastBeat) > w.lease() {
-					// The worker itself was stopped (a frozen host, a paused
-					// container) for longer than a lease: another worker may own
-					// the job now, as when the database was unreachable. It gives
-					// the job up as interrupted, never as failed: the time without
-					// a segment was the worker's, not a hung ffmpeg's, and a failed
-					// job refuses a good film to every viewer for failureMemory
-					// (JS-066's queue run).
-					stop("lease expired while the worker was stopped")
-					return fmt.Errorf("%w: lease expired while the worker was stopped", errInterrupted)
-				}
-				alive, wanted, err := w.beat(ctx, job)
-				switch {
-				case err == nil:
-					lastBeat = time.Now()
+			case answered := <-job.lease.Beats:
+				// The lease keeper renewed the job, or tried to.
+				if answered {
 					// The operator's only signal beside GET /Sessions: jellyfin-web
 					// shows neither the speed nor the worker.
 					if speed, ok := w.measuredSpeed(job); ok {
@@ -846,23 +854,12 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 							log.Warn("transcode is slower than real time, so playback will stall", "speed", speed, "worker", w.ID)
 						}
 						loggedSlow = speed < 1
-						if alive && chunked && !w.NoHelpers && w.needsHelp(job) {
+						if chunked && !w.NoHelpers && w.needsHelp(job) {
 							if err := w.startHelper(ctx, job, next, layout); err != nil && ctx.Err() == nil {
 								log.Warn("starting a helper job failed", "error", err)
 							}
 						}
 					}
-				case time.Since(lastBeat) > w.lease():
-					// Nobody else knows we're alive, so another worker may own this now.
-					stop("lease expired while the database was unreachable")
-					return fmt.Errorf("%w: lease expired while the database was unreachable", errInterrupted)
-				case ctx.Err() == nil:
-					log.Warn("transcode heartbeat failed", "error", err)
-				}
-				if err == nil && !alive {
-					reason := w.lostReason(ctx, job)
-					stop(reason)
-					return fmt.Errorf("%w: %s", errInterrupted, reason)
 				}
 				if paused {
 					// A stopped ffmpeg makes no segment and writes nothing, which
@@ -878,12 +875,14 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 					stop("ffmpeg has stalled")
 					return fmt.Errorf("ffmpeg made no segment in %s: %s", since.Round(time.Second), stderr.String())
 				}
-				if err == nil && !wanted {
-					w.Pool.Exec(context.WithoutCancel(ctx), "UPDATE transcode_jobs SET state = 'cancelled' WHERE id = $1 AND state = 'running'", job.ID) //nolint:errcheck
-					stop("no viewer is watching")
-					return nil
-				}
 			case <-ctx.Done():
+				if cause := context.Cause(ctx); errors.Is(cause, errInterrupted) {
+					// The lease keeper ended it: the lease was not renewed, the job is
+					// no longer this worker's, its work did not come round, or no
+					// viewer is watching.
+					stop(cause.Error())
+					return cause
+				}
 				reason := "worker is shutting down"
 				if errors.Is(context.Cause(ctx), errLockLost) {
 					reason = errLockLost.Error()
@@ -915,44 +914,19 @@ func (w *Worker) extractSubtitle(ctx context.Context, job claimed, log *slog.Log
 }
 
 // awaitJob runs fetch, which waits for a subtitle job (the track, or the film's
-// fonts), which can take minutes. It keeps the lease alive meanwhile, and stops
-// waiting when the job is lost or nobody wants it, so it doesn't hold any cores
-// for a cancelled job.
+// fonts), which can take minutes. The job's lease is kept meanwhile by the lease
+// keeper, which ends fetch, through ctx, when the job is lost or nobody wants it,
+// so it doesn't hold any cores for a cancelled job; fetch then returns the
+// keeper's cause.
 func (w *Worker) awaitJob(ctx context.Context, job claimed, log *slog.Logger, fetch func(ctx context.Context) error) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	done := make(chan error, 1)
-	go func() { done <- fetch(ctx) }()
-	beat := time.NewTicker(w.heartbeat())
-	defer beat.Stop()
-	for {
-		select {
-		case err := <-done:
-			return err
-		case <-beat.C:
-			alive, wanted, err := w.beat(ctx, job)
-			switch {
-			case err != nil:
-				log.Warn("transcode heartbeat failed", "error", err)
-			case !alive:
-				cancel()
-				<-done
-				return fmt.Errorf("%w: %s", errInterrupted, w.lostReason(context.WithoutCancel(ctx), job))
-			case !wanted:
-				cancel()
-				<-done
-				w.Pool.Exec(context.WithoutCancel(ctx), "UPDATE transcode_jobs SET state = 'cancelled' WHERE id = $1 AND state = 'running'", job.ID) //nolint:errcheck
-				return fmt.Errorf("%w: no viewer is watching", errInterrupted)
-			}
-		}
-	}
+	return cause(ctx, fetch(ctx))
 }
 
 // lostReason says why the job is no longer ours to run: a seek replaced it, or
 // something took the lease from us.
-func (w *Worker) lostReason(ctx context.Context, job claimed) string {
+func lostReason(ctx context.Context, q queryer, job claimed) string {
 	var state, reason string
-	w.Pool.QueryRow(ctx, "SELECT state, COALESCE(error, '') FROM transcode_jobs WHERE id = $1", job.ID).Scan(&state, &reason) //nolint:errcheck
+	q.QueryRow(ctx, "SELECT state, COALESCE(error, '') FROM transcode_jobs WHERE id = $1", pgx.QueryExecModeExec, job.ID).Scan(&state, &reason) //nolint:errcheck
 	if state == "cancelled" && reason != "" {
 		return reason // A helper stopped for a new viewer (preemptHelper).
 	}
@@ -1013,63 +987,28 @@ func (w *Worker) needsHelp(job claimed) bool {
 	return ok && speed > 0 && speed < w.helpBelow()
 }
 
-// beat extends the lease, and stores the job's measured speed for GET /Sessions.
-// A paused job keeps the speed it had, since it is idle by design. alive is
-// false when the job is no longer ours to run; wanted is false when no viewer
-// has asked for the spec lately.
-func (w *Worker) beat(ctx context.Context, job claimed) (alive, wanted bool, err error) {
-	var speed *float64
-	if value, ok := w.measuredSpeed(job); ok {
-		speed = &value
-	}
-	err = w.Pool.QueryRow(ctx, `UPDATE transcode_jobs j SET lease_expires_at = now() + make_interval(secs => $3),
-			encode_speed = COALESCE($5, j.encode_speed)
-		WHERE j.id = $1 AND j.worker = $2 AND j.state = 'running' AND `+registeredAs("$2")+`
-		RETURNING EXISTS (SELECT 1 FROM transcode_viewers v WHERE v.spec_hash = j.spec_hash AND NOT v.stopped
-			AND v.last_seen_at > now() - make_interval(secs => $4))`,
-		job.ID, w.ID, w.lease().Seconds(), w.idle().Seconds(), speed).Scan(&wanted)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return false, false, nil
-	}
-	return err == nil, wanted, err
-}
-
 // upload stores one finished segment, with the init segment alongside the
 // job's first. Contents depend on the spec and number only, so a repeat is
 // harmless.
 func (w *Worker) upload(ctx context.Context, job claimed, n int, name string) error {
 	// A put overwrites, and the update below comes after it, so this is what
 	// keeps a worker whose lease is gone (stopped for longer than the lease, cut
-	// off from Postgres, reaped while its connection stood) from overwriting
-	// what the job's new owner stored. The replacement's first segment is
-	// seconds away when this passes; only a put slower than that can overlap.
-	// A database that does not answer is the same as a lease that is gone.
-	// The answer is how much lease Postgres says is left, measured when it ran
-	// the query, which was no earlier than now. So the lease ends no sooner than
-	// asked+left, whatever the round trip, and whatever stops this worker before
-	// a put (a database that answers late, a SIGSTOP): every put checks the
-	// clock against that.
-	fenced, cancel := context.WithTimeout(ctx, w.lease()/2)
-	asked := time.Now()
-	var left float64
-	err := w.Pool.QueryRow(fenced, `SELECT EXTRACT(EPOCH FROM lease_expires_at - now())::float8 FROM transcode_jobs
-		WHERE id = $1 AND worker = $2 AND state = 'running' AND `+registeredAs("$2"), job.ID, w.ID).Scan(&left)
-	cancel()
-	if db.IsAway(err) {
-		// Nothing is stored until the check passes (invariant 37); the segment
-		// waits where it is, and the lease says how long.
-		return fmt.Errorf("%w: checking the job is still ours: %v", errWaiting, err)
-	}
-	if errors.Is(err, pgx.ErrNoRows) || err == nil && left <= 0 {
-		return fmt.Errorf("%w: %s", errInterrupted, w.lostReason(ctx, job))
-	}
+	// off from Postgres, reaped while its connection stood, cancelled by a seek)
+	// from overwriting what the job's new owner stored. The replacement's first
+	// segment is seconds away when this passes; only a put slower than that can
+	// overlap. The check is a renewal of the job's lease, sent after this ask and
+	// answered by Postgres (lease_keeper.go), which finds a lease taken away as
+	// well as one run out. A database that does not answer is the same as a lease
+	// that is gone. The renewal was sent no later than the lease began, so the
+	// lease ends no sooner than sent+lease, whatever the round trip, and whatever
+	// stops this worker before a put (a database that answers late, a SIGSTOP):
+	// every put checks the clock against that.
+	ownedUntil, err := w.keeper().fence(ctx, leaseID{id: job.ID})
 	if err != nil {
-		// Unknown is not failed: the job is cut short and restarted, and the
-		// spec is not refused for a database that was slow.
-		return fmt.Errorf("%w: checking the job is still ours: %v", errInterrupted, err)
+		return err
 	}
-	ownedUntil := asked.Add(time.Duration(left * float64(time.Second)))
 	put := func(key, file string) error {
+		job.lease.turn()
 		if !time.Now().Before(ownedUntil) {
 			return fmt.Errorf("%w: the lease ran out before the segment could be stored", errInterrupted)
 		}
@@ -1083,19 +1022,20 @@ func (w *Worker) upload(ctx context.Context, job claimed, n int, name string) er
 	if err := put(SegmentKey(job.Hash, n), name); err != nil {
 		return err
 	}
-	tag, err := w.Pool.Exec(ctx, `UPDATE transcode_jobs SET next_segment = $2, lease_expires_at = now() + make_interval(secs => $4)
-		WHERE id = $1 AND worker = $3 AND state = 'running'`, job.ID, n+1, w.ID, w.lease().Seconds())
+	tag, err := w.Pool.Exec(ctx, `UPDATE transcode_jobs SET next_segment = $2
+		WHERE id = $1 AND worker = $3 AND state = 'running'`, job.ID, n+1, w.ID)
 	if db.IsAway(err) {
 		// Stored, and not yet recorded: the file stays, and the next try stores it again.
 		return fmt.Errorf("%w: recording the segment: %v", errWaiting, err)
 	}
 	os.Remove(name)
+	job.lease.turn()
 	if err != nil {
 		return err
 	}
 	if tag.RowsAffected() == 0 {
 		// A copied run can have many segments waiting; don't keep storing them.
-		return fmt.Errorf("%w: %s", errInterrupted, w.lostReason(ctx, job))
+		return fmt.Errorf("%w: %s", errInterrupted, lostReason(ctx, w.Pool, job))
 	}
 	Notify(ctx, w.Pool, segmentHint(job.Hash))
 	return nil
@@ -1310,7 +1250,7 @@ func copyFont(ctx context.Context, assets store.Store, sum, path string) error {
 		return err
 	}
 	hash := sha256.New()
-	_, err = io.Copy(io.MultiWriter(file, hash), body)
+	_, err = io.Copy(io.MultiWriter(file, hash), turning(ctx, body))
 	if err = errors.Join(err, file.Close()); err != nil {
 		return err
 	}
