@@ -158,7 +158,9 @@ func (s *Server) KeepReplica(ctx context.Context) {
 }
 
 func (s *Server) sweepSockets(ctx context.Context) {
-	s.Pool.Exec(ctx, "DELETE FROM api_replicas WHERE beat_at < now() - interval '1 hour'") //nolint:errcheck // Only housekeeping.
+	// PlaybackInfo only adds these; a day is how long a session list wants them.
+	s.Pool.Exec(ctx, "DELETE FROM transcode_reasons WHERE created_at < now() - interval '1 day'") //nolint:errcheck // Only housekeeping.
+	s.Pool.Exec(ctx, "DELETE FROM api_replicas WHERE beat_at < now() - interval '1 hour'")        //nolint:errcheck // Only housekeeping.
 	// Devices claimed by, or holding sockets of, a replica that is not beating.
 	rows, err := s.Pool.Query(ctx, `SELECT token FROM sessions WHERE ws_replica IS NOT NULL AND ws_replica NOT IN `+liveReplicas+`
 		UNION SELECT token FROM session_sockets WHERE replica NOT IN `+forgottenReplicas)

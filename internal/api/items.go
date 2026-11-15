@@ -266,11 +266,12 @@ func (s *Server) hideUndeliverable(ctx context.Context, itemID string, dto map[s
 	}
 	for i := range sources {
 		source := &sources[i]
-		deliverable, err := s.deliverable(ctx, itemID, *source)
+		read := readOnce(func() (items.Source, bool, error) { return s.Items.Source(ctx, itemID, source.ID) })
+		deliverable, err := s.deliverable(ctx, *source, read)
 		if err != nil {
 			return err
 		}
-		if err := s.listFonts(ctx, itemID, source, false); err != nil {
+		if err := s.listFonts(ctx, itemID, source, false, read); err != nil {
 			return err
 		}
 		source.MediaStreams = slices.DeleteFunc(slices.Clone(source.MediaStreams), func(stream media.MediaStream) bool {

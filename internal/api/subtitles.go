@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"jellyscale/internal/db"
@@ -415,19 +416,33 @@ func (s *Server) startFonts(ctx context.Context, itemID string, source items.Sou
 	}
 }
 
+// sourceReader reads a source's stored row, once however often it is called.
+type sourceReader = func() (items.Source, bool, error)
+
+func readOnce(load sourceReader) sourceReader {
+	var once sync.Once
+	var source items.Source
+	var found bool
+	var err error
+	return func() (items.Source, bool, error) {
+		once.Do(func() { source, found, err = load() })
+		return source, found, err
+	}
+}
+
 // listFonts leaves in the MediaAttachments of a DTO source only the fonts that
 // can be delivered (invariant 32): those in the film's fonts manifest, which is
 // there once a worker has stored them. Until then the list is empty, and
 // jellyfin-web draws ASS in its fallback font. With start, the fonts job is
 // started if the manifest is missing, without waiting for it. A store that
 // can't be asked lists none.
-func (s *Server) listFonts(ctx context.Context, itemID string, source *media.MediaSource, start bool) error {
+func (s *Server) listFonts(ctx context.Context, itemID string, source *media.MediaSource, start bool, read sourceReader) error {
 	attachments := source.MediaAttachments
 	if len(attachments) == 0 {
 		return nil
 	}
 	source.MediaAttachments = nil
-	stored, found, err := s.Items.Source(ctx, itemID, source.ID)
+	stored, found, err := read()
 	if err != nil || !found {
 		return err
 	}
@@ -539,7 +554,7 @@ func deliverSubtitles(source *media.MediaSource, itemID, token string, request p
 // asset store, since nothing can extract the rest. The answer can go stale
 // when a worker returns, which only hides a track for a moment. Callers list
 // one item's source; a list would cost a store request for every track.
-func (s *Server) deliverable(ctx context.Context, itemID string, source media.MediaSource) (func(index int) bool, error) {
+func (s *Server) deliverable(ctx context.Context, source media.MediaSource, read sourceReader) (func(index int) bool, error) {
 	yes := func(int) bool { return true }
 	if !slices.ContainsFunc(source.MediaStreams, func(stream media.MediaStream) bool { return stream.Type == "Subtitle" }) {
 		return yes, nil
@@ -547,7 +562,7 @@ func (s *Server) deliverable(ctx context.Context, itemID string, source media.Me
 	if alive, err := transcode.WorkerAlive(ctx, s.Pool); alive || err != nil {
 		return yes, err
 	}
-	stored, found, err := s.Items.Source(ctx, itemID, source.ID)
+	stored, found, err := read()
 	if err != nil || !found {
 		return func(int) bool { return false }, err
 	}
@@ -555,7 +570,7 @@ func (s *Server) deliverable(ctx context.Context, itemID string, source media.Me
 	if err != nil {
 		// A replica that can't open the store (no credentials) can't tell what
 		// is cached, and details must still answer, so no text track is listed.
-		s.Log.Warn("cannot check cached subtitles", "item", itemID, "error", err)
+		s.Log.Warn("cannot check cached subtitles", "item", stored.ID, "error", err)
 		return func(int) bool { return false }, nil
 	}
 	// One bound for all the checks, so a store that never answers hides the
@@ -581,7 +596,7 @@ func (s *Server) deliverable(ctx context.Context, itemID string, source media.Me
 		}
 	}
 	if slices.Contains(slices.Collect(maps.Values(checked)), false) {
-		s.Log.Warn("no worker is running: hiding subtitle tracks that aren't cached", "item", itemID)
+		s.Log.Warn("no worker is running: hiding subtitle tracks that aren't cached", "source", stored.ID)
 	}
 	return func(index int) bool { return checked[index] }, nil
 }

@@ -259,6 +259,7 @@ func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
 		wanted = request.MediaSourceID
 	}
 	playSession := randomHex(16)
+	var methods []string // Counted once the reply is known not to be a refusal.
 	result := make([]media.MediaSource, 0, len(sources))
 	for _, source := range sources {
 		if wanted != "" && db.CompactID(wanted) != source.ID {
@@ -270,12 +271,16 @@ func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
 		source.HasSegments = false
 		source.IsInfiniteStream = false
 		source.DefaultSubtitleStreamIndex = media.Ptr(-1)
-		if err := s.listFonts(r.Context(), id, &source, true); err != nil {
+		// The row is read once, by whichever step needs it first.
+		stored := readOnce(func() (items.Source, bool, error) {
+			return s.Items.PlaybackSource(r.Context(), id, source.ID)
+		})
+		if err := s.listFonts(r.Context(), id, &source, true, stored); err != nil {
 			s.fail(w, r, err)
 			return
 		}
 		deliverAttachments(&source, id, sessionOf(r).Token)
-		refused, err := s.planPlayback(r, id, playSession, request, &source)
+		method, refused, err := s.planPlayback(r, id, playSession, request, &source, stored)
 		if err != nil {
 			s.fail(w, r, err)
 			return
@@ -289,7 +294,8 @@ func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		burn := request.NoSubtitleProfiles() || (request.AlwaysBurnInSubtitleWhenTranscoding && source.TranscodingURL != "")
-		deliverable, err := s.deliverable(r.Context(), id, source)
+		methods = append(methods, method)
+		deliverable, err := s.deliverable(r.Context(), source, stored)
 		if err != nil {
 			s.fail(w, r, err)
 			return
@@ -303,36 +309,40 @@ func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
 		}
 		result = append(result, source)
 	}
+	for _, method := range methods {
+		playbackDecisions.WithLabelValues(method).Inc()
+	}
 	writeJSON(w, map[string]any{"MediaSources": result, "PlaySessionId": playSession})
 }
 
 // planPlayback fills in the transcoding fields of one source in the reply.
 // Where transcoding is on, the source lists every audio stream, because
 // transcoding can deliver any of them, and a stream change then asks for one.
-// refused is true when the source needs a transcode that can't start now.
-func (s *Server) planPlayback(r *http.Request, itemID, playSession string, request playback.Request, source *media.MediaSource) (refused bool, err error) {
+// method is how it will play, for the decisions counter, which the caller
+// counts once no source of the reply is refused. refused is true when the
+// source needs a transcode that can't start now.
+func (s *Server) planPlayback(r *http.Request, itemID, playSession string, request playback.Request, source *media.MediaSource, read func() (items.Source, bool, error)) (method string, refused bool, err error) {
 	if s.Transcode == nil && request.DeviceProfile == nil {
-		playbackDecisions.WithLabelValues("direct_play").Inc()
-		return false, nil
+		return "direct_play", false, nil
 	}
-	stored, found, err := s.Items.Source(r.Context(), itemID, source.ID)
-	if err != nil || !found || stored.RunTimeTicks <= 0 {
-		return false, err
+	stored, found, err := read()
+	if err != nil {
+		return "", false, err
+	}
+	if !found || stored.RunTimeTicks <= 0 {
+		return "direct_play", false, nil
 	}
 	media := playbackSource(stored)
 	media.Bitrate = source.Bitrate
 	if media.Copyable() {
-		if media.Keyframes, media.VideoEnd, err = s.Items.Keyframes(r.Context(), stored.ID); err != nil {
-			return false, err
-		}
+		media.Keyframes, media.VideoEnd = stored.Keyframes, stored.VideoEnd
 	}
 	decision := playback.Decide(request, media, true)
 	if s.Transcode != nil {
 		offerTranscoding(source, stored.Streams)
 	}
 	if decision.DirectPlay {
-		playbackDecisions.WithLabelValues("direct_play").Inc()
-		return false, nil
+		return "direct_play", false, nil
 	}
 	user := sessionOf(r)
 	params := playback.Params{SourceID: media.ID, AudioIndex: decision.AudioIndex, Subtitle: decision.Subtitle, VideoBitrate: decision.VideoBitrate,
@@ -343,12 +353,12 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 	}
 	spec, err := playback.NewSpec(itemID, params, media)
 	if err != nil {
-		return false, err
+		return "", false, err
 	}
 	// A live job is always offered (invariant 37), by any replica.
 	live, err := transcode.LiveJob(r.Context(), s.Pool, spec.Hash())
 	if err != nil {
-		return false, err
+		return "", false, err
 	}
 	var reason string
 	switch {
@@ -362,12 +372,11 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 		reason, err = s.Transcode.Unavailable(r.Context(), spec, user.User.ID, user.DeviceID)
 	default: // A replica with no transcodeStore asks only whether the stores differ.
 		if reason, err = transcode.StoreMismatch(r.Context(), s.Pool); err == nil && reason == "" {
-			playbackDecisions.WithLabelValues("direct_play").Inc()
-			return false, nil // No worker anywhere: transcoding is simply off.
+			return "direct_play", false, nil // No worker anywhere: transcoding is simply off.
 		}
 	}
 	if err != nil {
-		return false, err
+		return "", false, err
 	}
 	if reason != "" {
 		// A viewer whose default track plays as it is keeps it, whichever track
@@ -378,17 +387,15 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 			s.Log.Warn("cannot switch audio tracks or burn in subtitles, so the default plays on", "item", spec.Item, "reason", reason)
 			// So no subtitle is listed that only a transcode could draw.
 			source.SupportsTranscoding = false
-			playbackDecisions.WithLabelValues("direct_play").Inc()
-			return false, nil
+			return "direct_play", false, nil
 		}
 		s.Log.Error("refusing to offer a transcode: "+reason, "item", spec.Item, "spec", spec.Hash())
 		playbackRefusals.Inc()
-		return true, nil
+		return "", true, nil
 	}
+	method = "reencode"
 	if decision.Copy {
-		playbackDecisions.WithLabelValues("copy").Inc()
-	} else {
-		playbackDecisions.WithLabelValues("reencode").Inc()
+		method = "copy"
 	}
 	source.SupportsDirectPlay = false
 	source.SupportsDirectStream = false
@@ -396,14 +403,14 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 	source.TranscodingSubProtocol = "hls"
 	source.TranscodingContainer = "mp4"
 	// The session lists these reasons later (TranscodingInfo). They only label
-	// the dashboard, so failing to keep them never fails the play.
-	if _, err := s.Pool.Exec(r.Context(), `WITH pruned AS (DELETE FROM transcode_reasons WHERE created_at < now() - interval '1 day')
-		INSERT INTO transcode_reasons (play_session_id, spec_hash, reasons) VALUES ($1, $2, $3)
-		ON CONFLICT (play_session_id, spec_hash) DO UPDATE SET reasons = EXCLUDED.reasons, created_at = now()`,
+	// the dashboard, so failing to keep them never fails the play. The session
+	// id is new to every request, so no row is there to replace; KeepReplica
+	// prunes the old ones.
+	if _, err := s.Pool.Exec(r.Context(), `INSERT INTO transcode_reasons (play_session_id, spec_hash, reasons) VALUES ($1, $2, $3)`,
 		playSession, spec.Hash(), append([]string{}, decision.Reasons...)); err != nil {
 		s.Log.Warn("could not keep the transcode reasons for the session list", "error", err)
 	}
-	return false, nil
+	return method, false, nil
 }
 
 // offerTranscoding marks the source transcodable, and puts all of the file's

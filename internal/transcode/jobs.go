@@ -80,6 +80,18 @@ func expireQueued(ctx context.Context, pool *pgxpool.Pool, timeout time.Duration
 	return err
 }
 
+// expireStale is expireQueued for a request that is not to write when there is
+// nothing to cancel, which is nearly always.
+func expireStale(ctx context.Context, pool *pgxpool.Pool, timeout time.Duration) error {
+	var stale bool
+	err := pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM transcode_jobs
+		WHERE state = 'queued' AND created_at < now() - make_interval(secs => $1))`, timeout.Seconds()).Scan(&stale)
+	if err != nil || !stale {
+		return err
+	}
+	return expireQueued(ctx, pool, timeout)
+}
+
 // StoreMismatch says why the running processes can't share segments, or
 // returns "" if they can. Every process records its roles and transcodeStore in
 // transcode_nodes, and this compares them, so a missing store and a different
@@ -194,7 +206,7 @@ func (j *Jobs) Unavailable(ctx context.Context, spec playback.Spec, userID, devi
 	// forget live workers still taking their lock again. It counts a worker
 	// only while its lock is held, and writes nothing.
 	queue, hash := orDefault(j.QueueTimeout, queueTimeout), spec.Hash()
-	if err := expireQueued(ctx, j.Pool, queue); err != nil {
+	if err := expireStale(ctx, j.Pool, queue); err != nil {
 		return "", err
 	}
 	if live, err := LiveJob(ctx, j.Pool, hash); err != nil || live {
