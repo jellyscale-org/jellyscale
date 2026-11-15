@@ -415,6 +415,9 @@ type Source struct {
 	AssetStoreURI                      string
 	Size, RunTimeTicks                 int64
 	Streams                            []media.MediaStream
+	// Keyframes and VideoEnd are set only by PlaybackSource.
+	Keyframes []int64
+	VideoEnd  int64
 }
 
 // Keyframes returns the video's keyframe times in ticks from the file's index,
@@ -439,14 +442,24 @@ func (r *Repo) DropKeyframes(ctx context.Context, mediaSourceID, etag string) (b
 
 // Source finds an item's media source, a specific one if mediaSourceID is set.
 func (r *Repo) Source(ctx context.Context, itemID, mediaSourceID string) (Source, bool, error) {
+	return r.source(ctx, itemID, mediaSourceID, false)
+}
+
+// PlaybackSource is Source with the file's keyframe index, in the same read.
+func (r *Repo) PlaybackSource(ctx context.Context, itemID, mediaSourceID string) (Source, bool, error) {
+	return r.source(ctx, itemID, mediaSourceID, true)
+}
+
+func (r *Repo) source(ctx context.Context, itemID, mediaSourceID string, index bool) (Source, bool, error) {
 	var s Source
 	var streams []byte
+	// Without the index, its columns are NULL: it can be long.
 	err := r.Pool.QueryRow(ctx, `SELECT m.id::text, m.store_key, m.object_etag, m.container, l.media_store_uri, l.asset_store_uri, m.size,
-			COALESCE(i.run_time_ticks, 0), m.streams
+			COALESCE(i.run_time_ticks, 0), m.streams, CASE WHEN $3 THEN m.keyframes END, CASE WHEN $3 THEN COALESCE(m.video_end, 0) ELSE 0 END
 		FROM media_sources m JOIN shown_items i ON i.id = m.item_id JOIN libraries l ON l.id = i.library_id
 		WHERE m.item_id = $1::uuid AND ($2 = '' OR m.id = NULLIF($2, '')::uuid)
-		ORDER BY m.id LIMIT 1`, itemID, mediaSourceID).
-		Scan(&s.ID, &s.Key, &s.ETag, &s.Container, &s.StoreURI, &s.AssetStoreURI, &s.Size, &s.RunTimeTicks, &streams)
+		ORDER BY m.id LIMIT 1`, itemID, mediaSourceID, index).
+		Scan(&s.ID, &s.Key, &s.ETag, &s.Container, &s.StoreURI, &s.AssetStoreURI, &s.Size, &s.RunTimeTicks, &streams, &s.Keyframes, &s.VideoEnd)
 	if err == pgx.ErrNoRows {
 		return Source{}, false, nil
 	}

@@ -4,8 +4,6 @@ package main
 
 import (
 	"context"
-	"os/exec"
-	"path/filepath"
 	"testing"
 
 	"jellyscale/internal/db"
@@ -24,22 +22,8 @@ func TestOutputVersionRollbackOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	migrated.Close()
-	dir := t.TempDir()
-	// The film and the two builds are made as in TestOutputVersionAcrossProcesses.
-	filmFile = filepath.Join(dir, "film.mkv")
-	out, err := exec.Command("ffmpeg", "-nostdin", "-v", "error", "-y",
-		"-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=24:duration=240",
-		"-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=240",
-		"-c:v", "mpeg4", "-q:v", "6", "-g", "96", "-c:a", "aac", filmFile).CombinedOutput()
-	if err != nil {
-		t.Fatalf("the film: %v\n%s", err, out)
-	}
-	builds = map[int]string{}
-	for _, v := range []int{oldVersion, newVersion} {
-		if builds[v], err = buildWith(dir, v); err != nil {
-			t.Fatal(err)
-		}
-	}
+	// newCluster makes the film and the two builds once for the package; a test
+	// never replaces them, since the tests after it link the same film.
 	c := newCluster(t, false, "20s")
 	plays := 0
 	step := func(name string, pairs ...[2]*proc) {
