@@ -596,7 +596,7 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 			for _, stale := range globOr(filepath.Join(dir, "*.m4s")) {
 				os.Remove(stale)
 			}
-			cmd, err = Command(ctx, input, job.Spec, next, dir, ass, image)
+			cmd, err = Command(ctx, input, job.Spec, next, dir, ass, image, x264)
 		}
 		if err != nil {
 			return err

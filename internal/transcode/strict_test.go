@@ -15,7 +15,7 @@ import (
 func TestNoGlobalStrictFlag(t *testing.T) {
 	for _, audio := range []string{"", "opus", "flac"} {
 		spec := playback.Spec{AudioIndex: 1, VideoBitrate: 1_000_000, Width: 640, Height: 360, AudioCopy: audio}
-		cmd, err := Command(context.Background(), "in.mp4", spec, 0, t.TempDir(), "", nil)
+		cmd, err := Command(context.Background(), "in.mp4", spec, 0, t.TempDir(), "", nil, x264)
 		if err != nil {
 			t.Fatal(err)
 		}

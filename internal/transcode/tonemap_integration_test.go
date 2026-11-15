@@ -93,7 +93,7 @@ func TestToneMapMakesSDRBT709(t *testing.T) {
 			spec := testSpec
 			spec.ToneMap = c.transfer
 			dir := t.TempDir()
-			cmd, err := Command(context.Background(), source, spec, 0, dir, "", nil)
+			cmd, err := Command(context.Background(), source, spec, 0, dir, "", nil, x264)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -116,7 +116,7 @@ func TestToneMapMakesSDRBT709(t *testing.T) {
 			}
 			// The control: the same film encoded as before is outside the range.
 			plain := t.TempDir()
-			cmd, err = Command(context.Background(), source, testSpec, 0, plain, "", nil)
+			cmd, err = Command(context.Background(), source, testSpec, 0, plain, "", nil, x264)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -141,7 +141,7 @@ func TestToneMapConvertsHLGPrimaries(t *testing.T) {
 	source := hdrPatch(t, t.TempDir(), playback.HLG, 500, 400, 800, 9)
 	chroma := func(spec playback.Spec) (u, v float64) {
 		dir := t.TempDir()
-		cmd, err := Command(context.Background(), source, spec, 0, dir, "", nil)
+		cmd, err := Command(context.Background(), source, spec, 0, dir, "", nil, x264)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -181,7 +181,7 @@ func TestToneMappedRestartSplicesWithEarlierSegments(t *testing.T) {
 			spec.ToneMap = transfer
 			build := func(start int) string {
 				dir := t.TempDir()
-				cmd, err := Command(context.Background(), source, spec, start, dir, "", nil)
+				cmd, err := Command(context.Background(), source, spec, start, dir, "", nil, x264)
 				if err != nil {
 					t.Fatal(err)
 				}

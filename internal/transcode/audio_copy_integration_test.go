@@ -85,7 +85,7 @@ func TestCopiedAudioSplicesTheSamePackets(t *testing.T) {
 			spec := playback.Spec{AudioIndex: 1, VideoBitrate: 1_500_000, Width: 640, Height: 360, AudioCopy: c.codec}
 			encodeCopy := func(start int) string {
 				dir := t.TempDir()
-				cmd, err := Command(context.Background(), source, spec, start, dir, "", nil)
+				cmd, err := Command(context.Background(), source, spec, start, dir, "", nil, x264)
 				if err != nil {
 					t.Fatal(err)
 				}

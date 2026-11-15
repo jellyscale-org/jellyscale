@@ -74,7 +74,7 @@ func TestBurnedImageSubtitleIsAtTheRightTime(t *testing.T) {
 				if spec.Subtitle == nil {
 					track = nil
 				}
-				cmd, err := Command(ctx, film, spec, start, dir, "", track)
+				cmd, err := Command(ctx, film, spec, start, dir, "", track, x264)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -190,7 +190,7 @@ func TestBurnedImageSubtitleDoesNotWaitForTheNextCue(t *testing.T) {
 	out := t.TempDir()
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	cmd, err := Command(ctx, server.URL+"/film.mkv", spec, 0, out, "", &playback.Stream{Index: 2, Width: 1920, Height: 1080, IsImageSubtitleStream: media.Ptr(true)})
+	cmd, err := Command(ctx, server.URL+"/film.mkv", spec, 0, out, "", &playback.Stream{Index: 2, Width: 1920, Height: 1080, IsImageSubtitleStream: media.Ptr(true)}, x264)
 	if err != nil {
 		t.Fatal(err)
 	}
