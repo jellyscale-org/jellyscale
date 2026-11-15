@@ -150,6 +150,11 @@ func goldenCopyCases() map[string]func(t *testing.T) string {
 // probes' answers held fixed, are those of the code before JS-113. The file is
 // recorded from that code with -update-command-golden, never written by hand.
 func TestCommandArgumentsAreUnchanged(t *testing.T) {
+	// The golden holds the product's read rate; the integration build's init
+	// sets copyReadRate to 0 for its own tests (copy_integration_test.go), so
+	// this test sets the product's value and puts the other back.
+	defer func(was string) { copyReadRate = was }(copyReadRate)
+	copyReadRate = "5"
 	got := map[string]string{}
 	for _, c := range goldenCases() {
 		got[c.name] = goldenRun(t, c)
