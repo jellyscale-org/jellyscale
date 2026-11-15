@@ -4,7 +4,7 @@
 # "Control-plane ceiling"). Not part of any CI tier; it takes about 8 minutes.
 #   test/stress.sh <workdir>
 # It starts a disposable Postgres on a Docker-assigned port (max_connections 2000,
-# because every fake worker holds a connection of its own, as a real one does),
+# because every fake worker holds two connections of its own (liveness lock and lease keeper), as a real one does),
 # runs TestControlPlaneLadder (build tag stress) at V = 50 ... 1600 viewers with
 # W = V/4 workers, 60 seconds a step, and writes the report to
 # <workdir>/stress-report-pool<N>.txt and to stdout.

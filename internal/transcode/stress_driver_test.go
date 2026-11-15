@@ -271,6 +271,7 @@ func sleep(ctx context.Context, d time.Duration) bool {
 // fleet is the fake workers.
 type fleet struct {
 	live    []*liveness
+	keepers []*pgx.Conn // Each worker's lease keeper's connection (JS-105).
 	cancel  context.CancelFunc
 	running sync.WaitGroup
 }
@@ -280,15 +281,24 @@ func (f *fleet) stopLoad() { f.cancel(); f.running.Wait() }
 func (f *fleet) close() {
 	f.stopLoad()
 	for _, l := range f.live {
-		l.Close()
+		if l != nil {
+			l.Close()
+		}
+	}
+	for _, c := range f.keepers {
+		if c != nil {
+			c.Close(context.Background()) //nolint:errcheck
+		}
 	}
 }
 
 // startWorkers registers W workers, each holding its liveness lock on a
-// connection of its own as Present does, and starts their loops.
+// connection of its own as Present does, and a lease keeper's connection beside
+// it, which a real worker holds while it runs a job; the beats of the fake jobs
+// still go through the pool. It starts their loops.
 func (d *driver) startWorkers(ctx context.Context, t testing.TB, dsn string) (*fleet, error) {
 	connConfig := d.pool.Config().ConnConfig
-	f := &fleet{live: make([]*liveness, d.cfg.Workers)}
+	f := &fleet{live: make([]*liveness, d.cfg.Workers), keepers: make([]*pgx.Conn, d.cfg.Workers)}
 	loops, cancel := context.WithCancel(ctx)
 	f.cancel = cancel
 	nodes := make([]*Worker, d.cfg.Workers)
@@ -306,6 +316,9 @@ func (d *driver) startWorkers(ctx context.Context, t testing.TB, dsn string) (*f
 			live, err := holdLiveness(ctx, connConfig, nodes[i].ID)
 			if err == nil {
 				f.live[i] = live
+				f.keepers[i], err = pgx.ConnectConfig(ctx, connConfig)
+			}
+			if err == nil {
 				_, err = d.pool.Exec(ctx, `INSERT INTO transcode_nodes (id, roles, store, slots, locked) VALUES ($1, 'worker', '', $2, true)
 					ON CONFLICT (id) DO UPDATE SET seen_at = now(), locked = true`, nodes[i].ID, slotsPerNode)
 			}
@@ -317,11 +330,7 @@ func (d *driver) startWorkers(ctx context.Context, t testing.TB, dsn string) (*f
 	group.Wait()
 	if err, _ := failed.Load().(error); err != nil {
 		cancel()
-		for _, l := range f.live {
-			if l != nil {
-				l.Close()
-			}
-		}
+		f.close()
 		return nil, fmt.Errorf("starting the workers: %w", err)
 	}
 	// The loops start after every worker is registered, as a deployment's are

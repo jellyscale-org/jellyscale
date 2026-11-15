@@ -86,19 +86,22 @@ func putsOf(t *testing.T, path string) []put {
 	return puts
 }
 
-// outageWorker is a worker process whose database connections and liveness
-// connection each go through a proxy.
+// outageWorker is a worker process whose database connections, liveness
+// connection and lease keeper's connection (JS-105) each go through a proxy of
+// its own, so a test holds or cuts one of the three and leaves the others
+// answering.
 type outageWorker struct {
 	id         string
 	cmd        *exec.Cmd
 	db, live   *testenv.DBProxy
+	keep       *testenv.DBProxy // The lease keeper's connection.
 	log        logBuffer
 	reaped     chan struct{}
 	killedOnce sync.Once
 }
 
 func (w *outageWorker) away(refuse bool) {
-	for _, p := range []*testenv.DBProxy{w.db, w.live} {
+	for _, p := range []*testenv.DBProxy{w.db, w.live, w.keep} {
 		if refuse {
 			p.Away()
 		} else {
@@ -110,6 +113,7 @@ func (w *outageWorker) away(refuse bool) {
 func (w *outageWorker) back() {
 	w.db.Back()
 	w.live.Back()
+	w.keep.Back()
 }
 
 func (w *outageWorker) kill() {
@@ -128,6 +132,10 @@ type stack struct {
 	replica *testenv.DBProxy
 	jobs    *Jobs // The stream replica's, through its proxy.
 }
+
+// productionPool, passed to newStack or addWorker, leaves the worker's pool in
+// pgx's default query mode, as db.Open opens it. The worker process ignores it.
+const productionPool = "JELLYSCALE_TEST_PRODUCTION_POOL=1"
 
 func newStack(t *testing.T, workers int, env ...string) *stack {
 	t.Helper()
@@ -158,12 +166,20 @@ func (s *stack) replicaJobs() *Jobs {
 func (s *stack) addWorker(env ...string) *outageWorker {
 	t := s.t
 	t.Helper()
-	w := &outageWorker{id: uuid.NewString(), db: testenv.NewDBProxy(t, s.r.dsn), live: testenv.NewDBProxy(t, s.r.dsn), reaped: make(chan struct{})}
+	w := &outageWorker{id: uuid.NewString(), db: testenv.NewDBProxy(t, s.r.dsn), live: testenv.NewDBProxy(t, s.r.dsn), keep: testenv.NewDBProxy(t, s.r.dsn), reaped: make(chan struct{})}
+	// Without a statement cache every statement sends its text, which is how
+	// a proxy can end the connection as one particular statement runs. A check
+	// that must see the pool as production opens it (a first use of a statement
+	// is a prepare and an execute, two round trips) passes productionPool.
+	mode := "&default_query_exec_mode=exec"
+	for _, e := range env {
+		if e == productionPool {
+			mode = ""
+		}
+	}
 	cmd := exec.Command(os.Args[0])
 	cmd.Env = append(os.Environ(), "JELLYSCALE_TEST_WORKER="+w.id, "JELLYSCALE_TEST_SEGMENTS="+s.seg, "JELLYSCALE_TEST_SCRATCH="+s.r.scratch,
-		// Without a statement cache every statement sends its text, which is how
-		// a proxy can end the connection as one particular statement runs.
-		"JELLYSCALE_TEST_DATABASE_URL="+w.db.DSN()+"&default_query_exec_mode=exec", "JELLYSCALE_TEST_LIVENESS="+w.live.Addr(),
+		"JELLYSCALE_TEST_DATABASE_URL="+w.db.DSN()+mode, "JELLYSCALE_TEST_LIVENESS="+w.live.Addr(), "JELLYSCALE_TEST_KEEPER="+w.keep.Addr(),
 		"JELLYSCALE_TEST_SLOTS=1", "JELLYSCALE_TEST_NO_HELPERS=1", "JELLYSCALE_TEST_PUTLOG="+s.putlog,
 		// One re-encode (0.8 cores) a worker, as one slot was before JS-087: with a
 		// whole core, a re-encode and a copy (0.05) fit on one worker and leave another idle.

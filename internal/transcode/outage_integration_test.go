@@ -329,7 +329,7 @@ func TestNoJobFailsAndNoSpecIsRefusedBecausePostgresWasAway(t *testing.T) {
 		var pid int
 		deadline := time.Now().Add(60 * time.Second)
 		for r.pool.QueryRow(ctx, `SELECT pid FROM pg_stat_activity WHERE wait_event_type = 'Lock'
-			AND query LIKE 'UPDATE transcode_jobs SET next_segment%' LIMIT 1`).Scan(&pid) != nil {
+			AND query LIKE 'UPDATE transcode_jobs%' LIMIT 1`).Scan(&pid) != nil {
 			if time.Now().After(deadline) {
 				rows, _ := r.pool.Query(ctx, "SELECT pid, state, wait_event_type, left(query, 90) FROM pg_stat_activity WHERE query LIKE 'UPDATE%' OR wait_event_type = 'Lock'")
 				for rows != nil && rows.Next() {
@@ -338,7 +338,7 @@ func TestNoJobFailsAndNoSpecIsRefusedBecausePostgresWasAway(t *testing.T) {
 					rows.Scan(&pid, &state, &kind, &query) //nolint:errcheck
 					t.Logf("backend %d %v %v: %v", pid, deref(state), deref(kind), deref(query))
 				}
-				t.Fatal("no worker's update of next_segment waited for the row the test locked")
+				t.Fatal("no worker's update of the job row (its renewal or its commit) waited for the row the test locked")
 			}
 			time.Sleep(10 * time.Millisecond)
 		}

@@ -1692,16 +1692,18 @@
       "title": "One lease keeper for every leased job, so a hung call cannot keep a job past its lease",
       "description": "Worker.encode keeps the lease on the goroutine that does the I/O: the heartbeat, the store puts and most queries share one select loop, and only the ownership check has a deadline (the pool sets no statement timeout, the S3 client uses the SDK's default HTTP client). A query that never answers blocks the loop and the lease check never runs, holding the ffmpeg and the slot. runSubtitle already solves this with a timer that a bounded renewal puts off; lease renewal is written three times with three behaviours (encode, awaitJob, runSubtitle).",
       "acceptanceCriteria": [
-        "A lease helper renews with a query bounded by half a heartbeat and cancels the work a heartbeat before the lease can lapse; the transcode loop, awaitJob and runSubtitle use it, and one renewal UPDATE per job table is left in the code",
-        "With the worker's database connections held open and unanswered (a new testenv.DBProxy mode) while a job is paused at its lead, the worker's ffmpeg is gone within one lease",
-        "With answers delayed by less than half a heartbeat, the job goes on and stores every segment"
+        "A lease keeper with a connection of its own renews every leased job of the worker, one statement per job table in its own transaction, ids ascending, bounded by half a heartbeat, retried at once and then at a short interval when it fails; the transcode loop, awaitJob and runSubtitle use it, and one renewal UPDATE per job table is left in the code",
+        "Each job is cut a heartbeat before its lease could lapse, counted from the send of its last confirmed renewal: with the worker's connections held open and unanswered while a job is paused at its lead, its ffmpeg is gone within one lease; with only the pool held and the keeper answering, a job whose work has not come round for a lease is given up, its ffmpeg gone and a replacement serving the next request; a setup copy that is slow but moving counts as work coming round",
+        "With every round trip held 1 s (under half a heartbeat), set before the job is claimed, the job goes on and stores every segment; with the keeper's connection alone severed once under that delay, the job goes on; with Postgres away from 2.9 s after a renewal for 3.3 s, every job keeps its row, worker and ffmpeg",
+        "No put begins more than a round trip after the job stopped being the worker's, whatever stopped it: a cancel just after a renewal (no put more than 350 ms later), a reap that deletes the row and cuts the lease while the pool is held, a lease held past by a late answer, a worker stopped after the answer; a fence renews only the jobs that asked; the existing fenced-put and outage checks pass",
+        "A renewal counts only when confirmed: with the subtitle table's renewal made to fail or block past its bound, the transcode job's lease in Postgres and the keeper's cut agree and the transcode job goes on; under real contention (a worker with two jobs against repeated reaps and cancels, 200 rounds) no request fails and no renewal is lost",
+        "The liveness lock's connection refused for longer than a lease while the keeper's and the pool's answer: the worker is not forgotten and the job goes on with the same ffmpeg; the docs state two connections per worker"
       ],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [],
       "source": "Fable 5.2 blind audit, 2026-11-14 (.results/audit-2026-11-14.md)",
-      "notes": "",
-      "priority": 11
+      "notes": "Design reviewed by Fable 5.2 (.results/js105-design-review-2026-11-14.md): the keeper's own connection and batched renewal kept; the put fence still asks Postgres, through the keeper, for the asking jobs only."
     },
     {
       "id": "JS-106",
