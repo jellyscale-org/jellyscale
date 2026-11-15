@@ -10,6 +10,8 @@
 # The host's Go toolchain and module cache are mounted, and JELLYSCALE_TEST_*
 # is passed through, so a test can reach a Postgres or S3 the caller started
 # on a Docker-assigned port (the container shares the host network for that).
+# JELLYSCALE_TEST_CPUS=0-1 pins the container to those CPUs, as CI's two cores
+# (a race that cannot show on this machine's sixteen can show there).
 # The image is built once, as jellyscale-ffmpeg61.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -25,7 +27,9 @@ cache=${XDG_CACHE_HOME:-$HOME/.cache}/jellyscale/go-build-ffmpeg61
 mkdir -p "$cache"
 pass=()
 for name in $(compgen -e | grep '^JELLYSCALE_TEST_' || true); do pass+=(-e "$name"); done
-exec docker run --rm --network host --user "$(id -u):$(id -g)" \
+cpus=()
+if [ -n "${JELLYSCALE_TEST_CPUS:-}" ]; then cpus=(--cpuset-cpus "$JELLYSCALE_TEST_CPUS"); fi
+exec docker run --rm "${cpus[@]}" --network host --user "$(id -u):$(id -g)" \
   -v "$PWD:$PWD" -w "$PWD" -v "$goroot:$goroot:ro" \
   -v "$(go env GOMODCACHE):/gomod" -v "$cache:/gocache" \
   -e GOMODCACHE=/gomod -e GOCACHE=/gocache -e HOME=/tmp -e GOTOOLCHAIN=local -e GOFLAGS=-buildvcs=false \
