@@ -41,7 +41,10 @@ type config struct {
 	AdminUser     string `json:"adminUser"`
 	AdminPassword string `json:"adminPassword"`
 	WebDir        string `json:"webDir"`
-	ScanInterval  string `json:"scanInterval"`
+	// ScanInterval is how often a worker scans its libraries (a positive Go
+	// duration, default 15m).
+	ScanInterval string `json:"scanInterval"`
+	scan         time.Duration
 	// MissingGrace is how long a file or library that is gone keeps its watch
 	// state, hidden, before it is removed (a Go duration, default 168h).
 	MissingGrace string `json:"missingGrace"`
@@ -110,6 +113,9 @@ func parseConfig(raw []byte) (config, error) {
 	if n := cfg.DatabaseMaxConns; n < 0 || n == 1 || n > maxDatabaseConns {
 		return cfg, fmt.Errorf("databaseMaxConns must be 0 (the default, %d) or 2 to %d, not %d", db.DefaultMaxConns, maxDatabaseConns, n)
 	}
+	if cfg.Name == "" {
+		cfg.Name = "jellyscale"
+	}
 	cfg.grace = defaultShutdownGrace
 	if cfg.ShutdownGrace != "" {
 		grace, err := time.ParseDuration(cfg.ShutdownGrace)
@@ -118,10 +124,20 @@ func parseConfig(raw []byte) (config, error) {
 		}
 		cfg.grace = grace
 	}
+	// Every role reads it, so a bad one stops every start before the database is touched.
+	cfg.scan = defaultScanInterval
+	if cfg.ScanInterval != "" {
+		scan, err := time.ParseDuration(cfg.ScanInterval)
+		if err != nil || scan <= 0 {
+			return cfg, fmt.Errorf("scanInterval: want a positive duration such as 15m, not %q", cfg.ScanInterval)
+		}
+		cfg.scan = scan
+	}
 	return cfg, nil
 }
 
 const (
+	defaultScanInterval  = 15 * time.Minute
 	defaultShutdownGrace = 30 * time.Second
 	// drainLead is how long, after readiness first answers 503, a replica
 	// still takes new requests, so that a router polling every second or two has
@@ -171,7 +187,16 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	var cfg config
+	// A bad --roles stops the start before anything else is read or written.
+	enabled, err := parseRoles(roleList)
+	if err != nil {
+		return err
+	}
+	// Without --config every key is at its default, as with a config of {}.
+	cfg, err := parseConfig([]byte("{}"))
+	if err != nil {
+		return err
+	}
 	if configPath != "" {
 		raw, err := os.ReadFile(configPath)
 		if err != nil {
@@ -180,9 +205,6 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 		if cfg, err = parseConfig(raw); err != nil {
 			return fmt.Errorf("parse config: %w", err)
 		}
-	}
-	if cfg.Name == "" {
-		cfg.Name = "jellyscale"
 	}
 	// Secrets come from the environment, so config files can live in Git.
 	if value := os.Getenv("JELLYSCALE_ADMIN_PASSWORD"); value != "" {
@@ -216,7 +238,6 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	enabled := parseRoles(roleList)
 	// Only a worker uses the libraries, so only a worker writes them (a bad
 	// library entry stops only a worker); any other role's list would hide
 	// every library it leaves out from every viewer. A worker listing none
@@ -243,13 +264,7 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 		}
 	}
 	if len(libraries) > 0 {
-		interval := 15 * time.Minute
-		if cfg.ScanInterval != "" {
-			if interval, err = time.ParseDuration(cfg.ScanInterval); err != nil {
-				return fmt.Errorf("scanInterval: %w", err)
-			}
-		}
-		go scanLoop(ctx, scanner, libraries, interval, log)
+		go scanLoop(ctx, scanner, libraries, cfg.scan, log)
 	}
 	if !slices.Contains(enabled, api.RoleAPI) && !slices.Contains(enabled, api.RoleStream) {
 		<-signalled.Done()
@@ -444,15 +459,28 @@ func optionalDuration(value, name string) (time.Duration, error) {
 	return d, nil
 }
 
-func parseRoles(value string) []string {
-	if value == "all" {
-		return []string{api.RoleAPI, api.RoleStream, roleWorker}
+// parseRoles refuses an empty, unknown or repeated role, and all among others,
+// so a misspelt list is an error and not a process that runs fewer roles.
+func parseRoles(value string) ([]string, error) {
+	if strings.TrimSpace(value) == "all" {
+		return []string{api.RoleAPI, api.RoleStream, roleWorker}, nil
 	}
 	var roles []string
 	for _, role := range strings.Split(value, ",") {
-		roles = append(roles, strings.TrimSpace(role))
+		role = strings.TrimSpace(role)
+		switch {
+		case role == "":
+			return nil, errors.New("--roles has an empty role: want api, stream, worker, a list of them, or all")
+		case role == "all":
+			return nil, errors.New(`--roles: "all" is the whole set and cannot be listed with other roles`)
+		case role != api.RoleAPI && role != api.RoleStream && role != roleWorker:
+			return nil, fmt.Errorf("--roles: unknown role %q: want api, stream, worker, a list of them, or all", role)
+		case slices.Contains(roles, role):
+			return nil, fmt.Errorf("--roles: role %q is listed twice", role)
+		}
+		roles = append(roles, role)
 	}
-	return roles
+	return roles, nil
 }
 
 // The last scan this process ran of each library, by library ID. Only the
