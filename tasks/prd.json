@@ -1775,12 +1775,11 @@
         "A malformed scanInterval stops every role before anything is written to Postgres",
         "A process started without --config behaves as docs/running.md states, checked by a test (drain included)"
       ],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [],
       "source": "Fable 5.2 blind audit, 2026-11-14 (.results/audit-2026-11-14.md)",
-      "notes": "",
-      "priority": 15
+      "notes": "A misspelt, empty, repeated or 'all'-inside-a-list role is refused naming it; a bad scanInterval stops every role before Postgres; no --config is the same as {}."
     },
     {
       "id": "JS-110",

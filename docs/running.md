@@ -55,6 +55,8 @@ A `stream` replica sends a segment while it reads it from the store, 32 KiB at a
 
 ## Configuration
 
+A process started without `--config` runs with every key at the default, the same as a config of `{}`: `name` is `jellyscale`, `adminUser` is empty (no account is created), `webDir` is empty (no web client is served), and `scanInterval`, how often a worker scans its libraries, is `15m`; a value that is not a positive duration stops the start naming the key, whatever the role, before anything is written to Postgres. The other keys are at the defaults named below and in docs/transcoding.md, and the drain is as in "Rolling update". `--roles` takes `api`, `stream`, `worker`, a comma-separated list of them, or `all`; an empty, unknown or repeated role, or `all` in a list, stops the start naming it.
+
 A key the server does not know, at the top of the config or in a library, is refused at startup with its name, so a misspelt `chapterImages` can't silently leave the option off; so is anything after the config. Upgrading: a config that loaded before because the server ignored a stray key now stops the start, naming the key to remove.
 
 A library whose POSIX media folder is missing fails its scan with an error naming the folder, and so does one whose media store lists no video at all while the library has films (an empty mount point, a volume unmounted under a folder that is still there, or an empty bucket): the films and their watch state are kept, the log says why, and the next scan after the volume is back carries on as before. The cost is that a library emptied on purpose keeps its last films listed until a video is in it again.
