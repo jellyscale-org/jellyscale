@@ -1220,6 +1220,240 @@
       "title": "The no-config drain test checks a 3 s lead, not the 5 s docs/running.md gives",
       "status": "open",
       "notes": "TestOnSIGTERMWithoutAConfigFileReadinessFailsAndRequestsAreAnsweredForTheLead loops for readinessLead (3 s); a drainLead of 4 s passes it. Loop for the documented lead."
+    },
+    {
+      "id": "BL-136",
+      "source": "merge queue (#148, lead)",
+      "reviewer": "lead",
+      "severity": "minor",
+      "title": "TestStressDriverCallsEveryOperationAtItsRate: one Reap error on an idle database",
+      "status": "open",
+      "notes": "Seen once in a merge-queue run (log in ~/.cache/jellyscale/js104-evidence/stress-reap-error-queue-run.log). The driver does not print the error; print it. Possibly the multi-row-write deadlock Fable 5.2 flagged in the JS-105 design review (risk 8), which JS-105's contention check now covers."
+    },
+    {
+      "id": "BL-137",
+      "source": "JS-105 build (lead)",
+      "reviewer": "lead",
+      "severity": "minor",
+      "title": "Fault schedule seed 17371545602420011879 breaks 'resume after a Postgres restart' on main",
+      "status": "open",
+      "notes": "JELLYSCALE_TEST_FAULT_SEED=17371545602420011879, schedule 1, after step 5 (delay-past-half-lease 15.2 s): a job is done after a restart longer than a lease, want cancelled. Fails on main at 451038f (without JS-105) and with JS-105 alike; the job's worker logged only the 10.8 s short restart, never the long one. Find whether the plan or the check is wrong."
+    },
+    {
+      "id": "BL-138",
+      "source": "merge queue run 43796439005 (PR 157)",
+      "reviewer": "lead",
+      "severity": "minor",
+      "title": "roles: 'the stream role counts the waits for segments' found no reencode/ok/started wait once",
+      "status": "open",
+      "notes": "test/roles.sh:301 greps jellyscale_segment_wait_seconds_count{kind=\"reencode\",outcome=\"ok\",source=\"started\"} [1-9]; got none once in 25 queue runs (PR 157, which changes no stream or metrics code; PR 155 passed it with JS-105 on main). Likely the wait was counted under another source label (the segment already stored). Print the scraped segment_wait lines on failure, then decide whether the check should accept any source."
+    },
+    {
+      "id": "BL-139",
+      "source": "JS-105 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "Fence can answer ok for a job the keeper has just cut",
+      "status": "open",
+      "notes": "The keeper cuts a job (timer giveUp sets over) while a renewal sent before the cut is in flight. The renewal then finds the row ours, and attempt() answers pending asks with until=sent+lease, even though the job is over. The put checks only the clock, so a put can start after the job was cut. It is bounded by one round trip, and the work context is cancelled, so the put probably fails. Not reproduced."
+    },
+    {
+      "id": "BL-140",
+      "source": "JS-105 verify",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "The keeper's two tables are renewed one after the other on one goroutine",
+      "status": "open",
+      "notes": "A transcode renewal that blocks on a row lock or a slow answer takes up to bound (half a heartbeat) before the subtitle table is tried, and the keeper's connect can take up to lease/2 before either table is tried. The cut timers are independent, so the lease stays safe. The cost is less margin for the subtitle table, and a slow connect delays a fence answer for up to half a lease. Alternative: connect in a separate goroutine, or renew the tables concurrently on two connections. That adds a third connection per worker and conflicts with the 'two connections' design."
+    },
+    {
+      "id": "BL-141",
+      "source": "JS-105 verify",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "Per-job lost reason is queried on the keeper's connection inside the single loop",
+      "status": "open",
+      "notes": "When several jobs are found lost in one renewal, attempt() calls j.lost for each in turn, each bounded by half a heartbeat on the keeper's connection. With k lost jobs and a slow database, the keeper's next renewal for the other jobs is delayed by up to k half-heartbeats. The cut timers still protect the lease. Alternative: fetch the reasons in one query or afterwards, off the renewal path."
+    },
+    {
+      "id": "BL-142",
+      "source": "JS-106 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "Abandoned Put goroutine can leak and may still write the segment later",
+      "status": "open",
+      "notes": "A store Put that ignores its context and never returns: worker.put returns on ctx.Done but the goroutine and the open file handle stay until the Put returns, which may be never. A Posix-like store whose Put ignores ctx can also finish later and rename the segment into place after the job was cancelled (written by a non-owner; no DB record, so harmless to correctness but visible in the store)."
+    },
+    {
+      "id": "BL-143",
+      "source": "JS-106 verify",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "Per-put fence adds one keeper renewal round trip per put",
+      "status": "open",
+      "notes": "upload() used to fence once per upload and now fences before each put (init, then segment). Each fence asks the keeper to renew the job's lease, so a segment upload makes two renewal round trips where it made one. Doing the fence once per upload and checking it against a fresh clock before each put would not do: a put can now outlast a lease, so the second put needs a fresh fence. The cost is small and the choice is sound."
+    },
+    {
+      "id": "BL-144",
+      "source": "JS-110 verify",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "Snapshot safety rests on panic/recover and on every refusal calling refuse/notFound/waitForPostgres",
+      "status": "open",
+      "notes": "A later handler edit that writes an error with plain http.Error or http.NotFound on a stream route would, when run from the snapshot during an outage, answer the viewer from the snapshot instead of waiting for Postgres. The old design had the same risk the other way round: an offline handler had to opt in to each answer. The new default is the safer one, but the guard is a convention with no mechanical check. internal/api/snapshot.go lines 70-100: waitForPostgres panics with errWait and serveFromSnapshot recovers it. Direct http.Error calls remain reachable in shared handlers, for example in serveSource. The new internal/api/oneroute_test.go checks each row, but nothing fails a new http.Error call placed before a snapshot-aware refusal. A cheap alternative is a lint or grep test that bans http.Error and http.NotFound in the stream-role handler files."
+    },
+    {
+      "id": "BL-145",
+      "source": "JS-111 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "A subtitle warning logs the media source id under the item key",
+      "status": "open",
+      "notes": "internal/api/subtitles.go deliverable: 'cannot check cached subtitles' logs stored.ID (a source id) as item=. Log it as source=, or log the item id."
+    },
+    {
+      "id": "BL-146",
+      "source": "JS-111 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "PlaybackInfo's one read fetches the keyframe index for every source with a runtime",
+      "status": "open",
+      "notes": "internal/items/repo.go source(): the keyframes are read even for sources that are never copied, and on replicas with no transcodeStore. Read them only when the copy decision can use them."
+    },
+    {
+      "id": "BL-147",
+      "source": "JS-114 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "timing-bounds.txt loses the failover.mjs entry rather than moving it",
+      "status": "open",
+      "notes": "Base test/timing-bounds.txt had one entry for test/e2e/failover.mjs (the ws.on('close') Date.now() line, reason: records when the socket closed, nothing compared). Head removes it and the line now reads socket.closedAt = clock() in test/e2e/player.mjs with no entry. The file gains no entry, so the criterion holds, but the entry is dropped rather than moved with its line. The lost note is not a bound."
+    },
+    {
+      "id": "BL-148",
+      "source": "JS-114 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "e2e single-definition check misses a second definition that is not at the start of a line",
+      "status": "open",
+      "notes": "Append `const a = 1; const sql = (t) => t;` and `const waitFor2 = 1, login = 3;` to test/e2e/browse.mjs, so sql and login are defined a second time. test/scripts_test.sh still prints 'ok login, viewer, scenario, sql, ffmpegRuns, waitFor and time are each defined once, all in one shared module of test/e2e'. The grep in e2e_defs only matches a definition at the start of a line, so a second definition after a semicolon or in a comma list gets through, though the criterion says the check counts every form."
+    },
+    {
+      "id": "BL-149",
+      "source": "JS-114 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "Default unanswered mode for play and browse changed from hls to none",
+      "status": "open",
+      "notes": "gate.unanswered default in player.mjs is now \"none\" (was \"hls\"), so play and browse viewers no longer record HLS failures in seen.failed. No scenario in play, browse or subtitles reads seen.failed, so no check changes, but the record differs from the base."
+    },
+    {
+      "id": "BL-150",
+      "source": "JS-116 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "A NUL character in a language string makes the save fail with a server error",
+      "status": "open",
+      "notes": "POST /Users/Configuration with {\"SubtitleLanguagePreference\":\"\\u0000\"} (same for AudioLanguagePreference). parseConfiguration accepts it, json.Marshal writes \\u0000 into the document, and the UPDATE with $2::jsonb is rejected by Postgres, so s.fail answers a 5xx rather than the 400 that other invalid bodies get. I did not run the handler end to end; the failing step, Postgres rejecting the document, I ran. The test: docker run postgres:16, then psql -c \"select '{\\\"a\\\":\\\"\\\\u0000\\\"}'::jsonb\" gave 'DETAIL: \\u0000 cannot be converted to text.' The capture records no NUL case and no check covers one."
+    },
+    {
+      "id": "BL-151",
+      "source": "JS-116 verify",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "Saved settings say 'Settings saved' but change no playback yet",
+      "status": "open",
+      "notes": "A viewer opens Subtitles, picks German and Always, and gets 'Settings saved' and a reload that shows both. Playing a film with German subtitles shows none, because SubtitleMode and SubtitleLanguagePreference wait for JS-041 and AudioLanguagePreference and PlayDefaultAudioTrack wait for JS-121. The page makes no claim that the setting applies yet, and before this change the save failed outright, so this is an improvement. Flagged so the lead can confirm the intermediate state is acceptable for the sequence."
+    },
+    {
+      "id": "BL-152",
+      "source": "JS-116 verify",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "A picked language can read back as a different entry with the same code",
+      "status": "open",
+      "notes": "A viewer picks 'Portuguese (Brazil)' and saves. The code stored is 'por', shared by 'Portuguese', 'Portuguese (Brazil)' and 'Portuguese (Portugal)'. After a reload the select shows 'Portuguese', the first entry with that value. The same happens for 'Chinese (Simplified)' under 'zho' (five entries) and for 'Spanish; Latin' under 'spa'. Jellyfin 12.4 behaves the same with this list, since jellyfin-web uses ThreeLetterISOLanguageName as the value, and the acceptance criteria require the list entry for entry, so this is inherited rather than a jellyscale defect."
+    },
+    {
+      "id": "BL-153",
+      "source": "JS-116 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "List entries in braces or urn:uuid form are accepted and stored; Jellyfin's answer for them is not in the capture",
+      "status": "open",
+      "notes": "POST /Users/Configuration with GroupedFolders [\"{1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f4}\"] or [\"urn:uuid:1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f4\"] is parsed by uuid.Parse and saved as the compact id (204, then read back in the list). The capture records only plain dashed, compact and upper-case ids and a non-id word (400), so whether Jellyfin 12.4 answers 400 for these forms is unobserved; the criterion 'a list entry that is not an id' is not clearly met for them."
+    },
+    {
+      "id": "BL-154",
+      "source": "JS-116 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "SubtitleMode given as 1.0 is accepted as Always; the capture does not record non-integer numbers",
+      "status": "open",
+      "notes": "POST /Users/Configuration with {\"SubtitleMode\":1.0} answers 204 and stores SubtitleMode Always. subtitleModeOf accepts any float equal to an integer. The capture records only integer numbers (3 gives None, 0 gives Default). Jellyfin's answer for 1.0 is unobserved."
+    },
+    {
+      "id": "BL-155",
+      "source": "JS-116 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "The differential tier never saves through POST /Users/Configuration naming nobody",
+      "status": "open",
+      "notes": "test/differential/requests.yaml saves through POST /Users/{userId}/Configuration (path) and POST /Users/Configuration?userId={{User/admin}} (query). The form that names nobody, which the capture records as its own route=none case, is covered only by the Go replay (cmd/jellyscale/user_configuration_integration_test.go), not by the tier the criteria name ('a save through each route')."
+    },
+    {
+      "id": "BL-156",
+      "source": "JS-124 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "harness standing test allows bash to be started as a tool the tests run",
+      "status": "open",
+      "notes": "cmd/jellyscale/harness_standing_test.go adds \"bash\" to toolsTheTestsRun, so a hidden process started with exec.Command(\"bash\", ...) is no longer counted by the harness check. The change was made so client_films_integration_test.go can run client.sh; it weakens the standing check's detection rather than leaving it strict."
+    },
+    {
+      "id": "BL-157",
+      "source": "JS-124 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "Partial push of a version leaves it unrepairable",
+      "status": "open",
+      "notes": "On a tag run, publish.sh pushes X.Y.Z first, then X.Y.Z-fixtures and the main tags. If a later push fails (network, quota), a rerun finds X.Y.Z already exists and fails by design, so the release can never get its -fixtures tag; the only way out is a new version. Pushing the -fixtures tag and the main tags before the bare version tag would shorten the window."
+    },
+    {
+      "id": "BL-158",
+      "source": "JS-124 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "Concurrency group per sha lets a pending run be replaced",
+      "status": "open",
+      "notes": "Group image-${{ github.sha }} with cancel-in-progress false holds one running and at most one pending run. If two version tags are pushed on one commit while the main run is still running, the second pending tag run cancels the first, so a tag's image is never published."
+    },
+    {
+      "id": "BL-159",
+      "source": "JS-124 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "Fixed image names collide when two runs keep their images",
+      "status": "open",
+      "notes": "With JELLYSCALE_BUILT_AS set, two simultaneous test/image.sh runs on one machine both tag <name>:server and <name>:fixtures; the second build retags the first run's images, so publish.sh may push the wrong run's image. CI runs one job per VM, so only local use is affected."
+    },
+    {
+      "id": "BL-160",
+      "source": "JS-125 plan (Fable 5.2 access model)",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "Two sign-ins at once with one DeviceId can leave two tokens for the device",
+      "status": "open",
+      "notes": "users.go:107-117 deletes then inserts with no unique index on (user_id, device_id); two concurrent AuthenticateByName for one device both insert. A unique index and an upsert make one token per device."
+    },
+    {
+      "id": "BL-161",
+      "source": "JS-125 plan (Fable 5.2 access model)",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "A viewer sees the worker's name in their own TranscodingInfo",
+      "status": "open",
+      "notes": "transcoding_info.go:69-70; Jellyfin shows the hardware acceleration type to administrators only (SessionManager.cs:2156-2170). Show it to administrators only."
     }
   ]
 }
