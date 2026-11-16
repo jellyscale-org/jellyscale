@@ -528,3 +528,12 @@ func sampleDatabase(ctx context.Context, dsn, container string) func() (cpu floa
 		return total / float64(samples), peak
 	}
 }
+
+// beat renews one transcode job's lease once, on the pool, and says whether it
+// is still this worker's and wanted. The tests that move a lease by hand use it;
+// the keeper renews in production.
+func (w *Worker) beat(ctx context.Context, job claimed) (alive, wanted bool, err error) {
+	found, err := w.keeper().renewTranscodes(ctx, w.Pool, []*leasedJob{{id: leaseID{id: job.ID}}}, false)
+	wanted, alive = found[leaseID{id: job.ID}]
+	return alive, wanted, err
+}

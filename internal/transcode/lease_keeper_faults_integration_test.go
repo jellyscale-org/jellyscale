@@ -376,7 +376,16 @@ func TestARenewalCountsOnlyWhenConfirmedSoASubtitleTablesFaultCostsTheTranscodeJ
 
 			switch mode {
 			case "fails":
-				r.exec(t, `CREATE FUNCTION refuse_lease() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'the lease may not be moved'; END $$`)
+				// Dropped when the test ends: the rig only truncates tables, and a trigger left
+				// refuses the lease of every test that runs after this one.
+				t.Cleanup(func() {
+					for _, drop := range []string{"DROP TRIGGER IF EXISTS refuse_lease ON subtitle_jobs", "DROP FUNCTION IF EXISTS refuse_lease()"} {
+						if _, err := r.pool.Exec(context.Background(), drop); err != nil {
+							t.Errorf("%s: %v", drop, err)
+						}
+					}
+				})
+				r.exec(t, `CREATE OR REPLACE FUNCTION refuse_lease() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'the lease may not be moved'; END $$`)
 				r.exec(t, `CREATE TRIGGER refuse_lease BEFORE UPDATE ON subtitle_jobs FOR EACH ROW
 					WHEN (OLD.state = 'running' AND NEW.lease_expires_at IS DISTINCT FROM OLD.lease_expires_at) EXECUTE FUNCTION refuse_lease()`)
 			case "blocks":
@@ -434,15 +443,20 @@ func TestARenewalCountsOnlyWhenConfirmedSoASubtitleTablesFaultCostsTheTranscodeJ
 // a worker's jobs and a viewer's cancel do (each a statement over several rows).
 // Postgres aborts one of two statements that wait for each other, after
 // deadlock_timeout (lowered here for the database of this test, so that it is
-// not the pause that is looked at). The keeper sends its ids in ascending order
-// and retries at once when it is the one aborted, so no renewal is lost, no job
-// is cut, no error reaches a viewer, and the worker's log has no failed renewal
-// that was not the one abort. The heartbeat is 150 ms so that renewals meet the
+// not the pause that is looked at). The keeper's statement waits for no row while
+// it holds another, so none of the cycles goes through it: no renewal is lost, no
+// job is cut, no error reaches a viewer, and the worker's log has no failed
+// renewal. The heartbeat is 150 ms so that renewals meet the
 // other session's locks; the lease keeps the production ratio to it.
 func TestTwoJobsOfAWorkerAgainstOtherStatementsOverBothRowsLoseNoRenewalAndFailNoRequest(t *testing.T) {
 	slowAt(t, "2")
 	s := newStack(t, 1, "JELLYSCALE_TEST_CORES=1.7", "JELLYSCALE_TEST_SLOTS=2", "JELLYSCALE_TEST_LEASE=1500ms", "JELLYSCALE_TEST_HEARTBEAT=150ms")
 	r, w, ctx := s.r, s.workers[0], context.Background()
+	t.Cleanup(func() {
+		if _, err := r.pool.Exec(context.Background(), `DO $$ BEGIN EXECUTE format('ALTER DATABASE %I RESET deadlock_timeout', current_database()); END $$`); err != nil {
+			t.Errorf("resetting deadlock_timeout: %v", err)
+		}
+	})
 	r.exec(t, `DO $$ BEGIN EXECUTE format('ALTER DATABASE %I SET deadlock_timeout = ''20ms''', current_database()); END $$`)
 	other := r.spec
 	other.VideoBitrate = 1_200_000

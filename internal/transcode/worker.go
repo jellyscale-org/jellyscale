@@ -840,8 +840,9 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 				if !gate() {
 					// What it made stays stored, and a viewer who comes back to
 					// the rest starts a job there.
-					stop("its viewers have left it behind")
+					// The row first (DOMAINS 25); the ffmpeg is paused here, so it waits.
 					w.cancelUnwanted(ctx, job)
+					stop("its viewers have left it behind")
 					return nil
 				}
 			case answered := <-job.lease.Beats:
