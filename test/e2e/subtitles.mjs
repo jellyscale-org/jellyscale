@@ -6,14 +6,14 @@
 // by a transcode otherwise, as VobSub always is. Needs the stack test/e2e/run.sh starts.
 // Usage: E2E_SCRATCH=<worker scratch dir> E2E_PG=<postgres container> node subtitles.mjs <base_url> <user> <password>
 // Run from a directory with playwright-core installed.
-import { execFile, execFileSync, spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { existsSync, readFileSync, readdirSync, rmSync, statSync, truncateSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
-import { advances, seek, time, waitFor } from "./player.mjs";
+// The shared viewer records each page's responses for the checker (conform.mjs).
+import { advances, configure, ffmpegRuns, scenario, seek, sql, time, viewer, waitFor } from "./player.mjs";
 import { runLater, schedule, shardLine } from "./shard.mjs";
-import { recordResponses } from "./conform.mjs";
 import { everyReplicaReady, postgres, routerControl, withTwoStreamReplicas } from "./away.mjs";
 
 const require = createRequire(`${process.cwd()}/`);
@@ -28,70 +28,18 @@ const browser = await chromium.launch({
   args: ["--disable-gpu", "--autoplay-policy=no-user-gesture-required"],
 });
 const failures = [];
+configure({ name: "subtitles", base, user, password, browser, failures, ffmpegWait: 90000, reasonLines: 3 });
 
 const exec_ = async (cmd, args) => (await promisify(execFile)(cmd, args)).stdout;
-const sql = (text) => execFileSync("docker", ["exec", process.env.E2E_PG, "psql", "-U", "postgres", "-Atc", text]).toString().trim();
 // Specs with a job, not jobs: a seek past what the job has made (transcodeLead)
 // starts another job of the same spec, whereas picking a track that is drawn into
 // the picture would be another spec.
 const jobCount = () => Number(sql("SELECT count(DISTINCT spec_hash) FROM transcode_jobs"));
 const subtitleJobCount = () => Number(sql("SELECT count(*) FROM subtitle_jobs"));
 
-// The worker's ffmpeg processes, read from the process table.
-function ffmpegRuns() {
-  try {
-    return execFileSync("pgrep", ["-af", `ffmpeg.*${scratch}`]).toString().trim().split("\n").filter(Boolean)
-      .map((line) => ({ line, start: Number(/-start_number (\d+)/.exec(line)?.[1]), burns: /subtitles=subtitles\.ass|overlay=eof_action/.test(line) }));
-  } catch {
-    return []; // pgrep exits 1 when nothing matches.
-  }
-}
-
 // Every ffmpeg command line the worker has run, from the shim's log beside the
 // server's.
 const ffmpegLines = () => readFileSync(join(dirname(process.env.E2E_LOG), "ffmpeg.log"), "utf8").split("\n").filter(Boolean);
-
-async function login(page) {
-  await page.goto(`${base}/web/`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector("#txtManualName", { timeout: 30000 });
-  await page.fill("#txtManualName", user);
-  await page.fill("#txtManualPassword", password);
-  await page.click("button[type=submit]");
-  await page.waitForSelector(".card", { timeout: 30000 });
-}
-
-// A signed-in browser that records what the server told it.
-async function viewer() {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
-  const page = await context.newPage();
-  recordResponses(page, base);
-  const seen = { infos: [], playlists: [], subtitles: [], attachments: [], configs: 0, deletes: [], errors: [], answers: [] };
-  page.on("pageerror", (error) => seen.errors.push(error.message));
-  page.on("request", (request) => {
-    if (request.method() === "DELETE" && /ActiveEncodings/i.test(request.url())) seen.deletes.push(request.url());
-  });
-  page.on("response", async (response) => {
-    if (!response.url().startsWith(base)) return;
-    const url = new URL(response.url());
-    seen.answers.push({ at: Date.now(), status: response.status(), url: response.url() });
-    if (response.status() >= 500) seen.errors.push(`${response.status()} ${url.pathname}`);
-    if (/\.m3u8$/i.test(url.pathname)) seen.playlists.push(url.pathname + url.search);
-    if (/\/Subtitles\//i.test(url.pathname)) {
-      seen.subtitles.push({ at: Date.now(), status: response.status(), type: response.headers()["content-type"], path: url.pathname, index: Number(url.pathname.split("/")[5]) });
-    }
-    if (/\/Attachments\/\d+$/i.test(url.pathname)) {
-      seen.attachments.push({ status: response.status(), type: response.headers()["content-type"], path: url.pathname, bytes: (await response.body().catch(() => Buffer.alloc(0))).length });
-    }
-    if (/\/System\/Configuration\/encoding$/i.test(url.pathname) && response.status() === 200) seen.configs++;
-    if (response.request().method() === "POST" && /\/PlaybackInfo$/i.test(url.pathname)) {
-      const request = JSON.parse(response.request().postData() ?? "{}");
-      const reply = await response.json().catch(() => null);
-      if (reply) seen.infos.push({ request, source: reply.MediaSources[0], session: reply.PlaySessionId });
-    }
-  });
-  await login(page);
-  return { context, page, seen };
-}
 
 async function play(page, library, title) {
   await page.goto(`${base}/web/`);
@@ -106,32 +54,6 @@ function noErrors(seen) {
   if (seen.errors.length) throw new Error(`errors: ${seen.errors.join("; ")}`);
   const bad = seen.subtitles.filter((r) => r.status !== 200 && r.status !== 206); // 206: jellyfin-web probes a PGS file for ranges.
   if (bad.length) throw new Error(`subtitle requests failed: ${JSON.stringify(bad.slice(0, 3))}`);
-}
-
-// E2E_ONLY picks scenarios by name and E2E_SHARD by call order (see shard.mjs).
-function scenario(name, run, options = {}) {
-  return schedule(name, options, async () => {
-    const began = Date.now();
-    const v = await viewer();
-    let passed = false;
-    try {
-      await run(v);
-      passed = true;
-    } catch (error) {
-      const why = error.message.split("\n").filter(Boolean).slice(0, 3).join(" / ");
-      failures.push(`${name}: ${why}`);
-      console.log(`FAIL  ${name}: ${why} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
-      await v.page.screenshot({ path: `${process.env.TMPDIR ?? "/tmp"}/jellyscale-e2e-subtitles.png` }).catch(() => {});
-    } finally {
-      await v.context.close().catch(() => {});
-    }
-    await waitFor("ffmpeg to exit between scenarios", async () => ffmpegRuns().length === 0, 90000).catch(() => {
-      failures.push(`${name}: ffmpeg still running afterwards`);
-      console.log(`FAIL  ${name}: ffmpeg still running afterwards (${((Date.now() - began) / 1000).toFixed(1)}s)`);
-      passed = false;
-    });
-    if (passed) console.log(`ok    ${name} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
-  });
 }
 
 const leave = async (page) => {
@@ -658,7 +580,7 @@ function burnedIn(name, library, title) {
     // A far seek restarts the job part-way in, and the text is where it belongs.
     await seek(page, 70);
     expectBright(await brightThirds(page), "bottom");
-    if (!ffmpegRuns().some((r) => r.burns && r.start > 10)) throw new Error(`the seek didn't restart the job: ${JSON.stringify(ffmpegRuns())}`);
+    if (!ffmpegRuns().some((r) => r.burns && r.startNumber > 10)) throw new Error(`the seek didn't restart the job: ${JSON.stringify(ffmpegRuns())}`);
     await seek(page, 110);
     expectBright(await brightThirds(page), "middle");
 

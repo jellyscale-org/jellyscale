@@ -9,9 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"sort"
@@ -71,46 +69,21 @@ func emptyDatabase(t *testing.T) (string, *pgxpool.Pool) {
 	return u.String(), pool
 }
 
-// command is the binary with the args and, when config is not "", a config
-// file of that text, on the database dsn. Its PATH holds no ffmpeg.
-func command(t *testing.T, dsn string, config string, args ...string) *exec.Cmd {
+// refused runs a process that must exit non-zero by itself, and returns what it said. Its PATH holds no ffmpeg.
+func refused(t *testing.T, dsn string, config, password string, args ...string) string {
 	t.Helper()
-	dir := t.TempDir()
-	if config != "" {
-		path := filepath.Join(dir, "config.json")
-		if err := os.WriteFile(path, []byte(config), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		args = append(args, "--config", path)
-	}
-	cmd := exec.Command(binary(t), append(args, "--listen", freeAddr(t))...)
-	cmd.Env = append(os.Environ(), "JELLYSCALE_DATABASE_URL="+dsn, "PATH="+dir)
-	return cmd
-}
-
-// refused runs the command, which must exit non-zero by itself, and returns
-// what it said.
-func refused(t *testing.T, cmd *exec.Cmd) string {
-	t.Helper()
-	var out bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &out, &out
-	if err := cmd.Start(); err != nil {
-		t.Fatal(err)
-	}
-	done := make(chan error, 1)
-	go func() { done <- cmd.Wait() }()
+	p := startProc(t, procSpec{bin: binary(t), dsn: dsn, args: args, config: config, listen: true, password: password})
 	select {
-	case err := <-done:
+	case <-p.exited:
 		var exit *exec.ExitError
-		if !errors.As(err, &exit) || exit.ExitCode() <= 0 {
-			t.Errorf("want a non-zero exit, got %v\n%s", err, out.String())
+		if !errors.As(p.status, &exit) || exit.ExitCode() <= 0 {
+			t.Errorf("want a non-zero exit, got %v\n%s", p.status, p.log)
 		}
 	case <-time.After(refusalHang):
-		cmd.Process.Kill() //nolint:errcheck
-		<-done
-		t.Errorf("the process started and ran for %v instead of refusing:\n%s", refusalHang, out.String())
+		p.kill()
+		t.Errorf("the process started and ran for %v instead of refusing:\n%s", refusalHang, p.log)
 	}
-	return out.String()
+	return p.log.String()
 }
 
 // tablesIn is how many tables the database has: none if nothing ever migrated
@@ -143,7 +116,7 @@ func TestARefusedRolesTouchesNothingInPostgres(t *testing.T) {
 		t.Run(fmt.Sprintf("%q", c.roles), func(t *testing.T) {
 			t.Parallel()
 			dsn, pool := emptyDatabase(t)
-			out := refused(t, command(t, dsn, `{}`, "--roles="+c.roles))
+			out := refused(t, dsn, `{}`, "", "--roles="+c.roles)
 			if !strings.Contains(out, c.mentions) {
 				t.Errorf("the output does not name %q:\n%s", c.mentions, out)
 			}
@@ -167,9 +140,7 @@ func TestABadScanIntervalTouchesNothingInPostgres(t *testing.T) {
 				t.Parallel()
 				dsn, pool := emptyDatabase(t)
 				config := `{"adminUser": "admin", "scanInterval": ` + bad + `, "libraries": [{"name": "Films", "kind": "movies", "media": "file://` + t.TempDir() + `", "assets": "file://` + t.TempDir() + `"}]}`
-				cmd := command(t, dsn, config, "--roles="+roles)
-				cmd.Env = append(cmd.Env, "JELLYSCALE_ADMIN_PASSWORD=pw")
-				out := refused(t, cmd)
+				out := refused(t, dsn, config, "pw", "--roles="+roles)
 				if !strings.Contains(out, "scanInterval") || strings.Contains(out, "unknown field") {
 					t.Errorf("the output does not name scanInterval:\n%s", out)
 				}
@@ -185,45 +156,8 @@ func TestABadScanIntervalTouchesNothingInPostgres(t *testing.T) {
 // row it registered has exactly the roles asked for, in the order given, it
 // answers /healthz unless it is a worker alone, and says "worker started" when a
 // worker is among them.
-func startedWith(t *testing.T, dsn, config string, args ...string) *replica {
+func startedWith(t *testing.T, dsn, config string, args ...string) *proc {
 	t.Helper()
-	// The address comes from freeAddr, which closes its listener before the
-	// binary binds the port a moment later; with dozens of processes and pools
-	// opening connections from the same ephemeral range, another socket can
-	// take it in between. That is the test's race, not the server's: start
-	// again on a new port, a few times. Any other early exit fails at once.
-	var r *replica
-	for attempt := 1; ; attempt++ {
-		r = startOnce(t, dsn, config, args...)
-		if r == nil {
-			if attempt >= 5 {
-				t.Fatalf("--listen was taken by another socket in %d starts in a row", attempt)
-			}
-			continue
-		}
-		return r
-	}
-}
-
-// startOnce is one start; it returns nil when the process exited because its
-// --listen address was already in use.
-func startOnce(t *testing.T, dsn, config string, args ...string) *replica {
-	t.Helper()
-	cmd := command(t, dsn, config, args...)
-	r := &replica{t: t, log: &bytes.Buffer{}, exited: make(chan struct{}), cmd: cmd}
-	for i, a := range cmd.Args {
-		if a == "--listen" {
-			r.addr = cmd.Args[i+1]
-		}
-	}
-	cmd.Stderr, cmd.Stdout = &lockedWriter{w: r.log}, &lockedWriter{w: r.log}
-	if err := cmd.Start(); err != nil {
-		t.Fatal(err)
-	}
-	go func() { r.status = cmd.Wait(); close(r.exited) }()
-	t.Cleanup(func() { cmd.Process.Kill(); <-r.exited }) //nolint:errcheck
-	// The roles the args ask for, as the process should register them: "all" is
-	// the three, and a list keeps its order with the spaces around a name gone.
 	var asked []string
 	for _, a := range args {
 		if v, ok := strings.CutPrefix(a, "--roles="); ok {
@@ -239,42 +173,31 @@ func startOnce(t *testing.T, dsn, config string, args ...string) *replica {
 	workerOnly := len(asked) == 1 && asked[0] == "worker"
 	wantsWorker := slices.Contains(asked, "worker")
 	pool := connect(t, dsn)
-	// What the process registered: its row names the roles it runs. Not the log,
-	// whose format is the server's own (slog quotes a value only when it has a
-	// space, and a worker alone never logs "listening").
-	registered := func() string {
-		var roles string
-		err := pool.QueryRow(context.Background(), "SELECT roles FROM transcode_nodes WHERE id LIKE $1", fmt.Sprintf("%d-%%", cmd.Process.Pid)).Scan(&roles)
-		if err != nil {
-			return ""
-		}
-		return roles
-	}
-	portTaken := false
-	waitFor(t, 60*time.Second, "the process to have started", func() bool {
-		select {
-		case <-r.exited:
-			if strings.Contains(r.log.String(), "address already in use") {
-				portTaken = true
-				return true
-			}
-			t.Fatalf("the process exited: %v\n%s", r.status, r.log)
-		default:
-		}
+	// startRetrying starts again on a new port when another socket took this one.
+	r := startRetrying(t, procSpec{bin: binary(t), dsn: dsn, args: args, config: config, listen: true}, func(r *proc) bool {
+		// What the process registered: its row names the roles it runs. Not the log,
+		// whose format is the server's own (slog quotes a value only when it has a
+		// space, and a worker alone never logs "listening").
 		if wantsWorker && !strings.Contains(r.log.String(), "worker started") {
 			return false
 		}
-		return registered() != "" && (workerOnly || r.status2xx("/healthz"))
+		return registeredRoles(pool, r) != "" && (workerOnly || r.status2xx("/healthz"))
 	})
-	if portTaken {
-		return nil
-	}
 	// A build that drops a listed role (runs only the first, say) is caught here
 	// and not by /healthz, which any one HTTP role answers.
-	if want := strings.Join(asked, ","); registered() != want {
-		t.Errorf("--roles=%v: the transcode_nodes row says roles %q, want %q:\n%s", asked, registered(), want, r.log)
+	if want := strings.Join(asked, ","); registeredRoles(pool, r) != want {
+		t.Errorf("--roles=%v: the transcode_nodes row says roles %q, want %q:\n%s", asked, registeredRoles(pool, r), want, r.log)
 	}
 	return r
+}
+
+func registeredRoles(pool *pgxpool.Pool, r *proc) string {
+	var roles string
+	err := pool.QueryRow(context.Background(), "SELECT roles FROM transcode_nodes WHERE id LIKE $1", fmt.Sprintf("%d-%%", r.cmd.Process.Pid)).Scan(&roles)
+	if err != nil {
+		return ""
+	}
+	return roles
 }
 
 func TestEveryListOfRolesAndGoodScanIntervalStartsAProcess(t *testing.T) {
@@ -301,7 +224,7 @@ func messages(log string) []string {
 	return out
 }
 
-func serverName(t *testing.T, r *replica) string {
+func serverName(t *testing.T, r *proc) string {
 	t.Helper()
 	response, err := http.Get(r.url("/System/Info/Public"))
 	if err != nil {
@@ -371,7 +294,7 @@ func TestAWorkerWithoutAConfigFileHidesAndRemovesNoLibrary(t *testing.T) {
 // --- the drain, without --config --------------------------------------------------
 
 // startNoConfig is a replica of the role started without --config, on dsn.
-func startNoConfig(t *testing.T, role, dsn string) *replica {
+func startNoConfig(t *testing.T, role, dsn string) *proc {
 	t.Helper()
 	return startedWith(t, dsn, "", "--roles="+role)
 }

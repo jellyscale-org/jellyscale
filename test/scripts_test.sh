@@ -353,6 +353,126 @@ check "run.sh checks each gate's recorded responses with the conform command" "1
 fails_with "the Kotlin decoder fails, not skips, without java" env PATH=/nonexistent /bin/bash test/sdkjvm/decode.sh BaseItemDto /dev/null
 check "the Kotlin decoder names java when it is missing" "1" "$(env PATH=/nonexistent /bin/bash test/sdkjvm/decode.sh BaseItemDto /dev/null 2>&1 | grep -c java)"
 
+# --- JS-114: one process harness for cmd/jellyscale's tests (TestOneProcessHarness reads every test file) and
+# one helper module for the e2e gates. Test code only; every scenario and test that ran before still runs.
+# Each name of the seven is defined once in all of test/e2e's .mjs files, in one module, and the check names
+# the file of a second. Every form counts: function, async function, const, let, var, exported or not, at any indent.
+e2e_names='login|viewer|scenario|sql|ffmpegRuns|waitFor|time'
+e2e_defs() { # dir: one "name file" per definition of one of the seven
+  grep -rHoE --include='*.mjs' "^[[:space:]]*(export[[:space:]]+)?(async[[:space:]]+)?(function[[:space:]]*\*?[[:space:]]*|(const|let|var)[[:space:]]+)($e2e_names)\b" "$1" |
+    sed -E "s/^([^:]+):.*[[:space:]]($e2e_names)$/\2 \1/"
+}
+e2e_defs_report() { # dir: what is wrong with where the seven are defined, naming files; empty when right
+  local defs name all
+  defs=$(e2e_defs "$1" | sort)
+  for name in ${e2e_names//|/ }; do
+    [[ $(grep -c "^$name " <<<"$defs") -eq 1 ]] || echo "$name is defined $(grep -c "^$name " <<<"$defs") times: $(grep "^$name " <<<"$defs" | cut -d' ' -f2 | sort -u | tr '\n' ' ')"
+  done
+  all=$(awk '{ seen[$2] = seen[$2] " " $1 } END { for (f in seen) { n = split(seen[f], a, " "); if (n >= 7) print f } }' <<<"$defs" | sort -u)
+  [[ $(grep -c . <<<"$all") -eq 1 ]] || echo "no single module defines all seven (found: $(echo $all))"
+  [[ $(cut -d' ' -f2 <<<"$defs" | sort -u | grep -c .) -le 1 ]] || echo "the seven are spread over: $(cut -d' ' -f2 <<<"$defs" | sort -u | tr '\n' ' ')"
+}
+fixture="$tmp/defs"; mkdir -p "$fixture"
+cat >"$fixture/a.mjs" <<'EOF'
+export async function login(page) {}
+const viewer = async () => {};
+function scenario(name) {}
+export const waitFor = async () => {};
+EOF
+cat >"$fixture/b.mjs" <<'EOF'
+function helper() {
+  let sql = 1;
+  var time = 2;
+  const ffmpegRuns = () => [];
+}
+const { login: other } = {}; const timeout = 3; const sqlite = 4; const loginUrl = 5;
+EOF
+check "the definition check counts every form (function, async, const, let, var, export, indented) and no near name" \
+  "ffmpegRuns b.mjs
+login a.mjs
+scenario a.mjs
+sql b.mjs
+time b.mjs
+viewer a.mjs
+waitFor a.mjs" "$(e2e_defs "$fixture" | awk '{ n = split($2, p, "/"); print $1, p[n] }' | sort)"
+printf 'const login = 1;\n' >"$fixture/c.mjs"
+check "the check says login is in a.mjs and c.mjs" "1" "$(e2e_defs_report "$fixture" | grep 'login is defined 2 times' | grep 'a.mjs' | grep -c 'c.mjs')"
+rm -r "$fixture"
+check "login, viewer, scenario, sql, ffmpegRuns, waitFor and time are each defined once, all in one shared module of test/e2e" "" "$(e2e_defs_report test/e2e)"
+
+# Every module a gate (or a module) imports is one run.sh copies beside the gates.
+copied=$(grep -E '^cp ' test/e2e/run.sh | grep -oE 'test/e2e/[A-Za-z0-9_-]+\.mjs' | sort -u)
+imported=$(for f in test/e2e/*.mjs; do case $f in *_test.mjs | */router.mjs) continue ;; esac
+  grep -oE "from \"\./[A-Za-z0-9_-]+\.mjs\"" "$f" | sed -E 's|from "\./(.*)"|test/e2e/\1|'; done | sort -u)
+check "run.sh copies every module the gates import" "" "$(comm -13 <(echo "$copied") <(echo "$imported"))"
+check "run.sh copies every gate it runs" "" "$(for g in browse play subtitles failover transcode; do grep -q "test/e2e/$g.mjs" <<<"$copied" || echo "$g"; done)"
+
+# No gate keeps one of the seven under another name or inline.
+check "the sign-in form's selectors appear in one file" "1" "$(grep -l '#txtManualName' test/e2e/*.mjs | grep -c .)"
+check "the pgrep listing of the worker's ffmpeg appears in one file (not counting the tests' stand-in pgrep)" "1" "$(grep -l 'pgrep' test/e2e/*.mjs | grep -vc '_test.mjs$')"
+for gate in browse play subtitles failover transcode away; do
+  for name in ${e2e_names//|/ }; do
+    if grep -qE "(^|[^.[:alnum:]_])$name\(" "test/e2e/$gate.mjs"; then
+      check "$gate.mjs imports $name from a shared module, as it calls it" 1 \
+        "$(grep -Pzo "import\s*\{[^}]*\b$name\b[^}]*\}\s*from\s*\"\./" "test/e2e/$gate.mjs" | tr -d '\0' | grep -c import)"
+    fi
+  done
+done
+check "browse.mjs signs in through the shared login" 1 "$(grep -Pzo 'import\s*\{[^}]*\blogin\b[^}]*\}\s*from\s*"\./' test/e2e/browse.mjs | tr -d '\0' | grep -c import)"
+check "play.mjs signs in and waits through the shared login and waitFor" 2 "$( (grep -Pzo 'import\s*\{[^}]*\blogin\b[^}]*\}\s*from\s*"\./' test/e2e/play.mjs; grep -Pzo 'import\s*\{[^}]*\bwaitFor\b[^}]*\}\s*from\s*"\./' test/e2e/play.mjs) | tr -d '\0' | grep -c import)"
+
+# The gates, run against a stand-in browser (test/e2e/fake): the scenarios each runs, in order, with the T of
+# "shard i/n: ran k of T" and the stopsWorker ones last.
+# A scenario that throws fails its gate: its name and reason are printed, the next runs, the shard line is
+# printed, the exit is non-zero. Failover kills what it started and resets the router, pass or fail.
+rec="$tmp/rec"
+bash test/e2e/fake/record.sh "$repo" "$rec" >"$tmp/gates.txt" 2>&1
+# What a gate ran before JS-114 is compared once, on the base commit, by test/js114-before-after.sh. What stays
+# true for ever: a gate's shards between them run each scenario once, and the T each shard prints is the sum.
+for gate in subtitles failover transcode; do
+  check "$gate: its three shards run T scenarios between them, none twice, each printing the same T" "ok" "$(
+    cat "$rec/$gate"-[012].out | awk '/^run   / { n++; if (seen[$0]++) dup = 1 } /^shard / { split($4 " " $6, t, " "); T[$6]++; tot = $6 } END { print (n == tot && !dup && length(T) == 1) ? "ok" : "ran " n " of " tot " dup=" dup }')"
+done
+for out in "$rec"/*.out; do
+  base_name=$(basename "$out" .out)
+  check "gate $base_name exits non-zero when its scenarios throw" "1" "$(cat "${out%.out}.status")"
+  check "gate $base_name ends with its shard line" "1" "$(tail -1 "$out" | grep -c '^shard [0-9]*/[0-9]*: ran [0-9]* of [0-9]*$')"
+  case $base_name in browse | play) continue ;; esac
+  ran=$(grep -c '^run   ' "$out")
+  unreported=0
+  while IFS= read -r name; do grep -qF "FAIL  $name: " "$out" || unreported=$((unreported + 1)); done < <(sed -n 's/^run   //p' "$out")
+  check "gate $base_name prints FAIL with the name and the reason for each of its $ran scenarios" "0" "$unreported"
+done
+for shard in 0 1 2; do
+  ran=$(grep -c '^run   ' "$rec/failover-$shard.out")
+  resets=$(grep -c '"reset":true' "$rec/failover-$shard/state/router.log")
+  check "failover shard $shard resets the router after each of its $ran scenarios" "$ran" "$resets"
+  alive=0
+  for pid in $(cat "$rec/failover-$shard"/state/replica-*.pid 2>/dev/null); do kill -0 "$pid" 2>/dev/null && alive=$((alive + 1)); done
+  check "failover shard $shard leaves none of the replicas it started running" "0" "$alive"
+done
+
+# A scenario that leaves ffmpeg running fails its gate (the wait between scenarios ends), and one whose
+# ffmpeg exits within the old limits (90 s in subtitles, 60 s elsewhere) does not: the stand-in pgrep shows an
+# ffmpeg for ever, or for 75 s (subtitles) or 55 s (the others). The first scenario only.
+only() { sed -n 's/^run   //p' "$rec/$1-0.out" | head -1 | sed 's/[][\.*^$+?(){}|/]/\\&/g; s/^/^/'; }
+declare -A lasts=([subtitles]=75 [failover]=55 [transcode]=55)
+for gate in subtitles failover transcode; do
+  for mode in always for:${lasts[$gate]}; do
+    ( bash test/e2e/fake/run-gate.sh "$repo" "$tmp/left-$gate-$mode" "$gate" "E2E_SHARD=0/3" "E2E_ONLY=$(only $gate)" "FAKE_PGREP=$mode" >"$tmp/left-$gate-$mode.out" 2>&1; echo $? >"$tmp/left-$gate-$mode.status" ) &
+  done
+done
+wait
+for gate in subtitles failover transcode; do
+  out="$tmp/left-$gate-always.out"
+  check "$gate: ffmpeg left running fails its gate, naming the scenario" "1" "$(grep -c '^FAIL  .*: ffmpeg still running afterwards' "$out")"
+  check "$gate: ... the gate exits non-zero and prints its shard line" "1 1" "$(cat "$tmp/left-$gate-always.status") $(tail -1 "$out" | grep -c '^shard 0/3: ran 1 of ')"
+  check "$gate: an ffmpeg that exits within the old wait limit is waited for" "0" "$(grep -c 'ffmpeg still running afterwards' "$tmp/left-$gate-for:${lasts[$gate]}.out")"
+done
+
+# The binary does not link a package that exists for tests (the harness is not in internal/transcode either).
+check "the jellyscale binary links no package that imports testing" "" "$(go list -deps -f '{{if not .Standard}}{{.ImportPath}} {{.Imports}}{{end}}' ./cmd/jellyscale | grep -E ' (\[|.* )testing( .*|\])' | cut -d' ' -f1)"
+
 echo
 [[ $fails -eq 0 ]] && echo "scripts: all passed" || echo "scripts: $fails failed"
 exit $((fails > 0))

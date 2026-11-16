@@ -11,9 +11,9 @@ import { createServer } from "node:net";
 import { dirname } from "node:path";
 import { promisify } from "node:util";
 import { createRequire } from "node:module";
-import { advances, time, waitFor } from "./player.mjs";
+// The shared viewer records each page's responses for the checker (conform.mjs).
+import { advances, configure, ffmpegRuns, login, scenario, sql, time, viewer, waitFor, workerChildren } from "./player.mjs";
 import { runLater, schedule, shardLine } from "./shard.mjs";
-import { recordResponses } from "./conform.mjs";
 
 const require = createRequire(`${process.cwd()}/`);
 const { chromium } = require("playwright-core");
@@ -30,84 +30,9 @@ const browser = await chromium.launch({
   args: ["--disable-gpu", "--autoplay-policy=no-user-gesture-required"],
 });
 const failures = [];
-
-function sql(text) {
-  return execFileSync("docker", ["exec", process.env.E2E_PG, "psql", "-U", "postgres", "-Atc", text]).toString().trim();
-}
-
-// The worker's ffmpeg processes, read from the process table.
-function ffmpegRuns() {
-  try {
-    const lines = execFileSync("pgrep", ["-af", `ffmpeg.*${scratch}`]).toString().trim().split("\n").filter(Boolean);
-    // A re-encode says its first segment; a copy says where it seeks to, the
-    // keyframe before its first segment, from which the segment follows on
-    // these films (a keyframe every two seconds, segments of four).
-    return lines.map((line) => ({
-      line,
-      copy: /-c:v copy/.test(line),
-      start: /-start_number (\d+)/.test(line) ? Number(/-start_number (\d+)/.exec(line)[1]) : Math.ceil(Number(/-ss ([\d.]+)/.exec(line)?.[1] ?? 0) / 4),
-      // The audio track's map: from the second input, or from the only one.
-      audio: /-map [01]:(\d+)/.exec(line)?.[1],
-      inputs: (line.match(/ -i /g) ?? []).length,
-    }));
-  } catch {
-    return []; // pgrep exits 1 when nothing matches.
-  }
-}
-
-async function login(page) {
-  await page.goto(`${base}/web/`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector("#txtManualName", { timeout: 30000 });
-  await page.fill("#txtManualName", user);
-  await page.fill("#txtManualPassword", password);
-  await page.click("button[type=submit]");
-  await page.waitForSelector(".card", { timeout: 30000 });
-}
+configure({ name: "transcode", base, user, password, browser, failures, unanswered: "hls" });
 
 function clock() { return Date.now(); }
-
-// A signed-in browser that records what the server told it.
-async function viewer() {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
-  const page = await context.newPage();
-  recordResponses(page, base);
-  const seen = { infos: [], hls: [], deletes: [], errors: [], console: [], failed: [], requests: [], answers: [], cut: [], open: new Set() };
-  page.on("pageerror", (error) => seen.errors.push(error.message));
-  // A request that ended without an answer: hls.js abandons one after ten seconds. A seek aborts some too, so a scenario that seeks looks before it does.
-  page.on("requestfailed", (request) => { if (request.url().startsWith(base) && /\/hls1\//i.test(request.url())) seen.failed.push(`${request.method()} ${new URL(request.url()).pathname} ${request.failure()?.errorText}`); });
-  page.on("console", (message) => { if (/hls|playback/i.test(message.text())) seen.console.push(message.text().slice(0, 200)); });
-  // The player's playback requests, for a failure to show what it did and when.
-  const start = Date.now();
-  page.timeline = [];
-  // Every request to the server and every answer, whichever role gave it, for the scenarios that put Postgres away.
-  page.on("request", (request) => { if (request.url().startsWith(base)) { seen.requests.push({ at: clock(), method: request.method(), url: request.url(), range: request.headers().range }); seen.open.add(request); } });
-  // A request that ended without an answer (a response cut, a connection refused), and every request still waiting for its end.
-  page.on("requestfinished", (request) => seen.open.delete(request));
-  page.on("requestfailed", (request) => { seen.open.delete(request); if (request.url().startsWith(base)) seen.cut.push({ at: clock(), method: request.method(), url: request.url(), error: request.failure()?.errorText }); });
-  page.on("response", (response) => { if (response.url().startsWith(base)) seen.answers.push({ at: clock(), status: response.status(), method: response.request().method(), url: response.url(), routed: response.headers()["x-routed-to"], backend: response.headers()["x-backend"] }); });
-  page.on("request", (request) => {
-    if (request.method() === "DELETE" && /ActiveEncodings/i.test(request.url())) seen.deletes.push(request.url());
-    const url = new URL(request.url());
-    if (/PlaybackInfo|Sessions\/Playing|ActiveEncodings|master\.m3u8|main\.m3u8/i.test(url.pathname)) {
-      page.timeline.push(`${Date.now() - start} ms ${request.method()} ${url.pathname.replace(/^.*\/(?=[^/]+\/?[^/]*$)/, "")} ${url.searchParams.get("PlaySessionId") ?? ""}`);
-    }
-  });
-  page.on("response", async (response) => {
-    const url = new URL(response.url());
-    if (!response.url().startsWith(base)) return;
-    if (response.status() >= 500) seen.errors.push(`${response.status()} ${url.pathname}`);
-    if (/^\/videos\/.*(m3u8|\/hls1\/)/i.test(url.pathname)) {
-      seen.hls.push({ at: Date.now(), status: response.status(), routed: response.headers()["x-routed-to"], path: url.pathname, query: url.searchParams });
-    }
-    if (response.request().method() === "POST" && /\/PlaybackInfo$/i.test(url.pathname)) {
-      const request = JSON.parse(response.request().postData() ?? "{}");
-      const reply = await response.json().catch(() => null);
-      if (reply) seen.infos.push({ request, source: reply.MediaSources[0], session: reply.PlaySessionId });
-    }
-  });
-  await login(page);
-  return { context, page, seen };
-}
 
 const duration = (page) => page.evaluate(() => document.querySelector("video")?.duration ?? 0);
 
@@ -127,37 +52,6 @@ function noErrors(seen) {
 }
 
 const transcodeUrl = (seen) => seen.infos.map((i) => i.source.TranscodingUrl).filter(Boolean).at(-1);
-
-// E2E_ONLY="audio" runs just the scenarios whose name matches. A name is a quoted
-// literal, with any part known only at run time after ": ", so that test/report.sh
-// can annotate the scenario at its own line.
-// E2E_SHARD (see shard.mjs) picks the scenarios by call order, so a scenario that
-// stops the worker or needs it gone is marked { stopsWorker: true } at its call
-// and runs last, on the last shard.
-function scenario(name, run, options = {}) {
-  return schedule(name, options, async () => {
-    const began = Date.now();
-    const v = await viewer();
-    let passed = false;
-    try {
-      await run(v);
-      passed = true;
-    } catch (error) {
-      failures.push(`${name}: ${error.message.split("\n")[0]}`);
-      console.log(`FAIL  ${name}: ${error.message.split("\n")[0]} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
-      await v.page.screenshot({ path: `${process.env.TMPDIR ?? "/tmp"}/jellyscale-e2e-transcode.png` }).catch(() => {});
-    } finally {
-      await v.context.close().catch(() => {});
-    }
-    // Nothing may be left running for the next scenario.
-    await waitFor("ffmpeg to exit between scenarios", async () => ffmpegRuns().length === 0, 60000).catch(() => {
-      failures.push(`${name}: ffmpeg still running afterwards`);
-      console.log(`FAIL  ${name}: ffmpeg still running afterwards (${((Date.now() - began) / 1000).toFixed(1)}s)`);
-      passed = false;
-    });
-    if (passed) console.log(`ok    ${name} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
-  });
-}
 
 const leave = async (page) => {
   // The player reports its start without waiting for its page, and only that
@@ -898,15 +792,6 @@ function workerCpu() {
   return (Number(fields[13]) + Number(fields[14])) / 100; // cutime and cstime, in clock ticks.
 }
 
-// A zombie child still counts: pgrep -P matches on the parent alone.
-function workerChildren() {
-  try {
-    return execFileSync("pgrep", ["-P", process.env.E2E_WORKER_PID]).toString().trim().split("\n").filter(Boolean).length;
-  } catch {
-    return 0; // pgrep exits 1 when nothing matches.
-  }
-}
-
 async function cpuPerSegment(page, seen, title, segments, quality) {
   await play(page, "Transcode", title);
   if (quality) {
@@ -924,7 +809,7 @@ async function cpuPerSegment(page, seen, title, segments, quality) {
   await waitFor(`${segments} segments`, async () => stored() >= segments, 120000);
   await leave(page);
   await waitFor("ffmpeg to exit", async () => ffmpegRuns().length === 0, 30000);
-  // pgrep stops seeing a killed ffmpeg as soon as it is a zombie (its command
+  // The process table stops showing a killed ffmpeg as soon as it is a zombie (its command
   // line is gone), but the kernel adds its CPU time to the worker's cutime only
   // when the worker reaps it. Reading before then measured a 22 s re-encode as 0.11.
   await waitFor("the worker to reap its ffmpeg", async () => workerChildren() === 0, 30000);
@@ -1324,7 +1209,7 @@ await scenario("ffmpeg hangs: the viewer gets the dialog, and the client stops a
   await page.locator(".cardText a:visible", { hasText: "Omicron Film" }).first().click();
   await page.locator(".btnPlay:visible").first().click();
   await waitFor("ffmpeg to start", async () => ffmpegRuns().length === 1, 20000);
-  for (const pid of execFileSync("pgrep", ["-f", `ffmpeg.*${scratch}`]).toString().trim().split("\n")) process.kill(Number(pid), "SIGSTOP");
+  for (const run of ffmpegRuns()) process.kill(run.pid, "SIGSTOP");
   await page.getByText("Playback Error").first().waitFor({ timeout: 90000 });
   await new Promise((resolve) => setTimeout(resolve, 8000));
   if (seen.infos.length > 3) throw new Error(`the client asked ${seen.infos.length} times`);
@@ -1339,6 +1224,7 @@ await scenario("a stream replica without transcodeStore: the dialog, and the log
   if (!nostore || !process.env.E2E_NOSTORE) throw new Error("E2E_NOSTORE starts a stream replica without a transcodeStore, behind E2E_BASE_NOSTORE");
   const replica = spawn(process.env.E2E_NOSTORE, [], { stdio: "ignore" });
   base = nostore;
+  configure({ base });
   try {
     await waitFor("the replica to register", async () => sql("SELECT count(*) FROM transcode_nodes WHERE roles = 'stream' AND store = ''") === "1", 30000);
     // A new login, as the viewer was made against the other router.
@@ -1352,6 +1238,7 @@ await scenario("a stream replica without transcodeStore: the dialog, and the log
     if (!readFileSync(process.env.E2E_LOG, "utf8").includes("stream has no transcodeStore")) throw new Error("the log doesn't name the missing store");
   } finally {
     base = home;
+    configure({ base });
     const gone = new Promise((resolve) => replica.once("exit", resolve));
     replica.kill("SIGTERM");
     await gone;

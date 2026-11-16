@@ -3,7 +3,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -14,7 +13,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
 
@@ -77,66 +75,22 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// replica is one jellyscale process of one role.
-type replica struct {
-	t      *testing.T
-	cmd    *exec.Cmd
-	addr   string
-	log    *bytes.Buffer
-	exited chan struct{}
-	status error
-	id     string // What it calls itself in session_sockets.replica, once a socket on it has been seen.
-}
-
 // start runs a replica of the role against dsn, with the extra config keys, and
 // waits for its liveness route. Its PATH holds no ffmpeg, as in production.
-func start(t *testing.T, role, dsn string, extra map[string]any) *replica {
+func start(t *testing.T, role, dsn string, extra map[string]any) *proc {
 	t.Helper()
 	config := map[string]any{"name": "failover", "adminUser": adminUser}
 	for k, v := range extra {
 		config[k] = v
 	}
 	raw, _ := json.Marshal(config)
-	dir := t.TempDir()
-	path := filepath.Join(dir, "config.json")
-	if err := os.WriteFile(path, raw, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	r := &replica{t: t, addr: freeAddr(t), log: &bytes.Buffer{}, exited: make(chan struct{})}
-	r.cmd = exec.Command(binary(t), "--roles="+role, "--listen", r.addr, "--config", path)
-	r.cmd.Env = append(os.Environ(), "JELLYSCALE_DATABASE_URL="+dsn, "JELLYSCALE_ADMIN_PASSWORD="+adminPassword, "PATH="+dir)
-	r.cmd.Stderr, r.cmd.Stdout = &lockedWriter{w: r.log}, &lockedWriter{w: r.log}
-	if err := r.cmd.Start(); err != nil {
-		t.Fatal(err)
-	}
-	go func() { r.status = r.cmd.Wait(); close(r.exited) }()
-	t.Cleanup(func() { r.cmd.Process.Kill(); <-r.exited }) //nolint:errcheck
-	waitFor(t, 60*time.Second, "the "+role+" replica to answer /healthz", func() bool {
-		select {
-		case <-r.exited:
-			t.Fatalf("the %s replica exited: %v\n%s", role, r.status, r.log)
-		default:
-		}
-		return r.status2xx("/healthz")
-	})
+	r := startProc(t, procSpec{bin: binary(t), dsn: dsn, args: []string{"--roles=" + role}, config: string(raw), listen: true, user: adminUser, password: adminPassword})
+	r.until(60*time.Second, "the "+role+" replica to answer /healthz", func() bool { return r.status2xx("/healthz") })
 	return r
 }
 
-type lockedWriter struct {
-	mu sync.Mutex
-	w  *bytes.Buffer
-}
-
-func (l *lockedWriter) Write(p []byte) (int, error) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return l.w.Write(p)
-}
-
-func (r *replica) url(path string) string { return "http://" + r.addr + path }
-
 // code is the status of a GET on a connection of its own, or 0.
-func (r *replica) code(path string) int {
+func (r *proc) code(path string) int {
 	client := &http.Client{Transport: &http.Transport{DisableKeepAlives: true}, Timeout: 5 * time.Second}
 	response, err := client.Get(r.url(path))
 	if err != nil {
@@ -146,19 +100,7 @@ func (r *replica) code(path string) int {
 	return response.StatusCode
 }
 
-func (r *replica) status2xx(path string) bool { c := r.code(path); return c >= 200 && c < 300 }
-
-func (r *replica) alive() bool {
-	select {
-	case <-r.exited:
-		return false
-	default:
-		return true
-	}
-}
-
-func (r *replica) sigterm() { r.cmd.Process.Signal(syscall.SIGTERM) } //nolint:errcheck
-func (r *replica) kill()    { r.cmd.Process.Kill(); <-r.exited }      //nolint:errcheck
+func (r *proc) status2xx(path string) bool { c := r.code(path); return c >= 200 && c < 300 }
 
 func waitFor(t *testing.T, limit time.Duration, what string, ok func() bool) {
 	t.Helper()
@@ -185,26 +127,6 @@ func connect(t *testing.T, dsn string) *pgxpool.Pool {
 // tests of a stream replica, which has no sign-in route.
 func tokenFor(t *testing.T, dsn string) string { return start(t, "api", dsn, nil).signIn(t) }
 
-// signIn is one device's sign-in on a replica: a token of its own.
-func (r *replica) signIn(t *testing.T) string {
-	t.Helper()
-	device := uuid.NewString()
-	request, _ := http.NewRequest("POST", r.url("/Users/AuthenticateByName"), strings.NewReader(`{"Username":"`+adminUser+`","Pw":"`+adminPassword+`"}`))
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", `MediaBrowser Client="failover", Device="d", DeviceId="`+device+`", Version="1"`)
-	response, err := http.DefaultClient.Do(request)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer response.Body.Close()
-	body, _ := io.ReadAll(response.Body)
-	var reply struct{ AccessToken string }
-	if response.StatusCode != 200 || json.Unmarshal(body, &reply) != nil || reply.AccessToken == "" {
-		t.Fatalf("sign-in: %d %s", response.StatusCode, body)
-	}
-	return reply.AccessToken
-}
-
 // socket is a device's open WebSockets, kept alive as a browser does.
 type socket struct {
 	conn *websocket.Conn
@@ -217,7 +139,7 @@ type socket struct {
 // replica's own idle limit (60 s) never closes it. Six times as often as
 // jellyfin-web does, which a check on how soon a row goes stale must not rely on:
 // those use dialEvery with jellyfin-web's 30 s.
-func (r *replica) dial(t *testing.T, token string) *socket {
+func (r *proc) dial(t *testing.T, token string) *socket {
 	t.Helper()
 	return r.dialEvery(t, token, 5*time.Second)
 }
@@ -225,7 +147,7 @@ func (r *replica) dial(t *testing.T, token string) *socket {
 // dialEvery is dial with the client's keepalive period. jellyfin-web answers
 // ForceKeepAlive (Data 60) by sending KeepAlive every 30 s, so a row is
 // refreshed that rarely.
-func (r *replica) dialEvery(t *testing.T, token string, period time.Duration) *socket {
+func (r *proc) dialEvery(t *testing.T, token string, period time.Duration) *socket {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	conn, _, err := websocket.Dial(ctx, "ws://"+r.addr+"/socket?ApiKey="+token, nil)
@@ -478,7 +400,7 @@ func film(t *testing.T, pool *pgxpool.Pool, token string, size int64) string {
 
 // holdOpen starts a direct play that the client does not read: the replica
 // fills its socket buffers and then waits for a response that does not end.
-func holdOpen(t *testing.T, r *replica, path string) (headers chan *http.Response) {
+func holdOpen(t *testing.T, r *proc, path string) (headers chan *http.Response) {
 	t.Helper()
 	headers = make(chan *http.Response, 1)
 	go func() {
@@ -559,7 +481,7 @@ func TestOnSIGTERMReadinessFailsFirstAndRequestsAreStillAnsweredForTheLead(t *te
 	}
 }
 
-func (r *replica) getCode(path string, headers ...string) int {
+func (r *proc) getCode(path string, headers ...string) int {
 	request, _ := http.NewRequest("GET", r.url(path), nil)
 	for i := 0; i+1 < len(headers); i += 2 {
 		request.Header.Set(headers[i], headers[i+1])
@@ -665,23 +587,16 @@ func TestAReplicaWithAnUnreadableGraceDoesNotStart(t *testing.T) {
 	t.Parallel()
 	dsn := testenv.DatabaseURL(t)
 	for _, value := range []string{`"soon"`, `"-5s"`, `30`, `"2 minutes"`} {
-		dir := t.TempDir()
-		path := filepath.Join(dir, "config.json")
-		os.WriteFile(path, []byte(`{"shutdownGrace": `+value+`}`), 0o644) //nolint:errcheck
-		cmd := exec.Command(binary(t), "--roles=api", "--listen", freeAddr(t), "--config", path)
-		cmd.Env = append(os.Environ(), "JELLYSCALE_DATABASE_URL="+dsn, "PATH="+dir)
-		done := make(chan struct{})
-		var out []byte
-		var err error
-		go func() { out, err = cmd.CombinedOutput(); close(done) }()
+		p := startProc(t, procSpec{bin: binary(t), dsn: dsn, args: []string{"--roles=api"}, config: `{"shutdownGrace": ` + value + `}`, listen: true})
 		select {
-		case <-done:
+		case <-p.exited:
 		case <-time.After(30 * time.Second):
-			cmd.Process.Kill() //nolint:errcheck
+			p.kill()
 			t.Errorf("shutdownGrace %s: the replica started", value)
 			continue
 		}
-		if err == nil || !strings.Contains(string(out), "shutdownGrace") || strings.Contains(string(out), "unknown field") {
+		out, err := p.log.String(), p.status
+		if err == nil || !strings.Contains(out, "shutdownGrace") || strings.Contains(out, "unknown field") {
 			t.Errorf("shutdownGrace %s: %v, output %q", value, err, out)
 		}
 	}
@@ -691,7 +606,7 @@ func TestAReplicaWithAnUnreadableGraceDoesNotStart(t *testing.T) {
 
 // proxied starts a replica of the role whose every connection goes through a
 // proxy of its own.
-func proxied(t *testing.T, role string, extra map[string]any) (*replica, *testenv.DBProxy) {
+func proxied(t *testing.T, role string, extra map[string]any) (*proc, *testenv.DBProxy) {
 	t.Helper()
 	proxy := testenv.NewDBProxy(t, testenv.DatabaseURL(t))
 	return start(t, role, proxy.DSN(), extra), proxy
@@ -710,7 +625,7 @@ type poll struct {
 	ready, health int
 }
 
-func watch(r *replica) *readiness {
+func watch(r *proc) *readiness {
 	w := &readiness{stop: make(chan struct{})}
 	go func() {
 		for {
@@ -755,7 +670,7 @@ func healthStayedUp(t *testing.T, polls []poll) {
 }
 
 // authenticated is a request that needs the database, started in the background.
-func (r *replica) ask(token, path string) chan int {
+func (r *proc) ask(token, path string) chan int {
 	answered := make(chan int, 1)
 	go func() {
 		request, _ := http.NewRequest("GET", r.url(path), nil)

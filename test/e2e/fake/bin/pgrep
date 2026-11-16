@@ -1,0 +1,12 @@
+#!/bin/sh
+# FAKE_PGREP=none (default): no ffmpeg. always: one ffmpeg for ever. for:<seconds>: one ffmpeg until that
+# long after the first question. The line is what pgrep -af prints for a re-encode.
+state=${FAKE_STATE:?}
+case ${FAKE_PGREP:-none} in
+  none) exit 1 ;;
+  always) ;;
+  for:*)
+    [ -f "$state/pgrep-first" ] || date +%s >"$state/pgrep-first"
+    [ $(( $(date +%s) - $(cat "$state/pgrep-first") )) -lt "${FAKE_PGREP#for:}" ] || exit 1 ;;
+esac
+echo "4242 ffmpeg -nostdin -i ${E2E_SCRATCH}/film.mkv -c:v libx264 -start_number 0 -map 0:1 out.m3u8"

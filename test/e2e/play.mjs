@@ -6,6 +6,11 @@
 import { createRequire } from "node:module";
 import { wholeLine } from "./shard.mjs";
 import { recordResponses } from "./conform.mjs";
+import {
+  login,
+} from "./player.mjs";
+import { waitFor } from "./player.mjs";
+import { configure, time } from "./player.mjs";
 
 const require = createRequire(`${process.cwd()}/`);
 const { chromium } = require("playwright-core");
@@ -21,6 +26,7 @@ const browser = await chromium.launch({
   args: ["--disable-gpu", "--autoplay-policy=no-user-gesture-required"],
 });
 const failures = [];
+configure({ base, user, password });
 
 async function newSession() {
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
@@ -43,15 +49,6 @@ async function newSession() {
   return { context, page, seen };
 }
 
-async function login(page) {
-  await page.goto(`${base}/web/`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector("#txtManualName", { timeout: 30000 });
-  await page.fill("#txtManualName", user);
-  await page.fill("#txtManualPassword", password);
-  await page.click("button[type=submit]");
-  await page.waitForSelector(".card", { timeout: 30000 });
-}
-
 let steps = 0;
 async function step(name, action) {
   steps++;
@@ -65,18 +62,7 @@ async function step(name, action) {
   }
 }
 
-const time = (page) => page.evaluate(() => document.querySelector("video")?.currentTime ?? -1);
 const duration = (page) => page.evaluate(() => document.querySelector("video")?.duration ?? 0);
-
-async function waitFor(page, what, test, timeout = 20000) {
-  const deadline = Date.now() + timeout;
-  while (Date.now() < deadline) {
-    const value = await test();
-    if (value) return value;
-    await page.waitForTimeout(200);
-  }
-  throw new Error(`timed out waiting for ${what}`);
-}
 
 const positions = {};
 const first = await newSession();
@@ -90,20 +76,20 @@ for (const film of films) {
     await page.locator(".card:visible", { hasText: film.library }).first().click();
     await page.locator(".cardText a:visible", { hasText: film.title }).first().click();
     await page.locator(".btnPlay:visible").first().click();
-    await waitFor(page, "video to start", async () => (await time(page)) > 0.5);
+    await waitFor("video to start", async () => (await time(page)) > 0.5, 20000);
   });
 
   let middle = 0;
   await step(`${film.backend}: time advances`, async () => {
     const before = await time(page);
-    await waitFor(page, "currentTime to advance", async () => (await time(page)) > before + 1);
+    await waitFor("currentTime to advance", async () => (await time(page)) > before + 1, 20000);
   });
   await step(`${film.backend}: seek to the middle and keep playing`, async () => {
     const total = await duration(page);
     if (!(total > 5)) throw new Error(`duration ${total}`);
     middle = total * 0.45;
     await page.evaluate((target) => { document.querySelector("video").currentTime = target; }, middle);
-    await waitFor(page, "playback past the middle", async () => (await time(page)) > middle + 1);
+    await waitFor("playback past the middle", async () => (await time(page)) > middle + 1, 20000);
     const now = await time(page);
     if (now > total * 0.6) throw new Error(`overshot to ${now} of ${total}`);
   });
@@ -155,11 +141,11 @@ await step("positions persisted and films are under Continue Watching", async ()
   await page.goto(`${base}/web/`);
   await page.waitForSelector(".card", { timeout: 30000 });
   for (const film of films) {
-    await waitFor(page, `${film.title} under Continue Watching`, () => page.evaluate((title) => {
+    await waitFor(`${film.title} under Continue Watching`, () => page.evaluate((title) => {
       const heading = [...document.querySelectorAll(".sectionTitle")].find((e) => /continue watching/i.test(e.textContent));
       const section = heading?.closest(".verticalSection");
       return !!section && [...section.querySelectorAll(".cardText")].some((e) => e.textContent.includes(title));
-    }, film.title));
+    }, film.title), 20000);
   }
   // The home asks Resume once per media type, Video, Audio and Book; a film is only a video.
   // Once the page is quiet every row has its answer. An empty row keeps its heading, hidden, so look for cards.

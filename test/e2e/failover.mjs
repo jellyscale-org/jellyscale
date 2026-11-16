@@ -5,11 +5,12 @@
 // router polls GET /readyz as an ingress does and retries a refused connection on another replica.
 // Usage: node failover.mjs <base_url> <user> <password>
 // Run from a directory with playwright-core installed.
-import { execFileSync, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { createRequire } from "node:module";
 import { schedule, runLater, shardLine } from "./shard.mjs";
-import { recordResponses } from "./conform.mjs";
+// The shared viewer records each page's responses for the checker (conform.mjs).
+import { configure, ffmpegRuns, login, scenario, signInShown, sql, time, viewer, waitFor } from "./player.mjs";
 
 const require = createRequire(`${process.cwd()}/`);
 const { chromium } = require("playwright-core");
@@ -17,38 +18,15 @@ const { chromium } = require("playwright-core");
 const [base, user, password] = process.argv.slice(2);
 const launch = { api: process.env.E2E_API_REPLICA, stream: process.env.E2E_STREAM_REPLICA };
 if (!launch.api || !launch.stream) throw new Error("the failover gate needs E2E_API_REPLICA and E2E_STREAM_REPLICA (test/e2e/run.sh sets them)");
-const scratch = process.env.E2E_SCRATCH;
 
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH ?? "/usr/bin/chromium",
   args: ["--disable-gpu", "--autoplay-policy=no-user-gesture-required"],
 });
 const failures = [];
-
-function sql(text) {
-  return execFileSync("docker", ["exec", process.env.E2E_PG, "psql", "-U", "postgres", "-Atc", text]).toString().trim();
-}
-
-// The worker's ffmpeg processes, from the process table.
-function ffmpegRuns() {
-  try {
-    return execFileSync("pgrep", ["-af", `ffmpeg.*${scratch}`]).toString().trim().split("\n").filter(Boolean);
-  } catch {
-    return []; // pgrep exits 1 when nothing matches.
-  }
-}
+configure({ name: "failover", base, user, password, browser, failures, unanswered: "all", afterScenario: stopAll });
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-async function waitFor(what, test, timeout = 30000) {
-  const deadline = Date.now() + timeout;
-  while (Date.now() < deadline) {
-    const value = await test();
-    if (value) return value;
-    await sleep(200);
-  }
-  throw new Error(`timed out waiting for ${what}`);
-}
 
 function freePort() {
   return new Promise((resolve) => {
@@ -93,59 +71,6 @@ async function stopAll() {
 
 // --- the viewer --------------------------------------------------------------------
 
-async function login(page) {
-  await page.goto(`${base}/web/`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector("#txtManualName", { timeout: 30000 });
-  await page.fill("#txtManualName", user);
-  await page.fill("#txtManualPassword", password);
-  await page.click("button[type=submit]");
-  await page.waitForSelector(".card", { timeout: 30000 });
-}
-
-// A signed-in browser that records every request and answer with the replica that gave it, its
-// WebSockets with what they received, and the player's progress reports.
-async function viewer() {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
-  const page = await context.newPage();
-  recordResponses(page, base);
-  const seen = { infos: [], answers: [], failed: [], reports: [], sockets: [], errors: [] };
-  page.on("pageerror", (error) => seen.errors.push(error.message));
-  page.on("request", (request) => {
-    const url = new URL(request.url());
-    if (request.method() === "POST" && /^\/Sessions\/Playing\/(Progress|Stopped)$/i.test(url.pathname)) {
-      seen.reports.push({ at: Date.now(), kind: /Stopped/i.test(url.pathname) ? "Stopped" : "Progress", request, body: JSON.parse(request.postData() ?? "{}"), status: null });
-    }
-  });
-  page.on("requestfailed", (request) => {
-    if (!request.url().startsWith(base)) return;
-    seen.failed.push({ at: Date.now(), method: request.method(), path: new URL(request.url()).pathname, error: request.failure()?.errorText });
-    const report = seen.reports.find((r) => r.request === request);
-    if (report) report.status = 0;
-  });
-  page.on("response", async (response) => {
-    if (!response.url().startsWith(base)) return;
-    const url = new URL(response.url());
-    const answer = { at: Date.now(), status: response.status(), method: response.request().method(), path: url.pathname, url: response.url(), backend: Number(response.headers()["x-backend"]) || null, range: response.request().headers().range };
-    seen.answers.push(answer);
-    const report = seen.reports.find((r) => r.request === response.request());
-    if (report) Object.assign(report, { status: answer.status, backend: answer.backend });
-    if (response.request().method() === "POST" && /\/PlaybackInfo$/i.test(url.pathname)) {
-      const reply = await response.json().catch(() => null);
-      if (reply) seen.infos.push({ source: reply.MediaSources[0], session: reply.PlaySessionId });
-    }
-  });
-  page.on("websocket", (ws) => {
-    const socket = { url: ws.url(), openedAt: Date.now(), closedAt: null, frames: [], token: new URL(ws.url()).searchParams.get("ApiKey") ?? new URL(ws.url()).searchParams.get("api_key") };
-    ws.on("framereceived", ({ payload }) => socket.frames.push(String(payload).slice(0, 200)));
-    ws.on("close", () => { socket.closedAt = Date.now(); });
-    seen.sockets.push(socket);
-  });
-  await login(page);
-  return { context, page, seen };
-}
-
-const time = (page) => page.evaluate(() => document.querySelector("video")?.currentTime ?? -1);
-
 // Where the player has data to, from the current time on.
 const bufferedEnd = (page) => page.evaluate(() => {
   const v = document.querySelector("video");
@@ -184,7 +109,7 @@ async function playsPast(page, to, timeout = 300000, seen) {
   let now = -1;
   while (Date.now() < deadline) {
     if (await page.getByText("Playback Error").count()) throw new Error(`the viewer got a Playback Error dialog (the film was at ${now.toFixed(1)} s, wanted past ${to.toFixed(1)} s)`);
-    if (await page.locator("#txtManualName").isVisible().catch(() => false)) throw new Error("the viewer is back at the sign-in page");
+    if (await signInShown(page)) throw new Error("the viewer is back at the sign-in page");
     now = await time(page);
     if (now > to) return now;
     await sleep(250);
@@ -202,31 +127,7 @@ const leave = async (page) => {
 };
 
 // The scenarios of the gate. A failure names the scenario; every replica a scenario started is
-// killed afterwards and the router goes back to the stack's own.
-function scenario(name, run, options = {}) {
-  return schedule(name, options, async () => {
-    const began = Date.now();
-    const v = await viewer();
-    let passed = false;
-    try {
-      await run(v);
-      passed = true;
-    } catch (error) {
-      failures.push(`${name}: ${error.message.split("\n")[0]}`);
-      console.log(`FAIL  ${name}: ${error.message.split("\n")[0]} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
-      await v.page.screenshot({ path: `${process.env.TMPDIR ?? "/tmp"}/jellyscale-e2e-failover.png` }).catch(() => {});
-    } finally {
-      await v.context.close().catch(() => {});
-      await stopAll();
-    }
-    await waitFor("ffmpeg to exit between scenarios", async () => ffmpegRuns().length === 0, 60000).catch(() => {
-      failures.push(`${name}: ffmpeg still running afterwards`);
-      console.log(`FAIL  ${name}: ffmpeg still running afterwards`);
-      passed = false;
-    });
-    if (passed) console.log(`ok    ${name} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
-  });
-}
+// killed afterwards and the router goes back to the stack's own (afterScenario).
 
 // --- api replica killed ------------------------------------------------------------
 
@@ -235,12 +136,12 @@ function scenario(name, run, options = {}) {
 async function replicaIds(list) {
   const ids = new Map();
   for (const replica of list) {
-    const login = await fetch(`http://127.0.0.1:${replica.port}/Users/AuthenticateByName`, {
+    const answer = await fetch(`http://127.0.0.1:${replica.port}/Users/AuthenticateByName`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `MediaBrowser Client="probe", Device="probe", DeviceId="probe-${replica.port}", Version="1"` },
       body: JSON.stringify({ Username: user, Pw: password }),
     });
-    const token = (await login.json()).AccessToken;
+    const token = (await answer.json()).AccessToken;
     const ws = new WebSocket(`ws://127.0.0.1:${replica.port}/socket?ApiKey=${token}`);
     await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = () => reject(new Error(`no socket on replica ${replica.port}`)); });
     const id = await waitFor("the probe socket's row", async () => sql(`SELECT replica FROM session_sockets WHERE token = '${token}'`));

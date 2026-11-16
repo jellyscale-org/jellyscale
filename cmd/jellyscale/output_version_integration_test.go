@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -18,7 +17,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
 
@@ -94,53 +92,9 @@ func buildWith(dir string, version int) (string, error) {
 	return binary, nil
 }
 
-// syncBuffer is a log that a process and the test share.
-type syncBuffer struct {
-	mu  sync.Mutex
-	buf bytes.Buffer
-}
-
-func (b *syncBuffer) Write(p []byte) (int, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return b.buf.Write(p)
-}
-
-func (b *syncBuffer) String() string {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return b.buf.String()
-}
-
-// proc is one running jellyscale process.
-type proc struct {
-	cmd      *exec.Cmd
-	version  int
-	roles    string
-	addr     string // Of a process with api or stream.
-	workerID string // Of a process with a worker.
-	log      *syncBuffer
-	done     chan struct{}
-}
+// proc.version, roles and workerID say which build and roles a process of a cluster has.
 
 func (p *proc) name() string { return fmt.Sprintf("v%d %s", p.version, p.roles) }
-
-// stop ends the process as an orchestrator does, with SIGTERM, and kills it if
-// it has not gone after the hang bound.
-func (p *proc) stop() {
-	select {
-	case <-p.done:
-		return
-	default:
-	}
-	p.cmd.Process.Signal(syscall.SIGTERM) //nolint:errcheck
-	select {
-	case <-p.done:
-	case <-time.After(hang):
-		p.cmd.Process.Kill() //nolint:errcheck
-		<-p.done
-	}
-}
 
 type cluster struct {
 	t       *testing.T
@@ -170,12 +124,7 @@ func newCluster(t *testing.T, slow bool, lead string) *cluster {
 		t.Fatal(err)
 	}
 	c.pool = pool
-	t.Cleanup(func() {
-		for i := len(c.procs) - 1; i >= 0; i-- {
-			c.procs[i].stop()
-		}
-		pool.Close()
-	})
+	t.Cleanup(pool.Close) // After the processes, which stop first.
 	if _, err := pool.Exec(context.Background(), "TRUNCATE libraries, users, transcode_jobs, transcode_viewers, transcode_nodes, subtitle_jobs, chapter_images CASCADE"); err != nil {
 		t.Fatal(err)
 	}
@@ -218,16 +167,6 @@ func (c *cluster) logs() string {
 	return all.String()
 }
 
-func freeAddr(t *testing.T) string {
-	t.Helper()
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer l.Close()
-	return l.Addr().String()
-}
-
 // start runs a process of the build with the version, with the roles. It
 // returns when the process is serving (a replica) or registered (a worker).
 func (c *cluster) start(version int, roles string) *proc {
@@ -250,31 +189,15 @@ func (c *cluster) launch(version int, roles string) *proc {
  "transcodeStore": "file://%s/segments", "transcodeScratch": "%s/scratch-%d", "transcodeIdle": "60s", "transcodeLead": %q,
  "libraries": [{"name": "Movies", "kind": "movies", "media": "file://%s/media", "assets": "file://%s/assets"}]}`,
 		slots, c.dir, c.dir, n, c.lead, c.dir, c.dir)
-	configFile := filepath.Join(c.dir, fmt.Sprintf("config-%d.json", n))
-	if err := os.WriteFile(configFile, []byte(config), 0o644); err != nil {
-		c.t.Fatal(err)
-	}
-	p := &proc{version: version, roles: roles, log: &syncBuffer{}, done: make(chan struct{})}
-	args := []string{"--roles=" + roles, "--config", configFile}
-	if strings.Contains(roles, "api") || strings.Contains(roles, "stream") {
-		p.addr = freeAddr(c.t)
-		args = append(args, "--listen", p.addr)
-	}
-	p.cmd = exec.Command(builds[version], args...)
 	// Replicas have no ffmpeg on their PATH, as in production; workers get the shim.
 	path := filepath.Join(c.dir, "bin") + ":" + os.Getenv("PATH")
-	if p.addr != "" {
+	listen := strings.Contains(roles, "api") || strings.Contains(roles, "stream")
+	if listen {
 		path = filepath.Join(c.dir, "nobin")
 	}
-	p.cmd.Env = append(os.Environ(), "JELLYSCALE_DATABASE_URL="+c.dsn, "JELLYSCALE_ADMIN_PASSWORD=r-pass", "PATH="+path)
-	p.cmd.Stdout, p.cmd.Stderr = p.log, p.log
-	if err := p.cmd.Start(); err != nil {
-		c.t.Fatal(err)
-	}
-	go func() {
-		p.cmd.Wait() //nolint:errcheck
-		close(p.done)
-	}()
+	p := startProc(c.t, procSpec{bin: builds[version], dsn: c.dsn, args: []string{"--roles=" + roles}, config: config, listen: listen,
+		user: "admin", password: "r-pass", path: path, term: true})
+	p.version, p.roles = version, roles
 	c.procs = append(c.procs, p)
 	return p
 }
@@ -283,16 +206,13 @@ var workerStarted = regexp.MustCompile(`worker started.*worker=(\S+)`)
 
 func (c *cluster) waitReady(p *proc) {
 	c.t.Helper()
-	deadline := time.Now().Add(hang)
-	for time.Now().Before(deadline) {
-		select {
-		case <-p.done:
-			c.t.Fatalf("%s exited at startup:\n%s", p.name(), p.log.String())
-		default:
+	p.until(hang, p.name()+" to come up", func() bool {
+		if !p.alive() {
+			return false
 		}
 		ready := true
 		if p.addr != "" {
-			resp, err := http.Get("http://" + p.addr + "/healthz")
+			resp, err := http.Get(p.url("/healthz"))
 			ready = err == nil && resp.StatusCode == 204
 			if err == nil {
 				resp.Body.Close()
@@ -309,12 +229,8 @@ func (c *cluster) waitReady(p *proc) {
 				ready = slots > 0
 			}
 		}
-		if ready {
-			return
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	c.t.Fatalf("%s did not come up:\n%s", p.name(), p.log.String())
+		return ready
+	})
 }
 
 // call is an HTTP request to a replica, with the token once there is one.
@@ -349,16 +265,7 @@ func (c *cluster) login(api *proc) {
 	if c.token != "" {
 		return
 	}
-	code, _, body, err := c.call("POST", api, "/Users/AuthenticateByName", `{"Username":"admin","Pw":"r-pass"}`,
-		"Authorization", `MediaBrowser Client="c", Device="d", DeviceId="i", Version="1"`)
-	if err != nil || code != 200 {
-		c.t.Fatalf("sign in: %d %v %s", code, err, body)
-	}
-	var auth struct{ AccessToken string }
-	if err := json.Unmarshal(body, &auth); err != nil {
-		c.t.Fatal(err)
-	}
-	c.token = auth.AccessToken
+	c.token = api.signInAs(c.t, "i") // The device the tests stop encodings of.
 	deadline := time.Now().Add(hang)
 	for time.Now().Before(deadline) {
 		_, _, body, _ := c.call("GET", api, "/Items?Recursive=true&IncludeItemTypes=Movie&Limit=1", "")

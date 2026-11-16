@@ -4,12 +4,14 @@
 import { createRequire } from "node:module";
 import { wholeLine } from "./shard.mjs";
 import { recordResponses } from "./conform.mjs";
+import { configure, login } from "./player.mjs";
 import { tmpdir } from "node:os";
 
 const require = createRequire(`${process.cwd()}/`);
 const { chromium } = require("playwright-core");
 
 const [base, user, password] = process.argv.slice(2);
+configure({ base, user, password });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? "/usr/bin/chromium", args: ["--disable-gpu"] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 recordResponses(page, base);
@@ -48,14 +50,7 @@ const openCard = async (text) => {
 };
 const hasCard = (text) => page.locator(".card:visible", { hasText: text }).first().waitFor({ timeout: 15000 });
 
-await step("login", async () => {
-  await page.goto(`${base}/web/`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector("#txtManualName", { timeout: 30000 });
-  await page.fill("#txtManualName", user);
-  await page.fill("#txtManualPassword", password);
-  await page.click("button[type=submit]");
-  await page.waitForSelector(".card", { timeout: 30000 });
-});
+await step("login", () => login(page));
 
 await step("home shows both libraries", async () => {
   await hasCard("Movies");
