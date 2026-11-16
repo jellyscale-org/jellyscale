@@ -472,6 +472,97 @@ done
 # The binary does not link a package that exists for tests (the harness is not in internal/transcode either).
 check "the jellyscale binary links no package that imports testing" "" "$(go list -deps -f '{{if not .Standard}}{{.ImportPath}} {{.Imports}}{{end}}' ./cmd/jellyscale | grep -E ' (\[|.* )testing( .*|\])' | cut -d' ' -f1)"
 
+
+# --- test/image.sh and test/fixtures/client.sh (JS-124) stop at once, naming what is missing. A tool dir holds
+# every program of /usr/bin but docker, ffmpeg, ffprobe and go, which are stand-ins that log each call to
+# $FAKE_LOG, so that "nothing was started" is read from the log.
+toolbin() { # dir [with...]: with is docker, ffmpeg or go
+  local dir=$1; shift
+  mkdir -p "$dir"
+  for f in /usr/bin/*; do
+    case ${f##*/} in docker | ffmpeg | ffprobe | go) ;; *) ln -sf "$f" "$dir/${f##*/}" ;; esac
+  done
+  for w in "$@"; do
+    cat >"$dir/$w" <<'SHIM'
+#!/bin/bash
+echo "${0##*/} $*" >>"$FAKE_LOG"
+case "${0##*/} $1" in
+  "docker info" | "docker version") [[ -n ${FAKE_NO_DAEMON:-} ]] && { echo "Cannot connect to the Docker daemon at unix:///var/run/docker.sock" >&2; exit 1; } ;;
+  "docker compose") [[ $2 == version && -n ${FAKE_NO_COMPOSE:-} ]] && { echo "docker: 'compose' is not a docker command" >&2; exit 1; } ;;
+  "docker pull") [[ -n ${FAKE_NO_PULL:-} ]] && { echo "Error response from daemon: pull access denied" >&2; exit 1; } ;;
+esac
+exit 0
+SHIM
+    chmod +x "$dir/$w"
+  done
+}
+tools_run() { # name toolbin script args...: output in $tmp/<name>.out, status in $tmp/<name>.status, calls in $tmp/<name>.log
+  local name=$1 bin=$2; shift 2
+  : >"$tmp/$name.log"
+  [[ -f $repo/$1 ]] || { echo "$1 does not exist" >"$tmp/$name.out"; echo missing >"$tmp/$name.status"; return; }
+  (cd "$repo" && timeout 120 /usr/bin/env -i FAKE_LOG="$tmp/$name.log" PATH="$bin" HOME="$HOME" TMPDIR="$tmp" JELLYSCALE_TEST_ROOT="$tmp/root-$name" \
+    FAKE_NO_DAEMON="${FAKE_NO_DAEMON:-}" FAKE_NO_COMPOSE="${FAKE_NO_COMPOSE:-}" FAKE_NO_PULL="${FAKE_NO_PULL:-}" \
+    /usr/bin/bash "$@") >"$tmp/$name.out" 2>&1
+  echo $? >"$tmp/$name.status"
+}
+status_nonzero() { [[ $(cat "$tmp/$1.status") == missing ]] && { echo "script missing"; return; }; [[ $(cat "$tmp/$1.status") -ne 0 ]] && echo nonzero || echo "exit $(cat "$tmp/$1.status")"; }
+mentions() { grep -ciE "$2" "$tmp/$1.out" | awk '{print ($1>0) ? "named" : "not named"}'; }
+started() { grep -cE '^(docker (build|buildx|compose (up|-f|--file|-p)|run|pull|create)|ffmpeg|go) ' "$tmp/$1.log"; }
+
+toolbin "$tmp/t-nodocker" ffmpeg go
+tools_run nodocker "$tmp/t-nodocker" test/image.sh
+check "image.sh without docker on PATH exits non-zero" nonzero "$(status_nonzero nodocker)"
+check "... naming docker" named "$(mentions nodocker docker)"
+check "... before making a film or building anything" 0 "$(started nodocker)"
+
+toolbin "$tmp/t-nocompose" docker ffmpeg go
+FAKE_NO_COMPOSE=1 tools_run nocompose "$tmp/t-nocompose" test/image.sh
+check "image.sh without the compose plugin exits non-zero" nonzero "$(status_nonzero nocompose)"
+check "... naming compose" named "$(mentions nocompose compose)"
+check "... before it builds, starts or makes anything" 0 "$(started nocompose)"
+
+FAKE_NO_DAEMON=1 tools_run nodaemon "$tmp/t-nocompose" test/image.sh
+check "image.sh with no daemon answering exits non-zero" nonzero "$(status_nonzero nodaemon)"
+check "... naming the daemon" named "$(mentions nodaemon daemon)"
+check "... before it builds, starts or makes anything" 0 "$(started nodaemon)"
+
+toolbin "$tmp/t-noffmpeg" docker go
+tools_run noffmpeg "$tmp/t-noffmpeg" test/image.sh
+check "image.sh with no ffmpeg exits non-zero" nonzero "$(status_nonzero noffmpeg)"
+check "... naming ffmpeg" named "$(mentions noffmpeg ffmpeg)"
+check "... before it builds or starts anything" 0 "$(started noffmpeg)"
+
+toolbin "$tmp/t-nogo" docker ffmpeg
+tools_run nogo "$tmp/t-nogo" test/image.sh
+check "image.sh with no Go exits non-zero" nonzero "$(status_nonzero nogo)"
+check "... naming Go" named "$(grep -ciwE 'go' "$tmp/nogo.out" | awk '{print ($1>0) ? "named" : "not named"}')"
+check "... before it builds or starts anything" 0 "$(started nogo)"
+
+pulled=registry.invalid/jellyscale:main-0123456789ab-fixtures
+FAKE_NO_PULL=1 tools_run nopull "$tmp/t-nocompose" test/image.sh "$pulled"
+check "image.sh with an image it cannot pull exits non-zero" nonzero "$(status_nonzero nopull)"
+check "... naming the image" named "$(grep -cF "$pulled" "$tmp/nopull.out" | awk '{print ($1>0) ? "named" : "not named"}')"
+check "... having asked docker to pull it" 1 "$(grep -c "^docker pull .*$pulled" "$tmp/nopull.log" | awk '{print ($1>0)}')"
+check "... having built nothing, made no film and started nothing" 0 "$(grep -cE '^(docker (build|buildx|compose (up|-f|--file|-p)|run)|ffmpeg|go) ' "$tmp/nopull.log")"
+
+tools_run clientnoffmpeg "$tmp/t-nogo" test/fixtures/client.sh "$tmp/films-1"
+check "client.sh with no ffmpeg exits non-zero" nonzero "$(status_nonzero clientnoffmpeg)"
+tools_run clientnogo "$tmp/t-noffmpeg" test/fixtures/client.sh "$tmp/films-2"
+check "client.sh with no Go exits non-zero" nonzero "$(status_nonzero clientnogo)"
+check "... naming Go" named "$(grep -ciwE 'go' "$tmp/clientnogo.out" | awk '{print ($1>0) ? "named" : "not named"}')"
+check "... and the one with no ffmpeg names ffmpeg" named "$(mentions clientnoffmpeg ffmpeg)"
+# With every tool present but ffmpeg a stand-in: one that fails, and one that says it worked and writes nothing.
+mkdir -p "$tmp/t-badffmpeg" && cp -P "$tmp"/t-nodocker/* "$tmp/t-badffmpeg/" 2>/dev/null
+ln -sf "$(go env GOROOT)/bin/go" "$tmp/t-badffmpeg/go"
+printf '#!/bin/bash\necho "ffmpeg: recipe failed" >&2\nexit 1\n' >"$tmp/t-badffmpeg/ffmpeg"; chmod +x "$tmp/t-badffmpeg/ffmpeg"
+tools_run clientfails "$tmp/t-badffmpeg:$(go env GOROOT)/bin" test/fixtures/client.sh "$tmp/films-3"
+check "client.sh exits non-zero when a recipe's ffmpeg fails" nonzero "$(status_nonzero clientfails)"
+check "... saying something" 1 "$(wc -c <"$tmp/clientfails.out" | awk '{print ($1>0)}')"
+printf '#!/bin/bash\nexit 0\n' >"$tmp/t-badffmpeg/ffmpeg"
+tools_run clientempty "$tmp/t-badffmpeg:$(go env GOROOT)/bin" test/fixtures/client.sh "$tmp/films-4"
+check "client.sh never exits 0 with a film missing (an ffmpeg that wrote nothing)" nonzero "$(status_nonzero clientempty)"
+check "... naming a film that is missing" named "$(mentions clientempty 'film|missing')"
+
 echo
 [[ $fails -eq 0 ]] && echo "scripts: all passed" || echo "scripts: $fails failed"
 exit $((fails > 0))

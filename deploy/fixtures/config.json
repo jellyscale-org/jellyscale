@@ -1,0 +1,11 @@
+{
+  "name": "jellyscale fixtures",
+  "adminUser": "test",
+  "transcodeStore": "file:///tmp/segments",
+  "libraries": [
+    {"name": "Movies", "kind": "movies", "media": "file:///fixtures/media/movies", "assets": "file:///tmp/assets/movies"},
+    {"name": "Shows", "kind": "tvshows", "media": "file:///fixtures/media/shows", "assets": "file:///tmp/assets/shows"},
+    {"name": "Transcode", "kind": "movies", "media": "file:///fixtures/media/transcode", "assets": "file:///tmp/assets/transcode"},
+    {"name": "Languages", "kind": "movies", "media": "file:///fixtures/media/languages", "assets": "file:///tmp/assets/languages"}
+  ]
+}

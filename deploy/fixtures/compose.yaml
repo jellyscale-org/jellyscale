@@ -1,0 +1,29 @@
+# A jellyscale with a small synthetic library and a known user, for a client's tests (docs/client-testing.md).
+#   JELLYSCALE_IMAGE=ghcr.io/jellyscale-org/jellyscale:X.Y.Z-fixtures docker compose up -d --wait
+# The server's port is on 127.0.0.1 at a port Docker picks: `docker compose port jellyscale 8096`.
+# Everything is kept inside the containers and goes with `docker compose down`. For tests only: the password is public.
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_PASSWORD: dev
+    healthcheck:
+      test: [CMD, pg_isready, -U, postgres]
+      interval: 2s
+      retries: 30
+
+  jellyscale:
+    image: ${JELLYSCALE_IMAGE:?set JELLYSCALE_IMAGE to the fixtures image, such as ghcr.io/jellyscale-org/jellyscale:X.Y.Z-fixtures}
+    environment:
+      JELLYSCALE_DATABASE_URL: postgres://postgres:dev@postgres:5432/postgres
+      JELLYSCALE_ADMIN_PASSWORD: test
+    ports:
+      - 127.0.0.1::8096
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # /readyz needs the database; /healthz answers from the process alone.
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, "http://127.0.0.1:8096/readyz"]
+      interval: 2s
+      retries: 40
