@@ -102,6 +102,90 @@ await step("images load", async () => {
   if (response.status !== 200 || response.size < 1000) throw new Error(JSON.stringify(response));
 });
 
+// JS-116: jellyfin-web saves a viewer's settings by posting the whole Configuration to POST /Users/{id}/Configuration
+// and fills its language lists from GET /Localization/Cultures (what a real Jellyfin 12.4 shows is in
+// compat/captures/user-configuration-12.4.md). The admin's own settings are put back at the end: they act on no
+// track yet, but the gates after this one share the user.
+const me = () => page.evaluate(async () => {
+  const client = window.ApiClient;
+  const reply = await fetch(`${client.serverAddress()}/Users/Me`, { headers: { Authorization: `MediaBrowser Token="${client.accessToken()}"` } });
+  return { status: reply.status, user: await reply.json() };
+});
+const settingsPage = async (name, select) => {
+  await page.goto(`${base}/web/#/${name}`, { waitUntil: "domcontentloaded" });
+  await page.waitForFunction((id) => document.getElementById(id)?.options.length > 1, select, { timeout: 30000 });
+};
+const languages = (select) => page.evaluate((id) => [...document.getElementById(id).options].map((o) => ({ value: o.value, text: o.text })), select);
+// Saves the page, which posts the whole Configuration, and says what the server answered.
+const savePage = async () => {
+  const [reply] = await Promise.all([
+    page.waitForResponse((r) => r.request().method() === "POST" && /\/Users\/[^/]+\/Configuration/i.test(r.url()), { timeout: 15000 }),
+    page.click("button.btnSave:visible"),
+  ]);
+  if (!reply.ok()) throw new Error(`saving answered ${reply.status()}`);
+  await page.getByText("Settings saved").first().waitFor({ timeout: 10000 });
+};
+let originalConfiguration;
+
+await step("Subtitles settings: German and Always are saved and survive a reload", async () => {
+  const before = await me();
+  originalConfiguration = before.user.Configuration;
+  await settingsPage("mypreferencessubtitles", "selectSubtitleLanguage");
+  const options = await languages("selectSubtitleLanguage");
+  const german = options.find((o) => o.value === "deu");
+  if (options.length < 100 || !german || german.text !== "German" || options.some((o) => o.value && !o.text.trim())) {
+    throw new Error(`the language list holds ${options.length} languages, German is ${JSON.stringify(german)}`);
+  }
+  await page.selectOption("#selectSubtitleLanguage", "deu");
+  await page.selectOption("#selectSubtitlePlaybackMode", "Always");
+  await savePage();
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => document.getElementById("selectSubtitleLanguage")?.options.length > 1, null, { timeout: 30000 });
+  const shown = await page.evaluate(() => ({ language: document.getElementById("selectSubtitleLanguage").value, mode: document.getElementById("selectSubtitlePlaybackMode").value }));
+  if (shown.language !== "deu" || shown.mode !== "Always") throw new Error(`after a reload the page shows ${JSON.stringify(shown)}`);
+  const { status, user } = await me();
+  const config = user.Configuration;
+  if (status !== 200 || config.SubtitleLanguagePreference !== "deu" || config.SubtitleMode !== "Always") {
+    throw new Error(`GET /Users/Me holds ${config?.SubtitleLanguagePreference} and ${config?.SubtitleMode}`);
+  }
+});
+
+await step("Playback settings: German audio and no default track are saved, and the Subtitles page keeps its own", async () => {
+  await settingsPage("mypreferencesplayback", "selectAudioLanguage");
+  const options = await languages("selectAudioLanguage");
+  if (options.length < 100 || !options.some((o) => o.value === "deu" && o.text === "German") || !options.some((o) => o.value === "OriginalLanguage")) {
+    throw new Error(`the audio language list holds ${options.length} entries`);
+  }
+  await page.selectOption("#selectAudioLanguage", "deu");
+  if (await page.locator(".chkPlayDefaultAudioTrack").isChecked()) {
+    await page.locator("label", { hasText: "Play default audio track regardless of language" }).click();
+  }
+  await savePage();
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => document.getElementById("selectAudioLanguage")?.options.length > 1, null, { timeout: 30000 });
+  const shown = await page.evaluate(() => ({ language: document.getElementById("selectAudioLanguage").value, playDefault: document.querySelector(".chkPlayDefaultAudioTrack").checked }));
+  if (shown.language !== "deu" || shown.playDefault !== false) throw new Error(`after a reload the Playback page shows ${JSON.stringify(shown)}`);
+  await settingsPage("mypreferencessubtitles", "selectSubtitleLanguage");
+  const subtitles = await page.evaluate(() => ({ language: document.getElementById("selectSubtitleLanguage").value, mode: document.getElementById("selectSubtitlePlaybackMode").value }));
+  if (subtitles.language !== "deu" || subtitles.mode !== "Always") throw new Error(`the Subtitles page shows ${JSON.stringify(subtitles)} after the Playback page saved`);
+  const config = (await me()).user.Configuration;
+  if (config.AudioLanguagePreference !== "deu" || config.PlayDefaultAudioTrack !== false || config.SubtitleLanguagePreference !== "deu" || config.SubtitleMode !== "Always") {
+    throw new Error(`GET /Users/Me holds ${JSON.stringify(config)}`);
+  }
+});
+
+if (originalConfiguration) {
+  await step("the admin's settings are put back", async () => {
+    const status = await page.evaluate(async (config) => {
+      const client = window.ApiClient;
+      const reply = await fetch(`${client.serverAddress()}/Users/Configuration`, {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `MediaBrowser Token="${client.accessToken()}"` }, body: JSON.stringify(config) });
+      return reply.status;
+    }, originalConfiguration);
+    if (status !== 204) throw new Error(`putting the settings back answered ${status}`);
+  });
+}
+
 // Shows E2E_REPEAT reporting a scenario that passes only some of the time: this
 // fails on odd iterations. It runs only when E2E_FLAKY_DEMO is set, never in CI.
 if (process.env.E2E_FLAKY_DEMO) {

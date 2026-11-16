@@ -27,6 +27,7 @@ routes:
   - {method: GET, path: "/Items/{itemId}/ThemeMedia", status: stub, role: api}
   - {method: GET, path: "/LiveTv/Programs", status: stub, role: api}
   - {method: GET, path: "/LiveTv/Programs/Recommended", status: stub, role: api}
+  - {method: GET, path: "/Localization/Cultures", status: implemented, role: api}
   - {method: GET, path: "/MediaSegments/{itemId}", status: stub, role: api}
   - {method: GET, path: "/Persons", status: stub, role: api}
   - {method: GET, path: "/Playback/BitrateTest", status: implemented, role: stream}
@@ -60,9 +61,11 @@ routes:
   - {method: DELETE, path: "/UserPlayedItems/{itemId}", status: implemented, role: api}
   - {method: POST, path: "/UserPlayedItems/{itemId}", status: implemented, role: api}
   - {method: POST, path: "/Users/AuthenticateByName", status: implemented, role: api}
+  - {method: POST, path: "/Users/Configuration", status: implemented, role: api}
   - {method: GET, path: "/Users/Me", status: implemented, role: api}
   - {method: GET, path: "/Users/Public", status: implemented, role: api}
   - {method: GET, path: "/Users/{userId}", status: implemented, role: api}
+  - {method: POST, path: "/Users/{userId}/Configuration", status: alias, role: api}
   - {method: DELETE, path: "/Users/{userId}/FavoriteItems/{itemId}", status: alias, role: api}
   - {method: POST, path: "/Users/{userId}/FavoriteItems/{itemId}", status: alias, role: api}
   - {method: GET, path: "/Users/{userId}/GroupingOptions", status: alias, role: api}
