@@ -1,0 +1,200 @@
+{
+ "cases": [
+  {
+   "case": "header",
+   "masterStatus": 200,
+   "masterContentType": "application/vnd.apple.mpegurl",
+   "master": [
+    "#EXTM3U",
+    "#EXT-X-STREAM-INF:BANDWIDTH=1936000,AVERAGE-BANDWIDTH=1936000,VIDEO-RANGE=SDR,CODECS=\"avc1.42401E,mp4a.40.2\",RESOLUTION=640x360,FRAME-RATE=24",
+    "main.m3u8?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError",
+    ""
+   ],
+   "mainRequestedAs": "/videos/7646f42c-6057-ff6b-359c-8f26eb24f116/main.m3u8?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError",
+   "mainStatus": 200,
+   "mainContentType": "application/vnd.apple.mpegurl",
+   "main": [
+    "#EXTM3U",
+    "#EXT-X-PLAYLIST-TYPE:VOD",
+    "#EXT-X-VERSION:7",
+    "#EXT-X-TARGETDURATION:6",
+    "#EXT-X-MEDIA-SEQUENCE:0",
+    "#EXT-X-MAP:URI=\"hls1/main/-1.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=0&actualSegmentLengthTicks=0\"",
+    "#EXTINF:6.000000, nodesc",
+    "hls1/main/0.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=0&actualSegmentLengthTicks=60000000",
+    "#EXTINF:6.000000, nodesc",
+    "hls1/main/1.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=60000000&actualSegmentLengthTicks=60000000",
+    "#EXTINF:6.000000, nodesc",
+    "hls1/main/2.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=120000000&actualSegmentLengthTicks=60000000",
+    "#EXTINF:2.021000, nodesc",
+    "hls1/main/3.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=180000000&actualSegmentLengthTicks=20210000",
+    "#EXT-X-ENDLIST",
+    ""
+   ],
+   "segments": [
+    {
+     "uri": "hls1/main/-1.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=0&actualSegmentLengthTicks=0",
+     "sent": "same headers",
+     "status": 200,
+     "contentType": "video/mp4",
+     "bytes": 1304,
+     "body": null
+    },
+    {
+     "uri": "hls1/main/-1.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=0&actualSegmentLengthTicks=0",
+     "sent": "no token",
+     "status": 401,
+     "contentType": null,
+     "bytes": 0,
+     "body": ""
+    },
+    {
+     "uri": "hls1/main/0.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=0&actualSegmentLengthTicks=60000000",
+     "sent": "same headers",
+     "status": 200,
+     "contentType": "video/mp4",
+     "bytes": 1370669,
+     "body": null
+    },
+    {
+     "uri": "hls1/main/0.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=0&actualSegmentLengthTicks=60000000",
+     "sent": "no token",
+     "status": 401,
+     "contentType": null,
+     "bytes": 0,
+     "body": ""
+    },
+    {
+     "uri": "hls1/main/1.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=60000000&actualSegmentLengthTicks=60000000",
+     "sent": "same headers",
+     "status": 200,
+     "contentType": "video/mp4",
+     "bytes": 1376532,
+     "body": null
+    },
+    {
+     "uri": "hls1/main/1.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=60000000&actualSegmentLengthTicks=60000000",
+     "sent": "no token",
+     "status": 401,
+     "contentType": null,
+     "bytes": 0,
+     "body": ""
+    },
+    {
+     "uri": "hls1/main/3.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=180000000&actualSegmentLengthTicks=20210000",
+     "sent": "same headers",
+     "status": 200,
+     "contentType": "video/mp4",
+     "bytes": 474522,
+     "body": null
+    },
+    {
+     "uri": "hls1/main/3.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=180000000&actualSegmentLengthTicks=20210000",
+     "sent": "no token",
+     "status": 401,
+     "contentType": null,
+     "bytes": 0,
+     "body": ""
+    }
+   ]
+  },
+  {
+   "case": "query",
+   "masterStatus": 200,
+   "masterContentType": "application/vnd.apple.mpegurl",
+   "master": [
+    "#EXTM3U",
+    "#EXT-X-STREAM-INF:BANDWIDTH=1936000,AVERAGE-BANDWIDTH=1936000,VIDEO-RANGE=SDR,CODECS=\"avc1.42401E,mp4a.40.2\",RESOLUTION=640x360,FRAME-RATE=24",
+    "main.m3u8?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&ApiKey=<TOKEN>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError",
+    ""
+   ],
+   "mainRequestedAs": "/videos/7646f42c-6057-ff6b-359c-8f26eb24f116/main.m3u8?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&ApiKey=<TOKEN>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError",
+   "mainStatus": 200,
+   "mainContentType": "application/vnd.apple.mpegurl",
+   "main": [
+    "#EXTM3U",
+    "#EXT-X-PLAYLIST-TYPE:VOD",
+    "#EXT-X-VERSION:7",
+    "#EXT-X-TARGETDURATION:6",
+    "#EXT-X-MEDIA-SEQUENCE:0",
+    "#EXT-X-MAP:URI=\"hls1/main/-1.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&ApiKey=<TOKEN>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=0&actualSegmentLengthTicks=0\"",
+    "#EXTINF:6.000000, nodesc",
+    "hls1/main/0.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&ApiKey=<TOKEN>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=0&actualSegmentLengthTicks=60000000",
+    "#EXTINF:6.000000, nodesc",
+    "hls1/main/1.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&ApiKey=<TOKEN>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=60000000&actualSegmentLengthTicks=60000000",
+    "#EXTINF:6.000000, nodesc",
+    "hls1/main/2.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&ApiKey=<TOKEN>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=120000000&actualSegmentLengthTicks=60000000",
+    "#EXTINF:2.021000, nodesc",
+    "hls1/main/3.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&ApiKey=<TOKEN>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=180000000&actualSegmentLengthTicks=20210000",
+    "#EXT-X-ENDLIST",
+    ""
+   ],
+   "segments": [
+    {
+     "uri": "hls1/main/-1.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&ApiKey=<TOKEN>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=0&actualSegmentLengthTicks=0",
+     "sent": "same headers",
+     "status": 200,
+     "contentType": "video/mp4",
+     "bytes": 1304,
+     "body": null
+    },
+    {
+     "uri": "hls1/main/-1.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&ApiKey=<TOKEN>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=0&actualSegmentLengthTicks=0",
+     "sent": "no token",
+     "status": 200,
+     "contentType": "video/mp4",
+     "bytes": 1304,
+     "body": null
+    },
+    {
+     "uri": "hls1/main/0.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&ApiKey=<TOKEN>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=0&actualSegmentLengthTicks=60000000",
+     "sent": "same headers",
+     "status": 200,
+     "contentType": "video/mp4",
+     "bytes": 1370669,
+     "body": null
+    },
+    {
+     "uri": "hls1/main/0.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&ApiKey=<TOKEN>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=0&actualSegmentLengthTicks=60000000",
+     "sent": "no token",
+     "status": 200,
+     "contentType": "video/mp4",
+     "bytes": 1370669,
+     "body": null
+    },
+    {
+     "uri": "hls1/main/1.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&ApiKey=<TOKEN>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=60000000&actualSegmentLengthTicks=60000000",
+     "sent": "same headers",
+     "status": 200,
+     "contentType": "video/mp4",
+     "bytes": 1376532,
+     "body": null
+    },
+    {
+     "uri": "hls1/main/1.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&ApiKey=<TOKEN>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=60000000&actualSegmentLengthTicks=60000000",
+     "sent": "no token",
+     "status": 200,
+     "contentType": "video/mp4",
+     "bytes": 1376532,
+     "body": null
+    },
+    {
+     "uri": "hls1/main/3.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&ApiKey=<TOKEN>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=180000000&actualSegmentLengthTicks=20210000",
+     "sent": "same headers",
+     "status": 200,
+     "contentType": "video/mp4",
+     "bytes": 474522,
+     "body": null
+    },
+    {
+     "uri": "hls1/main/3.mp4?DeviceId=capdev&MediaSourceId=7646f42c6057ff6b359c8f26eb24f116&VideoCodec=av1,h264,vp9&AudioCodec=copy&AudioStreamIndex=1&VideoBitrate=1808000&AudioBitrate=192000&MaxFramerate=24&SegmentContainer=mp4&MinSegments=1&PlaySessionId=8585d171b5024d458c4af0f9f98e87ac&ApiKey=<TOKEN>&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAudioVbrEncoding=true&Tag=aff051dea752a558e091b96eb3601de3&h264-level=30&h264-videobitdepth=8&h264-profile=constrainedbaseline&av1-profile=main&av1-rangetype=SDR,HDR10,HDR10Plus,HLG&av1-level=19&vp9-rangetype=SDR,HDR10,HDR10Plus,HLG&h264-rangetype=SDR&h264-deinterlace=true&TranscodeReasons=AudioCodecNotSupported,DirectPlayError&runtimeTicks=180000000&actualSegmentLengthTicks=20210000",
+     "sent": "no token",
+     "status": 200,
+     "contentType": "video/mp4",
+     "bytes": 474522,
+     "body": null
+    }
+   ]
+  }
+ ]
+}

@@ -310,7 +310,7 @@ func videoCodec(p Params) string {
 }
 
 // Query renders parameters the way Jellyfin's TranscodingUrl does, in its
-// order. extra is appended as it is.
+// order. An empty apiKey leaves the ApiKey pair out. extra is appended as it is.
 func Query(p Params, apiKey, tag, extra string) string {
 	pairs := [][2]string{
 		{"DeviceId", p.DeviceID}, {"MediaSourceId", p.SourceID}, {"VideoCodec", videoCodec(p)}, {"AudioCodec", strings.Join(p.AudioCodecs, ",")},
@@ -326,8 +326,11 @@ func Query(p Params, apiKey, tag, extra string) string {
 		{"TranscodingMaxAudioChannels", strconv.Itoa(max(p.MaxAudioChannels, 1))}, {"RequireAvc", "false"}, {"EnableAudioVbrEncoding", "true"}, {"Tag", tag},
 	}...)
 	var out strings.Builder
-	for i, pair := range pairs {
-		if i > 0 {
+	for _, pair := range pairs {
+		if pair[0] == "ApiKey" && apiKey == "" {
+			continue
+		}
+		if out.Len() > 0 {
 			out.WriteByte('&')
 		}
 		// Jellyfin writes the codec list with plain commas.

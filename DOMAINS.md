@@ -69,7 +69,7 @@ The terms, boundaries and invariants of the system. Reviewers check changes agai
 ### Compatibility
 
 16. Routing is case-insensitive and query keys are lowercased once, in middleware. Route wildcards keep their case.
-17. `TranscodingUrl` stays Jellyfin-shaped and unsigned. Signing the URLs inside playlists is still to do: today each line carries the client's own token as `ApiKey`, as Jellyfin's do.
+17. `TranscodingUrl` stays Jellyfin-shaped and unsigned. Signing the URLs inside playlists is still to do: `master.m3u8` and `main.m3u8` carry the token in their lines only when the request carried it in the query (as `ApiKey` or `api_key`, with the request's own token; any other value is not echoed). A client that sends its token in a header must send that header on every playlist and segment request. `TranscodingUrl`, `DeliveryUrls` and the subtitle playlist still carry the token.
 18. `PlaySessionId` can be empty in reports, so progress keys on user and item. Coalescing happens in SQL, never in process memory; see invariant 28.
 19. `<video>` can't send headers, so media routes accept `ApiKey` in the query.
 20. `compat/endpoints.yaml` is generated from `Routes()`, and every alias must be a real obsolete route. Tests enforce both.

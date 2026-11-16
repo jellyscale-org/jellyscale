@@ -4,6 +4,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"slices"
+	"strings"
 	"time"
 
 	"jellyscale/internal/db"
@@ -97,10 +99,25 @@ func playbackSource(source items.Source) playback.Source {
 		Size: source.Size, RunTimeTicks: source.RunTimeTicks, Streams: source.Streams}
 }
 
-// query is what every playlist line carries. The client's token goes in it
-// because segment requests have no other way to authenticate.
+// query is what every playlist line carries. The client's token goes in it only
+// when the request carried that token in its query (jellyfin-web loads the
+// lines as URLs); a client that sends a header sends it on every request, and
+// Fluster refuses a playlist with a credential in it. A query value that is not
+// the request's token is never echoed.
 func (req hlsRequest) query(r *http.Request) string {
-	return playback.Query(req.params, sessionOf(r).Token, req.source.ETag, "")
+	token := sessionOf(r).Token
+	carried := false
+	for _, name := range []string{"ApiKey", "api_key"} {
+		for key, values := range r.URL.Query() {
+			if strings.EqualFold(key, name) && slices.Contains(values, token) {
+				carried = true
+			}
+		}
+	}
+	if !carried {
+		token = ""
+	}
+	return playback.Query(req.params, token, req.source.ETag, "")
 }
 
 func playlist(w http.ResponseWriter, text string) {
