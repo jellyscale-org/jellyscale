@@ -141,6 +141,20 @@ check "UserData written on one replica is read on another" "123000000 True" "$(c
   python3 -I -c 'import json,sys;d=json.load(sys.stdin)["UserData"];print(d["PlaybackPositionTicks"],d["IsFavorite"])')"
 check "wrong password is refused" 401 "$(code -X POST "127.0.0.1:$api1/Users/AuthenticateByName" -H 'Content-Type: application/json' -d '{"Username":"admin","Pw":"no"}')"
 check "invalid token is refused" 401 "$(code -H 'X-Emby-Token: nope' "127.0.0.1:$api1/Users/Me")"
+# A sign-out is seen by every process at once (JS-125). A device of its own signs in through api 1; its token is
+# accepted by api 2 and by stream; api 1 signs it out; the very next request of the token to api 2 and to stream, each
+# sent once with no wait and no retry, is refused, while the same user's other token, the run's own, still works. A
+# process that remembers tokens (test/mutant.sh token-memory: for 5 seconds) answers 200 and 206 here on every run.
+signin() { curl -s -X POST "127.0.0.1:$1/Users/AuthenticateByName" -H 'Content-Type: application/json' \
+  -H "Authorization: MediaBrowser Client=\"c\", Device=\"d\", DeviceId=\"$2\", Version=\"1\"" -d '{"Username":"admin","Pw":"r-pass"}' |
+  python3 -I -c 'import json,sys;print(json.load(sys.stdin)["AccessToken"])'; }
+leaver=$(signin "$api1" signing-out-device)
+check "a token signed in through api 1 as a device of its own is accepted by api 2" 200 "$(code -H "X-Emby-Token: $leaver" "127.0.0.1:$api2/Users/Me")"
+check "and by stream, for a byte range" 206 "$(code -r 0-9 "127.0.0.1:$stream/Videos/$id/stream?ApiKey=$leaver&Static=true")"
+check "POST /Sessions/Logout through api 1 answers 204" 204 "$(code -X POST -H "X-Emby-Token: $leaver" "127.0.0.1:$api1/Sessions/Logout")"
+check "the very next request of the signed-out token to api 2 is refused" 401 "$(code -H "X-Emby-Token: $leaver" "127.0.0.1:$api2/Users/Me")"
+check "and the very next one to stream" 401 "$(code -r 0-9 "127.0.0.1:$stream/Videos/$id/stream?ApiKey=$leaver&Static=true")"
+check "the same user's other token still gets 200 from api 2 and 206 from stream" "200 206" "$(code -H "$header" "127.0.0.1:$api2/Users/Me") $(code -r 0-9 "127.0.0.1:$stream/Videos/$id/stream?ApiKey=$token&Static=true")"
 check "audio routes aren't served" 404 "$(code -H "$header" "127.0.0.1:$api1/Audio/$id/stream")"
 check "music lists are empty" '{"Items":[],"TotalRecordCount":0,"StartIndex":0}' "$(curl -s -H "$header" "127.0.0.1:$api1/Items?Recursive=true&IncludeItemTypes=Audio")"
 

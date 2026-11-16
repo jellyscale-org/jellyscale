@@ -663,7 +663,7 @@ func TestNothingElseIsAnsweredFromTheSnapshotAndEveryApiRouteWaits(t *testing.T)
 	type call struct{ route, method, path string }
 	var calls []call
 	for _, route := range (&Server{}).Routes() {
-		if route.Role != RoleAPI || route.Public || strings.HasSuffix(route.Path, "/Logout") {
+		if route.Role != RoleAPI || string(route.Access) == "anyone" || strings.HasSuffix(route.Path, "/Logout") {
 			continue
 		}
 		path := route.Path

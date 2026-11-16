@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -48,13 +49,26 @@ const (
 	RoleStream = "stream"
 )
 
+// Access is who may call a route.
+type Access string
+
+const (
+	// AccessAnyone is open to a caller with no token. The route says Why.
+	AccessAnyone Access = "anyone"
+	// AccessViewer needs a token that Postgres knows.
+	AccessViewer Access = "viewer"
+)
+
 // Route is one API operation.
 type Route struct {
-	Method  string
-	Path    string
-	Status  string
-	Role    string
-	Public  bool
+	Method string
+	Path   string
+	Status string
+	Role   string
+	// Access says who may call the route: AccessAnyone (and then Why says why)
+	// or AccessViewer. Every route declares it; docs/access.md is the model.
+	Access  Access
+	Why     string
 	Handler http.HandlerFunc
 	// Snapshot says the handler may run from the snapshot of active sessions
 	// while Postgres is away (invariant 37), for a token it holds.
@@ -126,12 +140,18 @@ func (s *Server) Handler() http.Handler {
 		s.snapshotOnce.Do(func() { go s.keepSnapshot() })
 	}
 	mux := http.NewServeMux()
+	// Whichever roles this server has, a route nobody decided about stops it.
+	for _, route := range s.Routes() {
+		if route.Access != AccessAnyone && route.Access != AccessViewer {
+			panic(fmt.Sprintf("route %s %s declares Access %q, want %q or %q", route.Method, route.Path, route.Access, AccessAnyone, AccessViewer))
+		}
+	}
 	for _, route := range s.Routes() {
 		if !slices.Contains(s.Roles, route.Role) {
 			continue
 		}
 		handler := route.Handler
-		if !route.Public {
+		if route.Access == AccessViewer {
 			handler = s.requireAuth(handler, route.Snapshot)
 		}
 		mux.HandleFunc(route.Method+" "+lowerLiterals(route.Path), handler)

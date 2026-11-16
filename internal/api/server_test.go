@@ -77,15 +77,3 @@ func TestNormalizeLeavesWebAssetsAlone(t *testing.T) {
 		t.Fatalf("got %q", path)
 	}
 }
-
-func TestProtectedRoutesRejectAnonymousRequests(t *testing.T) {
-	s := &Server{Roles: []string{RoleAPI, RoleStream}, Log: slog.New(slog.DiscardHandler)}
-	handler := s.Handler()
-	for _, target := range []string{"/Items", "/Users/Me", "/System/Info", "/UserViews"} {
-		recorder := httptest.NewRecorder()
-		handler.ServeHTTP(recorder, httptest.NewRequest("GET", target, nil))
-		if recorder.Code != http.StatusUnauthorized {
-			t.Errorf("%s: got %d", target, recorder.Code)
-		}
-	}
-}

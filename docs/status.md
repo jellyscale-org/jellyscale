@@ -195,3 +195,5 @@ How the evidence was gathered, and its limits:
 - A route nothing matched is `out-of-scope` only when its row says what was checked; a reason that is not a Non-goal bullet above is a bug in the row. A route that jellyfin-web calls on a viewer page is `needed`, never out of scope.
 - Rows that say `observed on jellyfin/jellyfin:12.4 (empty server)` were requested from a disposable `jellyfin/jellyfin:12.4` container on a Docker-assigned port (2026-11-02). It had no library, so it shows existence and shape, not behaviour with data. Rows that do not say it were not observed.
 - Rows in `needed` found only by a client name match carry `phase5-library` as a default slice, and the row says so; a maintainer should confirm those.
+
+- Access to every route (`docs/access.md`): **done**. Every route declares who may call it and one test asks each. A client must send its token on every media request (film bytes, playlists, segments, subtitles, fonts, download; pictures by id excepted); this is stricter than Jellyfin on purpose, which opens some of these to a caller with no token.

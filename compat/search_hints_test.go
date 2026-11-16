@@ -35,7 +35,7 @@ func TestSearchHintsIsAuditedAsDoneOnFlustersCall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(endpoints), `{method: GET, path: "/Search/Hints", status: implemented, role: api}`) {
+	if !strings.Contains(string(endpoints), `{method: GET, path: "/Search/Hints", status: implemented, role: api, access: viewer}`) {
 		t.Error("compat/endpoints.yaml does not list GET /Search/Hints as implemented")
 	}
 }

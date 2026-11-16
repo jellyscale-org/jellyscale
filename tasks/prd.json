@@ -2515,10 +2515,9 @@
       ],
       "dependsOn": [],
       "notes": "Owner, 2026-11-16: playback and personal data always require authorization; compatibility never means copying Jellyfin's openings. Media already answers 401 with no token, so this task changes no answer. 'admin' joins Access with its first route in JS-033. The draft's compat/anonymous.yaml is dropped: Route.Access is the one source. Pictures: jellyfin-web builds picture URLs with no token (web-dist/node_modules.jellyfin-apiclient.bundle.js, getImageUrl) and an <img> cannot send one, so a token on pictures removes every poster; item ids are random (internal/library/scan.go). If the owner decides pictures need a token, that is its own task and the pinned list here has nine routes. Found while reading, for the backlog: two sign-ins at once with one DeviceId can leave two tokens for the device (users.go:107-117, no unique index on user_id, device_id); a viewer sees the worker's name in their own TranscodingInfo (transcoding_info.go:69-70). Owner's decisions (2026-11-16, on Fable 5.2's access model, .results/access-model-fable-2026-11-16.md): pictures by id open to whoever holds the id, by name need a token; per-library access right after JS-033; a revoked or disabled user's running stream stops within 15 s; a viewer sees no other viewer's name; an administrator manages accounts but never browses, plays or reports as another user; a Policy field jellyscale does not enforce is refused when changed (400); 'may download' is honoured; operator keys are never users; no issue is filed on Findroid for now.",
-      "passes": false,
-      "priority": 17,
+      "passes": true,
       "source": "owner 2026-11-16; access model",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "JS-126",

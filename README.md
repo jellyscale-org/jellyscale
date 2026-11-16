@@ -48,6 +48,7 @@ MEDIA_DIR=/path/to/media JELLYSCALE_ADMIN_PASSWORD=change-me \
 - [Transcoding](docs/transcoding.md): settings, worker failover, read-ahead, video copy, tone mapping, storage costs, upgrade order.
 - [Subtitles](docs/subtitles.md): text and image tracks, files and fonts beside the film, known limits.
 - [Chapters](docs/chapters.md): chapters and chapter pictures.
+- [Access](docs/access.md): who may call each route, and why.
 - [Testing](docs/testing.md): the test tiers, CI shards, the fixture cache, flake hunting.
 - [Testing a client](docs/client-testing.md): the pinned image with the test films, its tags and the tracks of every film.
 - [Architecture decisions](docs/architecture-decisions.md).
