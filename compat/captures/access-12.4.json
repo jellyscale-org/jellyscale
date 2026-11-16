@@ -1,0 +1,1021 @@
+{
+ "image": "jellyfin/jellyfin:12.4",
+ "server_version": "12.4.0",
+ "me_before": 200,
+ "me_after": 200,
+ "rows": [
+  {
+   "key": "GET /Artists",
+   "method": "GET",
+   "route": "/Artists",
+   "asks": "/Artists",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Branding/Configuration",
+   "method": "GET",
+   "route": "/Branding/Configuration",
+   "asks": "/Branding/Configuration",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 200,
+   "unknown_token": 200,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Branding/Css",
+   "method": "GET",
+   "route": "/Branding/Css",
+   "asks": "/Branding/Css",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 200,
+   "unknown_token": 200,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Branding/Css.css",
+   "method": "GET",
+   "route": "/Branding/Css.css",
+   "asks": "/Branding/Css.css",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 200,
+   "unknown_token": 200,
+   "user_token": 200
+  },
+  {
+   "key": "GET /DisplayPreferences/usersettings?userId={userId}&client=capture",
+   "method": "GET",
+   "route": "/DisplayPreferences/{preferenceId}",
+   "asks": "/DisplayPreferences/usersettings?userId={userId}&client=capture",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "POST /DisplayPreferences/usersettings?userId={userId}&client=capture",
+   "method": "POST",
+   "route": "/DisplayPreferences/{preferenceId}",
+   "asks": "/DisplayPreferences/usersettings?userId={userId}&client=capture",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 204
+  },
+  {
+   "key": "GET /Genres",
+   "method": "GET",
+   "route": "/Genres",
+   "asks": "/Genres",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Items",
+   "method": "GET",
+   "route": "/Items",
+   "asks": "/Items",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Items/Filters",
+   "method": "GET",
+   "route": "/Items/Filters",
+   "asks": "/Items/Filters",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Items/Filters2",
+   "method": "GET",
+   "route": "/Items/Filters2",
+   "asks": "/Items/Filters2",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Items/Latest?userId={userId}",
+   "method": "GET",
+   "route": "/Items/Latest",
+   "asks": "/Items/Latest?userId={userId}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Items/Suggestions?userId={userId}",
+   "method": "GET",
+   "route": "/Items/Suggestions",
+   "asks": "/Items/Suggestions?userId={userId}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Items/{id}",
+   "method": "GET",
+   "route": "/Items/{itemId}",
+   "asks": "/Items/{id}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Items/{id}/Ancestors",
+   "method": "GET",
+   "route": "/Items/{itemId}/Ancestors",
+   "asks": "/Items/{id}/Ancestors",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Items/{id}/Collections",
+   "method": "GET",
+   "route": "/Items/{itemId}/Collections",
+   "asks": "/Items/{id}/Collections",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Items/{id}/Download",
+   "method": "GET",
+   "route": "/Items/{itemId}/Download",
+   "asks": "/Items/{id}/Download",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200,
+   "media": "download",
+   "bodies": {
+    "no_token": "refused",
+    "unknown_token": "refused",
+    "user_token": "same-bytes"
+   }
+  },
+  {
+   "key": "GET /Items/{id}/Images/Primary",
+   "method": "GET",
+   "route": "/Items/{itemId}/Images/{imageType}",
+   "asks": "/Items/{id}/Images/Primary",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 200,
+   "unknown_token": 200,
+   "user_token": 200,
+   "media": "poster",
+   "bodies": {
+    "no_token": "non-empty",
+    "unknown_token": "non-empty",
+    "user_token": "non-empty"
+   }
+  },
+  {
+   "key": "GET /Items/{id}/Images/Chapter/0",
+   "method": "GET",
+   "route": "/Items/{itemId}/Images/{imageType}/{imageIndex}",
+   "asks": "/Items/{id}/Images/Chapter/0",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 200,
+   "unknown_token": 200,
+   "user_token": 200,
+   "media": "chapter picture",
+   "bodies": {
+    "no_token": "non-empty",
+    "unknown_token": "non-empty",
+    "user_token": "non-empty"
+   }
+  },
+  {
+   "key": "GET /Items/{id}/LocalTrailers",
+   "method": "GET",
+   "route": "/Items/{itemId}/LocalTrailers",
+   "asks": "/Items/{id}/LocalTrailers",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Items/{id}/PlaybackInfo?userId={userId}",
+   "method": "GET",
+   "route": "/Items/{itemId}/PlaybackInfo",
+   "asks": "/Items/{id}/PlaybackInfo?userId={userId}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "POST /Items/{id}/PlaybackInfo?userId={userId}",
+   "method": "POST",
+   "route": "/Items/{itemId}/PlaybackInfo",
+   "asks": "/Items/{id}/PlaybackInfo?userId={userId}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Items/{id}/Similar",
+   "method": "GET",
+   "route": "/Items/{itemId}/Similar",
+   "asks": "/Items/{id}/Similar",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Items/{id}/SpecialFeatures",
+   "method": "GET",
+   "route": "/Items/{itemId}/SpecialFeatures",
+   "asks": "/Items/{id}/SpecialFeatures",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Items/{id}/ThemeMedia",
+   "method": "GET",
+   "route": "/Items/{itemId}/ThemeMedia",
+   "asks": "/Items/{id}/ThemeMedia",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /LiveTv/Programs",
+   "method": "GET",
+   "route": "/LiveTv/Programs",
+   "asks": "/LiveTv/Programs",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /LiveTv/Programs/Recommended",
+   "method": "GET",
+   "route": "/LiveTv/Programs/Recommended",
+   "asks": "/LiveTv/Programs/Recommended",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Localization/Cultures",
+   "method": "GET",
+   "route": "/Localization/Cultures",
+   "asks": "/Localization/Cultures",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /MediaSegments/{id}",
+   "method": "GET",
+   "route": "/MediaSegments/{itemId}",
+   "asks": "/MediaSegments/{id}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Persons",
+   "method": "GET",
+   "route": "/Persons",
+   "asks": "/Persons",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Playback/BitrateTest?size=102400",
+   "method": "GET",
+   "route": "/Playback/BitrateTest",
+   "asks": "/Playback/BitrateTest?size=102400",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Plugins",
+   "method": "GET",
+   "route": "/Plugins",
+   "asks": "/Plugins",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 403,
+   "why": "Jellyfin 12.4 lists plugins to administrators only: 403 to the non-administrator"
+  },
+  {
+   "key": "GET /QuickConnect/Enabled",
+   "method": "GET",
+   "route": "/QuickConnect/Enabled",
+   "asks": "/QuickConnect/Enabled",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 200,
+   "unknown_token": 200,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Search/Hints?searchTerm=film",
+   "method": "GET",
+   "route": "/Search/Hints",
+   "asks": "/Search/Hints?searchTerm=film",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Sessions",
+   "method": "GET",
+   "route": "/Sessions",
+   "asks": "/Sessions",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "POST /Sessions/Capabilities?playableMediaTypes=Video&supportsMediaControl=false",
+   "method": "POST",
+   "route": "/Sessions/Capabilities",
+   "asks": "/Sessions/Capabilities?playableMediaTypes=Video&supportsMediaControl=false",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 204
+  },
+  {
+   "key": "POST /Sessions/Capabilities/Full",
+   "method": "POST",
+   "route": "/Sessions/Capabilities/Full",
+   "asks": "/Sessions/Capabilities/Full",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 204
+  },
+  {
+   "key": "POST /Sessions/Logout",
+   "method": "POST",
+   "route": "/Sessions/Logout",
+   "asks": "/Sessions/Logout",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 204
+  },
+  {
+   "key": "POST /Sessions/Playing",
+   "method": "POST",
+   "route": "/Sessions/Playing",
+   "asks": "/Sessions/Playing",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 204
+  },
+  {
+   "key": "POST /Sessions/Playing/Ping?playSessionId=capture",
+   "method": "POST",
+   "route": "/Sessions/Playing/Ping",
+   "asks": "/Sessions/Playing/Ping?playSessionId=capture",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 204
+  },
+  {
+   "key": "POST /Sessions/Playing/Progress",
+   "method": "POST",
+   "route": "/Sessions/Playing/Progress",
+   "asks": "/Sessions/Playing/Progress",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 204
+  },
+  {
+   "key": "POST /Sessions/Playing/Stopped",
+   "method": "POST",
+   "route": "/Sessions/Playing/Stopped",
+   "asks": "/Sessions/Playing/Stopped",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 204
+  },
+  {
+   "key": "GET /Shows/NextUp?userId={userId}",
+   "method": "GET",
+   "route": "/Shows/NextUp",
+   "asks": "/Shows/NextUp?userId={userId}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Shows/{id}/Episodes?userId={userId}",
+   "method": "GET",
+   "route": "/Shows/{seriesId}/Episodes",
+   "asks": "/Shows/{id}/Episodes?userId={userId}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Shows/{id}/Seasons?userId={userId}",
+   "method": "GET",
+   "route": "/Shows/{seriesId}/Seasons",
+   "asks": "/Shows/{id}/Seasons?userId={userId}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /socket",
+   "method": "GET",
+   "route": "/socket",
+   "asks": "/socket",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 403,
+   "unknown_token": 403,
+   "user_token": 101,
+   "why": "101, not a refusal: Jellyfin takes the WebSocket upgrade for the non-administrator's token (in Authorization or ApiKey) and answers 403 with none; a plain GET with the token is 404"
+  },
+  {
+   "key": "GET /Studios",
+   "method": "GET",
+   "route": "/Studios",
+   "asks": "/Studios",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /SyncPlay/List",
+   "method": "GET",
+   "route": "/SyncPlay/List",
+   "asks": "/SyncPlay/List",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /System/Configuration/encoding",
+   "method": "GET",
+   "route": "/System/Configuration/encoding",
+   "asks": "/System/Configuration/encoding",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /System/Endpoint",
+   "method": "GET",
+   "route": "/System/Endpoint",
+   "asks": "/System/Endpoint",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /System/Info",
+   "method": "GET",
+   "route": "/System/Info",
+   "asks": "/System/Info",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /System/Info/Public",
+   "method": "GET",
+   "route": "/System/Info/Public",
+   "asks": "/System/Info/Public",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 200,
+   "unknown_token": 200,
+   "user_token": 200
+  },
+  {
+   "key": "GET /System/Ping",
+   "method": "GET",
+   "route": "/System/Ping",
+   "asks": "/System/Ping",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 200,
+   "unknown_token": 200,
+   "user_token": 200
+  },
+  {
+   "key": "POST /System/Ping",
+   "method": "POST",
+   "route": "/System/Ping",
+   "asks": "/System/Ping",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 200,
+   "unknown_token": 200,
+   "user_token": 200
+  },
+  {
+   "key": "DELETE /UserFavoriteItems/{id}?userId={userId}",
+   "method": "DELETE",
+   "route": "/UserFavoriteItems/{itemId}",
+   "asks": "/UserFavoriteItems/{id}?userId={userId}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "POST /UserFavoriteItems/{id}?userId={userId}",
+   "method": "POST",
+   "route": "/UserFavoriteItems/{itemId}",
+   "asks": "/UserFavoriteItems/{id}?userId={userId}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /UserItems/Resume?userId={userId}",
+   "method": "GET",
+   "route": "/UserItems/Resume",
+   "asks": "/UserItems/Resume?userId={userId}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "POST /UserItems/{id}/UserData?userId={userId}",
+   "method": "POST",
+   "route": "/UserItems/{itemId}/UserData",
+   "asks": "/UserItems/{id}/UserData?userId={userId}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "DELETE /UserPlayedItems/{id}?userId={userId}",
+   "method": "DELETE",
+   "route": "/UserPlayedItems/{itemId}",
+   "asks": "/UserPlayedItems/{id}?userId={userId}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "POST /UserPlayedItems/{id}?userId={userId}",
+   "method": "POST",
+   "route": "/UserPlayedItems/{itemId}",
+   "asks": "/UserPlayedItems/{id}?userId={userId}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "POST /Users/AuthenticateByName",
+   "method": "POST",
+   "route": "/Users/AuthenticateByName",
+   "asks": "/Users/AuthenticateByName",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 400,
+   "unknown_token": 200,
+   "user_token": 200,
+   "why": "no_token is 400, not 401: with no Authorization header at all the request names no device, which Jellyfin's sign-in needs; a token (even one never issued) in the header gets the sign-in served"
+  },
+  {
+   "key": "POST /Users/Configuration?userId={userId}",
+   "method": "POST",
+   "route": "/Users/Configuration",
+   "asks": "/Users/Configuration?userId={userId}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 204
+  },
+  {
+   "key": "GET /Users/Me",
+   "method": "GET",
+   "route": "/Users/Me",
+   "asks": "/Users/Me",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Users/Public",
+   "method": "GET",
+   "route": "/Users/Public",
+   "asks": "/Users/Public",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 200,
+   "unknown_token": 200,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Users/{userId}",
+   "method": "GET",
+   "route": "/Users/{userId}",
+   "asks": "/Users/{userId}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "POST /Users/{userId}/Configuration",
+   "method": "POST",
+   "route": "/Users/{userId}/Configuration",
+   "asks": "/Users/{userId}/Configuration",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 204
+  },
+  {
+   "key": "DELETE /Users/{userId}/FavoriteItems/{id}",
+   "method": "DELETE",
+   "route": "/Users/{userId}/FavoriteItems/{itemId}",
+   "asks": "/Users/{userId}/FavoriteItems/{id}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "POST /Users/{userId}/FavoriteItems/{id}",
+   "method": "POST",
+   "route": "/Users/{userId}/FavoriteItems/{itemId}",
+   "asks": "/Users/{userId}/FavoriteItems/{id}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Users/{userId}/GroupingOptions",
+   "method": "GET",
+   "route": "/Users/{userId}/GroupingOptions",
+   "asks": "/Users/{userId}/GroupingOptions",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Users/{userId}/Items",
+   "method": "GET",
+   "route": "/Users/{userId}/Items",
+   "asks": "/Users/{userId}/Items",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Users/{userId}/Items/Latest",
+   "method": "GET",
+   "route": "/Users/{userId}/Items/Latest",
+   "asks": "/Users/{userId}/Items/Latest",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Users/{userId}/Items/Resume",
+   "method": "GET",
+   "route": "/Users/{userId}/Items/Resume",
+   "asks": "/Users/{userId}/Items/Resume",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Users/{userId}/Items/Root",
+   "method": "GET",
+   "route": "/Users/{userId}/Items/Root",
+   "asks": "/Users/{userId}/Items/Root",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Users/{userId}/Items/{id}",
+   "method": "GET",
+   "route": "/Users/{userId}/Items/{itemId}",
+   "asks": "/Users/{userId}/Items/{id}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Users/{userId}/Items/{id}/Intros",
+   "method": "GET",
+   "route": "/Users/{userId}/Items/{itemId}/Intros",
+   "asks": "/Users/{userId}/Items/{id}/Intros",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Users/{userId}/Items/{id}/LocalTrailers",
+   "method": "GET",
+   "route": "/Users/{userId}/Items/{itemId}/LocalTrailers",
+   "asks": "/Users/{userId}/Items/{id}/LocalTrailers",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /Users/{userId}/Items/{id}/SpecialFeatures",
+   "method": "GET",
+   "route": "/Users/{userId}/Items/{itemId}/SpecialFeatures",
+   "asks": "/Users/{userId}/Items/{id}/SpecialFeatures",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "DELETE /Users/{userId}/PlayedItems/{id}",
+   "method": "DELETE",
+   "route": "/Users/{userId}/PlayedItems/{itemId}",
+   "asks": "/Users/{userId}/PlayedItems/{id}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "POST /Users/{userId}/PlayedItems/{id}",
+   "method": "POST",
+   "route": "/Users/{userId}/PlayedItems/{itemId}",
+   "asks": "/Users/{userId}/PlayedItems/{id}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /UserViews?userId={userId}",
+   "method": "GET",
+   "route": "/UserViews",
+   "asks": "/UserViews?userId={userId}",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "GET /UserViews/GroupingOptions",
+   "method": "GET",
+   "route": "/UserViews/GroupingOptions",
+   "asks": "/UserViews/GroupingOptions",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200
+  },
+  {
+   "key": "DELETE /Videos/ActiveEncodings?deviceId=capture-sweep&playSessionId=capture",
+   "method": "DELETE",
+   "route": "/Videos/ActiveEncodings",
+   "asks": "/Videos/ActiveEncodings?deviceId=capture-sweep&playSessionId=capture",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 204
+  },
+  {
+   "key": "GET /Videos/{id}/hls1/main/0.mp4?MaxStreamingBitrate=1000000&MediaSourceId={id}&PlaySessionId=0123456789abcdef0123456789abcdef&VideoCodec=h264&AudioCodec=copy&MaxAudioChannels=2&TranscodingMaxAudioChannels=2&SegmentContainer=mp4&MinSegments=1&BreakOnNonKeyFrames=false&h264-profile=high,main,baseline,constrainedbaseline&h264-level=52&runtimeTicks=0&actualSegmentLengthTicks=60000000",
+   "method": "GET",
+   "route": "/Videos/{itemId}/hls1/main/{segmentId}",
+   "asks": "/Videos/{id}/hls1/main/0.mp4?MaxStreamingBitrate=1000000&MediaSourceId={id}&PlaySessionId=0123456789abcdef0123456789abcdef&VideoCodec=h264&AudioCodec=copy&MaxAudioChannels=2&TranscodingMaxAudioChannels=2&SegmentContainer=mp4&MinSegments=1&BreakOnNonKeyFrames=false&h264-profile=high,main,baseline,constrainedbaseline&h264-level=52&runtimeTicks=0&actualSegmentLengthTicks=60000000",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200,
+   "media": "segment",
+   "bodies": {
+    "no_token": "refused",
+    "unknown_token": "refused",
+    "user_token": "non-empty"
+   }
+  },
+  {
+   "key": "GET /Videos/{id}/main.m3u8?MaxStreamingBitrate=1000000&MediaSourceId={id}&PlaySessionId=0123456789abcdef0123456789abcdef&VideoCodec=h264&AudioCodec=copy&MaxAudioChannels=2&TranscodingMaxAudioChannels=2&SegmentContainer=mp4&MinSegments=1&BreakOnNonKeyFrames=false&h264-profile=high,main,baseline,constrainedbaseline&h264-level=52",
+   "method": "GET",
+   "route": "/Videos/{itemId}/main.m3u8",
+   "asks": "/Videos/{id}/main.m3u8?MaxStreamingBitrate=1000000&MediaSourceId={id}&PlaySessionId=0123456789abcdef0123456789abcdef&VideoCodec=h264&AudioCodec=copy&MaxAudioChannels=2&TranscodingMaxAudioChannels=2&SegmentContainer=mp4&MinSegments=1&BreakOnNonKeyFrames=false&h264-profile=high,main,baseline,constrainedbaseline&h264-level=52",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200,
+   "media": "main playlist",
+   "bodies": {
+    "no_token": "refused",
+    "unknown_token": "refused",
+    "user_token": "non-empty"
+   }
+  },
+  {
+   "key": "GET /Videos/{id}/master.m3u8?MaxStreamingBitrate=1000000&MediaSourceId={id}&PlaySessionId=0123456789abcdef0123456789abcdef&VideoCodec=h264&AudioCodec=aac&MaxAudioChannels=2&TranscodingMaxAudioChannels=2&SegmentContainer=mp4&MinSegments=1&BreakOnNonKeyFrames=false&h264-profile=high,main,baseline,constrainedbaseline&h264-level=52",
+   "method": "GET",
+   "route": "/Videos/{itemId}/master.m3u8",
+   "asks": "/Videos/{id}/master.m3u8?MaxStreamingBitrate=1000000&MediaSourceId={id}&PlaySessionId=0123456789abcdef0123456789abcdef&VideoCodec=h264&AudioCodec=aac&MaxAudioChannels=2&TranscodingMaxAudioChannels=2&SegmentContainer=mp4&MinSegments=1&BreakOnNonKeyFrames=false&h264-profile=high,main,baseline,constrainedbaseline&h264-level=52",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 401,
+   "unknown_token": 401,
+   "user_token": 200,
+   "media": "master playlist",
+   "bodies": {
+    "no_token": "refused",
+    "unknown_token": "refused",
+    "user_token": "non-empty"
+   }
+  },
+  {
+   "key": "GET /Videos/{id}/stream?static=true",
+   "method": "GET",
+   "route": "/Videos/{itemId}/{file}",
+   "asks": "/Videos/{id}/stream?static=true",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 200,
+   "unknown_token": 200,
+   "user_token": 200,
+   "media": "static stream",
+   "bodies": {
+    "no_token": "same-bytes",
+    "unknown_token": "same-bytes",
+    "user_token": "same-bytes"
+   }
+  },
+  {
+   "key": "HEAD /Videos/{id}/stream?static=true",
+   "method": "HEAD",
+   "route": "/Videos/{itemId}/{file}",
+   "asks": "/Videos/{id}/stream?static=true",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 200,
+   "unknown_token": 200,
+   "user_token": 200,
+   "media": "static stream head",
+   "bodies": {
+    "no_token": "no-body",
+    "unknown_token": "no-body",
+    "user_token": "no-body"
+   }
+  },
+  {
+   "key": "GET /Videos/{id}/stream.mkv?VideoCodec=h264&AudioCodec=aac",
+   "method": "GET",
+   "route": "/Videos/{itemId}/{file}",
+   "asks": "/Videos/{id}/stream.mkv?VideoCodec=h264&AudioCodec=aac",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 200,
+   "unknown_token": 200,
+   "user_token": 200,
+   "media": "stream.mkv",
+   "bodies": {
+    "no_token": "non-empty",
+    "unknown_token": "non-empty",
+    "user_token": "non-empty"
+   }
+  },
+  {
+   "key": "GET /Videos/{id}/{id}/Attachments/3",
+   "method": "GET",
+   "route": "/Videos/{itemId}/{sourceId}/Attachments/{index}",
+   "asks": "/Videos/{id}/{id}/Attachments/3",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 200,
+   "unknown_token": 200,
+   "user_token": 200,
+   "media": "font",
+   "bodies": {
+    "no_token": "same-bytes",
+    "unknown_token": "same-bytes",
+    "user_token": "same-bytes"
+   }
+  },
+  {
+   "key": "GET /Videos/{id}/{id}/Subtitles/2/Stream.vtt",
+   "method": "GET",
+   "route": "/Videos/{itemId}/{sourceId}/Subtitles/{index}/{file}",
+   "asks": "/Videos/{id}/{id}/Subtitles/2/Stream.vtt",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 200,
+   "unknown_token": 200,
+   "user_token": 200,
+   "media": "text subtitle",
+   "bodies": {
+    "no_token": "non-empty",
+    "unknown_token": "non-empty",
+    "user_token": "non-empty"
+   }
+  },
+  {
+   "key": "GET /Videos/{id}/{id}/Subtitles/2/Stream.sup",
+   "method": "GET",
+   "route": "/Videos/{itemId}/{sourceId}/Subtitles/{index}/{file}",
+   "asks": "/Videos/{id}/{id}/Subtitles/2/Stream.sup",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 200,
+   "unknown_token": 200,
+   "user_token": 200,
+   "media": "image subtitle",
+   "bodies": {
+    "no_token": "non-empty",
+    "unknown_token": "non-empty",
+    "user_token": "non-empty"
+   }
+  },
+  {
+   "key": "GET /Videos/{id}/{id}/Subtitles/2/10000000/Stream.vtt",
+   "method": "GET",
+   "route": "/Videos/{itemId}/{sourceId}/Subtitles/{index}/{startPositionTicks}/{file}",
+   "asks": "/Videos/{id}/{id}/Subtitles/2/10000000/Stream.vtt",
+   "token_spelling": "Authorization: MediaBrowser",
+   "no_token": 200,
+   "unknown_token": 200,
+   "user_token": 200,
+   "media": "text subtitle from an offset",
+   "bodies": {
+    "no_token": "non-empty",
+    "unknown_token": "non-empty",
+    "user_token": "non-empty"
+   }
+  }
+ ],
+ "open_without_token": [
+  "GET /Branding/Configuration",
+  "GET /Branding/Css",
+  "GET /Branding/Css.css",
+  "GET /Items/{id}/Images/Chapter/0",
+  "GET /Items/{id}/Images/Primary",
+  "GET /QuickConnect/Enabled",
+  "GET /System/Info/Public",
+  "GET /System/Ping",
+  "GET /Users/Public",
+  "GET /Videos/{id}/stream.mkv?VideoCodec=h264&AudioCodec=aac",
+  "GET /Videos/{id}/stream?static=true",
+  "GET /Videos/{id}/{id}/Attachments/3",
+  "GET /Videos/{id}/{id}/Subtitles/2/10000000/Stream.vtt",
+  "GET /Videos/{id}/{id}/Subtitles/2/Stream.sup",
+  "GET /Videos/{id}/{id}/Subtitles/2/Stream.vtt",
+  "HEAD /Videos/{id}/stream?static=true",
+  "POST /System/Ping"
+ ],
+ "refused_to_user": [
+  "GET /Plugins"
+ ]
+}

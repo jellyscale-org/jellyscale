@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"strconv"
+	"strings"
 
 	"jellyscale/compat/conform"
 )
@@ -131,4 +133,84 @@ func (s *server) takeToken(answer []byte) {
 	if json.Unmarshal(answer, &auth) == nil && auth.AccessToken != "" {
 		s.token = auth.AccessToken
 	}
+}
+
+// The film of the tier's libraries that has a text subtitle (its stream 2) and an attached font (stream 3):
+// the subtitle request of a player is filled from it, since Alpha Film has video and audio only. run.sh makes it.
+const (
+	subtitleFilmKey   = "Movie/Sub Font Cut (1999)"
+	subtitleFilmIndex = 2
+)
+
+// fillPlayer is fillClient for a request of a player: the subtitle's film, source and stream are the subtitle film's.
+func (s *server) fillPlayer(kind, text string) (string, error) {
+	film := s.byKey["Movie/Alpha Film (2021)"]
+	index := "0"
+	if kind == "subtitle" {
+		film, index = s.byKey[subtitleFilmKey], strconv.Itoa(subtitleFilmIndex)
+	}
+	out := text
+	for _, name := range []string{"{itemId}", "{mediaSourceId}"} {
+		if film == "" && strings.Contains(out, name) {
+			return "", fmt.Errorf("%s has no item %q", s.name, subtitleFilmKey)
+		}
+		out = strings.ReplaceAll(out, name, film)
+	}
+	out = strings.ReplaceAll(out, "{index}", index)
+	return s.fillClient(out)
+}
+
+// playerSweep sends each request of the clients' players that is requested, with the token where the list says it
+// travels and nowhere else, and holds the answer to the form (JS-126): a media request listed with no token must be
+// refused with 401, one listed with a token must be served, and a picture is served whichever way it is listed.
+// What Jellyfin answers excuses nothing. A sweep that sent nothing is itself a failure.
+func (s *server) playerSweep(clients conform.Clients) (sent int, failures []string) {
+	for _, client := range clients {
+		for _, p := range client.Player {
+			if p.NotRequested {
+				continue
+			}
+			sent++
+			where := fmt.Sprintf("%s player %s %s", client.Name, p.Method, p.Route)
+			path, err := s.fillPlayer(p.Kind, p.Route)
+			query := url.Values{}
+			for name, values := range p.Query {
+				for _, v := range values {
+					if err == nil {
+						v, err = s.fillPlayer(p.Kind, v)
+					}
+					query.Add(name, v)
+				}
+			}
+			if err != nil {
+				failures = append(failures, fmt.Sprintf("%s: %v", where, err))
+				continue
+			}
+			if len(query) > 0 {
+				path += "?" + query.Encode()
+			}
+			how := carry{where: "none"}
+			if p.Token != "none" {
+				how = carry{where: p.Token, name: p.TokenName}
+			}
+			status, _, _, err := s.sendWith(p.Method, path, "", how)
+			want := "2xx"
+			switch {
+			case err != nil:
+				failures = append(failures, fmt.Sprintf("%s: %v", where, err))
+				continue
+			case p.Kind == "picture":
+				want = "200"
+			case p.Token == "none":
+				want = "401"
+			}
+			if (want == "2xx" && (status < 200 || status > 299)) || (want == "200" && status != 200) || (want == "401" && status != 401) {
+				failures = append(failures, fmt.Sprintf("%s: answered %d, want %s, the token being %s (%s)", where, status, want, p.Token, path))
+			}
+		}
+	}
+	if sent == 0 {
+		failures = append(failures, "no player request is listed as requested, so nothing was sent")
+	}
+	return sent, failures
 }

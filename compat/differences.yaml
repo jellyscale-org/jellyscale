@@ -1063,3 +1063,16 @@
   reason: "jellyscale marks the audio streams in the film's original language IsOriginal ; Jellyfin 12.4 with no metadata provider marks none (compat/captures/original-language-12.4.md)"
   paths:
     - "MediaSources[].MediaStreams[].IsOriginal"
+
+# JS-126: Jellyfin 12.4 has no authorization on these routes and sends the bytes to anyone who holds the id
+# (compat/captures/access-12.4.md); jellyscale requires a token on every media request (docs/access.md).
+- requests:
+    - "no token: the static stream"
+    - "no token: the static stream, HEAD"
+    - "no token: stream.mkv"
+    - "no token: the text subtitle"
+    - "no token: the text subtitle from an offset"
+    - "no token: the font attachment"
+  path: "(status)"
+  kind: improvement
+  reason: "jellyscale answers 401 with no token where Jellyfin 12.4 answers 200: playback and personal data always require authorization, so a client must send its token on every media request (docs/access.md, What a client must send); the capture is compat/captures/access-12.4.json"

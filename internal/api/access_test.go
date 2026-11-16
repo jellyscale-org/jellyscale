@@ -311,9 +311,13 @@ func accessRows(t *testing.T) []accessRow {
 	}
 	route := regexp.MustCompile("^`?((?:GET|POST|PUT|DELETE|HEAD|PATCH) /[^` ]*)`?$")
 	var rows []accessRow
+	inRoutes := false // other tables (Stricter than Jellyfin) name requests, not routes of the manifest
 	for _, line := range strings.Split(string(raw), "\n") {
 		line = strings.TrimSpace(line)
-		if !strings.HasPrefix(line, "|") {
+		if strings.HasPrefix(line, "## ") {
+			inRoutes = line == "## Routes"
+		}
+		if !inRoutes || !strings.HasPrefix(line, "|") {
 			continue
 		}
 		cells := strings.Split(strings.Trim(line, "|"), "|")

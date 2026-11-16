@@ -58,6 +58,20 @@ ffmpeg -nostdin -v error -y \
   -map 0:v -map 1:a -map 2:a -c:v libx264 -preset ultrafast -crf 30 -g 48 -c:a:0 ac3 -c:a:1 aac \
   -metadata:s:a:0 language=eng -metadata:s:a:1 language=spa "$zeta" || exit 1
 touch -d 2000-01-01 "$zeta"
+# Sub Font Cut: a text subtitle (stream 2) and an attached font (stream 3), which no other film of the libraries has,
+# for the requests that ask with no token (JS-126, test/differential/run/clients.go names it as subtitleFilmKey). It has a
+# library of its own, so that no listing of the Movies library or search for "film" holds a film whose HasSubtitles
+# jellyscale does not send; it is old too, so Latest lists it after the others.
+subfont="$media/subtitled/Sub Font Cut (1999)/Sub Font Cut (1999).mkv"
+mkdir -p "$(dirname "$subfont")" || exit 1
+printf '1\n00:00:01,000 --> 00:00:03,000\nEnglish line\n\n' >"$work/lines.srt"
+ffmpeg -nostdin -v error -y \
+  -f lavfi -i "testsrc2=size=640x360:rate=24:duration=12" \
+  -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=12" -i "$work/lines.srt" \
+  -map 0:v -map 1:a -map 2 -c:v libx264 -preset ultrafast -g 24 -c:a aac -c:s srt \
+  -metadata:s:a:0 language=eng -metadata:s:s:0 language=eng \
+  -attach "$(fc-match -f '%{file}' serif)" -metadata:s:t:0 mimetype=font/ttf "$subfont" || exit 1
+touch -d 1999-12-31 "$subfont"
 # @jellyfin/sdk, which asks the server discovery (test/sdknode/discover.mjs).
 (cd "$repo/test/sdknode" && npm ci --ignore-scripts --no-audit --no-fund >/dev/null) || { echo "FAIL  npm ci in test/sdknode failed" >&2; exit 1; }
 
@@ -74,7 +88,8 @@ cat >"$work/config.json" <<E2
  "transcodeStore": "file://$work/segments", "transcodeScratch": "$work/scratch", "libraries": [
   {"name": "Movies", "kind": "movies", "media": "file://$media/movies", "assets": "file://$work/assets/movies"},
   {"name": "Shows", "kind": "tvshows", "media": "file://$media/shows", "assets": "file://$work/assets/shows"},
-  {"name": "HDR", "kind": "movies", "media": "file://$media/hdr", "assets": "file://$work/assets/hdr"}
+  {"name": "HDR", "kind": "movies", "media": "file://$media/hdr", "assets": "file://$work/assets/hdr"},
+  {"name": "Subtitled", "kind": "movies", "media": "file://$media/subtitled", "assets": "file://$work/assets/subtitled"}
 ]}
 E2
 (cd "$repo" && go build -o "$work/jellyscale" ./cmd/jellyscale && go build -o "$work/differential" ./test/differential/run) || exit 1

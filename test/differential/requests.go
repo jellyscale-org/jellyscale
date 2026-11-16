@@ -39,6 +39,9 @@ type Request struct {
 	// decoded, but the two answers are not compared: they differ in ways other tasks build away
 	// (the streams a scan lists), and the request is here for what the SDK decodes.
 	DecodeOnly bool `yaml:"decode_only"`
+	// NoToken says the request leaves with no credential in any spelling (JS-126). Both servers must still
+	// answer 2xx to it with the token, so it names something both have; the answers with none are compared by status alone.
+	NoToken bool `yaml:"no_token"`
 }
 
 // CheckAnswer says why one server's answer is not what r expects, or nil.

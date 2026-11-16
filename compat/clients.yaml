@@ -10,8 +10,21 @@
 # PassthroughAPIClientDelegate, jellyfin-sdk-typescript getAuthorizationHeader); "emby"
 # (X-Emby-Authorization) and "none" are the other forms. from is "source" (read in the client's
 # code, the route taken from the SDK operation it calls) or "traffic" (seen on the dogfood
-# server). A request the client builds as a URL for a player or an image loader (the video
-# stream, the pictures) is not listed. version is the commit of the default branch read on
+# server).
+#
+# player is the other half of what a client sends (JS-126): the four requests its player and image loader build as
+# URLs, not through the SDK's operations: direct-play (the video stream), hls (the master playlist), subtitle and
+# picture, one entry of each, with the method, route and query names as the client builds them at the commit its
+# version pins, and the file and line read. token says how the token travels: header (token_name is which),
+# query (token_name is ApiKey or api_key) or none; url_from is client (it built the URL) or server (it plays a
+# URL the server gave it: TranscodingUrl, DeliveryUrl, which jellyscale and Jellyfin end in ApiKey=). A kind the
+# client never requests is not_requested, with the file read. device is set only where the request was played on
+# a device; none was, so every entry was read from source. Servers match route segments without regard to case, and
+# a client may build "items" where the route is "Items": the route is written as compat/endpoints.yaml has it.
+# The differential tier sends each entry to jellyscale as listed (test/differential/run/clients.go).
+# jellyfin-sdk-kotlin leaves credentials out of the URLs it builds (includeCredentials was removed in 1.5), so
+# Findroid and Android TV send no token on the video stream; jellyfin-sdk-swift adds ApiKey where asked (queryAPIKey).
+# version is the commit of the default branch read on
 # 2026-11-12. GET /MediaSegments/{itemId}, which all four call before playback, answers an empty
 # list until JS-052 finds intros and credits.
 clients:
@@ -48,6 +61,11 @@ clients:
       stop:
         - {method: POST, route: /Sessions/Playing/Stopped, auth: mediabrowser, from: source, body: '{"ItemId":"{itemId}","MediaSourceId":"{mediaSourceId}","PositionTicks":100000000}'}
         - {method: POST, route: "/UserPlayedItems/{itemId}", auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
+    player:
+      - {kind: direct-play, method: GET, route: "/Videos/{itemId}/stream", query: {static: ["true"], mediaSourceId: ["{mediaSourceId}"]}, token: none, url_from: client, file: data/src/main/java/dev/jdtech/jellyfin/repository/JellyfinRepositoryImpl.kt, line: 344}
+      - {kind: hls, not_requested: true, file: data/src/main/java/dev/jdtech/jellyfin/repository/JellyfinRepositoryImpl.kt, line: 323}
+      - {kind: subtitle, method: GET, route: "/Videos/{itemId}/{mediaSourceId}/Subtitles/{index}/0/Stream.vtt", token: query, token_name: ApiKey, url_from: server, file: data/src/main/java/dev/jdtech/jellyfin/models/FindroidMediaStream.kt, line: 31}
+      - {kind: picture, method: GET, route: "/Items/{itemId}/Images/Primary", query: {tag: ["{imageTag}"]}, token: none, url_from: client, file: data/src/main/java/dev/jdtech/jellyfin/models/FindroidImages.kt, line: 24}
 
   - name: Android TV
     version: "jellyfin/jellyfin-androidtv e14b088 (2026-11-12)"
@@ -86,6 +104,11 @@ clients:
         - {method: POST, route: /Sessions/Playing/Stopped, auth: mediabrowser, from: source, body: '{"ItemId":"{itemId}","MediaSourceId":"{mediaSourceId}","PositionTicks":100000000}'}
         - {method: POST, route: "/UserPlayedItems/{itemId}", auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
         - {method: DELETE, route: /Videos/ActiveEncodings, auth: mediabrowser, from: source, query: {deviceId: ["differential"], playSessionId: ["0123456789abcdef"]}}
+    player:
+      - {kind: direct-play, method: GET, route: "/Videos/{itemId}/stream", query: {static: ["true"], mediaSourceId: ["{mediaSourceId}"], container: [mkv]}, token: none, url_from: client, file: app/src/main/java/org/jellyfin/androidtv/ui/playback/PlaybackManager.kt, line: 41}
+      - {kind: hls, method: GET, route: "/Videos/{itemId}/master.m3u8", query: {MediaSourceId: ["{mediaSourceId}"], PlaySessionId: ["0123456789abcdef0123456789abcdef"], VideoCodec: [h264], AudioCodec: [aac], MaxAudioChannels: ["2"], SegmentContainer: [mp4], MinSegments: ["1"]}, token: query, token_name: ApiKey, url_from: server, file: app/src/main/java/org/jellyfin/androidtv/ui/playback/PlaybackManager.kt, line: 57}
+      - {kind: subtitle, method: GET, route: "/Videos/{itemId}/{mediaSourceId}/Subtitles/{index}/0/Stream.vtt", token: query, token_name: ApiKey, url_from: server, file: app/src/main/java/org/jellyfin/androidtv/ui/playback/VideoManager.java, line: 404}
+      - {kind: picture, method: GET, route: "/Items/{itemId}/Images/Primary", query: {tag: ["{imageTag}"]}, token: none, url_from: client, file: app/src/main/java/org/jellyfin/androidtv/util/apiclient/JellyfinImage.kt, line: 36}
 
   - name: Swiftfin
     version: "jellyfin/Swiftfin ffc4398 (2026-11-12), jellyfin-sdk-swift 3.4.0"
@@ -123,6 +146,11 @@ clients:
       stop:
         - {method: POST, route: /Sessions/Playing/Stopped, auth: mediabrowser, from: source, body: '{"ItemId":"{itemId}","MediaSourceId":"{mediaSourceId}","PositionTicks":100000000}'}
         - {method: POST, route: "/UserPlayedItems/{itemId}", auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
+    player:
+      - {kind: direct-play, method: GET, route: "/Videos/{itemId}/stream", query: {static: ["true"], mediaSourceId: ["{mediaSourceId}"]}, token: query, token_name: ApiKey, url_from: client, file: Shared/Objects/MediaPlayerManager/MediaPlayerItem/MediaPlayerItemResolver.swift, line: 251}
+      - {kind: hls, method: GET, route: "/Videos/{itemId}/master.m3u8", query: {MediaSourceId: ["{mediaSourceId}"], PlaySessionId: ["0123456789abcdef0123456789abcdef"], VideoCodec: [h264], AudioCodec: [aac], MaxAudioChannels: ["2"], SegmentContainer: [mp4], MinSegments: ["1"]}, token: query, token_name: ApiKey, url_from: server, file: Shared/Objects/MediaPlayerManager/MediaPlayerItem/MediaPlayerItemResolver.swift, line: 228}
+      - {kind: subtitle, method: GET, route: "/Videos/{itemId}/{mediaSourceId}/Subtitles/{index}/0/Stream.vtt", token: query, token_name: ApiKey, url_from: server, file: Shared/Extensions/JellyfinAPI/MediaStream.swift, line: 29}
+      - {kind: picture, method: GET, route: "/Items/{itemId}/Images/Primary", query: {tag: ["{imageTag}"]}, token: none, url_from: client, file: Shared/Extensions/JellyfinAPI/BaseItemDto/BaseItemDto+Images.swift, line: 56}
 
   - name: Streamyfin
     version: "streamyfin/streamyfin c82f5bf (2026-11-12), @jellyfin/sdk"
@@ -159,3 +187,8 @@ clients:
       stop:
         - {method: POST, route: /Sessions/Playing/Stopped, auth: mediabrowser, from: source, body: '{"ItemId":"{itemId}","MediaSourceId":"{mediaSourceId}","PositionTicks":100000000}'}
         - {method: POST, route: "/UserPlayedItems/{itemId}", auth: mediabrowser, from: source, query: {userId: ["{userId}"]}}
+    player:
+      - {kind: direct-play, method: GET, route: "/Videos/{itemId}/stream", query: {static: ["true"], mediaSourceId: ["{mediaSourceId}"], container: [mkv]}, token: query, token_name: ApiKey, url_from: client, file: utils/jellyfin/media/getStreamUrl.ts, line: 106}
+      - {kind: hls, method: GET, route: "/Videos/{itemId}/master.m3u8", query: {MediaSourceId: ["{mediaSourceId}"], PlaySessionId: ["0123456789abcdef0123456789abcdef"], VideoCodec: [h264], AudioCodec: [aac], MaxAudioChannels: ["2"], SegmentContainer: [mp4], MinSegments: ["1"]}, token: query, token_name: ApiKey, url_from: server, file: utils/jellyfin/media/getStreamUrl.ts, line: 61}
+      - {kind: subtitle, method: GET, route: "/Videos/{itemId}/{mediaSourceId}/Subtitles/{index}/0/Stream.vtt", token: query, token_name: ApiKey, url_from: server, file: utils/nativePlayer/externalSubtitles.ts, line: 261}
+      - {kind: picture, method: GET, route: "/Items/{itemId}/Images/Primary", query: {tag: ["{imageTag}"]}, token: none, url_from: client, file: utils/jellyfin/image/itemImageUrl.ts, line: 35}

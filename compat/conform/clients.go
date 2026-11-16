@@ -13,6 +13,8 @@ import (
 var (
 	ClientNames = []string{"Findroid", "Android TV", "Swiftfin", "Streamyfin"}
 	PathNames   = []string{"startup", "sign-in", "home", "browse", "detail", "playback", "progress", "stop"}
+	// PlayerKinds are the requests a client's player builds, one entry of each in Client.Player.
+	PlayerKinds = []string{"direct-play", "hls", "subtitle", "picture"}
 )
 
 type Clients []Client
@@ -22,6 +24,28 @@ type Client struct {
 	Name    string                     `yaml:"name"`
 	Version string                     `yaml:"version"`
 	Paths   map[string][]ClientRequest `yaml:"paths"`
+	Player  []PlayerRequest            `yaml:"player"`
+}
+
+// PlayerRequest is a request a client's player or image loader builds as a URL (JS-126), with how the
+// token travels. Token is "header", "query" or "none"; TokenName is the header (Authorization,
+// X-Emby-Authorization, X-Emby-Token, X-MediaBrowser-Token) or the query name (ApiKey, api_key).
+// URLFrom is "client" when the client builds the URL, "server" when it plays one the server gave it
+// (TranscodingUrl, DeliveryUrl). File and Line are the source read, relative to the client's repository.
+// Device is set only where the request was played on a device. NotRequested says the client never
+// requests this kind, and then Method and Route are empty.
+type PlayerRequest struct {
+	Kind         string              `yaml:"kind"`
+	Method       string              `yaml:"method"`
+	Route        string              `yaml:"route"`
+	Query        map[string][]string `yaml:"query"`
+	NotRequested bool                `yaml:"not_requested"`
+	Token        string              `yaml:"token"`
+	TokenName    string              `yaml:"token_name"`
+	URLFrom      string              `yaml:"url_from"`
+	File         string              `yaml:"file"`
+	Line         int                 `yaml:"line"`
+	Device       string              `yaml:"device"`
 }
 
 // ClientRequest is one request a client sends. Route is the template as in

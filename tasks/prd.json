@@ -2536,10 +2536,9 @@
         "JS-125"
       ],
       "notes": "No handler changes. Findroid builds its URL in JellyfinRepositoryImpl.kt:341-348 (013eb52) with getVideoStreamUrl(itemId, static = true, mediaSourceId). Swiftfin appends ApiKey itself (RemotePlaybackURL.swift:21-25). The lead drafts the upstream issue for Findroid from the client list and files it with the owner's OK. JS-075's ExoPlayer session should use a client this task shows sending its token, or a patched Findroid. Whether Jellyfin's anonymous stream really sends bytes on 12.4 is what the first criterion finds out: the attribute is missing in source, the handler was not run. Owner's decisions (2026-11-16, on Fable 5.2's access model, .results/access-model-fable-2026-11-16.md): pictures by id open to whoever holds the id, by name need a token; per-library access right after JS-033; a revoked or disabled user's running stream stops within 15 s; a viewer sees no other viewer's name; an administrator manages accounts but never browses, plays or reports as another user; a Policy field jellyscale does not enforce is refused when changed (400); 'may download' is honoured; operator keys are never users; no issue is filed on Findroid for now.",
-      "passes": false,
-      "priority": 18,
+      "passes": true,
       "source": "owner 2026-11-16; access model",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "JS-127",
