@@ -370,7 +370,7 @@
         "Exported over OTLP to any backend, off by default; the dogfood runs a backend and the docs show reading a stall from it",
         "Checked with real processes: a test collector receives a playback's trace from three processes, with a stall and a failover in it"
       ],
-      "priority": 63,
+      "priority": 71,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -390,7 +390,7 @@
         "Each line of a playback carries its play session id and trace id (JS-021), and a helper's start, end and failure say they are a helper's and whose",
         "Metrics beyond the transcode path: HTTP requests by role, route and status with latency, store operations and bytes by store, scan durations and errors"
       ],
-      "priority": 62,
+      "priority": 70,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -596,7 +596,7 @@
         "jellyfin-web's remote control drives another session",
         "POST /Sessions/Capabilities and /Sessions/Capabilities/Full are accepted and stored for the session, so other clients see it as a remote-control target (#106)"
       ],
-      "priority": 40,
+      "priority": 48,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -611,16 +611,16 @@
       "title": "User management",
       "description": "Create, delete, disable users; change passwords; preferences and configuration.",
       "acceptanceCriteria": [
-        "POST /Users/New, DELETE /Users/{id}, /Users/{id}/Policy, /Password, /Configuration as Jellyfin 12.4",
+        "POST /Users/New, DELETE /Users/{id}, /Users/{id}/Policy, /Password as Jellyfin 12.4",
         "jellyfin-web's admin user pages work",
         "Login attempts are throttled per user and per client address, and the Policy's lockout fields work as Jellyfin 12.4's do"
       ],
-      "priority": 27,
+      "priority": 35,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
       "source": "PRODUCT.md identity",
-      "notes": ""
+      "notes": "/Configuration moved to JS-116 (2026-11-15)."
     },
     {
       "id": "JS-034",
@@ -631,7 +631,7 @@
         "No plain token in the database",
         "API keys created and revoked through jellyfin-web"
       ],
-      "priority": 41,
+      "priority": 49,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -648,7 +648,7 @@
         "Last use time and address recorded",
         "Streamystats works with a read-only key and no extra user account"
       ],
-      "priority": 42,
+      "priority": 50,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -665,7 +665,7 @@
       "acceptanceCriteria": [
         "Enforced on every item route"
       ],
-      "priority": 43,
+      "priority": 51,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -684,7 +684,7 @@
         "Moonfin on the Shield and Findroid sign in with a code approved from jellyfin-web",
         "Where Quick Connect is turned off, /QuickConnect/Enabled answers false so clients fall back to a password (#104)"
       ],
-      "priority": 44,
+      "priority": 52,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -699,7 +699,7 @@
       "acceptanceCriteria": [
         "Answer shape as Jellyfin 12.4"
       ],
-      "priority": 45,
+      "priority": 53,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -715,7 +715,7 @@
         "Sign in with an OIDC provider in jellyfin-web",
         "OIDC users reach TV apps through Quick Connect"
       ],
-      "priority": 46,
+      "priority": 54,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -733,7 +733,7 @@
         "No viewer token in any playlist or segment URL",
         "Kodi's TranscodingUrl editing still works"
       ],
-      "priority": 47,
+      "priority": 55,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -743,17 +743,26 @@
     {
       "id": "JS-041",
       "phase": "ID",
-      "title": "Default subtitle by the viewer's subtitle mode",
-      "description": "SubtitleMode and SubtitleLanguagePreference pick DefaultSubtitleStreamIndex as Jellyfin does.",
+      "title": "Default subtitle by the viewer's subtitle mode and language",
+      "description": "SubtitleMode and SubtitleLanguagePreference (saved by JS-116) pick DefaultSubtitleStreamIndex as Jellyfin 12.4 does. compat/captures/subtitles-default-12.4.json already holds 19 films x 5 modes x 3 languages; no code reproduces it.",
       "acceptanceCriteria": [
-        "Each mode matches a Jellyfin 12.4 capture"
+        "The capture is extended first: AudioLanguagePreference ('', eng, jpn) varied for Smart on at least 6 films, a film tagged ger and one tagged deu, an untagged track, a PGS track, and whether a progress report that names a subtitle track changes the next default when RememberSubtitleSelections is on; the rule for each mode, Smart included, is written down or the capture says why it cannot be",
+        "For the 19 captured films, the 5 modes and the 3 languages (285 answers), and the new cells, jellyscale answers the captured track (Jellyfin numbers files first, jellyscale after the film's own tracks, so tracks are matched by what they are), except cells listed in compat/differences.yaml with a reason",
+        "With transcoding on, no answer is -1 where the capture has a track",
+        "With JS-119's hiding on, the mode's rule is applied to the listed subtitle tracks only and the default is never a placeholder: film A5 (a French file, eng inside, deu default) with language eng and mode Default no longer starts in French",
+        "Mode None, and a viewer who has saved nothing, answer as today",
+        "A track the request names still wins over the mode",
+        "In real jellyfin-web (e2e): with mode Always and language English a film starts with its English subtitle on screen; with None it starts with none"
       ],
-      "priority": 48,
+      "priority": 33,
       "status": "todo",
       "passes": false,
-      "dependsOn": [],
-      "source": "PRODUCT.md identity",
-      "notes": ""
+      "dependsOn": [
+        "JS-116",
+        "JS-117"
+      ],
+      "source": "PRODUCT.md identity; owner request 2026-11-15",
+      "notes": "Moved up from 48: once JS-116 saves the mode, a mode that chooses nothing is a setting that does nothing. In the existing capture, Jellyfin with language eng and mode Default starts a non-English track on 7 of 19 films; hiding removes those for viewers who opt in."
     },
     {
       "id": "JS-042",
@@ -763,7 +772,7 @@
       "acceptanceCriteria": [
         "Revoked device's token stops working"
       ],
-      "priority": 49,
+      "priority": 57,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -778,7 +787,7 @@
       "acceptanceCriteria": [
         "jellyfin-web's dashboard lists entries"
       ],
-      "priority": 50,
+      "priority": 58,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -793,7 +802,7 @@
       "acceptanceCriteria": [
         "jellyfin-web shows and changes avatars"
       ],
-      "priority": 51,
+      "priority": 59,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -809,7 +818,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 29,
+      "priority": 37,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -825,7 +834,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 52,
+      "priority": 60,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -843,7 +852,7 @@
         "GET /Shows/NextUp answers in Jellyfin 12.4's shape for the signed-in user, honours nextUpDateCutoff, and brings back a series the viewer had caught up on once a new episode is added (#101)",
         "GET /Items/Filters2 answers with the filters the library can match (#108)"
       ],
-      "priority": 30,
+      "priority": 38,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -859,7 +868,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 53,
+      "priority": 61,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -875,7 +884,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 54,
+      "priority": 62,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -891,7 +900,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 56,
+      "priority": 64,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -907,7 +916,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 57,
+      "priority": 65,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -923,7 +932,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 58,
+      "priority": 66,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -939,7 +948,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 59,
+      "priority": 67,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -960,7 +969,7 @@
         "Tested on real hardware in its own tier chosen explicitly (never skipped): Intel QSV/VAAPI on the dogfood cluster's iGPUs and NVENC on a developer machine; jellyfin-web plays, seeks and recovers from a killed GPU worker",
         "Operators see which encoder family and worker serve each stream (Sessions, metrics, JS-021 traces)"
       ],
-      "priority": 60,
+      "priority": 68,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -980,7 +989,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 61,
+      "priority": 69,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1001,7 +1010,7 @@
         "An optional GPU worker pool requests gpu.intel.com/i915 or nvidia.com/gpu through the vendor's device plugin (JS-054); a cluster without one runs CPU workers only; documented in docs/running.md",
         "Each probe states what it depends on: liveness never depends on Postgres or a store, so a database failover restarts no pod; ffmpeg threads follow the pod's CPU limit, not the node's cores"
       ],
-      "priority": 64,
+      "priority": 72,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1018,7 +1027,7 @@
         "KEDA's maximum worker replicas stay within the Postgres connection budget (one liveness connection per worker, on top of the pools), so scaling up never exhausts max_connections",
         "It scales on the demand metric of JS-021 (jobs waiting for a slot, helpers refused for lack of one), so each scale-up can be read back with its reason"
       ],
-      "priority": 65,
+      "priority": 73,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1036,7 +1045,7 @@
       "acceptanceCriteria": [
         "A rolling upgrade under playback loses no picture"
       ],
-      "priority": 66,
+      "priority": 74,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1053,7 +1062,7 @@
       "acceptanceCriteria": [
         "Restore tested from a backup"
       ],
-      "priority": 67,
+      "priority": 75,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1068,7 +1077,7 @@
       "acceptanceCriteria": [
         "Viewers keep their history; users set a password or use OIDC"
       ],
-      "priority": 68,
+      "priority": 76,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1084,7 +1093,7 @@
         "Observe its calls on Jellyfin first",
         "Its dashboards fill from jellyscale"
       ],
-      "priority": 69,
+      "priority": 77,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1102,7 +1111,7 @@
       "acceptanceCriteria": [
         "200 mixed streams with stated rebuffer ratio and p95s"
       ],
-      "priority": 70,
+      "priority": 78,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1120,7 +1129,7 @@
         "Two viewers on different api replicas stay in sync in jellyfin-web",
         "compat/coverage-12.4.tsv phase7-syncplay routes built (23)"
       ],
-      "priority": 71,
+      "priority": 79,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1162,7 +1171,7 @@
         "Replays run in CI and fail on a response a client would reject (status, missing field, wrong shape)",
         "No titles or paths from a real library in the captures (synthetic fixtures only)"
       ],
-      "priority": 37,
+      "priority": 45,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1237,7 +1246,7 @@
         "Each entry with task JS-068 in compat/differences.yaml is fixed and removed, or becomes an improvement or non-goal with its reason",
         "test/differential/run.sh passes with the entries removed"
       ],
-      "priority": 38,
+      "priority": 46,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1526,7 +1535,7 @@
         "One documented rollout order, the same in docs/running.md and ARCHITECTURE.md, and a test or check that each migration in a release is safe for the previous version's code",
         "With a stream replica of the previous decision version registered and an api replica of the new one, PlaybackInfo offers nothing the old replica would refuse (a real-process test), and docs/running.md no longer requires an order between api and stream"
       ],
-      "priority": 39,
+      "priority": 47,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1545,7 +1554,7 @@
         "GET /Items/{itemId}/LocalTrailers lists trailer files stored beside the film, as Jellyfin names them; nothing is fetched from outside the server (#108)",
         "A title that ends in a year-like number keeps it: synthetic table cases 'Harbor Lights 2049 (2017)', 'Harbor.Lights.2049.2017.1080p', 'Harbor Lights 2049' (no year), '2001 Night Garden (1968)', '1888 (2019)' and '2031' give the right title and year, and an existing library's item ids do not change"
       ],
-      "priority": 28,
+      "priority": 36,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1886,7 +1895,7 @@
       "dependsOn": [],
       "source": "Fable 5.2 blind audit, 2026-11-14 (.results/audit-2026-11-14.md)",
       "notes": "",
-      "priority": 36
+      "priority": 44
     },
     {
       "id": "JS-085",
@@ -2057,12 +2066,12 @@
         "A library with background extraction on has every text track extracted after a scan, one read per film; one without it extracts on first pick as today",
         "docs/running.md states the setting and its cost"
       ],
-      "priority": 31,
+      "priority": 39,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
       "source": "Fable 5.2 architecture review, 2026-11-12 (.results/architecture-review-2026-11-12.md); owner's answers 2026-11-12",
-      "notes": ""
+      "notes": "If it ever copies PGS tracks ahead of time, copying only languages some viewer keeps (JS-118) is the one place hiding would save a film's read."
     },
     {
       "id": "JS-092",
@@ -2074,7 +2083,7 @@
         "A process warns at startup when the cluster's registered processes approach max_connections",
         "A multi-process variant of test/stress.sh measures connections and Postgres load at 50 workers"
       ],
-      "priority": 32,
+      "priority": 40,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2092,7 +2101,7 @@
         "No rule is lost: a check lists every old invariant's tests against the new file",
         "No invariant is longer than 600 characters; each has a stable identifier and a link to its rationale; numbers cited in code still resolve; the regex-over-prose tests are removed or replaced by tests that compare a constant with the number the doc states"
       ],
-      "priority": 33,
+      "priority": 41,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2108,7 +2117,7 @@
         "PlaybackInfo, the stream requests, the job and the worker's ffmpeg log lines of one playback carry the same id",
         "docs/running.md shows how to follow one playback"
       ],
-      "priority": 34,
+      "priority": 42,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2126,7 +2135,7 @@
         "Every existing test of those job kinds passes",
         "encode becomes a job type with named state: no function in internal/transcode is longer than 120 lines (a structure check), and the unreachable branches the audit found (run(begin), next < begin, the stale-file removal) are gone, with the integration and e2e tiers passing with no check changed"
       ],
-      "priority": 35,
+      "priority": 43,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2142,7 +2151,7 @@
         "A schedule trigger runs every CI job on main once a day, and test/changes.sh treats it as a full run",
         "A failing nightly run opens or updates one issue naming the failed tests"
       ],
-      "priority": 72,
+      "priority": 80,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2159,7 +2168,7 @@
         "Branch protection is the ruleset alone; the classic rule is removed",
         "A pull request touching .github/ or test/**/*.sh runs the media tiers as ci:full does, and only the ci:full label restarts a run"
       ],
-      "priority": 73,
+      "priority": 81,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2175,7 +2184,7 @@
         "An image with ffmpeg 6.1, Node and Chrome runs test/e2e/run.sh and test/roles.sh locally, to reproduce a merge-queue failure",
         "Its versions match CI's"
       ],
-      "priority": 74,
+      "priority": 82,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2239,7 +2248,7 @@
         "No Jellyfin route changes behaviour, and an unmodified Jellyfin client never sees the namespace",
         "A viewer with no history gets a sensible answer (empty or popular in the library), and another account's history never shapes a viewer's suggestions"
       ],
-      "priority": 55,
+      "priority": 63,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -2249,6 +2258,174 @@
       ],
       "source": "Fluster issue #110; owner decision 2026-11-12",
       "notes": "First feature under /jellyscale/v1/; Fluster adopts it first."
+    },
+    {
+      "id": "JS-116",
+      "phase": "ID",
+      "title": "A viewer's playback settings are saved",
+      "description": "jellyfin-web saves a viewer's settings by posting the whole Configuration object to POST /Users/{userId}/Configuration (legacy ApiClient.updateUserConfiguration), SDK clients post to POST /Users/Configuration, and both settings pages fill their language lists from GET /Localization/Cultures. None of the three exists: internal/api/users.go:188-193 answers fixed values. This task saves and returns the settings and changes no track choice; JS-121 and JS-041 make them act.",
+      "acceptanceCriteria": [
+        "Observed first: compat/captures/user-configuration-12.4.md and .json record, from a real Jellyfin 12.4, the status and effect of both Configuration routes for a full body, a body with only SubtitleMode, a body with an unknown field, a SubtitleMode outside the enum, a body that is not JSON, another user's id as a non-administrator and as an administrator, an unknown user id and no token, with GET /Users/Me after each; and GET /Localization/Cultures (the count of entries and the three-letter codes)",
+        "After POST /Users/{userId}/Configuration with all 16 fields of UserConfiguration changed from their defaults (each of the 5 SubtitleMode values in turn), GET /Users/Me, GET /Users/{userId} and the User of the next AuthenticateByName return every one of the 16 as saved, asked of a second api process, and again after both processes restart",
+        "A body with one field, and a body with an unknown field, have the effect the capture records (merge or reset; the unknown field stored nowhere and returned nowhere)",
+        "Two users: saving one's settings leaves the other's 16 fields as they were; a new user has the defaults the capture shows for a new Jellyfin user",
+        "Each refusal answers the captured status and stores nothing: another user's id as a non-administrator, an unknown id, a malformed id, a SubtitleMode outside the enum, a body that is not JSON, a body over 64 KB, no token; an administrator naming another user writes that user's settings",
+        "GET /Localization/Cultures answers the captured list in CultureDto's shape: the same count and the same set of ThreeLetterISOLanguageName values",
+        "In real jellyfin-web (e2e): the Subtitles settings page lists more than one language; a viewer picks German and Always, saves, reloads, and both are still selected; the Playback settings page does the same for the audio language and 'Play default audio track'",
+        "PlaybackInfo's DefaultAudioStreamIndex and DefaultSubtitleStreamIndex for 3 films are the same before and after every saved setting",
+        "The requests are in test/differential/requests.yaml and any kept difference in compat/differences.yaml with a reason; the three routes are done in compat/coverage-12.4.tsv; docs/status.md says which saved settings act and which do not yet"
+      ],
+      "priority": 27,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "Owner request 2026-11-15 (track languages); carved out of JS-033",
+      "notes": "Carved out of JS-033, which keeps user management. The settings ride on the row every request reads to authenticate (users.go:51-57), so no route gains a query. jellyfin-web posts back the object it was given with fields changed, so every field of the schema must be accepted, including the lists of ids nothing acts on yet."
+    },
+    {
+      "id": "JS-117",
+      "phase": "P5",
+      "title": "The film's original language, from its file",
+      "description": "The owner decided (2026-11-15) that a film's original language comes from the file, with no internet and no metadata provider: the language of its default audio track (the first flagged default, else the first, as Source.DefaultAudio already defines it). Jellyfin 12.4 has a place for it: OriginalLanguage on the item and IsOriginal on a stream (jellyscale sends IsOriginal false and no OriginalLanguage today). This task also adds the one comparison of languages that hiding and the default tracks use.",
+      "acceptanceCriteria": [
+        "Observed first: compat/captures/original-language-12.4.md records what Jellyfin 12.4 answers for OriginalLanguage, IsOriginal, LocalizedOriginal and DisplayTitle for 4 films scanned with no metadata provider: (eng default, deu), (deu, eng default), (first audio untagged, eng), (no audio)",
+        "The original language is the language of the default audio track, for 6 cases: [eng default, deu] is eng; [deu, eng default] is eng; [deu, eng] with no flag is deu; [jpn default, eng default] is jpn; [untagged, eng] is none; no audio is none",
+        "Languages compare by language, not spelling: ger, deu, de, de-DE and GER are one; fre, fra and fr are one; chi, zho and zh are one; pt-br and por are one; nor, nob and nno are one; zho, cmn and yue are one; eng and deu differ; eng and enm differ",
+        "A tag with no language equals nothing, itself included: the empty tag, und, mis, mul, zxx, and a tag that does not parse (a test fails if und or an unparseable tag compares equal to eng)",
+        "GET /Items/{itemId}, its alias and PlaybackInfo answer OriginalLanguage as the default audio track's own tag, and IsOriginal true on every audio stream in that language and false on every other stream, in every source: a film with audio eng, eng (commentary), deu has IsOriginal true on exactly 2 streams; a film whose default audio is untagged has none and no OriginalLanguage; no subtitle stream is ever IsOriginal",
+        "A scan runs the same number of media tools and writes the same rows as before, and no migration is added: the value is computed when the one item is answered. Lists (/Items) are unchanged",
+        "Every difference from the capture is in compat/differences.yaml with its reason; docs/status.md and DOMAINS.md say how the original language is derived and that a film whose only audio is a dub is labelled with the dub's language"
+      ],
+      "priority": 28,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "Owner request and decision 3, 2026-11-15",
+      "notes": "golang.org/x/text/language is already a dependency (sidecars.go:17). Checked against it: und and any unparseable tag parse to base en at low confidence, so the comparison must test the parse error; nor, nob and nno have three different bases, as do zho, cmn and yue, so those two families are joined by hand. Hiding less is the safe error. An .nfo beside the film could later override the guess (JS-045)."
+    },
+    {
+      "id": "JS-118",
+      "phase": "ID",
+      "title": "A viewer's track languages: the opt-ins, the languages to keep and 'show all tracks'",
+      "description": "The owner asked (2026-11-15) that a viewer can opt into hiding audio and subtitle tracks outside their languages, keep additional languages, and bring every track back with one switch. Jellyfin's API has no place for these, so they live under /jellyscale/v1/ (PRODUCT.md, Compatibility policy), as the first route there. This task stores and serves the settings; JS-119 makes them act.",
+      "acceptanceCriteria": [
+        "GET /jellyscale/v1/track-preferences answers the caller's HideOtherAudio, HideOtherSubtitles, KeepAudioLanguages, KeepSubtitleLanguages and ShowAllTracks; a viewer who has saved nothing gets false, false, [], [], false",
+        "PUT replaces the document (an absent field takes its default) and answers what was stored; a GET from a second api process returns it, and again after both restart; two viewers' documents never affect each other",
+        "Languages are stored once each, lowercase, as three-letter codes: ['GER', 'deu', 'de', 'fr'] is stored as ['deu', 'fra']",
+        "400, naming the value, and nothing stored: a language that does not parse, und, mis, mul or zxx, more than 20 languages in a list, an unknown field, a field of the wrong type, a body over 16 KB, a body that is not JSON",
+        "Asking for a language first: HideOtherAudio true while the viewer's AudioLanguagePreference is empty answers 409 naming AudioLanguagePreference and stores nothing; HideOtherSubtitles true while SubtitleLanguagePreference is empty answers 409 naming it; both answer 200 once the language is saved through POST /Users/Configuration; AudioLanguagePreference 'OriginalLanguage' counts as set",
+        "A language cleared afterwards leaves the stored document as it was (GET still answers true)",
+        "No token answers 401; the route acts on the caller only and takes no user id; deleting a user leaves no row behind",
+        "A change is logged at Info with the user id and the five values, and nothing is logged for a GET",
+        "The route is in compat/endpoints.yaml, in the jellyscale-only list of compat/coverage_test.go and in compat/conform.yaml with its reason; docs/api.md (new) states the namespace, its version, and this route with a request and an answer; docs/running.md says how an operator reads a viewer's settings",
+        "No Jellyfin route answers differently: the differential tier passes with no new entry in compat/differences.yaml, and PlaybackInfo for 3 films is the same before and after every setting"
+      ],
+      "priority": 29,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-116"
+      ],
+      "source": "Owner request and decisions 4 and 5, 2026-11-15",
+      "notes": "Both switches are off by default. Extra fields inside UserConfiguration were rejected: SDK clients drop unknown fields on their round trip, and PRODUCT.md keeps jellyscale's additions out of Jellyfin's answers. Fluster finds jellyscale by this route answering (404 on a real Jellyfin). First route under /jellyscale/v1/, ahead of JS-101."
+    },
+    {
+      "id": "JS-119",
+      "phase": "ID",
+      "title": "Tracks outside a viewer's languages leave the track menus, and no index moves",
+      "description": "With JS-118's switches on, PlaybackInfo and one item's details list an audio or subtitle track outside the viewer's languages as a placeholder of Type Data at its own Index. jellyfin-web builds its menus by Type and reads DefaultSubtitleStreamIndex and its remembered selections by position, so removing a track would shift every later one. Kept: the viewer's audio or subtitle language, their audio language for subtitles too, the film's original language (JS-117), the languages they chose to keep, every track with no language, and the track the request names. Nothing is deleted, and every route that takes an index still accepts any real index.",
+      "acceptanceCriteria": [
+        "Observed first: compat/captures/data-stream-12.4.md records the fields Jellyfin 12.4 lists for a real data track (an MP4 with a tmcd track) in PlaybackInfo and GET /Items/{itemId}, and that jellyfin-web's audio menu, subtitle menu and media info leave it out; the placeholder has those fields and no Language, Title, DisplayTitle, Codec or DeliveryUrl",
+        "Fixture 'Babel Film': audio 1 eng (default), 2 deu, 3 fra, 4 untagged; subtitles 5 eng, 6 eng forced, 7 eng SDH, 8 deu, 9 ger forced, 10 fra, 11 untagged, 12 jpn PGS; files beside it .de.srt (13) and .es.srt (14). For a viewer with audio eng, subtitle eng and both switches on, PlaybackInfo with a DeviceProfile lists 15 streams, stream i at position i for every i; Type Audio exactly at 1 and 4; Type Subtitle exactly at 5, 6, 7 and 11; Type Data exactly at 2, 3, 8, 9, 10, 12, 13 and 14",
+        "With KeepSubtitleLanguages ['deu'], 8, 9 and 13 are Subtitle again and 10, 12 and 14 stay Data; with KeepAudioLanguages ['fra'], 3 is Audio again and 2 stays Data",
+        "Original language, fixture 'Kino Film': audio 1 deu (default), 2 eng; subtitles 3 deu, 4 eng, 5 fra. The same viewer is listed both audio tracks and subtitles 3 and 4; 5 is Data",
+        "Never without sound: a film whose only audio is deu lists it for that viewer; a film whose audio tracks are all untagged lists all of them; for 1000 generated films and settings, every film with audio lists at least one Audio stream and lists its default audio track",
+        "Off unless asked: a viewer with both languages set and both switches off is listed the same streams as a viewer with no settings; only the audio switch hides no subtitle; only the subtitle switch hides no audio; the audio switch with the audio language cleared afterwards hides no audio; ShowAllTracks true lists what both switches off lists",
+        "A hidden track is reachable by its index: GET .../Subtitles/8/0/Stream.vtt answers 200 with its cues; PlaybackInfo with AudioStreamIndex 2 lists 2 as Audio with DefaultAudioStreamIndex 2 and a TranscodingUrl whose master playlist answers 200; PlaybackInfo with SubtitleStreamIndex 8 lists 8 as Subtitle; a transcode URL with SubtitleStreamIndex 10 is accepted",
+        "DefaultAudioStreamIndex and DefaultSubtitleStreamIndex never name a placeholder, for both fixtures and all the settings above",
+        "GET /Items/{itemId} and its alias hide the same subtitle tracks in MediaStreams and in MediaSources; lists (/Items) are unchanged",
+        "Per viewer: three viewers (eng with both switches, deu with both switches, no settings) asking the same replica for the same film each get their own list; two of them transcoding the film with the same audio track share one job",
+        "No extraction changes: PlaybackInfo for Babel Film with both switches on creates 0 subtitle jobs; picking track 5 creates exactly 1, as before",
+        "In real jellyfin-web (e2e), for that viewer: the player's audio menu has exactly 2 entries and its subtitle menu exactly 4 besides Off; the media info lists no Data stream; picking subtitle 11 by hand shows its text; after ShowAllTracks is set and the page reloaded, the menus have 4 and 10",
+        "jellyfin-sdk-kotlin's serializers decode the PlaybackInfo with placeholders (a kotlin: request in the differential tier)",
+        "PlaybackInfo logs at Debug the number of tracks it hid for each source, with the user and the item; DOMAINS.md has the rule as an invariant, docs/subtitles.md and docs/status.md describe it, and compat/differences.yaml records that an opted-in viewer's answers differ from Jellyfin's"
+      ],
+      "priority": 30,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-117",
+        "JS-118"
+      ],
+      "source": "Owner request and decisions 1 to 5, 2026-11-15",
+      "notes": "Why a placeholder and not a removal: stream.go:443-459 sends DefaultSubtitleStreamIndex only where position equals Index, and subtitles sit after audio in nearly every file, so one removed audio track would cancel the default subtitle for exactly the viewers who opted in. Tracks dropped today because they cannot be delivered (items.go:278, subtitles.go:451) stay dropped. Hiding never enters the spec hash. Decision 1's 'may skip extracting' builds nothing: text tracks are read in one pass on first request (JS-028), and files and PGS tracks one at a time when asked for, so a hidden track that nobody asks for is already never read. ux: true."
+    },
+    {
+      "id": "JS-120",
+      "phase": "ID",
+      "title": "Every track, each marked, for a client that hides them itself",
+      "description": "Fluster plays the original file with mpv, which lists every track inside it whatever the server says, and maps mpv's tracks to Jellyfin's indexes partly by order, so it needs the whole list and to be told which tracks the viewer's settings hide. POST /jellyscale/v1/items/{itemId}/playback-info is PlaybackInfo with every track listed as itself, a Hidden mark on each audio and subtitle track, and OriginalLanguage on each source. One rule on the server, so every client agrees.",
+      "acceptanceCriteria": [
+        "For Babel Film and JS-119's viewer the answer lists 15 streams, none of Type Data, with Hidden true exactly at 2, 3, 8, 9, 10, 12, 13 and 14 and false on every other audio and subtitle stream; each source has OriginalLanguage ('eng' here, '' for a film whose default audio is untagged)",
+        "Hidden is exactly what Jellyfin's route would list as a placeholder for the same request and settings: with KeepSubtitleLanguages ['deu'] it is false at 8, 9 and 13; with ShowAllTracks true, both switches off, or a request naming the track, it is false there; for a viewer with no settings it is false everywhere",
+        "A hidden text track has its DeliveryUrl, which answers 200",
+        "Everything else is PlaybackInfo's answer for the same body and query: the same decision, TranscodingUrl, DefaultAudioStreamIndex and DefaultSubtitleStreamIndex, for a direct play, a copy and a re-encode; the decisions counter rises by one per source, as PlaybackInfo's does",
+        "The same refusals as PlaybackInfo: 404 for an unknown item, 400 for a bad body, 401 with no token, and the RateLimitExceeded answer when a transcode cannot start",
+        "POST /Items/{itemId}/PlaybackInfo and GET /Items/{itemId} never carry a Hidden field, for any settings",
+        "The route is in compat/endpoints.yaml and the jellyscale-only list, compat/conform.yaml holds its answers to PlaybackInfo's schema, and docs/api.md documents it with the two added fields"
+      ],
+      "priority": 31,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-119"
+      ],
+      "source": "Owner decision 2 (Fluster first), 2026-11-15; Fluster's track mapping (src-tauri/src/player/tracks.rs)",
+      "notes": "One route line over PlaybackInfo's handler with a different listing. A header or body flag on Jellyfin's own route was rejected: PRODUCT.md puts what goes beyond Jellyfin under the namespace. A client that re-implemented the rule would drift from the server's language comparison."
+    },
+    {
+      "id": "JS-121",
+      "phase": "ID",
+      "title": "A film starts in the viewer's audio language",
+      "description": "PlaybackInfo's DefaultAudioStreamIndex is the file's flagged track, else the first (stream.go:462), whatever the viewer's AudioLanguagePreference and PlayDefaultAudioTrack. Choose it as Jellyfin 12.4 does from the saved settings (JS-116), comparing languages as JS-117 does, with 'OriginalLanguage' meaning the film's original language.",
+      "acceptanceCriteria": [
+        "Observed first: compat/captures/audio-default-12.4.md and .json record DefaultAudioStreamIndex on a real Jellyfin 12.4 for at least 12 films x AudioLanguagePreference ('', eng, deu, OriginalLanguage) x PlayDefaultAudioTrack (true, false): the default flag on the first track, the second, none and all; ger and deu tags; an untagged track; two tracks in one language; a single track; and the rule that fits is written down",
+        "jellyscale answers the captured index in every cell (at least 96), except the cells listed in compat/differences.yaml with a reason",
+        "With no audio language saved, every film's default is what it is today",
+        "With JS-119's hiding on, the default is a listed Audio stream in every cell, never a placeholder",
+        "In real jellyfin-web (e2e): a viewer whose audio language is German starts a film with audio eng (default) and deu in German, with the video copied and not re-encoded; a film with only eng plays directly as before",
+        "docs/transcoding.md says that a preferred track which is not the file's default turns a browser's direct play into a copied stream, and docs/status.md marks the settings as acting"
+      ],
+      "priority": 32,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-116",
+        "JS-117"
+      ],
+      "source": "Owner request 2026-11-15 ('support using the language the person has chosen for Jellyfin')",
+      "notes": "Cost: a browser plays only a file's default audio track, so a different default is a copy with that track (invariant 45), a worker slot where there was a direct play. Fluster switches the track in mpv and pays nothing. Expected differences: tag spellings if Jellyfin compares strings, and OriginalLanguage if Jellyfin has none without a provider."
+    },
+    {
+      "id": "JS-122",
+      "phase": "ID",
+      "title": "A settings page for viewers whose app has no place for their track languages",
+      "description": "jellyfin-web has no place to turn on hiding tracks outside a viewer's languages, to name the languages to keep, or to show all tracks (JS-118); Fluster has them first. A small page jellyscale serves, linked from jellyfin-web's user menu, gives a browser-only viewer the same switches through the /jellyscale/v1/ settings JS-118 adds.",
+      "acceptanceCriteria": [
+        "A signed-in viewer reaches the page from jellyfin-web's user menu and sees their two opt-ins, their kept languages and 'show all tracks' as saved",
+        "Turning an opt-in on with no default language set asks for one first, as Fluster does; the page saves through the same /jellyscale/v1/ route Fluster uses, and the next PlaybackInfo in jellyfin-web reflects it",
+        "A viewer changes only their own settings; another viewer's are untouched, and an unsigned request is refused",
+        "The page works at phone width and in light and dark, with no route outside /jellyscale/v1/ and no change to jellyfin-web's files"
+      ],
+      "dependsOn": [
+        "JS-118",
+        "JS-119"
+      ],
+      "notes": "Owner, 2026-11-15: Fluster first, a page later. Planned after the track-language batch so Fluster adopts it first.",
+      "passes": false,
+      "priority": 34,
+      "source": "owner 2026-11-15",
+      "status": "todo"
     }
   ]
 }
