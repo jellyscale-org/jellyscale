@@ -11,7 +11,7 @@ import (
 // (JELLYSCALE_TEST_FAULT_SEED): the slow-store step is added to the steps planned before it, and
 // they keep their kind, target, moment and length. These are the steps planFaults gave at the
 // commit before JS-106 (each: kind, target, moment in ns, length in ns, waited, clean, round trip
-// in ns), for seed 17371545602420011879, which replays the schedule of BL-139, and four more.
+// in ns), for seed 17371545602420011879, which replays the schedule of BL-137, and four more.
 var planBeforeSlowStore = []struct {
 	seed   uint64
 	index  int
@@ -105,7 +105,7 @@ func stepLine(s faultStep) string {
 
 // Every step planned before the slow-store step is still planned, as it was and in the order it
 // was, and the schedule's window is no shorter. A plan that drew the new step from the same
-// stream as the others would move every step after it, and the seed of BL-139 would replay
+// stream as the others would move every step after it, and the seed of BL-137 would replay
 // another schedule.
 func TestTheStepsPlannedBeforeTheSlowStoreStepKeepEverythingForTheirSeed(t *testing.T) {
 	plans := map[uint64][]faultSchedule{}
