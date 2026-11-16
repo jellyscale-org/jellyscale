@@ -13,15 +13,18 @@
 
 - requests:
     - "the signed-in user"
+    - "the signed-in user after saving through the path route"
+    - "the signed-in user after saving through the SDK route"
   kind: gap
   task: JS-033
-  reason: "user management: a hidden flag and a cast receiver id that Jellyfin keeps for each user and jellyscale does not"
+  reason: "user management: a hidden flag that Jellyfin keeps for each user and jellyscale does not"
   paths:
-    - "Configuration.CastReceiverId"
     - "Policy.IsHidden"
 
 - requests:
     - "the signed-in user"
+    - "the signed-in user after saving through the path route"
+    - "the signed-in user after saving through the SDK route"
   kind: non-goal
   reason: "PRODUCT.md leaves out deleting media, Live TV, media conversion and public sharing, so jellyscale reports them as not allowed"
   paths:
@@ -32,6 +35,8 @@
 
 - requests:
     - "the signed-in user"
+    - "the signed-in user after saving through the path route"
+    - "the signed-in user after saving through the SDK route"
   kind: gap
   task: JS-063
   reason: "SyncPlay is not built, so a user can join no group"

@@ -58,14 +58,15 @@ Every viewer-visible and operator-visible feature in scope, in one list. Status 
 
 ### `identity`
 
-- User management: create, delete, disable, change a password, preferences: **not built**. In scope.
+- User management: create, delete, disable, change a password: **not built**. In scope.
+- A viewer's playback settings: **done** (saved), through `POST /Users/Configuration` and the obsolete `POST /Users/{userId}/Configuration`, and listed by `GET /Localization/Cultures` (`compat/captures/user-configuration-12.4.md`). All 16 fields of `UserConfiguration` come back in every answer that carries the user. None changes a track choice yet: AudioLanguagePreference and PlayDefaultAudioTrack wait for JS-121, SubtitleMode and SubtitleLanguagePreference for JS-041.
 - Hashed tokens at rest and operator API keys: **not built**. In scope.
 - Per-user library access: **not built**. In scope.
 - Quick Connect: **not built**. In scope; apps and TVs sign in through it.
 - `POST /Users/ForgotPassword`: **not built**. In scope; it answers `Action: ContactAdmin`, because the operator resets passwords (`/Users/ForgotPassword/Pin` is a non-goal).
 - OIDC beside local accounts: **not built**. In scope. In jellyfin-web it is a link on the login page, carried by the branding login disclaimer (so `GET /Branding/Configuration` stops being an empty stub); apps and TVs use Quick Connect. Capture real clients before building it (decision).
 - Signing the URLs inside playlists, so that they stop carrying the client's own token as `ApiKey` (`DOMAINS.md` invariant 17): **not built**. Known exposure today: anyone who can read a playlist, or a log of the segment requests, holds the viewer's token. In scope.
-- Starting on the default subtitle per the viewer's subtitle mode (`SubtitleMode` None, Default, Always, OnlyForced, Smart, and `SubtitleLanguagePreference`): **not built**. In scope. PlaybackInfo reports `DefaultSubtitleStreamIndex` -1 unless the client names a track, as it did for tracks inside the film, and the details page does not carry it, because it needs the user configuration routes that save the mode and the language, which this slice does not have. What Jellyfin 12.4 answers for the mode Default and no language is recorded in `compat/captures/subtitles-default-12.4.md`.
+- Starting on the default subtitle per the viewer's subtitle mode (`SubtitleMode` None, Default, Always, OnlyForced, Smart, and `SubtitleLanguagePreference`): **not built**. In scope. PlaybackInfo reports `DefaultSubtitleStreamIndex` -1 unless the client names a track, as it did for tracks inside the film, and the details page does not carry it. The mode and the language are saved now and wait for JS-041 to act. What Jellyfin 12.4 answers for the mode Default and no language is recorded in `compat/captures/subtitles-default-12.4.md`.
 - Sessions and devices view, with revoking a device: **not built**. In scope.
 - Activity log: **not built**. In scope.
 - User avatars: **not built**. In scope.
@@ -178,7 +179,7 @@ Routes still to build, by slice (checked against the rows):
 
 - `phase3`: 0 routes to build
 - `phase4-ha`: 10 routes to build
-- `identity`: 34 routes to build
+- `identity`: 31 routes to build
 - `phase5-library`: 45 routes to build
 - `phase6-k8s`: 0 routes to build
 - `phase7-syncplay`: 23 routes to build

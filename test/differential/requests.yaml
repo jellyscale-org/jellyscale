@@ -255,3 +255,36 @@
   ordered: true
   path: >-
     /Search/Hints?searchTerm=dolby%20eight&limit=20&includeItemTypes=Movie&userId={{User/admin}}
+- name: saving all 16 settings through the path route
+  route: POST /Users/{userId}/Configuration
+  method: POST
+  path: >-
+    /Users/{{User/admin}}/Configuration
+  body: |-
+    {"AudioLanguagePreference":"fra","PlayDefaultAudioTrack":false,"SubtitleLanguagePreference":"deu","DisplayMissingEpisodes":true,"GroupedFolders":["1a2b3c4d5e6f40718293a4b5c6d7e8f1"],"SubtitleMode":"Always","DisplayCollectionsView":true,"EnableLocalPassword":true,"OrderedViews":["1a2b3c4d5e6f40718293a4b5c6d7e8f2","1a2b3c4d5e6f40718293a4b5c6d7e8f3"],"LatestItemsExcludes":["1a2b3c4d5e6f40718293a4b5c6d7e8f1","1a2b3c4d5e6f40718293a4b5c6d7e8f2","1a2b3c4d5e6f40718293a4b5c6d7e8f3"],"MyMediaExcludes":["1a2b3c4d5e6f40718293a4b5c6d7e8f4"],"HidePlayedInLatest":false,"RememberAudioSelections":false,"RememberSubtitleSelections":false,"EnableNextEpisodeAutoPlay":false,"CastReceiverId":"ABCD1234"}
+- name: the signed-in user after saving through the path route
+  route: GET /Users/Me
+  method: GET
+  ordered: true
+  path: >-
+    /Users/Me
+- name: saving all 16 settings through the SDK route
+  route: POST /Users/Configuration
+  method: POST
+  path: >-
+    /Users/Configuration?userId={{User/admin}}
+  body: |-
+    {"AudioLanguagePreference":"OriginalLanguage","PlayDefaultAudioTrack":false,"SubtitleLanguagePreference":"eng","DisplayMissingEpisodes":true,"GroupedFolders":["1a2b3c4d5e6f40718293a4b5c6d7e8f4","1a2b3c4d5e6f40718293a4b5c6d7e8f3"],"SubtitleMode":"OnlyForced","DisplayCollectionsView":true,"EnableLocalPassword":true,"OrderedViews":["1a2b3c4d5e6f40718293a4b5c6d7e8f1"],"LatestItemsExcludes":["1a2b3c4d5e6f40718293a4b5c6d7e8f4"],"MyMediaExcludes":["1a2b3c4d5e6f40718293a4b5c6d7e8f1","1a2b3c4d5e6f40718293a4b5c6d7e8f2","1a2b3c4d5e6f40718293a4b5c6d7e8f3"],"HidePlayedInLatest":false,"RememberAudioSelections":false,"RememberSubtitleSelections":false,"EnableNextEpisodeAutoPlay":false,"CastReceiverId":"WXYZ9876"}
+- name: the signed-in user after saving through the SDK route
+  route: GET /Users/Me
+  method: GET
+  ordered: true
+  path: >-
+    /Users/Me
+- name: the languages a viewer can pick
+  rows: true
+  route: GET /Localization/Cultures
+  method: GET
+  ordered: true
+  path: >-
+    /Localization/Cultures

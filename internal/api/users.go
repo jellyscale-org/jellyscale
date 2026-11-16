@@ -23,6 +23,8 @@ type User struct {
 	Name        string
 	IsAdmin     bool
 	LastLoginAt *time.Time
+	// Configuration is the stored settings document, empty until the user saves.
+	Configuration []byte
 }
 
 // EnsureAdmin creates the bootstrap admin from configuration if it's missing.
@@ -50,9 +52,9 @@ func EnsureServerID(ctx context.Context, pool *pgxpool.Pool) (string, error) {
 
 func (s *Server) queryUser(ctx context.Context, token string) (User, error) {
 	var user User
-	err := s.Pool.QueryRow(ctx, `SELECT u.id::text, u.name, u.is_admin, u.last_login_at
+	err := s.Pool.QueryRow(ctx, `SELECT u.id::text, u.name, u.is_admin, u.last_login_at, u.configuration
 		FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1`, token).
-		Scan(&user.ID, &user.Name, &user.IsAdmin, &user.LastLoginAt)
+		Scan(&user.ID, &user.Name, &user.IsAdmin, &user.LastLoginAt, &user.Configuration)
 	return user, err
 }
 
@@ -80,9 +82,9 @@ func (s *Server) authenticateByName(w http.ResponseWriter, r *http.Request) {
 	}
 	var user User
 	var hash string
-	err := s.Pool.QueryRow(r.Context(), `SELECT id::text, name, is_admin, last_login_at, password_hash
+	err := s.Pool.QueryRow(r.Context(), `SELECT id::text, name, is_admin, last_login_at, configuration, password_hash
 		FROM users WHERE lower(name) = lower($1)`, body.Username).
-		Scan(&user.ID, &user.Name, &user.IsAdmin, &user.LastLoginAt, &hash)
+		Scan(&user.ID, &user.Name, &user.IsAdmin, &user.LastLoginAt, &user.Configuration, &hash)
 	if errors.Is(err, pgx.ErrNoRows) {
 		// Compare anyway, so timing doesn't reveal which names exist.
 		bcrypt.CompareHashAndPassword(dummyHash, []byte(body.Pw)) //nolint:errcheck
@@ -167,8 +169,8 @@ func (s *Server) getUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var user User
-	err := s.Pool.QueryRow(r.Context(), "SELECT id::text, name, is_admin, last_login_at FROM users WHERE id = $1::uuid", id).
-		Scan(&user.ID, &user.Name, &user.IsAdmin, &user.LastLoginAt)
+	err := s.Pool.QueryRow(r.Context(), "SELECT id::text, name, is_admin, last_login_at, configuration FROM users WHERE id = $1::uuid", id).
+		Scan(&user.ID, &user.Name, &user.IsAdmin, &user.LastLoginAt, &user.Configuration)
 	if errors.Is(err, pgx.ErrNoRows) {
 		http.NotFound(w, r)
 		return
@@ -185,13 +187,7 @@ func (s *Server) userDTO(user User) map[string]any {
 		"Name": user.Name, "ServerId": s.ServerID, "Id": db.CompactID(user.ID),
 		"HasPassword": true, "HasConfiguredPassword": true, "HasConfiguredEasyPassword": false,
 		"EnableAutoLogin": false,
-		"Configuration": map[string]any{
-			"PlayDefaultAudioTrack": true, "SubtitleLanguagePreference": "", "DisplayMissingEpisodes": false,
-			"GroupedFolders": []any{}, "SubtitleMode": "Default", "DisplayCollectionsView": false,
-			"EnableLocalPassword": false, "OrderedViews": []any{}, "LatestItemsExcludes": []any{},
-			"MyMediaExcludes": []any{}, "HidePlayedInLatest": true, "RememberAudioSelections": true,
-			"RememberSubtitleSelections": true, "EnableNextEpisodeAutoPlay": true,
-		},
+		"Configuration":   configurationOf(user.Configuration),
 		"Policy": map[string]any{
 			"IsAdministrator": user.IsAdmin, "IsHidden": false, "IsDisabled": false,
 			"EnableCollectionManagement": false, "EnableSubtitleManagement": false, "EnableLyricManagement": false,

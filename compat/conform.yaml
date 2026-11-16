@@ -12,6 +12,7 @@ aliases:
   - {method: GET, route: "/Users/{userId}/Items/{itemId}/Intros", stands_for: "/Items/{itemId}/Intros"}
   - {method: GET, route: "/Users/{userId}/Items/{itemId}/LocalTrailers", stands_for: "/Items/{itemId}/LocalTrailers"}
   - {method: GET, route: "/Users/{userId}/Items/{itemId}/SpecialFeatures", stands_for: "/Items/{itemId}/SpecialFeatures"}
+  - {method: POST, route: "/Users/{userId}/Configuration", stands_for: "/Users/Configuration"}
   - {method: GET, route: "/Users/{userId}/GroupingOptions", stands_for: "/UserViews/GroupingOptions"}
   - {method: POST, route: "/Users/{userId}/FavoriteItems/{itemId}", stands_for: "/UserFavoriteItems/{itemId}"}
   - {method: DELETE, route: "/Users/{userId}/FavoriteItems/{itemId}", stands_for: "/UserFavoriteItems/{itemId}"}

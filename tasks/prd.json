@@ -2277,9 +2277,8 @@
         "PlaybackInfo's DefaultAudioStreamIndex and DefaultSubtitleStreamIndex for 3 films are the same before and after every saved setting",
         "The requests are in test/differential/requests.yaml and any kept difference in compat/differences.yaml with a reason; the three routes are done in compat/coverage-12.4.tsv; docs/status.md says which saved settings act and which do not yet"
       ],
-      "priority": 27,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [],
       "source": "Owner request 2026-11-15 (track languages); carved out of JS-033",
       "notes": "Carved out of JS-033, which keeps user management. The settings ride on the row every request reads to authenticate (users.go:51-57), so no route gains a query. jellyfin-web posts back the object it was given with fields changed, so every field of the schema must be accepted, including the lists of ids nothing acts on yet."

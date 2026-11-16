@@ -125,9 +125,15 @@ func DashedID(id string) string {
 	return id[:8] + "-" + id[8:12] + "-" + id[12:16] + "-" + id[16:20] + "-" + id[20:]
 }
 
-// ValidID reports whether id is a UUID, dashed or not.
+// ValidID reports whether id is a UUID, compact or in the dashed 8-4-4-4-12 form. Stray dashes are not
+// one: Postgres refuses them, so a caller that trusted this would answer 500.
 func ValidID(id string) bool {
-	id = CompactID(id)
+	if len(id) == 36 {
+		if id[8] != '-' || id[13] != '-' || id[18] != '-' || id[23] != '-' {
+			return false
+		}
+		id = CompactID(id)
+	}
 	if len(id) != 32 {
 		return false
 	}
