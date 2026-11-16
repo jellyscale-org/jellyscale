@@ -23,6 +23,7 @@ When a design or a task would trade any part of this away, that is a decision fo
 A viewer opens the Jellyfin app they already use, signs in, and finds their films and shows. They never need to know jellyscale exists.
 
 - **Any film plays, and plays well.** A 4K HDR Blu-ray rip with Dolby Vision and PGS subtitles, an old DVD rip with VobSub, an AV1 web release: each plays on the device in their hand, with the audio and subtitles they chose. No codec, HDR format or subtitle track is second-class. Everything the server can do (direct play, copying, tone mapping, sharing a slow encode across the cluster, failover, seeking) it does for every film.
+- **Their languages come first.** A viewer chooses the language they listen in and the language they read, in their app's own settings, and every film starts that way where it can. A viewer who wants shorter menus can ask for the rest to be hidden: audio and subtitles in other languages leave the track menus, except the film's original language and any languages they chose to keep. Nothing is hidden until they ask, a film is never left without sound, one switch brings every track back, and nothing is removed from the library.
 - **The picture is as good as the device allows.** A film the device can play is sent as it is. One it can almost play has only what the device can't handle converted, so the picture keeps its original quality. Only when nothing else works is the picture re-encoded, and an HDR film then looks right on an ordinary screen.
 - **Play starts in seconds and keeps up.** A heavy film uses the whole cluster's processors rather than stalling on one machine while others sit idle.
 - **Seeking and resuming just work.** Jump anywhere and the picture, sound and subtitles are right from the first frame. Stop on the TV and carry on from the phone at the same moment.
@@ -37,7 +38,7 @@ A viewer opens the Jellyfin app they already use, signs in, and finds their film
 - **Growing is adding machines.** Each part (the API, streaming, transcoding, library work) scales on its own, and more viewers or heavier films are met by more machines rather than a bigger one. The cluster can grow and shrink with demand by itself.
 - **Nothing breaks the viewers' evening.** Upgrades, a lost machine and a database failover happen without interrupting anyone.
 - **Nothing is hidden.** They can see who is watching what, how it is being delivered, how fast each encode runs and where, and every failure is reported with its reason, never silent. They can follow any one playback through the whole pipeline (the decision, the queue, the worker, each segment) and see exactly where it stalled and why, and when the cluster needed more workers they can see what demanded them. Viewers still see in their app that a film is transcoding and why, as Jellyfin shows them.
-- **Their data is theirs.** Moving from Jellyfin keeps everyone's watch history. Backups are the Postgres and the stores they already back up. Metadata comes from files beside the film, not from outside services.
+- **Their data is theirs.** Moving from Jellyfin keeps everyone's watch history. Backups are the Postgres and the stores they already back up. Metadata comes from files beside the film, not from outside services. A viewer hiding languages changes only their own menus: no file is touched and nothing is extracted or stored differently.
 
 ## Goals, in priority order
 
@@ -57,6 +58,7 @@ Jellyfin's behaviour shows what clients depend on, not what to copy. jellyscale 
 - A slow transcode is shared across the cluster instead of stalling a viewer.
 - A transcode reads only as far ahead as the viewer needs, so a viewer who stops early doesn't cost the whole film's reading.
 - Films can live in object storage as well as on disks.
+- A viewer's track menus can hold only the languages they use, and a film knows its original language from its own file.
 - Operators see the real encode speed and the worker for every stream.
 - Where a capability can't yet serve every film, the gap is written down and planned, not left as a quirk.
 
@@ -76,7 +78,7 @@ Jellyfin's behaviour shows what clients depend on, not what to copy. jellyscale 
 - **Future-facing:** a client that depends on obsolete routes isn't well suited to jellyscale.
 - **The one exception:** thin aliases for routes jellyfin-web still calls, flagged `alias` in `compat/endpoints.yaml`. Each one is removed when the web client stops calling it. Never add an alias for another client.
 - **Outside scope but called anyway:** answer with a valid empty response if the client breaks otherwise; otherwise 404.
-- **Beyond Jellyfin:** a feature Jellyfin's API has no place for lives under a jellyscale namespace of its own (`/jellyscale/v1/`), documented and versioned. Unmodified clients never see it, Fluster adopts it first, and every Jellyfin route answers as it would without it.
+- **Beyond Jellyfin:** a feature Jellyfin's API has no place for lives under a jellyscale namespace of its own (`/jellyscale/v1/`), documented and versioned. Unmodified clients never see the namespace, and Fluster adopts it first. Every Jellyfin route answers as it would without it, except where a viewer has made a choice there for their own account: that choice follows them into every app (tracks they asked to hide are hidden in each), and each such difference is listed in `compat/differences.yaml`.
 - **Clients in order:** jellyfin-web first, then Fluster, then the other apps built on Jellyfin's client libraries (Findroid, Android TV, Swiftfin, Streamyfin). Kodi isn't a stated target: it works if it happens to, and no work goes in solely for it.
 
 ## Quality bar
