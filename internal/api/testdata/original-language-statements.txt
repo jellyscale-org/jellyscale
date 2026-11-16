@@ -1,36 +1,36 @@
 -- transcoding off, GET /Items/{itemId}
-SELECT u.id::text, u.name, u.is_admin, u.last_login_at FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1
+SELECT u.id::text, u.name, u.is_admin, u.last_login_at, u.configuration FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1
 SELECT id::text, name, kind FROM libraries WHERE id = $1::uuid AND gone_at IS NULL
 SELECT i.id::text, i.dto, COALESCE(d.played, false), COALESCE(d.favorite, false), COALESCE(d.play_count, 0), COALESCE(d.position_ticks, 0), i.run_time_ticks, d.last_played_at, c.keys FROM shown_items i LEFT JOIN user_item_data d ON d.item_id = i.id AND d.user_id = $2::uuid LEFT JOIN media_sources m ON m.id = i.id LEFT JOIN chapter_images c ON c.source_id = m.id AND c.state = 'done' AND c.etag = m.object_etag AND (SELECT chapter_images FROM libraries WHERE id = i.library_id) WHERE i.id = ANY($1::uuid[])
 SELECT COALESCE(dto->'MediaSources', '[]'::jsonb) FROM shown_items WHERE id = $1::uuid
 -- transcoding off, GET /Users/{userId}/Items/{itemId}
-SELECT u.id::text, u.name, u.is_admin, u.last_login_at FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1
+SELECT u.id::text, u.name, u.is_admin, u.last_login_at, u.configuration FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1
 SELECT id::text, name, kind FROM libraries WHERE id = $1::uuid AND gone_at IS NULL
 SELECT i.id::text, i.dto, COALESCE(d.played, false), COALESCE(d.favorite, false), COALESCE(d.play_count, 0), COALESCE(d.position_ticks, 0), i.run_time_ticks, d.last_played_at, c.keys FROM shown_items i LEFT JOIN user_item_data d ON d.item_id = i.id AND d.user_id = $2::uuid LEFT JOIN media_sources m ON m.id = i.id LEFT JOIN chapter_images c ON c.source_id = m.id AND c.state = 'done' AND c.etag = m.object_etag AND (SELECT chapter_images FROM libraries WHERE id = i.library_id) WHERE i.id = ANY($1::uuid[])
 SELECT COALESCE(dto->'MediaSources', '[]'::jsonb) FROM shown_items WHERE id = $1::uuid
 -- transcoding off, GET PlaybackInfo
-SELECT u.id::text, u.name, u.is_admin, u.last_login_at FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1
+SELECT u.id::text, u.name, u.is_admin, u.last_login_at, u.configuration FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1
 SELECT COALESCE(dto->'MediaSources', '[]'::jsonb) FROM shown_items WHERE id = $1::uuid
 -- transcoding off, POST PlaybackInfo
-SELECT u.id::text, u.name, u.is_admin, u.last_login_at FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1
+SELECT u.id::text, u.name, u.is_admin, u.last_login_at, u.configuration FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1
 SELECT COALESCE(dto->'MediaSources', '[]'::jsonb) FROM shown_items WHERE id = $1::uuid
 -- transcoding on, GET /Items/{itemId}
-SELECT u.id::text, u.name, u.is_admin, u.last_login_at FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1
+SELECT u.id::text, u.name, u.is_admin, u.last_login_at, u.configuration FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1
 SELECT id::text, name, kind FROM libraries WHERE id = $1::uuid AND gone_at IS NULL
 SELECT i.id::text, i.dto, COALESCE(d.played, false), COALESCE(d.favorite, false), COALESCE(d.play_count, 0), COALESCE(d.position_ticks, 0), i.run_time_ticks, d.last_played_at, c.keys FROM shown_items i LEFT JOIN user_item_data d ON d.item_id = i.id AND d.user_id = $2::uuid LEFT JOIN media_sources m ON m.id = i.id LEFT JOIN chapter_images c ON c.source_id = m.id AND c.state = 'done' AND c.etag = m.object_etag AND (SELECT chapter_images FROM libraries WHERE id = i.library_id) WHERE i.id = ANY($1::uuid[])
 SELECT COALESCE(dto->'MediaSources', '[]'::jsonb) FROM shown_items WHERE id = $1::uuid
 -- transcoding on, GET /Users/{userId}/Items/{itemId}
-SELECT u.id::text, u.name, u.is_admin, u.last_login_at FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1
+SELECT u.id::text, u.name, u.is_admin, u.last_login_at, u.configuration FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1
 SELECT id::text, name, kind FROM libraries WHERE id = $1::uuid AND gone_at IS NULL
 SELECT i.id::text, i.dto, COALESCE(d.played, false), COALESCE(d.favorite, false), COALESCE(d.play_count, 0), COALESCE(d.position_ticks, 0), i.run_time_ticks, d.last_played_at, c.keys FROM shown_items i LEFT JOIN user_item_data d ON d.item_id = i.id AND d.user_id = $2::uuid LEFT JOIN media_sources m ON m.id = i.id LEFT JOIN chapter_images c ON c.source_id = m.id AND c.state = 'done' AND c.etag = m.object_etag AND (SELECT chapter_images FROM libraries WHERE id = i.library_id) WHERE i.id = ANY($1::uuid[])
 SELECT COALESCE(dto->'MediaSources', '[]'::jsonb) FROM shown_items WHERE id = $1::uuid
 -- transcoding on, GET PlaybackInfo
-SELECT u.id::text, u.name, u.is_admin, u.last_login_at FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1
+SELECT u.id::text, u.name, u.is_admin, u.last_login_at, u.configuration FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1
 SELECT COALESCE(dto->'MediaSources', '[]'::jsonb) FROM shown_items WHERE id = $1::uuid
 SELECT m.id::text, m.store_key, m.object_etag, m.container, l.media_store_uri, l.asset_store_uri, m.size, COALESCE(i.run_time_ticks, 0), m.streams, CASE WHEN $3 THEN m.keyframes END, CASE WHEN $3 THEN COALESCE(m.video_end, 0) ELSE 0 END FROM media_sources m JOIN shown_items i ON i.id = m.item_id JOIN libraries l ON l.id = i.library_id WHERE m.item_id = $1::uuid AND ($2 = '' OR m.id = NULLIF($2, '')::uuid) ORDER BY m.id LIMIT 1
 SELECT m.id::text, m.store_key, m.object_etag, m.container, l.media_store_uri, l.asset_store_uri, m.size, COALESCE(i.run_time_ticks, 0), m.streams, CASE WHEN $3 THEN m.keyframes END, CASE WHEN $3 THEN COALESCE(m.video_end, 0) ELSE 0 END FROM media_sources m JOIN shown_items i ON i.id = m.item_id JOIN libraries l ON l.id = i.library_id WHERE m.item_id = $1::uuid AND ($2 = '' OR m.id = NULLIF($2, '')::uuid) ORDER BY m.id LIMIT 1
 -- transcoding on, POST PlaybackInfo
-SELECT u.id::text, u.name, u.is_admin, u.last_login_at FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1
+SELECT u.id::text, u.name, u.is_admin, u.last_login_at, u.configuration FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1
 SELECT COALESCE(dto->'MediaSources', '[]'::jsonb) FROM shown_items WHERE id = $1::uuid
 SELECT m.id::text, m.store_key, m.object_etag, m.container, l.media_store_uri, l.asset_store_uri, m.size, COALESCE(i.run_time_ticks, 0), m.streams, CASE WHEN $3 THEN m.keyframes END, CASE WHEN $3 THEN COALESCE(m.video_end, 0) ELSE 0 END FROM media_sources m JOIN shown_items i ON i.id = m.item_id JOIN libraries l ON l.id = i.library_id WHERE m.item_id = $1::uuid AND ($2 = '' OR m.id = NULLIF($2, '')::uuid) ORDER BY m.id LIMIT 1
 SELECT m.id::text, m.store_key, m.object_etag, m.container, l.media_store_uri, l.asset_store_uri, m.size, COALESCE(i.run_time_ticks, 0), m.streams, CASE WHEN $3 THEN m.keyframes END, CASE WHEN $3 THEN COALESCE(m.video_end, 0) ELSE 0 END FROM media_sources m JOIN shown_items i ON i.id = m.item_id JOIN libraries l ON l.id = i.library_id WHERE m.item_id = $1::uuid AND ($2 = '' OR m.id = NULLIF($2, '')::uuid) ORDER BY m.id LIMIT 1
