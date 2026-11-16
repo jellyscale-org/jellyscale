@@ -12,6 +12,7 @@ import (
 	"jellyscale/internal/db"
 	"jellyscale/internal/items"
 	"jellyscale/internal/media"
+	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
 )
 
@@ -251,6 +252,18 @@ func (s *Server) getItem(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, dto)
 }
 
+// markOriginal sets IsOriginal on the audio streams of source that are in the
+// language of its default audio, and returns that language's tag, or "" if none.
+// It never marks a video or a subtitle.
+func markOriginal(source *media.MediaSource) string {
+	original := playback.Source{Streams: source.MediaStreams}.OriginalLanguage()
+	for i := range source.MediaStreams {
+		stream := &source.MediaStreams[i]
+		stream.IsOriginal = stream.Type == "Audio" && playback.SameLanguage(stream.Language, original)
+	}
+	return original
+}
+
 // hideUndeliverable drops the text tracks from an item's DTO that no worker is
 // there to extract, and the fonts not stored yet (invariant 32). The DTO lists the first source's streams
 // twice, in MediaStreams and in MediaSources. The repo leaves no attachments in
@@ -277,6 +290,15 @@ func (s *Server) hideUndeliverable(ctx context.Context, itemID string, dto map[s
 		source.MediaStreams = slices.DeleteFunc(slices.Clone(source.MediaStreams), func(stream media.MediaStream) bool {
 			return stream.Type == "Subtitle" && !deliverable(stream.Index)
 		})
+	}
+	// The original language is made here, from the streams the item lists, so that a
+	// film scanned earlier has it with no rescan. Each source is marked by its own
+	// default audio; the item answers the first source's language.
+	for i := range sources {
+		original := markOriginal(&sources[i])
+		if i == 0 && original != "" {
+			dto["OriginalLanguage"] = original
+		}
 	}
 	dto["MediaSources"] = sources
 	if len(sources) > 0 {

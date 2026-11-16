@@ -1,0 +1,517 @@
+{
+ "image": "jellyfin/jellyfin:12.4",
+ "version": "12.4.0",
+ "date": "2026-11-15",
+ "films": [
+  {
+   "name": "Orig A (2020)",
+   "scenario": "audio eng (default), deu",
+   "answers": {
+    "GET /Items/{id}": {
+     "OriginalLanguage": "<absent>",
+     "MediaStreams": [
+      {
+       "Index": 1,
+       "Type": "Audio",
+       "Language": "eng",
+       "IsDefault": true,
+       "IsOriginal": false,
+       "LocalizedOriginal": "Original",
+       "DisplayTitle": "English - AAC - Mono - Default"
+      },
+      {
+       "Index": 2,
+       "Type": "Audio",
+       "Language": "deu",
+       "IsDefault": false,
+       "IsOriginal": false,
+       "LocalizedOriginal": "Original",
+       "DisplayTitle": "German - AAC - Mono"
+      }
+     ],
+     "MediaSources[].MediaStreams": [
+      [
+       {
+        "Index": 1,
+        "Type": "Audio",
+        "Language": "eng",
+        "IsDefault": true,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "English - AAC - Mono - Default"
+       },
+       {
+        "Index": 2,
+        "Type": "Audio",
+        "Language": "deu",
+        "IsDefault": false,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "German - AAC - Mono"
+       }
+      ]
+     ],
+     "MediaSources[].OriginalLanguage": [
+      false
+     ]
+    },
+    "GET /Users/{userId}/Items/{id}": {
+     "OriginalLanguage": "<absent>",
+     "MediaStreams": [
+      {
+       "Index": 1,
+       "Type": "Audio",
+       "Language": "eng",
+       "IsDefault": true,
+       "IsOriginal": false,
+       "LocalizedOriginal": "Original",
+       "DisplayTitle": "English - AAC - Mono - Default"
+      },
+      {
+       "Index": 2,
+       "Type": "Audio",
+       "Language": "deu",
+       "IsDefault": false,
+       "IsOriginal": false,
+       "LocalizedOriginal": "Original",
+       "DisplayTitle": "German - AAC - Mono"
+      }
+     ],
+     "MediaSources[].MediaStreams": [
+      [
+       {
+        "Index": 1,
+        "Type": "Audio",
+        "Language": "eng",
+        "IsDefault": true,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "English - AAC - Mono - Default"
+       },
+       {
+        "Index": 2,
+        "Type": "Audio",
+        "Language": "deu",
+        "IsDefault": false,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "German - AAC - Mono"
+       }
+      ]
+     ],
+     "MediaSources[].OriginalLanguage": [
+      false
+     ]
+    },
+    "POST /Items/{id}/PlaybackInfo": {
+     "MediaSources[].MediaStreams": [
+      [
+       {
+        "Index": 1,
+        "Type": "Audio",
+        "Language": "eng",
+        "IsDefault": true,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "English - AAC - Mono - Default"
+       },
+       {
+        "Index": 2,
+        "Type": "Audio",
+        "Language": "deu",
+        "IsDefault": false,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "German - AAC - Mono"
+       }
+      ]
+     ],
+     "MediaSources[].OriginalLanguage": [
+      false
+     ]
+    },
+    "GET /Items/{id}/PlaybackInfo": {
+     "MediaSources[].MediaStreams": [
+      [
+       {
+        "Index": 1,
+        "Type": "Audio",
+        "Language": "eng",
+        "IsDefault": true,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "English - AAC - Mono - Default"
+       },
+       {
+        "Index": 2,
+        "Type": "Audio",
+        "Language": "deu",
+        "IsDefault": false,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "German - AAC - Mono"
+       }
+      ]
+     ],
+     "MediaSources[].OriginalLanguage": [
+      false
+     ]
+    }
+   }
+  },
+  {
+   "name": "Orig B (2020)",
+   "scenario": "audio deu, eng (default)",
+   "answers": {
+    "GET /Items/{id}": {
+     "OriginalLanguage": "<absent>",
+     "MediaStreams": [
+      {
+       "Index": 1,
+       "Type": "Audio",
+       "Language": "deu",
+       "IsDefault": false,
+       "IsOriginal": false,
+       "LocalizedOriginal": "Original",
+       "DisplayTitle": "German - AAC - Mono"
+      },
+      {
+       "Index": 2,
+       "Type": "Audio",
+       "Language": "eng",
+       "IsDefault": true,
+       "IsOriginal": false,
+       "LocalizedOriginal": "Original",
+       "DisplayTitle": "English - AAC - Mono - Default"
+      }
+     ],
+     "MediaSources[].MediaStreams": [
+      [
+       {
+        "Index": 1,
+        "Type": "Audio",
+        "Language": "deu",
+        "IsDefault": false,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "German - AAC - Mono"
+       },
+       {
+        "Index": 2,
+        "Type": "Audio",
+        "Language": "eng",
+        "IsDefault": true,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "English - AAC - Mono - Default"
+       }
+      ]
+     ],
+     "MediaSources[].OriginalLanguage": [
+      false
+     ]
+    },
+    "GET /Users/{userId}/Items/{id}": {
+     "OriginalLanguage": "<absent>",
+     "MediaStreams": [
+      {
+       "Index": 1,
+       "Type": "Audio",
+       "Language": "deu",
+       "IsDefault": false,
+       "IsOriginal": false,
+       "LocalizedOriginal": "Original",
+       "DisplayTitle": "German - AAC - Mono"
+      },
+      {
+       "Index": 2,
+       "Type": "Audio",
+       "Language": "eng",
+       "IsDefault": true,
+       "IsOriginal": false,
+       "LocalizedOriginal": "Original",
+       "DisplayTitle": "English - AAC - Mono - Default"
+      }
+     ],
+     "MediaSources[].MediaStreams": [
+      [
+       {
+        "Index": 1,
+        "Type": "Audio",
+        "Language": "deu",
+        "IsDefault": false,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "German - AAC - Mono"
+       },
+       {
+        "Index": 2,
+        "Type": "Audio",
+        "Language": "eng",
+        "IsDefault": true,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "English - AAC - Mono - Default"
+       }
+      ]
+     ],
+     "MediaSources[].OriginalLanguage": [
+      false
+     ]
+    },
+    "POST /Items/{id}/PlaybackInfo": {
+     "MediaSources[].MediaStreams": [
+      [
+       {
+        "Index": 1,
+        "Type": "Audio",
+        "Language": "deu",
+        "IsDefault": false,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "German - AAC - Mono"
+       },
+       {
+        "Index": 2,
+        "Type": "Audio",
+        "Language": "eng",
+        "IsDefault": true,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "English - AAC - Mono - Default"
+       }
+      ]
+     ],
+     "MediaSources[].OriginalLanguage": [
+      false
+     ]
+    },
+    "GET /Items/{id}/PlaybackInfo": {
+     "MediaSources[].MediaStreams": [
+      [
+       {
+        "Index": 1,
+        "Type": "Audio",
+        "Language": "deu",
+        "IsDefault": false,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "German - AAC - Mono"
+       },
+       {
+        "Index": 2,
+        "Type": "Audio",
+        "Language": "eng",
+        "IsDefault": true,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "English - AAC - Mono - Default"
+       }
+      ]
+     ],
+     "MediaSources[].OriginalLanguage": [
+      false
+     ]
+    }
+   }
+  },
+  {
+   "name": "Orig C (2020)",
+   "scenario": "audio untagged (default), eng",
+   "answers": {
+    "GET /Items/{id}": {
+     "OriginalLanguage": "<absent>",
+     "MediaStreams": [
+      {
+       "Index": 1,
+       "Type": "Audio",
+       "Language": "<absent>",
+       "IsDefault": true,
+       "IsOriginal": false,
+       "LocalizedOriginal": "Original",
+       "DisplayTitle": "AAC - Mono - Default"
+      },
+      {
+       "Index": 2,
+       "Type": "Audio",
+       "Language": "eng",
+       "IsDefault": false,
+       "IsOriginal": false,
+       "LocalizedOriginal": "Original",
+       "DisplayTitle": "English - AAC - Mono"
+      }
+     ],
+     "MediaSources[].MediaStreams": [
+      [
+       {
+        "Index": 1,
+        "Type": "Audio",
+        "Language": "<absent>",
+        "IsDefault": true,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "AAC - Mono - Default"
+       },
+       {
+        "Index": 2,
+        "Type": "Audio",
+        "Language": "eng",
+        "IsDefault": false,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "English - AAC - Mono"
+       }
+      ]
+     ],
+     "MediaSources[].OriginalLanguage": [
+      false
+     ]
+    },
+    "GET /Users/{userId}/Items/{id}": {
+     "OriginalLanguage": "<absent>",
+     "MediaStreams": [
+      {
+       "Index": 1,
+       "Type": "Audio",
+       "Language": "<absent>",
+       "IsDefault": true,
+       "IsOriginal": false,
+       "LocalizedOriginal": "Original",
+       "DisplayTitle": "AAC - Mono - Default"
+      },
+      {
+       "Index": 2,
+       "Type": "Audio",
+       "Language": "eng",
+       "IsDefault": false,
+       "IsOriginal": false,
+       "LocalizedOriginal": "Original",
+       "DisplayTitle": "English - AAC - Mono"
+      }
+     ],
+     "MediaSources[].MediaStreams": [
+      [
+       {
+        "Index": 1,
+        "Type": "Audio",
+        "Language": "<absent>",
+        "IsDefault": true,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "AAC - Mono - Default"
+       },
+       {
+        "Index": 2,
+        "Type": "Audio",
+        "Language": "eng",
+        "IsDefault": false,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "English - AAC - Mono"
+       }
+      ]
+     ],
+     "MediaSources[].OriginalLanguage": [
+      false
+     ]
+    },
+    "POST /Items/{id}/PlaybackInfo": {
+     "MediaSources[].MediaStreams": [
+      [
+       {
+        "Index": 1,
+        "Type": "Audio",
+        "Language": "<absent>",
+        "IsDefault": true,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "AAC - Mono - Default"
+       },
+       {
+        "Index": 2,
+        "Type": "Audio",
+        "Language": "eng",
+        "IsDefault": false,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "English - AAC - Mono"
+       }
+      ]
+     ],
+     "MediaSources[].OriginalLanguage": [
+      false
+     ]
+    },
+    "GET /Items/{id}/PlaybackInfo": {
+     "MediaSources[].MediaStreams": [
+      [
+       {
+        "Index": 1,
+        "Type": "Audio",
+        "Language": "<absent>",
+        "IsDefault": true,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "AAC - Mono - Default"
+       },
+       {
+        "Index": 2,
+        "Type": "Audio",
+        "Language": "eng",
+        "IsDefault": false,
+        "IsOriginal": false,
+        "LocalizedOriginal": "Original",
+        "DisplayTitle": "English - AAC - Mono"
+       }
+      ]
+     ],
+     "MediaSources[].OriginalLanguage": [
+      false
+     ]
+    }
+   }
+  },
+  {
+   "name": "Orig D (2020)",
+   "scenario": "no audio",
+   "answers": {
+    "GET /Items/{id}": {
+     "OriginalLanguage": "<absent>",
+     "MediaStreams": [],
+     "MediaSources[].MediaStreams": [
+      []
+     ],
+     "MediaSources[].OriginalLanguage": [
+      false
+     ]
+    },
+    "GET /Users/{userId}/Items/{id}": {
+     "OriginalLanguage": "<absent>",
+     "MediaStreams": [],
+     "MediaSources[].MediaStreams": [
+      []
+     ],
+     "MediaSources[].OriginalLanguage": [
+      false
+     ]
+    },
+    "POST /Items/{id}/PlaybackInfo": {
+     "MediaSources[].MediaStreams": [
+      []
+     ],
+     "MediaSources[].OriginalLanguage": [
+      false
+     ]
+    },
+    "GET /Items/{id}/PlaybackInfo": {
+     "MediaSources[].MediaStreams": [
+      []
+     ],
+     "MediaSources[].OriginalLanguage": [
+      false
+     ]
+    }
+   }
+  }
+ ]
+}

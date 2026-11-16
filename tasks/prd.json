@@ -2297,9 +2297,8 @@
         "A scan runs the same number of media tools and writes the same rows as before, and no migration is added: the value is computed when the one item is answered. Lists (/Items) are unchanged",
         "Every difference from the capture is in compat/differences.yaml with its reason; docs/status.md and DOMAINS.md say how the original language is derived and that a film whose only audio is a dub is labelled with the dub's language"
       ],
-      "priority": 28,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [],
       "source": "Owner request and decision 3, 2026-11-15",
       "notes": "golang.org/x/text/language is already a dependency (sidecars.go:17). Checked against it: und and any unparseable tag parse to base en at low confidence, so the comparison must test the parse error; nor, nob and nno have three different bases, as do zho, cmn and yue, so those two families are joined by hand. Hiding less is the safe error. An .nfo beside the film could later override the guess (JS-045)."

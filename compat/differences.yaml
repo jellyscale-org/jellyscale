@@ -1038,3 +1038,28 @@
   paths:
     - "SearchHints[].Name"
     - "SearchHints[].PrimaryImageTag"
+
+- requests:
+    - "a film's details"
+    - "an episode's details"
+    - "a Dolby Vision 8.1 film's details"
+  kind: improvement
+  reason: "jellyscale names the film's original language, from the language of its default audio track, and marks that track IsOriginal; Jellyfin 12.4 with no metadata provider sends no OriginalLanguage and IsOriginal false on every stream (compat/captures/original-language-12.4.md)"
+  paths:
+    - "MediaSources[].MediaStreams[].IsOriginal"
+    - "MediaStreams[].IsOriginal"
+    - "OriginalLanguage"
+
+- requests:
+    - "playback info for a film that direct plays"
+    - "playback info for a film over a 1 Mbit/s limit, which transcodes"
+    - "playback info for a Dolby Vision 8.1 film, for a profile with HDR10 and no Dolby Vision"
+    - "playback info for a Dolby Vision 8.1 film, for a profile with Dolby Vision"
+    - "playback info for a Dolby Vision 8.4 film, for a profile with HDR10 and HLG and no Dolby Vision"
+    - "playback info for a Dolby Vision 5 film, for a profile with HDR10 and no Dolby Vision"
+    - "playback info for a Dolby Vision 7 film, for a profile with Dolby Vision but no enhancement layer"
+    - "playback info for an HDR10+ film, for a profile with HDR10 alone"
+  kind: improvement
+  reason: "jellyscale marks the audio streams in the film's original language IsOriginal ; Jellyfin 12.4 with no metadata provider marks none (compat/captures/original-language-12.4.md)"
+  paths:
+    - "MediaSources[].MediaStreams[].IsOriginal"

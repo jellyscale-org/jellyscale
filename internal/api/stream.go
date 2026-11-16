@@ -307,6 +307,7 @@ func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
 		if index, ok := chosenSubtitle(source, request.SubtitleStreamIndex); ok {
 			source.DefaultSubtitleStreamIndex = media.Ptr(index)
 		}
+		markOriginal(&source)
 		result = append(result, source)
 	}
 	for _, method := range methods {
