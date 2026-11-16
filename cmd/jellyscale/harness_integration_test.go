@@ -224,8 +224,19 @@ func (p *proc) signIn(t *testing.T) string {
 // the test at once with the status and body.
 func (p *proc) signInAs(t *testing.T, device string) string {
 	t.Helper()
-	body := `{"Username":"` + p.user + `","Pw":"` + p.password + `"}`
-	request, err := http.NewRequest("POST", p.url("/Users/AuthenticateByName"), strings.NewReader(body))
+	status, raw := p.authenticate(t, device, p.user, p.password)
+	var reply struct{ AccessToken string }
+	if status != 200 || json.Unmarshal(raw, &reply) != nil || reply.AccessToken == "" {
+		t.Fatalf("sign-in: %d %s", status, raw)
+	}
+	return reply.AccessToken
+}
+
+// authenticate signs a user in on a device and gives the whole answer, for a test of what a sign-in returns.
+func (p *proc) authenticate(t *testing.T, device, user, password string) (int, []byte) {
+	t.Helper()
+	body, _ := json.Marshal(map[string]string{"Username": user, "Pw": password})
+	request, err := http.NewRequest("POST", p.url("/Users/AuthenticateByName"), bytes.NewReader(body))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,9 +248,5 @@ func (p *proc) signInAs(t *testing.T, device string) string {
 	}
 	defer response.Body.Close()
 	raw, _ := io.ReadAll(response.Body)
-	var reply struct{ AccessToken string }
-	if response.StatusCode != 200 || json.Unmarshal(raw, &reply) != nil || reply.AccessToken == "" {
-		t.Fatalf("sign-in: %d %s", response.StatusCode, raw)
-	}
-	return reply.AccessToken
+	return response.StatusCode, raw
 }

@@ -118,7 +118,7 @@ func (users configUsers) token(actor string, device int) string {
 
 // doRequest sends a request and returns its status and body. It is called from goroutines too, so a failure to send
 // is reported with Errorf and answers 0.
-func doRequest(t *testing.T, r *replica, method, path, token, contentType, body string) (int, []byte) {
+func doRequest(t *testing.T, r *proc, method, path, token, contentType, body string) (int, []byte) {
 	t.Helper()
 	request, err := http.NewRequest(method, r.url(path), strings.NewReader(body))
 	if err != nil {
@@ -155,7 +155,7 @@ func savePath(route, target string) string {
 }
 
 // send makes the step's request on r and returns its status and body.
-func send(t *testing.T, r *replica, users configUsers, step testenv.ConfigStep, caseName string) (int, []byte) {
+func send(t *testing.T, r *proc, users configUsers, step testenv.ConfigStep, caseName string) (int, []byte) {
 	t.Helper()
 	contentType := step.ContentType
 	if contentType == "" {
@@ -173,7 +173,7 @@ func decode(t *testing.T, raw []byte) map[string]any {
 	return out
 }
 
-func savedConfigOf(t *testing.T, r *replica, token string) map[string]any {
+func savedConfigOf(t *testing.T, r *proc, token string) map[string]any {
 	t.Helper()
 	status, raw := doRequest(t, r, "GET", "/Users/Me", token, "", "")
 	if status != 200 {
@@ -194,7 +194,7 @@ type seen struct {
 
 // observe reads the places on r, with each user's second device (the first request r has had for any of them
 // after a save on the other process).
-func observe(t *testing.T, r *replica, users configUsers) []seen {
+func observe(t *testing.T, r *proc, users configUsers) []seen {
 	t.Helper()
 	var out []seen
 	get := func(place, who, path, token string) {
@@ -210,10 +210,9 @@ func observe(t *testing.T, r *replica, users configUsers) []seen {
 		get("byAdmin", who, "/Users/"+users[who].compact(), users["A"].tokens[1])
 	}
 	get("byUserSelf", "U", "/Users/"+users["U"].compact(), users["U"].tokens[1])
-	status, raw := doRequest(t, r, "POST", "/Users/AuthenticateByName", "", "application/json",
-		fmt.Sprintf(`{"Username":%q,"Pw":%q}`, users["U"].name, configPassword))
+	status, raw := r.authenticate(t, "capture-device", users["U"].name, configPassword)
 	if status != 200 {
-		t.Fatalf("AuthenticateByName: %d %s", status, raw)
+		t.Fatalf("signing U in: %d %s", status, raw)
 	}
 	config, _ := decode(t, raw)["User"].(map[string]any)["Configuration"].(map[string]any)
 	return append(out, seen{"authenticateU", "U", config})
@@ -283,7 +282,7 @@ func show(v any, present bool) string {
 	return string(text)
 }
 
-func bothProcesses(t *testing.T, dsn string) (a, b *replica) {
+func bothProcesses(t *testing.T, dsn string) (a, b *proc) {
 	t.Helper()
 	return start(t, "api", dsn, nil), start(t, "api", dsn, nil)
 }
@@ -392,15 +391,15 @@ func TestASaveByOneUserLeavesAnotherUsersSixteenFieldsAsTheyWere(t *testing.T) {
 	saved := capture.Case(t, "one field after all 16 changed, route=path").Before // U and O each save all 16, differently.
 	wantO := capture.Config(capture.Case(t, "one field after all 16 changed, route=path").After.Me["O"])
 	for n, step := range saved {
-		if status, raw := send(t, []*replica{a, b}[n], users, step, ""); status != 204 {
+		if status, raw := send(t, []*proc{a, b}[n], users, step, ""); status != 204 {
 			t.Fatalf("save %d: %d %s", n, status, raw)
 		}
 	}
 	for n, body := range []string{`{"SubtitleMode":"Smart"}`, *saved[0].Body, `{"SubtitleLanguagePreference":"ita"}`} {
-		if status, _ := doRequest(t, []*replica{b, a, b}[n], "POST", "/Users/Configuration", users.token("U", 0), "application/json", body); status != 204 {
+		if status, _ := doRequest(t, []*proc{b, a, b}[n], "POST", "/Users/Configuration", users.token("U", 0), "application/json", body); status != 204 {
 			t.Fatalf("U's save %d: %d", n, status)
 		}
-		for _, r := range []*replica{a, b} {
+		for _, r := range []*proc{a, b} {
 			if got := savedConfigOf(t, r, users.token("O", 1)); !reflect.DeepEqual(got, wantO) {
 				t.Errorf("after U's save %d, O's Configuration on %s is %v, want %v", n, r.addr, got, wantO)
 			}
@@ -432,7 +431,7 @@ func TestTwoSavesAtOnceThroughTwoProcessesAreNeverMixed(t *testing.T) {
 		gate := make(chan struct{})
 		var wg sync.WaitGroup
 		for n, one := range []struct {
-			r    *replica
+			r    *proc
 			body string
 		}{{first, bodyA}, {second, bodyB}} {
 			wg.Add(1)
@@ -521,7 +520,7 @@ func TestAnInterleavedSaveIsNotMixed(t *testing.T) {
 		t.Fatalf("the first save answered %d, want 204", status)
 	}
 	<-hooked
-	for _, r := range []*replica{first, second} {
+	for _, r := range []*proc{first, second} {
 		if got := savedConfigOf(t, r, users.token("U", 1)); !reflect.DeepEqual(got, wantA) && !reflect.DeepEqual(got, wantB) {
 			t.Errorf("the Configuration on %s is a mix of the two bodies:\n%v\nbody A %v\nbody B %v", r.addr, got, wantA, wantB)
 		}
@@ -558,7 +557,7 @@ func TestTwoOneFieldSavesAtOnceAreOneBodyOrBoth(t *testing.T) {
 		gate := make(chan struct{})
 		var wg sync.WaitGroup
 		for n, one := range []struct {
-			r    *replica
+			r    *proc
 			body string
 		}{{first, `{"SubtitleLanguagePreference":"ita"}`}, {second, `{"HidePlayedInLatest":false}`}} {
 			wg.Add(1)
@@ -572,7 +571,7 @@ func TestTwoOneFieldSavesAtOnceAreOneBodyOrBoth(t *testing.T) {
 		}
 		close(gate)
 		wg.Wait()
-		for _, r := range []*replica{a, b} {
+		for _, r := range []*proc{a, b} {
 			got := savedConfigOf(t, r, users.token("U", 1))
 			switch {
 			case merges && !reflect.DeepEqual(got, both):
