@@ -4,10 +4,9 @@
 // if it found a violation or no response.
 import { appendFileSync } from "node:fs";
 
-const file = process.env.E2E_RESPONSES;
-
 // recordResponses(page, base): call once for each page a gate opens.
 export function recordResponses(page, base) {
+  const file = process.env.E2E_RESPONSES;
   if (!file) throw new Error("E2E_RESPONSES is the file for the recorded responses (test/e2e/run.sh sets it)");
   page.on("response", async (response) => {
     if (!response.url().startsWith(base)) return;

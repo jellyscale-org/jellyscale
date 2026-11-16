@@ -3,12 +3,10 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -16,7 +14,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
 
@@ -111,142 +108,71 @@ func entry(name, dir string, chapterImages bool) map[string]any {
 	return map[string]any{"name": name, "kind": "movies", "media": "file://" + dir, "assets": "file://" + dir, "chapterImages": chapterImages}
 }
 
-type process struct {
-	c     *libCluster
-	cmd   *exec.Cmd
-	port  int
-	token string
-	mu    sync.Mutex
-	log   bytes.Buffer
-	done  chan struct{}
-}
-
-func (p *process) Write(b []byte) (int, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.log.Write(b)
-}
-
-func (p *process) logged() string {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.log.String()
-}
-
-func (p *process) count(text string) int { return strings.Count(p.logged(), text) }
+func (p *proc) count(text string) int { return strings.Count(p.log.String(), text) }
 
 // start runs the binary with the roles. config is the file's text; "" is no file.
 // It returns once the process is serving. That is not proof that a worker has
 // synced: where it logs "worker started" relative to library.Sync is the
 // build's to choose, so a test that reads what Sync wrote uses syncedStart.
-func (c *libCluster) start(roles, config string) *process {
+func (c *libCluster) start(roles, config string) *proc {
 	c.t.Helper()
 	p := c.launch(roles, config)
 	p.ready()
 	return p
 }
 
-func (c *libCluster) launch(roles, config string) *process {
+func (c *libCluster) launch(roles, config string) *proc {
 	c.t.Helper()
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		c.t.Fatal(err)
-	}
-	port := l.Addr().(*net.TCPAddr).Port
-	l.Close()
-	args := []string{"--roles", roles, "--listen", fmt.Sprintf("127.0.0.1:%d", port)}
-	if config != "" {
-		path := filepath.Join(c.t.TempDir(), "config.json")
-		if err := os.WriteFile(path, []byte(config), 0o644); err != nil {
-			c.t.Fatal(err)
-		}
-		args = append(args, "--config", path)
-	}
-	p := &process{c: c, port: port, done: make(chan struct{})}
-	p.cmd = exec.Command(c.bin, args...)
-	p.cmd.Env = append(os.Environ(), "JELLYSCALE_DATABASE_URL="+c.dsn, "JELLYSCALE_ADMIN_PASSWORD=pw-js102")
-	p.cmd.Stderr, p.cmd.Stdout = p, p
-	if err := p.cmd.Start(); err != nil {
-		c.t.Fatal(err)
-	}
-	go func() { p.cmd.Wait(); close(p.done) }()
-	c.t.Cleanup(p.stop)
-	return p
-}
-
-func (p *process) stop() {
-	p.cmd.Process.Signal(syscall.SIGTERM)
-	select {
-	case <-p.done:
-	case <-time.After(30 * time.Second):
-		p.cmd.Process.Kill()
-		<-p.done
-	}
+	return startProc(c.t, procSpec{bin: c.bin, dsn: c.dsn, args: []string{"--roles", roles}, config: config, listen: true,
+		user: "admin", password: "pw-js102", path: os.Getenv("PATH"), term: true})
 }
 
 // ready waits for the process to have started: a worker logs that, an api or
 // stream replica answers /healthz. It says nothing about when Sync ran.
-func (p *process) ready() {
-	p.c.t.Helper()
-	deadline := time.Now().Add(libraryHang)
-	for time.Now().Before(deadline) {
-		select {
-		case <-p.done:
-			p.c.t.Fatalf("a process exited at start:\n%s", p.logged())
-		default:
+func (p *proc) ready() {
+	p.t.Helper()
+	p.until(libraryHang, "the process to start", func() bool {
+		if !p.alive() {
+			return false
 		}
-		if strings.Contains(p.logged(), "worker started") {
-			return
+		if strings.Contains(p.log.String(), "worker started") {
+			return true
 		}
-		if resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/healthz", p.port)); err == nil {
+		if resp, err := http.Get(p.url("/healthz")); err == nil {
 			resp.Body.Close()
 			if resp.StatusCode == 204 {
-				return
+				return true
 			}
 		}
-		time.Sleep(50 * time.Millisecond)
-	}
-	p.c.t.Fatalf("a process did not start:\n%s", p.logged())
+		return false
+	})
 }
 
 // get asks an api replica, signed in as the admin the first worker's config made.
-func (p *process) get(path string, into any) {
-	p.c.t.Helper()
+func (p *proc) get(path string, into any) {
+	p.t.Helper()
 	if p.token == "" {
-		body, _ := json.Marshal(map[string]string{"Username": "admin", "Pw": "pw-js102"})
-		req, _ := http.NewRequest("POST", fmt.Sprintf("http://127.0.0.1:%d/Users/AuthenticateByName", p.port), bytes.NewReader(body))
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", `MediaBrowser Client="c", Device="d", DeviceId="i", Version="1"`)
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			p.c.t.Fatal(err)
-		}
-		defer resp.Body.Close()
-		var auth struct{ AccessToken string }
-		if err := json.NewDecoder(resp.Body).Decode(&auth); err != nil || auth.AccessToken == "" {
-			p.c.t.Fatalf("no token (status %d): %v", resp.StatusCode, err)
-		}
-		p.token = auth.AccessToken
+		p.token = p.signIn(p.t)
 	}
-	req, _ := http.NewRequest("GET", fmt.Sprintf("http://127.0.0.1:%d%s", p.port, path), nil)
+	req, _ := http.NewRequest("GET", p.url(path), nil)
 	req.Header.Set("X-Emby-Token", p.token)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		p.c.t.Fatal(err)
+		p.t.Fatal(err)
 	}
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != 200 {
-		p.c.t.Fatalf("GET %s: %d %s", path, resp.StatusCode, raw)
+		p.t.Fatalf("GET %s: %d %s", path, resp.StatusCode, raw)
 	}
 	if err := json.Unmarshal(raw, into); err != nil {
-		p.c.t.Fatal(err)
+		p.t.Fatal(err)
 	}
 }
 
 // views is what /UserViews lists, by name with its id.
-func (p *process) views() map[string]string {
-	p.c.t.Helper()
+func (p *proc) views() map[string]string {
+	p.t.Helper()
 	var out struct{ Items []struct{ Name, Id string } }
 	p.get("/UserViews", &out)
 	views := map[string]string{}
@@ -257,8 +183,8 @@ func (p *process) views() map[string]string {
 }
 
 // films is how many films the replica lists in a library, or in all of them for "".
-func (p *process) films(libraryID string) int {
-	p.c.t.Helper()
+func (p *proc) films(libraryID string) int {
+	p.t.Helper()
 	path := "/Items?Recursive=true&IncludeItemTypes=Movie"
 	if libraryID != "" {
 		path += "&ParentId=" + libraryID
@@ -321,13 +247,13 @@ func configOf(libraries []map[string]any, extra string) string {
 }
 
 // waitScans waits until the process has logged n more finished scans than it had.
-func (p *process) waitScans(n int) {
-	p.c.t.Helper()
+func (p *proc) waitScans(n int) {
+	p.t.Helper()
 	want := p.count("scan finished") + n
 	deadline := time.Now().Add(libraryHang)
 	for p.count("scan finished") < want {
 		if time.Now().After(deadline) {
-			p.c.t.Fatalf("waiting for %d scans:\n%s", n, p.logged())
+			p.t.Fatalf("waiting for %d scans:\n%s", n, p.log.String())
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
@@ -336,7 +262,7 @@ func (p *process) waitScans(n int) {
 // syncedStart starts a worker with a non-empty list and returns once it has
 // finished a scan of each of its n libraries. The scan loop runs on what Sync
 // returned, so Sync has written by then wherever the build calls it.
-func (c *libCluster) syncedStart(roles, config string, n int) *process {
+func (c *libCluster) syncedStart(roles, config string, n int) *proc {
 	c.t.Helper()
 	p := c.start(roles, config)
 	p.waitScans(n - p.count("scan finished"))
@@ -398,8 +324,8 @@ func TestAProcessWithoutTheWorkerRoleWritesNothingToTheLibraries(t *testing.T) {
 				if n := c.count("SELECT count(*) FROM user_item_data"); n != state {
 					t.Errorf("%d watch rows, were %d", n, state)
 				}
-				if strings.Contains(strings.ToLower(p.logged()), "no libraries") {
-					t.Errorf("a process without the worker role logs about an empty list:\n%s", p.logged())
+				if strings.Contains(strings.ToLower(p.log.String()), "no libraries") {
+					t.Errorf("a process without the worker role logs about an empty list:\n%s", p.log.String())
 				}
 			})
 		}
@@ -425,7 +351,7 @@ func TestReplicasWithOtherListsStartedBesideAWorkerHideNothingEvenAfterTheGrace(
 		t.Fatalf("seed: %d libraries, %d items, %d watch rows", len(libraries), items, state)
 	}
 
-	var api, stream *process
+	var api, stream *proc
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() { defer wg.Done(); api = c.launch("api", `{"libraries": []}`) }()
@@ -584,14 +510,14 @@ func TestAWorkerListingNoLibrariesChangesNothingAndSaysSoOnce(t *testing.T) {
 				}
 				// One line, naming both halves of what the criterion asks it to say.
 				var lines []string
-				for _, line := range strings.Split(w.logged(), "\n") {
+				for _, line := range strings.Split(w.log.String(), "\n") {
 					lower := strings.ToLower(line)
 					if strings.Contains(lower, "no libraries") && strings.Contains(lower, "kept") {
 						lines = append(lines, line)
 					}
 				}
 				if len(lines) != 1 {
-					t.Errorf("%d log lines say the config lists no libraries and the database's were kept, want 1:\n%s", len(lines), w.logged())
+					t.Errorf("%d log lines say the config lists no libraries and the database's were kept, want 1:\n%s", len(lines), w.log.String())
 				}
 			})
 		}

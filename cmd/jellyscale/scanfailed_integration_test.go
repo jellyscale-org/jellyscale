@@ -13,9 +13,7 @@ package main
 // gauges it sets after the timestamp; no check waits on it for a value.
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -83,30 +81,6 @@ func (s *flakyStore) Open(ctx context.Context, key string, offset int64) (io.Rea
 		return nil, errors.New("the store failed this read")
 	}
 	return s.Store.Open(ctx, key, offset)
-}
-
-type logSink struct {
-	mu  sync.Mutex
-	buf bytes.Buffer
-}
-
-func (l *logSink) Write(p []byte) (int, error) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return l.buf.Write(p)
-}
-
-func (l *logSink) records() []map[string]any {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	var out []map[string]any
-	for _, line := range bytes.Split(l.buf.Bytes(), []byte("\n")) {
-		var record map[string]any
-		if len(line) > 0 && json.Unmarshal(line, &record) == nil {
-			out = append(out, record)
-		}
-	}
-	return out
 }
 
 type scanEnv struct {

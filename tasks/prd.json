@@ -1873,12 +1873,11 @@
         "Each of login, viewer, scenario, sql, ffmpegRuns, waitFor and time is defined once under test/e2e (a script check)",
         "Every scenario name that ran before runs after (the recorded lists compared)"
       ],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [],
       "source": "Fable 5.2 blind audit, 2026-11-14 (.results/audit-2026-11-14.md)",
-      "notes": "",
-      "priority": 22
+      "notes": ""
     },
     {
       "id": "JS-115",

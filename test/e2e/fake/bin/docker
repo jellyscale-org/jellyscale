@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "fake docker: no containers here" >&2
+exit 1

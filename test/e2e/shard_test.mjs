@@ -2,11 +2,11 @@
 // test/scripts_test.sh: E2E_SHARD=i/n node shard_test.mjs
 import { runLater, schedule, shardLine } from "./shard.mjs";
 
-const scenario = (name, options = {}) => schedule(name, options, async () => console.log(`ran ${name}`));
-for (let n = 1; n <= 7; n++) await scenario(`s${n}`);
-await scenario("kill A", { stopsWorker: true });
-await scenario("s8");
-await scenario("kill B", { stopsWorker: true });
-await scenario("s9");
+const deal = (name, options = {}) => schedule(name, options, async () => console.log(`ran ${name}`));
+for (let n = 1; n <= 7; n++) await deal(`s${n}`);
+await deal("kill A", { stopsWorker: true });
+await deal("s8");
+await deal("kill B", { stopsWorker: true });
+await deal("s9");
 await runLater();
 shardLine();
