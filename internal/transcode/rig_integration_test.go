@@ -86,6 +86,30 @@ type rig struct {
 	log      *slog.Logger
 }
 
+// sharedState is what outlives a test's rows in the database: the user triggers
+// and functions, and the settings of the database itself.
+func sharedState(t *testing.T, pool *pgxpool.Pool) map[string]bool {
+	t.Helper()
+	rows, err := pool.Query(context.Background(), `
+		SELECT 'trigger ' || tgname || ' on ' || tgrelid::regclass FROM pg_trigger WHERE NOT tgisinternal
+		UNION ALL SELECT 'function ' || oid::regprocedure FROM pg_proc WHERE pronamespace = 'public'::regnamespace
+		UNION ALL SELECT 'setting ' || unnest(setconfig) FROM pg_db_role_setting
+			WHERE setdatabase = (SELECT oid FROM pg_database WHERE datname = current_database())`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	found := map[string]bool{}
+	for rows.Next() {
+		var what string
+		if err := rows.Scan(&what); err != nil {
+			t.Fatal(err)
+		}
+		found[what] = true
+	}
+	return found
+}
+
 func newRig(t *testing.T, segments store.Store) *rig {
 	t.Helper()
 	testenv.FFmpeg(t)
@@ -96,6 +120,17 @@ func newRig(t *testing.T, segments store.Store) *rig {
 		t.Fatal(err)
 	}
 	t.Cleanup(pool.Close)
+	// The rig only truncates tables, so what a test makes besides rows stays for every
+	// test after it: the guard fails the one that leaves it.
+	before := sharedState(t, pool)
+	t.Cleanup(func() {
+		after := sharedState(t, pool)
+		for what := range after {
+			if !before[what] {
+				t.Errorf("the test left %s in the database", what)
+			}
+		}
+	})
 	r := &rig{dsn: dsn, pool: pool, items: &items.Repo{Pool: pool, ServerID: "srv"}, scratch: t.TempDir(),
 		log: slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))}
 	if segments == nil {

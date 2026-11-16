@@ -34,6 +34,8 @@ type DBProxy struct {
 	accepts  int
 	delay    time.Duration // A round trip through the proxy takes this much longer, half in each direction.
 	received int64         // Bytes Postgres sent to its clients.
+	held     bool          // Hold: nothing is passed on in either direction.
+	release  chan struct{} // Closed by Release, which is when a held pipe goes on.
 	trip     []byte        // When a statement holds this, the connections end instead of passing it on.
 	tripped  chan struct{} // Closed when they did.
 
@@ -107,6 +109,45 @@ func (p *DBProxy) Delay(d time.Duration) {
 	p.mu.Lock()
 	p.delay = d
 	p.mu.Unlock()
+}
+
+// Hold keeps every connection open and passes nothing on in either direction,
+// on the connections that stand and the ones made later, until Release: what a
+// database or a network that has stopped answering does, where nothing is
+// refused and nothing ends. What was sent meanwhile is passed on, in order,
+// when Release comes. Postgres runs on and the test reads it directly, so what
+// the process did while it was cut off can be looked at while it lasts. Hold
+// may be called from the step of OnStatement that runs before a statement, which
+// then does not reach Postgres.
+func (p *DBProxy) Hold() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if !p.held {
+		p.held, p.release = true, make(chan struct{})
+	}
+}
+
+// Release lets what Hold kept go on.
+func (p *DBProxy) Release() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.held {
+		p.held = false
+		close(p.release)
+	}
+}
+
+// waitHeld returns once the proxy is not held.
+func (p *DBProxy) waitHeld() {
+	p.mu.Lock()
+	release := p.release
+	if !p.held {
+		release = nil
+	}
+	p.mu.Unlock()
+	if release != nil {
+		<-release
+	}
 }
 
 // Sever ends every connection, on both sides, and leaves the proxy accepting
@@ -239,6 +280,7 @@ func (p *DBProxy) pipe(dst, src net.Conn, fromClient bool) {
 			time.Sleep(wait)
 		}
 		if n > 0 {
+			p.waitHeld()
 			if _, werr := dst.Write(buf[:n]); werr != nil {
 				break
 			}

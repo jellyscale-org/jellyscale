@@ -187,6 +187,7 @@ func awaitJob(ctx context.Context, pool *pgxpool.Pool, hub *Hub, job subtitleJob
 	defer ticker.Stop()
 	var stuckSince time.Time
 	for {
+		turnFrom(ctx) // Each round is a query that may hang; the wait itself is no stall.
 		var state, reason string
 		var permanent, alive, unclaimed, extracting bool
 		// A running job whose lease has lapsed is as good as queued.
@@ -323,46 +324,22 @@ func (w *Worker) claimSubtitle(ctx context.Context, chapters bool) (subtitleJob,
 
 // runSubtitle extracts one track, renewing the lease meanwhile, and records how
 // it ended. A job whose lease was taken is left to its new owner. Cut off from
-// the database it stops a beat before the lease lapses, so that a file is never
+// the database it stops the cutMargin before the lease lapses, so that a file is never
 // read by two workers at once.
 func (w *Worker) runSubtitle(ctx context.Context, job subtitleJob) {
 	log := w.Log.With("subtitle", job.Key)
-	extractCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	done := make(chan error, 1)
-	go func() { done <- w.extractTrack(extractCtx, job, log) }()
-	beat := time.NewTicker(w.heartbeat())
-	defer beat.Stop()
-	// Only a renewal puts this off, and it fires even during a beat that hangs.
-	stale := time.AfterFunc(w.lease()-w.heartbeat(), cancel)
-	defer stale.Stop()
-	var err error
-wait:
-	for {
-		select {
-		case err = <-done:
-			break wait
-		case <-beat.C:
-			began := time.Now()
-			beatCtx, stopBeat := context.WithTimeout(ctx, w.heartbeat()/2)
-			tag, beatErr := w.Pool.Exec(beatCtx, `UPDATE subtitle_jobs SET lease_expires_at = now() + make_interval(secs => $3)
-				WHERE key = $1 AND worker = $2 AND state = 'running'`, job.Key, w.ID, w.lease().Seconds())
-			stopBeat()
-			switch {
-			case beatErr != nil:
-			case tag.RowsAffected() == 0:
-				cancel()
-				<-done
-				log.Warn("the subtitle job's lease was lost")
-				return
-			default:
-				// Counted from before the beat: the lease can't have started earlier.
-				stale.Reset(w.lease() - w.heartbeat() - time.Since(began))
-			}
-		}
-	}
+	// The lease keeper cancels extractCtx when the lease can no longer be trusted,
+	// the cutMargin before it lapses, so that a file is never read by two workers at
+	// once, and when it was taken from this worker.
+	extractCtx, lease := w.keepSubtitleLease(ctx, job)
+	defer lease.stop()
+	err := w.extractTrack(extractCtx, job, log)
 	if err != nil && extractCtx.Err() != nil && ctx.Err() == nil {
-		log.Warn("stopped a subtitle extraction: the database is out of reach and the lease is running out")
+		if errors.Is(context.Cause(extractCtx), errUnrenewed) {
+			log.Warn("stopped a subtitle extraction: the database is out of reach and the lease is running out")
+		} else {
+			log.Warn("the subtitle job's lease was lost")
+		}
 		return
 	}
 	finish, stop := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)

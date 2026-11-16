@@ -4,7 +4,6 @@ package transcode
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"syscall"
 	"testing"
@@ -41,15 +40,25 @@ import (
 // which grows neither with the hold nor with the length of the stop.
 const putAllowance = 350 * time.Millisecond
 
-// isTheOwnershipCheck matches the statement a worker asks before it stores a
-// segment (Worker.upload): a read of the job's lease and of the worker's row, and
-// not the heartbeat, which writes them. Counts the matches, and says true at the nth.
-func isTheOwnershipCheck(nth int) func([]byte) bool {
+// JS-105 restated these cases. The worker's lease is kept by one lease keeper on
+// a connection of its own (the proxy w.keep), and the check before a put is a
+// renewal the keeper sends for the asking job after the ask, which is the same
+// statement as the heartbeat's. So the statement the cases wait for is the nth
+// renewal on that connection, and what a case lives through is the answer to
+// it: the renewal ran in Postgres at the moment the hook's step before it runs,
+// so the job's lease ends 10 s after that, and the answer is then late
+// because the worker was stopped or the connections to Postgres were held for
+// longer than the lease. A lease cut by a reap or a cancel, which the answer
+// of a renewal cannot show, is the checks of lease_keeper_fence_integration_test.go.
+
+// isTheRenewalNth matches the nth renewal of a transcode job's lease (isTheRenewal,
+// lease_keeper_integration_test.go): the keeper's heartbeat for every job it keeps,
+// and its renewal before an upload's puts.
+func isTheRenewalNth(nth int) func([]byte) bool {
 	var mu sync.Mutex
 	seen := 0
-	check := sentHas("lease_expires_at", "transcode_nodes", "transcode_jobs", "SELECT")
 	return func(sent []byte) bool {
-		if !check(sent) || sentHas("UPDATE transcode_jobs")(sent) || sentHas("INSERT")(sent) || sentHas("DELETE")(sent) {
+		if !isTheRenewal(sent) {
 			return false
 		}
 		mu.Lock()
@@ -62,80 +71,66 @@ func isTheOwnershipCheck(nth int) func([]byte) bool {
 func TestAWorkerBeginsNoPutOnceTheLeaseRanOutWhateverMadeItLate(t *testing.T) {
 	cases := []struct {
 		name string
-		nth  int // Which ownership check of the job (1 is the job's first segment, stored with its init segment).
-		// leaseLeft is what the lease has left when Postgres answers the check; the
-		// answer is then held for hold, with the worker stopped when stop is set.
-		leaseLeft, hold time.Duration
-		stop            bool
-		// putDelay is how long a store takes after it has stored the object (JELLYSCALE_TEST_PUTDELAY_AFTER_MS):
-		// the init segment's, so that the segment's put begins that much later.
-		putDelay time.Duration
-		givesUp  bool // The job is given up, cancelled, with nothing stored once the lease ran out.
+		nth  int // Which renewal on the keeper's connection.
+		// The answer to it is held for hold: with the worker stopped when stop is set, with every
+		// connection of the keeper held when late is set (the worker is running and cannot hear),
+		// and else only delayed.
+		hold       time.Duration
+		stop, late bool
+		givesUp    bool // The job is given up, cancelled, with nothing stored once the lease ran out.
 	}{
-		{"stopped after asking, for longer than the lease had left", 1, time.Second, 3 * time.Second, true, 0, true},
-		{"stopped after asking, a later segment", 3, time.Second, 3 * time.Second, true, 0, true},
-		{"database answers late, inside the check's timeout", 1, time.Second, 3 * time.Second, false, 0, true},
-		{"database answers late, a later segment", 3, time.Second, 3 * time.Second, false, 0, true},
-		{"database answers beyond the check's timeout", 1, time.Second, 7 * time.Second, false, 0, true},
-		{"the init segment's store takes longer than the lease had left", 1, 1500 * time.Millisecond, 0, false, 2500 * time.Millisecond, true},
+		{"stopped after the answer, for longer than the lease", 2, 11 * time.Second, true, false, true},
+		{"stopped after the answer, a later renewal", 5, 11 * time.Second, true, false, true},
+		{"the answer comes after the lease ran out, the worker running", 2, 11 * time.Second, false, true, true},
+		{"the answer comes after the lease ran out, a later renewal", 5, 11 * time.Second, false, true, true},
 		// In time: nothing is given up.
-		{"answered in 50 ms with the lease nearly whole", 1, 6 * time.Second, 50 * time.Millisecond, false, 0, false},
-		{"stopped for less than the lease less a heartbeat", 1, 0, 4 * time.Second, true, 0, false},
+		{"answered in 50 ms", 2, 50 * time.Millisecond, false, false, false},
+		{"stopped for less than the lease less a heartbeat", 2, 4 * time.Second, true, false, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			slowAt(t, "2")
-			env := []string{}
-			if c.putDelay > 0 {
-				env = append(env, fmt.Sprintf("JELLYSCALE_TEST_PUTDELAY_AFTER_MS=%d", c.putDelay.Milliseconds()))
-			}
-			s := newStack(t, 1, env...)
+			s := newStack(t, 1)
 			r := s.r
 			w := s.workers[0]
 			ctx := context.Background()
 
 			var mu sync.Mutex
 			var job int64
-			var leaseEnds time.Time // As Postgres had it when it answered the check.
-			before := func() {
-				if c.leaseLeft == 0 {
-					return
-				}
+			var leaseEnds time.Time // As Postgres had it when it answered the renewal.
+			// The renewal has run in Postgres by now; nothing renews the job's lease while the answer is held.
+			after := func() {
 				var id int64
 				var ends time.Time
-				if err := r.pool.QueryRow(ctx, `UPDATE transcode_jobs SET lease_expires_at = now() + make_interval(secs => $1)
-					WHERE state = 'running' RETURNING id, lease_expires_at`, c.leaseLeft.Seconds()).Scan(&id, &ends); err != nil {
+				if err := r.pool.QueryRow(ctx, "SELECT id, lease_expires_at FROM transcode_jobs WHERE state = 'running' ORDER BY id DESC LIMIT 1").Scan(&id, &ends); err != nil {
 					t.Error(err)
 					return
 				}
 				mu.Lock()
 				job, leaseEnds = id, ends
 				mu.Unlock()
-			}
-			after := func() {
 				if c.stop {
 					w.cmd.Process.Signal(syscall.SIGSTOP) //nolint:errcheck
 					defer w.cmd.Process.Signal(syscall.SIGCONT)
 				}
+				if c.late {
+					w.keep.Hold() // A renewal sent now, or a connection made now, is not answered either.
+					defer w.keep.Release()
+				}
 				time.Sleep(c.hold)
 			}
-			asked := w.db.OnStatement(isTheOwnershipCheck(c.nth), before, after)
+			asked := w.keep.OnStatement(isTheRenewalNth(c.nth), nil, after)
 
 			served := make(chan error, 1)
 			go func() { _, err := s.fetch(ctx, s.jobs, r.spec, psid(0), 0); served <- err }()
 			select {
 			case <-asked:
 			case <-time.After(90 * time.Second):
-				t.Fatalf("the worker never asked whether job %d was still its own for the %dth time: the check this test waits for is not the one a worker sends", job, c.nth)
+				t.Fatalf("the worker never sent its %dth renewal on the keeper's connection: the statement this test waits for is not the one a worker sends", c.nth)
 			}
 			mu.Lock()
 			old, ends := job, leaseEnds
 			mu.Unlock()
-			if c.leaseLeft == 0 {
-				if err := r.pool.QueryRow(ctx, "SELECT id, lease_expires_at FROM transcode_jobs WHERE state = 'running'").Scan(&old, &ends); err != nil {
-					t.Fatal(err)
-				}
-			}
 			ffmpegBefore, _ := r.ffmpegOf(w)
 
 			if !c.givesUp {
@@ -145,7 +140,7 @@ func TestAWorkerBeginsNoPutOnceTheLeaseRanOutWhateverMadeItLate(t *testing.T) {
 					t.Fatalf("the viewer was not served: %v", err)
 				}
 				waitFor(t, "the job to record a segment after the held answer", 60*time.Second, func() bool {
-					return r.count(t, "SELECT next_segment FROM transcode_jobs WHERE id = $1", old) > c.nth-1
+					return r.count(t, "SELECT next_segment FROM transcode_jobs WHERE id = $1", old) >= 1
 				})
 				time.Sleep(time.Second)
 				if got := r.jobState(t, old); got != "running" {

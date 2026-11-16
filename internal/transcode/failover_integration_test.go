@@ -72,6 +72,11 @@ func workerProcess(id string) {
 			fail("liveness address", err)
 		}
 	}
+	if addr := os.Getenv("JELLYSCALE_TEST_KEEPER"); addr != "" { // The lease keeper's own connection (JS-105).
+		if w.KeeperConfig, err = through(dsn, addr); err != nil {
+			fail("lease keeper address", err)
+		}
+	}
 	w.Hub = &Hub{Pool: pool, Log: log}
 	go w.Hub.Run(ctx)
 	go w.Present(ctx, "worker", "", 200*time.Millisecond)
@@ -823,11 +828,14 @@ func files(t *testing.T, dir string) map[string]time.Time {
 
 // A worker whose lease is gone stores nothing, whatever the reason: here its
 // heartbeat is a minute away, so only the check before each store can notice.
+// The lease is long so that the keeper's own cut, a lease after the claim, plays
+// no part: with the rig's 3 s the first segment had to be stored within the cut,
+// which a loaded runner missed (JS-105).
 func TestAWorkerWhoseLeaseIsGoneStoresNothing(t *testing.T) {
 	segments := t.TempDir()
 	r := newRig(t, store.NewPosix(segments))
 	slowAt(t, "2")
-	r.worker(t, func(w *Worker) { w.Heartbeat = time.Minute })
+	r.worker(t, func(w *Worker) { w.Heartbeat, w.Lease = time.Minute, 30*time.Second })
 	j := r.jobs(t)
 	if _, err := r.fetch(t, j, psid(0), 0); err != nil {
 		t.Fatal(err)
