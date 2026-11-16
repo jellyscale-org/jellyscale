@@ -125,6 +125,17 @@ func TestEveryJobOfEveryWorkerGoesOnThroughAnOutage(t *testing.T) {
 			s.reaping(t)
 			servedBefore := encViewer.got.Load() + cpViewer.got.Load()
 
+			// Each worker returns no later than 1.5 s before the lease Postgres holds for its
+			// job, read now: a renewal only moves it later. Until the cut, 0.5 s before the
+			// lease, the job is the worker's, so every shape must cost no job.
+			latest := map[string]time.Time{}
+			for _, w := range s.workers {
+				var lease time.Time
+				if err := r.pool.QueryRow(context.Background(), "SELECT min(lease_expires_at) FROM transcode_jobs WHERE state = 'running' AND worker = $1", w.id).Scan(&lease); err != nil {
+					t.Fatal(err)
+				}
+				latest[w.id] = lease.Add(-1500 * time.Millisecond)
+			}
 			s.afterRenewal()
 			if shape.terminate {
 				s.terminate(s.workers...)
@@ -139,7 +150,7 @@ func TestEveryJobOfEveryWorkerGoesOnThroughAnOutage(t *testing.T) {
 				returned.Add(1)
 				go func() {
 					defer returned.Done()
-					time.Sleep(max(0, shape.back[i]-time.Since(begun)))
+					time.Sleep(max(0, min(shape.back[i]-time.Since(begun), time.Until(latest[w.id]))))
 					w.back()
 				}()
 			}

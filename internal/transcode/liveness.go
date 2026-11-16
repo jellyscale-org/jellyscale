@@ -44,6 +44,7 @@ var livenessTable = []livenessTiming{
 	{"counted", "lease", func(l time.Duration) time.Duration { return l }},
 	{"grace", "lease/10", func(l time.Duration) time.Duration { return l / 10 }},
 	{"forgottenLease", "lease/20", func(l time.Duration) time.Duration { return l / 20 }},
+	{"cutMargin", "lease/20", func(l time.Duration) time.Duration { return l / 20 }},
 	{"confirmGap", "lease/20", func(l time.Duration) time.Duration { return l / 20 }},
 	{"bound", "lease/20", func(l time.Duration) time.Duration { return l / 20 }},
 	{"lookPeriod", "lease/40", func(l time.Duration) time.Duration { return l / 40 }},

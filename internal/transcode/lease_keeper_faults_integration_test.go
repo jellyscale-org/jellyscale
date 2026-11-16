@@ -19,7 +19,7 @@ import (
 
 // JS-105, the faults of the lease keeper's own connection and statements. The
 // workers run at their production lease (10 s) and heartbeat (3 s): the criteria
-// are about the lines a renewal's bound (1.5 s), a retry and the cut (7 s after
+// are about the lines a renewal's bound (1.5 s), a retry and the cut (9.5 s after
 // the last renewal) draw, and a shorter lease would move them. Nothing here
 // judges how long something took; a hang is bounded by keeperHang.
 
@@ -88,7 +88,7 @@ func TestAJobWhoseWorkHasNotComeRoundIsGivenUpWhileTheKeeperStillAnswers(t *test
 // row on one worker with one ffmpeg through the whole film, which takes more
 // than two leases, and stores every segment. A keeper that gives its
 // connect the renewal's bound can never connect, and a job claimed under the
-// delay is cut at 7 seconds.
+// delay is cut at 9.5 seconds.
 func TestASlowDatabaseSetBeforeTheClaimCostsNoJobItsLeaseOrItsWorker(t *testing.T) {
 	slowAt(t, "2")
 	// The pool as production opens it (see lease_keeper_integration_test.go). The queue's timeout
@@ -221,9 +221,9 @@ func TestSeveringTheKeepersConnectionAloneUnderASlowDatabaseCostsNoJob(t *testin
 
 // Postgres away from the worker from 2.9 s after a renewal to 6.2 s after it
 // (3.3 s): the heartbeat at 3 s fails, and a keeper that tries again only at the
-// next heartbeat (6 s, inside the outage) has its cut at 7 s before the next one
+// next heartbeat (6 s, inside the outage) has its cut at 9.5 s after the next one
 // at 9 s. A failed renewal is tried again at once and then at a short interval, so
-// one lands between 6.2 s and 7 s. Every job keeps its row, worker and ffmpeg.
+// one lands between 6.2 s and 7 s, and the lease read at 8 s shows it. Every job keeps its row, worker and ffmpeg.
 // The job is paused at its lead first, so no fence before a put sends a renewal:
 // the renewal the outage is timed from is a heartbeat's, and nothing but the
 // keeper's own retry can land a renewal between the failed ones and the cut.
@@ -238,7 +238,7 @@ func TestAnOutageFrom2Point9SecondsAfterARenewalFor3Point3SecondsCostsNoJob(t *t
 	// put, so the only renewals are the heartbeat's: a storing job's fence asks the keeper for a renewal
 	// sent at once, and each of its asks would be a retry of a failed heartbeat that this outage must
 	// not be given (a build that retries nothing, or only at the next heartbeat, cuts the paused job at
-	// 7 s: heartbeats at 3 s and 6 s fail, the next is at 9 s).
+	// 9 s: heartbeats at 3 s and 6 s fail, the next is at 9 s, which the cut at 9.5 s still allows).
 	waitFor(t, "the job's ffmpeg to be paused at its lead", keeperHang, func() bool {
 		p, ok := r.ffmpegOf(w)
 		return ok && p.State == "T"
@@ -258,6 +258,13 @@ func TestAnOutageFrom2Point9SecondsAfterARenewalFor3Point3SecondsCostsNoJob(t *t
 	time.Sleep(3300 * time.Millisecond)
 	w.back()
 	waitFor(t, "the worker to hold its lock again", keeperHang, func() bool { return r.locked(w.id) })
+	// The retry, not the next heartbeat (at 9 s), renewed the lease: at 8 s it is a lease past a
+	// renewal sent more than a second after the first, which is the cut's 9.5 s that a build that
+	// retries only at the heartbeat would also meet.
+	time.Sleep(time.Until(at.Add(8 * time.Second)))
+	if lease := r.leaseOf(t, r.jobOf(t, r.hash)); !lease.After(at.Add(11 * time.Second)) {
+		t.Errorf("at 8 s after the renewal the lease is %v after it, so no renewal was retried before the next heartbeat", lease.Sub(at))
+	}
 	time.Sleep(2 * time.Second)
 	if got := r.jobRows(t); fmt.Sprint(got) != fmt.Sprint(rowsBefore) {
 		t.Errorf("job rows were %+v and are %+v: an outage of 3.3 s changed a job", rowsBefore, got)
@@ -278,7 +285,7 @@ func TestAnOutageFrom2Point9SecondsAfterARenewalFor3Point3SecondsCostsNoJob(t *t
 // and the pool's answer: losing the lock is not losing the lease (DOMAINS 25), and
 // the keeper is not on the lock's connection, so it renews through all of it. The
 // worker keeps its row and the job goes on with the same ffmpeg; a build with the
-// keeper on the lock's connection cuts the job at 7 s.
+// keeper on the lock's connection cuts the job at 7 s (a heartbeat before the lease).
 func TestTheLocksConnectionRefusedForLongerThanALeaseCostsTheKeepersJobNothing(t *testing.T) {
 	slowAt(t, "2")
 	s := newStack(t, 1)
@@ -327,7 +334,7 @@ func TestTheLocksConnectionRefusedForLongerThanALeaseCostsTheKeepersJobNothing(t
 // no job is cut: the keeper's cut and Postgres agree, so no renewal that
 // Postgres rolled back was counted (a batch of two tables in one transaction, a
 // confirmation read from a rolled-back result), and none that Postgres kept was
-// lost. The extraction itself is cut, a heartbeat before its lease can lapse.
+// lost. The extraction itself is cut, the cutMargin before its lease can lapse.
 func TestARenewalCountsOnlyWhenConfirmedSoASubtitleTablesFaultCostsTheTranscodeJobNothing(t *testing.T) {
 	for _, mode := range []string{"fails", "blocks"} {
 		t.Run(mode, func(t *testing.T) {

@@ -26,7 +26,7 @@ import (
 // each other and Postgres aborts one of them, whichever it likes: the statement
 // skips the rows another session holds, and each row it skipped is asked again
 // alone. A renewal counts when Postgres has answered it and not before. It
-// cuts a job's work a heartbeat before the lease can lapse, counted from when the
+// cuts a job's work the cutMargin before the lease can lapse, counted from when the
 // last answered renewal of that job was sent (the lease can't have started
 // earlier), so a worker that cannot renew has stopped before another may own the
 // job. A failed renewal is tried again at once, and then at a short interval,
@@ -40,7 +40,7 @@ import (
 // job's loop, which also pauses its ffmpeg at the lead, does not wait for it.
 
 // errUnrenewed is why a job was given up when no renewal was answered in time.
-var errUnrenewed = errors.New("the lease was not renewed in time, so the job is given up a heartbeat before it can lapse")
+var errUnrenewed = errors.New("the lease was not renewed in time, so the job is given up before it can lapse")
 
 // errStalled is why a job was given up when its work did not come round.
 var errStalled = errors.New("the job's work has not come round for a lease, so it is given up and its lease left to lapse")
@@ -229,11 +229,13 @@ func (k *leaseKeeper) poke() {
 	}
 }
 
-// cutAfter is how long after a renewal was sent the job is given up: a heartbeat
-// before the lease can lapse. A heartbeat as long as the lease leaves no room to
-// stop before it, and the cut is then the lease's end.
+// cutAfter is how long after a renewal was sent the job is given up: the table's
+// cutMargin before the lease can lapse, which is what ending an ffmpeg takes with
+// room to spare. Until then the job is the worker's and nobody may take it, so it
+// is kept for as long as a renewal can still be answered. A lease no longer than
+// the margin is cut at its end.
 func (k *leaseKeeper) cutAfter() time.Duration {
-	if d := k.w.lease() - k.w.heartbeat(); d > 0 {
+	if d := k.w.lease() - liveTiming("cutMargin"); d > 0 {
 		return d
 	}
 	return k.w.lease()

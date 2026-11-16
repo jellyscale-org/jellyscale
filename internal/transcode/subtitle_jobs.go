@@ -324,12 +324,12 @@ func (w *Worker) claimSubtitle(ctx context.Context, chapters bool) (subtitleJob,
 
 // runSubtitle extracts one track, renewing the lease meanwhile, and records how
 // it ended. A job whose lease was taken is left to its new owner. Cut off from
-// the database it stops a beat before the lease lapses, so that a file is never
+// the database it stops the cutMargin before the lease lapses, so that a file is never
 // read by two workers at once.
 func (w *Worker) runSubtitle(ctx context.Context, job subtitleJob) {
 	log := w.Log.With("subtitle", job.Key)
 	// The lease keeper cancels extractCtx when the lease can no longer be trusted,
-	// a heartbeat before it lapses, so that a file is never read by two workers at
+	// the cutMargin before it lapses, so that a file is never read by two workers at
 	// once, and when it was taken from this worker.
 	extractCtx, lease := w.keepSubtitleLease(ctx, job)
 	defer lease.stop()

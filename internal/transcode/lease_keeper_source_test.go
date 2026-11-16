@@ -233,7 +233,7 @@ func TestTheLeaseKeeperWritesNoDurationAndIsNotTheJobsOwnLoop(t *testing.T) {
 		})
 	}
 	if !names["lease"] || !names["heartbeat"] {
-		t.Errorf("the helper %s does not use both the worker's lease and its heartbeat (lease %v, heartbeat %v): its renewal bound is half the heartbeat and its give-up is a lease less a heartbeat",
+		t.Errorf("the helper %s does not use both the worker's lease and its heartbeat (lease %v, heartbeat %v): its renewal bound is half the heartbeat and its give-up is a lease less the cutMargin",
 			renewal.fn.Name.Name, names["lease"], names["heartbeat"])
 	}
 }

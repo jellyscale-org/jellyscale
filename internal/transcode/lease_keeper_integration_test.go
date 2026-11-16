@@ -24,12 +24,12 @@ import (
 // jobs before their leases run out.
 //
 // The workers run at their production lease (10 s) and heartbeat (3 s): the
-// criteria are that a worker stops its job a heartbeat before its lease can
-// lapse (7 s after its last renewal) and that a renewal gives up after half a
+// criteria are that a worker stops its job the cutMargin before its lease can
+// lapse (9.5 s after its last renewal) and that a renewal gives up after half a
 // heartbeat (1.5 s), and a shorter lease would move those lines. No check
 // judges how long anything took; what is compared is the moment a thing was seen
-// to end against the lease Postgres holds, which the worker aims to beat by a
-// whole heartbeat (3 s), and a hang is bounded by many leases. These compile only
+// to end against the lease Postgres holds, which the worker aims to beat by the
+// cutMargin (0.5 s), and a hang is bounded by many leases. These compile only
 // once testenv.DBProxy has Hold and Release (JS-105 builds them with this task).
 
 const keeperHang = 90 * time.Second // Only bounds a hang: the checks judge nothing by it.
@@ -102,8 +102,8 @@ func (r *rig) jobOf(t *testing.T, hash string) int64 {
 
 // goneBefore waits for the ffmpeg process (pid and start) to be gone, and says
 // whether that was seen before the lease ended, by the clock of this machine
-// and the lease as Postgres holds it. The worker's kill is a heartbeat (3 s)
-// before the lease, so a build that kills in time has seconds in hand, and a
+// and the lease as Postgres holds it. The worker's kill is the cutMargin (0.5 s)
+// before the lease, so a build that kills in time has that in hand, and a
 // build that kills at the lease or later, or never, does not.
 func (r *rig) goneBefore(t *testing.T, p ffmpegProcess, lease time.Time) (gone, inTime bool) {
 	t.Helper()
@@ -446,7 +446,7 @@ func TestASlowDatabaseCostsNoJobItsLeaseOrItsWorker(t *testing.T) {
 	// The pool as production opens it, not the kit's exec mode: there the first use
 	// of a statement on a connection is a prepare and an execute, two round trips,
 	// and at 1 s each a renewal bounded at 1.5 s that is not sent in one round trip
-	// gives up every time and the keeper cuts a healthy job at 7 s. A build must
+	// gives up every time and the keeper cuts a healthy job at 9.5 s. A build must
 	// send its renewal in one round trip on any connection (pgx.QueryExecModeExec).
 	s := newStack(t, 1, productionPool)
 	r, w, ctx := s.r, s.workers[0], context.Background()

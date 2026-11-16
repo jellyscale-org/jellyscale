@@ -8,7 +8,7 @@ import (
 )
 
 // JS-105: DOMAINS 25 and docs/transcoding.md (The bounds) say that a worker
-// which cannot renew stops its job a heartbeat before the lease can lapse, 7
+// which cannot renew stops its job the cutMargin before the lease can lapse, 9.5
 // seconds after its last renewal at the defaults, and no longer that it runs its
 // ffmpeg "at the latest its lease" or "until its own lease check (10 seconds after
 // its last renewal)". The guarantees DOMAINS 25 stated are kept by
@@ -16,13 +16,13 @@ import (
 
 func flat(s string) string { return strings.ToLower(strings.Join(strings.Fields(s), " ")) }
 
-func TestDomains25SaysAWorkerThatCannotRenewStopsAHeartbeatBeforeTheLeaseCanLapse(t *testing.T) {
+func TestDomains25SaysAWorkerThatCannotRenewStopsTheCutMarginBeforeTheLeaseCanLapse(t *testing.T) {
 	text := flat(invariant25(t))
-	if !regexp.MustCompile(`a heartbeat before (its|the) lease can lapse`).MatchString(text) {
-		t.Error("DOMAINS 25 never says that a worker which cannot renew stops its job a heartbeat before the lease can lapse")
+	if !regexp.MustCompile(`the ` + "`cutmargin`" + ` before (its|the) lease can lapse`).MatchString(text) {
+		t.Error("DOMAINS 25 never says that a worker which cannot renew stops its job the cutMargin before the lease can lapse")
 	}
-	if !regexp.MustCompile(`(^|[^0-9.])7 ?(s|seconds)([^a-z]|$)`).MatchString(text) {
-		t.Error("DOMAINS 25 does not give the 7 seconds after its last renewal (lease less heartbeat at the defaults)")
+	if !regexp.MustCompile(`(^|[^0-9.])9\.5 ?(s|seconds)([^a-z]|$)`).MatchString(text) {
+		t.Error("DOMAINS 25 does not give the 9.5 seconds after its last renewal (lease less cutMargin at the defaults)")
 	}
 	for _, old := range []string{"at the latest its lease", "its own lease check"} {
 		if strings.Contains(text, old) {
@@ -31,7 +31,7 @@ func TestDomains25SaysAWorkerThatCannotRenewStopsAHeartbeatBeforeTheLeaseCanLaps
 	}
 }
 
-func TestTranscodingDocBoundsSayAWorkerThatCannotRenewStopsAHeartbeatBeforeTheLeaseCanLapse(t *testing.T) {
+func TestTranscodingDocBoundsSayAWorkerThatCannotRenewStopsBeforeTheLeaseCanLapse(t *testing.T) {
 	text := flat(doc(t, "docs/transcoding.md"))
 	i := strings.Index(text, "the bounds:")
 	if i < 0 {
@@ -41,11 +41,11 @@ func TestTranscodingDocBoundsSayAWorkerThatCannotRenewStopsAHeartbeatBeforeTheLe
 	if j := strings.Index(bounds, "connections:"); j > 0 {
 		bounds = bounds[:j]
 	}
-	if !regexp.MustCompile(`a heartbeat before (its|the) lease can lapse`).MatchString(bounds) {
-		t.Error("The bounds never say that a worker which cannot renew stops its job a heartbeat before the lease can lapse")
+	if !regexp.MustCompile(`half a second before (its|the) lease can lapse`).MatchString(bounds) {
+		t.Error("The bounds never say that a worker which cannot renew stops its job half a second before the lease can lapse")
 	}
-	if !regexp.MustCompile(`7 seconds after its last renewal`).MatchString(bounds) {
-		t.Error("The bounds do not say 7 seconds after its last renewal")
+	if !regexp.MustCompile(`9\.5 seconds after its last renewal`).MatchString(bounds) {
+		t.Error("The bounds do not say 9.5 seconds after its last renewal")
 	}
 	for _, old := range []string{"its own lease check (10 seconds after its last renewal)", "at the latest its lease"} {
 		if strings.Contains(bounds, old) {

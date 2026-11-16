@@ -19,7 +19,7 @@ import (
 // a round trip afterwards (putAllowance, which JS-066 and JS-104 already allow).
 // A put that was already begun when the lease went is not counted. A build whose
 // fence only compares the clock with the last renewal begins puts for up to
-// 7 seconds more, which these cases see on any machine.
+// 9 seconds more, which these cases see on any machine.
 
 // A viewer's stop or seek cancels a job at any moment, so a renewal answered just
 // before it is the worst case: the keeper's last word is "yours" and it is
@@ -61,7 +61,7 @@ func TestNoPutBeginsAfterAJobWasCancelledJustAfterARenewal(t *testing.T) {
 // A reap deletes the worker's row and cuts its jobs' leases to half a second
 // (liveness.go, reap), as another worker's look does when it finds the lock gone.
 // The pool is held, so the worker cannot look at its own row, and the keeper's
-// connection answers: its last renewal says "yours" for another 7 seconds by its
+// connection answers: its last renewal says "yours" for another 9.5 seconds by its
 // own clock. No put begins more than a round trip after the cut.
 func TestNoPutBeginsAfterAReapCutTheLeaseAndDeletedTheRowWhileThePoolIsHeld(t *testing.T) {
 	slowAt(t, "8")

@@ -5,9 +5,11 @@ package transcode
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -244,4 +246,90 @@ func TestACopyWhoseKeepersConnectionIsRefusedStaysPausedAtItsLeadWithItsFfmpeg(t
 		t.Errorf("the copy's ffmpeg was %+v while Postgres was away and is %+v (running %v) after it", p, q, ok)
 	}
 	r.noFailed(t)
+}
+
+// theKeptJob arms the keeper's proxy to act on the first renewal of a job paused
+// at its lead after it runs, and then returns the job's lease, which that renewal
+// did not reach: the worker has the answer of the one before it, so the cut it
+// counts from is that one's, 9.5 s after it was sent, and the lease Postgres holds
+// is 10 s after it. act runs with the renewal not yet sent on.
+func (s *stack) theKeptJob(t *testing.T, act func(w *outageWorker)) (job int64, lease time.Time, before ffmpegProcess, rowsBefore any) {
+	t.Helper()
+	r, w, ctx := s.r, s.workers[0], context.Background()
+	if _, err := s.fetch(ctx, s.jobs, r.spec, psid(0), 0); err != nil { // One segment asked for: the job stops at its lead.
+		t.Fatal(err)
+	}
+	// Paused at its lead no segment waits to be put, so the renewals are the heartbeat's.
+	waitFor(t, "the job's ffmpeg to be paused at its lead", keeperHang, func() bool {
+		p, ok := r.ffmpegOf(w)
+		return ok && p.State == "T"
+	})
+	job = r.jobOf(t, r.hash)
+	before, _ = r.ffmpegOf(w)
+	rowsBefore = r.jobRows(t)
+	acted := make(chan struct{}) // The proxy's own channel closes with an answer, which this renewal never gets.
+	w.keep.OnStatement(isTheRenewal, func() { act(w); close(acted) }, nil)
+	select {
+	case <-acted:
+	case <-time.After(keeperHang):
+		t.Fatal("the worker sent no renewal")
+	}
+	return job, r.leaseOf(t, job), before, rowsBefore
+}
+
+// keepsTheJob fails unless the job is as it was and its lease moved on.
+func (s *stack) keepsTheJob(t *testing.T, job int64, lease time.Time, before ffmpegProcess, rowsBefore any, what string) {
+	t.Helper()
+	r, w := s.r, s.workers[0]
+	waitFor(t, "the job's lease to be renewed", keeperHang, func() bool { return r.leaseOf(t, job).After(lease) })
+	if got := r.jobRows(t); fmt.Sprint(got) != fmt.Sprint(rowsBefore) {
+		t.Errorf("job rows were %+v and are %+v: %s changed a job", rowsBefore, got, what)
+	}
+	if p, ok := r.ffmpegOf(w); !ok || p.Pid != before.Pid || p.Start != before.Start {
+		t.Errorf("ffmpeg was %+v and is %+v (running %v)", before, p, ok)
+	}
+	if lines := interruptedLines(w); len(lines) > 0 {
+		t.Errorf("the worker gave a job up: %v", lines)
+	}
+	r.noFailed(t)
+}
+
+// A Postgres outage that ends 1.5 s before a job's lease can lapse costs no job:
+// until the cut (0.5 s before the lease) the job is the worker's and nobody may
+// take it. The outage begins as a heartbeat's renewal is about to be sent, with
+// the worker's last answered renewal 3 s old, and ends at the lease less 1.5 s,
+// which is 8.5 s after that one: after the cut of a build that cuts a heartbeat
+// before the lease (7 s) and before the cut of the right one (9.5 s).
+//
+// Fails with cutAfter as the lease less the heartbeat (d0bba71).
+func TestAnOutageThatEnds1Point5SecondsBeforeTheLeaseCostsNoJob(t *testing.T) {
+	slowAt(t, "2")
+	s := newStack(t, 1, "JELLYSCALE_TEST_LEAD_SECONDS=8")
+	w := s.workers[0]
+	job, lease, before, rows := s.theKeptJob(t, func(w *outageWorker) { w.away(true) })
+	time.Sleep(time.Until(lease.Add(-1500 * time.Millisecond)))
+	w.back()
+	s.keepsTheJob(t, job, lease, before, rows, "an outage that ended 1.5 s before the lease")
+}
+
+// The same for a worker that is stopped (SIGSTOP, a frozen VM) until 1.5 s before
+// its job's lease can lapse: its keeper's timer fires as it goes on, and the job
+// is not yet given up. Its connection to Postgres is held at the moment it stops,
+// so the renewal in flight does not reach Postgres, and the lease is as it was.
+// The job's ffmpeg is paused at its lead and stays so.
+//
+// Fails with cutAfter as the lease less the heartbeat (d0bba71).
+func TestAWorkerStoppedUntil1Point5SecondsBeforeItsLeaseKeepsItsJob(t *testing.T) {
+	slowAt(t, "2")
+	s := newStack(t, 1, "JELLYSCALE_TEST_LEAD_SECONDS=8")
+	w := s.workers[0]
+	t.Cleanup(func() { w.cmd.Process.Signal(syscall.SIGCONT) }) //nolint:errcheck
+	job, lease, before, rows := s.theKeptJob(t, func(w *outageWorker) {
+		w.keep.Hold()
+		w.cmd.Process.Signal(syscall.SIGSTOP) //nolint:errcheck
+	})
+	time.Sleep(time.Until(lease.Add(-1500 * time.Millisecond)))
+	w.cmd.Process.Signal(syscall.SIGCONT) //nolint:errcheck
+	w.keep.Release()
+	s.keepsTheJob(t, job, lease, before, rows, "a stop that ended 1.5 s before the lease")
 }
