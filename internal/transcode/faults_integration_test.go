@@ -207,7 +207,8 @@ type chaos struct {
 	workers    []*chaosWorker
 	pgAway     bool
 	pgEnded    time.Time
-	current    string // The step that began last.
+	restarts   restartCount // The restarts of Postgres in progress: together one outage.
+	current    string       // The step that began last.
 	violations []chaosViolation
 	claimant   map[int64]string
 	lastJobs   map[int64]jobSnap
@@ -224,7 +225,16 @@ type chaos struct {
 
 func (c *chaos) violate(invariant, format string, args ...any) {
 	c.mu.Lock()
-	v := chaosViolation{invariant, fmt.Sprintf(format, args...), c.current}
+	after := c.current
+	c.mu.Unlock()
+	c.violateAfter(after, invariant, format, args...)
+}
+
+// violateAfter is a violation that names the step it belongs to, which is not always the one that
+// began last (the checks of a restart of Postgres run on after later steps have begun).
+func (c *chaos) violateAfter(after, invariant, format string, args ...any) {
+	c.mu.Lock()
+	v := chaosViolation{invariant, fmt.Sprintf(format, args...), after}
 	c.violations = append(c.violations, v)
 	c.mu.Unlock()
 	c.t.Logf("INVARIANT BROKEN: %s (seed %d, schedule %d, after step %q): %s", v.invariant, c.seed, c.index, v.after, v.detail)
@@ -629,9 +639,11 @@ type stepRecord struct {
 	worker     string
 }
 
+func stepName(i int, step faultStep) string { return fmt.Sprintf("step %d: %v", i, step) }
+
 func (c *chaos) begin(i int, step faultStep) {
 	c.mu.Lock()
-	c.current = fmt.Sprintf("step %d: %v", i, step)
+	c.current = stepName(i, step)
 	c.mu.Unlock()
 	c.t.Logf("%v: step %d begins: %v", time.Since(c.started).Round(100*time.Millisecond), i, step)
 }
@@ -709,9 +721,9 @@ func (c *chaos) kill(i int, step faultStep) {
 	go func() {
 		c.waitPostgres()
 		if replacement, err := c.spawn(); err != nil {
-			c.violate("test harness", "starting a replacement worker: %v", err)
+			c.violateAfter(stepName(i, step), "test harness", "starting a replacement worker: %v", err)
 		} else if err := c.waitRegistered(replacement); err != nil {
-			c.violate("test harness", "%v", err)
+			c.violateAfter(stepName(i, step), "test harness", "%v", err)
 		}
 	}()
 	if err != nil || !free || recent || pgSoon || !waiting {
@@ -730,12 +742,12 @@ func (c *chaos) kill(i int, step faultStep) {
 		if claimed != nil {
 			c.t.Logf("the replacement of job %d was first seen claimed by %s %v before the lease ran out", job, *claimed, lease.Sub(at).Round(time.Millisecond))
 			if !at.Before(lease) {
-				c.violate("resume after a kill", "worker %s was killed holding job %d with its lease running to %v and the replacement was first seen claimed at %v, after it", w.id, job, lease.Format(time.StampMilli), at.Format(time.StampMilli))
+				c.violateAfter(stepName(i, step), "resume after a kill", "worker %s was killed holding job %d with its lease running to %v and the replacement was first seen claimed at %v, after it", w.id, job, lease.Format(time.StampMilli), at.Format(time.StampMilli))
 			}
 			return
 		}
 		if !time.Now().Before(lease.Add(faultHang)) {
-			c.violate("no job lost", "worker %s was killed holding job %d and no replacement was claimed", w.id, job)
+			c.violateAfter(stepName(i, step), "no job lost", "worker %s was killed holding job %d and no replacement was claimed", w.id, job)
 			return
 		}
 		time.Sleep(10 * time.Millisecond)
@@ -819,11 +831,11 @@ func (c *chaos) sameAs(before jobsAndFfmpeg, from time.Time) []string {
 }
 
 func (c *chaos) restartPostgres(i int, step faultStep) {
-	snap := c.snapshotRunning("")
 	began := time.Now()
 	workers := c.alive()
 	c.mu.Lock()
 	c.pgAway = true
+	c.restarts.begin()
 	c.mu.Unlock()
 	for _, w := range workers {
 		w.away(true)
@@ -838,17 +850,27 @@ func (c *chaos) restartPostgres(i int, step faultStep) {
 		c.r.pool.QueryRow(context.Background(), `SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'dbproxy-%'`).Scan(&n) //nolint:errcheck
 		return n == 0
 	})
+	// Taken now, no proxied process can change a row before it is judged.
+	snap := c.snapshotRunning("")
+	awayAt := time.Now()
 	c.sleep(step.Length)
-	for _, w := range workers {
-		w.back()
-	}
-	for _, r := range c.replicas {
-		r.proxy.Back()
-	}
-	c.s.replica.Back()
+	// Restarts that overlap are one outage, which ends when the last of them ends.
 	c.mu.Lock()
-	c.pgAway, c.pgEnded = false, time.Now()
+	last := c.restarts.end()
+	workers = slices.Clone(c.workers)
 	c.mu.Unlock()
+	if last {
+		for _, w := range workers {
+			w.back()
+		}
+		for _, r := range c.replicas {
+			r.proxy.Back()
+		}
+		c.s.replica.Back()
+		c.mu.Lock()
+		c.pgAway, c.pgEnded = false, time.Now()
+		c.mu.Unlock()
+	}
 	hit := false
 	if step.Kind == faultPGShort {
 		hit = c.hitByAnyStep(i, 6*time.Second)
@@ -862,18 +884,30 @@ func (c *chaos) restartPostgres(i int, step faultStep) {
 			return
 		}
 		for _, change := range c.sameAs(snap, began) {
-			c.violate("resume after a Postgres restart", "a restart of %v, shorter than a lease less a heartbeat, restarted something: %s", step.Length, change)
+			c.violateAfter(stepName(i, step), "resume after a Postgres restart", "a restart of %v, shorter than a lease less a heartbeat, restarted something: %s", step.Length, change)
 		}
 		for _, j := range snap.jobs {
 			deadline := time.Now().Add(faultHang)
 			for c.ctx.Err() == nil && c.r.count(c.t, "SELECT next_segment FROM transcode_jobs WHERE id = $1 AND state = 'running'", j.ID) <= snap.next[j.ID] {
 				if time.Now().After(deadline) {
-					c.violate("resume after a Postgres restart", "job %d stored no segment after a short restart", j.ID)
+					c.violateAfter(stepName(i, step), "resume after a Postgres restart", "job %d stored no segment after a short restart", j.ID)
 					break
 				}
 				time.Sleep(100 * time.Millisecond)
 			}
 		}
+		return
+	}
+	// The check is for an outage longer than a lease: say so if the one carried out was not.
+	c.waitPostgres()
+	if c.ctx.Err() != nil {
+		return
+	}
+	c.mu.Lock()
+	carried := c.pgEnded.Sub(awayAt)
+	c.mu.Unlock()
+	if earlier(carried, faultClock.Lease) {
+		c.violateAfter(stepName(i, step), "test harness", "a restart planned for %v was carried out for %v, shorter than a lease of %v: the check of a restart longer than a lease has nothing to judge", step.Length, carried.Round(100*time.Millisecond), faultClock.Lease)
 		return
 	}
 	// One longer than a lease ends those jobs cancelled, never failed; the next request starts
@@ -893,7 +927,7 @@ func (c *chaos) restartPostgres(i int, step faultStep) {
 		var state string
 		c.r.pool.QueryRow(context.Background(), "SELECT state FROM transcode_jobs WHERE id = $1", j.ID).Scan(&state) //nolint:errcheck
 		if state != "cancelled" {
-			c.violate("resume after a Postgres restart", "job %d was %s after a restart longer than a lease, want cancelled", j.ID, state)
+			c.violateAfter(stepName(i, step), "resume after a Postgres restart", "job %d was %s after a restart longer than a lease, want cancelled", j.ID, state)
 		}
 	}
 	c.t.Logf("a restart of %v judged %d of %d jobs for 'the jobs end cancelled'", step.Length, judged, len(snap.jobs))
@@ -947,7 +981,7 @@ func (c *chaos) stopWorker(i int, step faultStep) {
 		c.t.Logf("a stop of %v held to 'nothing changes' for %d jobs of worker %s", step.Length, len(snap.jobs), w.id)
 		// A stop shorter than a lease less a heartbeat leaves the jobs' ids, worker and ffmpeg as they were.
 		for _, change := range c.sameAs(snap, began) {
-			c.violate("resume after a stop", "a stop of %v, shorter than a lease less a heartbeat, changed something: %s", step.Length, change)
+			c.violateAfter(stepName(i, step), "resume after a stop", "a stop of %v, shorter than a lease less a heartbeat, changed something: %s", step.Length, change)
 		}
 		return
 	}
@@ -999,7 +1033,7 @@ func (c *chaos) delayWorker(i int, step faultStep) {
 	}
 	c.t.Logf("a round trip of %v held to 'nothing changes' for %d jobs of worker %s", step.RoundTrip, len(snap.jobs), w.id)
 	for _, change := range c.sameAs(snap, began) {
-		c.violate("a slow database is not a loss", "a round trip of %v changed something: %s", step.RoundTrip, change)
+		c.violateAfter(stepName(i, step), "a slow database is not a loss", "a round trip of %v changed something: %s", step.RoundTrip, change)
 	}
 }
 
@@ -1066,7 +1100,7 @@ func (c *chaos) slowStore(i int, step faultStep) {
 		}
 	}
 	for _, change := range c.sameAs(snap, began) {
-		c.violate("a slow store is not a loss", "a store that took a lease and a half for every put changed something: %s", change)
+		c.violateAfter(stepName(i, step), "a slow store is not a loss", "a store that took a lease and a half for every put changed something: %s", change)
 	}
 }
 
@@ -1249,7 +1283,7 @@ func (c *chaos) puts() []putEvent {
 
 // ---- running a schedule ----
 
-func runFaultSchedule(t *testing.T, seed uint64, index int, plan faultSchedule) {
+func runFaultSchedule(t *testing.T, seed uint64, index int, plan faultSchedule) *chaos {
 	t.Helper()
 	dir := chaosFilm(t) // Before the shim below, which would make it at the speed of the film.
 	slow(t)             // ffmpeg reads at the speed of the film: viewers play at 1x.
@@ -1353,6 +1387,7 @@ func runFaultSchedule(t *testing.T, seed uint64, index int, plan faultSchedule) 
 	for _, v := range violations {
 		t.Errorf("invariant %q broken; seed %d, schedule %d, after step %q: %s", v.invariant, seed, index, v.after, v.detail)
 	}
+	return c
 }
 
 // runFaultRun is one run: the seed named by the environment or a new one, and the schedules

@@ -135,6 +135,18 @@ func judgedAfterRestart(hits []workerHit, worker string, began, now time.Time) b
 	return true
 }
 
+// restartCount counts the restarts of Postgres in progress. Restarts that overlap are one
+// outage, which ends when the last of them ends, not the first.
+type restartCount struct{ n int }
+
+func (r *restartCount) begin() { r.n++ }
+
+// end says whether the restart that ends was the last in progress, so that Postgres is back.
+func (r *restartCount) end() bool {
+	r.n--
+	return r.n == 0
+}
+
 // workerOut says whether the step takes a worker away from the viewers for as
 // long as it lasts, and for how long. Two such steps never overlap: the
 // schedules keep one running worker with a free slot (a kill is replaced by a new
@@ -533,5 +545,31 @@ func TestARestartLongerThanALeaseJudgesEveryJobOfAWorkerNotHit(t *testing.T) {
 		if got := judgedAfterRestart(hits, worker, began, now); got != want {
 			t.Errorf("a job of worker %q judged: %v, want %v", worker, got, want)
 		}
+	}
+}
+
+// Restarts that overlap are one outage: Postgres is back when the last of them ends, in either
+// order (the short one begun inside the long one, the long one begun inside the short one).
+func TestOverlappingRestartsEndTheOutageWhenTheLastOfThemEnds(t *testing.T) {
+	var r restartCount
+	r.begin() // The long restart.
+	r.begin() // A short one inside it.
+	if r.end() {
+		t.Error("Postgres was back when the short restart inside the long one ended")
+	}
+	if !r.end() {
+		t.Error("Postgres was not back when the long restart ended")
+	}
+	r.begin() // The short restart.
+	r.begin() // A long one begun inside it.
+	if r.end() {
+		t.Error("Postgres was back when the short restart ended, with the long one begun inside it still going")
+	}
+	if !r.end() {
+		t.Error("Postgres was not back when the long restart ended")
+	}
+	r.begin()
+	if !r.end() {
+		t.Error("Postgres was not back when the only restart ended")
 	}
 }
