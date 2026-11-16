@@ -1755,12 +1755,11 @@
         "With a transcode store that refuses connections, PlaybackInfo and the segment answer the documented failure naming the store, not a Postgres wait",
         "db.IsAway is called only on errors from the pool"
       ],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [],
       "source": "Fable 5.2 blind audit, 2026-11-14 (.results/audit-2026-11-14.md)",
-      "notes": "",
-      "priority": 10
+      "notes": ""
     },
     {
       "id": "JS-108",

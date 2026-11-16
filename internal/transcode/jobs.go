@@ -57,7 +57,9 @@ type Viewer struct {
 type Jobs struct {
 	Pool     *pgxpool.Pool
 	Segments store.Store
-	Hub      *Hub
+	// SegmentsURI is where Segments is, for an error to name.
+	SegmentsURI string
+	Hub         *Hub
 	// QueueTimeout is how long a job may wait for a worker. WaitTimeout bounds
 	// a request. Zero means the defaults, 6 and 90 seconds.
 	QueueTimeout, WaitTimeout time.Duration
@@ -294,11 +296,20 @@ func (j *Jobs) Stop(ctx context.Context, userID, playSessionID, deviceID, item s
 	return err
 }
 
+// open is openSegment on the transcode store, a failure of which names the store.
+func (j *Jobs) open(ctx context.Context, hash string, n int) (*StoredSegment, error) {
+	seg, err := openSegment(ctx, j.Segments, SegmentKey(hash, n))
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		err = fromStore(j.SegmentsURI, err)
+	}
+	return seg, err
+}
+
 // Stored returns segment n of a spec (-1 is the init segment) if the store
 // holds it, for the caller to send and close, and store.ErrNotFound if not. It starts and joins no job and asks
 // Postgres nothing.
 func (j *Jobs) Stored(ctx context.Context, hash string, n int) (*StoredSegment, error) {
-	return openSegment(ctx, j.Segments, SegmentKey(hash, n))
+	return j.open(ctx, hash, n)
 }
 
 // Segment returns segment n of a spec (-1 is the init segment): from the
@@ -339,7 +350,7 @@ func (j *Jobs) segment(ctx context.Context, spec playback.Spec, hash string, vie
 	look := true
 	for {
 		if look {
-			seg, err := openSegment(ctx, j.Segments, SegmentKey(hash, n))
+			seg, err := j.open(ctx, hash, n)
 			if err == nil {
 				if *source == "" {
 					*source = "store"
@@ -394,7 +405,7 @@ func (j *Jobs) segment(ctx context.Context, spec playback.Spec, hash string, vie
 			case state.State == "done" && state.covers(n):
 				// The worker says it stored this segment and we can't find it.
 				// Look once more, in case it landed since we last looked.
-				if seg, err := openSegment(ctx, j.Segments, SegmentKey(hash, n)); err == nil {
+				if seg, err := j.open(ctx, hash, n); err == nil {
 					return seg, nil
 				}
 				if unreadable++; unreadable >= 2 {
@@ -412,7 +423,7 @@ func (j *Jobs) segment(ctx context.Context, spec playback.Spec, hash string, vie
 				// Some job of the spec, this one or another viewer's or a
 				// helper's, has recorded the segment. If it cannot be read yet,
 				// the next poll looks again.
-				if seg, err := openSegment(ctx, j.Segments, SegmentKey(hash, n)); err == nil {
+				if seg, err := j.open(ctx, hash, n); err == nil {
 					return seg, nil
 				} else if !errors.Is(err, store.ErrNotFound) {
 					return nil, err
