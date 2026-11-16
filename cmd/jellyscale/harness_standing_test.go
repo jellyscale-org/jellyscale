@@ -22,7 +22,7 @@ import (
 // The shapes: a process type is a struct holding an exec.Cmd; a log sink is a type with Write([]byte) (int,
 // error); a free-port helper is a function that listens on a ":0" address and closes the listener; the
 // sign-in is the string literal of its route; a start is an exec.Command of anything but a tool the tests use
-// (go, ffmpeg, ffprobe, docker, fc-list).
+// (bash for a recipe script, go, ffmpeg, ffprobe, docker, fc-list).
 //
 // Those shapes can be written around (a Close as "_ = l.Close()", a log that is a bytes.Buffer, a process kept in
 // a slice), so what is counted as well is each use: every Listen call, every place a process's output is taken,
@@ -38,7 +38,7 @@ type harnessReport struct {
 	listenFlags []string // every "--listen" or "--listen=..." string, alone or at the front of a sum
 }
 
-var toolsTheTestsRun = map[string]bool{"go": true, "ffmpeg": true, "ffprobe": true, "docker": true, "fc-list": true}
+var toolsTheTestsRun = map[string]bool{"bash": true, "go": true, "ffmpeg": true, "ffprobe": true, "docker": true, "fc-list": true}
 
 // A whole string that is an address with a port the test chose, and "--listen=addr" with one.
 var listenFlag = regexp.MustCompile(`^--listen[= ]\S*:[1-9][0-9]*$`)

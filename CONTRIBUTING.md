@@ -22,6 +22,19 @@ These were each seen on a developer machine, have not recurred on demand, and ha
 - `S3 burn-in of subtitle files beside the film` (test/e2e/subtitles.mjs) timed out once in three full runs at the seek to 30 s after choosing track 2; the server log showed that seek's job stopped as "no viewer is watching" and no later job started. Six runs of that scenario alone (`E2E_GATES=subtitles E2E_ONLY="S3 burn-in of subtitle files"`) and six of all four burn-in scenarios (`E2E_ONLY="burn-in"`) all passed, so it is not reproduced and its cause is unknown. Nothing was changed for it. If it recurs, keep `server.log` and `ffmpeg.log` from `$JELLYSCALE_LOG_DIR`.
 - `S3 burn-in: text is in the picture` (test/e2e/subtitles.mjs) timed out once waiting for a PlaybackInfo, in an e2e run on the audio-copy branch, and passed on the rerun. It is the second S3 burn-in timeout in two releases; the two may share a cause.
 
+## Releases
+
+Every commit that lands on `main` gets an image run (.github/workflows/image.yml), which publishes `main-<12 hex>` and `main-<12 hex>-fixtures` to ghcr.io/jellyscale-org/jellyscale once test/image.sh has passed on those images. A release is cut by the owner, in this order:
+
+1. Choose a commit of `main` whose image run passed.
+2. Push the tag `vX.Y.Z` on it (`git tag vX.Y.Z <commit> && git push origin vX.Y.Z`). Only a tag of exactly `v<number>.<number>.<number>` publishes anything.
+3. Wait for that tag's image run: it tests the images again and publishes `X.Y.Z` and `X.Y.Z-fixtures`.
+4. Make a GitHub release for the tag with generated notes.
+
+A version is never published twice: the run fails naming the tag if `X.Y.Z` or `X.Y.Z-fixtures` exists. A mistake gets the next version, and the tag of the mistake stays as it is.
+
+The first time, the owner makes the package public by hand (package settings on GitHub) after the first push, and decides the first version. If that first run stops with "cannot be asked" (HTTP 401 or 403) before any push, ghcr.io would not answer the workflow's token about a package that does not exist yet: the owner publishes the first image once by hand: build and test the commit with `JELLYSCALE_BUILT_AS=<name> test/image.sh`, `docker login ghcr.io` with a token that may write packages, then `GITHUB_SHA=<commit> GITHUB_REF_TYPE=branch GITHUB_REF_NAME=main REGISTRY_USER=<you> REGISTRY_TOKEN=<token> test/publish.sh ghcr.io/jellyscale-org/jellyscale <name>:server <name>:fixtures`. Later runs find the package.
+
 ## Rules
 
 - **Don't copy Jellyfin code.** Jellyfin is GPL-2.0, and jellyscale is written from observed behavior and public API documentation. Observe a real server instead.

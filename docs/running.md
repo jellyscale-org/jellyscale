@@ -24,6 +24,8 @@ MEDIA_DIR=/path/to/media JELLYSCALE_ADMIN_PASSWORD=change-me \
 
 `MEDIA_DIR` needs `movies/` and `shows/` folders. Segments are kept in the `transcode` volume. Open http://127.0.0.1:8096/web/ and sign in as `admin`. The stack's Caddy ingress sends media and images to `stream` and the rest to `api`. Libraries on S3 need `JELLYSCALE_S3_ACCESS_KEY` and `JELLYSCALE_S3_SECRET_KEY` exported on the host; compose passes them to every service. Add one to `deploy/compose/config.json` such as `{"name": "Cloud", "kind": "movies", "media": "s3://bucket/movies?endpoint=https://s3.example.com", "assets": "s3://bucket/assets?endpoint=https://s3.example.com"}`. For a single process, run `--roles=all`.
 
+A client's tests that want a server with a small known library, started with one Compose file and no setup, use the published fixtures image: [Testing a client](client-testing.md).
+
 ## Rolling update
 
 Replace the `stream` replicas first, then the `api` replicas. An `api` replica of this release offers a copy of HDR10, HDR10+ and HLG video, and a `stream` replica of the previous release refuses that copy, so a viewer who is sent to it fails to play. A new `stream` replica serves every copy the previous `api` offered, so it is safe to be first.

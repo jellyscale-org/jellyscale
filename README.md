@@ -49,6 +49,7 @@ MEDIA_DIR=/path/to/media JELLYSCALE_ADMIN_PASSWORD=change-me \
 - [Subtitles](docs/subtitles.md): text and image tracks, files and fonts beside the film, known limits.
 - [Chapters](docs/chapters.md): chapters and chapter pictures.
 - [Testing](docs/testing.md): the test tiers, CI shards, the fixture cache, flake hunting.
+- [Testing a client](docs/client-testing.md): the pinned image with the test films, its tags and the tracks of every film.
 - [Architecture decisions](docs/architecture-decisions.md).
 - [Contributing](CONTRIBUTING.md).
 

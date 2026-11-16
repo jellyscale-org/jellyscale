@@ -1,0 +1,148 @@
+# What test/image.sh checks the fixtures image against, and what docs/client-testing.md says (a unit test holds the two equal).
+# Tab-separated. A track is: track, film, index, type, language (none for no tag), codec, flags (default for audio, forced,
+# external, comma-separated; - for none) as PlaybackInfo lists it for the request on the page.
+image	ghcr.io/jellyscale-org/jellyscale
+compose	deploy/fixtures/compose.yaml
+user	test
+password	test
+films	23
+episodes	3
+library	Movies	movies	movies
+library	Shows	tvshows	shows
+library	Transcode	movies	transcode
+library	Languages	movies	languages
+film	Alpha Film
+film	Babel Film
+film	Burn Sub Film
+film	Cracked Fonts Film
+film	Direct Sub Film
+film	Dvb Film
+film	Font Film
+film	Gamma Film
+film	Idx Beside Film
+film	Kino Film
+film	Orphan Beside Film
+film	Pgs Film
+film	Pgs Transcode Film
+film	Phi Film
+film	Plain Film
+film	Sigma Film
+film	Sup Beside Film
+film	Sup Beside Transcode Film
+film	Tau Film
+film	The Beta Film
+film	Transcode Sub Film
+film	Vanishing Fonts Film
+film	Vobsub Film
+episode	Pilot
+episode	Return
+episode	Second
+plays	Alpha Film	direct
+plays	Babel Film	direct
+plays	Burn Sub Film	direct
+plays	Cracked Fonts Film	direct
+plays	Direct Sub Film	direct
+plays	Dvb Film	direct
+plays	Font Film	direct
+plays	Gamma Film	direct
+plays	Idx Beside Film	direct
+plays	Kino Film	direct
+plays	Orphan Beside Film	direct
+plays	Pgs Film	direct
+plays	Pgs Transcode Film	transcode
+plays	Phi Film	direct
+plays	Plain Film	direct
+plays	Sigma Film	direct
+plays	Sup Beside Film	direct
+plays	Sup Beside Transcode Film	transcode
+plays	Tau Film	transcode
+plays	The Beta Film	direct
+plays	Transcode Sub Film	transcode
+plays	Vanishing Fonts Film	direct
+plays	Vobsub Film	direct
+track	Alpha Film	0	Video	none	h264	-
+track	Alpha Film	1	Audio	eng	aac	-
+track	Babel Film	0	Video	none	h264	-
+track	Babel Film	1	Audio	eng	aac	default
+track	Babel Film	2	Audio	deu	aac	-
+track	Babel Film	3	Audio	fra	aac	-
+track	Babel Film	4	Audio	none	aac	-
+track	Babel Film	5	Subtitle	eng	subrip	-
+track	Babel Film	6	Subtitle	eng	subrip	forced
+track	Babel Film	7	Subtitle	eng	subrip	-
+track	Babel Film	8	Subtitle	deu	subrip	-
+track	Babel Film	9	Subtitle	ger	subrip	forced
+track	Babel Film	10	Subtitle	fra	subrip	-
+track	Babel Film	11	Subtitle	none	subrip	-
+track	Babel Film	12	Subtitle	jpn	PGSSUB	-
+track	Babel Film	13	Subtitle	deu	subrip	external
+track	Babel Film	14	Subtitle	spa	subrip	external
+track	Burn Sub Film	0	Video	none	h264	-
+track	Burn Sub Film	1	Audio	eng	aac	-
+track	Burn Sub Film	2	Subtitle	eng	subrip	external
+track	Burn Sub Film	3	Subtitle	jpn	ass	external
+track	Cracked Fonts Film	0	Video	none	h264	-
+track	Cracked Fonts Film	1	Audio	none	aac	-
+track	Cracked Fonts Film	2	Subtitle	jpn	ass	-
+track	Direct Sub Film	0	Video	none	h264	-
+track	Direct Sub Film	1	Audio	eng	aac	-
+track	Direct Sub Film	2	Subtitle	eng	subrip	external
+track	Direct Sub Film	3	Subtitle	jpn	ass	external
+track	Dvb Film	0	Video	none	h264	-
+track	Dvb Film	1	Audio	eng	aac	default
+track	Dvb Film	2	Subtitle	eng	DVBSUB	-
+track	Font Film	0	Video	none	h264	-
+track	Font Film	1	Audio	none	aac	-
+track	Font Film	2	Subtitle	jpn	ass	-
+track	Gamma Film	0	Video	none	h264	-
+track	Gamma Film	1	Audio	eng	aac	-
+track	Idx Beside Film	0	Video	none	h264	-
+track	Idx Beside Film	1	Audio	eng	aac	-
+track	Idx Beside Film	2	Subtitle	en	DVDSUB	external
+track	Kino Film	0	Video	none	h264	-
+track	Kino Film	1	Audio	deu	aac	default
+track	Kino Film	2	Audio	eng	aac	-
+track	Kino Film	3	Subtitle	deu	subrip	-
+track	Kino Film	4	Subtitle	eng	subrip	-
+track	Kino Film	5	Subtitle	fra	subrip	-
+track	Orphan Beside Film	0	Video	none	h264	-
+track	Orphan Beside Film	1	Audio	eng	aac	-
+track	Pgs Film	0	Video	none	h264	-
+track	Pgs Film	1	Audio	eng	aac	default
+track	Pgs Film	2	Subtitle	eng	PGSSUB	-
+track	Pgs Transcode Film	0	Video	none	h264	-
+track	Pgs Transcode Film	1	Audio	eng	ac3	default
+track	Pgs Transcode Film	2	Subtitle	eng	PGSSUB	-
+track	Phi Film	0	Video	none	h264	-
+track	Phi Film	1	Audio	eng	aac	-
+track	Phi Film	2	Subtitle	eng	subrip	-
+track	Phi Film	3	Subtitle	jpn	ass	-
+track	Plain Film	0	Video	none	h264	-
+track	Plain Film	1	Audio	none	aac	-
+track	Plain Film	2	Subtitle	jpn	ass	-
+track	Sigma Film	0	Video	none	h264	-
+track	Sigma Film	1	Audio	eng	aac	-
+track	Sigma Film	2	Subtitle	eng	subrip	-
+track	Sigma Film	3	Subtitle	jpn	ass	-
+track	Sup Beside Film	0	Video	none	h264	-
+track	Sup Beside Film	1	Audio	eng	aac	-
+track	Sup Beside Film	2	Subtitle	eng	PGSSUB	external
+track	Sup Beside Transcode Film	0	Video	none	h264	-
+track	Sup Beside Transcode Film	1	Audio	eng	ac3	-
+track	Sup Beside Transcode Film	2	Subtitle	eng	PGSSUB	external
+track	Tau Film	0	Video	none	h264	-
+track	Tau Film	1	Audio	eng	ac3	-
+track	Tau Film	2	Subtitle	eng	subrip	-
+track	Tau Film	3	Subtitle	jpn	ass	-
+track	The Beta Film	0	Video	none	h264	-
+track	The Beta Film	1	Audio	eng	aac	default
+track	Transcode Sub Film	0	Video	none	h264	-
+track	Transcode Sub Film	1	Audio	eng	ac3	-
+track	Transcode Sub Film	2	Subtitle	eng	subrip	external
+track	Transcode Sub Film	3	Subtitle	jpn	ass	external
+track	Vanishing Fonts Film	0	Video	none	h264	-
+track	Vanishing Fonts Film	1	Audio	none	aac	-
+track	Vanishing Fonts Film	2	Subtitle	jpn	ass	-
+track	Vobsub Film	0	Video	none	h264	-
+track	Vobsub Film	1	Audio	eng	aac	default
+track	Vobsub Film	2	Subtitle	eng	DVDSUB	-
