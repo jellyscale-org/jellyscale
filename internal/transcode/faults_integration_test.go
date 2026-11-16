@@ -218,6 +218,7 @@ type chaos struct {
 	delays     []delayWindow
 	hits       []workerHit          // The workers a step took away or hurt, and when.
 	judged     map[string]int       // How many jobs each kind of check judged.
+	slowDir    string               // Where the workers' stores are told how slow to be (JS-106).
 	noLive     map[string]time.Time // Since when a spec a viewer waits on has had no job queued or running with a lease.
 }
 
@@ -234,7 +235,7 @@ func (c *chaos) spawn() (*chaosWorker, error) {
 	t := c.t
 	w := &outageWorker{id: uuid.NewString(), db: testenv.NewDBProxy(t, c.r.dsn), live: testenv.NewDBProxy(t, c.r.dsn), keep: testenv.NewDBProxy(t, c.r.dsn), reaped: make(chan struct{})}
 	cmd := execWorker(w, c.s, "JELLYSCALE_TEST_LEASE="+faultClock.Lease.String(), "JELLYSCALE_TEST_HEARTBEAT="+faultClock.Heartbeat.String(),
-		"JELLYSCALE_TEST_QUEUE_TIMEOUT=20s")
+		"JELLYSCALE_TEST_QUEUE_TIMEOUT=20s", slowPutEnv(c.slowDir))
 	cmd.Stderr = &w.log
 	if err := cmd.Start(); err != nil {
 		return nil, err
@@ -655,6 +656,8 @@ func (c *chaos) runStep(i int, step faultStep) {
 		c.delayWorker(i, step)
 	case faultViewerStop:
 		c.stopViewer(step)
+	case faultSlowStore:
+		c.slowStore(i, step)
 	}
 	c.t.Logf("%v: step %d ends", time.Since(c.started).Round(100*time.Millisecond), i)
 }
@@ -1000,6 +1003,73 @@ func (c *chaos) delayWorker(i int, step faultStep) {
 	}
 }
 
+// slowStore (JS-106) makes every segment Put of one worker that holds a job's lease take a
+// lease and a half, its bytes moving the whole time, for the step's length. The worker is not
+// away and not exempt: the invariants hold with the allowance they have. After a clean step the
+// worker's jobs are as they were, judged on the jobs that began a put during it.
+func (c *chaos) slowStore(i int, step faultStep) {
+	w := c.pick(step, func() []*chaosWorker { return c.holders(false) })
+	if w == nil {
+		c.t.Logf("step %d found no worker that holds a lease to slow; it is skipped", i)
+		return
+	}
+	snap := c.snapshotRunning(w.id)
+	began := time.Now()
+	setPuts(c.t, c.slowDir, w.outageWorker, "steady all "+(faultClock.Lease*3/2).String())
+	c.sleep(step.Length)
+	setPuts(c.t, c.slowDir, w.outageWorker, "")
+	ended := time.Now()
+	// A put that began in the step goes on for up to a lease and a half after it; a worker that was
+	// killed meanwhile has none, and the wait only gives up at a bound.
+	for deadline := time.Now().Add(2 * faultClock.Lease); time.Now().Before(deadline) && c.ctx.Err() == nil && !w.killed.Load(); time.Sleep(100 * time.Millisecond) {
+		begun, done := 0, 0
+		for _, e := range slowEvents(c.t, c.slowDir, w.outageWorker) {
+			switch e.event {
+			case "begin":
+				begun++
+			case "end":
+				done++
+			}
+		}
+		if begun == done {
+			break
+		}
+	}
+	c.sleep(3 * time.Second)
+	if !step.Clean || c.hitByPostgres(i, 5*time.Second) || c.ctx.Err() != nil {
+		return
+	}
+	// Judged on the jobs that began a put in the step: a run where no put was slowed is unjudged.
+	slowed := map[string]bool{}
+	for _, p := range c.puts() {
+		if hash, _, ok := parseSegmentKey(p.key); ok && p.worker == w.id && !p.at.Before(began) && !p.at.After(ended) {
+			slowed[hash] = true
+		}
+	}
+	for _, j := range snap.jobs {
+		if slowed[j.Hash] {
+			c.mu.Lock()
+			c.judged["slow-store"]++
+			c.mu.Unlock()
+		}
+	}
+	c.t.Logf("a slow store held to 'nothing changes' for %d jobs of worker %s (%d of them slowed)", len(snap.jobs), w.id, len(slowed))
+	// A job that reached the film's end is done on the same worker, and its ffmpeg has exited: that
+	// is the film played, not a slow store's loss. (The plan keeps the step clear of it; this keeps
+	// a viewer that is faster than planned from failing the step.)
+	for _, now := range c.r.jobRows(c.t) {
+		if now.State == "done" && now.Worker == w.id {
+			snap.jobs = slices.DeleteFunc(snap.jobs, func(j jobRow) bool { return j.ID == now.ID })
+			if !slices.ContainsFunc(snap.jobs, func(j jobRow) bool { return j.Worker == w.id }) {
+				delete(snap.ffmpegs, w.id)
+			}
+		}
+	}
+	for _, change := range c.sameAs(snap, began) {
+		c.violate("a slow store is not a loss", "a store that took a lease and a half for every put changed something: %s", change)
+	}
+}
+
 func (c *chaos) stopViewer(step faultStep) {
 	var stoppable []*chaosViewer
 	for _, v := range c.viewers {
@@ -1039,9 +1109,10 @@ func (c *chaos) finish() {
 	// a stop past the lease on a worker's ffmpeg. A plan that cuts them all leaves them unjudged.
 	if c.ctx.Err() == nil {
 		c.mu.Lock()
-		for _, kind := range []faultKind{faultPGLong, faultStopLease} {
-			name := map[faultKind]string{faultPGLong: "restart-long", faultStopLease: "stop-lease"}[kind]
-			if slices.ContainsFunc(c.plan.Steps, func(s faultStep) bool { return s.Kind == kind }) && c.judged[name] == 0 {
+		for _, kind := range []faultKind{faultPGLong, faultStopLease, faultSlowStore} {
+			name := map[faultKind]string{faultPGLong: "restart-long", faultStopLease: "stop-lease", faultSlowStore: "slow-store"}[kind]
+			// Only a clean slow-store step is judged, so only it must have been.
+			if slices.ContainsFunc(c.plan.Steps, func(s faultStep) bool { return s.Kind == kind && (kind != faultSlowStore || s.Clean) }) && c.judged[name] == 0 {
 				violate("test harness", "the check of every %s step was cut: nothing was judged by it in this schedule", kind)
 			}
 		}
@@ -1189,7 +1260,7 @@ func runFaultSchedule(t *testing.T, seed uint64, index int, plan faultSchedule) 
 	// The viewers play a longer film than the one the rig made.
 	r.exec(t, "UPDATE libraries SET media_store_uri = $1, asset_store_uri = $1", "file://"+dir)
 	r.exec(t, "UPDATE items SET run_time_ticks = 1500000000")
-	c := &chaos{t: t, seed: seed, index: index, plan: plan, r: r, s: s, ctx: ctx, cancel: cancel, started: time.Now(), judged: map[string]int{}}
+	c := &chaos{t: t, seed: seed, index: index, plan: plan, r: r, s: s, ctx: ctx, cancel: cancel, started: time.Now(), judged: map[string]int{}, slowDir: t.TempDir()}
 	other, otherHash := r.otherSpec()
 	c.specs, c.hashes = [2]playback.Spec{r.spec, other}, [2]string{r.hash, otherHash}
 	for i := range c.replicas {

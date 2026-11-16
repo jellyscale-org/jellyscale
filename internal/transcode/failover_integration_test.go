@@ -57,6 +57,9 @@ func workerProcess(id string) {
 	}
 	var media store.Cache
 	var segments store.Store = store.NewPosix(os.Getenv("JELLYSCALE_TEST_SEGMENTS"))
+	if dir := os.Getenv("JELLYSCALE_TEST_SLOWPUT"); dir != "" {
+		segments = &slowPut{Store: segments, id: id, dir: dir} // slow_put_kit_integration_test.go (JS-106)
+	}
 	if path := os.Getenv("JELLYSCALE_TEST_PUTLOG"); path != "" {
 		segments = &putLog{Store: segments, worker: id, path: path} // outage_integration_test.go
 	}
