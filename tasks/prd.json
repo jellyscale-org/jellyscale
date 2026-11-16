@@ -752,7 +752,7 @@
       "passes": false,
       "dependsOn": [],
       "source": "PRODUCT.md identity",
-      "notes": ""
+      "notes": "JS-128: header requests already carry none in master.m3u8 and main.m3u8; the criteria stand for query requests, TranscodingUrl and the subtitle playlist."
     },
     {
       "id": "JS-041",
@@ -2587,10 +2587,9 @@
         "JS-125"
       ],
       "notes": "Found 2026-11-16 while drafting Fluster issues (the owner wants Fluster first-class). Fluster also strips ApiKey from subtitle DeliveryUrls (gateway.ts:178-195); PlaybackInfo's TranscodingUrl and DeliveryUrls keep ApiKey here, because jellyfin-web loads them as URLs. Fewer tokens in URLs is also safer (DOMAINS invariant 17).",
-      "passes": false,
-      "priority": 21,
+      "passes": true,
       "source": "lead 2026-11-16, from the Fluster issue research",
-      "status": "todo"
+      "status": "done"
     }
   ]
 }
