@@ -83,7 +83,7 @@ const workerAliveSQL = `EXISTS (SELECT 1 FROM transcode_nodes
 func FetchSubtitle(ctx context.Context, pool *pgxpool.Pool, hub *Hub, assets store.Store, itemID string, src items.Source, index int) (subtitles.Track, error) {
 	key := subtitles.Key(src, index)
 	if track, found, err := subtitles.Read(ctx, assets, key); found || err != nil {
-		return track, err
+		return track, fromStore(src.AssetStoreURI, err)
 	}
 	if subtitles.Unreadable(src, index) {
 		return subtitles.Track{}, fmt.Errorf("%w: ffmpeg could not extract it", ErrUnreadable)
@@ -100,7 +100,7 @@ func FetchSubtitle(ctx context.Context, pool *pgxpool.Pool, hub *Hub, assets sto
 	if err == nil && !found {
 		err = fmt.Errorf("%w: its result is missing", ErrUnreadable)
 	}
-	return track, err
+	return track, fromStore(src.AssetStoreURI, err)
 }
 
 // FetchSup makes sure PGS track index of src is in the asset store as a .sup
@@ -127,7 +127,7 @@ func FetchSup(ctx context.Context, pool *pgxpool.Pool, hub *Hub, assets store.St
 // it has and whoever asks.
 func FetchFonts(ctx context.Context, pool *pgxpool.Pool, hub *Hub, assets store.Store, itemID string, src items.Source) (map[int]string, error) {
 	if fonts, found, err := subtitles.ReadFonts(ctx, assets, src); found || err != nil {
-		return fonts, err
+		return fonts, fromStore(src.AssetStoreURI, err)
 	}
 	err := awaitJob(ctx, pool, hub, subtitleJob{Key: subtitles.FontsKey(src.ID, src.ETag), Kind: "fonts", Item: itemID, Source: src.ID})
 	if err != nil {
@@ -137,7 +137,7 @@ func FetchFonts(ctx context.Context, pool *pgxpool.Pool, hub *Hub, assets store.
 	if err == nil && !found {
 		err = fmt.Errorf("%w: its result is missing", ErrUnreadable)
 	}
-	return fonts, err
+	return fonts, fromStore(src.AssetStoreURI, err)
 }
 
 // StartFonts asks for src's fonts to be taken out of the film, without waiting
@@ -169,7 +169,7 @@ func enqueueJob(ctx context.Context, pool *pgxpool.Pool, job subtitleJob, memory
 			lease_expires_at = NULL, created_at = now()
 		WHERE subtitle_jobs.state IN ('done', 'failed') AND subtitle_jobs.ended_at < now() - make_interval(secs => $6)`,
 		job.Key, job.Kind, job.Item, job.Source, job.Index, memory.Seconds())
-	return err
+	return fromPool(err)
 }
 
 // awaitJob queues job unless one is live and waits for it to be done.
@@ -196,7 +196,7 @@ func awaitJob(ctx context.Context, pool *pgxpool.Pool, hub *Hub, job subtitleJob
 				EXISTS (SELECT 1 FROM subtitle_jobs WHERE state = 'running' AND lease_expires_at > now() AND kind <> 'chapters')
 			FROM (SELECT 1) one LEFT JOIN subtitle_jobs j ON j.key = $2`, liveTiming("counted").Seconds(), job.Key).Scan(&state, &reason, &permanent, &alive, &unclaimed, &extracting)
 		if err != nil {
-			return err
+			return fromPool(err)
 		}
 		switch state {
 		case "":

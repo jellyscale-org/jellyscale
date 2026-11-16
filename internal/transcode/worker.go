@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -37,9 +38,11 @@ type Worker struct {
 	Pool     *pgxpool.Pool
 	Items    *items.Repo
 	Segments store.Store
-	Hub      *Hub
-	Log      *slog.Logger
-	Media    func(uri string) (store.Store, error)
+	// SegmentsURI is where Segments is, for an error to name.
+	SegmentsURI string
+	Hub         *Hub
+	Log         *slog.Logger
+	Media       func(uri string) (store.Store, error)
 
 	// Scratch holds ffmpeg's output until it is uploaded.
 	Scratch string
@@ -316,9 +319,27 @@ func (w *Worker) claim(ctx context.Context) (claimed, bool, error) {
 		if err != nil {
 			return job, false, err
 		}
-		return job, true, json.Unmarshal(raw, &job.Spec)
+		if err := json.Unmarshal(raw, &job.Spec); err != nil {
+			// No worker could run it, and its lease would only lapse: end it here, and go on to the next.
+			w.failUndecodable(ctx, job.ID, err)
+			job = claimed{}
+			continue
+		}
+		return job, true, nil
 	}
 	return job, false, nil
+}
+
+// failUndecodable ends the job this worker has just claimed, whose spec it cannot read.
+func (w *Worker) failUndecodable(ctx context.Context, id int64, cause error) {
+	finish, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	reason := "the job's spec could not be decoded: " + cause.Error()
+	w.Log.Error("a claimed transcode job's spec could not be decoded", "job", id, "error", cause)
+	if _, err := w.Pool.Exec(finish, `UPDATE transcode_jobs SET state = 'failed', error = $2, ended_at = now()
+		WHERE id = $1 AND state = 'running' AND worker = $3`, id, reason, w.ID); err != nil {
+		w.Log.Error("recording the end of a transcode job failed", "job", id, "error", err)
+	}
 }
 
 // run runs one job and records how it ended. A job someone else already
@@ -370,16 +391,15 @@ func (w *Worker) run(ctx context.Context, job claimed) {
 	case err == nil:
 		jobsEnded.WithLabelValues("done").Inc()
 		log.Info("transcode ended", "elapsed", time.Since(began).Round(time.Millisecond))
-	case ctx.Err() != nil || errors.Is(err, errInterrupted) || db.IsAway(err):
-		// Cut short, not failed: viewers restart it, and the spec isn't refused.
-		// Postgres being away is not the job's fault.
-		state, reason = "cancelled", err.Error()
-		jobsEnded.WithLabelValues("interrupted").Inc()
-		log.Info("transcode interrupted", "reason", reason)
 	default:
-		state, reason = "failed", err.Error()
-		jobsEnded.WithLabelValues("failed").Inc()
-		log.Error("transcode failed", "error", err)
+		// A job cut short is cancelled, not failed: viewers restart it, and the spec isn't refused.
+		if state, reason = endState(ctx, err); state == "cancelled" {
+			jobsEnded.WithLabelValues("interrupted").Inc()
+			log.Info("transcode interrupted", "reason", reason)
+		} else {
+			jobsEnded.WithLabelValues("failed").Inc()
+			log.Error("transcode failed", "error", err)
+		}
 	}
 	// A fresh context: ctx may be why we stopped.
 	finish, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
@@ -394,7 +414,7 @@ func (w *Worker) run(ctx context.Context, job claimed) {
 // fetchImageFile copies the PGS file, or the .idx and .sub of a VobSub pair,
 // out of the media store into dir and gives the path ffmpeg opens. The pair
 // keeps one name, which is how ffmpeg finds the .sub beside the .idx.
-func fetchImageFile(ctx context.Context, media store.Store, dir string, track playback.Stream) (string, error) {
+func fetchImageFile(ctx context.Context, media store.Store, uri, dir string, track playback.Stream) (string, error) {
 	files := map[string]string{filepath.Join(dir, "track.sup"): track.Path}
 	input := filepath.Join(dir, "track.sup")
 	if track.SubPath != "" {
@@ -404,9 +424,9 @@ func fetchImageFile(ctx context.Context, media store.Store, dir string, track pl
 	for local, key := range files {
 		body, err := media.Open(ctx, key, 0)
 		if err != nil {
-			return "", err
+			return "", fromStore(uri, err)
 		}
-		err = writeFile(local, turning(ctx, body))
+		err = writeFile(local, turning(ctx, storeBody{uri, body}))
 		body.Close()
 		if err != nil {
 			return "", err
@@ -475,7 +495,7 @@ var errWaiting = errors.New("waiting for Postgres")
 func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) error {
 	source, found, err := w.Items.Source(ctx, job.Spec.Item, job.Spec.Source)
 	if err != nil {
-		return err
+		return fromPool(err)
 	}
 	if !found || source.ETag != job.Spec.ETag {
 		return errors.New("the source file has changed or is gone")
@@ -486,7 +506,7 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	}
 	if job.Spec.Copy {
 		if film.Keyframes, film.VideoEnd, err = w.Items.Keyframes(ctx, source.ID); err != nil {
-			return err
+			return fromPool(err)
 		}
 	}
 	layout := film.Layout(job.Spec.Copy)
@@ -502,11 +522,11 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	}
 	media, err := w.Media(source.StoreURI)
 	if err != nil {
-		return err
+		return fromStore(source.StoreURI, err)
 	}
 	input, closeInput, err := store.Input(ctx, media, source.Key, source.Size)
 	if err != nil {
-		return err
+		return fromStore(source.StoreURI, err)
 	}
 	defer closeInput()
 	// Absolute, because ffmpeg runs in the directory when it burns subtitles.
@@ -546,7 +566,7 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	// ffmpeg reads it as a second input.
 	if image != nil && image.Fingerprint != "" {
 		local := *image
-		if local.File, err = fetchImageFile(ctx, media, dir, local); err != nil {
+		if local.File, err = fetchImageFile(ctx, media, source.StoreURI, dir, local); err != nil {
 			return fmt.Errorf("subtitle track %d: %w", *job.Spec.Subtitle, err)
 		}
 		image = &local
@@ -595,14 +615,14 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	if image != nil && image.Fingerprint == "" {
 		var cues library.ImageCues
 		if err := w.Pool.QueryRow(ctx, "SELECT image_cues FROM media_sources WHERE id = $1::uuid", source.ID).Scan(&cues); err != nil {
-			return err
+			return fromPool(err)
 		}
 		if track, ok := cues[image.Index]; ok {
 			local := *image
 			local.OpenAt = func(t float64) (open float64, err error) {
 				err = w.awaitJob(ctx, job, log, func(ctx context.Context) (err error) {
 					open, err = track.OpenAt(ctx, media, source.Key, source.Size, t)
-					return err
+					return fromStore(source.StoreURI, err)
 				})
 				return open, err
 			}
@@ -701,9 +721,6 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 				// one ffmpeg, as it was before chunks.
 				if chunked && next%size == 0 {
 					free, err := w.chunkFree(ctx, job, next)
-					if db.IsAway(err) {
-						free, err = true, nil // The same ffmpeg goes on; it only does what a helper may also have done.
-					}
 					if err != nil {
 						return false, err
 					}
@@ -819,7 +836,7 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 					// The segment stays where it is, and ffmpeg and the job go on; the lease
 					// keeper ends the job if the lease runs out first.
 					if !waiting {
-						log.Warn("a finished segment is kept until Postgres answers", "error", err)
+						log.Warn("a finished segment is kept until it can be recorded", "error", err)
 					}
 					waiting, caughtUp, err = true, false, nil
 				} else {
@@ -1026,23 +1043,33 @@ func (w *Worker) upload(ctx context.Context, job claimed, n int, name string) er
 	if err := put(SegmentKey(job.Hash, n), name); err != nil {
 		return err
 	}
-	tag, err := w.Pool.Exec(ctx, `UPDATE transcode_jobs SET next_segment = $2
-		WHERE id = $1 AND worker = $3 AND state = 'running'`, job.ID, n+1, w.ID)
-	if db.IsAway(err) {
-		// Stored, and not yet recorded: the file stays, and the next try stores it again.
-		return fmt.Errorf("%w: recording the segment: %v", errWaiting, err)
+	recorded, err := w.recordSegment(ctx, job, n)
+	if errors.Is(err, errWaiting) {
+		return err // Stored, and not yet recorded: the file stays, and the next try stores it again.
 	}
 	os.Remove(name)
 	turnFrom(ctx)
 	if err != nil {
 		return err
 	}
-	if tag.RowsAffected() == 0 {
+	if !recorded {
 		// A copied run can have many segments waiting; don't keep storing them.
 		return fmt.Errorf("%w: %s", errInterrupted, lostReason(ctx, w.Pool, job))
 	}
 	Notify(ctx, w.Pool, segmentHint(job.Hash))
 	return nil
+}
+
+// recordSegment records that the job stored segment n, and says whether the job still
+// held its row. Postgres being away, or aborting the write for another transaction's
+// sake, leaves the segment to be stored and recorded again.
+func (w *Worker) recordSegment(ctx context.Context, job claimed, n int) (bool, error) {
+	tag, err := w.Pool.Exec(ctx, `UPDATE transcode_jobs SET next_segment = $2
+		WHERE id = $1 AND worker = $3 AND state = 'running'`, job.ID, n+1, w.ID)
+	if db.IsAway(err) || abortedForAnother(err) {
+		return false, fmt.Errorf("%w: recording the segment: %v", errWaiting, err)
+	}
+	return tag.RowsAffected() > 0, fromPool(err)
 }
 
 // put stores a file. The store's reads of the body are the job's work coming
@@ -1055,10 +1082,16 @@ func (w *Worker) put(ctx context.Context, key, file string) error {
 	if err != nil {
 		return err
 	}
+	body := &countedBody{f: handle, ctx: ctx}
 	done := make(chan error, 1)
 	go func() {
 		defer handle.Close()
-		done <- w.Segments.Put(ctx, key, countedBody{handle, ctx})
+		err := w.Segments.Put(ctx, key, body)
+		if local := body.failed.Load(); err != nil && local != nil {
+			done <- *local // The scratch file could not be read: the store only passed that on.
+			return
+		}
+		done <- fromStore(w.SegmentsURI, err)
 	}()
 	select {
 	case err := <-done:
@@ -1069,21 +1102,26 @@ func (w *Worker) put(ctx context.Context, key, file string) error {
 }
 
 // countedBody is what a store reads: a file that seeks and whose reads turn the
-// job. It has no WriteTo of its own, which a copy would use instead of Read.
+// job. It has no WriteTo of its own, which a copy would use instead of Read. It
+// keeps the file's own read error, which a store returns as if it were its own.
 type countedBody struct {
-	f   *os.File
-	ctx context.Context
+	f      *os.File
+	ctx    context.Context
+	failed atomic.Pointer[error]
 }
 
-func (b countedBody) Read(p []byte) (int, error) {
+func (b *countedBody) Read(p []byte) (int, error) {
 	n, err := b.f.Read(p)
 	if n > 0 {
 		turnFrom(b.ctx)
 	}
+	if err != nil && err != io.EOF {
+		b.failed.CompareAndSwap(nil, &err)
+	}
 	return n, err
 }
 
-func (b countedBody) Seek(offset int64, whence int) (int64, error) { return b.f.Seek(offset, whence) }
+func (b *countedBody) Seek(offset int64, whence int) (int64, error) { return b.f.Seek(offset, whence) }
 
 func (w *Worker) stored(ctx context.Context, hash string, n int) bool {
 	body, err := w.Segments.Open(ctx, SegmentKey(hash, n), 0)
@@ -1231,7 +1269,7 @@ func (w *Worker) putFonts(ctx context.Context, job claimed, log *slog.Logger, so
 	restored := false
 	for index, sum := range hashes {
 		path := filepath.Join(dir, strconv.Itoa(index))
-		err := copyFont(ctx, assets, sum, path)
+		err := copyFont(ctx, assets, sum, path, source.AssetStoreURI)
 		if errors.Is(err, errBadFont) {
 			// Cut short or changed in the store. Taken out so the fonts job
 			// puts a whole one in its place instead of finding this one there.
@@ -1251,13 +1289,13 @@ func (w *Worker) putFonts(ctx context.Context, job claimed, log *slog.Logger, so
 			}
 			fonts, _, readErr := subtitles.ReadFonts(ctx, assets, source)
 			if readErr != nil {
-				return readErr
+				return fromStore(source.AssetStoreURI, readErr)
 			}
 			sum, ok := fonts[index]
 			if !ok {
 				continue
 			}
-			err = copyFont(ctx, assets, sum, path)
+			err = copyFont(ctx, assets, sum, path, source.AssetStoreURI)
 		}
 		if errors.Is(err, errBadFont) {
 			// Left for the next burn to restore; this one must not draw with it.
@@ -1274,10 +1312,10 @@ var errBadFont = errors.New("a font in the store does not match its hash")
 
 // copyFont copies the font stored under its SHA-256 sum to path, and fails with
 // errBadFont if the bytes read are not the ones the sum names.
-func copyFont(ctx context.Context, assets store.Store, sum, path string) error {
+func copyFont(ctx context.Context, assets store.Store, sum, path, uri string) error {
 	body, err := assets.Open(ctx, subtitles.FontKey(sum), 0)
 	if err != nil {
-		return err
+		return fromStore(uri, err)
 	}
 	defer body.Close()
 	file, err := os.Create(path)
@@ -1285,7 +1323,7 @@ func copyFont(ctx context.Context, assets store.Store, sum, path string) error {
 		return err
 	}
 	hash := sha256.New()
-	_, err = io.Copy(io.MultiWriter(file, hash), turning(ctx, body))
+	_, err = io.Copy(io.MultiWriter(file, hash), turning(ctx, storeBody{uri, body}))
 	if err = errors.Join(err, file.Close()); err != nil {
 		return err
 	}

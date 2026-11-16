@@ -399,7 +399,7 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 	}
 	var media store.Cache
 	w := &transcode.Worker{
-		ID: id, Pool: pool, Items: &items.Repo{Pool: pool, ServerID: serverID}, Segments: segments, Hub: result.hub, Log: log,
+		ID: id, Pool: pool, Items: &items.Repo{Pool: pool, ServerID: serverID}, Segments: segments, SegmentsURI: cfg.TranscodeStore, Hub: result.hub, Log: log,
 		Media: media.Open, Scratch: scratch, Cores: cfg.TranscodeCores, Slots: cfg.TranscodeSlots, Idle: idle, Lead: lead, Retention: retention,
 		NoHelpers: cfg.TranscodeHelpers != nil && !*cfg.TranscodeHelpers,
 	}
@@ -434,7 +434,7 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 		finish()
 		return result, nil
 	}
-	result.jobs = &transcode.Jobs{Pool: pool, Segments: segments, Hub: result.hub, Log: log}
+	result.jobs = &transcode.Jobs{Pool: pool, Segments: segments, SegmentsURI: cfg.TranscodeStore, Hub: result.hub, Log: log}
 	if !worker {
 		finish()
 		return result, nil

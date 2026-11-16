@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"jellyscale/internal/db"
 	"jellyscale/internal/playback"
 )
 
@@ -151,7 +152,10 @@ func (w *Worker) chunkFree(ctx context.Context, job claimed, next int) (bool, er
 	var taken bool
 	err := w.Pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM transcode_jobs j WHERE j.spec_hash = $1 AND j.id <> $2 AND `+live("j")+`
 		AND j.start_segment <= $3 AND $3 < (j.start_segment / $4 + 1) * $4)`, job.Hash, job.ID, next, w.chunkSize()).Scan(&taken)
-	return !taken, err
+	if db.IsAway(err) {
+		return true, nil // The same ffmpeg goes on; it only does what a helper may also have done.
+	}
+	return !taken, fromPool(err)
 }
 
 // roomForHelper says whether a helper of the cost fits on a worker, with the

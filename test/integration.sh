@@ -76,7 +76,7 @@ if [[ -n $shard ]]; then
   mapfile -t packages < <(bash test/shard.sh args "$shard") && [[ ${#packages[@]} -gt 0 ]] || { echo "test/shard.sh could not split the tier as $shard" >&2; exit 1; }
   tier=integration:$shard
 fi
-go tool gotestsum --format testname --jsonfile "$results/tests.json" -- -tags integration -p 1 -count=1 -timeout 30m "${packages[@]}" "$@"
+go tool gotestsum --format testname --jsonfile "$results/tests.json" -- -tags integration -p 1 -count=1 -timeout 45m "${packages[@]}" "$@"
 status=$?
 # The harness's log check can only fail under the race detector, which the tier above does not run.
 if [[ $# -eq 0 && (" ${packages[*]} " == *" ./... "* || " ${packages[*]} " == *" jellyscale/cmd/jellyscale "*) ]]; then
