@@ -681,6 +681,92 @@ for (const flavour of [
   });
 }
 
+// JS-119: a viewer who opted into hiding the tracks outside their languages (audio and subtitle eng, both switches on) is
+// offered, by unmodified jellyfin-web, only their tracks in the player's menus and in the details page's media info;
+// Babel Film's other tracks are listed as placeholders of Type Data, which no menu or dialog shows. Picking a kept track
+// by hand shows its cue. With "show all tracks" on and the page reloaded the menus list every track again. Babel Film has
+// audio 1 eng, 2 deu, 3 fra, 4 untagged and subtitles 5 to 12 and the two files beside it as 13 and 14 (test/fixtures/babel.sh);
+// no scenario before this one plays it, so its text tracks are read for the first time here.
+const apiCall = (page, method, path, body) => page.evaluate(async ([method, path, body]) => {
+  const response = await fetch(path, { method, body, headers: { "Content-Type": "application/json", Authorization: `MediaBrowser Token="${window.ApiClient.accessToken()}"` } });
+  return { status: response.status, text: await response.text() };
+}, [method, path, body ?? null]);
+
+// The entries of the player's audio or subtitle menu: the data-id of each, but not Off or the secondary subtitles item.
+async function menuIds(page, button, seen) {
+  await waitFor(`the ${button} menu`, async () => {
+    await page.mouse.move(400 + Math.random() * 300, 300 + Math.random() * 200);
+    return page.click(button, { timeout: 1500 }).then(() => true, () => false);
+  }, 30000);
+  await page.waitForSelector(".actionSheetMenuItem", { timeout: 10000 });
+  const ids = await page.evaluate(() => [...document.querySelectorAll(".actionSheetMenuItem")].map((e) => e.dataset.id));
+  // Closing a sheet without choosing makes jellyfin-web itself log "ActionSheet closed without resolving": not the server's error, so it is dropped here only.
+  await page.mouse.click(5, 5);
+  await waitFor("the menu to close", async () => (await page.locator(".actionSheetMenuItem").count()) === 0, 10000);
+  seen.errors = seen.errors.filter((e) => !/ActionSheet closed without resolving/.test(e));
+  return ids.filter((id) => id !== "-1" && id !== "secondarysubtitle").map(Number).sort((a, b) => a - b);
+}
+
+await scenario("a viewer who hides the tracks outside their languages sees only their tracks in the menus and the media info, and can pick one by hand", async ({ page, seen }) => {
+  const userId = await page.evaluate(() => window.ApiClient.getCurrentUserId());
+  const ok = async (method, path, body, want) => {
+    const answer = await apiCall(page, method, path, body);
+    if (answer.status !== want) throw new Error(`${method} ${path}: ${answer.status} ${answer.text}`);
+  };
+  const open = async () => {
+    await page.goto(`${base}/web/`);
+    await page.waitForSelector(".card", { timeout: 30000 });
+    await page.locator(".card:visible", { hasText: "Languages" }).first().click();
+    await page.locator(".cardText a:visible", { hasText: "Babel Film" }).first().click();
+    await page.waitForSelector(".btnPlay:visible", { timeout: 30000 });
+  };
+  // The streams the media info dialog of the details page lists, by kind.
+  const mediaInfo = async () => {
+    await page.click(".btnMoreCommands:visible");
+    await page.click('.actionSheetMenuItem[data-id="moremediainfo"]');
+    await page.waitForSelector(".mediaInfoStream", { timeout: 10000 });
+    const kinds = await page.evaluate(() => [...document.querySelectorAll(".mediaInfoStream")].map((e) => e.innerText.split("\n")[0].trim()));
+    await page.goBack();
+    await page.waitForSelector(".btnPlay:visible", { timeout: 30000 });
+    return kinds;
+  };
+  const playAndMenus = async (seen) => {
+    await page.locator(".btnPlay:visible").first().click();
+    await waitFor("video to start", async () => (await time(page)) > 0.5, 60000);
+    return { audio: await menuIds(page, ".btnAudio", seen), subtitles: await menuIds(page, ".btnSubtitles", seen) };
+  };
+  const same = (got, want, what) => { if (got.join() !== want.join()) throw new Error(`${what}: ${got.join()}, want ${want.join()}`); };
+  try {
+    await ok("POST", `/Users/${userId}/Configuration`, JSON.stringify({ AudioLanguagePreference: "eng", SubtitleLanguagePreference: "eng" }), 204);
+    await ok("PATCH", "/jellyscale/v1/track-preferences", JSON.stringify({ HideOtherAudio: true, HideOtherSubtitles: true, ShowAllTracks: false }), 200);
+
+    await open();
+    const kinds = await mediaInfo();
+    const subtitleStreams = kinds.filter((k) => k === "Subtitle").length;
+    if (subtitleStreams !== 4) throw new Error(`the media info lists ${subtitleStreams} subtitle streams (${kinds.join(", ")}), want 4 (the viewer's own; 10 without hiding)`);
+    if (kinds.some((k) => k !== "Video" && k !== "Audio" && k !== "Subtitle")) throw new Error(`the media info lists ${kinds.join(", ")}: a placeholder is shown`);
+    const menus = await playAndMenus(seen);
+    same(menus.audio, [1, 4], "the audio menu");
+    same(menus.subtitles, [5, 6, 7, 11], "the subtitle menu");
+    await pickSubtitle(page, 11);
+    await waitFor("track 11 to be answered", async () => seen.subtitles.find((r) => r.index === 11 && r.status === 200));
+    await seek(page, 2);
+    await waitFor("the cue of track 11", async () => (await activeText(page)) === "Babel track 11");
+    noErrors(seen);
+    await leave(page);
+
+    await ok("PATCH", "/jellyscale/v1/track-preferences", JSON.stringify({ ShowAllTracks: true }), 200);
+    await open();
+    const all = await playAndMenus(seen);
+    same(all.audio, [1, 2, 3, 4], "the audio menu with all tracks shown");
+    same(all.subtitles, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14], "the subtitle menu with all tracks shown");
+    await leave(page);
+  } finally {
+    await apiCall(page, "PATCH", "/jellyscale/v1/track-preferences", JSON.stringify({ HideOtherAudio: false, HideOtherSubtitles: false, ShowAllTracks: false }));
+    await apiCall(page, "POST", `/Users/${userId}/Configuration`, "{}");
+  }
+});
+
 await runLater();
 await browser.close();
 if (failures.length) {

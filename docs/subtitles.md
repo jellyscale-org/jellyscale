@@ -42,6 +42,14 @@ Limits to know:
 
 A viewer who sets jellyfin-web's burn subtitles to "all" gets the chosen track drawn into the picture instead: the client sends no subtitle profile, the track is marked `Encode`, and a worker re-encodes with the text. "Always burn in subtitle when transcoding" does the same for a film that is transcoded anyway. Changing the track replaces the job, as an audio switch does, and a seek or restart draws the same text at the same time. When the server can't transcode, burn-in has nothing to offer and no track is listed. Deployments need a font: the image has `font-dejavu`, which libass falls back to when a style names one that isn't there.
 
+## Hiding tracks outside a viewer's languages
+
+A viewer who turned on "hide other audio" or "hide other subtitles" (`PATCH /jellyscale/v1/track-preferences`, docs/api.md) is listed an audio or subtitle track outside their languages as a placeholder: a stream of Type `Data` at the track's own Index, with no language, title, codec or delivery (what Jellyfin 12.4 lists for a timecode track, `compat/captures/data-stream-12.4.md`). jellyfin-web leaves a stream of that Type out of its audio menu, subtitle menu and media info, and no other stream moves, so the default subtitle and the remembered choices stay where they were. It applies in PlaybackInfo and in one item's details, not in lists.
+
+- Kept as themselves: the viewer's audio language and subtitle language (`OriginalLanguage` as the audio language means the film's own), the film's original language, the viewer's audio language for subtitles too, the languages they keep (`KeepAudioLanguages`, `KeepSubtitleLanguages`), every track with no language, and the track the request names. A language not saved pauses hiding for its kind.
+- Nothing is removed, written or extracted: `GET .../Subtitles/{index}/...` answers any index, hidden or not, and a hidden track that nobody asks for is never read.
+- The comparison is by language, not spelling (`ger`, `deu`, `de` are one). The limit: language families other than Norwegian and Chinese compare as different languages, so a viewer who reads Danish and wants Swedish tracks too sees them hidden. The remedy is the keep list, or "show all tracks" (`ShowAllTracks`), which lists every track as if both switches were off.
+
 ## Image tracks
 
 A PGS, VobSub or DVB track in the file is listed as Jellyfin lists it (`Codec` `PGSSUB`, `DVDSUB` or `DVBSUB`, with its canvas size); any other bitmap codec is not. How it is shown depends on the client:

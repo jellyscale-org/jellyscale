@@ -97,8 +97,8 @@ func TestTheApiDocumentStatesTheNamespaceAndTheRoute(t *testing.T) {
 	}
 }
 
-// docs/status.md says the settings are saved and hide no track until JS-119.
-func TestStatusSaysTheTrackPreferencesAreSavedAndHideNoTrackUntilJS119(t *testing.T) {
+// docs/status.md says the settings are saved, and that JS-119 makes them act.
+func TestStatusSaysTheTrackPreferencesAreSavedAndJS119MakesThemAct(t *testing.T) {
 	raw, err := os.ReadFile("../../docs/status.md")
 	if err != nil {
 		t.Fatal(err)
@@ -109,7 +109,7 @@ func TestStatusSaysTheTrackPreferencesAreSavedAndHideNoTrackUntilJS119(t *testin
 		t.Fatal("docs/status.md does not name /jellyscale/v1/track-preferences")
 	}
 	passage := text[max(0, at-600):min(len(text), at+900)]
-	for _, word := range []string{"saved", "hide no track", "js-119"} {
+	for _, word := range []string{"saved", "js-119"} {
 		if !strings.Contains(passage, word) {
 			t.Errorf("the passage of docs/status.md on the track preferences does not say %q:\n%s", word, passage)
 		}

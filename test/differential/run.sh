@@ -72,6 +72,14 @@ ffmpeg -nostdin -v error -y \
   -metadata:s:a:0 language=eng -metadata:s:s:0 language=eng \
   -attach "$(fc-match -f '%{file}' serif)" -metadata:s:t:0 mimetype=font/ttf "$subfont" || exit 1
 touch -d 1999-12-31 "$subfont"
+# Babel Film (JS-119): audio and subtitle tracks in several languages and two subtitle files beside it, in a library of its
+# own, for the requests of an opted-in viewer. It is renamed so that the requests that search for "film" and list every
+# film do not meet a film with subtitles, which jellyscale does not mark HasSubtitles (JS-068).
+bash "$repo/test/fixtures/babel.sh" "$media" || exit 1
+mv "$media/languages/Babel Film" "$media/languages/Polyglot (2030)" || exit 1
+for file in "$media/languages/Polyglot (2030)/Babel Film"*; do
+  mv "$file" "${file/Babel Film/Polyglot (2030)}" || exit 1
+done
 # @jellyfin/sdk, which asks the server discovery (test/sdknode/discover.mjs).
 (cd "$repo/test/sdknode" && npm ci --ignore-scripts --no-audit --no-fund >/dev/null) || { echo "FAIL  npm ci in test/sdknode failed" >&2; exit 1; }
 
@@ -89,7 +97,8 @@ cat >"$work/config.json" <<E2
   {"name": "Movies", "kind": "movies", "media": "file://$media/movies", "assets": "file://$work/assets/movies"},
   {"name": "Shows", "kind": "tvshows", "media": "file://$media/shows", "assets": "file://$work/assets/shows"},
   {"name": "HDR", "kind": "movies", "media": "file://$media/hdr", "assets": "file://$work/assets/hdr"},
-  {"name": "Subtitled", "kind": "movies", "media": "file://$media/subtitled", "assets": "file://$work/assets/subtitled"}
+  {"name": "Subtitled", "kind": "movies", "media": "file://$media/subtitled", "assets": "file://$work/assets/subtitled"},
+  {"name": "Languages", "kind": "movies", "media": "file://$media/languages", "assets": "file://$work/assets/languages"}
 ]}
 E2
 (cd "$repo" && go build -o "$work/jellyscale" ./cmd/jellyscale && go build -o "$work/differential" ./test/differential/run) || exit 1

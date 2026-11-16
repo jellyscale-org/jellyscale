@@ -11,11 +11,12 @@ import (
 	"jellyscale/internal/db"
 )
 
-// JS-118: saving track preferences hides no track yet (JS-119 makes them act). For three films with audio and
+// JS-118, narrowed by JS-119: a setting that hides nothing changes nothing. For three films with audio and
 // subtitles in two languages and a viewer whose saved languages are among them, PlaybackInfo (everything but
-// PlaySessionId, which is also in its URLs) and GET /Items/{itemId} are the same before and after each setting.
-// The settings are PATCHed through one replica and read through the other.
-func TestSavingTrackPreferencesChangesNeitherPlaybackInfoNorTheItem(t *testing.T) {
+// PlaySessionId, which is also in its URLs) and GET /Items/{itemId} are the same before and after each keep list
+// with the switches off, and with both switches on while ShowAllTracks is on (JS-119's own tests hold what the
+// switches hide). The settings are PATCHed through one replica and read through the other.
+func TestSettingsThatHideNothingChangeNeitherPlaybackInfoNorTheItem(t *testing.T) {
 	e := newEnv(t)
 	films := settingsFilms(t, e)
 	if status := e.save(t, 0, "path", e.user, e.token, `{"AudioLanguagePreference":"eng","SubtitleLanguagePreference":"deu"}`).StatusCode; status != 204 {
@@ -45,10 +46,9 @@ func TestSavingTrackPreferencesChangesNeitherPlaybackInfoNorTheItem(t *testing.T
 		return append(out, string(again))
 	}
 	settings := []string{
-		`{"HideOtherAudio":true}`, `{"HideOtherAudio":false,"HideOtherSubtitles":true}`, `{"HideOtherAudio":true}`, // Each switch, then both.
-		`{"HideOtherAudio":false,"HideOtherSubtitles":false}`,
 		`{"KeepAudioLanguages":["deu"]}`, `{"KeepSubtitleLanguages":["eng"]}`,
-		`{"ShowAllTracks":true}`, `{"ShowAllTracks":false}`,
+		`{"HideOtherAudio":true,"HideOtherSubtitles":true,"ShowAllTracks":true}`, // Shown, whatever the switches say.
+		`{"HideOtherAudio":false,"HideOtherSubtitles":false,"ShowAllTracks":false}`,
 	}
 	for name, film := range films {
 		before := seen(film)

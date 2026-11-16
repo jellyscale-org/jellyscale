@@ -151,6 +151,9 @@ start_seaweed "$sw" "$work" e2e || exit 1
 for _ in $(seq 1 60); do docker exec "$pg" psql -U postgres -Atc 'select 1' >/dev/null 2>&1 && break; sleep 0.5; done
 sleep 2
 
+# Babel Film (JS-119): tracks in several languages, for the scenario of a viewer who hides the tracks outside theirs.
+bash "$repo/test/fixtures/babel.sh" "$work/media" || exit 1
+
 s3="endpoint=http://127.0.0.1:$seaweed_port&region=us-east-1"
 # config.json, which posix.sh wrote, keeps segments in a directory; this one puts
 # them on S3, so the transcode store is exercised on both.
@@ -162,6 +165,7 @@ cat >"$work/config-s3.json" <<E2
   {"name": "Transcode", "kind": "movies", "media": "file://$work/media/transcode", "assets": "file://$work/assets/transcode"},
   {"name": "HDR", "kind": "movies", "media": "file://$work/media/hdr", "assets": "file://$work/assets/hdr"},
   {"name": "Scenes", "kind": "movies", "media": "file://$work/media/scenes", "assets": "file://$work/assets/scenes", "chapterImages": true},
+  {"name": "Languages", "kind": "movies", "media": "file://$work/media/languages", "assets": "file://$work/assets/languages"},
   {"name": "Cloud", "kind": "movies", "media": "s3://e2e/media?$s3", "assets": "s3://e2e/assets?$s3"}
 ]}
 E2
