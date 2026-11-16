@@ -13,10 +13,11 @@ import (
 
 var sliceNames = []string{"phase3", "phase4-ha", "identity", "phase5-library", "phase6-k8s", "phase7-syncplay"}
 
-// notInSpec are the two rows that are in neither the OpenAPI document nor the
-// hidden list: Jellyfin's WebSocket, and the one configuration key jellyscale
-// serves by its own route.
-var notInSpec = []string{"GET /socket", "GET /System/Configuration/encoding"}
+// notInSpec are the rows that are in neither the OpenAPI document nor the
+// hidden list: Jellyfin's WebSocket, the one configuration key jellyscale
+// serves by its own route, and the routes of jellyscale's own namespace.
+var notInSpec = []string{"GET /socket", "GET /System/Configuration/encoding",
+	"GET /jellyscale/v1/track-preferences", "PATCH /jellyscale/v1/track-preferences"}
 
 type row struct{ method, path, class, slice, servedBy, webCaller, evidence string }
 

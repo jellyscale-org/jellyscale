@@ -2333,9 +2333,8 @@
         "The route is in compat/endpoints.yaml, in the jellyscale-only list of compat/coverage_test.go and in compat/conform.yaml with its reason; docs/api.md (new) states the namespace, its version, and this route with a request and an answer; docs/running.md says how an operator reads a viewer's settings",
         "No Jellyfin route answers differently: the differential tier passes with no new entry in compat/differences.yaml, and PlaybackInfo for 3 films is the same before and after every setting"
       ],
-      "priority": 19,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [
         "JS-116"
       ],
