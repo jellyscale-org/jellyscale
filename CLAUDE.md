@@ -32,6 +32,7 @@ Tests that need ffmpeg, Postgres, S3 or a font live in `*_integration_test.go` f
 - Tests must be able to fail. When fixing a bug, show the regression test catches it.
 - Concurrency claims need a test with real processes or real contention; a single process proves little.
 - Disposable infrastructure uses Docker-assigned ports. Never connect to a service already running on this machine.
+- Wait for a long run with one command: run it in the foreground with a timeout (up to 10 minutes, then run it again), or start it once in the background and wait for its notification. Never start a polling loop (`until …; do sleep …; done`) each turn: every background command stays a running task in the owner's list until it exits, and one QA agent left 45 of them (2026-11-15).
 - A missing dependency fails a test; it never skips one. A CI failure is never fixed by adding a skip.
 - Don't commit or push unless asked.
 
