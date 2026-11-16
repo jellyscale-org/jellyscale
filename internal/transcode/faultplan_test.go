@@ -42,9 +42,12 @@ const (
 	faultDelayLong  faultKind = "delay-past-half-lease"
 	// faultViewerStop is Jobs.Stop of a viewer.
 	faultViewerStop faultKind = "viewer-stop"
+	// faultSlowStore (JS-106) makes every segment Put of a worker that holds a job's lease take
+	// longer than a lease, its bytes moving the whole time: a slow store, not a lost one.
+	faultSlowStore faultKind = "slow-store"
 )
 
-var allFaultKinds = []faultKind{faultKill, faultPGShort, faultPGLong, faultStopShort, faultStopLease, faultStopStall, faultDelaySmall, faultDelayLong, faultViewerStop}
+var allFaultKinds = []faultKind{faultKill, faultPGShort, faultPGLong, faultStopShort, faultStopLease, faultStopStall, faultDelaySmall, faultDelayLong, faultViewerStop, faultSlowStore}
 
 // faultTiming is what the workers of a schedule run at. The lease is shorter than
 // the 30 s of TestAKilledWorkersJobIsClaimedBeforeItsLeaseRunsOut and longer than
@@ -318,6 +321,50 @@ func planFaults(seed uint64, tm faultTiming) []faultSchedule {
 		}
 		slices.SortStableFunc(placed, func(a, b faultStep) int { return int(a.At - b.At) })
 		schedules = append(schedules, faultSchedule{Steps: placed, Window: window})
+	}
+	return addSlowStore(seed, tm, schedules)
+}
+
+// addSlowStore adds a slow-store step to each schedule. It draws from a stream of its own, so the
+// steps planned before it keep their kind, target, moment and length for every seed (a seed
+// names a run to replay). The one of the first schedule is clean: no step that takes a worker
+// away, no clean step's surroundings and no restart that quarrels with it falls with it.
+func addSlowStore(seed uint64, tm faultTiming, schedules []faultSchedule) []faultSchedule {
+	rng := rand.New(rand.NewPCG(seed^0x51075702, seed+0x5107))
+	for i := range schedules {
+		sched := &schedules[i]
+		step := faultStep{Kind: faultSlowStore, Target: rng.IntN(1000), Clean: i == 0}
+		step.Length = lengthOf(rng, tm.Lease, tm.Lease+10*time.Second)
+		fits := func(at time.Duration) bool {
+			step.At = at
+			for _, o := range sched.Steps {
+				margin := time.Duration(0)
+				if o.Clean || step.Clean {
+					margin = 4 * time.Second
+				}
+				span := o.reach()
+				if _, away := o.workerOut(); !away && !o.Clean {
+					span = 0 // A restart or a viewer's stop that is not clean does not cut a slow store.
+				}
+				if span > 0 && earlier(step.At, o.At+span+margin) && earlier(o.At, step.At+step.Length+5*time.Second+margin) {
+					return false
+				}
+				if quarrels(step, o, tm) || quarrels(o, step, tm) {
+					return false
+				}
+			}
+			return true
+		}
+		placed := false
+		for try := 0; try < 3000 && !placed; try++ {
+			placed = fits(lengthOf(rng, 10*time.Second, max(11*time.Second, sched.Window-25*time.Second-step.Length)))
+		}
+		for at := 3 * time.Second; !placed; at += time.Second {
+			placed = fits(at)
+		}
+		sched.Steps = append(sched.Steps, step)
+		slices.SortStableFunc(sched.Steps, func(a, b faultStep) int { return int(a.At - b.At) })
+		sched.Window = max(sched.Window, step.At+step.Length+6*time.Second)
 	}
 	return schedules
 }
