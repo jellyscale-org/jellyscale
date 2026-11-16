@@ -103,7 +103,14 @@ func loadEndpoints(t *testing.T) []endpoint {
 	if err := yaml.Unmarshal(raw, &doc); err != nil {
 		t.Fatal(err)
 	}
-	return doc.Routes
+	// jellyscale's own namespace has no Jellyfin route to observe: a real Jellyfin answers 404 there.
+	var jellyfin []endpoint
+	for _, e := range doc.Routes {
+		if !strings.HasPrefix(strings.ToLower(e.Path), "/jellyscale/") {
+			jellyfin = append(jellyfin, e)
+		}
+	}
+	return jellyfin
 }
 
 // uncovered lists the routes no row of rows is for.
