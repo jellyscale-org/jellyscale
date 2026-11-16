@@ -370,7 +370,7 @@
         "Exported over OTLP to any backend, off by default; the dogfood runs a backend and the docs show reading a stall from it",
         "Checked with real processes: a test collector receives a playback's trace from three processes, with a stall and a failover in it"
       ],
-      "priority": 64,
+      "priority": 67,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -390,7 +390,7 @@
         "Each line of a playback carries its play session id and trace id (JS-021), and a helper's start, end and failure say they are a helper's and whose",
         "Metrics beyond the transcode path: HTTP requests by role, route and status with latency, store operations and bytes by store, scan durations and errors"
       ],
-      "priority": 63,
+      "priority": 66,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -550,7 +550,7 @@
         "A claim racing a re-lock cannot cancel a job",
         "Rollback note for the liveness change"
       ],
-      "priority": 11,
+      "priority": 15,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -596,7 +596,7 @@
         "jellyfin-web's remote control drives another session",
         "POST /Sessions/Capabilities and /Sessions/Capabilities/Full are accepted and stored for the session, so other clients see it as a remote-control target (#106)"
       ],
-      "priority": 43,
+      "priority": 46,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -622,7 +622,7 @@
         "Passwords: changing your own needs the current one; an administrator resets another's without it; either revokes the user's other tokens, shown on a second process",
         "A revoked device or disabled user's running stream stops: forced, a direct play of the whole file read slowly when the device is revoked or the user disabled closes within 15 seconds having sent less than the file"
       ],
-      "priority": 29,
+      "priority": 32,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -641,7 +641,7 @@
         "No plain token in the database",
         "API keys created and revoked through jellyfin-web"
       ],
-      "priority": 44,
+      "priority": 47,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -658,7 +658,7 @@
         "Last use time and address recorded",
         "Streamystats works with a read-only key and no extra user account"
       ],
-      "priority": 45,
+      "priority": 48,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -679,7 +679,7 @@
         "Forced: a library is taken from a viewer mid-film; their next segment and next byte range, through another replica, answer 404 (the outage exception is DOMAINS 37's)",
         "Pictures by id stay open to whoever holds the id; watch state for hidden items stays stored and is not shown"
       ],
-      "priority": 30,
+      "priority": 33,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -698,7 +698,7 @@
         "Moonfin on the Shield and Findroid sign in with a code approved from jellyfin-web",
         "Where Quick Connect is turned off, /QuickConnect/Enabled answers false so clients fall back to a password (#104)"
       ],
-      "priority": 46,
+      "priority": 49,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -713,7 +713,7 @@
       "acceptanceCriteria": [
         "Answer shape as Jellyfin 12.4"
       ],
-      "priority": 47,
+      "priority": 50,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -729,7 +729,7 @@
         "Sign in with an OIDC provider in jellyfin-web",
         "OIDC users reach TV apps through Quick Connect"
       ],
-      "priority": 48,
+      "priority": 51,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -747,7 +747,7 @@
         "No viewer token in any playlist or segment URL",
         "Kodi's TranscodingUrl editing still works"
       ],
-      "priority": 49,
+      "priority": 52,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -768,7 +768,7 @@
         "A track the request names still wins over the mode",
         "In real jellyfin-web (e2e): with mode Always and language English a film starts with its English subtitle on screen; with None it starts with none"
       ],
-      "priority": 26,
+      "priority": 29,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -786,7 +786,7 @@
       "acceptanceCriteria": [
         "Revoked device's token stops working"
       ],
-      "priority": 50,
+      "priority": 53,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -801,7 +801,7 @@
       "acceptanceCriteria": [
         "jellyfin-web's dashboard lists entries"
       ],
-      "priority": 51,
+      "priority": 54,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -816,7 +816,7 @@
       "acceptanceCriteria": [
         "jellyfin-web shows and changes avatars"
       ],
-      "priority": 52,
+      "priority": 55,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -832,7 +832,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 32,
+      "priority": 35,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -848,7 +848,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 53,
+      "priority": 56,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -866,7 +866,7 @@
         "GET /Shows/NextUp answers in Jellyfin 12.4's shape for the signed-in user, honours nextUpDateCutoff, and brings back a series the viewer had caught up on once a new episode is added (#101)",
         "GET /Items/Filters2 answers with the filters the library can match (#108)"
       ],
-      "priority": 33,
+      "priority": 36,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -882,7 +882,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 54,
+      "priority": 57,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -898,7 +898,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 55,
+      "priority": 58,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -914,7 +914,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 57,
+      "priority": 60,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -930,7 +930,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 58,
+      "priority": 61,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -946,7 +946,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 59,
+      "priority": 62,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -962,7 +962,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 60,
+      "priority": 63,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -983,7 +983,7 @@
         "Tested on real hardware in its own tier chosen explicitly (never skipped): Intel QSV/VAAPI on the dogfood cluster's iGPUs and NVENC on a developer machine; jellyfin-web plays, seeks and recovers from a killed GPU worker",
         "Operators see which encoder family and worker serve each stream (Sessions, metrics, JS-021 traces)"
       ],
-      "priority": 61,
+      "priority": 64,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1003,7 +1003,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 62,
+      "priority": 65,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1024,7 +1024,7 @@
         "An optional GPU worker pool requests gpu.intel.com/i915 or nvidia.com/gpu through the vendor's device plugin (JS-054); a cluster without one runs CPU workers only; documented in docs/running.md",
         "Each probe states what it depends on: liveness never depends on Postgres or a store, so a database failover restarts no pod; ffmpeg threads follow the pod's CPU limit, not the node's cores"
       ],
-      "priority": 65,
+      "priority": 68,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1041,7 +1041,7 @@
         "KEDA's maximum worker replicas stay within the Postgres connection budget (one liveness connection per worker, on top of the pools), so scaling up never exhausts max_connections",
         "It scales on the demand metric of JS-021 (jobs waiting for a slot, helpers refused for lack of one), so each scale-up can be read back with its reason"
       ],
-      "priority": 66,
+      "priority": 69,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1059,7 +1059,7 @@
       "acceptanceCriteria": [
         "A rolling upgrade under playback loses no picture"
       ],
-      "priority": 67,
+      "priority": 70,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1076,7 +1076,7 @@
       "acceptanceCriteria": [
         "Restore tested from a backup"
       ],
-      "priority": 68,
+      "priority": 71,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1091,7 +1091,7 @@
       "acceptanceCriteria": [
         "Viewers keep their history; users set a password or use OIDC"
       ],
-      "priority": 69,
+      "priority": 72,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1107,7 +1107,7 @@
         "Observe its calls on Jellyfin first",
         "Its dashboards fill from jellyscale"
       ],
-      "priority": 70,
+      "priority": 73,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1125,7 +1125,7 @@
       "acceptanceCriteria": [
         "200 mixed streams with stated rebuffer ratio and p95s"
       ],
-      "priority": 71,
+      "priority": 74,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1143,7 +1143,7 @@
         "Two viewers on different api replicas stay in sync in jellyfin-web",
         "compat/coverage-12.4.tsv phase7-syncplay routes built (23)"
       ],
-      "priority": 72,
+      "priority": 75,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1185,7 +1185,7 @@
         "Replays run in CI and fail on a response a client would reject (status, missing field, wrong shape)",
         "No titles or paths from a real library in the captures (synthetic fixtures only)"
       ],
-      "priority": 40,
+      "priority": 43,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1260,7 +1260,7 @@
         "Each entry with task JS-068 in compat/differences.yaml is fixed and removed, or becomes an improvement or non-goal with its reason",
         "test/differential/run.sh passes with the entries removed"
       ],
-      "priority": 41,
+      "priority": 44,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1429,7 +1429,7 @@
         "Each failure becomes a task in tasks/prd.json, placed before JS-054 when it concerns the segment format",
         "docs/status.md says which clients have played which paths"
       ],
-      "priority": 9,
+      "priority": 13,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1531,7 +1531,7 @@
         "Assets of a file version that no longer exists are removed by a sweep, with a test for subtitles, .sup copies and images",
         "docs/running.md says how to size the transcode volume or bucket and what the sweep removes"
       ],
-      "priority": 13,
+      "priority": 17,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1549,7 +1549,7 @@
         "One documented rollout order, the same in docs/running.md and ARCHITECTURE.md, and a test or check that each migration in a release is safe for the previous version's code",
         "With a stream replica of the previous decision version registered and an api replica of the new one, PlaybackInfo offers nothing the old replica would refuse (a real-process test), and docs/running.md no longer requires an order between api and stream"
       ],
-      "priority": 42,
+      "priority": 45,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1568,7 +1568,7 @@
         "GET /Items/{itemId}/LocalTrailers lists trailer files stored beside the film, as Jellyfin names them; nothing is fetched from outside the server (#108)",
         "A title that ends in a year-like number keeps it: synthetic table cases 'Harbor Lights 2049 (2017)', 'Harbor.Lights.2049.2017.1080p', 'Harbor Lights 2049' (no year), '2001 Night Garden (1968)', '1888 (2019)' and '2031' give the right title and year, and an existing library's item ids do not change"
       ],
-      "priority": 31,
+      "priority": 34,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1760,7 +1760,7 @@
       "dependsOn": [],
       "source": "Fable 5.2 blind audit, 2026-11-14 (.results/audit-2026-11-14.md)",
       "notes": "",
-      "priority": 10
+      "priority": 14
     },
     {
       "id": "JS-108",
@@ -1861,7 +1861,7 @@
       "dependsOn": [],
       "source": "Fable 5.2 blind audit, 2026-11-14 (.results/audit-2026-11-14.md)",
       "notes": "",
-      "priority": 12
+      "priority": 16
     },
     {
       "id": "JS-113",
@@ -1910,7 +1910,7 @@
       "dependsOn": [],
       "source": "Fable 5.2 blind audit, 2026-11-14 (.results/audit-2026-11-14.md)",
       "notes": "",
-      "priority": 39
+      "priority": 42
     },
     {
       "id": "JS-085",
@@ -2030,7 +2030,7 @@
         "A copy whose keyframe index is found wrong mid-film goes on as a re-encode at the same position, with no dialog and no frozen picture, in jellyfin-web in the e2e tier",
         "A segment whose job failed is made again by a fresh job before the player's request times out, where the cause is not the file's"
       ],
-      "priority": 14,
+      "priority": 18,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2047,7 +2047,7 @@
         "The extraction is one read per film, cached and shared like a text track's",
         "Every JS-071 check still passes"
       ],
-      "priority": 15,
+      "priority": 19,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2064,7 +2064,7 @@
         "A run that stops writing for the stall limit is ended and the fallback starts, without waiting for the extraction limit",
         "A film without a hanging track is still read once"
       ],
-      "priority": 16,
+      "priority": 20,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2081,7 +2081,7 @@
         "A library with background extraction on has every text track extracted after a scan, one read per film; one without it extracts on first pick as today",
         "docs/running.md states the setting and its cost"
       ],
-      "priority": 34,
+      "priority": 37,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2098,7 +2098,7 @@
         "A process warns at startup when the cluster's registered processes approach max_connections",
         "A multi-process variant of test/stress.sh measures connections and Postgres load at 50 workers"
       ],
-      "priority": 35,
+      "priority": 38,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2116,7 +2116,7 @@
         "No rule is lost: a check lists every old invariant's tests against the new file",
         "No invariant is longer than 600 characters; each has a stable identifier and a link to its rationale; numbers cited in code still resolve; the regex-over-prose tests are removed or replaced by tests that compare a constant with the number the doc states"
       ],
-      "priority": 36,
+      "priority": 39,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2132,7 +2132,7 @@
         "PlaybackInfo, the stream requests, the job and the worker's ffmpeg log lines of one playback carry the same id",
         "docs/running.md shows how to follow one playback"
       ],
-      "priority": 37,
+      "priority": 40,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2150,7 +2150,7 @@
         "Every existing test of those job kinds passes",
         "encode becomes a job type with named state: no function in internal/transcode is longer than 120 lines (a structure check), and the unreachable branches the audit found (run(begin), next < begin, the stale-file removal) are gone, with the integration and e2e tiers passing with no check changed"
       ],
-      "priority": 38,
+      "priority": 41,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2166,7 +2166,7 @@
         "A schedule trigger runs every CI job on main once a day, and test/changes.sh treats it as a full run",
         "A failing nightly run opens or updates one issue naming the failed tests"
       ],
-      "priority": 73,
+      "priority": 76,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2183,7 +2183,7 @@
         "Branch protection is the ruleset alone; the classic rule is removed",
         "A pull request touching .github/ or test/**/*.sh runs the media tiers as ci:full does, and only the ci:full label restarts a run"
       ],
-      "priority": 74,
+      "priority": 77,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2199,7 +2199,7 @@
         "An image with ffmpeg 6.1, Node and Chrome runs test/e2e/run.sh and test/roles.sh locally, to reproduce a merge-queue failure",
         "Its versions match CI's"
       ],
-      "priority": 75,
+      "priority": 78,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2263,7 +2263,7 @@
         "No Jellyfin route changes behaviour, and an unmodified Jellyfin client never sees the namespace",
         "A viewer with no history gets a sensible answer (empty or popular in the library), and another account's history never shapes a viewer's suggestions"
       ],
-      "priority": 56,
+      "priority": 59,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -2334,7 +2334,7 @@
         "The route is in compat/endpoints.yaml, in the jellyscale-only list of compat/coverage_test.go and in compat/conform.yaml with its reason; docs/api.md (new) states the namespace, its version, and this route with a request and an answer; docs/running.md says how an operator reads a viewer's settings",
         "No Jellyfin route answers differently: the differential tier passes with no new entry in compat/differences.yaml, and PlaybackInfo for 3 films is the same before and after every setting"
       ],
-      "priority": 19,
+      "priority": 22,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -2364,7 +2364,7 @@
         "jellyfin-sdk-kotlin's serializers decode the PlaybackInfo with placeholders (a kotlin: request in the differential tier)",
         "PlaybackInfo logs at Debug the number of tracks it hid for each source, with the user and the item; DOMAINS.md has the rule as an invariant, docs/subtitles.md and docs/status.md describe it, and compat/differences.yaml records that an opted-in viewer's answers differ from Jellyfin's"
       ],
-      "priority": 22,
+      "priority": 25,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -2388,7 +2388,7 @@
         "POST /Items/{itemId}/PlaybackInfo and GET /Items/{itemId} never carry a Hidden field, for any settings",
         "The route is in compat/endpoints.yaml and the jellyscale-only list, compat/conform.yaml holds its answers to PlaybackInfo's schema, and docs/api.md documents it with the two added fields"
       ],
-      "priority": 23,
+      "priority": 26,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -2410,7 +2410,7 @@
         "In real jellyfin-web (e2e): a viewer whose audio language is German starts a film with audio eng (default) and deu in German, with the video copied and not re-encoded; a film with only eng plays directly as before",
         "docs/transcoding.md says that a preferred track which is not the file's default turns a browser's direct play into a copied stream, and docs/status.md marks the settings as acting"
       ],
-      "priority": 25,
+      "priority": 28,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -2437,7 +2437,7 @@
       ],
       "notes": "Owner, 2026-11-15: Fluster first, a page later. Planned after the track-language batch so Fluster adopts it first.",
       "passes": false,
-      "priority": 27,
+      "priority": 30,
       "source": "owner 2026-11-15",
       "status": "todo"
     },
@@ -2459,7 +2459,7 @@
         "No Jellyfin route answers differently: JS-116's replay of the 124 captured cases passes unchanged and the differential tier passes with no new entry in compat/differences.yaml",
         "A change is logged at Info with the user id and the names of the fields sent. The route is in compat/endpoints.yaml, in the jellyscale-only list of compat/coverage_test.go, and in compat/conform.yaml with its answer held to UserConfiguration's schema. docs/api.md documents it with a request and an answer, how a concurrent save of the same field is decided, and that a whole-object save from an older read (jellyfin-web's) can still undo a change while the track preferences are out of its reach"
       ],
-      "priority": 24,
+      "priority": 27,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -2486,7 +2486,7 @@
         "CONTRIBUTING.md says how a release is cut: a tag vX.Y.Z on a commit of main whose image run passed, and a GitHub release with generated notes",
         "ci.yml's four required checks and their run time are unchanged; the image workflow is not a required check"
       ],
-      "priority": 20,
+      "priority": 23,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2539,7 +2539,7 @@
       ],
       "notes": "No handler changes. Findroid builds its URL in JellyfinRepositoryImpl.kt:341-348 (013eb52) with getVideoStreamUrl(itemId, static = true, mediaSourceId). Swiftfin appends ApiKey itself (RemotePlaybackURL.swift:21-25). The lead drafts the upstream issue for Findroid from the client list and files it with the owner's OK. JS-075's ExoPlayer session should use a client this task shows sending its token, or a patched Findroid. Whether Jellyfin's anonymous stream really sends bytes on 12.4 is what the first criterion finds out: the attribute is missing in source, the handler was not run. Owner's decisions (2026-11-16, on Fable 5.2's access model, .results/access-model-fable-2026-11-16.md): pictures by id open to whoever holds the id, by name need a token; per-library access right after JS-033; a revoked or disabled user's running stream stops within 15 s; a viewer sees no other viewer's name; an administrator manages accounts but never browses, plays or reports as another user; a Policy field jellyscale does not enforce is refused when changed (400); 'may download' is honoured; operator keys are never users; no issue is filed on Findroid for now.",
       "passes": false,
-      "priority": 18,
+      "priority": 21,
       "source": "owner 2026-11-16; access model",
       "status": "todo"
     },
@@ -2565,7 +2565,7 @@
       ],
       "notes": "Changed answers, to list in the pull request: a request naming another user's id got 200 with the caller's data and now gets 403; the Configuration 404 above. Neither is visible to a viewer using a client, which always sends its own id. An administrator reading another user's library or watch state is refused on purpose (owner decision 4); an integration that needs it gets a scoped key in JS-035, and JS-061 observes what Streamystats asks for. Tests make their second user by SQL, as user_configuration_integration_test.go does; no seeding route is added. Jellyfin's rule is RequestHelpers.GetUserId (Jellyfin.Api/Helpers/RequestHelpers.cs:67-81 at v12.4). Owner's decisions (2026-11-16, on Fable 5.2's access model, .results/access-model-fable-2026-11-16.md): pictures by id open to whoever holds the id, by name need a token; per-library access right after JS-033; a revoked or disabled user's running stream stops within 15 s; a viewer sees no other viewer's name; an administrator manages accounts but never browses, plays or reports as another user; a Policy field jellyscale does not enforce is refused when changed (400); 'may download' is honoured; operator keys are never users; no issue is filed on Findroid for now.",
       "passes": false,
-      "priority": 28,
+      "priority": 31,
       "source": "access model",
       "status": "todo"
     },
@@ -2588,9 +2588,95 @@
       ],
       "notes": "Found 2026-11-16 while drafting Fluster issues (the owner wants Fluster first-class). Fluster also strips ApiKey from subtitle DeliveryUrls (gateway.ts:178-195); PlaybackInfo's TranscodingUrl and DeliveryUrls keep ApiKey here, because jellyfin-web loads them as URLs. Fewer tokens in URLs is also safer (DOMAINS invariant 17).",
       "passes": false,
-      "priority": 21,
+      "priority": 24,
       "source": "lead 2026-11-16, from the Fluster issue research",
       "status": "todo"
+    },
+    {
+      "id": "JS-129",
+      "phase": "OPS",
+      "title": "The integration tier fits its limits, and a queue run stops paying for waste",
+      "description": "On 2026-11-16, 6 merge-queue runs were cancelled because the rest shard hit its 40-minute job limit (2417 s) and at least 3 failed because shard 0of4 hit go test's 30-minute limit (run 43892801970). test/shard-times.txt lacks 135 of main's 362 transcode tests, 1836 s on CI, the three slowest among them; each counts as 4.2 s. rest runs internal/api (1226 s) and cmd/jellyscale (630 s) in turn in one job. 13 jobs install ffmpeg from a mirror (7.5 to 13.8 runner-minutes a run; the step timed out in run 43909360415). test/e2e/failover.mjs waits out a 180 s timer after its last scenario (161 s). The differential tier fetches its jars from Maven Central every run (429 in run 43919042492).",
+      "acceptanceCriteria": [
+        "test/shard-times.txt is made by test/shard-times.sh from the tests.json of at least three green merge-queue runs (its header names the run ids and says CI's runners) and holds every test that go test -tags integration -list finds in the packages test/shard.sh deals by test",
+        "test/shard.sh deals internal/api's tests by time as it deals internal/transcode's, so no shard is one package's serial run; test/check-shards.sh integration still fails when a test is in no shard or in two, and test/scripts_test.sh shows it for a second dealt package",
+        "test/scripts_test.sh fails, naming the shard, when the times in test/shard-times.txt for any shard add up to more than two thirds of the go test limit set in test/integration.sh (today 0of4 holds 29.2 minutes of tests against 30)",
+        "The integration job's summary prints each shard's test seconds and the line 'refresh test/shard-times.txt' when the slowest shard's are more than 1.25 times the fastest's; it is a notice and fails nothing",
+        "In the first three merge-queue runs after the change no integration job takes over 27 minutes (today 38.5 to 39.9) and none is cancelled or stopped by a time limit",
+        "ffmpeg, fontconfig and the font are installed from .deb files restored by actions/cache (keyed on the runner image version and the package list); on a hit the install step makes no request to an Ubuntu mirror and takes under 30 s in every job of a queue run; a miss installs as today and saves; the step that fails a job whose ffmpeg is not 6.1 is unchanged",
+        "test/e2e/failover.mjs ends when its last scenario has: in the failover shard's log under 5 s pass between 'shard 0/1: ran 5 of 5' and the conform line (today 161 s); a test with a stand-in replica that never exits still fails with 'the replica that got SIGTERM was still running 180 s later'",
+        "The jars test/sdkjvm/decode.sh needs are restored by actions/cache keyed on jars.txt; with the cache warm the differential shard makes no request to Maven Central",
+        "No file matching *_integration_test.go changes, and the tier's test count from go test -list is the same before and after",
+        "When lint-and-unit fails in a run, that run's integration, e2e, roles and differential jobs are cancelled at once (owner, 2026-11-16); the required checks still report failure"
+      ],
+      "dependsOn": [],
+      "notes": "Priority 1. As a stopgap in the first commit, raise the job limit to 50 minutes and go test's to 40 so the queue stops killing runs while the split lands; set them back to 30 and 40 in the last. Planned by Fable 5.2 (.results/test-time-fable-2026-11-16.md). Owner's decisions 2026-11-16: skip the media tiers for .claude/ and tasks/ changes with a guard test (JS-132); cancel media shards when lint-and-unit fails; the merge queue builds 2 entries (back to 3 once a run costs under ~150 runner-minutes and under a fifth of runs fail) with a 90-minute check timeout, set by the lead.",
+      "passes": false,
+      "status": "todo",
+      "source": "owner 2026-11-16, Fable 5.2 test-time audit",
+      "priority": 9
+    },
+    {
+      "id": "JS-130",
+      "phase": "OPS",
+      "title": "A runner runs several test processes side by side, each with its own Postgres",
+      "description": "The integration tier idles: measured on four pinned cores, internal/transcode kept 0.69 of 4 CPUs busy (4887 s wall, 3364 CPU-s) and the 28 slowest tests of the other packages 0.18. The account runs 20 jobs at once (measured peak, held 96 minutes on 2026-11-16), so runner-minutes, not shards, bound the queue. Local runs on 2 cores / 4 threads: the 28 slowest rest tests as four processes in 420 s against 1510 s serial on CI, all passing; the 33 slowest transcode tests as three processes in 1390 s against 3486 s, one failure.",
+      "acceptanceCriteria": [
+        "INTEGRATION_PROCS=n makes test/integration.sh start n Postgres containers on Docker-assigned ports and run n go test processes at once, each over its own share of the shard's tests (dealt by time by test/shard.sh), with its own JELLYSCALE_TEST_DATABASE_URL, TMPDIR and tests.json; test/scripts_test.sh, with stand-in docker and go, fails if a test is in two shares or in none, or if two processes are given one database URL",
+        "A failed test, a skipped test, a process that stops partway (a panic, go test's limit) or a count that does not add up to go test -list fails the shard and names the test, as today; a stand-in process that exits early fails the script test",
+        "No *_test.go file, test/e2e/*.mjs or file under test/differential changes, other than for a test named under the next criterion but one: the checks are the ones that ran before",
+        "Every mutant of test/mutant.py fails the tier side by side on the test it fails alone (test/mutant.sh <mutant> with INTEGRATION_PROCS set), and so do three transcode regressions the spec writer names from JS-066, JS-104 and JS-105, each shown failing alone and side by side",
+        "A test that fails side by side and passes alone is fixed at its cause (the interleaving forced, the count made independent of load) or listed in test/alone.txt with its reason and run in a process of its own; none is retried, skipped or given a longer bound. TestTheScanReadsNoMoreOfAFilmForItsImageTrackAndNothingThatGrowsWithTheFilm is the first to settle (it failed once in three processes on four logical CPUs, 2026-11-16)",
+        "On the queue the integration tier is at most five jobs; in ten consecutive merge-queue runs after the change no integration job takes over 20 minutes, the tier's jobs add up to at most 85 runner-minutes (today 137 to 140), and none of the ten fails on a test that passes when run alone",
+        "docs/testing.md says how the tier is split twice (jobs, then processes), how to run one process's share locally, and that a concurrency claim still needs its own real processes or contention"
+      ],
+      "dependsOn": [
+        "JS-129"
+      ],
+      "notes": "The 20-minute and 85-runner-minute bounds come from local experiments, not from CI; if the first queue runs show a 4-vCPU runner cannot hold them at two processes for transcode and four for the rest, the lead restates them from those runs, never by removing or loosening a test. A Postgres per process, not a database per process: some transcode tests end backends chosen from pg_locks, which is cluster-wide. core: true. Planned by Fable 5.2 (.results/test-time-fable-2026-11-16.md). Owner's decisions 2026-11-16: skip the media tiers for .claude/ and tasks/ changes with a guard test (JS-132); cancel media shards when lint-and-unit fails; the merge queue builds 2 entries (back to 3 once a run costs under ~150 runner-minutes and under a fifth of runs fail) with a 90-minute check timeout, set by the lead.",
+      "passes": false,
+      "status": "todo",
+      "source": "owner 2026-11-16, Fable 5.2 test-time audit",
+      "priority": 11
+    },
+    {
+      "id": "JS-131",
+      "phase": "OPS",
+      "title": "The slowest checks do less work for the same claim",
+      "description": "After JS-130 CPU is what a runner lacks. The image burn-in kit encodes 640x360 films at 1280x720; a scratch run at the films' own size took three tests from 655 to 445 CPU-s with all passing. Four waits are not the claim: the two slow-database tests play a 90 s film through 1 s round trips (551 s) where the claim needs more than two leases; TestAProcessWithoutTheWorkerRoleWritesNothingToTheLibraries stops 18 processes one after another at 5 s each (98 s, 3 CPU-s); TestARegistryThatAnswersNotFoundHasTheTagAbsentAndIsWrittenTo takes 100 s on CI and 1.5 s locally; TestAWorkerStoppedPastItsLeaseAndTheStallLimitEndsItsJobCancelled repeats each shape three times to sample a race.",
+      "acceptanceCriteria": [
+        "The image burn-in kit asks for the film's own 640x360; every test that uses it passes, and for each the mutant its comment names (a build that reads only the later packet, a run that begins after the cue, and so on) is shown failing before and after",
+        "TestASlowDatabaseSetBeforeTheClaimCostsNoJobItsLeaseOrItsWorker and TestASlowDatabaseCostsNoJobItsLeaseOrItsWorker run on a film whose job outlasts two leases and no more than six, each failing itself if the job ended inside two leases; a keeper that gives its connect the renewal's bound, and a renewal sent in two round trips, each still fail their test",
+        "TestAProcessWithoutTheWorkerRoleWritesNothingToTheLibraries starts its 18 processes side by side and judges each by name; a build in which a process without the worker role calls library.Sync fails every one of the 18",
+        "The registry stub of TestARegistryThatAnswersNotFoundHasTheTagAbsentAndIsWrittenTo refuses the write with a status docker push does not retry; the test still fails when nothing was written",
+        "TestAWorkerStoppedPastItsLeaseAndTheStallLimitEndsItsJobCancelled forces which of the poll and the heartbeat sees the stop first, once each for both shapes, instead of three rounds of each",
+        "The tests.json of a queue run before and after shows the changed tests' seconds: together at least 500 s less"
+      ],
+      "dependsOn": [
+        "JS-130"
+      ],
+      "notes": "Lowest of the four. Whether Docker's retries are the cause of the 100 s is unverified; observe it on a runner first. Planned by Fable 5.2 (.results/test-time-fable-2026-11-16.md). Owner's decisions 2026-11-16: skip the media tiers for .claude/ and tasks/ changes with a guard test (JS-132); cancel media shards when lint-and-unit fails; the merge queue builds 2 entries (back to 3 once a run costs under ~150 runner-minutes and under a fifth of runs fail) with a 90-minute check timeout, set by the lead.",
+      "passes": false,
+      "status": "todo",
+      "source": "owner 2026-11-16, Fable 5.2 test-time audit",
+      "priority": 12
+    },
+    {
+      "id": "JS-132",
+      "phase": "OPS",
+      "title": "A change no media tier can read runs no media tier",
+      "description": "21 of the last 80 merged pull requests changed only .claude/workflows, .claude/agents or tasks/backlog.json, and each ran the whole 220 runner-minutes. The tests that read those files (internal/transcode/faults_docs_test.go, test/scripts_test.sh) are in lint-and-unit, which runs on every event. test/changes.sh counts .claude/ as code on purpose, so this changes a stated rule and needs the owner's yes.",
+      "acceptanceCriteria": [
+        "test/changes.sh prints docs-only for a diff confined to .claude/ and tasks/ and to the Markdown it already accepts, and code for anything else, renames and unreadable diffs included; test/scripts_test.sh covers each case",
+        "A unit test fails, naming the file and line, when any *_integration_test.go, test/e2e file, test/roles.sh, test/differential file or script they source names a path under .claude/ or tasks/ other than tasks/prd.json",
+        "lint-and-unit runs on such a change as on any other, and the required checks integration and e2e report as they do for a docs-only change today"
+      ],
+      "dependsOn": [],
+      "notes": "Tiny; can land beside JS-129. Only if the owner agrees (decision 1). Planned by Fable 5.2 (.results/test-time-fable-2026-11-16.md). Owner's decisions 2026-11-16: skip the media tiers for .claude/ and tasks/ changes with a guard test (JS-132); cancel media shards when lint-and-unit fails; the merge queue builds 2 entries (back to 3 once a run costs under ~150 runner-minutes and under a fifth of runs fail) with a 90-minute check timeout, set by the lead.",
+      "passes": false,
+      "status": "todo",
+      "source": "owner 2026-11-16, Fable 5.2 test-time audit",
+      "priority": 10
     }
   ]
 }
