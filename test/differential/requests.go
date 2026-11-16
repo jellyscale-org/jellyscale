@@ -42,6 +42,35 @@ type Request struct {
 	// NoToken says the request leaves with no credential in any spelling (JS-126). Both servers must still
 	// answer 2xx to it with the token, so it names something both have; the answers with none are compared by status alone.
 	NoToken bool `yaml:"no_token"`
+	// OptedIn (JS-119) makes the request's viewer one who hides the tracks outside their languages: before it, jellyscale's
+	// admin saves audio and subtitle language eng and turns on both switches of /jellyscale/v1/track-preferences, a route
+	// Jellyfin has not. Jellyfin saves the languages only. Both are reset after the request, so no other one sees them.
+	OptedIn bool `yaml:"opted_in"`
+	// ExpectData says jellyscale's answer must hold a stream of Type Data: a request that decodes an opted-in viewer's answer
+	// proves nothing when the answer has no placeholder to decode.
+	ExpectData bool `yaml:"expect_data"`
+}
+
+// HoldsData says whether a JSON answer lists a stream of Type Data anywhere in it.
+func HoldsData(doc any) bool {
+	switch doc := doc.(type) {
+	case map[string]any:
+		if doc["Type"] == "Data" && doc["Index"] != nil {
+			return true
+		}
+		for _, v := range doc {
+			if HoldsData(v) {
+				return true
+			}
+		}
+	case []any:
+		for _, v := range doc {
+			if HoldsData(v) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // CheckAnswer says why one server's answer is not what r expects, or nil.

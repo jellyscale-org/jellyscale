@@ -179,12 +179,40 @@ type MediaStream struct {
 	// File is where a worker put a copy of the external image track to read it
 	// from. It is never stored.
 	File string `json:"-"`
+	// Placeholder marks a track listed as a stream of Type Data at its own Index, saying nothing else of it (JS-119).
+	// It is made for an answer and never stored.
+	Placeholder bool `json:"-"`
 	// OpenAt is set by a worker for a track inside the film whose cue points
 	// the scan read. For a run whose first frame is at time t (seconds on the
 	// film's clock) it says when the run must open the film to read the picture
 	// showing there, t if none is. Nil: the times are not known, and the run
 	// opens the film a fixed time early. It is never stored.
 	OpenAt func(t float64) (float64, error) `json:"-"`
+}
+
+// MarshalJSON lists a placeholder as the data stream Jellyfin 12.4 lists for a timecode track
+// (compat/captures/data-stream-12.4.md), less the fields that come from the track: its language, codec tag, time base
+// and bit rate. Any two placeholders then differ in Index alone.
+func (s MediaStream) MarshalJSON() ([]byte, error) {
+	if s.Placeholder {
+		return json.Marshal(struct {
+			VideoRange             string
+			VideoRangeType         string
+			AudioSpatialFormat     string
+			IsInterlaced           bool
+			IsDefault              bool
+			IsForced               bool
+			IsHearingImpaired      bool
+			IsOriginal             bool
+			Type                   string
+			Index                  int
+			IsExternal             bool
+			IsTextSubtitleStream   bool
+			SupportsExternalStream bool
+		}{VideoRange: "Unknown", VideoRangeType: "Unknown", AudioSpatialFormat: "None", Type: "Data", Index: s.Index})
+	}
+	type plain MediaStream
+	return json.Marshal(plain(s))
 }
 
 // MediaAttachment is a font or another file attached to a film.

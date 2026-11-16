@@ -2362,9 +2362,8 @@
         "jellyfin-sdk-kotlin's serializers decode the PlaybackInfo with placeholders (a kotlin: request in the differential tier)",
         "PlaybackInfo logs at Debug the number of tracks it hid for each source, with the user and the item; DOMAINS.md has the rule as an invariant, docs/subtitles.md and docs/status.md describe it, and compat/differences.yaml records that an opted-in viewer's answers differ from Jellyfin's"
       ],
-      "priority": 21,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [
         "JS-117",
         "JS-118"
@@ -2406,7 +2405,8 @@
         "With no audio language saved, every film's default is what it is today",
         "With JS-119's hiding on, the default is a listed Audio stream in every cell, never a placeholder",
         "In real jellyfin-web (e2e): a viewer whose audio language is German starts a film with audio eng (default) and deu in German, with the video copied and not re-encoded; a film with only eng plays directly as before",
-        "docs/transcoding.md says that a preferred track which is not the file's default turns a browser's direct play into a copied stream, and docs/status.md marks the settings as acting"
+        "docs/transcoding.md says that a preferred track which is not the file's default turns a browser's direct play into a copied stream, and docs/status.md marks the settings as acting",
+        "Observed first on Jellyfin 12.4: what DefaultAudioStreamIndex answers when the request names AudioStreamIndex; jellyscale then follows it (moved here from JS-119: today defaultAudio, stream.go:304, ignores the named track for every viewer)"
       ],
       "priority": 24,
       "status": "todo",

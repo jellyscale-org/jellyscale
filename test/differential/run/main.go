@@ -90,10 +90,16 @@ func main() {
 		if r.Play != "" {
 			err = errors.Join(jf.play(byName[r.Play]), js.play(byName[r.Play]))
 		}
+		if err == nil && r.OptedIn {
+			err = optIn(jf, js, true)
+		}
 		if err == nil && r.NoToken {
 			err = compareNoToken(jf, js, r, allow)
 		} else if err == nil {
 			diffs, err = compare(jf, js, r)
+		}
+		if r.OptedIn {
+			err = errors.Join(err, optIn(jf, js, false))
 		}
 		if err == nil {
 			diffs = allow.Filter(r.Name, diffs)
@@ -266,7 +272,7 @@ func (s *server) setUp(password string) error {
 	if err := s.signIn("admin", password); err != nil {
 		return err
 	}
-	for _, lib := range [][2]string{{"Movies", "movies"}, {"Shows", "tvshows"}, {"HDR", "movies"}, {"Subtitled", "movies"}} {
+	for _, lib := range [][2]string{{"Movies", "movies"}, {"Shows", "tvshows"}, {"HDR", "movies"}, {"Subtitled", "movies"}, {"Languages", "movies"}} {
 		path := "/Library/VirtualFolders?refreshLibrary=false&name=" + lib[0] + "&collectionType=" + lib[1]
 		body := `{"LibraryOptions":{"PathInfos":[{"Path":"/media/` + strings.ToLower(lib[0]) + `"}]}}`
 		if _, err := s.mustDo("POST", path, body); err != nil {
@@ -459,6 +465,12 @@ func (s *server) answer(r differential.Request) (status int, doc any, err error)
 			return 0, nil, err
 		}
 	}
+	if s.kotlin != nil && r.ExpectData {
+		var answer any
+		if json.Unmarshal(data, &answer) != nil || !differential.HoldsData(answer) {
+			return 0, nil, fmt.Errorf("%s: the answer holds no stream of Type Data, so decoding it shows nothing of placeholders", s.name)
+		}
+	}
 	if json.Unmarshal(data, &doc) != nil {
 		lines := []any{}
 		for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
@@ -467,6 +479,30 @@ func (s *server) answer(r differential.Request) (status int, doc any, err error)
 		doc = lines
 	}
 	return status, doc, nil
+}
+
+// optIn makes the admin a viewer who hides the tracks outside their languages (JS-119), or puts the admin back as a new
+// user is. Languages are saved on both servers, the switches on jellyscale alone: Jellyfin has no place for them.
+func optIn(jf, js *server, on bool) error {
+	languages, switches := `{}`, `{"HideOtherAudio":false,"HideOtherSubtitles":false}`
+	if on {
+		languages, switches = `{"AudioLanguagePreference":"eng","SubtitleLanguagePreference":"eng"}`, `{"HideOtherAudio":true,"HideOtherSubtitles":true}`
+	}
+	if !on {
+		if _, err := js.mustDo("PATCH", "/jellyscale/v1/track-preferences", switches); err != nil {
+			return err
+		}
+	}
+	for _, s := range []*server{jf, js} {
+		if _, err := s.mustDo("POST", "/Users/"+s.userID+"/Configuration", languages); err != nil {
+			return err
+		}
+	}
+	if on {
+		_, err := js.mustDo("PATCH", "/jellyscale/v1/track-preferences", switches)
+		return err
+	}
+	return nil
 }
 
 func compare(jf, js *server, r differential.Request) ([]differential.Difference, error) {
