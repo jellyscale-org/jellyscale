@@ -271,13 +271,17 @@ func TestAPutThatStopsMovingEndsItsJobCancelledForTheStall(t *testing.T) {
 			if !strings.Contains(reason, "has not come round") {
 				t.Errorf("the row's error is %q, want the stall as the reason", reason)
 			}
-			stalled := false
-			for _, line := range interruptedLines(w) {
-				stalled = stalled || strings.Contains(line, "has not come round")
+			// The row is written before the ffmpeg is ended (DOMAINS 25), and the
+			// log line after it, so the line is waited for rather than read at once.
+			stalled := func() bool {
+				for _, line := range interruptedLines(w) {
+					if strings.Contains(line, "has not come round") {
+						return true
+					}
+				}
+				return false
 			}
-			if !stalled {
-				t.Errorf("the worker's log gives no stall as the reason:\n%s", w.log.String())
-			}
+			waitFor(t, "the worker's log to give the stall as the reason", keeperHang, stalled)
 			if gone, _ := r.goneBefore(t, before, r.leaseOf(t, job)); !gone {
 				t.Error("the job's ffmpeg is still running")
 			}
