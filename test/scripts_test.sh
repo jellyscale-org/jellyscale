@@ -427,8 +427,7 @@ check "play.mjs signs in and waits through the shared login and waitFor" 2 "$( (
 # printed, the exit is non-zero. Failover kills what it started and resets the router, pass or fail.
 rec="$tmp/rec"
 bash test/e2e/fake/record.sh "$repo" "$rec" >"$tmp/gates.txt" 2>&1
-# What a gate ran before JS-114 is compared once, on the base commit, by test/js114-before-after.sh. What stays
-# true for ever: a gate's shards between them run each scenario once, and the T each shard prints is the sum.
+# A gate's shards between them run each scenario once, and the T each shard prints is the sum.
 for gate in subtitles failover transcode; do
   check "$gate: its three shards run T scenarios between them, none twice, each printing the same T" "ok" "$(
     cat "$rec/$gate"-[012].out | awk '/^run   / { n++; if (seen[$0]++) dup = 1 } /^shard / { split($4 " " $6, t, " "); T[$6]++; tot = $6 } END { print (n == tot && !dup && length(T) == 1) ? "ok" : "ran " n " of " tot " dup=" dup }')"

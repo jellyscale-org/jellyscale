@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # What each default gate does, with a stand-in browser (run-gate.sh): per gate and shard, the scenarios
 # it ran in order and its shard line; for browse and play, each step's outcome and name. The recorded
-# output of the tree before JS-114 is compared with the build's by test/js114-before-after.sh.
+# output of two trees can be compared to see that a change to the gates ran the same scenarios.
 # Leaves each gate's output in <workdir>/<gate>[-<shard>].out and its exit status in .status.
 # Usage: record.sh <repo> <workdir>
 set -uo pipefail
