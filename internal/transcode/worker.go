@@ -1004,12 +1004,15 @@ func (w *Worker) upload(ctx context.Context, job claimed, n int, name string) er
 	// lease ends no sooner than sent+lease, whatever the round trip, and whatever
 	// stops this worker before a put (a database that answers late, a SIGSTOP):
 	// every put checks the clock against that.
-	ownedUntil, err := w.keeper().fence(ctx, leaseID{id: job.ID})
-	if err != nil {
-		return err
-	}
+	// A put can take longer than a lease while its bytes move, and the lease is
+	// kept meanwhile, so each put is fenced on its own: one check at the start of
+	// the upload would be a lease old by the time of the next put.
 	put := func(key, file string) error {
-		job.lease.turn()
+		turnFrom(ctx)
+		ownedUntil, err := w.keeper().fence(ctx, leaseID{id: job.ID})
+		if err != nil {
+			return err
+		}
 		if !time.Now().Before(ownedUntil) {
 			return fmt.Errorf("%w: the lease ran out before the segment could be stored", errInterrupted)
 		}
@@ -1030,7 +1033,7 @@ func (w *Worker) upload(ctx context.Context, job claimed, n int, name string) er
 		return fmt.Errorf("%w: recording the segment: %v", errWaiting, err)
 	}
 	os.Remove(name)
-	job.lease.turn()
+	turnFrom(ctx)
 	if err != nil {
 		return err
 	}
@@ -1042,14 +1045,45 @@ func (w *Worker) upload(ctx context.Context, job claimed, n int, name string) er
 	return nil
 }
 
+// put stores a file. The store's reads of the body are the job's work coming
+// round, so a put that is slow but moving keeps the job, and one that stops is
+// given up by the keeper. A store that does not return when the job is given up
+// is left behind: the job ends without it, and it records nothing, for the
+// caller never hears of its end.
 func (w *Worker) put(ctx context.Context, key, file string) error {
 	handle, err := os.Open(file)
 	if err != nil {
 		return err
 	}
-	defer handle.Close()
-	return w.Segments.Put(ctx, key, handle)
+	done := make(chan error, 1)
+	go func() {
+		defer handle.Close()
+		done <- w.Segments.Put(ctx, key, countedBody{handle, ctx})
+	}()
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		return context.Cause(ctx)
+	}
 }
+
+// countedBody is what a store reads: a file that seeks and whose reads turn the
+// job. It has no WriteTo of its own, which a copy would use instead of Read.
+type countedBody struct {
+	f   *os.File
+	ctx context.Context
+}
+
+func (b countedBody) Read(p []byte) (int, error) {
+	n, err := b.f.Read(p)
+	if n > 0 {
+		turnFrom(b.ctx)
+	}
+	return n, err
+}
+
+func (b countedBody) Seek(offset int64, whence int) (int64, error) { return b.f.Seek(offset, whence) }
 
 func (w *Worker) stored(ctx context.Context, hash string, n int) bool {
 	body, err := w.Segments.Open(ctx, SegmentKey(hash, n), 0)

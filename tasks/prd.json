@@ -1725,12 +1725,11 @@
         "With a Put that never returns, the job ends cancelled within one lease and its ffmpeg is gone",
         "The fault schedules gain a slow-store step, and the invariants hold under it"
       ],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [],
       "source": "Fable 5.2 blind audit, 2026-11-14 (.results/audit-2026-11-14.md)",
-      "notes": "",
-      "priority": 12
+      "notes": ""
     },
     {
       "id": "JS-107",
