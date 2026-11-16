@@ -27,6 +27,9 @@ func (s *Server) Routes() []Route {
 		{Method: "GET", Path: "/Users/{userId}", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.getUser},
 		{Method: "POST", Path: "/Users/Configuration", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.saveConfiguration},
 		{Method: "POST", Path: "/Users/{userId}/Configuration", Status: Alias, Role: RoleAPI, Access: AccessViewer, Handler: s.saveConfiguration},
+		// jellyscale's own namespace: Jellyfin has no place for these (docs/api.md). Each acts on the caller only.
+		{Method: "GET", Path: "/jellyscale/v1/track-preferences", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.getTrackPreferences},
+		{Method: "PATCH", Path: "/jellyscale/v1/track-preferences", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.patchTrackPreferences},
 		{Method: "GET", Path: "/Localization/Cultures", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: listCultures},
 		{Method: "POST", Path: "/Sessions/Logout", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.logout},
 		{Method: "POST", Path: "/Sessions/Capabilities", Status: Stub, Role: RoleAPI, Access: AccessViewer, Handler: noContent},

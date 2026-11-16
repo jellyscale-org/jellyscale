@@ -60,6 +60,7 @@ Every viewer-visible and operator-visible feature in scope, in one list. Status 
 
 - User management: create, delete, disable, change a password: **not built**. In scope.
 - A viewer's playback settings: **done** (saved), through `POST /Users/Configuration` and the obsolete `POST /Users/{userId}/Configuration`, and listed by `GET /Localization/Cultures` (`compat/captures/user-configuration-12.4.md`). All 16 fields of `UserConfiguration` come back in every answer that carries the user. None changes a track choice yet: AudioLanguagePreference and PlayDefaultAudioTrack wait for JS-121, SubtitleMode and SubtitleLanguagePreference for JS-041.
+- A viewer's track preferences (JS-118): **done** (saved), through `GET` and `PATCH /jellyscale/v1/track-preferences`, the first routes of jellyscale's own namespace (docs/api.md). They hide no track until JS-119 makes them act: PlaybackInfo and the item answer as before. They are stored per viewer in `users.track_preferences`, apart from `UserConfiguration`, and no Jellyfin answer carries them.
 - Hashed tokens at rest and operator API keys: **not built**. In scope.
 - Per-user library access: **not built**. In scope.
 - Quick Connect: **not built**. In scope; apps and TVs sign in through it.

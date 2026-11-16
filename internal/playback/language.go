@@ -53,3 +53,17 @@ func (s Source) OriginalLanguage() string {
 	}
 	return ""
 }
+
+// LanguageCode is the three-letter code (ISO 639-3, lowercase) of the language a tag names, whatever its spelling
+// (de, GER, pt-BR), and false when the tag names none. Macrolanguages are joined as SameLanguage joins them.
+func LanguageCode(tag string) (string, bool) {
+	key := languageKey(tag)
+	if key == "" {
+		return "", false
+	}
+	base, err := language.ParseBase(key)
+	if err != nil {
+		return "", false
+	}
+	return base.ISO3(), true
+}

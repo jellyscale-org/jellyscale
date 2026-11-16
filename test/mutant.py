@@ -139,9 +139,33 @@ func (s *Server) mutantHolds(token string) bool {
     return {"internal/api/server.go": server, "internal/api/zz_mutant.go": extra}
 
 
+def track_preferences_unlocked(repo):
+    # PATCH /jellyscale/v1/track-preferences reads the document without a lock, merges it in the process and writes
+    # it whole, so two PATCHes held on one row each write what they read and the second loses the first's change.
+    # Fails: both forced checks of JS-118 (TestTwoPatchesHeldOnOneRowThroughTwoProcessesAreBothKept and
+    # TestTwoFirstPatchesHeldOnOneRowAreBothKept), on every run.
+    source = read(repo, "internal/api/track_preferences.go")
+    source = sub(source, r"err = s\.Pool\.QueryRow\(r\.Context\(\), `UPDATE users SET track_preferences = COALESCE.*?\.Scan\(&stored\)\n",
+                 """var current []byte
+	if err = s.Pool.QueryRow(r.Context(), "SELECT track_preferences FROM users WHERE id = $1::uuid", session.User.ID).Scan(&current); err == nil {
+		merged := map[string]any{}
+		json.Unmarshal([]byte(defaultTrackPreferences), &merged)
+		json.Unmarshal(current, &merged)
+		for name, value := range patch {
+			merged[name] = value
+		}
+		whole, _ := json.Marshal(merged)
+		err = s.Pool.QueryRow(r.Context(), "UPDATE users SET track_preferences = $2::jsonb WHERE id = $1::uuid RETURNING track_preferences", session.User.ID, string(whole)).Scan(&stored)
+	}
+""", "the UPDATE of patchTrackPreferences", re.S)
+    source = sub(source, r"\tbody, _ := json\.Marshal\(patch\)\n", "", "the marshalling of the patch")
+    return {"internal/api/track_preferences.go": source}
+
+
 MUTANTS = {"empty-access": empty_access, "other-word-access": other_word_access,
            "videos-file-anyone": videos_file_anyone, "any-token": any_token,
-           "token-memory": token_memory, "snapshot-first": snapshot_first}
+           "token-memory": token_memory, "snapshot-first": snapshot_first,
+           "track-preferences-unlocked": track_preferences_unlocked}
 
 if len(sys.argv) != 4 or sys.argv[1] not in MUTANTS:
     sys.exit("usage: mutant.py <%s> <repo> <dir>" % "|".join(MUTANTS))
