@@ -76,6 +76,9 @@ func reportConformance(jf, js *server, clients conform.Clients) int {
 	served, err := servedRoutes("compat/endpoints.yaml")
 	check(err)
 	sent, failures := js.sweep(clients, served, jf)
+	playerSent, playerFailures := js.playerSweep(clients)
+	sent += playerSent
+	failures = append(failures, playerFailures...)
 	fmt.Printf("clients: sent %d requests\n", sent)
 	for _, f := range failures {
 		fail("clients: %s", f)

@@ -14,6 +14,37 @@ Who may call each route of jellyscale, and the rule behind it. The model is deci
 - Opening a route takes a change of the open list in `internal/api/access_test.go`, which a reviewer sees.
 - A viewer sees every film today; per-user libraries are JS-036. A request naming another user's id is answered as the caller's own today; answering it 403 is JS-127. The `admin` word joins with its first route in JS-033.
 
+## What a client must send
+
+Every route that requires a viewer reads the token from the first of these that has one (`compat.ParseAuth`). A client may send it in any of the seven spellings:
+
+- `Authorization: MediaBrowser Token="..."`, with the other `Client`, `Device`, `DeviceId` and `Version` fields the SDKs send.
+- `Authorization: Emby Token="..."`, the same fields under the older scheme.
+- `X-Emby-Authorization`, with the value of either scheme above.
+- `X-Emby-Token: <token>`.
+- `X-MediaBrowser-Token: <token>`.
+- `ApiKey=<token>` in the query.
+- `api_key=<token>` in the query.
+
+This holds for every media request: the direct-play stream, the playlists and segments, subtitles, fonts and downloads. A player that cannot set a header puts the token in the query, and the TranscodingUrl and DeliveryUrl that PlaybackInfo gives already end in `ApiKey=`. A client that builds the stream URL itself and sends no token gets 401. Findroid and Android TV do that on direct play (`compat/clients.yaml`, `player`; the table of `docs/status.md`), where Jellyfin 12.4 serves the stream to anyone.
+
+## Stricter than Jellyfin
+
+Where Jellyfin 12.4 answers a request that carries no token and jellyscale answers 401. Each row names the row of `compat/captures/access-12.4.json` that observed Jellyfin's answer (`access-12.4.md` describes it), or says `source only` with the file and line at tag v12.4. `go test ./test/differential` holds the table to the capture. Pictures by id are open here too, and are not in it (see The model).
+
+| Route | Jellyfin with no token | Observed |
+|---|---|---|
+| `GET /Videos/{id}/stream?static=true` | 200 | capture: `GET /Videos/{id}/stream?static=true` |
+| `HEAD /Videos/{id}/stream?static=true` | 200 | capture: `HEAD /Videos/{id}/stream?static=true` |
+| `GET /Videos/{id}/stream.mkv?VideoCodec=h264&AudioCodec=aac` | 200 | capture: `GET /Videos/{id}/stream.mkv?VideoCodec=h264&AudioCodec=aac` |
+| `GET /Videos/{id}/{id}/Attachments/3` | 200 | capture: `GET /Videos/{id}/{id}/Attachments/3` |
+| `GET /Videos/{id}/{id}/Subtitles/2/Stream.vtt` | 200 | capture: `GET /Videos/{id}/{id}/Subtitles/2/Stream.vtt` |
+| `GET /Videos/{id}/{id}/Subtitles/2/Stream.sup` | 200 | capture: `GET /Videos/{id}/{id}/Subtitles/2/Stream.sup` |
+| `GET /Videos/{id}/{id}/Subtitles/2/10000000/Stream.vtt` | 200 | capture: `GET /Videos/{id}/{id}/Subtitles/2/10000000/Stream.vtt` |
+| any signed-in user reading every account | 200 | source only: `UserController.cs:91` and `:127` at tag v12.4 |
+
+The last row is not a route with no token: Jellyfin lets any signed-in user list and read every account (`GET /Users` and `GET /Users/{userId}` are `[Authorize]`, not administrator-only), and jellyscale shows a viewer no other viewer's name (owner's decision, 2026-11-16).
+
 ## Served outside the table
 
 - `GET /healthz`: liveness probe, the process only. Open to anyone.

@@ -53,7 +53,7 @@
   kotlin: BaseItemDtoQueryResult
   method: GET
   path: >-
-    /Items?userId={{User/admin}}&SortBy=SortName,ProductionYear&SortOrder=Ascending&IncludeItemTypes=Movie&Recursive=true&Fields=PrimaryImageAspectRatio,BasicSyncInfo,MediaSourceCount,ProductionYear,Overview,Genres,Taglines&ImageTypeLimit=1&EnableImageTypes=Primary,Backdrop,Banner,Thumb&StartIndex=0&Limit=100
+    /Items?userId={{User/admin}}&ParentId={{CollectionFolder/Movies}}&SortBy=SortName,ProductionYear&SortOrder=Ascending&IncludeItemTypes=Movie&Recursive=true&Fields=PrimaryImageAspectRatio,BasicSyncInfo,MediaSourceCount,ProductionYear,Overview,Genres,Taglines&ImageTypeLimit=1&EnableImageTypes=Primary,Backdrop,Banner,Thumb&StartIndex=0&Limit=100
   ordered: true
 - name: the films library, newest first
   rows: true
@@ -255,6 +255,81 @@
   ordered: true
   path: >-
     /Search/Hints?searchTerm=dolby%20eight&limit=20&includeItemTypes=Movie&userId={{User/admin}}
+# JS-126: asked with no token in any spelling (no_token: true). Both servers answer each with the token first, and
+# with none the statuses are compared alone. Each names the film with a text subtitle and an attached font that
+# test/differential/run.sh adds, in a library of its own (stream 2 the subtitle, stream 3 the font).
+- name: "no token: the static stream"
+  route: GET /Videos/{itemId}/{file}
+  method: GET
+  no_token: true
+  path: >-
+    /Videos/{{Movie/Sub Font Cut (1999)}}/stream?static=true
+- name: "no token: the static stream, HEAD"
+  route: GET /Videos/{itemId}/{file}
+  method: HEAD
+  no_token: true
+  path: >-
+    /Videos/{{Movie/Sub Font Cut (1999)}}/stream?static=true
+- name: "no token: stream.mkv"
+  route: GET /Videos/{itemId}/{file}
+  method: GET
+  no_token: true
+  path: >-
+    /Videos/{{Movie/Sub Font Cut (1999)}}/stream.mkv
+- name: "no token: the text subtitle"
+  route: GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{file}
+  method: GET
+  no_token: true
+  path: >-
+    /Videos/{{Movie/Sub Font Cut (1999)}}/{{Movie/Sub Font Cut (1999)}}/Subtitles/2/Stream.vtt
+- name: "no token: the text subtitle from an offset"
+  route: GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{startPositionTicks}/{file}
+  method: GET
+  no_token: true
+  path: >-
+    /Videos/{{Movie/Sub Font Cut (1999)}}/{{Movie/Sub Font Cut (1999)}}/Subtitles/2/10000000/Stream.vtt
+- name: "no token: the font attachment"
+  route: GET /Videos/{itemId}/{sourceId}/Attachments/{index}
+  method: GET
+  no_token: true
+  path: >-
+    /Videos/{{Movie/Sub Font Cut (1999)}}/{{Movie/Sub Font Cut (1999)}}/Attachments/3
+- name: "no token: the master playlist"
+  route: GET /Videos/{itemId}/master.m3u8
+  method: GET
+  no_token: true
+  path: >-
+    /Videos/{{Movie/Sub Font Cut (1999)}}/master.m3u8?MaxStreamingBitrate=1000000&MediaSourceId={{Movie/Sub Font Cut (1999)}}&PlaySessionId=0123456789abcdef0123456789abcdef&VideoCodec=h264&AudioCodec=aac&MaxAudioChannels=2&TranscodingMaxAudioChannels=2&SegmentContainer=mp4&MinSegments=1&BreakOnNonKeyFrames=false&h264-profile=high,main,baseline,constrainedbaseline&h264-level=52
+- name: "no token: download"
+  route: GET /Items/{itemId}/Download
+  method: GET
+  no_token: true
+  path: >-
+    /Items/{{Movie/Sub Font Cut (1999)}}/Download
+- name: "no token: the item"
+  route: GET /Items/{itemId}
+  method: GET
+  no_token: true
+  path: >-
+    /Items/{{Movie/Sub Font Cut (1999)}}
+- name: "no token: the poster"
+  route: GET /Items/{itemId}/Images/{imageType}
+  method: GET
+  no_token: true
+  path: >-
+    /Items/{{Movie/Sub Font Cut (1999)}}/Images/Primary
+- name: "no token: the public users"
+  route: GET /Users/Public
+  method: GET
+  no_token: true
+  path: >-
+    /Users/Public
+- name: "no token: the public system info"
+  route: GET /System/Info/Public
+  method: GET
+  no_token: true
+  path: >-
+    /System/Info/Public
 - name: saving all 16 settings through the path route
   route: POST /Users/{userId}/Configuration
   method: POST

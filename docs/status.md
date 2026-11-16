@@ -165,6 +165,19 @@ Whether every listed request answers and passes the schema check (`yes`), and ea
 | Streamyfin | progress | yes | - |
 | Streamyfin | stop | yes | - |
 
+### What each client's player sends (JS-126)
+
+The player of a client builds four requests as URLs, which the SDK operations above do not cover: the direct-play stream, the HLS master playlist, a subtitle and a picture. `compat/clients.yaml` lists them under `player`, each with the file and line read at the client's commit and how the token travels: a header, a query name or no token, and whether the client put it there or plays a URL the server gave it (TranscodingUrl, DeliveryUrl, which carry `ApiKey=`). Every entry was read from source; none was played on a device. The differential tier sends each to jellyscale as listed and fails when a media request listed with no token is answered other than 401, one listed with a token is not served, or a picture is not 200. A test holds each cell to the list.
+
+| Client | Direct play | HLS | Subtitles | Pictures |
+|---|---|---|---|---|
+| Findroid | no token, read from source: direct play fails with 401 on jellyscale, because its URL carries no token (`getVideoStreamUrl`, and jellyfin-sdk-kotlin adds none) and jellyscale requires one on every media request; Jellyfin serves it because it opens the stream to anyone (`compat/captures/access-12.4.md`) | not requested, read from source (its device profile has no transcoding profile) | query ApiKey, from the server, read from source | no token, read from source |
+| Android TV | no token, read from source (the same SDK call: direct play fails with 401 on jellyscale) | query ApiKey, from the server, read from source | query ApiKey, from the server, read from source | no token, read from source |
+| Swiftfin | query ApiKey, read from source | query ApiKey, from the server, read from source | query ApiKey, from the server, read from source | no token, read from source |
+| Streamyfin | query ApiKey, read from source | query ApiKey, from the server, read from source | query ApiKey, from the server, read from source | no token, read from source |
+
+Pictures are open by id on jellyscale (`docs/access.md`), so a client that sends no token on them is served.
+
 ## Feature audit against Jellyfin 12.4
 
 `compat/coverage-12.4.tsv` has one row for each operation in Jellyfin 12.4.0's stable OpenAPI document (`https://repo.jellyfin.org/files/openapi/stable/jellyfin-openapi-12.4.json`, 364 operations: 346 plus 18 HEAD operations the document lists apart), each of the 55 routes in `compat/hidden-routes-12.4.txt`, and two routes outside the document: `/socket`, the WebSocket Jellyfin serves and jellyfin-web opens, and `/System/Configuration/encoding`, the one key of `/System/Configuration/{key}` that clients read, which jellyscale serves by its own route. `compat/spec-operations-12.4.txt` lists its operations, one `METHOD path` per line, generated from the document; `compat/schema-12.4.json` keeps its types and response schemas (see Client coverage). Columns are method, path, class, slice, served_by, web_caller and evidence.

@@ -29,7 +29,7 @@ func TestEveryRequestIsARouteJellyscaleKnows(t *testing.T) {
 		if !strings.Contains(string(endpoints), "method: "+method+", path: \""+path+"\"") {
 			t.Errorf("%s: route %q is not in compat/endpoints.yaml", r.Name, r.Route)
 		}
-		if r.Method != method {
+		if r.Method != method && !(r.Method == "HEAD" && method == "GET") { // a HEAD is answered by its GET route
 			t.Errorf("%s: method %s, route says %s", r.Name, r.Method, method)
 		}
 	}

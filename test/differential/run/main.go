@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -89,7 +90,9 @@ func main() {
 		if r.Play != "" {
 			err = errors.Join(jf.play(byName[r.Play]), js.play(byName[r.Play]))
 		}
-		if err == nil {
+		if err == nil && r.NoToken {
+			err = compareNoToken(jf, js, r, allow)
+		} else if err == nil {
 			diffs, err = compare(jf, js, r)
 		}
 		if err == nil {
@@ -155,7 +158,11 @@ func show(v any) string {
 // do sends a request and returns the status and body. A token of "" sends none.
 // Every answer of a server that has a checker is held to the schema.
 func (s *server) do(method, path, body string) (int, []byte, error) {
-	status, contentType, data, err := s.send(method, path, body)
+	return s.doWith(method, path, body, carry{})
+}
+
+func (s *server) doWith(method, path, body string, how carry) (int, []byte, error) {
+	status, contentType, data, err := s.sendWith(method, path, body, how)
 	if err == nil {
 		s.record(method, path, status, contentType, data)
 	}
@@ -163,6 +170,23 @@ func (s *server) do(method, path, body string) (int, []byte, error) {
 }
 
 func (s *server) send(method, path, body string) (int, string, []byte, error) {
+	return s.sendWith(method, path, body, carry{})
+}
+
+// carry says how a request carries the token. The zero value is what every request does: the Authorization
+// header, as MediaBrowser. "none" sends no credential in any spelling; "header" and "query" send the token
+// under the name (JS-126). Only the first is followed through a redirect: a request that says where its
+// token goes is asked as it is, and a 3xx is its answer.
+type carry struct{ where, name string }
+
+func (s *server) sendWith(method, path, body string, how carry) (int, string, []byte, error) {
+	if how.where == "query" {
+		sep := "?"
+		if strings.Contains(path, "?") {
+			sep = "&"
+		}
+		path += sep + how.name + "=" + url.QueryEscape(s.token)
+	}
 	req, err := http.NewRequest(method, s.base+path, strings.NewReader(body))
 	if err != nil {
 		return 0, "", nil, err
@@ -171,11 +195,22 @@ func (s *server) send(method, path, body string) (int, string, []byte, error) {
 	if s.token != "" {
 		auth = `MediaBrowser Token="` + s.token + `", ` + strings.TrimPrefix(authHeader, "MediaBrowser ")
 	}
-	req.Header.Set("Authorization", auth)
+	switch {
+	case how.where == "" || (how.where == "header" && how.name == "Authorization"):
+		req.Header.Set("Authorization", auth)
+	case how.where == "header" && how.name == "X-Emby-Authorization":
+		req.Header.Set(how.name, auth)
+	case how.where == "header":
+		req.Header.Set(how.name, s.token)
+	}
 	if body != "" {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	resp, err := (&http.Client{Timeout: 60 * time.Second}).Do(req)
+	client := &http.Client{Timeout: 60 * time.Second}
+	if how.where != "" {
+		client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return 0, "", nil, err
 	}
@@ -231,7 +266,7 @@ func (s *server) setUp(password string) error {
 	if err := s.signIn("admin", password); err != nil {
 		return err
 	}
-	for _, lib := range [][2]string{{"Movies", "movies"}, {"Shows", "tvshows"}, {"HDR", "movies"}} {
+	for _, lib := range [][2]string{{"Movies", "movies"}, {"Shows", "tvshows"}, {"HDR", "movies"}, {"Subtitled", "movies"}} {
 		path := "/Library/VirtualFolders?refreshLibrary=false&name=" + lib[0] + "&collectionType=" + lib[1]
 		body := `{"LibraryOptions":{"PathInfos":[{"Path":"/media/` + strings.ToLower(lib[0]) + `"}]}}`
 		if _, err := s.mustDo("POST", path, body); err != nil {
@@ -410,7 +445,11 @@ func (s *server) answer(r differential.Request) (status int, doc any, err error)
 		return 0, nil, err
 	}
 	s.label = r.Name
-	status, data, err := s.do(r.Method, path, body)
+	how := carry{}
+	if r.NoToken {
+		how = carry{where: "none"}
+	}
+	status, data, err := s.doWith(r.Method, path, body, how)
 	s.label = ""
 	if err != nil {
 		return 0, nil, err
@@ -538,4 +577,30 @@ func (s *server) play(info differential.Request) error {
 		"PlayMethod": "Transcode", "PositionTicks": 0, "IsPaused": false})
 	_, err = s.mustDo("POST", "/Sessions/Playing", string(started))
 	return err
+}
+
+// compareNoToken asks both servers a request that says no_token: first with the token, when both must answer
+// 2xx (it names something both have, so a 401 below is about the token and not about a missing thing), then
+// with none, and holds the two statuses to the allowlist. Bodies are not compared.
+func compareNoToken(jf, js *server, r differential.Request, allow *differential.Allowlist) error {
+	with := r
+	with.NoToken = false
+	for _, s := range []*server{jf, js} {
+		status, _, err := s.answer(with)
+		if err != nil {
+			return err
+		}
+		if status < 200 || status > 299 {
+			return fmt.Errorf("%s answered %d with the token, so the request names nothing it has", s.name, status)
+		}
+	}
+	jfStatus, _, err := jf.answer(r)
+	if err != nil {
+		return err
+	}
+	jsStatus, _, err := js.answer(r)
+	if err != nil {
+		return err
+	}
+	return allow.CheckNoToken(r.Name, jfStatus, jsStatus)
 }

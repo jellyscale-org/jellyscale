@@ -157,3 +157,37 @@ func pins(e Entry, d Difference) bool {
 	got, _ := d.Jellyscale.([]string)
 	return slices.Equal(got, e.Jellyscale)
 }
+
+func openStatus(status int) bool    { return status >= 200 && status <= 399 }
+func refusalStatus(status int) bool { return status == 401 || status == 403 }
+
+// CheckNoToken decides a no-token request from the two statuses alone. Both must be an answer to a request
+// with no token (2xx, 3xx, 401 or 403): a 404 or a 5xx is an error of either server. The same status passes.
+// Jellyscale answering 401 where Jellyfin opens the request passes only with an entry for that request on
+// the path (status), and that is all an entry excuses. Jellyscale answering what Jellyfin refuses never
+// passes, whatever the entries say: jellyscale is never looser than Jellyfin.
+func (a *Allowlist) CheckNoToken(request string, jellyfin, jellyscale int) error {
+	for _, s := range []int{jellyfin, jellyscale} {
+		if !openStatus(s) && !refusalStatus(s) {
+			return fmt.Errorf("%s: with no token jellyfin answered %d and jellyscale %d; neither is an answer to a request with no token", request, jellyfin, jellyscale)
+		}
+	}
+	switch {
+	case jellyfin == jellyscale:
+		return nil
+	case refusalStatus(jellyfin) && openStatus(jellyscale):
+		return fmt.Errorf("%s: with no token jellyfin answered %d and jellyscale %d; jellyscale is never looser than Jellyfin", request, jellyfin, jellyscale)
+	case openStatus(jellyfin) && jellyscale == 401:
+		found := false
+		for i, e := range a.entries {
+			if e.Path == "(status)" && slices.Contains(e.Requests, request) {
+				a.used[i][request] = true
+				found = true
+			}
+		}
+		if found {
+			return nil
+		}
+	}
+	return fmt.Errorf("%s: with no token jellyfin answered %d and jellyscale %d, and compat/differences.yaml has no entry for it on the path (status) that excuses it", request, jellyfin, jellyscale)
+}
