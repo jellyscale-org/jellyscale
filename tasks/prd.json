@@ -370,7 +370,7 @@
         "Exported over OTLP to any backend, off by default; the dogfood runs a backend and the docs show reading a stall from it",
         "Checked with real processes: a test collector receives a playback's trace from three processes, with a stall and a failover in it"
       ],
-      "priority": 71,
+      "priority": 73,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -390,7 +390,7 @@
         "Each line of a playback carries its play session id and trace id (JS-021), and a helper's start, end and failure say they are a helper's and whose",
         "Metrics beyond the transcode path: HTTP requests by role, route and status with latency, store operations and bytes by store, scan durations and errors"
       ],
-      "priority": 70,
+      "priority": 72,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -596,7 +596,7 @@
         "jellyfin-web's remote control drives another session",
         "POST /Sessions/Capabilities and /Sessions/Capabilities/Full are accepted and stored for the session, so other clients see it as a remote-control target (#106)"
       ],
-      "priority": 48,
+      "priority": 50,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -615,7 +615,7 @@
         "jellyfin-web's admin user pages work",
         "Login attempts are throttled per user and per client address, and the Policy's lockout fields work as Jellyfin 12.4's do"
       ],
-      "priority": 35,
+      "priority": 37,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -631,7 +631,7 @@
         "No plain token in the database",
         "API keys created and revoked through jellyfin-web"
       ],
-      "priority": 49,
+      "priority": 51,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -648,7 +648,7 @@
         "Last use time and address recorded",
         "Streamystats works with a read-only key and no extra user account"
       ],
-      "priority": 50,
+      "priority": 52,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -665,7 +665,7 @@
       "acceptanceCriteria": [
         "Enforced on every item route"
       ],
-      "priority": 51,
+      "priority": 53,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -684,7 +684,7 @@
         "Moonfin on the Shield and Findroid sign in with a code approved from jellyfin-web",
         "Where Quick Connect is turned off, /QuickConnect/Enabled answers false so clients fall back to a password (#104)"
       ],
-      "priority": 52,
+      "priority": 54,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -699,7 +699,7 @@
       "acceptanceCriteria": [
         "Answer shape as Jellyfin 12.4"
       ],
-      "priority": 53,
+      "priority": 55,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -715,7 +715,7 @@
         "Sign in with an OIDC provider in jellyfin-web",
         "OIDC users reach TV apps through Quick Connect"
       ],
-      "priority": 54,
+      "priority": 56,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -733,7 +733,7 @@
         "No viewer token in any playlist or segment URL",
         "Kodi's TranscodingUrl editing still works"
       ],
-      "priority": 55,
+      "priority": 57,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -754,7 +754,7 @@
         "A track the request names still wins over the mode",
         "In real jellyfin-web (e2e): with mode Always and language English a film starts with its English subtitle on screen; with None it starts with none"
       ],
-      "priority": 33,
+      "priority": 35,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -772,7 +772,7 @@
       "acceptanceCriteria": [
         "Revoked device's token stops working"
       ],
-      "priority": 57,
+      "priority": 59,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -787,7 +787,7 @@
       "acceptanceCriteria": [
         "jellyfin-web's dashboard lists entries"
       ],
-      "priority": 58,
+      "priority": 60,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -802,7 +802,7 @@
       "acceptanceCriteria": [
         "jellyfin-web shows and changes avatars"
       ],
-      "priority": 59,
+      "priority": 61,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -818,7 +818,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 37,
+      "priority": 39,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -834,7 +834,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 60,
+      "priority": 62,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -852,7 +852,7 @@
         "GET /Shows/NextUp answers in Jellyfin 12.4's shape for the signed-in user, honours nextUpDateCutoff, and brings back a series the viewer had caught up on once a new episode is added (#101)",
         "GET /Items/Filters2 answers with the filters the library can match (#108)"
       ],
-      "priority": 38,
+      "priority": 40,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -868,7 +868,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 61,
+      "priority": 63,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -884,7 +884,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 62,
+      "priority": 64,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -900,7 +900,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 64,
+      "priority": 66,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -916,7 +916,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 65,
+      "priority": 67,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -932,7 +932,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 66,
+      "priority": 68,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -948,7 +948,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 67,
+      "priority": 69,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -969,7 +969,7 @@
         "Tested on real hardware in its own tier chosen explicitly (never skipped): Intel QSV/VAAPI on the dogfood cluster's iGPUs and NVENC on a developer machine; jellyfin-web plays, seeks and recovers from a killed GPU worker",
         "Operators see which encoder family and worker serve each stream (Sessions, metrics, JS-021 traces)"
       ],
-      "priority": 68,
+      "priority": 70,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -989,7 +989,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 69,
+      "priority": 71,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1010,7 +1010,7 @@
         "An optional GPU worker pool requests gpu.intel.com/i915 or nvidia.com/gpu through the vendor's device plugin (JS-054); a cluster without one runs CPU workers only; documented in docs/running.md",
         "Each probe states what it depends on: liveness never depends on Postgres or a store, so a database failover restarts no pod; ffmpeg threads follow the pod's CPU limit, not the node's cores"
       ],
-      "priority": 72,
+      "priority": 74,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1027,7 +1027,7 @@
         "KEDA's maximum worker replicas stay within the Postgres connection budget (one liveness connection per worker, on top of the pools), so scaling up never exhausts max_connections",
         "It scales on the demand metric of JS-021 (jobs waiting for a slot, helpers refused for lack of one), so each scale-up can be read back with its reason"
       ],
-      "priority": 73,
+      "priority": 75,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1045,7 +1045,7 @@
       "acceptanceCriteria": [
         "A rolling upgrade under playback loses no picture"
       ],
-      "priority": 74,
+      "priority": 76,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1062,7 +1062,7 @@
       "acceptanceCriteria": [
         "Restore tested from a backup"
       ],
-      "priority": 75,
+      "priority": 77,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1077,7 +1077,7 @@
       "acceptanceCriteria": [
         "Viewers keep their history; users set a password or use OIDC"
       ],
-      "priority": 76,
+      "priority": 78,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1093,7 +1093,7 @@
         "Observe its calls on Jellyfin first",
         "Its dashboards fill from jellyscale"
       ],
-      "priority": 77,
+      "priority": 79,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1111,7 +1111,7 @@
       "acceptanceCriteria": [
         "200 mixed streams with stated rebuffer ratio and p95s"
       ],
-      "priority": 78,
+      "priority": 80,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1129,7 +1129,7 @@
         "Two viewers on different api replicas stay in sync in jellyfin-web",
         "compat/coverage-12.4.tsv phase7-syncplay routes built (23)"
       ],
-      "priority": 79,
+      "priority": 81,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1171,7 +1171,7 @@
         "Replays run in CI and fail on a response a client would reject (status, missing field, wrong shape)",
         "No titles or paths from a real library in the captures (synthetic fixtures only)"
       ],
-      "priority": 45,
+      "priority": 47,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1246,7 +1246,7 @@
         "Each entry with task JS-068 in compat/differences.yaml is fixed and removed, or becomes an improvement or non-goal with its reason",
         "test/differential/run.sh passes with the entries removed"
       ],
-      "priority": 46,
+      "priority": 48,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1535,7 +1535,7 @@
         "One documented rollout order, the same in docs/running.md and ARCHITECTURE.md, and a test or check that each migration in a release is safe for the previous version's code",
         "With a stream replica of the previous decision version registered and an api replica of the new one, PlaybackInfo offers nothing the old replica would refuse (a real-process test), and docs/running.md no longer requires an order between api and stream"
       ],
-      "priority": 47,
+      "priority": 49,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1554,7 +1554,7 @@
         "GET /Items/{itemId}/LocalTrailers lists trailer files stored beside the film, as Jellyfin names them; nothing is fetched from outside the server (#108)",
         "A title that ends in a year-like number keeps it: synthetic table cases 'Harbor Lights 2049 (2017)', 'Harbor.Lights.2049.2017.1080p', 'Harbor Lights 2049' (no year), '2001 Night Garden (1968)', '1888 (2019)' and '2031' give the right title and year, and an existing library's item ids do not change"
       ],
-      "priority": 36,
+      "priority": 38,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1897,7 +1897,7 @@
       "dependsOn": [],
       "source": "Fable 5.2 blind audit, 2026-11-14 (.results/audit-2026-11-14.md)",
       "notes": "",
-      "priority": 44
+      "priority": 46
     },
     {
       "id": "JS-085",
@@ -2068,7 +2068,7 @@
         "A library with background extraction on has every text track extracted after a scan, one read per film; one without it extracts on first pick as today",
         "docs/running.md states the setting and its cost"
       ],
-      "priority": 39,
+      "priority": 41,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2085,7 +2085,7 @@
         "A process warns at startup when the cluster's registered processes approach max_connections",
         "A multi-process variant of test/stress.sh measures connections and Postgres load at 50 workers"
       ],
-      "priority": 40,
+      "priority": 42,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2103,7 +2103,7 @@
         "No rule is lost: a check lists every old invariant's tests against the new file",
         "No invariant is longer than 600 characters; each has a stable identifier and a link to its rationale; numbers cited in code still resolve; the regex-over-prose tests are removed or replaced by tests that compare a constant with the number the doc states"
       ],
-      "priority": 41,
+      "priority": 43,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2119,7 +2119,7 @@
         "PlaybackInfo, the stream requests, the job and the worker's ffmpeg log lines of one playback carry the same id",
         "docs/running.md shows how to follow one playback"
       ],
-      "priority": 42,
+      "priority": 44,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2137,7 +2137,7 @@
         "Every existing test of those job kinds passes",
         "encode becomes a job type with named state: no function in internal/transcode is longer than 120 lines (a structure check), and the unreachable branches the audit found (run(begin), next < begin, the stale-file removal) are gone, with the integration and e2e tiers passing with no check changed"
       ],
-      "priority": 43,
+      "priority": 45,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2153,7 +2153,7 @@
         "A schedule trigger runs every CI job on main once a day, and test/changes.sh treats it as a full run",
         "A failing nightly run opens or updates one issue naming the failed tests"
       ],
-      "priority": 80,
+      "priority": 82,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2170,7 +2170,7 @@
         "Branch protection is the ruleset alone; the classic rule is removed",
         "A pull request touching .github/ or test/**/*.sh runs the media tiers as ci:full does, and only the ci:full label restarts a run"
       ],
-      "priority": 81,
+      "priority": 83,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2186,7 +2186,7 @@
         "An image with ffmpeg 6.1, Node and Chrome runs test/e2e/run.sh and test/roles.sh locally, to reproduce a merge-queue failure",
         "Its versions match CI's"
       ],
-      "priority": 82,
+      "priority": 84,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2250,7 +2250,7 @@
         "No Jellyfin route changes behaviour, and an unmodified Jellyfin client never sees the namespace",
         "A viewer with no history gets a sensible answer (empty or popular in the library), and another account's history never shapes a viewer's suggestions"
       ],
-      "priority": 63,
+      "priority": 65,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -2312,7 +2312,8 @@
       "description": "The owner asked (2026-11-15) that a viewer can opt into hiding audio and subtitle tracks outside their languages, keep additional languages, and bring every track back with one switch. Jellyfin's API has no place for these, so they live under /jellyscale/v1/ (PRODUCT.md, Compatibility policy), as the first route there. This task stores and serves the settings; JS-119 makes them act.",
       "acceptanceCriteria": [
         "GET /jellyscale/v1/track-preferences answers the caller's HideOtherAudio, HideOtherSubtitles, KeepAudioLanguages, KeepSubtitleLanguages and ShowAllTracks; a viewer who has saved nothing gets false, false, [], [], false",
-        "PUT replaces the document (an absent field takes its default) and answers what was stored; a GET from a second api process returns it, and again after both restart; two viewers' documents never affect each other",
+        "PATCH changes only the fields its body names and answers the whole document as stored (an absent field stays as stored; null is 400); a GET from a second api process returns it, and again after both restart; two viewers' documents never affect each other",
+        "Forced: with the viewer's row locked by the test, PATCH {HideOtherAudio: true} through one api process and PATCH {KeepSubtitleLanguages: ['deu']} through another are both lock-waiting in pg_stat_activity; after release both answer 200 and GET shows both. A build that merges in the process and writes the document whole fails every run",
         "Languages are stored once each, lowercase, as three-letter codes: ['GER', 'deu', 'de', 'fr'] is stored as ['deu', 'fra']",
         "400, naming the value, and nothing stored: a language that does not parse, und, mis, mul or zxx, more than 20 languages in a list, an unknown field, a field of the wrong type, a body over 16 KB, a body that is not JSON",
         "Asking for a language first: HideOtherAudio true while the viewer's AudioLanguagePreference is empty answers 409 naming AudioLanguagePreference and stores nothing; HideOtherSubtitles true while SubtitleLanguagePreference is empty answers 409 naming it; both answer 200 once the language is saved through POST /Users/Configuration; AudioLanguagePreference 'OriginalLanguage' counts as set",
@@ -2329,7 +2330,7 @@
         "JS-116"
       ],
       "source": "Owner request and decisions 4 and 5, 2026-11-15",
-      "notes": "Both switches are off by default. Extra fields inside UserConfiguration were rejected: SDK clients drop unknown fields on their round trip, and PRODUCT.md keeps jellyscale's additions out of Jellyfin's answers. Fluster finds jellyscale by this route answering (404 on a real Jellyfin). First route under /jellyscale/v1/, ahead of JS-101."
+      "notes": "Both switches are off by default. Extra fields inside UserConfiguration were rejected: SDK clients drop unknown fields on their round trip, and PRODUCT.md keeps jellyscale's additions out of Jellyfin's answers. Fluster finds jellyscale by this route answering (404 on a real Jellyfin). First route under /jellyscale/v1/, ahead of JS-101. 2026-11-15: the write is PATCH, not PUT (owner, on Fable 5.2's answer to issue #159): a whole-replace on a route only our clients call recreates the lost update."
     },
     {
       "id": "JS-119",
@@ -2352,7 +2353,7 @@
         "jellyfin-sdk-kotlin's serializers decode the PlaybackInfo with placeholders (a kotlin: request in the differential tier)",
         "PlaybackInfo logs at Debug the number of tracks it hid for each source, with the user and the item; DOMAINS.md has the rule as an invariant, docs/subtitles.md and docs/status.md describe it, and compat/differences.yaml records that an opted-in viewer's answers differ from Jellyfin's"
       ],
-      "priority": 30,
+      "priority": 31,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -2376,7 +2377,7 @@
         "POST /Items/{itemId}/PlaybackInfo and GET /Items/{itemId} never carry a Hidden field, for any settings",
         "The route is in compat/endpoints.yaml and the jellyscale-only list, compat/conform.yaml holds its answers to PlaybackInfo's schema, and docs/api.md documents it with the two added fields"
       ],
-      "priority": 31,
+      "priority": 32,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -2398,7 +2399,7 @@
         "In real jellyfin-web (e2e): a viewer whose audio language is German starts a film with audio eng (default) and deu in German, with the video copied and not re-encoded; a film with only eng plays directly as before",
         "docs/transcoding.md says that a preferred track which is not the file's default turns a browser's direct play into a copied stream, and docs/status.md marks the settings as acting"
       ],
-      "priority": 32,
+      "priority": 34,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -2425,9 +2426,61 @@
       ],
       "notes": "Owner, 2026-11-15: Fluster first, a page later. Planned after the track-language batch so Fluster adopts it first.",
       "passes": false,
-      "priority": 34,
+      "priority": 36,
       "source": "owner 2026-11-15",
       "status": "todo"
+    },
+    {
+      "id": "JS-123",
+      "phase": "ID",
+      "title": "A client changes one setting without overwriting the rest",
+      "description": "Jellyfin's POST /Users/Configuration replaces the whole Configuration (compat/captures/user-configuration-12.4.md), so a client reads it, changes a field and posts everything back, and two apps saving close together undo each other (issue #159, from Fluster). PATCH /jellyscale/v1/users/configuration changes only the fields its body names, merged in one statement onto what is stored, so no client that uses it overwrites a field it did not name. Jellyfin's two routes stay as JS-116 built them.",
+      "acceptanceCriteria": [
+        "PATCH /jellyscale/v1/users/configuration with a JSON object naming any of the 15 savable fields of UserConfiguration changes exactly those fields for the caller and answers 200 with the whole Configuration as GET /Users/Me then answers it. For each of the 15 in turn, starting from a document with all 15 changed from their defaults, a body with that one field leaves the other 14 as they were, read through GET /Users/Me on a second api process and again after both restart",
+        "A viewer who has saved nothing and patches one field reads that field and the new user's value for the other 14 (AudioLanguagePreference absent); {} answers 200 with the document and changes nothing",
+        "One parser with POST /Users/Configuration: every value the capture shows accepted for a field is accepted here and reads back the same (SubtitleMode 'always' and 1 read back 'Always'; a dashed upper-case id reads back compact; AudioLanguagePreference '' reads back ''), and every value it shows refused is 400 here",
+        "400 naming the field, and nothing stored: an unknown field, CastReceiverId, null for any field, a value of the wrong type, a SubtitleMode outside the enum, a list entry that is not an id. 400 and nothing stored: a body that is not a JSON object, an empty body, a body over 64 KB. A body with one good field and one refused field stores neither",
+        "The caller only: the route takes no user id, an administrator's PATCH changes the administrator's settings alone, a second viewer's 16 fields are as they were, and no token answers 401",
+        "Forced, different fields: the test holds the viewer's users row (SELECT ... FOR UPDATE in an open transaction), sends PATCH {SubtitleMode: 'Always'} through one api process and PATCH {AudioLanguagePreference: 'deu'} through another, waits until pg_stat_activity shows two statements waiting on a lock, and commits. Both answer 200 and GET /Users/Me has both changes with the other 13 fields untouched. Named mutant, which must fail every run: merge in the process from the row read at authentication and write the document whole",
+        "Forced, against Jellyfin's save: the PATCH {AudioLanguagePreference: 'deu'} statement is held at the database proxy (testenv.DBProxy.OnStatement) after its request authenticated; a full-body POST /Users/Configuration that sets SubtitleLanguagePreference 'fra' and carries the old audio language answers 204; the held statement is released. The result is the POST's 15 fields with AudioLanguagePreference 'deu'",
+        "Forced, the same field: PATCH {SubtitleMode: 'Always'} is held at the proxy, PATCH {SubtitleMode: 'None'} answers 200 with None, the first is released and answers 200 with Always; the stored mode is Always and the other 14 fields are untouched",
+        "The limit, as a test: a full-body POST built from a read taken before a PATCH, sent after it, wins whole, as on Jellyfin 12.4",
+        "No Jellyfin route answers differently: JS-116's replay of the 124 captured cases passes unchanged and the differential tier passes with no new entry in compat/differences.yaml",
+        "A change is logged at Info with the user id and the names of the fields sent. The route is in compat/endpoints.yaml, in the jellyscale-only list of compat/coverage_test.go, and in compat/conform.yaml with its answer held to UserConfiguration's schema. docs/api.md documents it with a request and an answer, how a concurrent save of the same field is decided, and that a whole-object save from an older read (jellyfin-web's) can still undo a change while the track preferences are out of its reach"
+      ],
+      "priority": 33,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-116",
+        "JS-118"
+      ],
+      "source": "Issue #159 (from:fluster), 2026-11-16",
+      "notes": "One statement: configuration = coalesce(configuration, '{}') || patch, RETURNING. configurationOf already lays a stored document over the defaults (user_configuration.go:50-57). A version check (ETag/If-Match) was rejected: it needs a column Jellyfin's POST also bumps and a retry loop in every client, jellyfin-web never sends it, and its only gain is two edits of one list field; an optional If-Match can be added later. Folding Jellyfin's fields into track-preferences was rejected: two owners in one document. null is refused, not 'back to default', so a body has one meaning; a language is cleared with ''. JS-118's own write should be this same PATCH; if JS-118 keeps PUT, add PATCH /jellyscale/v1/track-preferences here with the same merge and forced check."
+    },
+    {
+      "id": "JS-124",
+      "phase": "OPS",
+      "title": "A pinned image with the test films, for a client's CI",
+      "description": "A client that tests against jellyscale (Fluster first, issue #160) needs a published image it can pin, the films jellyscale's own tests use, and a start with a known user and library. Today the Dockerfile is built by nobody but the dogfood's manual redeploy, into a private registry, with no version tag, and CI never runs the image. This task publishes the server image and a '-fixtures' image with a small synthetic library baked in, from a workflow on GitHub-hosted runners, tested before each push.",
+      "acceptanceCriteria": [
+        "test/fixtures/client.sh <dir> makes the client library with synthetic names only: make.sh's films and episodes, plus 'Babel Film' (audio 1 eng default, 2 deu, 3 fra, 4 untagged; subtitles 5 eng, 6 eng forced, 7 eng SDH, 8 deu, 9 ger forced, 10 fra, 11 untagged, 12 jpn PGS; beside it .de.srt and .es.srt) and 'Kino Film' (audio 1 deu default, 2 eng; subtitles 3 deu, 4 eng, 5 fra), as JS-119 lists them. One recipe makes each film for this script and for jellyscale's own checks. The result is under 300 MB",
+        "The Dockerfile builds two targets: the server, and 'fixtures', which is the server plus client.sh's films under /fixtures/media and a config naming the libraries and adminUser 'test'. The fixtures image starts as --roles=all with that config by default, with no volume, no init container and no web client, and holds no password: without JELLYSCALE_ADMIN_PASSWORD it stops at start saying so",
+        "Both images carry org.opencontainers.image.revision (the commit), .version and .source, and the two images of one build carry the same revision",
+        "deploy/fixtures/compose.yaml starts Postgres and the fixtures image named by JELLYSCALE_IMAGE (required, no default), with the server's port published on 127.0.0.1 at a port Docker assigns and Postgres published nowhere; `docker compose up -d --wait` returns when GET /readyz answers 200",
+        "test/image.sh [image] builds both targets (or pulls the image named), starts that compose file, reads the port with `docker compose port`, signs in as 'test', and within 60 s finds the documented number of films and episodes. It then checks: Babel Film's PlaybackInfo lists 15 streams with the documented type, language and codec at each index, and Kino Film's 6; a byte range of a direct-play film answers 206; the first segment of a transcode of the AC3 film holds H.264 video and AAC audio (the image's own ffmpeg made it); Babel Film's English text track as VTT has its first cue. It fails when Docker is missing, never skips, and leaves no container, network or volume behind, also after a kill",
+        "A workflow, on ubuntu-24.04 hosted runners only, on every push to main and every tag vX.Y.Z: builds both targets, runs test/image.sh on them, and only then pushes those same images to ghcr.io/jellyscale-org/jellyscale with the job's own token (packages: write on that job alone) as main-<12 hex> and main-<12 hex>-fixtures, and for a tag also X.Y.Z and X.Y.Z-fixtures. A release tag that already exists in the registry is never overwritten: the run fails naming it. No latest. A test of the workflow file fails on a self-hosted or larger-runner label and on a push step that does not need the test step",
+        "After the merge, from a machine not logged in to the registry: `docker pull` of the commit's -fixtures tag succeeds and test/image.sh passes against the pulled image",
+        "docs/client-testing.md (new, linked from README and docs/running.md) gives the image name and the two kinds of tag, the compose start, the user, a wait loop for the scan, every film by name with its tracks by index, how to make the films without the image, that item ids are looked up by name, and that the fixtures image is for tests only. A test fails when the page's film list, user name, compose path or counts differ from what test/image.sh checks",
+        "CONTRIBUTING.md says how a release is cut: a tag vX.Y.Z on a commit of main whose image run passed, and a GitHub release with generated notes",
+        "ci.yml's four required checks and their run time are unchanged; the image workflow is not a required check"
+      ],
+      "priority": 30,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "Issue #160 (from:fluster), 2026-11-16",
+      "notes": "Independent of the track-language tasks: it builds side by side with JS-118. If it lands before JS-119, it makes the Babel and Kino recipes and JS-119's checks use them; if after, it reuses JS-119's. Make the films on the runner with CI's ffmpeg (test/apt.sh) and copy them into the image, so the recipes run under the ffmpeg the tests use; alpine's ffmpeg then only has to play them, which test/image.sh shows. A second, non-administrator viewer waits for JS-033; no seeding route or flag is added (the app must not know it is tested). The password is in the compose file, not the image. Owner steps: make the ghcr.io package public once; decide the first version tag. The dogfood's private build is untouched."
     }
   ]
 }
