@@ -1008,7 +1008,7 @@ func (w *Worker) upload(ctx context.Context, job claimed, n int, name string) er
 	// kept meanwhile, so each put is fenced on its own: one check at the start of
 	// the upload would be a lease old by the time of the next put.
 	put := func(key, file string) error {
-		job.lease.turn()
+		turnFrom(ctx)
 		ownedUntil, err := w.keeper().fence(ctx, leaseID{id: job.ID})
 		if err != nil {
 			return err
@@ -1033,7 +1033,7 @@ func (w *Worker) upload(ctx context.Context, job claimed, n int, name string) er
 		return fmt.Errorf("%w: recording the segment: %v", errWaiting, err)
 	}
 	os.Remove(name)
-	job.lease.turn()
+	turnFrom(ctx)
 	if err != nil {
 		return err
 	}
