@@ -130,7 +130,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 40 # The tests' own limit is 30, set in test/integration.sh.
+    timeout-minutes: 60 # Above the tests' own limit of 45, set in test/integration.sh: the rest shard already takes 36-40 minutes.
     strategy:
       fail-fast: false
       matrix:
