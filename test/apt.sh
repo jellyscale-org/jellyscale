@@ -1,11 +1,42 @@
 #!/usr/bin/env bash
 # test/apt.sh <packages...> installs packages on a CI runner. The runners'
 # Azure mirror of Ubuntu stalled for hours on 2026-11-11 (every package timed
-# out at 20 s and every job hit its time limit), so the main archive is used,
-# with retries.
+# out at 20 s and every job hit its time limit), and a mirror step took 7.5 to
+# 13.8 runner-minutes a run, so CI keeps the .deb files in a cache
+# (actions/cache, keyed on the runner image version and the package list) in
+# the directory APT_DEBS names.
+#   A hit (a file for every package in APT_DEBS): installs from those files with
+#   no apt-get update and no download.
+#   A miss: installs from the main archive, with retries, and leaves the .deb of
+#   every package it installed, dependencies included, in APT_DEBS, for the cache
+#   to save. APT_ARCHIVES is where apt leaves its downloads (the default is right
+#   on a runner).
+# Without APT_DEBS it only installs.
 set -euo pipefail
+debs=${APT_DEBS:-}
+archives=${APT_ARCHIVES:-/var/cache/apt/archives}
+
+if [[ -n $debs ]]; then
+  # Every package of the list must have its file, or the cache is of another list.
+  files=("$(realpath -m "$debs")"/*.deb)
+  for p in "$@"; do compgen -G "$debs/${p}_*.deb" >/dev/null || files=(); done
+  if [[ ${#files[@]} -gt 0 ]]; then
+    echo "installing ${#files[@]} cached .deb files, no mirror"
+    sudo apt-get install -y --no-download "${files[@]}"
+    exit 0
+  fi
+fi
+
 for f in /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list; do
   if [[ -f $f ]]; then sudo sed -i 's|http://azure.archive.ubuntu.com|http://archive.ubuntu.com|g' "$f"; fi
 done
+# So that the archive holds only what this install downloads.
+[[ -n $debs ]] && sudo apt-get clean
 sudo apt-get -o Acquire::Retries=3 update
-sudo apt-get -o Acquire::Retries=3 install -y "$@"
+# --reinstall: a package the runner image already has (fontconfig, fonts-dejavu-core) is
+# otherwise never downloaded, so it would leave no .deb and every later run would miss.
+sudo apt-get -o Acquire::Retries=3 install -y --reinstall "$@"
+if [[ -n $debs ]]; then
+  mkdir -p "$debs"
+  cp "$archives"/*.deb "$debs"/
+fi

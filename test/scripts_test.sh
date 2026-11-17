@@ -16,33 +16,164 @@ fails_with() { # name command...: the command must exit non-zero
   if "$@" >"$tmp/out" 2>&1; then echo "FAIL  $name: succeeded"; fails=$((fails + 1)); else echo "ok    $name"; fi
 }
 
-# --- shard.sh: every test of the tier lands in one shard, and only one.
+# --- shard.sh (JS-129): internal/transcode and internal/api are dealt by time, in one list; every test of the
+# tier lands in one shard of ci.yml's matrix, and only one. The interface these checks use, which the build gives it:
+#   test/shard.sh list <i/n|rest>   one line "<package> <test>" for each test the shard runs, the package relative
+#                                   to the module (internal/api), sorted; `count` is the number of those lines
+#   test/shard.sh args rest         the package list of rest, as today
+#   test/shard.sh args <i/n>        the arguments of the go test runs of a dealt shard, one argument per line, a blank
+#                                   line between two runs (one run for each package, so that a test name in both
+#                                   packages is run once in each); test/integration.sh runs each with -tags integration
+#   test/shard-times.txt            lines "<package> <test> <seconds>" under '#' header lines
+# The shards of the matrix, from ci.yml itself:
 cd "$repo" || exit 1
-all=$(go test -tags integration -list '.*' ./... | grep -E '^(Test|Example|Fuzz)' | sort)
-dealt=$(for i in 0 1 2 3; do bash test/shard.sh args "$i/4" | sed -n 2p | sed 's/^\^(//; s/)\$$//' | tr '|' '\n'; done | sort)
-rest_packages=$(bash test/shard.sh args rest)
-rest=$(go test -tags integration -list '.*' $rest_packages | grep -E '^(Test|Example|Fuzz)' | sort)
-check "the transcode shards and rest hold every test once" "$all" "$(printf '%s\n%s\n' "$dealt" "$rest" | sort)"
-check "no transcode test is dealt twice" "" "$(echo "$dealt" | uniq -d)"
-check "rest leaves out internal/transcode" "0" "$(echo "$rest_packages" | grep -c '/internal/transcode$')"
-counts=$(( $(bash test/shard.sh count 0/4) + $(bash test/shard.sh count 1/4) + $(bash test/shard.sh count 2/4) + $(bash test/shard.sh count 3/4) + $(bash test/shard.sh count rest) ))
-check "the shards' counts add up to the tier" "$(echo "$all" | wc -l | tr -d ' ')" "$counts"
-fails_with "a shard past n is refused" bash test/shard.sh count 3/3
-
-# The split follows test/shard-times.txt. Per shard: the seconds the file gives its tests.
-shard_seconds() { # shard, times file
-  bash test/shard.sh args "$1" | sed -n 2p | sed 's/^\^(//; s/)\$$//' | tr '|' '\n' |
-    awk 'NR == FNR { if ($0 !~ /^#/) t[$1] = $2; next } { s += ($1 in t) ? t[$1] : 0 } END { printf "%d\n", s }' "$2" -
+matrix=$(python3 -I - .github/workflows/ci.yml <<'EOF'
+import sys, yaml
+jobs = yaml.safe_load(open(sys.argv[1]))["jobs"]
+print(" ".join(e["shard"] for e in jobs["integration-shard"]["strategy"]["matrix"]["include"]))
+EOF
+)
+dealt_shards=$(for s in $matrix; do [[ $s == rest ]] || echo "$s"; done)
+pkg_names() { # go packages...: "<package relative to the module> <test>" for each test go test -list finds
+  go test -tags integration -list '.*' "$@" 2>/dev/null | awk '/^ok/ { p = $2; sub(/^jellyscale\//, "", p); for (i = 0; i < n; i++) print p, b[i]; n = 0; next } /^(Test|Example|Fuzz)/ { b[n++] = $1 }' | LC_ALL=C sort
 }
-totals=$(for i in 0 1 2 3; do shard_seconds "$i/4" test/shard-times.txt; done | sort -n)
-check "the split is the same when dealt again" "$(bash test/shard.sh args 2/4)" "$(bash test/shard.sh args 2/4)"
-check "the shards are balanced by time: the largest is within 1.25x of the smallest" "yes" \
-  "$(echo "$totals" | awk 'NR == 1 { min = $1 } { max = $1 } END { print (max <= 1.25 * min) ? "yes" : "no (" min "s to " max "s)" }')"
-# Only the first transcode test is in this file; the rest count as the median.
-first=$(go test -tags integration -list '.*' ./internal/transcode | grep -E '^Test' | sort | sed -n 1p)
-echo "$first 1000" >"$tmp/times.txt"
-others=$(for i in 0 1 2 3; do SHARD_TIMES="$tmp/times.txt" bash test/shard.sh args "$i/4" | sed -n 2p | sed 's/^\^(//; s/)\$$//' | tr '|' '\n'; done | sort)
-check "tests missing from the times file are still dealt, each once" "$(go test -tags integration -list '.*' ./internal/transcode | grep -E '^Test' | sort)" "$others"
+all=$(pkg_names ./...)
+dealt_pkgs="internal/transcode internal/api"
+check "the integration matrix has dealt shards and rest" "yes" "$([[ -n $dealt_shards && $matrix == *rest* ]] && echo yes || echo "no: $matrix")"
+in_shards=$(for s in $matrix; do bash test/shard.sh list "$s" | LC_ALL=C sort; done | LC_ALL=C sort)
+check "the shards of ci.yml's matrix hold every test of the tier, by package and name" "$all" "$in_shards"
+check "no test is in two shards" "" "$(echo "$in_shards" | uniq -d)"
+dealt_lines=$(for s in $dealt_shards; do bash test/shard.sh list "$s"; done | LC_ALL=C sort)
+want_dealt=$(echo "$all" | grep -E '^(internal/transcode|internal/api) ')
+check "the dealt shards hold every test of internal/transcode and internal/api once" "$want_dealt" "$dealt_lines"
+rest_lines=$(bash test/shard.sh list rest | LC_ALL=C sort)
+check "rest holds every test of the other packages once" "$(echo "$all" | grep -vE '^(internal/transcode|internal/api) ')" "$rest_lines"
+rest_packages=$(bash test/shard.sh args rest)
+check "rest's package list holds neither dealt package" "0" "$(echo "$rest_packages" | grep -cE '/internal/(transcode|api)$')"
+shards_with_api=0
+for s in $dealt_shards; do bash test/shard.sh list "$s" | grep -q '^internal/api ' && shards_with_api=$((shards_with_api + 1)); done
+check "internal/api's tests are dealt with internal/transcode's, longest first: more than one dealt shard holds some (not one shard keeping it whole)" "yes" "$([[ $shards_with_api -ge 2 ]] && echo yes || echo "$shards_with_api shard(s)")"
+counts=0
+for s in $matrix; do counts=$((counts + $(bash test/shard.sh count "$s"))); done
+check "the shards' counts add up to the tier" "$(echo "$all" | wc -l | tr -d ' ')" "$counts"
+for s in $matrix; do check "count $s is the number of tests list $s gives" "$(bash test/shard.sh list "$s" | wc -l | tr -d ' ')" "$(bash test/shard.sh count "$s")"; done
+fails_with "a shard past n is refused" bash test/shard.sh count 3/3
+check "the split is the same when dealt again" "$(bash test/shard.sh list 2/4)" "$(bash test/shard.sh list 2/4)"
+n_dealt=$(echo "$dealt_shards" | head -1 | sed 's|.*/||')
+first_dealt=$(echo "$dealt_shards" | head -1)
+check "the matrix's dealt shards are i/n for one n, every i" "$(seq 0 $((n_dealt - 1)) | sed "s|\$|/$n_dealt|")" "$(echo "$dealt_shards")"
+
+check "test/shard-times.txt has three fields on every line, a number last" "0" "$(grep -v '^#' test/shard-times.txt | awk 'NF != 3 || $3 !~ /^[0-9]+(\.[0-9]+)?$/' | wc -l | tr -d ' ')"
+check "test/shard-times.txt names each test once" "" "$(grep -v '^#' test/shard-times.txt | awk '{ print $1, $2 }' | sort | uniq -d)"
+# Its header: made by test/shard-times.sh from at least three CI runs, on CI's runners.
+header=$(grep '^#' test/shard-times.txt)
+check "the times file's header does not say 'developer machine'" "0" "$(echo "$header" | grep -ci 'developer machine')"
+check "... and says the times are from CI's runners" "1" "$(echo "$header" | grep -ciE "CI.s runners" | awk '{print ($1>0)}')"
+check "... and names at least three distinct run ids" "yes" "$(echo "$header" | grep -oE '[0-9]{10,}' | sort -u | awk 'END { print (NR >= 3) ? "yes" : "only " NR }')"
+
+# The seconds the times file gives a shard's tests; a test the file lacks counts as its median, as shard.sh deals it.
+shard_secs() { # repo-dir times-file shard
+  local dir=$1 times=$2 shard=$3
+  SHARD_TIMES=$times bash "$dir/test/shard.sh" list "$shard" | awk -v times="$times" '
+    BEGIN { while ((getline line < times) > 0) if (line !~ /^#/ && split(line, f, " ") == 3) { t[f[1] " " f[2]] = f[3] + 0; v[++k] = f[3] + 0 } 
+      for (a = 2; a <= k; a++) { x = v[a]; b = a - 1; while (b >= 1 && v[b] > x) { v[b + 1] = v[b]; b-- } v[b + 1] = x }
+      median = k ? v[int((k + 1) / 2)] : 1 }
+    { s += ($0 in t) ? t[$0] : median }
+    END { printf "%.1f\n", s }'
+}
+secs_all=$(for s in $dealt_shards; do shard_secs "$repo" test/shard-times.txt "$s"; done | sort -n)
+check "by the file's times the dealt shards are within 1.25 times of each other" "yes" \
+  "$(echo "$secs_all" | awk 'NR == 1 { min = $1 } { max = $1 } END { print (max <= 1.25 * min) ? "yes" : "no (" min "s to " max "s)" }')"
+# No dealt shard's seconds pass two thirds of go test's -timeout, read from test/integration.sh.
+limit_minutes=$(sed -n 's/.*go tool gotestsum.* -timeout \([0-9]*\)m.*/\1/p' test/integration.sh | head -1)
+check "test/integration.sh gives go test a -timeout of at least 45m" "yes" "$([[ ${limit_minutes:-0} -ge 45 ]] && echo yes || echo "${limit_minutes:-none}")"
+budget_violations() { # repo-dir times-file limit-seconds shard...: "shard <s>: <secs>s" for each dealt shard over two thirds of the limit
+  local dir=$1 times=$2 limit=$3 s secs; shift 3
+  for s in "$@"; do
+    [[ $s == rest ]] && continue
+    secs=$(shard_secs "$dir" "$times" "$s")
+    awk -v s="$secs" -v l="$limit" 'BEGIN { exit !(s > l * 2 / 3) }' && echo "shard $s: ${secs}s is over two thirds of ${limit}s"
+  done
+}
+check "no dealt shard's seconds in the times file pass two thirds of go test's -timeout" "" "$(budget_violations "$repo" test/shard-times.txt $((limit_minutes * 60)) $matrix)"
+# And none passes 1500 s (25 min): the queue run's 27-minute limit on a shard job less about 2 minutes of job overhead.
+cap_violations() { # repo-dir times-file shard...: "shard <s>: <secs>s" for each dealt shard over 1500 s
+  local dir=$1 times=$2 s secs; shift 2
+  for s in "$@"; do
+    [[ $s == rest ]] && continue
+    secs=$(shard_secs "$dir" "$times" "$s")
+    awk -v s="$secs" 'BEGIN { exit !(s > 1500) }' && echo "shard $s: ${secs}s is over 1500s"
+  done
+}
+check "no dealt shard's seconds in the times file pass 1500 s (the matrix is big enough)" "" "$(cap_violations "$repo" test/shard-times.txt $matrix)"
+
+# The same, on a module of its own: two dealt packages with a test name in both, and stand-in times files.
+mod="$tmp/mod"
+mkdir -p "$mod/internal/transcode" "$mod/internal/api" "$mod/internal/other" "$mod/test"
+printf 'module jellyscale\n\ngo 1.22\n' >"$mod/go.mod"
+cp test/shard.sh "$mod/test/"
+mkgo() { printf 'package %s\n\nimport "testing"\n\n' "$1"; shift; for n in "$@"; do printf 'func %s(t *testing.T) {}\n' "$n"; done; }
+mkgo transcode TestA TestB TestSame TestNew >"$mod/internal/transcode/a_test.go"
+mkgo api TestC TestSame >"$mod/internal/api/a_test.go"
+mkgo other TestO >"$mod/internal/other/a_test.go"
+modlist() { (cd "$mod" && SHARD_TIMES="$1" bash test/shard.sh list "$2" | LC_ALL=C sort); }
+# What a dealt shard RUNS is what it lists: the go test runs of 'args', in the stand-in module, ran exactly the
+# "<package> <test>" pairs 'list' gives, and every pair once over the shards. A -run regex over two packages would run
+# a name found in both of them twice in one shard (and out of the other); this shows it. Needs no Docker.
+ran() { # times-file shard: the "<package> <test>" pairs that the runs of shard.sh args made
+  local times=$1 shard=$2 line out="$tmp/ran-args" run=()
+  (cd "$mod" && SHARD_TIMES=$times bash test/shard.sh args "$shard") >"$out" || { echo "args failed"; return; }
+  (cd "$mod"; set -f
+    flush() { [[ ${#run[@]} -gt 0 ]] && go test -tags integration -count=1 -json "${run[@]}" 2>/dev/null; run=(); }
+    { while IFS= read -r line; do if [[ -z $line ]]; then flush; else run+=("$line"); fi; done <"$out"; flush; }
+  ) | python3 -I -c '
+import json, sys
+for l in sys.stdin:
+    try: e = json.loads(l)
+    except ValueError: continue
+    if e.get("Action") == "run" and e.get("Test") and "/" not in e["Test"]: print(e["Package"].removeprefix("jellyscale/"), e["Test"])' | LC_ALL=C sort
+}
+printf '# stand-in\ninternal/transcode TestA 50\ninternal/api TestC 40\ninternal/transcode TestB 12\ninternal/transcode TestSame 10\ninternal/api TestSame 9\ninternal/transcode TestNew 8\n' >"$tmp/mod-times-run.txt"
+for sh in 0/2 1/2; do
+  check "shard $sh runs, with go test, exactly the tests it lists (a name in both packages once, in its own package)" "$(modlist "$tmp/mod-times-run.txt" $sh)" "$(ran "$tmp/mod-times-run.txt" $sh)"
+done
+check "every test of the module ran once over the two shards' go test runs, a shared name once in each package" "internal/api TestC
+internal/api TestSame
+internal/transcode TestA
+internal/transcode TestB
+internal/transcode TestNew
+internal/transcode TestSame" "$( { ran "$tmp/mod-times-run.txt" 0/2; ran "$tmp/mod-times-run.txt" 1/2; } | LC_ALL=C sort)"
+# TestNew is not in this file: it counts as the median and is dealt once.
+printf '# stand-in\ninternal/transcode TestA 50\ninternal/api TestC 40\ninternal/transcode TestB 12\ninternal/transcode TestSame 10\ninternal/api TestSame 9\n' >"$tmp/mod-times.txt"
+two=$(modlist "$tmp/mod-times.txt" 0/2; modlist "$tmp/mod-times.txt" 1/2)
+check "a test name in both dealt packages runs once in each package, in no shard twice" "internal/api TestSame
+internal/transcode TestSame" "$(echo "$two" | grep ' TestSame$' | LC_ALL=C sort)"
+check "every test of the module's dealt packages is in one of two shards" "internal/api TestC
+internal/api TestSame
+internal/transcode TestA
+internal/transcode TestB
+internal/transcode TestNew
+internal/transcode TestSame" "$(echo "$two" | LC_ALL=C sort)"
+check "a test missing from the times file is dealt to exactly one shard" "1" "$(echo "$two" | grep -c ' TestNew$')"
+check "rest of the module holds the other package only" "internal/other TestO" "$(modlist "$tmp/mod-times.txt" rest)"
+check "the module's rest package list holds neither dealt package" "jellyscale/internal/other" "$(cd "$mod" && bash test/shard.sh args rest)"
+# Every test timed: A 50, C 40, B 12, Same(transcode) 10, Same(api) 9, New 8; longest first, each to the shard with the least so far.
+printf '# stand-in\ninternal/transcode TestA 50\ninternal/api TestC 40\ninternal/transcode TestB 12\ninternal/transcode TestSame 10\ninternal/api TestSame 9\ninternal/transcode TestNew 8\n' >"$tmp/mod-times.txt"
+check "the deal is longest first, each to the shard with the least so far (shard 0)" "internal/transcode TestA
+internal/transcode TestNew
+internal/transcode TestSame" "$(modlist "$tmp/mod-times.txt" 0/2)"
+check "... (shard 1)" "internal/api TestC
+internal/api TestSame
+internal/transcode TestB" "$(modlist "$tmp/mod-times.txt" 1/2)"
+# A limit of 30 s allows 20 s a shard. A is 20 and the other five 4 each, dealt 20 and 20: exactly two thirds passes.
+printf 'internal/transcode TestA 20\ninternal/api TestC 4\ninternal/transcode TestB 4\ninternal/transcode TestSame 4\ninternal/api TestSame 4\ninternal/transcode TestNew 4\n' >"$tmp/mod-times-exact.txt"
+check "a shard at exactly two thirds of the limit passes" "" "$(budget_violations "$mod" "$tmp/mod-times-exact.txt" 30 0/2 1/2)"
+sed 's/TestA 20/TestA 21/' "$tmp/mod-times-exact.txt" >"$tmp/mod-times-over.txt"
+over=$(budget_violations "$mod" "$tmp/mod-times-over.txt" 30 0/2 1/2)
+check "a shard over two thirds of the limit fails, naming the shard and its seconds" "shard 0/2: 21.0s is over two thirds of 30s" "$over"
+# A test the file lacks counts as its median, never as 0: A and B are 15, the other four count 15 each, dealt 45 and 45. At 0 they would be 15 and 15.
+printf 'internal/transcode TestA 15\ninternal/transcode TestB 15\n' >"$tmp/mod-times-median.txt"
+check "tests missing from the times file count as the median in the budget, never as 0" "2" "$(budget_violations "$mod" "$tmp/mod-times-median.txt" 30 0/2 1/2 | wc -l | tr -d ' ')"
 
 # --- shard.mjs: each scenario runs once, a worker-stopper last on the last shard.
 for i in 0 1 2; do E2E_SHARD=$i/3 node test/e2e/shard_test.mjs >"$tmp/shard$i" 2>&1; done
@@ -276,7 +407,7 @@ check "the stress ladder is not in the integration tier" 0 "$tier_tests"
 check "the stress ladder is not in the unit tier" 0 "$(go test -list '.*' ./... 2>/dev/null | grep -c 'ControlPlaneLadder')"
 check "the stress ladder exists under its own tag" 1 "$(go test -tags stress -list '.*' ./internal/transcode 2>/dev/null | grep -c '^TestControlPlaneLadder$')"
 check "test/stress.sh exists" 1 "$([[ -f test/stress.sh ]] && echo 1 || echo 0)"
-check "the integration shards still tile the tier with the stress files in" "$all" "$(printf '%s\n%s\n' "$dealt" "$rest" | sort)"
+check "the integration shards still tile the tier with the stress files in" "$all" "$in_shards"
 arch=$(sed -n '/^## Control-plane ceiling/,/^## /p' ARCHITECTURE.md)
 check "ARCHITECTURE.md has a Control-plane ceiling section" 1 "$([[ -n $arch ]] && echo 1 || echo 0)"
 for v in 50 100 200 400 800 1600; do
@@ -562,6 +693,369 @@ printf '#!/bin/bash\nexit 0\n' >"$tmp/t-badffmpeg/ffmpeg"
 tools_run clientempty "$tmp/t-badffmpeg:$(go env GOROOT)/bin" test/fixtures/client.sh "$tmp/films-4"
 check "client.sh never exits 0 with a film missing (an ffmpeg that wrote nothing)" nonzero "$(status_nonzero clientempty)"
 check "... naming a film that is missing" named "$(mentions clientempty 'film|missing')"
+
+cd "$repo" || exit 1
+
+# --- shard-times.sh (JS-129): the mean seconds of each package's top-level test over the tests.json files in which
+# it passed. The interface: shard-times.sh <dir>... where each dir is named for a CI run id and holds that run's
+# shard files (tests.json at any depth, as `gh run download` leaves them); it writes $SHARD_TIMES_OUT (default
+# test/shard-times.txt), lines "<package> <test> <seconds>" under '#' lines that name the run ids.
+runs="$tmp/runs"
+mkdir -p "$runs/111/integration-shard-0of4" "$runs/111/integration-shard-1of4" "$runs/222/integration-shard-0of4" "$runs/333/integration-shard-rest"
+j() { printf '{"Action":"%s","Package":"jellyscale/%s","Test":"%s","Elapsed":%s}\n' "$1" "$2" "$3" "$4"; }
+{ j pass internal/transcode TestX 10; j pass internal/transcode TestX/sub 7; j pass internal/transcode TestY 5; j fail internal/transcode TestW 99
+  j pass internal/api TestZ 1; j output internal/api TestZ 0; } >"$runs/111/integration-shard-0of4/tests.json"
+{ j pass internal/transcode TestZ 3; j pass internal/api TestT 4; } >"$runs/111/integration-shard-1of4/tests.json"
+{ j pass internal/transcode TestX 20; j pass internal/api TestT 5; } >"$runs/222/integration-shard-0of4/tests.json"
+{ j fail internal/transcode TestX 100; j fail internal/api TestT 100; j pass internal/transcode TestV 2; } >"$runs/333/integration-shard-rest/tests.json"
+SHARD_TIMES_OUT="$tmp/times-out.txt" bash test/shard-times.sh "$runs/111" "$runs/222" "$runs/333" >"$tmp/times.log" 2>&1
+check "shard-times.sh writes the mean over the files in which a test passed: not a failed result, not a subtest" "internal/api TestT 4.5
+internal/api TestZ 1.0
+internal/transcode TestV 2.0
+internal/transcode TestX 15.0
+internal/transcode TestY 5.0
+internal/transcode TestZ 3.0" "$(grep -v '^#' "$tmp/times-out.txt" 2>/dev/null)"
+check "... a test that never passed has no entry, and one name in two packages is two entries" "0 2" "$(grep -c 'TestW' "$tmp/times-out.txt" 2>/dev/null | tr -d '\n') $(grep -c ' TestZ ' "$tmp/times-out.txt" 2>/dev/null)"
+check "... its header names the run ids it was given and says the times are from CI's runners" "1 1 1 1" "$(h=$(grep '^#' "$tmp/times-out.txt" 2>/dev/null); for want in 111 222 333 "CI.s runners"; do echo "$h" | grep -cE "$want" | awk '{printf "%d ", ($1>0)}'; done | sed 's/ $//')"
+check "... the header does not say 'developer machine'" "0" "$(grep '^#' "$tmp/times-out.txt" 2>/dev/null | grep -ci 'developer machine')"
+SHARD_TIMES_OUT="$tmp/times-out2.txt" bash test/shard-times.sh "$runs/111" "$runs/222" "$runs/333" >/dev/null 2>&1
+check "the same inputs give the same file" "$(cat "$tmp/times-out.txt" 2>/dev/null)" "$(cat "$tmp/times-out2.txt" 2>/dev/null)"
+check "shard-times.sh checks in a file it did not write by hand: its header says it was made by test/shard-times.sh" "1" "$(grep '^#' test/shard-times.txt | grep -c 'test/shard-times.sh' | awk '{print ($1>0)}')"
+
+# --- check-shards.sh with shards that hold two dealt packages: the record of each shard is the count test/shard.sh gives it.
+rm -rf "$records"; mkdir "$records"
+total=$(echo "$all" | wc -l | tr -d ' ')
+i=0
+for s in $matrix; do echo "integration $s $(bash test/shard.sh count "$s")" >"$records/$i.txt"; i=$((i + 1)); done
+bash test/check-shards.sh integration "$records" "$total" >/dev/null 2>&1; check "records of the matrix's shards, two packages in some, add up to the tier" 0 $?
+fails_with "a test in no shard (one fewer than the tier has) fails" bash test/check-shards.sh integration "$records" $((total + 1))
+fails_with "a test in two shards (one more than the tier has) fails" bash test/check-shards.sh integration "$records" $((total - 1))
+echo "integration $(echo "$matrix" | cut -d' ' -f1) $(bash test/shard.sh count "$(echo "$matrix" | cut -d' ' -f1)")" >"$records/dup.txt"
+fails_with "a shard that left two records fails" bash test/check-shards.sh integration "$records" "$total"
+rm "$records/dup.txt" "$records/0.txt"
+fails_with "a shard that left no record fails" bash test/check-shards.sh integration "$records" "$total"
+echo "integration $(echo "$matrix" | cut -d' ' -f1) 0" >"$records/0.txt"
+fails_with "a shard that ran nothing fails" bash test/check-shards.sh integration "$records" "$total"
+# integration.sh's -race run of TestHarness stays in the one shard that runs cmd/jellyscale, and in a whole run.
+race_shards=0
+for s in $matrix; do
+  if [[ $s == rest ]]; then bash test/shard.sh args rest | grep -qx 'jellyscale/cmd/jellyscale'; else bash test/shard.sh list "$s" | grep -q '^cmd/jellyscale '; fi && race_shards=$((race_shards + 1))
+done
+check "exactly one shard of the matrix runs cmd/jellyscale (so the -race run of TestHarness is in one)" "1" "$race_shards"
+check "integration.sh runs TestHarness under -race for a shard with cmd/jellyscale or for the whole tier" "1 1" "$(grep -c 'go test -tags integration -race -count=1 -run TestHarness ./cmd/jellyscale' test/integration.sh | tr -d '\n') $(grep -c '\./\.\.\.' test/integration.sh | awk '{print ($1>0)}')"
+# A shard run fails when it ran a count other than shard.sh count gives, with two packages as with one: report.sh asks for it.
+check "report.sh holds a shard run to test/shard.sh count" "1" "$(grep -c 'want=$(bash test/shard.sh count' test/report.sh)"
+
+# --- the integration job's summary: one line for each shard, from that shard's own tests.json (shard-summary.sh).
+# Interface: shard-summary.sh <dir> <name>...: <dir>/*<name>*/**/tests.json is that shard's; one line each:
+# "integration shard <name>: <N>s of tests" (N the summed Elapsed of its top-level tests that passed or failed), or
+# "integration shard <name>: no tests.json (missing)"; then the line "refresh test/shard-times.txt" when the slowest
+# of the names that are i-of-n is over 1.25 times the fastest (rest is printed, not compared). It always exits 0.
+sd="$tmp/sd"
+mkshard() { mkdir -p "$sd/integration-shard-$1/logs"; j pass internal/transcode TestA "$2" >"$sd/integration-shard-$1/logs/tests.json"; j pass internal/transcode TestA/sub 999 >>"$sd/integration-shard-$1/logs/tests.json"; j fail internal/api TestB "$3" >>"$sd/integration-shard-$1/logs/tests.json"; }
+mkshard 0of2 60 40; mkshard 1of2 100 25; mkshard rest 3000 0
+out=$(bash test/shard-summary.sh "$sd" 0of2 1of2 rest 2>&1); status=$?
+check "the summary has a line for each shard, rest included, with the seconds of its own tests.json (subtests not counted)" "integration shard 0of2: 100s of tests
+integration shard 1of2: 125s of tests
+integration shard rest: 3000s of tests" "$(echo "$out" | grep '^integration shard ')"
+check "125 s against 100 s is exactly 1.25 times: no line to refresh the times" "0" "$(echo "$out" | grep -c 'refresh test/shard-times.txt')"
+check "the summary's exit status is 0" "0" "$status"
+mkshard 1of2 101 25
+check "126 s against 100 s is over 1.25 times: the line 'refresh test/shard-times.txt'" "1" "$(bash test/shard-summary.sh "$sd" 0of2 1of2 rest 2>&1 | grep -c '^refresh test/shard-times.txt')"
+mkshard rest 1 0; mkshard 1of2 100 25
+check "rest is not compared: its seconds being far from the others' asks for no refresh" "0" "$(bash test/shard-summary.sh "$sd" 0of2 1of2 rest 2>&1 | grep -c 'refresh test/shard-times.txt')"
+# The bound is on the seconds as they are, not as printed: 1251.2 against 1000.6 is 1.25045 times, over, though both print as 1251 and 1001.
+mkshard 0of2 1000.6 0; mkshard 1of2 1251.2 0
+check "1.25045 times (whole seconds print as 1251 and 1001) is over 1.25: the line to refresh the times" "1" "$(bash test/shard-summary.sh "$sd" 0of2 1of2 rest 2>&1 | grep -c '^refresh test/shard-times.txt')"
+mkshard 0of2 1000.6 0; mkshard 1of2 1250.7 0
+check "1.2499 times is not over 1.25 though 1251 against 1001 would be" "0" "$(bash test/shard-summary.sh "$sd" 0of2 1of2 rest 2>&1 | grep -c '^refresh test/shard-times.txt')"
+mkshard 1of2 100 25
+rm -r "$sd/integration-shard-1of2"
+out=$(bash test/shard-summary.sh "$sd" 0of2 1of2 rest 2>&1); status=$?
+check "a shard without a tests.json is named as missing, not counted as 0 seconds" "integration shard 1of2: no tests.json (missing)" "$(echo "$out" | grep '1of2')"
+check "... and the summary still exits 0" "0" "$status"
+
+# --- test/apt.sh (JS-129): packages come from .deb files that actions/cache restores. The interface: APT_DEBS is
+# the directory the cache holds (restored before the step, saved after it); APT_ARCHIVES is where apt leaves the
+# .debs it downloads (default /var/cache/apt/archives; with stand-ins here, the stand-in apt-get writes there, or
+# to the directory of -o Dir::Cache::archives=). Stand-in sudo, apt-get and dpkg log what they are asked, and
+# apt-get "downloads" a package named on its command line (a name, not a file) from archive.ubuntu.com, with
+# ffmpeg needing libfakedep: ffmpeg's .deb without libfakedep's in the same call is an unmet dependency.
+apt="$tmp/apt"; mkdir -p "$apt/bin" "$apt/archives"
+cat >"$apt/bin/sudo" <<'SHIM'
+#!/bin/bash
+echo "sudo $*" >>"$FAKE_APT_LOG"
+case $1 in apt-get | dpkg) exec "$@" ;; *) exit 0 ;; esac
+SHIM
+cat >"$apt/bin/apt-get" <<'SHIM'
+#!/bin/bash
+echo "apt-get $*" >>"$FAKE_APT_LOG"
+archives=${APT_ARCHIVES:-/nonexistent}; args=(); download_only=; reinstall=
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -o) [[ $2 == Dir::Cache::archives=* ]] && archives=${2#*=}; shift 2 ;;
+    -o*) [[ $1 == -oDir::Cache::archives=* ]] && archives=${1#*=}; shift ;;
+    --download-only | -d) download_only=1; shift ;;
+    --reinstall) reinstall=1; shift ;;
+    -*) shift ;;
+    *) args+=("$1"); shift ;;
+  esac
+done
+case ${args[0]:-} in
+update) echo "NET archive.ubuntu.com update" >>"$FAKE_APT_LOG"; exit 0 ;;
+install)
+  files=() names=()
+  for a in "${args[@]:1}"; do if [[ $a == ./* || $a == /* ]]; then files+=("$a"); else names+=("$a"); fi; done
+  for f in "${files[@]}"; do [[ -f $f ]] || { echo "E: unable to locate $f" >&2; exit 100; }; done
+  if [[ ${#files[@]} -gt 0 ]]; then
+    printf '%s\n' "${files[@]}" | grep -q 'ffmpeg_' && ! printf '%s\n' "${files[@]}" | grep -q 'libfakedep_' && { echo "E: unmet dependencies: ffmpeg needs libfakedep" >&2; exit 100; }
+    for f in "${files[@]}"; do echo "INSTALLED $(basename "$f" | sed 's/_.*//')" >>"$FAKE_APT_LOG"; done
+  fi
+  for n in "${names[@]}"; do
+    # A package the image already has is not downloaded, as the real apt-get, unless asked to reinstall it.
+    if [[ " ${FAKE_PREINSTALLED:-} " == *" $n "* && -z $reinstall ]]; then echo "already the newest version: $n" >&2; continue; fi
+    echo "NET archive.ubuntu.com download $n" >>"$FAKE_APT_LOG"
+    mkdir -p "$archives"; : >"$archives/${n}_1.0_amd64.deb"
+    [[ $n == ffmpeg ]] && : >"$archives/libfakedep_1.0_amd64.deb"
+    if [[ -z $download_only ]]; then echo "INSTALLED $n" >>"$FAKE_APT_LOG"; [[ $n == ffmpeg ]] && echo "INSTALLED libfakedep" >>"$FAKE_APT_LOG"; fi
+  done ;;
+esac
+exit 0
+SHIM
+cat >"$apt/bin/dpkg" <<'SHIM'
+#!/bin/bash
+echo "dpkg $*" >>"$FAKE_APT_LOG"
+[[ $1 == -i || $1 == --install || $1 == -R ]] || exit 1
+shift
+files=("$@")
+printf '%s\n' "${files[@]}" | grep -q 'ffmpeg_' && ! printf '%s\n' "${files[@]}" | grep -q 'libfakedep_' && { echo "dpkg: dependency problems: ffmpeg needs libfakedep" >&2; exit 1; }
+for f in "${files[@]}"; do [[ -f $f ]] && echo "INSTALLED $(basename "$f" | sed 's/_.*//')" >>"$FAKE_APT_LOG"; done
+exit 0
+SHIM
+chmod +x "$apt/bin/"*
+apt_run() { # name packages...: output in $apt/<name>.out, calls in $apt/<name>.log, status in $apt/<name>.status
+  local name=$1; shift
+  : >"$apt/$name.log"
+  ( cd "$tmp" && PATH="$apt/bin:$PATH" FAKE_PREINSTALLED="${FAKE_PREINSTALLED:-}" FAKE_APT_LOG="$apt/$name.log" APT_DEBS="$apt/debs" APT_ARCHIVES="$apt/archives" bash "$repo/test/apt.sh" "$@" >"$apt/$name.out" 2>&1; echo $? >"$apt/$name.status" )
+}
+rm -rf "$apt/debs" "$apt/archives"; mkdir -p "$apt/debs" "$apt/archives"
+apt_run miss ffmpeg fontconfig
+check "a miss installs as today and exits 0" "0" "$(cat "$apt/miss.status")"
+check "... asking archive.ubuntu.com, with three retries on the update and the install" "2" "$(grep -E '^apt-get .*Acquire::Retries=3.* (update|install)' "$apt/miss.log" | wc -l | tr -d ' ')"
+check "... installing every package of the list" "INSTALLED ffmpeg
+INSTALLED fontconfig" "$(grep '^INSTALLED' "$apt/miss.log" | grep -v libfakedep | sort)"
+check "... leaving the .deb of every package it installed, dependencies included, in the cache directory" "ffmpeg_1.0_amd64.deb
+fontconfig_1.0_amd64.deb
+libfakedep_1.0_amd64.deb" "$(ls "$apt/debs" | sort)"
+apt_run hit ffmpeg fontconfig
+check "an install from those files alone exits 0" "0" "$(cat "$apt/hit.status")"
+check "... runs no apt-get update" "0" "$(grep -c 'apt-get.* update' "$apt/hit.log")"
+check "... asks no mirror for anything (archive, azure or security)" "0" "$(grep -c '^NET ' "$apt/hit.log")"
+check "... installs every package of the list and the dependency" "INSTALLED ffmpeg
+INSTALLED fontconfig
+INSTALLED libfakedep" "$(grep '^INSTALLED' "$apt/hit.log" | sort)"
+# The cache of one list is no help to another list's key, but a directory is a directory: a list the files do not cover is a miss.
+rm -rf "$apt/archives"; mkdir -p "$apt/archives"
+apt_run other ffmpeg fonts-dejavu-core
+check "a package list the cached files do not hold is installed from the mirror, not skipped" "INSTALLED fonts-dejavu-core" "$(grep '^INSTALLED' "$apt/other.log" | grep fonts-dejavu-core)"
+# The runner image has fontconfig and fonts-dejavu-core already: a miss must still leave their .debs, or no run ever hits.
+rm -rf "$apt/debs" "$apt/archives"; mkdir -p "$apt/debs" "$apt/archives"
+FAKE_PREINSTALLED="fontconfig fonts-dejavu-core" apt_run pre_miss ffmpeg fontconfig fonts-dejavu-core
+check "a miss on packages the image already has leaves a .deb for each package of the list" "ffmpeg_1.0_amd64.deb
+fontconfig_1.0_amd64.deb
+fonts-dejavu-core_1.0_amd64.deb
+libfakedep_1.0_amd64.deb" "$(ls "$apt/debs" | sort)"
+FAKE_PREINSTALLED="fontconfig fonts-dejavu-core" apt_run pre_hit ffmpeg fontconfig fonts-dejavu-core
+check "... and the next run is a hit: no update, no mirror" "0 0" "$(grep -c 'apt-get.* update' "$apt/pre_hit.log") $(grep -c '^NET ' "$apt/pre_hit.log")"
+
+# --- ci.yml (JS-129): the deb cache, the jars cache, the guard of the ffmpeg version, no waiting for lint-and-unit, the
+# summary and the cancelling of the media jobs when lint-and-unit fails. Each line is "name<TAB>ok" or "name<TAB>why".
+ci_results=$(python3 -I - .github/workflows/ci.yml test/integration.sh <<'EOF'
+import re, sys, yaml
+doc = yaml.safe_load(open(sys.argv[1]))
+jobs = doc["jobs"]
+integration_sh = open(sys.argv[2]).read()
+out = []
+def result(name, problem=None):
+    out.append(f"{name}\t{problem or 'ok'}")
+def steps(job): return jobs[job].get("steps", [])
+def apt_index(job):
+    for i, s in enumerate(steps(job)):
+        if "apt.sh" in str(s.get("run", "")): return i
+    return None
+def uses_cache(s): return str(s.get("uses", "")).startswith("actions/cache")
+def push_only(job): return "github.event_name == 'push'" in str(jobs[job].get("if", ""))
+
+# The packages of each job's install step.
+lists = {}
+for job in ("integration-shard", "roles", "e2e-shard", "fixture-cache"):
+    i = apt_index(job)
+    lists[job] = re.search(r"apt\.sh(.*)", steps(job)[i]["run"]).group(1).split()
+apt_keys = {}
+for job, pkgs in lists.items():
+    i = apt_index(job)
+    caches = [s for s in steps(job)[:i] if uses_cache(s)]
+    if not caches:
+        result(f"{job}: a cache of the .deb files is restored before the install step", "no actions/cache step before it"); continue
+    c = caches[-1]["with"]
+    key = str(c.get("key", ""))
+    apt_keys[job] = key
+    problems = []
+    if "ImageVersion" not in key: problems.append("the key does not hold the runner image version (env.ImageVersion)")
+    if not (all(p in key for p in pkgs) or "hashFiles(" in key): problems.append(f"the key does not hold the package list {pkgs}")
+    if "restore-keys" in c: problems.append("restore-keys would restore another key's files")
+    env = {**jobs[job].get("env", {}), **steps(job)[i].get("env", {})}
+    if str(env.get("APT_DEBS", "")) != str(c.get("path", "")): problems.append("APT_DEBS of the install step is not the cache's path")
+    result(f"{job}: .deb cache keyed on the image version and the package list, restored before the install", "; ".join(problems) or None)
+    nxt = steps(job)[i + 1] if i + 1 < len(steps(job)) else {}
+    want = "nproc\nffmpeg -version | head -1\nffmpeg -version | head -1 | grep -q '^ffmpeg version 6\\.1' || { echo 'CI must test ffmpeg 6.1, the oldest jellyscale supports'; exit 1; }\n"
+    ok = nxt.get("name") == "CI tests ffmpeg 6.1 on a known number of CPUs" and nxt.get("run") == want
+    result(f"{job}: the ffmpeg 6.1 step is unchanged and right after the install", None if ok else "not as it was")
+    result(f"{job}: the install step keeps its 5-minute limit", None if steps(job)[i].get("timeout-minutes") == 5 else "no timeout-minutes: 5")
+# A push to main saves each key a merge group uses, since a merge group's cache is seen only there.
+push_keys = set()
+for job in jobs:
+    if push_only(job):
+        for s in steps(job):
+            if uses_cache(s): push_keys.add(str(s["with"].get("key", "")))
+for job, key in apt_keys.items():
+    if not push_only(job):
+        result(f"{job}: a push to main saves the .deb cache for its package list", None if key in push_keys else f"no job that runs only on a push uses the key {key!r}")
+# The jars of the differential shard.
+jar_steps = [s for s in steps("e2e-shard") if uses_cache(s) and "jars.txt" in str(s["with"].get("key", ""))]
+if not jar_steps:
+    result("e2e-shard: the sdkjvm jars cache is keyed on test/sdkjvm/jars.txt", "no actions/cache step with hashFiles of test/sdkjvm/jars.txt in its key")
+else:
+    c = jar_steps[0]["with"]
+    key = str(c["key"])
+    path = str(c["path"]).replace("~", "/home/runner")
+    env = {**jobs["e2e-shard"].get("env", {}), **jar_steps[0].get("env", {})}
+    for s in steps("e2e-shard"):
+        if "differential/run.sh" in str(s.get("run", "")): env.update(s.get("env", {}))
+    want = str(env.get("JELLYSCALE_SDKJVM_CACHE", "/home/runner/.cache/jellyscale/sdkjvm")).replace("~", "/home/runner")
+    result("e2e-shard: the jars cache holds the directory decode.sh reads", None if path.rstrip("/") == want.rstrip("/") else f"path {path} is not {want}")
+    result("e2e-shard: the jars key is hashFiles of test/sdkjvm/jars.txt", None if re.search(r"hashFiles\(\s*'test/sdkjvm/jars\.txt'\s*\)", key) else f"key {key}")
+    result("a push to main saves the jars cache", None if any(push_only(j) and any(uses_cache(s) and str(s["with"].get("key", "")) == key for s in steps(j)) for j in jobs) else "no push-only job with that key")
+# Nothing waits for lint-and-unit.
+for job in ("integration-shard", "e2e-shard", "roles"):
+    need = jobs[job].get("needs", [])
+    need = [need] if isinstance(need, str) else need
+    result(f"{job} does not wait for lint-and-unit", None if "lint-and-unit" not in need else "needs lint-and-unit")
+# The cancelling job.
+cancel = [j for j, v in jobs.items() if "lint-and-unit" in ([v["needs"]] if isinstance(v.get("needs"), str) else v.get("needs", [])) and "failure" in str(v.get("if", ""))]
+if not cancel:
+    result("a job that needs lint-and-unit and runs when it failed cancels the media jobs", "no job needs lint-and-unit with an if that names its failure")
+else:
+    j = jobs[cancel[0]]; text = yaml.dump(j)
+    problems = []
+    if "lint-and-unit.result" not in str(j.get("if", "")): problems.append("its if does not read needs.lint-and-unit.result")
+    if "code" not in str(j.get("if", "")) + text: problems.append("it does not look at whether the media jobs run (needs.changes.outputs.code)")
+    if j.get("permissions", {}).get("actions") != "write": problems.append("no permissions: actions: write")
+    if "cancel" not in text: problems.append("it cancels nothing")
+    if re.search(r"cancel", text) and not re.search(r"github\.run_id|GITHUB_RUN_ID", text): problems.append("it names no run id: it could cancel another run")
+    if "lint-and-unit" not in "".join(str(s.get("run", "")) for s in j.get("steps", [])): problems.append("its log never says lint-and-unit's failure is why")
+    result("the job that cancels the media jobs when lint-and-unit fails", "; ".join(problems) or None)
+    if "lint-and-unit" in str(jobs["lint-and-unit"].get("continue-on-error", "")): result("lint-and-unit still fails the run", "continue-on-error")
+# The summary.
+summary = [s for s in steps("integration") if "shard-summary.sh" in str(s.get("run", ""))]
+if not summary: result("the integration job's summary comes from test/shard-summary.sh", "no step runs it")
+else:
+    problems = []
+    if summary[0].get("continue-on-error") is not True: problems.append("continue-on-error is not true: the notice could fail the check")
+    if "GITHUB_STEP_SUMMARY" not in str(summary[0].get("run", "")): problems.append("it does not write GITHUB_STEP_SUMMARY")
+    result("the integration job's summary comes from test/shard-summary.sh and fails nothing", "; ".join(problems) or None)
+    # Where the summary reads from: a download of the shards' artifacts that keeps each one apart (merge-multiple would put
+    # every shard's tests.json on one path), and the names it is given are the matrix's, rest included.
+    run = str(summary[0].get("run", ""))
+    m = re.search(r"shard-summary\.sh\s+(\S+)", run)
+    sdir = m.group(1) if m else None
+    downloads = [s for s in steps("integration") if str(s.get("uses", "")).startswith("actions/download-artifact") and str(s.get("with", {}).get("path", "")).rstrip("/") == str(sdir).rstrip("/")]
+    problems = []
+    if not downloads: problems.append(f"no download-artifact step with path {sdir!r}, the directory the summary reads")
+    else:
+        w = downloads[0]["with"]
+        if str(w.get("merge-multiple", "false")).lower() == "true": problems.append("that download has merge-multiple: every shard's tests.json lands on one path")
+        if "integration-shard" not in str(w.get("pattern", w.get("name", ""))): problems.append("that download does not take the integration-shard-* artifacts")
+    names = [e["name"] for e in jobs["integration-shard"]["strategy"]["matrix"]["include"]]
+    given = [n for n in names if n in run]
+    if len(given) != len(names): problems.append(f"the summary names {given}, the matrix has {names}")
+    result("the summary reads the shards' own artifacts, apart, and names every shard of the matrix, rest included", "; ".join(problems) or None)
+check_steps = [s for s in steps("integration") if "check-shards.sh integration" in str(s.get("run", ""))]
+result("the integration check still runs check-shards.sh and that step does not continue on error", None if check_steps and not check_steps[0].get("continue-on-error") else "missing or continue-on-error")
+# A failed shard still leaves its test record, and a push to main still saves the caches.
+up = [s for s in steps("integration-shard") if str(s.get("uses", "")).startswith("actions/upload-artifact") and "integration-shard-" in str(s.get("with", {}).get("name", ""))]
+result("the integration shard uploads its tests.json pass or fail", None if up and "always()" in str(up[0].get("if", "")) else "no if: always() on the upload")
+cj = [j for j in jobs.values() if "gh run cancel" in yaml.dump(j)]
+ev = str(cj[0].get("if", "")) if cj else ""
+result("the job that cancels the run runs only for merge_group and pull_request", None if "merge_group" in ev and "pull_request" in ev else "its if names no event")
+# Both integration.sh paths pass the caller's go test arguments, and neither refuses them.
+result("integration.sh passes extra go test arguments in a dealt shard", None if "can't be combined" not in integration_sh and integration_sh.count('"${run[@]}" "$@"') == 1 else "refused or not passed")
+# The limits.
+m = re.search(r"-timeout (\d+)m", integration_sh)
+go_limit = int(m.group(1))
+job_limit = jobs["integration-shard"]["timeout-minutes"]
+result("go test's -timeout is at least 45m, the shard job's timeout-minutes at least 60 and above it", None if go_limit >= 45 and job_limit >= 60 and job_limit > go_limit else f"go {go_limit}m, job {job_limit}m")
+print("\n".join(out))
+EOF
+)
+while IFS=$'\t' read -r name verdict; do [[ -n $name ]] && check "ci.yml: $name" "ok" "$verdict"; done <<<"$ci_results"
+check "ci.yml has been read (the python above ran to the end)" "yes" "$([[ $ci_results == *'go test'* ]] && echo yes || echo "no: ${ci_results:0:200}")"
+
+# --- the jars of the differential shard: a restored jar whose sha256 differs from jars.txt still fails, naming the jar.
+jv="$tmp/jars"; mkdir -p "$jv/bin" "$jv/cache"
+printf '#!/bin/sh\necho "java $*" >>%s/java.log\n' "$jv" >"$jv/bin/java"; chmod +x "$jv/bin/java"
+printf '#!/bin/sh\necho "curl $*" >>%s/curl.log\nexit 22\n' "$jv" >"$jv/bin/curl"; chmod +x "$jv/bin/curl"
+first_jar=$(grep -v '^#' test/sdkjvm/jars.txt | awk 'NF { print $1; exit }')
+jar_name=$(echo "$first_jar" | awk -F: '{ print $2 "-" $3 ".jar" }')
+echo "not the pinned jar" >"$jv/cache/$jar_name"
+PATH="$jv/bin:$PATH" JELLYSCALE_SDKJVM_CACHE="$jv/cache" bash test/sdkjvm/decode.sh Foo /dev/null >"$jv/out" 2>&1; st=$?
+# --fetch only fills the cache: the push job that does it has no JDK to need.
+mkdir -p "$jv/nojava"; for t in sha256sum cut mkdir rm mv; do ln -sf "$(command -v $t)" "$jv/nojava/$t"; done; cp "$jv/bin/curl" "$jv/nojava/curl"
+PATH="$jv/nojava" /bin/bash test/sdkjvm/decode.sh --fetch >"$jv/fetch.out" 2>&1
+check "decode.sh --fetch does not ask for java" "0" "$(grep -c 'needs java' "$jv/fetch.out")"
+check "a restored jar whose sha256 differs from jars.txt fails" "nonzero" "$([[ $st -ne 0 ]] && echo nonzero || echo zero)"
+check "... naming the jar" "1" "$(grep -c "$jar_name" "$jv/out" | awk '{print ($1>0)}')"
+check "... and never asked Maven Central for it" "0" "$(cat "$jv/curl.log" 2>/dev/null | grep -c 'repo1.maven.org')"
+
+# --- failover.mjs (JS-129): it exits within 5 s of printing its shard line, with the two rolled scenarios run, and a
+# replica that never leaves after SIGTERM still fails its scenario by name, not before the bound has passed (the gate's
+# 180 s; E2E_SIGTERM_BOUND_S shortens it here so that lint stays quick). Run with the stand-in
+# browser that plays (test/e2e/fake/playwright-play), the stand-in replica that leaves 300 ms after SIGTERM, and
+# the same with FAKE_REPLICA_IGNORES_SIGTERM=1.
+stamped_gate() { # name env...: every line of the gate's output stamped with the time it came, then "end <time>" and "status <n>"
+  local name=$1; shift
+  ( FAKE_PLAYWRIGHT=playwright-play bash "$repo/test/e2e/fake/run-gate.sh" "$repo" "$tmp/ff-$name" failover "$@" 2>&1 | while IFS= read -r l; do printf '%s %s\n' "$(date +%s.%N)" "$l"; done
+    st=${PIPESTATUS[0]}; echo "end $(date +%s.%N)"; echo "status $st" ) >"$tmp/ff-$name.out" 2>&1
+}
+rolled='^a stream replica rolled'
+stamped_gate rolled "E2E_ONLY=$rolled" &
+stamped_gate stuck "E2E_ONLY=$rolled.*HLS\$" "FAKE_REPLICA_IGNORES_SIGTERM=1" "E2E_SIGTERM_BOUND_S=3" &
+wait
+gap() { # name: seconds from the shard line to the end of the process
+  awk '/ shard [0-9]+\/[0-9]+: ran / { s = $1 } /^end / { e = $2 } END { printf "%.1f\n", e - s }' "$tmp/ff-$1.out"
+}
+check "failover: with both rolled scenarios passing, they are two 'ok' lines" "2" "$(grep -c ' ok    a stream replica rolled' "$tmp/ff-rolled.out")"
+check "failover: the shard line is its last line, and the gate exits 0" "1 0" "$(grep -v '^end \|^status ' "$tmp/ff-rolled.out" | tail -1 | grep -c ' shard 0/1: ran 2 of 5' | tr -d '\n') $(sed -n 's/^status //p' "$tmp/ff-rolled.out")"
+check "failover: it exits within 5 s of printing its shard line when every scenario passed" "yes" "$(awk -v g="$(gap rolled)" 'BEGIN { print (g < 5) ? "yes" : "no: " g " s" }')"
+check "failover: a replica that never exits after SIGTERM fails its scenario by name" "1" "$(grep -c ' FAIL  a stream replica rolled.*HLS: the replica that got SIGTERM was still running 3 s later' "$tmp/ff-stuck.out")"
+check "failover: ... not before the 3 s bound has passed since the scenario began" "yes" "$(awk '/ run   a stream replica rolled/ { r = $1 } / FAIL  a stream replica rolled/ { f = $1 } END { print (f - r >= 3) ? "yes" : "no: " f - r " s" }' "$tmp/ff-stuck.out")"
+check "failover: the bound is 180 s unless E2E_SIGTERM_BOUND_S says otherwise" "1" "$(grep -c 'E2E_SIGTERM_BOUND_S || 180' test/e2e/failover.mjs)"
+check "failover: ... and the gate exits non-zero within 5 s of its shard line" "1 yes" "$(sed -n 's/^status //p' "$tmp/ff-stuck.out" | awk '{print ($1 != 0)}') $(awk -v g="$(gap stuck)" 'BEGIN { print (g < 5) ? "yes" : "no: " g " s" }')"
+check "failover: ... with the shard line still its last line" "1" "$(grep -v '^end \|^status ' "$tmp/ff-stuck.out" | tail -1 | grep -c ' shard 0/1: ran 1 of 5')"
+for name in rolled stuck; do
+  alive=0
+  for pid in $(cat "$tmp/ff-$name"/state/replica-*.pid 2>/dev/null); do kill -0 "$pid" 2>/dev/null && alive=$((alive + 1)); done
+  check "failover ($name): no replica is left running" "0" "$alive"
+done
+
+# --- docs/testing.md describes the split as it is.
+docs_line() { grep -F -- "$1" docs/testing.md | grep -F -- "$2" | grep -cF -- "$3" | awk '{print ($1>0)}'; }
+check "docs/testing.md: the split names test/shard.sh, internal/api, the times file and how to refresh it" "1" "$(docs_line 'test/shard.sh' 'internal/api' 'test/shard-times.sh')"
+check "docs/testing.md: ... and the summary's notice" "1" "$(docs_line 'test/shard.sh' 'internal/api' 'refresh test/shard-times.txt')"
+check "docs/testing.md: ... and that the times come from CI's runners" "1" "$(grep -F 'test/shard.sh' docs/testing.md | grep -ciE "CI.s runners" | awk '{print ($1>0)}')"
+check "docs/testing.md: the .deb cache says what a miss does" "1" "$(docs_line '.deb' 'actions/cache' 'a miss')"
+check "docs/testing.md: the jars cache is keyed on test/sdkjvm/jars.txt and says what a miss does" "1" "$(docs_line 'jars.txt' 'actions/cache' 'a miss')"
+check "docs/testing.md no longer says the times are for internal/transcode alone" "0" "$(grep -c 'tests of `internal/transcode` dealt to shard i of n' docs/testing.md)"
 
 echo
 [[ $fails -eq 0 ]] && echo "scripts: all passed" || echo "scripts: $fails failed"

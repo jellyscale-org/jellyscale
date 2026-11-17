@@ -314,7 +314,13 @@ for (const flavour of [{ name: "HLS", film: "Stream Roll Encode Film", hls: true
       return Number(answer.headers.get("x-backend")) === replacement.port && answer.status < 400;
     }, 120000);
     // And the one that got SIGTERM leaves by itself.
-    await Promise.race([victim.exited, sleep(180000).then(() => { throw new Error("the replica that got SIGTERM was still running 180 s later"); })]);
+    // The timer is cleared, or its wait would hold the process open after the last scenario.
+    // E2E_SIGTERM_BOUND_S shortens the bound for the script tests' stand-in replica; CI leaves it at 180.
+    const boundS = Number(process.env.E2E_SIGTERM_BOUND_S || 180);
+    let timer;
+    try {
+      await Promise.race([victim.exited, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`the replica that got SIGTERM was still running ${boundS} s later`)), boundS * 1000); })]);
+    } finally { clearTimeout(timer); }
     void later;
     await leave(v.page);
   });

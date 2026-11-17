@@ -4,9 +4,9 @@
 # Needs Docker, curl, and ffmpeg with libx264, libx265 and libass, ffprobe, and a font.
 # A test that lacks any of them fails; none is skipped.
 # JELLYSCALE_LOG_DIR keeps the test results (tests.json) after the run.
-# INTEGRATION_SHARD=i/n runs one slice of internal/transcode's tests and
-# INTEGRATION_SHARD=rest every other package (test/shard.sh); CI runs them side by
-# side. Without it, or with -run arguments, the whole tier runs.
+# INTEGRATION_SHARD=i/n runs one slice of the tests of internal/transcode and
+# internal/api and INTEGRATION_SHARD=rest every other package (test/shard.sh); CI
+# runs them side by side. Without it, or with -run arguments, the whole tier runs.
 # A full run (or a whole shard) records its result under .results (test/lib.sh).
 set -uo pipefail
 source "$(dirname "$0")/lib.sh"
@@ -27,10 +27,6 @@ grep -q " subtitles " <<<"$filters" || { echo "test/integration.sh needs ffmpeg 
 [[ -n $(fc-list 2>/dev/null) ]] || { echo "test/integration.sh needs a font that fontconfig finds (fc-list lists none): fonts-dejavu-core, or font-dejavu on Alpine" >&2; exit 1; }
 
 shard=${INTEGRATION_SHARD:-}
-if [[ -n $shard && $# -gt 0 ]]; then
-  echo "test/integration.sh: INTEGRATION_SHARD and arguments for go test can't be combined" >&2
-  exit 1
-fi
 make_work integration || exit 1
 pg=jellyscale-it-pg-$$ sw=jellyscale-it-sw-$$ ga=jellyscale-it-garage-$$
 clean() { docker rm -fv "$pg" "$sw" "$ga" >/dev/null 2>&1; }
@@ -76,8 +72,25 @@ if [[ -n $shard ]]; then
   mapfile -t packages < <(bash test/shard.sh args "$shard") && [[ ${#packages[@]} -gt 0 ]] || { echo "test/shard.sh could not split the tier as $shard" >&2; exit 1; }
   tier=integration:$shard
 fi
-go tool gotestsum --format testname --jsonfile "$results/tests.json" -- -tags integration -p 1 -count=1 -timeout 45m "${packages[@]}" "$@"
-status=$?
+go_test() { # jsonfile, then go test's arguments
+  go tool gotestsum --format testname --jsonfile "$1" -- -tags integration -p 1 -count=1 -timeout 45m "${@:2}"
+}
+status=0
+if [[ -n $shard && $shard != rest ]]; then
+  # A dealt shard is one go test run for each package, a blank line between them (test/shard.sh).
+  # Each run has its own test record; tests.json is all of them.
+  : >"$results/tests.json"
+  run=() k=0
+  for line in "${packages[@]}" ""; do
+    if [[ -n $line ]]; then run+=("$line"); continue; fi
+    [[ ${#run[@]} -gt 0 ]] || continue
+    go_test "$results/tests.$k.json" "${run[@]}" "$@" || status=1
+    cat "$results/tests.$k.json" >>"$results/tests.json"; rm -f "$results/tests.$k.json"
+    run=() k=$((k + 1))
+  done
+else
+  go_test "$results/tests.json" "${packages[@]}" "$@" || status=1
+fi
 # The harness's log check can only fail under the race detector, which the tier above does not run.
 if [[ $# -eq 0 && (" ${packages[*]} " == *" ./... "* || " ${packages[*]} " == *" jellyscale/cmd/jellyscale "*) ]]; then
   go test -tags integration -race -count=1 -run TestHarness ./cmd/jellyscale || status=1
