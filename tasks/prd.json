@@ -2666,11 +2666,10 @@
         "lint-and-unit runs on such a change as on any other, and the required checks integration and e2e report as they do for a docs-only change today"
       ],
       "dependsOn": [],
-      "notes": "Tiny; can land beside JS-129. Only if the owner agrees (decision 1). Planned by Fable 5.2 (.results/test-time-fable-2026-11-16.md). Owner's decisions 2026-11-16: skip the media tiers for .claude/ and tasks/ changes with a guard test (JS-132); cancel media shards when lint-and-unit fails; the merge queue builds 2 entries (back to 3 once a run costs under ~150 runner-minutes and under a fifth of runs fail) with a 90-minute check timeout, set by the lead.",
-      "passes": false,
-      "status": "todo",
-      "source": "owner 2026-11-16, Fable 5.2 test-time audit",
-      "priority": 10
+      "notes": "Tiny; can land beside JS-129. Only if the owner agrees (decision 1). Planned by Fable 5.2 (.results/test-time-fable-2026-11-16.md). Owner's decisions 2026-11-16: skip the media tiers for .claude/ and tasks/ changes with a guard test (JS-132); cancel media shards when lint-and-unit fails; the merge queue builds 2 entries (back to 3 once a run costs under ~150 runner-minutes and under a fifth of runs fail) with a 90-minute check timeout, set by the lead. 2026-11-16: the guard denies by default (an allowlist of files that must run in lint-and-unit) after a script-walking design kept missing path forms.",
+      "passes": true,
+      "status": "done",
+      "source": "owner 2026-11-16, Fable 5.2 test-time audit"
     }
   ]
 }
