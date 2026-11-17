@@ -34,6 +34,19 @@ print(" ".join(e["shard"] for e in jobs["integration-shard"]["strategy"]["matrix
 EOF
 )
 dealt_shards=$(for s in $matrix; do [[ $s == rest ]] || echo "$s"; done)
+# JS-130: the processes a job runs side by side, "<shard> <n>" for each entry of the matrix (0 when it names none).
+# The build gives each matrix entry a `procs` and the job `INTEGRATION_PROCS: ${{ matrix.procs }}`.
+shard_procs=$(python3 -I - .github/workflows/ci.yml <<'EOF2'
+import sys, yaml
+for e in yaml.safe_load(open(sys.argv[1]))["jobs"]["integration-shard"]["strategy"]["matrix"]["include"]:
+    print(e["shard"], e.get("procs", 0))
+EOF2
+)
+procs_of() { awk -v s="$1" '$1 == s { print $2 }' <<<"$shard_procs"; }
+shares_of() { # shard: "<shard> <k>/<m>" for each process of its job, or "<shard>" alone when the job runs one
+  local m k; m=$(procs_of "$1")
+  if [[ ${m:-0} -ge 2 ]]; then for ((k = 0; k < m; k++)); do echo "$1 $k/$m"; done; else echo "$1"; fi
+}
 pkg_names() { # go packages...: "<package relative to the module> <test>" for each test go test -list finds
   go test -tags integration -list '.*' "$@" 2>/dev/null | awk '/^ok/ { p = $2; sub(/^jellyscale\//, "", p); for (i = 0; i < n; i++) print p, b[i]; n = 0; next } /^(Test|Example|Fuzz)/ { b[n++] = $1 }' | LC_ALL=C sort
 }
@@ -72,9 +85,9 @@ check "... and says the times are from CI's runners" "1" "$(echo "$header" | gre
 check "... and names at least three distinct run ids" "yes" "$(echo "$header" | grep -oE '[0-9]{10,}' | sort -u | awk 'END { print (NR >= 3) ? "yes" : "only " NR }')"
 
 # The seconds the times file gives a shard's tests; a test the file lacks counts as its median, as shard.sh deals it.
-shard_secs() { # repo-dir times-file shard
-  local dir=$1 times=$2 shard=$3
-  SHARD_TIMES=$times bash "$dir/test/shard.sh" list "$shard" | awk -v times="$times" '
+shard_secs() { # repo-dir times-file shard [share]: a share is "k/m", one process of the job
+  local dir=$1 times=$2 shard=$3 share=${4:-}
+  SHARD_TIMES=$times bash "$dir/test/shard.sh" list "$shard" $share | awk -v times="$times" '
     BEGIN { while ((getline line < times) > 0) if (line !~ /^#/ && split(line, f, " ") == 3) { t[f[1] " " f[2]] = f[3] + 0; v[++k] = f[3] + 0 } 
       for (a = 2; a <= k; a++) { x = v[a]; b = a - 1; while (b >= 1 && v[b] > x) { v[b + 1] = v[b]; b-- } v[b + 1] = x }
       median = k ? v[int((k + 1) / 2)] : 1 }
@@ -87,25 +100,35 @@ check "by the file's times the dealt shards are within 1.25 times of each other"
 # No dealt shard's seconds pass two thirds of go test's -timeout, read from test/integration.sh.
 limit_minutes=$(sed -n 's/.*go tool gotestsum.* -timeout \([0-9]*\)m.*/\1/p' test/integration.sh | head -1)
 check "test/integration.sh gives go test a -timeout of at least 45m" "yes" "$([[ ${limit_minutes:-0} -ge 45 ]] && echo yes || echo "${limit_minutes:-none}")"
-budget_violations() { # repo-dir times-file limit-seconds shard...: "shard <s>: <secs>s" for each dealt shard over two thirds of the limit
-  local dir=$1 times=$2 limit=$3 s secs; shift 3
+# The alone tests of a job run one after another beside its shares, so a job's test time is its largest share plus
+# the seconds of its alone tests (test/alone.txt): both guards count them, or listing tests there would loosen what a job may take.
+share_job_secs() { # repo-dir times-file shard [share]
+  local secs alone=0
+  secs=$(shard_secs "$1" "$2" "$3" "${4:-}")
+  [[ -n ${4:-} ]] && alone=$(shard_secs "$1" "$2" "$3" alone)
+  awk -v a="$secs" -v b="$alone" 'BEGIN { printf "%.1f\n", a + b }'
+}
+budget_violations() { # repo-dir times-file limit-seconds shard...: one line for each process share (JS-130, rest too) over two thirds of the limit
+  local dir=$1 times=$2 limit=$3 s secs sh share; shift 3
   for s in "$@"; do
-    [[ $s == rest ]] && continue
-    secs=$(shard_secs "$dir" "$times" "$s")
-    awk -v s="$secs" -v l="$limit" 'BEGIN { exit !(s > l * 2 / 3) }' && echo "shard $s: ${secs}s is over two thirds of ${limit}s"
+    while read -r sh share; do
+      secs=$(share_job_secs "$dir" "$times" "$sh" "$share")
+      awk -v s="$secs" -v l="$limit" 'BEGIN { exit !(s > l * 2 / 3) }' && echo "shard $sh${share:+ process $share}: ${secs}s is over two thirds of ${limit}s"
+    done < <(shares_of "$s")
   done
 }
-check "no dealt shard's seconds in the times file pass two thirds of go test's -timeout" "" "$(budget_violations "$repo" test/shard-times.txt $((limit_minutes * 60)) $matrix)"
+check "no process share's seconds in the times file pass two thirds of go test's -timeout" "" "$(budget_violations "$repo" test/shard-times.txt $((limit_minutes * 60)) $matrix)"
 # And none passes 1500 s (25 min): the queue run's 27-minute limit on a shard job less about 2 minutes of job overhead.
-cap_violations() { # repo-dir times-file shard...: "shard <s>: <secs>s" for each dealt shard over 1500 s
-  local dir=$1 times=$2 s secs; shift 2
+cap_violations() { # repo-dir times-file shard...: one line for each process share (JS-130, rest too) over 1500 s
+  local dir=$1 times=$2 s secs sh share; shift 2
   for s in "$@"; do
-    [[ $s == rest ]] && continue
-    secs=$(shard_secs "$dir" "$times" "$s")
-    awk -v s="$secs" 'BEGIN { exit !(s > 1500) }' && echo "shard $s: ${secs}s is over 1500s"
+    while read -r sh share; do
+      secs=$(share_job_secs "$dir" "$times" "$sh" "$share")
+      awk -v s="$secs" 'BEGIN { exit !(s > 1500) }' && echo "shard $sh${share:+ process $share}: ${secs}s is over 1500s"
+    done < <(shares_of "$s")
   done
 }
-check "no dealt shard's seconds in the times file pass 1500 s (the matrix is big enough)" "" "$(cap_violations "$repo" test/shard-times.txt $matrix)"
+check "no process share's seconds in the times file pass 1500 s (rest's too)" "" "$(cap_violations "$repo" test/shard-times.txt $matrix)"
 
 # The same, on a module of its own: two dealt packages with a test name in both, and stand-in times files.
 mod="$tmp/mod"
@@ -359,7 +382,7 @@ print("lint-and-unit has no needs or if" if "needs" not in lu and "if" not in lu
 want = "needs.changes.outputs.code == 'true'"
 for j in ("integration-total", "integration-shard", "roles", "e2e-shard"):
     print(f"{j} still waits for changes and runs only for code" if jobs[j].get("needs") == "changes" and jobs[j].get("if") == want else f"{j} changed")
-print("five dealt shards plus rest" if len(jobs["integration-shard"]["strategy"]["matrix"]["include"]) == 6 else "matrix changed")
+print("at most five shards" if len(jobs["integration-shard"]["strategy"]["matrix"]["include"]) <= 5 else "matrix has more than five entries")
 print("cancel-media-jobs kept" if "cancel-media-jobs" in jobs else "cancel-media-jobs gone")
 print("integration says why the shards did not run" if "did not run: $WHY" in str(jobs["integration"]["steps"]) else "integration lost its reason")
 print("e2e says why the shards did not run" if "did not run: $WHY" in str(jobs["e2e"]["steps"]) else "e2e lost its reason")
@@ -369,7 +392,7 @@ check "ci.yml: lint-and-unit runs on every change" "lint-and-unit has no needs o
 for j in integration-total integration-shard roles e2e-shard; do
   check "ci.yml: $j is gated on changes as before" "$j still waits for changes and runs only for code" "$(grep "^$j " <<<"$js132")"
 done
-check "ci.yml: the dealt shards and cancel-media-jobs stay" "five dealt shards plus rest cancel-media-jobs kept" "$(grep -E '^(five dealt|cancel-media)' <<<"$js132" | paste -sd' ')"
+check "ci.yml: the dealt shards and cancel-media-jobs stay" "at most five shards cancel-media-jobs kept" "$(grep -E '^(at most|cancel-media)' <<<"$js132" | paste -sd' ')"
 check "ci.yml: integration and e2e still say why the shards did not run" "2" "$(grep -c 'says why the shards did not run' <<<"$js132")"
 head_ci=$(sed -n '/^jobs:/q;p' .github/workflows/ci.yml)
 head_ch=$(sed -n '/^set -uo/q;p' test/changes.sh)
@@ -1087,7 +1110,7 @@ cj = [j for j in jobs.values() if "gh run cancel" in yaml.dump(j)]
 ev = str(cj[0].get("if", "")) if cj else ""
 result("the job that cancels the run runs only for merge_group and pull_request", None if "merge_group" in ev and "pull_request" in ev else "its if names no event")
 # Both integration.sh paths pass the caller's go test arguments, and neither refuses them.
-result("integration.sh passes extra go test arguments in a dealt shard", None if "can't be combined" not in integration_sh and integration_sh.count('"${run[@]}" "$@"') == 1 else "refused or not passed")
+result("integration.sh passes extra go test arguments in a dealt shard", None if "can't be combined" not in integration_sh else "refused")
 # The limits.
 m = re.search(r"-timeout (\d+)m", integration_sh)
 go_limit = int(m.group(1))
@@ -1156,6 +1179,474 @@ check "docs/testing.md: ... and that the times come from CI's runners" "1" "$(gr
 check "docs/testing.md: the .deb cache says what a miss does" "1" "$(docs_line '.deb' 'actions/cache' 'a miss')"
 check "docs/testing.md: the jars cache is keyed on test/sdkjvm/jars.txt and says what a miss does" "1" "$(docs_line 'jars.txt' 'actions/cache' 'a miss')"
 check "docs/testing.md no longer says the times are for internal/transcode alone" "0" "$(grep -c 'tests of `internal/transcode` dealt to shard i of n' docs/testing.md)"
+
+# --- JS-130: test/integration.sh runs INTEGRATION_PROCS test processes side by side, each with a Postgres of its own.
+# Interface the checks use, which the build gives it:
+#   INTEGRATION_PROCS=n         n >= 2 processes at once for the shard INTEGRATION_SHARD names (dealt shards and rest); unset or 1 as before
+#   INTEGRATION_PROC=k          with INTEGRATION_PROCS=n: only process k (0-based) runs, as one Postgres and one go test process
+#   test/shard.sh list|count|args <shard> <k>/<m>   the share of process k of m (same split every time), and
+#   test/shard.sh list|count|args <shard> alone     the tests of test/alone.txt that the shard holds; `list|count <shard>` is still the whole shard
+#   test/alone.txt              lines "<package> <test> <reason>", '#' lines are comments; SHARD_ALONE names another file (as SHARD_TIMES does)
+#   ci.yml                      each matrix entry has `procs`, and the job sets INTEGRATION_PROCS: ${{ matrix.procs }}
+# The stand-ins are a docker that starts real listeners (so the port probes work) and logs every call, a go whose
+# `tool gotestsum` writes the test record a go test would, from the tests `go test -list` found, an ffmpeg and a
+# sleep that does not sleep. They need no Docker and run no test. FAKE_* variables tell them what to do.
+cd "$repo" || exit 1
+lab="$tmp/js130"; mkdir -p "$lab/bin"
+real_go=$(go env GOROOT)/bin/go
+for f in /usr/bin/*; do
+  case ${f##*/} in docker | ffmpeg | ffprobe | fc-list | go | sleep) ;; *) ln -sf "$f" "$lab/bin/${f##*/}" ;; esac
+done
+cat >"$lab/bin/docker" <<'SHIM'
+#!/bin/bash
+d=$FAKE_DIR/state; mkdir -p "$d/c"
+echo "docker $*" >>"$FAKE_DIR/docker.log"
+case $1 in
+  info | version | exec) exit 0 ;;
+  run)
+    name= args=("$@")
+    for ((i = 0; i < ${#args[@]}; i++)); do [[ ${args[i]} == --name ]] && name=${args[i + 1]}; done
+    [[ -n $name ]] || exit 125
+    (set -C; echo "$*" >"$d/c/$name") 2>/dev/null || { echo "Conflict. The container name \"/$name\" is already in use" >&2; exit 125; }
+    setsid python3 -I "$FAKE_DIR/listener.py" "$d/c/$name.port" "$d/c/$name.pid" >/dev/null 2>&1 &
+    for _ in $(seq 1 200); do [[ -s $d/c/$name.port ]] && break; /usr/bin/sleep 0.05; done
+    echo "$name $(cat "$d/c/$name.port")" >>"$FAKE_DIR/ports.log"
+    echo stand-in-container ;;
+  port) echo "127.0.0.1:$(cat "$d/c/$2.port" 2>/dev/null)" ;;
+  rm)
+    shift
+    for n in "$@"; do
+      [[ $n == -* ]] && continue
+      [[ -f $d/c/$n.pid ]] && kill "$(cat "$d/c/$n.pid")" 2>/dev/null
+      rm -f "$d/c/$n" "$d/c/$n.port" "$d/c/$n.pid"
+    done ;;
+esac
+exit 0
+SHIM
+cat >"$lab/listener.py" <<'PY'
+import http.server, os, sys
+class H(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200); self.send_header("Content-Length", "0"); self.end_headers()
+    def log_message(self, *a): pass
+s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), H)
+open(sys.argv[2], "w").write(str(os.getpid()))
+open(sys.argv[1], "w").write(str(s.server_address[1]))
+s.serve_forever()
+PY
+cat >"$lab/bin/ffmpeg" <<'SHIM'
+#!/bin/bash
+case " $* " in
+  *" -encoders "*) printf ' V....D libx264 x\n V....D libx265 x\n V....D libsvtav1 x\n' ;;
+  *" -filters "*) printf ' T.. subtitles V->V x\n' ;;
+esac
+SHIM
+printf '#!/bin/bash\nexit 0\n' >"$lab/bin/ffprobe"
+printf '#!/bin/bash\necho "/usr/share/fonts/dejavu.ttf: DejaVu Sans"\n' >"$lab/bin/fc-list"
+printf '#!/bin/bash\nexec /usr/bin/sleep 0.02\n' >"$lab/bin/sleep"
+cat >"$lab/bin/go" <<'SHIM'
+#!/bin/bash
+case $1 in
+  tool) [[ $2 == gotestsum ]] && exec python3 -I "$FAKE_DIR/gotestsum.py" "$@" ;;
+  test)
+    [[ " $* " == *" -list "* ]] && exec python3 -I "$FAKE_DIR/list.py" "$@"
+    [[ " $* " == *" -race "* ]] && { echo "race GOFLAGS=$GOFLAGS $*" >>"$FAKE_DIR/race.log"; exit 0; } ;;
+esac
+exec "$REAL_GO" "$@"
+SHIM
+chmod +x "$lab"/bin/{docker,ffmpeg,ffprobe,fc-list,sleep,go}
+cat >"$lab/list.py" <<'PY'
+import os, sys
+tests = {}
+for line in open(os.environ["FAKE_DIR"] + "/all.txt"):
+    p, t = line.rstrip("\n").split(" ", 1)
+    tests.setdefault(p, []).append(t)
+args, pkgs, i = sys.argv[2:], [], 0
+while i < len(args):
+    if args[i] in ("-tags", "-list"): i += 2
+    elif args[i].startswith("-"): i += 1
+    else: pkgs.append(args[i].removeprefix("./").removeprefix("jellyscale/")); i += 1
+for p in (sorted(tests) if pkgs == ["..."] else pkgs):
+    if p in tests:
+        print("\n".join(tests[p])); print("ok  \tjellyscale/%s\t0.01s" % p)
+PY
+cat >"$lab/gotestsum.py" <<'PY'
+# The stand-in for `go tool gotestsum ... -- <go test arguments>`: writes the --jsonfile a go test run of the tests the
+# arguments select would, and records the run. FAKE_WANT_PROCS processes wait for each other before any ends.
+import fcntl, json, os, re, sys, time
+fake = os.environ["FAKE_DIR"]
+argv = sys.argv[3:]
+sep = argv.index("--")
+gts, gt = argv[:sep], argv[sep + 1:]
+jsonfile = gts[gts.index("--jsonfile") + 1]
+run, pkgs, i = None, [], 0
+while i < len(gt):
+    if gt[i] == "-run": run = gt[i + 1]; i += 2
+    elif gt[i] in ("-tags", "-p", "-timeout"): i += 2
+    elif gt[i].startswith("-"): i += 1
+    else: pkgs.append(gt[i].removeprefix("./").removeprefix("jellyscale/")); i += 1
+tests = {}
+for line in open(fake + "/all.txt"):
+    p, t = line.rstrip("\n").split(" ", 1)
+    tests.setdefault(p, []).append(t)
+mine = [(p, t) for p in pkgs for t in tests.get(p, []) if run is None or re.search(run, t)]
+alone = set()
+if os.environ.get("FAKE_ALONE") and os.path.exists(os.environ["FAKE_ALONE"]):
+    for l in open(os.environ["FAKE_ALONE"]):
+        f = l.split(None, 2)
+        if len(f) >= 2 and not l.startswith("#"): alone.add((f[0], f[1]))
+is_alone = bool(mine) and all(m in alone for m in mine)
+key = os.environ.get("JELLYSCALE_TEST_DATABASE_URL", "")
+start = time.time()
+def locked(name, fn):
+    with open(fake + "/" + name, "a+") as f:
+        fcntl.flock(f, fcntl.LOCK_EX); f.seek(0); r = fn(f); fcntl.flock(f, fcntl.LOCK_UN); return r
+rank = -1
+def note_clash(what): open(fake + "/clash.txt", "a").write(what + "\n")
+def midrun(): # a share that registered and has not finished
+    return [r for r in os.listdir(fake) if r.startswith("run.") and not os.path.exists(fake + "/done." + r[4:])]
+if is_alone:
+    # Hold for a bounded time, so a build that starts this process beside the shares meets them whichever starts first,
+    # and say so when any share is running or registers meanwhile (the shares end only once all of them are running).
+    open(fake + "/alone-running", "w").write("x")
+    until = time.time() + 2.0
+    while time.time() < until:
+        if midrun(): note_clash("a share was running during the alone phase: %s" % midrun()); break
+        time.sleep(0.05)
+    if os.path.exists(fake + "/alone-running"): os.remove(fake + "/alone-running")
+if not is_alone:
+    def reg(f):
+        keys = f.read().split()
+        if key not in keys: f.write(key + "\n"); keys.append(key); return keys.index(key), True
+        return keys.index(key), False
+    rank, first = locked("reg.txt", reg)
+    if first:
+        want = int(os.environ.get("FAKE_WANT_PROCS", "1"))
+        deadline = time.time() + float(os.environ.get("FAKE_BARRIER_S", "60"))
+        while len(open(fake + "/reg.txt").read().split()) < want:
+            if time.time() > deadline:
+                sys.stderr.write("stand-in: only %d of %d processes were running at once\n" % (len(open(fake + "/reg.txt").read().split()), want))
+                open(fake + "/barrier-timeout", "w").write("x"); sys.exit(3)
+            time.sleep(0.05)
+    if os.path.exists(fake + "/done.%d" % rank): os.remove(fake + "/done.%d" % rank)
+    open(fake + "/run.%d" % rank, "w").write("x")
+    if os.path.exists(fake + "/alone-running"): note_clash("a share registered while the alone process was running")
+    if not (os.environ.get("TMPDIR") and os.path.isdir(os.environ["TMPDIR"]) and os.path.isdir(os.path.dirname(jsonfile) or ".")):
+        sys.stderr.write("stand-in: TMPDIR or the record's directory does not exist\n"); sys.exit(4)
+    if os.environ.get("FAKE_HOLD"):
+        open(fake + "/held.%d" % rank, "w").write("x")
+        time.sleep(120)
+    time.sleep(0.4 * rank)  # ranks end in order, so "first" and "last" to end are rank 0 and the last
+faults = {}
+for f in filter(None, os.environ.get("FAKE_FAULT", "").split(",")):
+    kind, who = f.split("@")
+    faults.setdefault(kind, set()).add(who)
+def has(kind):
+    if is_alone or kind not in faults: return False
+    nproc = int(os.environ.get("FAKE_WANT_PROCS", "1"))
+    return str(rank) in faults[kind] or ("first" in faults[kind] and rank == 0) or ("last" in faults[kind] and rank == nproc - 1)
+ran, status, events = list(mine), 0, []
+pkgfail = set()
+def ev(**k): events.append(dict(Time="2026-11-16T00:00:00Z", **k))
+if has("drop"): open(fake + "/dropped", "w").write("%s %s" % mine[0]); ran = ran[1:]
+if has("extra") and os.path.exists(fake + "/dropped"): ran.append(tuple(open(fake + "/dropped").read().split(" ", 1)))
+if has("short0"): ran = ran[:-1]
+if has("exit1"): ran, status = [], 1
+if has("panic"): ran, status = ran[:len(ran) // 2], 2
+for j, (p, t) in enumerate(ran):
+    P = "jellyscale/" + p
+    ev(Action="run", Package=P, Test=t)
+    if j == 0 and has("fail"):
+        ev(Action="output", Package=P, Test=t, Output="--- FAIL: %s (1.00s)\n    stand-in: injected failure\n" % t)
+        ev(Action="fail", Package=P, Test=t, Elapsed=1.0); pkgfail.add(P); status = 1
+        open(fake + "/faulty", "a").write("fail %s %s\n" % (rank, t))
+    elif j == 0 and has("skip"):
+        ev(Action="skip", Package=P, Test=t, Elapsed=1.0)
+        open(fake + "/faulty", "a").write("skip %s %s\n" % (rank, t))
+    else:
+        ev(Action="pass", Package=P, Test=t, Elapsed=1.0)
+for P in sorted({"jellyscale/" + p for p, _ in mine}):
+    if has("panic"):
+        ev(Action="output", Package=P, Output="panic: stand-in\n"); ev(Action="fail", Package=P, Elapsed=1.0)
+    else:
+        ev(Action="fail" if P in pkgfail else "pass", Package=P, Elapsed=1.0)
+with open(jsonfile, "w") as f:
+    for e in events: f.write(json.dumps(e) + "\n")
+rec = dict(key=key, rank=rank, alone=is_alone, start=start, end=time.time(), tmpdir=os.environ.get("TMPDIR"), jsonfile=jsonfile,
+           goflags=os.environ.get("GOFLAGS", ""), ran=[list(x) for x in ran], share=[list(x) for x in mine], args=gt)
+locked("inv.jsonl", lambda f: f.write(json.dumps(rec) + "\n"))
+if rank >= 0: open(fake + "/done.%d" % rank, "w").write("x")
+sys.exit(status)
+PY
+printf '%s\n' "$all" >"$lab/all.txt"
+
+# One run of test/integration.sh with the stand-ins: js130_run <name> VAR=value...; output, status and logs in $lab/<name>.
+js130_run() {
+  local name=$1; shift
+  rm -rf "${lab:?}/$name"; mkdir -p "$lab/$name/logs"
+  cp "$lab/all.txt" "$lab/$name/all.txt"; for f in listener.py gotestsum.py list.py; do cp "$lab/$f" "$lab/$name/$f"; done
+  (cd "$repo" && /usr/bin/env -u INTEGRATION_SHARD -u INTEGRATION_PROCS -u INTEGRATION_PROC -u GITHUB_ACTIONS -u GITHUB_STEP_SUMMARY -u GOFLAGS \
+    GIT_DIR=/nonexistent PATH="$lab/bin" REAL_GO="$real_go" FAKE_DIR="$lab/$name" FAKE_ALONE="${SHARD_ALONE:-$repo/test/alone.txt}" FAKE_BARRIER_S=15 \
+    JELLYSCALE_TEST_ROOT="$lab/$name/root" JELLYSCALE_LOG_DIR="$lab/$name/logs" "$@" \
+    timeout 300 bash test/integration.sh) >"$lab/$name/out" 2>&1
+  echo $? >"$lab/$name/status"
+}
+js130_verify() { # name shard procs [goflags]: what a run that passed left, one "<what>\t<ok|why>" line each
+  FAKE_ALONE="${SHARD_ALONE:-$repo/test/alone.txt}" python3 -I - "$lab/$1" "$2" "$3" "${4:-}" "$tmp/js130-want-$(echo "$2" | tr / _)" <<'PY'
+import collections, glob, json, os, re, sys
+fake, shard, n, goflags, wantfile = sys.argv[1:6]; n = int(n)
+want = [tuple(l.split(" ", 1)) for l in open(wantfile).read().splitlines() if l]
+alone = set()
+if os.environ.get("FAKE_ALONE") and os.path.exists(os.environ["FAKE_ALONE"]):
+    for l in open(os.environ["FAKE_ALONE"]):
+        f = l.split(None, 2)
+        if len(f) >= 2 and not l.startswith("#"): alone.add((f[0], f[1]))
+inv = [json.loads(l) for l in open(fake + "/inv.jsonl")] if os.path.exists(fake + "/inv.jsonl") else []
+out = []
+def res(what, problem=None): out.append("%s\t%s" % (what, problem or "ok"))
+main = [i for i in inv if not i["alone"]]; al = [i for i in inv if i["alone"]]
+workers = collections.OrderedDict()
+for i in main: workers.setdefault(i["key"], []).append(i)
+res("%d test processes ran" % n, None if len(workers) == n else "%d ran" % len(workers))
+pg = [l for l in open(fake + "/docker.log") if l.startswith("docker run ") and " postgres:" in l]
+names = [re.search(r"--name (\S+)", l).group(1) for l in pg]
+res("%d Postgres containers were started" % n, None if len(pg) == n else "%d were" % len(pg))
+res("... under names that differ", None if len(set(names)) == len(names) else "names repeat: %s" % names)
+res("... each on a Docker-assigned port (-p 127.0.0.1::5432)", None if all("-p 127.0.0.1::5432" in l for l in pg) else "a port is fixed or not published")
+ports = dict(l.split() for l in open(fake + "/ports.log"))
+urlports = [re.search(r"@127\.0\.0\.1:(\d+)/", k).group(1) if re.search(r"@127\.0\.0\.1:(\d+)/", k) else "?" for k in workers]
+res("each process has its own database URL, on one of those ports", None if len(set(urlports)) == n and set(urlports) <= {ports[x] for x in names} else "urls on ports %s, containers on %s" % (urlports, [ports[x] for x in names]))
+tmps = [v[0]["tmpdir"] for v in workers.values()]
+res("each process has its own TMPDIR", None if len(set(tmps)) == len(tmps) and all(tmps) else "TMPDIRs %s" % tmps)
+files = [{x["jsonfile"] for x in v} for v in workers.values()]
+res("each process has its own test record (--jsonfile)", None if sum(len(f) for f in files) == len(set().union(*files)) else "two processes wrote one file")
+c = collections.Counter(tuple(t) for i in inv for t in i["ran"])
+w = collections.Counter(want)
+res("every test of the shard ran once over the processes and the alone phase", None if c == w else "missing %s; twice or foreign %s" % (sorted((w - c).elements())[:3], sorted((c - w).elements())[:3]))
+shares = [collections.Counter(tuple(t) for x in v for t in x["share"]) for v in workers.values()]
+res("the shares are disjoint and none holds an alone test", None if all(not (a & b) for k, a in enumerate(shares) for b in shares[k + 1:]) and all(not (set(s) & alone) for s in shares) else "overlap")
+res("each process ran its whole share", None if all(collections.Counter(tuple(t) for x in v for t in x["ran"]) == collections.Counter(tuple(t) for x in v for t in x["share"]) for v in workers.values()) else "a process ran other than its share")
+firsts = [min(x["start"] for x in v) for v in workers.values()]
+ends = [min(x["end"] for x in v) for v in workers.values()]
+res("the processes ran at the same time (all started before any ended)", None if workers and max(firsts) < min(ends) else "no common instant")
+flags = [i["goflags"] for i in inv] + [l.split()[1] for l in open(fake + "/race.log")] if os.path.exists(fake + "/race.log") else [i["goflags"] for i in inv]
+res("every go test process got the caller's GOFLAGS", None if flags and all(f == "GOFLAGS=" + goflags or f == goflags for f in flags) else "flags seen %s" % set(flags))
+for a in al:
+    clash = [b for b in inv if b is not a and a["start"] < b["end"] and b["start"] < a["end"]]
+    marks = open(fake + "/clash.txt").read().splitlines() if os.path.exists(fake + "/clash.txt") else []
+    res("an alone test ran with no other test process running", None if not clash and not marks else "%d others overlapped it; %s" % (len(clash), marks[:2]))
+    res("... and only alone tests ran in that process", None if all(tuple(t) in alone for t in a["ran"]) else "mixed")
+res("alone tests of the shard each ran in the alone phase", None if {tuple(t) for a in al for t in a["ran"]} == {x for x in alone if x in set(want)} else "alone ran %s" % [a["ran"] for a in al])
+left = [f for f in os.listdir(fake + "/state/c")] if os.path.isdir(fake + "/state/c") else []
+res("no container the run started is left", None if not left else "left: %s" % left)
+res("no listener of a removed container is left", None if not [p for p in glob.glob(fake + "/state/c/*.pid")] else "pid files left")
+tj = []
+for f in glob.glob(fake + "/logs/**/tests.json", recursive=True):
+    tj += [json.loads(l) for l in open(f) if l.strip()]
+top = collections.Counter((e["Package"].removeprefix("jellyscale/"), e["Test"]) for e in tj if e.get("Action") == "pass" and e.get("Test") and "/" not in e["Test"])
+res("the tests.json files hold each test once", None if top == w else "differs: missing %s, repeated or foreign %s" % (sorted((w - top).elements())[:3], sorted((top - w).elements())[:3]))
+recs = glob.glob(fake + "/logs/**/shard-integration-*.txt", recursive=True)
+sh = shard.replace("/", "of")
+res("one shard-integration-%s.txt, counting every test of the shard" % sh, None if len(recs) == 1 and open(recs[0]).read().split() == ["integration", shard, str(len(want))] and recs[0].endswith("shard-integration-%s.txt" % sh) else "records %s: %s" % ([os.path.basename(r) for r in recs], [open(r).read() for r in recs]))
+print("\n".join(out))
+PY
+}
+js130_report() { # prefix: "<prefix> <what>" is checked from js130_verify's lines on stdin
+  local prefix=$1 what verdict
+  while IFS=$'\t' read -r what verdict; do [[ -n $what ]] && check "$prefix $what" ok "$verdict"; done
+}
+js130_want() { bash test/shard.sh list "$1" >"$tmp/js130-want-$(echo "$1" | tr / _)"; }
+cnt() { local c; c=$(grep -c "$@" 2>/dev/null); echo "${c:-0}"; }
+
+dealt_first=$(echo "$dealt_shards" | head -1)
+for s in $dealt_first rest; do js130_want "$s"; done
+# 1. A passing run, 2 and 4 processes, a dealt shard and rest.
+for s in $dealt_first rest; do
+  for n in 2 4; do
+    tag="$(echo "$s" | tr / _)-$n"
+    js130_run "ok-$tag" INTEGRATION_SHARD="$s" INTEGRATION_PROCS=$n FAKE_WANT_PROCS=$n GOFLAGS=-trimpath
+    check "INTEGRATION_PROCS=$n, shard $s: the run passes" 0 "$(cat "$lab/ok-$tag/status")"
+    js130_verify "ok-$tag" "$s" $n -trimpath 2>&1 | js130_report "INTEGRATION_PROCS=$n, shard $s:"
+    check "INTEGRATION_PROCS=$n, shard $s: the report counts every process's tests" "yes" "$(grep -q ": $(wc -l <"$tmp/js130-want-$(echo "$s" | tr / _)" | tr -d ' ') tests;" "$lab/ok-$tag/out" && echo yes || echo no)"
+    race=$(wc -l <"$lab/ok-$tag/race.log" 2>/dev/null || echo 0)
+    check "INTEGRATION_PROCS=$n, shard $s: the -race TestHarness run is made once in the job that holds cmd/jellyscale, else never" "$([[ $s == rest ]] && echo 1 || echo 0)" "$(echo $race)"
+  done
+done
+# 2. Unset, 1: as today. A bad value is refused, naming it, before anything is started.
+for v in "" 1; do
+  js130_run "as-today-${v:-unset}" INTEGRATION_SHARD="$dealt_first" ${v:+INTEGRATION_PROCS=$v} FAKE_WANT_PROCS=1
+  check "INTEGRATION_PROCS=${v:-unset}: the run passes with one Postgres and one go test process at a time" "0 1 1" "$(cat "$lab/as-today-${v:-unset}/status") $(cnt '^docker run .* postgres:' "$lab/as-today-${v:-unset}/docker.log") $(python3 -I -c 'import json,sys; print(len({json.loads(l)["key"] for l in open(sys.argv[1])}))' "$lab/as-today-${v:-unset}/inv.jsonl")"
+done
+for v in 0 -1 1.5 two 2x; do
+  js130_run "bad-$v" INTEGRATION_SHARD="$dealt_first" INTEGRATION_PROCS="$v" FAKE_WANT_PROCS=2
+  check "INTEGRATION_PROCS=$v is refused, naming it, and nothing is started" "nonzero named 0" "$([[ $(cat "$lab/bad-$v/status") -ne 0 ]] && echo nonzero || echo "exit 0") $(grep -qF -- "$v" "$lab/bad-$v/out" && echo named || echo "not named") $(cnt '^docker run' "$lab/bad-$v/docker.log")"
+done
+# 3. One process's share: INTEGRATION_PROC=k with INTEGRATION_PROCS=n runs process k alone, over the share shard.sh gives it.
+for s in $dealt_first rest; do
+  js130_run "one-$(echo "$s" | tr / _)" INTEGRATION_SHARD="$s" INTEGRATION_PROCS=4 INTEGRATION_PROC=1 FAKE_WANT_PROCS=1
+  od="$lab/one-$(echo "$s" | tr / _)"
+  got=$(python3 -I -c 'import json,sys; print("\n".join(sorted(" ".join(t) for l in open(sys.argv[1]) for t in json.loads(l)["ran"])))' "$od/inv.jsonl")
+  share1=$(bash test/shard.sh list "$s" 1/4 | LC_ALL=C sort)
+  same=no; [[ $got == "$share1" && $(wc -l <<<"$share1") -lt $(bash test/shard.sh count "$s") ]] && same=yes
+  check "INTEGRATION_PROC=1 INTEGRATION_PROCS=4, shard $s: one Postgres, and exactly the tests of share 1/4 run" "0 1 yes" "$(cat "$od/status") $(cnt '^docker run .* postgres:' "$od/docker.log") $same"
+done
+# 4. The shares: shard.sh gives each process a share, the same every time, every test once, none an alone test.
+for s in $dealt_first rest; do
+  for m in 2 4; do
+    union=$(for ((k = 0; k < m; k++)); do bash test/shard.sh list "$s" $k/$m; done | LC_ALL=C sort)
+    alone_list=$(bash test/shard.sh list "$s" alone 2>/dev/null | LC_ALL=C sort)
+    whole=$(bash test/shard.sh list "$s" | LC_ALL=C sort)
+    check "shard.sh: the $m shares of $s and its alone tests are the whole shard, each test once" "$whole" "$(printf '%s\n%s\n' "$union" "$alone_list" | sed '/^$/d' | LC_ALL=C sort)"
+    check "shard.sh: the $m shares of $s are the same when dealt again" "$(bash test/shard.sh list "$s" 1/$m)" "$(bash test/shard.sh list "$s" 1/$m)"
+    check "shard.sh: count $s 0/$m is the number of lines list gives" "$(bash test/shard.sh list "$s" 0/$m | wc -l | tr -d ' ')" "$(bash test/shard.sh count "$s" 0/$m)"
+    check "shard.sh: every share of $s at $m is more than empty" "" "$(for ((k = 0; k < m; k++)); do [[ $(bash test/shard.sh count "$s" $k/$m) -gt 0 ]] || echo "share $k/$m"; done)"
+  done
+done
+fails_with "shard.sh refuses a share past m" bash test/shard.sh list "$dealt_first" 2/2
+# The deal inside a job, by time, longest first: on the stand-in module, one share holds the slowest test alone.
+printf '# stand-in\ninternal/transcode TestA 50\ninternal/api TestC 40\ninternal/transcode TestB 12\ninternal/transcode TestSame 10\ninternal/api TestSame 9\ninternal/transcode TestNew 8\n' >"$tmp/mod-times-share.txt"
+mshare() { (cd "$mod" && SHARD_TIMES="$tmp/mod-times-share.txt" bash test/shard.sh list "$1" "$2" | LC_ALL=C sort); }
+check "shard.sh: dealt longest first, the slowest test of shard 0/2 is alone on its share of 2 (TestA 50 s against 10 s and 8 s)" "internal/transcode TestA" "$(mshare 0/2 0/2)"
+check "shard.sh: ... and the other share holds the rest" "internal/transcode TestNew
+internal/transcode TestSame" "$(mshare 0/2 1/2)"
+check "shard.sh: the stand-in module's shares hold each of a shared test name once, in its own package" "internal/api TestSame
+internal/transcode TestSame" "$( { for sh in 0/2 1/2; do for k in 0/2 1/2; do mshare $sh $k; done; done; } | grep ' TestSame$' | LC_ALL=C sort)"
+# Per-share time guards: each process's share, 1500 s and two thirds of the -timeout, naming the shard and process.
+printf '# stand-in\ninternal/transcode TestA 2000\ninternal/api TestC 40\ninternal/transcode TestB 12\ninternal/transcode TestSame 10\ninternal/api TestSame 9\ninternal/transcode TestNew 8\n' >"$tmp/mod-times-cap.txt"
+check "the 1500 s guard, applied to a share, names the shard and the process that is over" "shard 0/1 process 0/2: 2000.0s is over 1500s" "$(cd "$mod" && SHARD_TIMES="$tmp/mod-times-cap.txt" bash -c "$(declare -f shard_secs share_job_secs cap_violations shares_of procs_of); shard_procs='0/1 2'; cap_violations '$mod' '$tmp/mod-times-cap.txt' 0/1")"
+# A listed alone test counts toward every share of its job: TestB (12 s) alone, shares of 2000 s and 40 s... the 1500 s guard
+# and the budget guard both name the process whose share plus the alone seconds is over.
+printf '# stand-in\ninternal/transcode TestA 1400\ninternal/api TestC 40\ninternal/transcode TestB 150\ninternal/transcode TestSame 10\ninternal/api TestSame 9\ninternal/transcode TestNew 8\n' >"$tmp/mod-times-alone.txt"
+printf '# stand-in\ninternal/transcode TestB because the stand-in says so\n' >"$tmp/mod-alone-guard.txt"
+guard_fns="$(declare -f shard_secs share_job_secs cap_violations budget_violations shares_of procs_of)"
+check "the 1500 s guard counts the shard's alone tests: share 1400 s plus 150 s alone is over" "shard 0/1 process 0/2: 1550.0s is over 1500s" "$(cd "$mod" && SHARD_ALONE="$tmp/mod-alone-guard.txt" SHARD_TIMES="$tmp/mod-times-alone.txt" bash -c "$guard_fns; shard_procs='0/1 2'; cap_violations '$mod' '$tmp/mod-times-alone.txt' 0/1")"
+check "... and without the alone test the same share is within it" "" "$(cd "$mod" && SHARD_ALONE=/nonexistent SHARD_TIMES="$tmp/mod-times-alone.txt" bash -c "$guard_fns; shard_procs='0/1 2'; cap_violations '$mod' '$tmp/mod-times-alone.txt' 0/1")"
+check "the two-thirds-of-the--timeout guard counts the shard's alone tests: 1550 s of a 2250 s limit's 1500 s" "shard 0/1 process 0/2: 1550.0s is over two thirds of 2250s" "$(cd "$mod" && SHARD_ALONE="$tmp/mod-alone-guard.txt" SHARD_TIMES="$tmp/mod-times-alone.txt" bash -c "$guard_fns; shard_procs='0/1 2'; budget_violations '$mod' '$tmp/mod-times-alone.txt' 2250 0/1")"
+check "the per-share guards use the matrix's processes: every dealt shard and rest runs 2 or more" "" "$(awk '$2 < 2 { print "shard " $1 " has procs " $2 }' <<<"$shard_procs")"
+
+# 5. Faults: the first or the last process to end fails, skips, stops partway, ends early or counts wrong; the run fails,
+# and the other processes' results are still there. Dealt shard at 2 processes, rest at 4.
+js130_fault() { # name shard procs fault...  (fault is FAKE_FAULT)
+  local name=$1 shard=$2 n=$3 fault=$4
+  js130_run "$name" INTEGRATION_SHARD="$shard" INTEGRATION_PROCS=$n FAKE_WANT_PROCS=$n FAKE_FAULT="$fault"
+  local st; st=$(cat "$lab/$name/status")
+  check "$name: the run fails" "nonzero" "$([[ $st -ne 0 ]] && echo nonzero || echo "exit $st")"
+  check "$name: no stand-in Postgres is left" "" "$(ls "$lab/$name/state/c" 2>/dev/null)"
+  # The tests the other processes ran are in the records.
+  python3 -I - "$lab/$name" "$fault" "$n" <<'PY' | js130_report "$name:"
+import glob, json, sys
+fake, fault, n = sys.argv[1], sys.argv[2], int(sys.argv[3])
+bad = {int(w) if w.isdigit() else (0 if w == "first" else n - 1) for w in (f.split("@")[1] for f in fault.split(","))}
+inv = [json.loads(l) for l in open(fake + "/inv.jsonl")]
+ok = {(e["Package"].removeprefix("jellyscale/"), e["Test"]) for f in glob.glob(fake + "/logs/**/tests.json", recursive=True) for l in open(f) if l.strip() for e in [json.loads(l)] if e.get("Action") == "pass" and e.get("Test")}
+miss = [t for i in inv if i["rank"] not in bad and not i["alone"] for t in map(tuple, i["share"]) if t not in ok]
+print("the other processes' passing tests are in the test records\t%s" % ("ok" if not miss else "missing %s" % miss[:3]))
+PY
+  if [[ $fault == fail@* || $fault == skip@* ]]; then
+    check "$name: the failing test is named" "yes" "$(t=$(awk '{print $3}' "$lab/$name/faulty" | head -1); [[ -n $t ]] && grep -qF -- "$t" "$lab/$name/out" && echo yes || echo "no: ${t:-none}")"
+  fi
+}
+for s_n in "$dealt_first 2" "rest 4"; do
+  read -r fs fn <<<"$s_n"
+  for who in first last; do
+    for kind in fail skip panic short0 exit1; do
+      [[ $fs == rest && $kind != fail && $kind != short0 ]] && continue
+      js130_fault "fault-$kind-$who-$(echo "$fs" | tr / _)" "$fs" "$fn" "$kind@$who"
+    done
+  done
+done
+js130_fault "fault-both-ends" rest 4 "fail@first,fail@last"
+check "fault-both-ends: the failures of both processes are named" "2" "$(awk '{print $3}' "$lab/fault-both-ends/faulty" | while read -r t; do grep -cF -- "$t" "$lab/fault-both-ends/out" | awk '{print ($1>0)}'; done | awk '{ s += $1 } END { print s + 0 }')"
+# A test run by the wrong process: the shard's count adds up, one process's does not.
+js130_fault "fault-swap-$(echo "$dealt_first" | tr / _)" "$dealt_first" 2 "drop@first,extra@last"
+
+# 6. The processes really run at once: the stand-ins wait for each other, so a run that starts them one after the other fails.
+js130_run "serial" INTEGRATION_SHARD="$dealt_first" INTEGRATION_PROCS=2 FAKE_WANT_PROCS=3 FAKE_BARRIER_S=3
+check "a run whose processes cannot all be running at once fails (the stand-ins wait for a third)" "nonzero yes" "$([[ $(cat "$lab/serial/status") -ne 0 ]] && echo nonzero || echo "exit 0") $([[ -e $lab/serial/barrier-timeout ]] && echo yes || echo no)"
+
+# 7. alone: a test of test/alone.txt runs once, in the shard's job, with no other test process running, and is counted once.
+alone_test=$(bash test/shard.sh list rest | sed -n '1p')
+printf '# stand-in\n%s because the stand-in says so\n' "$alone_test" >"$tmp/alone-standin.txt"
+export SHARD_ALONE="$tmp/alone-standin.txt"
+js130_run "alone-rest" INTEGRATION_SHARD=rest INTEGRATION_PROCS=4 FAKE_WANT_PROCS=4
+check "alone: a run of rest with one test listed passes" 0 "$(cat "$lab/alone-rest/status")"
+FAKE_ALONE=$SHARD_ALONE js130_verify alone-rest rest 4 | js130_report "alone, rest at 4:"
+check "alone: shard.sh lists that one test as alone, and in no share" "1 0" "$(bash test/shard.sh list rest alone | grep -cxF -- "$alone_test") $(for k in 0 1 2 3; do bash test/shard.sh list rest $k/4; done | grep -cxF -- "$alone_test")"
+check "alone: the shard's count still counts it once" "$(wc -l <"$tmp/js130-want-rest" | tr -d ' ')" "$(bash test/shard.sh count rest)"
+unset SHARD_ALONE
+# test/alone.txt itself.
+check "test/alone.txt exists" yes "$([[ -f test/alone.txt ]] && echo yes || echo no)"
+check "every line of test/alone.txt has a package, a test and a reason" "" "$(grep -v '^#' test/alone.txt 2>/dev/null | grep -v '^[[:space:]]*$' | awk 'NF < 3 { print "no reason: " $0 }')"
+check "every test test/alone.txt names is a test of the tier" "" "$(grep -v '^#' test/alone.txt 2>/dev/null | awk 'NF >= 2 { print $1, $2 }' | while read -r p t; do grep -qxF -- "$p $t" <<<"$all" || echo "not a test: $p $t"; done)"
+check "no test of test/alone.txt is in a share of any shard of the matrix" "" "$(while read -r sh share; do bash test/shard.sh list "$sh" ${share:+$share}; done < <(for s in $matrix; do shares_of "$s"; done) | grep -vE '^$' | LC_ALL=C sort | LC_ALL=C comm -12 - <(grep -v '^#' test/alone.txt 2>/dev/null | awk 'NF >= 2 { print $1, $2 }' | LC_ALL=C sort))"
+check "the scan-cost test is listed in test/alone.txt, or scanTrackCost is at most 12 MB" "yes" "$(grep -q 'TestTheScanReadsNoMoreOfAFilmForItsImageTrackAndNothingThatGrowsWithTheFilm' test/alone.txt 2>/dev/null && echo yes || { grep -qE 'const scanTrackCost = (12|[0-9]) << 20' internal/transcode/image_burn_scan_integration_test.go && echo yes || echo no; })"
+
+# 8. Interrupted: a run stopped by a signal while its processes run leaves no container.
+for sig in TERM HUP; do
+  nm="interrupt-$sig"; rm -rf "${lab:?}/$nm"; mkdir -p "$lab/$nm/logs"
+  cp "$lab/all.txt" "$lab/listener.py" "$lab/gotestsum.py" "$lab/list.py" "$lab/$nm/"
+  /usr/bin/env -u INTEGRATION_PROC GIT_DIR=/nonexistent PATH="$lab/bin" REAL_GO="$real_go" FAKE_DIR="$lab/$nm" FAKE_ALONE="$repo/test/alone.txt" \
+    JELLYSCALE_TEST_ROOT="$lab/$nm/root" JELLYSCALE_LOG_DIR="$lab/$nm/logs" INTEGRATION_SHARD="$dealt_first" INTEGRATION_PROCS=3 FAKE_WANT_PROCS=3 FAKE_HOLD=1 \
+    bash test/integration.sh >"$lab/$nm/out" 2>&1 &
+  pid=$!
+  for _ in $(seq 1 600); do [[ $(ls "$lab/$nm" | grep -c '^held\.') -ge 3 ]] && break; /usr/bin/sleep 0.1; done
+  held=$(ls "$lab/$nm" | grep -c '^held\.')
+  kill -$sig "$pid" 2>/dev/null
+  for _ in $(seq 1 300); do kill -0 "$pid" 2>/dev/null || break; /usr/bin/sleep 0.1; done
+  kill -0 "$pid" 2>/dev/null && { kill -KILL "$pid" 2>/dev/null; echo "run did not stop" >"$lab/$nm/hung"; }
+  pkill -f "$lab/$nm/gotestsum.py" 2>/dev/null
+  check "interrupt $sig: all 3 processes were running before the signal" 3 "$held"
+  check "interrupt $sig: the run stops on the signal" "stopped" "$([[ -e $lab/$nm/hung ]] && echo hung || echo stopped)"
+  check "interrupt $sig: no Postgres container is left" "" "$(ls "$lab/$nm/state/c" 2>/dev/null | grep -v '\.' )"
+  for pidf in "$lab/$nm"/state/c/*.pid; do [[ -f $pidf ]] && kill "$(cat "$pidf")" 2>/dev/null; done
+done
+
+# 9. What CI reads: every shard of the matrix at its processes, the records added up, tests.json read whole.
+sd="$tmp/js130-ci"; mkdir -p "$sd/records" "$sd/run1" "$sd/logs-by-shard"
+total_all=$(wc -l <<<"$all" | tr -d ' ')
+for s in $matrix; do
+  n=$(procs_of "$s"); n=${n:-2}; [[ $n -ge 2 ]] || n=2
+  js130_want "$s"
+  js130_run "ci-$(echo "$s" | tr / _)" INTEGRATION_SHARD="$s" INTEGRATION_PROCS=$n FAKE_WANT_PROCS=$n
+  check "matrix shard $s at $n processes passes" 0 "$(cat "$lab/ci-$(echo "$s" | tr / _)/status")"
+  js130_verify "ci-$(echo "$s" | tr / _)" "$s" $n | js130_report "matrix shard $s at $n processes:"
+  cp "$lab/ci-$(echo "$s" | tr / _)"/logs/shard-integration-*.txt "$sd/records/" 2>/dev/null
+  mkdir -p "$sd/run1/integration-shard-${s/\//of}"; cp -r "$lab/ci-$(echo "$s" | tr / _)/logs/." "$sd/run1/integration-shard-${s/\//of}/"
+done
+check "test/check-shards.sh integration passes on the records of the six runs" 0 "$(bash test/check-shards.sh integration "$sd/records" "$total_all" >/dev/null 2>&1; echo $?)"
+first_rec=$(ls "$sd/records" | head -1)
+mkdir -p "$sd/short"; cp "$sd/records"/* "$sd/short/"; rm "$sd/short/$first_rec"
+check "test/check-shards.sh integration still fails when a shard's tests ran in no shard" nonzero "$(bash test/check-shards.sh integration "$sd/short" "$total_all" >/dev/null 2>&1 && echo zero || echo nonzero)"
+mkdir -p "$sd/dup"; cp "$sd/records"/* "$sd/dup/"; awk '{ $3 = $3 + 1; print }' "$sd/records/$first_rec" >"$sd/dup/$first_rec"
+check "... and when a test ran in two" nonzero "$(bash test/check-shards.sh integration "$sd/dup" "$total_all" >/dev/null 2>&1 && echo zero || echo nonzero)"
+SHARD_TIMES_OUT="$sd/times.txt" bash test/shard-times.sh "$sd/run1" >/dev/null 2>&1
+check "test/shard-times.sh reads every tests.json whole: one line for each test of the tier, one second each" "$total_all 0" "$(grep -vc '^#' "$sd/times.txt") $(grep -v '^#' "$sd/times.txt" | awk '$3 != 1' | wc -l | tr -d ' ')"
+names_args=(); for s in $matrix; do names_args+=("${s/\//of}"); done
+summary=$(bash test/shard-summary.sh "$sd/run1" "${names_args[@]}" 2>&1)
+check "test/shard-summary.sh reads each shard's tests.json whole: the seconds of a shard are its count of tests" "" "$(for s in $matrix; do want=$(bash test/shard.sh count "$s"); grep -qxF "integration shard ${s/\//of}: ${want}s of tests" <<<"$summary" || echo "$s: want ${want}s, got: $(grep "shard ${s/\//of}:" <<<"$summary")"; done)"
+# One name for each container over all the runs above: unique to the run, not to the process count.
+check "container names differ in every run (a name unique to its run)" "" "$(grep -h '^docker run' "$lab"/*/docker.log 2>/dev/null | grep -o -- '--name [^ ]*' | sort | uniq -d | head -3)"
+pkill -f "python3 -I $lab/" 2>/dev/null # listeners of a build that left its containers: mine to stop
+for pidf in "$lab"/*/state/c/*.pid; do [[ -f $pidf ]] && kill "$(cat "$pidf")" 2>/dev/null; done
+
+# 10. ci.yml and docs/testing.md.
+ci130=$(python3 -I - .github/workflows/ci.yml <<'PY'
+import sys, yaml
+job = yaml.safe_load(open(sys.argv[1]))["jobs"]["integration-shard"]
+inc = job["strategy"]["matrix"]["include"]
+print("at most five entries\t" + ("ok" if len(inc) <= 5 else "%d entries" % len(inc)))
+print("every entry has procs of 2 or more\t" + ("ok" if all(int(e.get("procs", 0)) >= 2 for e in inc) else "an entry has fewer"))
+print("the job sets INTEGRATION_PROCS from the matrix\t" + ("ok" if "INTEGRATION_PROCS" in str(job) and "matrix.procs" in str(job) else "it does not"))
+print("the job's timeout-minutes is not above 60\t" + ("ok" if int(job["timeout-minutes"]) <= 60 else str(job["timeout-minutes"])))
+PY
+)
+while IFS=$'\t' read -r what verdict; do [[ -n $what ]] && check "ci.yml: $what" ok "$verdict"; done <<<"$ci130"
+check "test/integration.sh's go test -timeout is still 45m" "45" "$(sed -n 's/.*go tool gotestsum.* -timeout \([0-9]*\)m.*/\1/p' test/integration.sh | head -1)"
+d=docs/testing.md
+check "docs/testing.md says the tier is split twice: jobs by test/shard.sh, then processes in a job by INTEGRATION_PROCS" "1" "$(grep -c 'INTEGRATION_PROCS' $d | awk '{print ($1>0)}')"
+check "docs/testing.md says what test/alone.txt is for" "1" "$(grep -F 'test/alone.txt' $d | grep -ciE 'alone|no other' | awk '{print ($1>0)}')"
+check "docs/testing.md gives one command that runs exactly one process's share" "1" "$(grep -E 'INTEGRATION_SHARD=.*INTEGRATION_PROCS=.*INTEGRATION_PROC=|INTEGRATION_PROC=.*INTEGRATION_PROCS=.*INTEGRATION_SHARD=' $d | grep -c 'test/integration.sh' | awk '{print ($1>0)}')"
+check "docs/testing.md says a concurrency claim still needs its own real processes or contention" "1" "$(grep -iE 'concurrency' $d | grep -ciE 'real process|contention' | awk '{print ($1>0)}')"
 
 echo
 [[ $fails -eq 0 ]] && echo "scripts: all passed" || echo "scripts: $fails failed"
