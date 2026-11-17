@@ -6,7 +6,9 @@
 # (actions/cache, keyed on the runner image version and the package list) in
 # the directory APT_DEBS names.
 #   A hit (a file for every package in APT_DEBS): installs from those files with
-#   no apt-get update and no download.
+#   no apt-get update and no download. If that install fails (a dependency the
+#   cached files lack: run 44012242557), it installs as on a miss instead of
+#   failing the job.
 #   A miss: installs from the main archive, with retries, and leaves the .deb of
 #   every package it installed, dependencies included, in APT_DEBS, for the cache
 #   to save. APT_ARCHIVES is where apt leaves its downloads (the default is right
@@ -22,8 +24,8 @@ if [[ -n $debs ]]; then
   for p in "$@"; do compgen -G "$debs/${p}_*.deb" >/dev/null || files=(); done
   if [[ ${#files[@]} -gt 0 ]]; then
     echo "installing ${#files[@]} cached .deb files, no mirror"
-    sudo apt-get install -y --no-download "${files[@]}"
-    exit 0
+    if sudo apt-get install -y --no-download "${files[@]}"; then exit 0; fi
+    echo "the cached .deb files are not enough; installing from the mirror"
   fi
 fi
 
