@@ -19,6 +19,9 @@ aliases:
   - {method: DELETE, route: "/Users/{userId}/FavoriteItems/{itemId}", stands_for: "/UserFavoriteItems/{itemId}"}
   - {method: POST, route: "/Users/{userId}/PlayedItems/{itemId}", stands_for: "/UserPlayedItems/{itemId}"}
   - {method: DELETE, route: "/Users/{userId}/PlayedItems/{itemId}", stands_for: "/UserPlayedItems/{itemId}"}
+# answers: routes in no Jellyfin document whose answer is a type of the schema.
+answers:
+  - {method: PATCH, route: "/jellyscale/v1/users/configuration", type: UserConfiguration}
 # unchecked: routes whose JSON answer the schema does not type, each with the reason.
 unchecked:
   - {method: GET, route: "/jellyscale/v1/track-preferences", reason: "a jellyscale route that is in no Jellyfin document, so the schema types nothing of it; its answer is held by cmd/jellyscale/track_preferences_integration_test.go and documented in docs/api.md"}

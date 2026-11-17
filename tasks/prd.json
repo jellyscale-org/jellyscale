@@ -2457,9 +2457,8 @@
         "No Jellyfin route answers differently: JS-116's replay of the 124 captured cases passes unchanged and the differential tier passes with no new entry in compat/differences.yaml",
         "A change is logged at Info with the user id and the names of the fields sent. The route is in compat/endpoints.yaml, in the jellyscale-only list of compat/coverage_test.go, and in compat/conform.yaml with its answer held to UserConfiguration's schema. docs/api.md documents it with a request and an answer, how a concurrent save of the same field is decided, and that a whole-object save from an older read (jellyfin-web's) can still undo a change while the track preferences are out of its reach"
       ],
-      "priority": 23,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [
         "JS-116",
         "JS-118"

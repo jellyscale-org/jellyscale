@@ -67,6 +67,23 @@ func (c *Checker) Check(request, method, path string, status int, contentType st
 	if c.rules.unchecked(method, path) {
 		return nil
 	}
+	if route, typeName, typed := c.rules.answerType(method, path); typed && status >= 200 && status < 300 {
+		c.responses++
+		c.routes[route] = true
+		if !isJSON {
+			return fail(route, "(body)", "no JSON body (content type %q), where the rule gives %s", contentType, typeName)
+		}
+		dec := json.NewDecoder(bytes.NewReader(body))
+		dec.UseNumber()
+		var value any
+		if err := dec.Decode(&value); err != nil {
+			return fail(route, "(body)", "no JSON body, where the rule gives %s: %v", typeName, err)
+		}
+		var out []Violation
+		v := validator{schema: c.schema, request: request, route: route, out: &out}
+		v.check(&Node{Ref: typeName}, value, "$", "")
+		return out
+	}
 	key, ok := c.schema.operationKey(method, path)
 	if !ok {
 		if target, aliased := c.rules.AliasFor(method, path); aliased {
