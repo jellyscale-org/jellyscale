@@ -2408,9 +2408,8 @@
         "docs/transcoding.md says that a preferred track which is not the file's default turns a browser's direct play into a copied stream, and docs/status.md marks the settings as acting",
         "Observed first on Jellyfin 12.4: what DefaultAudioStreamIndex answers when the request names AudioStreamIndex; jellyscale then follows it (moved here from JS-119: today defaultAudio, stream.go:304, ignores the named track for every viewer)"
       ],
-      "priority": 24,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [
         "JS-116",
         "JS-117"
@@ -2426,6 +2425,7 @@
       "acceptanceCriteria": [
         "A signed-in viewer reaches the page from jellyfin-web's user menu and sees their two opt-ins, their kept languages and 'show all tracks' as saved",
         "Turning an opt-in on with no default language set asks for one first, as Fluster does; the page saves through the same /jellyscale/v1/ route Fluster uses, and the next PlaybackInfo in jellyfin-web reflects it",
+        "A viewer whose audio language is saved and whose PlayDefaultAudioTrack is on is told on the page that a film whose default track is in another language still starts in that track (Jellyfin's rule, and its default for every new user), and can turn it off there with one switch, saved through PATCH /jellyscale/v1/users/configuration (JS-123); the next PlaybackInfo in jellyfin-web then names the track in their language",
         "A viewer changes only their own settings; another viewer's are untouched, and an unsigned request is refused",
         "The page works at phone width and in light and dark, with no route outside /jellyscale/v1/ and no change to jellyfin-web's files"
       ],
@@ -2433,7 +2433,7 @@
         "JS-118",
         "JS-119"
       ],
-      "notes": "Owner, 2026-11-15: Fluster first, a page later. Planned after the track-language batch so Fluster adopts it first.",
+      "notes": "Owner, 2026-11-15: Fluster first, a page later. Planned after the track-language batch so Fluster adopts it first. 2026-11-17 (JS-121's UX review): PlayDefaultAudioTrack defaults to true, so a viewer who only saves a language keeps hearing a film's flagged track, usually its original; the page says so and offers the switch.",
       "passes": false,
       "priority": 26,
       "source": "owner 2026-11-15",
