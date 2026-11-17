@@ -29,7 +29,10 @@ concurrency:
 # tests the exact commit that lands. A pull request runs lint-and-unit, and its
 # integration and e2e checks pass at once saying so; the label ci:full runs the
 # media tiers on the pull request too. A merge group or a ci:full pull request
-# that changes only docs or tasks/prd.json skips them (test/changes.sh). A push
+# that changes only .claude/, tasks/ and Markdown in the root or docs/ skips them
+# (test/changes.sh). That is safe because the guard test (test/mediaguard, run by
+# lint-and-unit) fails when any file outside those, but a short allowlist of unit tests and
+# scripts, names .claude/ or tasks/. A push
 # to main was tested in its merge group: it runs lint-and-unit and refills the
 # e2e fixture cache, which only main's scope shares with every branch.
 jobs:
@@ -57,11 +60,11 @@ jobs:
             if [ "$FULL" != true ]; then
               code=false why="a pull request: the media tiers run in the merge queue (label ci:full runs them here)"
             elif [ "$(bash test/changes.sh "$PR_BASE...$PR_HEAD")" = docs-only ]; then
-              code=false why="only docs or tasks/prd.json changed"
+              code=false why="only .claude/, tasks/ and Markdown changed"
             fi ;;
           merge_group)
             if [ "$(bash test/changes.sh "$QUEUE_BASE" "$QUEUE_HEAD")" = docs-only ]; then
-              code=false why="only docs or tasks/prd.json changed"
+              code=false why="only .claude/, tasks/ and Markdown changed"
             fi ;;
           push) code=false why="a push to main, tested in its merge group" ;;
           esac
