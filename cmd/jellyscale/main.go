@@ -16,7 +16,9 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -70,6 +72,10 @@ type config struct {
 	// ffmpeg stops, and TranscodeRetention how long its segments stay after.
 	TranscodeIdle      string `json:"transcodeIdle"`
 	TranscodeRetention string `json:"transcodeRetention"`
+	// TranscodeBudget is the most the transcode store may hold: a whole number
+	// of bytes, or a number with KB, MB, GB or TB (decimal, 1 GB is 10^9
+	// bytes). Left out, the store has no budget.
+	TranscodeBudget string `json:"transcodeBudget"`
 	// TranscodeLead is how far, in film time, a job may get ahead of the
 	// furthest segment a viewer has asked for before its ffmpeg pauses.
 	TranscodeLead string `json:"transcodeLead"`
@@ -373,6 +379,11 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 		return result, err
 	}
 
+	budget, err := parseSize(cfg.TranscodeBudget, "transcodeBudget")
+	if err != nil {
+		return result, err
+	}
+
 	id := fmt.Sprintf("%d-%d", os.Getpid(), time.Now().UnixNano())
 	if worker {
 		// The id is what transcode_nodes and transcode_jobs name a worker by; the
@@ -400,7 +411,7 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 	var media store.Cache
 	w := &transcode.Worker{
 		ID: id, Pool: pool, Items: &items.Repo{Pool: pool, ServerID: serverID}, Segments: segments, SegmentsURI: cfg.TranscodeStore, Hub: result.hub, Log: log,
-		Media: media.Open, Scratch: scratch, Cores: cfg.TranscodeCores, Slots: cfg.TranscodeSlots, Idle: idle, Lead: lead, Retention: retention,
+		Media: media.Open, Scratch: scratch, Cores: cfg.TranscodeCores, Slots: cfg.TranscodeSlots, Idle: idle, Lead: lead, Retention: retention, Budget: budget,
 		NoHelpers: cfg.TranscodeHelpers != nil && !*cfg.TranscodeHelpers,
 	}
 	if worker {
@@ -458,6 +469,26 @@ func optionalDuration(value, name string) (time.Duration, error) {
 	}
 	return d, nil
 }
+
+// parseSize reads a size in bytes: a whole number, or a number with a decimal
+// unit (KB, MB, GB, TB). Empty is 0, which is no size at all.
+func parseSize(value, name string) (int64, error) {
+	if value == "" {
+		return 0, nil
+	}
+	match := sizePattern.FindStringSubmatch(value)
+	if match == nil {
+		return 0, fmt.Errorf("%s: want a positive size such as 200GB or 1500000000 (bytes), not %q", name, value)
+	}
+	number, err := strconv.ParseFloat(match[1], 64)
+	unit := map[string]float64{"": 1, "KB": 1e3, "MB": 1e6, "GB": 1e9, "TB": 1e12}[match[2]]
+	if err != nil || number*unit < 1 || number*unit > math.MaxInt64/2 {
+		return 0, fmt.Errorf("%s: want a positive size such as 200GB or 1500000000 (bytes), not %q", name, value)
+	}
+	return int64(number * unit), nil
+}
+
+var sizePattern = regexp.MustCompile(`^([0-9]+(?:\.[0-9]+)?)(KB|MB|GB|TB)?$`)
 
 // parseRoles refuses an empty, unknown or repeated role, and all among others,
 // so a misspelt list is an error and not a process that runs fewer roles.

@@ -121,15 +121,12 @@ func (p *Posix) Open(_ context.Context, key string, offset int64) (io.ReadCloser
 
 // Put writes to a temporary file and renames it, so readers on other replicas
 // never see a partial object.
-func (p *Posix) Put(_ context.Context, key string, body io.Reader) error {
+func (p *Posix) Put(ctx context.Context, key string, body io.Reader) error {
 	file, err := p.resolve(key)
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
-		return err
-	}
-	temp, err := os.CreateTemp(filepath.Dir(file), ".put-*")
+	temp, err := createInDir(ctx, filepath.Dir(file))
 	if err != nil {
 		return err
 	}
@@ -142,6 +139,31 @@ func (p *Posix) Put(_ context.Context, key string, body io.Reader) error {
 		return err
 	}
 	return os.Rename(temp.Name(), file)
+}
+
+// createInDir makes the directory and a temporary file in it. A Delete that
+// empties the directory can remove it between the two steps (a sweep removing
+// an item's old image as the scan puts its new one), so it tries again: once
+// the file is in the directory, nothing can remove the directory. Each try
+// that loses the race costs two system calls, so the bound is only for a
+// failure that is not a race.
+func createInDir(ctx context.Context, dir string) (*os.File, error) {
+	var err error
+	for range 100000 {
+		if err = ctx.Err(); err != nil {
+			return nil, err
+		}
+		if err = os.MkdirAll(dir, 0o755); err == nil {
+			var temp *os.File
+			if temp, err = os.CreateTemp(dir, ".put-*"); err == nil {
+				return temp, nil
+			}
+		}
+		if !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, fs.ErrExist) {
+			break
+		}
+	}
+	return nil, err
 }
 
 // Delete removes the file, and its directory if that leaves it empty, so

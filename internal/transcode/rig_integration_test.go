@@ -39,6 +39,10 @@ func TestMain(m *testing.M) {
 		workerProcess(id) // A worker of its own, for tests that kill or stop one.
 		return
 	}
+	if id := os.Getenv("JELLYSCALE_TEST_SWEEPER"); id != "" {
+		sweeperProcess(id) // A worker that sweeps once (sweep_processes_integration_test.go).
+		return
+	}
 	if track := os.Getenv("JELLYSCALE_TEST_API_TRACK"); track != "" {
 		apiProcessBody(track) // An api replica asking for a subtitle track.
 		return

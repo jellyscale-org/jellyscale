@@ -10,6 +10,7 @@ Add `transcodeStore` to the config, the same for every role. With none anywhere,
 | `transcodeIdle` | How long without a request before a spec's ffmpeg stops. Closing a tab sends no stop | 60s |
 | `transcodeLead` | How much film, from the furthest segment any viewer of a spec has asked for, a transcode job may make before its ffmpeg pauses (below). It is independent of `transcodeIdle`, which still ends a job nobody requests | 60s |
 | `transcodeRetention` | How long a spec's segments stay after its last request | 24h |
+| `transcodeBudget` | The most the transcode store may hold: a whole number of bytes, or a number with a decimal unit (`KB`, `MB`, `GB`, `TB`; `200GB` is 200 × 10^9 bytes). Over it, a worker's sweep removes whole specs, least recently requested first, but never one a viewer is watching. The age sweep (`transcodeRetention`) still runs beside it. A value that is not a size, or is not positive, stops the start, whatever the role. How to choose it: docs/running.md, Sizing the transcode store | none (no budget: only `transcodeRetention` removes segments) |
 
 `stream` replicas and workers share the segments only through that store and Postgres, so the store must be reachable from both: a shared volume, or S3. The worker needs `ffmpeg` and `ffprobe` on its path, as the image has; `api` and `stream` need neither. Segments of a re-encode are 4 seconds, and a restart after a seek splices with the segments before it.
 

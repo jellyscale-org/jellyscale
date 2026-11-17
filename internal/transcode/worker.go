@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"log/slog"
 	"math"
 	"os"
@@ -69,6 +68,10 @@ type Worker struct {
 	NoHelpers bool
 	// Retention is how long a spec's segments stay after its last request.
 	Retention time.Duration
+	// Budget is the most bytes the transcode store may hold, and 0 is no budget
+	// (sweep.go). SweepEvery is the sweep period; zero is a minute.
+	Budget     int64
+	SweepEvery time.Duration
 	// ID names this worker in transcode_nodes and on the jobs it claims. It
 	// defaults to one made from the process ID.
 	ID string
@@ -1154,92 +1157,6 @@ func (t *tail) Write(p []byte) (int, error) {
 }
 
 func (t *tail) String() string { return string(bytes.TrimSpace(t.data)) }
-
-// sweepLoop removes work nobody needs, once a minute.
-func (w *Worker) sweepLoop(ctx context.Context) {
-	ticker := time.NewTicker(time.Minute)
-	defer ticker.Stop()
-	for {
-		if err := w.Sweep(ctx); err != nil && ctx.Err() == nil {
-			w.Log.Error("transcode sweep failed", "error", err)
-		}
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-		}
-	}
-}
-
-// Sweep cancels jobs whose worker vanished, which viewers restart, forgets old job rows, and deletes
-// the segments of specs nobody has asked for in Retention. Every step is
-// idempotent, so workers sweeping at once is harmless.
-func (w *Worker) Sweep(ctx context.Context) error {
-	w.clearScratch()
-	if err := expireQueued(ctx, w.Pool, orDefault(w.QueueTimeout, queueTimeout)); err != nil {
-		return err
-	}
-	for _, statement := range []string{
-		`DELETE FROM transcode_nodes WHERE seen_at < now() - interval '1 hour'`,
-		`UPDATE transcode_jobs SET state = 'cancelled', error = 'the worker stopped renewing its lease', ended_at = now()
-			WHERE state = 'running' AND lease_expires_at < now()`,
-		`DELETE FROM transcode_jobs WHERE state IN ('done', 'failed', 'cancelled') AND created_at < now() - interval '1 day'`,
-		`DELETE FROM subtitle_jobs WHERE state IN ('done', 'failed') AND ended_at < now() - interval '1 day'`,
-	} {
-		if _, err := w.Pool.Exec(ctx, statement); err != nil {
-			return err
-		}
-	}
-	retention := orDefault(w.Retention, 24*time.Hour).Seconds()
-	rows, err := w.Pool.Query(ctx, `SELECT spec_hash FROM transcode_viewers GROUP BY spec_hash
-		HAVING max(last_seen_at) < now() - make_interval(secs => $1)`, retention)
-	if err != nil {
-		return err
-	}
-	hashes, err := pgx.CollectRows(rows, pgx.RowTo[string])
-	if err != nil {
-		return err
-	}
-	for _, hash := range hashes {
-		if err := w.deleteUnused(ctx, hash, retention); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// deleteUnused deletes a spec's segments unless it has been wanted since the
-// sweep looked. It holds the lock that starting a job for the spec needs, so a
-// job can't begin storing segments between the check and the delete.
-func (w *Worker) deleteUnused(ctx context.Context, hash string, retention float64) error {
-	return pgx.BeginFunc(ctx, w.Pool, func(tx pgx.Tx) error {
-		if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", hash); err != nil {
-			return err
-		}
-		var unused bool
-		err := tx.QueryRow(ctx, `SELECT NOT EXISTS (SELECT 1 FROM transcode_viewers WHERE spec_hash = $1
-				AND last_seen_at >= now() - make_interval(secs => $2))
-			AND NOT EXISTS (SELECT 1 FROM transcode_jobs WHERE spec_hash = $1 AND state IN ('queued', 'running'))`,
-			hash, retention).Scan(&unused)
-		if err != nil || !unused {
-			return err
-		}
-		objects, err := w.Segments.List(ctx, "segments/"+hash)
-		if err != nil && !errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("list segments of %s: %w", hash, err)
-		}
-		for _, object := range objects {
-			if err := w.Segments.Delete(ctx, object.Key); err != nil {
-				return err
-			}
-		}
-		if _, err := tx.Exec(ctx, "DELETE FROM transcode_viewers WHERE spec_hash = $1", hash); err != nil {
-			return err
-		}
-		w.Log.Info("deleted the segments of an unused spec", "spec", hash, "segments", len(objects))
-		return nil
-	})
-}
 
 // putFonts puts the fonts attached to the film in dir, for libass to draw a
 // burnt-in track with, as the player draws a track it renders itself. It waits

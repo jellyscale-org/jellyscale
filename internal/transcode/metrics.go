@@ -150,6 +150,7 @@ var (
 	coresDesc       = prometheus.NewDesc("jellyscale_transcode_cores", "Cores this worker declared (transcodeCores).", nil, nil)
 	busyDesc        = prometheus.NewDesc("jellyscale_transcode_cores_busy", "Cores the jobs this worker runs cost, paused jobs included (docs/transcoding.md has the costs).", nil, nil)
 	queueCoresDesc  = prometheus.NewDesc("jellyscale_transcode_queue_cores", "Cores the queued jobs cost, in the whole cluster: every worker reports the same number, so take one, not a sum. The signal to scale workers on.", nil, nil)
+	storeBytesDesc  = prometheus.NewDesc("jellyscale_transcode_store_bytes", "Bytes the transcode store held when a worker's sweep last listed it, in the whole cluster: every worker reports the same number, so take one, not a sum. Absent until a sweep has listed it; a listing that fails leaves the last number.", nil, nil)
 	queueDesc       = prometheus.NewDesc("jellyscale_transcode_queue_depth", "Transcode jobs waiting for a worker, in the whole cluster: every worker reports the same number, so take one, not a sum. Copies held back by their bound show here and hardly in queue_cores.", nil, nil)
 )
 
@@ -182,6 +183,10 @@ func (w *Worker) Collect(ch chan<- prometheus.Metric) {
 	// queue timeout are not waited for any more and do not count.
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
+	var storeBytes *int64
+	if err := w.Pool.QueryRow(ctx, "SELECT store_bytes FROM sweeps WHERE name = 'segments'").Scan(&storeBytes); err == nil && storeBytes != nil {
+		ch <- prometheus.MustNewConstMetric(storeBytesDesc, prometheus.GaugeValue, float64(*storeBytes))
+	}
 	rows, err := w.Pool.Query(ctx, `SELECT cost::float8, CASE WHEN cost IS NULL THEN spec END FROM transcode_jobs WHERE state = 'queued'
 		AND created_at > now() - make_interval(secs => $1)`, orDefault(w.QueueTimeout, queueTimeout).Seconds())
 	if err != nil {
