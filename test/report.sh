@@ -4,7 +4,7 @@
 # an annotation with file and line for each failure, which `gh run view` shows.
 # Outside CI ($GITHUB_ACTIONS unset) it prints plain text, with no summary or annotations.
 #
-#   report.sh go <gotestsum.json> <title> [plain|integration|integration:<shard>]
+#   report.sh go <gotestsum.json> <title> [plain|integration|integration:<shard>[ <k>/<m>|alone]]
 #       Runs cmd/testreport on `go test -json` output. Any skipped test is a
 #       failure, and so is a count different from what `go test -list` finds
 #       for the tier named (a run that stopped partway), or from what
@@ -93,7 +93,9 @@ go)
   json=$2 title=$3 tier=${4:-} want=-1
   cd "$repo" || exit 1
   if [[ $tier == integration:* ]]; then
-    want=$(bash test/shard.sh count "${tier#integration:}") || exit 1
+    # A tier "integration:<shard> <k>/<m>" or "... alone" is one process of the shard (test/shard.sh).
+    # shellcheck disable=SC2086
+    want=$(bash test/shard.sh count ${tier#integration:}) || exit 1
   elif [[ -n $tier ]]; then
     tags=(); [[ $tier == integration ]] && tags=(-tags integration)
     # The compiler says which tests the tier has, so no regex has to.

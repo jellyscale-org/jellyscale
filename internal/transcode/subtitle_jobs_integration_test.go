@@ -3,6 +3,7 @@
 package transcode
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -312,9 +314,16 @@ func TestAWorkerCutOffFromTheDatabaseStopsBeforeItsLeaseLapses(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go FetchSubtitle(ctx, r.pool, nil, assets, r.spec.Item, source, 2) //nolint:errcheck
+	// Only this process's own children: another test process may be extracting at the same time.
 	extracting := func() bool {
 		found, _ := filepath.Glob("/proc/[0-9]*/cmdline")
 		for _, path := range found {
+			dir := filepath.Dir(path)
+			stat, _ := os.ReadFile(dir + "/stat")
+			after := stat[bytes.LastIndexByte(stat, ')')+1:]
+			if f := strings.Fields(string(after)); len(f) < 2 || f[1] != strconv.Itoa(os.Getpid()) {
+				continue
+			}
 			if raw, _ := os.ReadFile(path); strings.Contains(string(raw), "track.vtt") {
 				return true
 			}
