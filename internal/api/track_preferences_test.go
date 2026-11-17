@@ -22,8 +22,8 @@ func TestTheTrackPreferenceRoutesAreTheOnlyOnesUnderJellyscaleAndAreViewerRoutes
 			found[routeName(route)] = route
 		}
 	}
-	if len(found) != 2 {
-		t.Errorf("%d routes under /jellyscale/, want exactly the two of the track preferences: %v", len(found), found)
+	if len(found) != 3 { // JS-120 adds the marked PlaybackInfo.
+		t.Errorf("%d routes under /jellyscale/, want the two of the track preferences and the marked PlaybackInfo: %v", len(found), found)
 	}
 	for _, name := range trackPreferenceRoutes {
 		route, ok := found[name]
@@ -50,6 +50,7 @@ func TestEndpointsYamlListsExactlyTheTwoTrackPreferenceRoutes(t *testing.T) {
 		}
 	}
 	want := []string{
+		`- {method: POST, path: "/jellyscale/v1/items/{itemId}/playback-info", status: implemented, role: api, access: viewer}`,
 		`- {method: GET, path: "/jellyscale/v1/track-preferences", status: implemented, role: api, access: viewer}`,
 		`- {method: PATCH, path: "/jellyscale/v1/track-preferences", status: implemented, role: api, access: viewer}`,
 	}

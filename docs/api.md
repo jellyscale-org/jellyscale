@@ -35,3 +35,20 @@ Languages in a list are stored as lowercase three-letter codes, each once, in th
 - 400, with the text of what is wrong, and nothing stored (a body with several faults stores none of it): a body over 16 KB, not JSON, empty, not an object, or followed by more text; a field that is not one of the five (names are exact), is named twice, or has the wrong type (the switches are true or false, the lists are lists of strings; null is not read as absent); a list entry that names no language (`xx`, `german`, the empty string, `und`, `mis`, `mul`, `zxx`; the answer gives it as sent); a list of more than 20 languages.
 - 409, nothing stored: `HideOtherAudio` true while the caller's `AudioLanguagePreference` is empty, or `HideOtherSubtitles` true while `SubtitleLanguagePreference` is empty. The answer names the language to save first, with `POST /Users/Configuration`. `OriginalLanguage` counts as saved. Nothing else needs a language, and a language cleared afterwards leaves the stored document as it was.
 - 401: no token, or one jellyscale does not know.
+
+## Playback
+
+### POST /jellyscale/v1/items/{itemId}/playback-info
+
+PlaybackInfo for a client that hides tracks itself. The request is the same as `POST /Items/{itemId}/PlaybackInfo`: the same body and query, and the same answer in every field, with two differences. Every audio and subtitle track is listed as itself, never as a `Type: Data` placeholder, so the list holds every track in the file, in its order, whatever a worker or a replica can do (a track PlaybackInfo drops because it cannot be delivered there is listed here without a `DeliveryUrl`, never dropped, because a client that plays the original file maps tracks to indexes partly by order). And two fields are added, which no Jellyfin answer carries:
+
+- `Hidden` on each audio and subtitle track of each source: true when PlaybackInfo would list the track as a placeholder for this viewer and request (the saved languages, the switches, `ShowAllTracks`, and the track the request names by `AudioStreamIndex` or `SubtitleStreamIndex`), false otherwise. A video track has no `Hidden`. A hidden text track keeps its `DeliveryUrl`.
+- `OriginalLanguage` on each source: the language tag of that source's default audio track, as `GET /Items/{itemId}` answers for the item, or `""` for a film whose default audio names no language or that has no audio. It is always present.
+
+One rule on the server decides what is hidden, so every client agrees. The marks come from the caller's token; a `UserId` is ignored.
+
+```json
+{"Index": 3, "Type": "Audio", "Language": "deu", "Hidden": true}
+```
+
+The answers that are not 200 are PlaybackInfo's: 404 for an unknown or malformed item id, 400 for a body that is not a JSON object, 401 for no token or an unknown one. A transcode that cannot start is answered 200 with no sources and `ErrorCode` `RateLimitExceeded`, as PlaybackInfo does.

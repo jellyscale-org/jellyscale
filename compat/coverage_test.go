@@ -17,7 +17,8 @@ var sliceNames = []string{"phase3", "phase4-ha", "identity", "phase5-library", "
 // hidden list: Jellyfin's WebSocket, the one configuration key jellyscale
 // serves by its own route, and the routes of jellyscale's own namespace.
 var notInSpec = []string{"GET /socket", "GET /System/Configuration/encoding",
-	"GET /jellyscale/v1/track-preferences", "PATCH /jellyscale/v1/track-preferences"}
+	"GET /jellyscale/v1/track-preferences", "PATCH /jellyscale/v1/track-preferences",
+	"POST /jellyscale/v1/items/{itemId}/playback-info"}
 
 type row struct{ method, path, class, slice, servedBy, webCaller, evidence string }
 
