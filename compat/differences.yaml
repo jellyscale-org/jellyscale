@@ -1076,3 +1076,20 @@
   path: "(status)"
   kind: improvement
   reason: "jellyscale answers 401 with no token where Jellyfin 12.4 answers 200: playback and personal data always require authorization, so a client must send its token on every media request (docs/access.md, What a client must send); the capture is compat/captures/access-12.4.json"
+
+- requests:
+    - "the films library, by name"
+  kind: gap
+  task: JS-068
+  reason: "HasSubtitles, which Jellyfin sends true on a film that has subtitle tracks (Polyglot, the film of the opted-in viewer's requests) and jellyscale leaves out"
+  paths:
+    - "Items[].HasSubtitles"
+
+- requests:
+    - "playback info for Babel Film, for a viewer who hides the tracks outside their languages"
+    - "Babel Film's details, for a viewer who hides the tracks outside their languages"
+  kind: improvement
+  reason: "an opted-in viewer is listed Type Data placeholders at the hidden tracks' own indexes, so the menus leave those tracks out and no index moves (JS-119); Jellyfin lists every track as itself"
+  paths:
+    - "MediaSources[].MediaStreams"
+    - "MediaStreams"

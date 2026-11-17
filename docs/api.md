@@ -8,7 +8,7 @@ Every route needs a token (docs/access.md), acts on the caller only and takes no
 
 ## Track preferences
 
-A viewer's choice to hide audio and subtitle tracks outside their languages, the languages to keep in addition, and one switch to bring every track back. They are saved here and hide no track yet (JS-119).
+A viewer's choice to hide audio and subtitle tracks outside their languages, the languages to keep in addition, and one switch to bring every track back. They are saved here, and JS-119 hides the tracks by them.
 
 ### GET /jellyscale/v1/track-preferences
 

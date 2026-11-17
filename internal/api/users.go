@@ -25,6 +25,8 @@ type User struct {
 	LastLoginAt *time.Time
 	// Configuration is the stored settings document, empty until the user saves.
 	Configuration []byte
+	// TrackPreferences is the stored track preferences document (JS-118), empty until the user saves.
+	TrackPreferences []byte
 }
 
 // EnsureAdmin creates the bootstrap admin from configuration if it's missing.
@@ -52,9 +54,9 @@ func EnsureServerID(ctx context.Context, pool *pgxpool.Pool) (string, error) {
 
 func (s *Server) queryUser(ctx context.Context, token string) (User, error) {
 	var user User
-	err := s.Pool.QueryRow(ctx, `SELECT u.id::text, u.name, u.is_admin, u.last_login_at, u.configuration
+	err := s.Pool.QueryRow(ctx, `SELECT u.id::text, u.name, u.is_admin, u.last_login_at, u.configuration, u.track_preferences
 		FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token = $1`, token).
-		Scan(&user.ID, &user.Name, &user.IsAdmin, &user.LastLoginAt, &user.Configuration)
+		Scan(&user.ID, &user.Name, &user.IsAdmin, &user.LastLoginAt, &user.Configuration, &user.TrackPreferences)
 	return user, err
 }
 

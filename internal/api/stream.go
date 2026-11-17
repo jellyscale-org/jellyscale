@@ -308,6 +308,12 @@ func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
 			source.DefaultSubtitleStreamIndex = media.Ptr(index)
 		}
 		markOriginal(&source)
+		// Last, so that every choice above is made on the real tracks; the placeholders keep every Index.
+		filter := trackFilterOf(sessionOf(r).User)
+		filter.NamedAudio, filter.NamedSubtitle = request.AudioStreamIndex, request.SubtitleStreamIndex
+		if hidden := hideTracks(&source, filter); hidden > 0 {
+			s.Log.Debug("hid tracks outside the viewer's languages", "user", sessionOf(r).User.ID, "item", id, "source", source.ID, "hidden", hidden)
+		}
 		result = append(result, source)
 	}
 	for _, method := range methods {
