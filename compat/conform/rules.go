@@ -15,6 +15,14 @@ type Rules struct {
 	Aliases []Alias `yaml:"aliases"`
 	// Unchecked are routes whose JSON answer the schema does not type; each says why.
 	Unchecked []Unchecked `yaml:"unchecked"`
+	// Answers type the JSON answer of a route in no Jellyfin document with one named type of the schema.
+	Answers []Answer `yaml:"answers"`
+}
+
+type Answer struct {
+	Method string `yaml:"method"`
+	Route  string `yaml:"route"`
+	Type   string `yaml:"type"`
 }
 
 type Alias struct {
@@ -54,6 +62,16 @@ func (r Rules) AliasFor(method, path string) (target string, ok bool) {
 		}
 	}
 	return "", false
+}
+
+// answerType is the schema type a route's answer is held to, if a rule names one.
+func (r Rules) answerType(method, path string) (route, typeName string, ok bool) {
+	for _, a := range r.Answers {
+		if strings.EqualFold(a.Method, method) && sameRoute(a.Route, path) {
+			return a.Method + " " + a.Route, a.Type, true
+		}
+	}
+	return "", "", false
 }
 
 func (r Rules) unchecked(method, path string) bool {

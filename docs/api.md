@@ -35,3 +35,28 @@ Languages in a list are stored as lowercase three-letter codes, each once, in th
 - 400, with the text of what is wrong, and nothing stored (a body with several faults stores none of it): a body over 16 KB, not JSON, empty, not an object, or followed by more text; a field that is not one of the five (names are exact), is named twice, or has the wrong type (the switches are true or false, the lists are lists of strings; null is not read as absent); a list entry that names no language (`xx`, `german`, the empty string, `und`, `mis`, `mul`, `zxx`; the answer gives it as sent); a list of more than 20 languages.
 - 409, nothing stored: `HideOtherAudio` true while the caller's `AudioLanguagePreference` is empty, or `HideOtherSubtitles` true while `SubtitleLanguagePreference` is empty. The answer names the language to save first, with `POST /Users/Configuration`. `OriginalLanguage` counts as saved. Nothing else needs a language, and a language cleared afterwards leaves the stored document as it was.
 - 401: no token, or one jellyscale does not know.
+
+## A viewer's settings
+
+Jellyfin's `POST /Users/Configuration` replaces the whole Configuration, so a client that reads it, changes a field and posts everything back undoes what another app saved in between. This route changes only the fields it names.
+
+### PATCH /jellyscale/v1/users/configuration
+
+The request is one JSON object of at most 65,536 bytes that names any of the 15 savable fields of `UserConfiguration` (`AudioLanguagePreference`, `PlayDefaultAudioTrack`, `SubtitleLanguagePreference`, `DisplayMissingEpisodes`, `GroupedFolders`, `SubtitleMode`, `DisplayCollectionsView`, `EnableLocalPassword`, `OrderedViews`, `LatestItemsExcludes`, `MyMediaExcludes`, `HidePlayedInLatest`, `RememberAudioSelections`, `RememberSubtitleSelections`, `EnableNextEpisodeAutoPlay`). The others stay as stored, and `{}` changes nothing. The answer is 200 with the whole 16-field Configuration, the same as the next `GET /Users/Me` carries it.
+
+```json
+{"AudioLanguagePreference": "deu", "SubtitleMode": "Always"}
+```
+
+Values are read as `POST /Users/Configuration` reads them (`SubtitleMode` takes a listed word in any case or its number; an id may be dashed or compact, and reads compact), with one difference: `null` is refused for every field, never "back to the default", so a body has one meaning. A language is cleared with `""`. A list that is named replaces the stored list whole, in the order sent, repeats kept: `[]` empties it. A viewer who has saved nothing reads the new user's value for every field not named. `CastReceiverId` cannot be saved, as on Jellyfin.
+
+The route acts on the caller alone. The change is merged in one statement onto what is stored, so two PATCHes of different fields at once both land. Two PATCHes of the same field are decided by the later statement: the one that reaches the database last wins, whichever request arrived first. A language saved here is the one `PATCH /jellyscale/v1/track-preferences` reads.
+
+Limit: a whole-object save from an older read, as jellyfin-web makes with `POST /Users/Configuration`, still replaces everything it carries, so it can undo a change made here after that read. Jellyfin 12.4 does the same, and the track preferences are out of its reach.
+
+Answers that are not 200:
+
+- 400, with the text of what is wrong, and nothing stored (a body with one good and one refused field stores neither): a body of 65,537 bytes or more, not JSON, empty, not an object, or followed by more text; a field that is not one of the 15 (names are exact: `subtitleMode` is unknown; `CastReceiverId` is refused), is named twice, is `null`, or has the wrong type (the switches are true or false, the lists are lists of ids); a `SubtitleMode` outside `Default`, `Always`, `OnlyForced`, `None`, `Smart` and 0 to 4; a list entry that is not an id.
+- 401: no token, or one jellyscale does not know.
+
+A change is logged at Info with the user id and the names of the fields sent.
