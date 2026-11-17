@@ -5,8 +5,8 @@
 # 13.8 runner-minutes a run, so CI keeps the .deb files in a cache
 # (actions/cache, keyed on the runner image version and the package list) in
 # the directory APT_DEBS names.
-#   A hit (a file for every package in APT_DEBS): installs from those files with
-#   no apt-get update and no download. If that install fails (a dependency the
+#   A hit (a file for every package in APT_DEBS): installs those files with dpkg,
+#   with no apt-get update and no download. If that install fails (a dependency the
 #   cached files lack: run 44012242557), it installs as on a miss instead of
 #   failing the job.
 #   A miss: installs from the main archive, with retries, and leaves the .deb of
@@ -24,11 +24,10 @@ if [[ -n $debs ]]; then
   for p in "$@"; do compgen -G "$debs/${p}_*.deb" >/dev/null || files=(); done
   if [[ ${#files[@]} -gt 0 ]]; then
     echo "installing ${#files[@]} cached .deb files, no mirror"
-    if sudo apt-get install -y --no-download "${files[@]}"; then exit 0; fi
-    # Name what the files lack, so the cache can be made to hold it.
-    echo "the cached .deb files are not enough; apt wants:"
-    sudo apt-get install -y --print-uris "${files[@]}" 2>/dev/null | grep -o "^'[^']*'" | tr -d "'" | sed 's|.*/||' || true
-    echo "installing from the mirror"
+    # dpkg installs exactly these files and never asks a mirror. apt-get install --no-download, which this replaced,
+    # still found archives to fetch with every file of the cache given (queue runs of #184 and #185), so it fell back.
+    if sudo dpkg -i "${files[@]}"; then exit 0; fi
+    echo "the cached .deb files are not enough; installing from the mirror"
   fi
 fi
 

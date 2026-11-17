@@ -941,6 +941,7 @@ libfakedep_1.0_amd64.deb" "$(ls "$apt/debs" | sort)"
 apt_run hit ffmpeg fontconfig
 check "an install from those files alone exits 0" "0" "$(cat "$apt/hit.status")"
 check "... runs no apt-get update" "0" "$(grep -c 'apt-get.* update' "$apt/hit.log")"
+check "... installs the files with dpkg, never through apt-get install, which found archives to fetch on CI" "0 1" "$(grep -c '^apt-get .*install' "$apt/hit.log") $(grep -c '^dpkg -i' "$apt/hit.log")"
 check "... asks no mirror for anything (archive, azure or security)" "0" "$(grep -c '^NET ' "$apt/hit.log")"
 check "... installs every package of the list and the dependency" "INSTALLED ffmpeg
 INSTALLED fontconfig
@@ -964,7 +965,6 @@ rm -f "$apt/debs"/libfakedep_*.deb; rm -rf "$apt/archives"; mkdir -p "$apt/archi
 FAKE_PREINSTALLED="fontconfig fonts-dejavu-core" apt_run gap ffmpeg fontconfig fonts-dejavu-core
 check "a hit whose files lack a dependency still exits 0" "0" "$(cat "$apt/gap.status")"
 check "... by installing from the mirror" "INSTALLED ffmpeg" "$(grep '^INSTALLED ffmpeg' "$apt/gap.log" | tail -1)"
-check "... naming the .deb the cached files lack" "libfakedep_1.0_amd64.deb" "$(grep -x 'libfakedep_1.0_amd64.deb' "$apt/gap.out")"
 
 # --- ci.yml (JS-129): the deb cache, the jars cache, the guard of the ffmpeg version, no waiting for lint-and-unit, the
 # summary and the cancelling of the media jobs when lint-and-unit fails. Each line is "name<TAB>ok" or "name<TAB>why".
