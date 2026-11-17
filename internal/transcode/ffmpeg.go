@@ -4,7 +4,6 @@
 package transcode
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -18,6 +17,7 @@ import (
 	"strings"
 
 	"jellyscale/internal/library"
+	"jellyscale/internal/mediatool"
 	"jellyscale/internal/playback"
 	subs "jellyscale/internal/subtitles"
 )
@@ -206,7 +206,7 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		"-hls_segment_options", "use_editlist=0:avoid_negative_ts=disabled:movflags=+frag_discont",
 		"-hls_segment_filename", filepath.Join(dir, "%d.m4s"), filepath.Join(dir, "index.m3u8"),
 	)
-	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
+	cmd := mediatool.Command(ctx, "ffmpeg", args...)
 	if burn {
 		cmd.Dir = dir // Where the subtitle filter finds its file; dir is absolute.
 	}
@@ -220,12 +220,12 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 // a seek to 0 trims what comes before 0, which moves the grid of a track that
 // starts a little early.
 func audioGrid(ctx context.Context, input string, spec playback.Spec) (int64, error) {
-	out, err := exec.CommandContext(ctx, "ffmpeg", "-nostdin", "-v", "error", "-copyts", "-ss", seconds(0), "-i", input, "-map", "0:"+strconv.Itoa(spec.AudioIndex),
-		"-frames:a", "1", "-c:a", "aac", "-b:a", strconv.FormatInt(spec.AudioBitrate, 10), "-ac", "2", "-ar", strconv.Itoa(audioRate), "-f", "framecrc", "-").Output()
+	res, err := mediatool.Run(ctx, "ffmpeg", []string{"-nostdin", "-v", "error", "-copyts", "-ss", seconds(0), "-i", input, "-map", "0:" + strconv.Itoa(spec.AudioIndex),
+		"-frames:a", "1", "-c:a", "aac", "-b:a", strconv.FormatInt(spec.AudioBitrate, 10), "-ac", "2", "-ar", strconv.Itoa(audioRate), "-f", "framecrc", "-"}, mediatool.Options{})
 	if err != nil {
 		return 0, fmt.Errorf("finding where the audio's packets fall: %w", err)
 	}
-	for _, line := range strings.Split(string(out), "\n") {
+	for _, line := range strings.Split(string(res.Stdout), "\n") {
 		// stream, dts, pts, duration, size, crc
 		if fields := strings.Split(line, ","); len(fields) >= 6 && !strings.HasPrefix(line, "#") {
 			if pts, err := strconv.ParseInt(strings.TrimSpace(fields[2]), 10, 64); err == nil {
@@ -371,7 +371,7 @@ func CopyCommand(ctx context.Context, input string, spec playback.Spec, codec st
 		"-hls_segment_options", "use_editlist=0:avoid_negative_ts=disabled:movflags=+frag_discont+skip_sidx",
 		"-hls_segment_filename", filepath.Join(dir, "g%d.m4s"), filepath.Join(dir, "index.m3u8"),
 	)
-	return exec.CommandContext(ctx, "ffmpeg", args...), nil
+	return mediatool.Command(ctx, "ffmpeg", args...), nil
 }
 
 func seconds(v float64) string { return strconv.FormatFloat(v, 'f', 6, 64) }
@@ -451,11 +451,9 @@ func ffprobe(ctx context.Context, args ...string) ([]byte, error) {
 
 // ffprobeFrom runs ffprobe with stdin as its input, if there is one.
 func ffprobeFrom(ctx context.Context, stdin io.Reader, args ...string) ([]byte, error) {
-	var out, errOut bytes.Buffer
-	cmd := exec.CommandContext(ctx, "ffprobe", append([]string{"-v", "error"}, args...)...)
-	cmd.Stdin, cmd.Stdout, cmd.Stderr = stdin, &out, &errOut
-	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("ffprobe: %w: %s", err, strings.TrimSpace(errOut.String()))
+	res, err := mediatool.Run(ctx, "ffprobe", append([]string{"-v", "error"}, args...), mediatool.Options{Stdin: stdin})
+	if err != nil {
+		return nil, fmt.Errorf("ffprobe: %w: %s", err, strings.TrimSpace(string(res.Stderr)))
 	}
-	return out.Bytes(), nil
+	return res.Stdout, nil
 }

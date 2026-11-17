@@ -12,9 +12,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -22,6 +20,7 @@ import (
 	"time"
 
 	"jellyscale/internal/items"
+	"jellyscale/internal/mediatool"
 	"jellyscale/internal/store"
 )
 
@@ -117,12 +116,8 @@ func FillFonts(ctx context.Context, src items.Source, media, assets store.Store,
 	}
 	defer closeInput()
 	args = append(args, "-i", input, "-map", "0:v:0", "-frames:v", "0", "-f", "null", "-")
-	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
-	// See Extract: Pdeathsig needs the thread to stay.
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-	DieWithParent(cmd)
-	out, err := cmd.CombinedOutput()
+	res, err := mediatool.Run(ctx, "ffmpeg", args, mediatool.Options{})
+	out := res.Combined
 	kept := map[int]string{}
 	switch {
 	case (err != nil || len(bytes.TrimSpace(out)) > 0) && watched.failed.Load():
@@ -142,7 +137,7 @@ func FillFonts(ctx context.Context, src items.Source, media, assets store.Store,
 			}
 			kept[index] = sum
 		}
-	case isBadFile(ctx, err, out):
+	case mediatool.FileFailure(err):
 		// The film's header is what it is, so asking again would only fail
 		// again. The film is remembered as having no fonts for as long as this
 		// version of it lasts (the key has its ETag), as a file that can't be

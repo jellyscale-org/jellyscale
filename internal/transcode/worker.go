@@ -15,7 +15,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -28,6 +27,7 @@ import (
 	"jellyscale/internal/db"
 	"jellyscale/internal/items"
 	"jellyscale/internal/library"
+	"jellyscale/internal/mediatool"
 	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
 	"jellyscale/internal/subtitles"
@@ -345,11 +345,6 @@ func (w *Worker) failUndecodable(ctx context.Context, id int64, cause error) {
 // run runs one job and records how it ended. A job someone else already
 // cancelled or replaced keeps that state.
 func (w *Worker) run(ctx context.Context, job claimed) {
-	// Pdeathsig fires when the thread that started ffmpeg exits, not the
-	// process. Pinning this goroutine to its thread keeps that thread alive
-	// until the job ends, and ends it then, since a goroutine that exits
-	// while locked takes its thread with it.
-	runtime.LockOSThread()
 	log := w.Log.With("job", job.ID, "spec", job.Hash, "item", job.Spec.Item, "start", job.Start)
 	log.Info("transcode started", "copy", job.Spec.Copy)
 	// A helper cancelled for a new viewer (preemptHelper) renews at once, so it
@@ -655,8 +650,7 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		var stderr tail
 		cmd.Stderr = &stderr
 		cmd.Stdout = job.progress
-		subtitles.DieWithParent(cmd)
-		if err := cmd.Start(); err != nil {
+		if err := mediatool.Start(cmd); err != nil {
 			return err
 		}
 		exited := make(chan error, 1)

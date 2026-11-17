@@ -1,0 +1,52 @@
+tool ffmpeg
+arg -nostdin
+arg -v
+arg error
+arg -i
+arg <dir>/in.mkv
+arg -map
+arg 0:2
+arg <os tmp>/subtitles-<n>/2-track.vtt
+arg -map
+arg 0:2
+arg <os tmp>/subtitles-<n>/2-track.srt
+arg -map
+arg 0:2
+arg <os tmp>/subtitles-<n>/2-track.ass
+cwd <pkg>
+stdin 
+--
+tool ffmpeg
+arg -nostdin
+arg -v
+arg error
+arg -i
+arg <dir>/in.mkv
+arg -map
+arg 0:2
+arg -c:s
+arg copy
+arg -f
+arg sup
+arg <os tmp>/sup-<n>/track.sup
+cwd <pkg>
+stdin 
+--
+tool ffmpeg
+arg -nostdin
+arg -v
+arg error
+arg -dump_attachment:t:0
+arg <os tmp>/attachments-<n>/3
+arg -i
+arg <dir>/in.mkv
+arg -map
+arg 0:v:0
+arg -frames:v
+arg 0
+arg -f
+arg null
+arg -
+cwd <pkg>
+stdin 
+--

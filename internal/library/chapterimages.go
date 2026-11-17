@@ -12,7 +12,6 @@ import (
 	"log/slog"
 	"os/exec"
 	"path"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -20,9 +19,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"jellyscale/internal/mediatool"
 	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
-	"jellyscale/internal/subtitles"
 )
 
 // A chapter picture is one frame at the chapter's start, kept in the library's
@@ -312,32 +311,25 @@ func chapterFrame(ctx context.Context, input string, start int64, toneMap string
 	if toneMap != "" {
 		filter += "," + playback.ToneMapFilter(toneMap)
 	}
-	cmd := exec.CommandContext(ctx, "ffmpeg", "-nostdin", "-v", "error", "-seek_timestamp", "1",
+	// WaitDelay: Run returns soon after the kill even if something still holds
+	// ffmpeg's output open.
+	res, err := mediatool.Run(ctx, "ffmpeg", []string{"-nostdin", "-v", "error", "-seek_timestamp", "1",
 		"-ss", fmt.Sprintf("%.3f", float64(start)/ticksPerSecond), "-i", input,
 		"-frames:v", "1", "-an", "-sn", "-vf", filter,
-		"-q:v", "3", "-f", "image2pipe", "-c:v", "mjpeg", "-")
-	var out, stderr bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &out, &stderr
-	// Wait returns soon after the kill even if something still holds ffmpeg's
-	// output open.
-	cmd.WaitDelay = 5 * time.Second
-	// Pdeathsig fires when the thread that started ffmpeg exits (see subtitles).
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-	subtitles.DieWithParent(cmd)
-	err := cmd.Run()
+		"-q:v", "3", "-f", "image2pipe", "-c:v", "mjpeg", "-"}, mediatool.Options{WaitDelay: 5 * time.Second})
+	out, stderr := res.Stdout, string(res.Stderr)
 	if ctx.Err() != nil {
 		return nil, fmt.Errorf("ffmpeg: %w", ctx.Err())
 	}
 	// ffmpeg says so, and exits with an error or without by version, when the
 	// file had no frame there: not a failure.
-	if out.Len() == 0 && (strings.Contains(stderr.String(), "Nothing was written into output file") || strings.Contains(stderr.String(), "Output file is empty")) {
+	if len(out) == 0 && (strings.Contains(stderr, "Nothing was written into output file") || strings.Contains(stderr, "Output file is empty")) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("ffmpeg: %w: %s", err, strings.TrimSpace(stderr.String()))
+		return nil, fmt.Errorf("ffmpeg: %w: %s", err, strings.TrimSpace(stderr))
 	}
-	return out.Bytes(), nil
+	return out, nil
 }
 
 // watchedStore remembers the first error the store gave a read, other than one

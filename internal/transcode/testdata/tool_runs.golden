@@ -1,0 +1,49 @@
+tool ffmpeg
+arg -nostdin
+arg -v
+arg error
+arg -copyts
+arg -ss
+arg 0.000000
+arg -i
+arg in.mkv
+arg -map
+arg 0:1
+arg -frames:a
+arg 1
+arg -c:a
+arg aac
+arg -b:a
+arg 128000
+arg -ac
+arg 2
+arg -ar
+arg 48000
+arg -f
+arg framecrc
+arg -
+cwd <pkg>
+stdin 
+--
+tool ffprobe
+arg -v
+arg error
+arg -select_streams
+arg v:0
+arg -of
+arg json
+arg in.mkv
+cwd <pkg>
+stdin 
+--
+tool ffprobe
+arg -v
+arg error
+arg -select_streams
+arg v:0
+arg -of
+arg csv=p=0
+arg -
+cwd <pkg>
+stdin fragment bytes
+--

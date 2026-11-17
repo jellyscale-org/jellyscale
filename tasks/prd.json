@@ -1855,12 +1855,11 @@
         "A worker killed with SIGKILL during a scan's probe and during a chapter-picture job leaves no ffmpeg or ffprobe process after one second",
         "The 'any output is a failure' and 'warnings allowed' policies are named options, each with a unit test"
       ],
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [],
       "source": "Fable 5.2 blind audit, 2026-11-14 (.results/audit-2026-11-14.md)",
-      "notes": "",
-      "priority": 15
+      "notes": ""
     },
     {
       "id": "JS-113",

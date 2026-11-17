@@ -10,12 +10,12 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
+
+	"jellyscale/internal/mediatool"
 )
 
 const ticksPerSecond = 10_000_000
@@ -73,37 +73,17 @@ func ExtractAll(ctx context.Context, input string, indexes []int) (map[int]Track
 
 // runFFmpeg runs ffmpeg and says whether it did what it was asked.
 func runFFmpeg(ctx context.Context, args []string) error {
-	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
-	// Pdeathsig fires when the thread that started ffmpeg exits, so this
-	// goroutine keeps its thread until ffmpeg is done.
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-	DieWithParent(cmd)
 	// A file cut short makes ffmpeg complain and exit 0, with whatever it had
 	// read, so any output at all means the tracks can't be trusted.
-	out, err := cmd.CombinedOutput()
-	if err != nil || len(bytes.TrimSpace(out)) > 0 {
-		if !isBadFile(ctx, err, out) {
-			return fmt.Errorf("ffmpeg: %v: %s", err, strings.TrimSpace(string(out)))
-		}
-		return fmt.Errorf("%w: ffmpeg: %v: %s", ErrBadFile, err, strings.TrimSpace(string(out)))
+	res, err := mediatool.Run(ctx, "ffmpeg", args, mediatool.Options{Output: mediatool.AnyOutputIsFailure})
+	if err == nil {
+		return nil
 	}
-	return nil
-}
-
-// isBadFile says whether a failed ffmpeg run is the data's fault: it ran to the
-// end and said so, by an error exit status or by complaining and exiting 0. A
-// run that was cut short (the context, a signal such as the OOM killer's, no
-// ffmpeg) or that ran out of disk says nothing about the file.
-func isBadFile(ctx context.Context, err error, out []byte) bool {
-	if ctx.Err() != nil || bytes.Contains(out, []byte("No space left on device")) {
-		return false
+	cause, text := errors.Unwrap(err), strings.TrimSpace(string(res.Combined)) // No cause for a complaint at exit 0.
+	if !mediatool.FileFailure(err) {
+		return fmt.Errorf("ffmpeg: %v: %s", cause, text)
 	}
-	var exited *exec.ExitError
-	if errors.As(err, &exited) {
-		return exited.ExitCode() > 0 // -1 when a signal killed it.
-	}
-	return err == nil
+	return fmt.Errorf("%w: ffmpeg: %v: %s", ErrBadFile, cause, text)
 }
 
 // Encode and Decode are how a Track is kept in a store: one object, so a
