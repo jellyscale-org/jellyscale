@@ -876,13 +876,14 @@ SHIM
 cat >"$apt/bin/apt-get" <<'SHIM'
 #!/bin/bash
 echo "apt-get $*" >>"$FAKE_APT_LOG"
-archives=${APT_ARCHIVES:-/nonexistent}; args=(); download_only=; reinstall=
+archives=${APT_ARCHIVES:-/nonexistent}; args=(); download_only=; reinstall=; print_uris=
 while [[ $# -gt 0 ]]; do
   case $1 in
     -o) [[ $2 == Dir::Cache::archives=* ]] && archives=${2#*=}; shift 2 ;;
     -o*) [[ $1 == -oDir::Cache::archives=* ]] && archives=${1#*=}; shift ;;
     --download-only | -d) download_only=1; shift ;;
     --reinstall) reinstall=1; shift ;;
+    --print-uris) print_uris=1; shift ;;
     -*) shift ;;
     *) args+=("$1"); shift ;;
   esac
@@ -894,6 +895,10 @@ install)
   for a in "${args[@]:1}"; do if [[ $a == ./* || $a == /* ]]; then files+=("$a"); else names+=("$a"); fi; done
   for f in "${files[@]}"; do [[ -f $f ]] || { echo "E: unable to locate $f" >&2; exit 100; }; done
   if [[ ${#files[@]} -gt 0 ]]; then
+    if [[ -n $print_uris ]]; then
+      printf '%s\n' "${files[@]}" | grep -q 'ffmpeg_' && ! printf '%s\n' "${files[@]}" | grep -q 'libfakedep_' && echo "'http://archive.ubuntu.com/ubuntu/pool/main/libf/libfakedep_1.0_amd64.deb' libfakedep_1.0_amd64.deb 10 SHA256:0"
+      exit 0
+    fi
     printf '%s\n' "${files[@]}" | grep -q 'ffmpeg_' && ! printf '%s\n' "${files[@]}" | grep -q 'libfakedep_' && { echo "E: unmet dependencies: ffmpeg needs libfakedep" >&2; exit 100; }
     for f in "${files[@]}"; do echo "INSTALLED $(basename "$f" | sed 's/_.*//')" >>"$FAKE_APT_LOG"; done
   fi
@@ -959,6 +964,7 @@ rm -f "$apt/debs"/libfakedep_*.deb; rm -rf "$apt/archives"; mkdir -p "$apt/archi
 FAKE_PREINSTALLED="fontconfig fonts-dejavu-core" apt_run gap ffmpeg fontconfig fonts-dejavu-core
 check "a hit whose files lack a dependency still exits 0" "0" "$(cat "$apt/gap.status")"
 check "... by installing from the mirror" "INSTALLED ffmpeg" "$(grep '^INSTALLED ffmpeg' "$apt/gap.log" | tail -1)"
+check "... naming the .deb the cached files lack" "libfakedep_1.0_amd64.deb" "$(grep -x 'libfakedep_1.0_amd64.deb' "$apt/gap.out")"
 
 # --- ci.yml (JS-129): the deb cache, the jars cache, the guard of the ffmpeg version, no waiting for lint-and-unit, the
 # summary and the cancelling of the media jobs when lint-and-unit fails. Each line is "name<TAB>ok" or "name<TAB>why".

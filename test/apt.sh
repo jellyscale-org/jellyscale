@@ -25,7 +25,10 @@ if [[ -n $debs ]]; then
   if [[ ${#files[@]} -gt 0 ]]; then
     echo "installing ${#files[@]} cached .deb files, no mirror"
     if sudo apt-get install -y --no-download "${files[@]}"; then exit 0; fi
-    echo "the cached .deb files are not enough; installing from the mirror"
+    # Name what the files lack, so the cache can be made to hold it.
+    echo "the cached .deb files are not enough; apt wants:"
+    sudo apt-get install -y --print-uris "${files[@]}" 2>/dev/null | grep -o "^'[^']*'" | tr -d "'" | sed 's|.*/||' || true
+    echo "installing from the mirror"
   fi
 fi
 
