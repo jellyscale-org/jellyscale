@@ -2383,11 +2383,11 @@
         "Everything else is PlaybackInfo's answer for the same body and query: the same decision, TranscodingUrl, DefaultAudioStreamIndex and DefaultSubtitleStreamIndex, for a direct play, a copy and a re-encode; the decisions counter rises by one per source, as PlaybackInfo's does",
         "The same refusals as PlaybackInfo: 404 for an unknown item, 400 for a bad body, 401 with no token, and the RateLimitExceeded answer when a transcode cannot start",
         "POST /Items/{itemId}/PlaybackInfo and GET /Items/{itemId} never carry a Hidden field, for any settings",
-        "The route is in compat/endpoints.yaml and the jellyscale-only list, compat/conform.yaml holds its answers to PlaybackInfo's schema, and docs/api.md documents it with the two added fields"
+        "The route is in compat/endpoints.yaml and the jellyscale-only list, compat/conform.yaml holds its answers to PlaybackInfo's schema, and docs/api.md documents it with the two added fields",
+        "The route lists every stored track in every mode, with a worker running, on a replica with transcoding off and with no worker alive: Hidden is exact in each, a track PlaybackInfo lists is listed the same, and one PlaybackInfo cannot deliver there is listed without a DeliveryUrl, never dropped (lead, 2026-11-16: Fluster's mpv sees every track in the file and maps them partly by order)"
       ],
-      "priority": 22,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [
         "JS-119"
       ],
