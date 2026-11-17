@@ -123,8 +123,8 @@ jobs:
 
   # Everything the integration tier needs is installed here, so a test that
   # can't run fails, and test/report.sh fails the job if any test is skipped.
-  # internal/transcode holds most of the time and is dealt out in four; the
-  # fourth shard is every other package (test/shard.sh).
+  # internal/transcode and internal/api hold most of the time and are dealt out in five by test; the
+  # sixth shard is every other package (test/shard.sh).
   integration-shard:
     name: integration shard (${{ matrix.name }})
     needs: changes
@@ -135,10 +135,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: 0of4, shard: 0/4 }
-          - { name: 1of4, shard: 1/4 }
-          - { name: 2of4, shard: 2/4 }
-          - { name: 3of4, shard: 3/4 }
+          - { name: 0of5, shard: 0/5 }
+          - { name: 1of5, shard: 1/5 }
+          - { name: 2of5, shard: 2/5 }
+          - { name: 3of5, shard: 3/5 }
+          - { name: 4of5, shard: 4/5 }
           - { name: rest, shard: rest }
     steps:
       - uses: actions/checkout@v7
@@ -150,7 +151,17 @@ jobs:
         with:
           go-version-file: go.mod
       # ffmpeg from Ubuntu has libx264, libx265, libsvtav1 and libass; burn-in needs a font.
+      # The .deb files of the install below, kept per runner image and package list: a hit installs
+      # them with no mirror (test/apt.sh); a miss installs as always and saves them.
+      - id: image
+        run: echo "ImageVersion=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: /home/runner/apt-debs
+          key: apt-debs-${{ steps.image.outputs.ImageVersion }}-ffmpeg-fontconfig-fonts-dejavu-core
       - run: bash test/apt.sh ffmpeg fontconfig fonts-dejavu-core
+        env:
+          APT_DEBS: /home/runner/apt-debs
         timeout-minutes: 5 # A stalled mirror fails in minutes, not at the job's limit.
       - name: CI tests ffmpeg 6.1 on a known number of CPUs
         run: |
@@ -162,6 +173,7 @@ jobs:
           INTEGRATION_SHARD: ${{ matrix.shard }}
           JELLYSCALE_LOG_DIR: ${{ runner.temp }}/logs
       - uses: actions/upload-artifact@v7
+        if: always()
         with:
           name: integration-shard-${{ matrix.name }}
           # The test record too, pass or fail: test/shard-times.sh deals the shards
@@ -221,6 +233,35 @@ jobs:
             "\(.name) \((.completed_at | fromdate) - (.started_at | fromdate))"' |
             awk '{ printf "%s: %dm%02ds\n", $0 ~ /\(/ ? substr($0, 1, index($0, ")")) : $1, $NF / 60, $NF % 60; if (min == "" || $NF < min) min = $NF; if ($NF > max) max = $NF }
               END { printf "slowest shard %dm%02ds, fastest %dm%02ds, spread %dm%02ds\n", max / 60, max % 60, min / 60, min % 60, (max - min) / 60, (max - min) % 60 }' | tee -a "$GITHUB_STEP_SUMMARY"
+      # The seconds of tests each shard ran, from its own tests.json (so not merged with the
+      # others, which share the name), and a line to refresh the times when the dealt shards drift.
+      # A notice: it fails nothing.
+      - if: always() && steps.decide.outputs.run == 'true'
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          pattern: integration-shard-*
+          path: shard-logs
+      - if: always() && steps.decide.outputs.run == 'true'
+        continue-on-error: true
+        run: bash test/shard-summary.sh shard-logs 0of5 1of5 2of5 3of5 4of5 rest | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # When lint-and-unit fails in a run whose media jobs run, they would go on for up to an hour
+  # for a run that can't be merged: cancel the run. Only this run (its own id) is cancelled; the
+  # check jobs integration and e2e still report, as failures, since their shards were cancelled.
+  cancel-media-jobs:
+    needs: [changes, lint-and-unit]
+    if: always() && needs.lint-and-unit.result == 'failure' && needs.changes.outputs.code == 'true' && (github.event_name == 'merge_group' || github.event_name == 'pull_request')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "lint-and-unit failed, so the integration, e2e and roles jobs of run $GITHUB_RUN_ID are cancelled"
+          gh run cancel "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY"
 
   # Each role as its own process, against Postgres, with real ffmpeg.
   roles:
@@ -233,7 +274,17 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+      # The .deb files of the install below, kept per runner image and package list: a hit installs
+      # them with no mirror (test/apt.sh); a miss installs as always and saves them.
+      - id: image
+        run: echo "ImageVersion=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: /home/runner/apt-debs
+          key: apt-debs-${{ steps.image.outputs.ImageVersion }}-ffmpeg
       - run: bash test/apt.sh ffmpeg
+        env:
+          APT_DEBS: /home/runner/apt-debs
         timeout-minutes: 5 # A stalled mirror fails in minutes, not at the job's limit.
       - name: CI tests ffmpeg 6.1 on a known number of CPUs
         run: |
@@ -263,7 +314,17 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+      # The .deb files of the install below, kept per runner image and package list: a hit installs
+      # them with no mirror (test/apt.sh); a miss installs as always and saves them.
+      - id: image
+        run: echo "ImageVersion=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: /home/runner/apt-debs
+          key: apt-debs-${{ steps.image.outputs.ImageVersion }}-ffmpeg
       - run: bash test/apt.sh ffmpeg
+        env:
+          APT_DEBS: /home/runner/apt-debs
         timeout-minutes: 5 # A stalled mirror fails in minutes, not at the job's limit.
       - name: CI tests ffmpeg 6.1 on a known number of CPUs
         run: |
@@ -279,6 +340,41 @@ jobs:
           key: e2e-fixtures-${{ steps.fixtures.outputs.key }}
       - if: steps.cache.outputs.cache-hit != 'true'
         run: bash test/fixtures/cached.sh "$RUNNER_TEMP/fixtures"
+
+  # On main, save the .deb cache of the integration shards' package list and the jars of
+  # the differential shard when their keys are missing: a cache saved in a merge group is
+  # seen only there, and the differential shard never runs on main. (fixture-cache above
+  # does the same for the ffmpeg list, which roles and the e2e shards use.)
+  deb-cache:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      # The .deb files of the install below, kept per runner image and package list: a hit installs
+      # them with no mirror (test/apt.sh); a miss installs as always and saves them.
+      - id: image
+        run: echo "ImageVersion=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: /home/runner/apt-debs
+          key: apt-debs-${{ steps.image.outputs.ImageVersion }}-ffmpeg-fontconfig-fonts-dejavu-core
+      - run: bash test/apt.sh ffmpeg fontconfig fonts-dejavu-core
+        env:
+          APT_DEBS: /home/runner/apt-debs
+        timeout-minutes: 5 # A stalled mirror fails in minutes, not at the job's limit.
+
+  jars-cache:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/jellyscale/sdkjvm
+          key: sdkjvm-jars-${{ hashFiles('test/sdkjvm/jars.txt') }}
+      - run: bash test/sdkjvm/decode.sh --fetch
 
   # Each shard is E2E_GATES and E2E_SHARD for test/e2e/run.sh. browse and play
   # are one sequence of steps, so they go to one job; subtitles and transcode are
@@ -313,7 +409,17 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
+      # The .deb files of the install below, kept per runner image and package list: a hit installs
+      # them with no mirror (test/apt.sh); a miss installs as always and saves them.
+      - id: image
+        run: echo "ImageVersion=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: /home/runner/apt-debs
+          key: apt-debs-${{ steps.image.outputs.ImageVersion }}-ffmpeg
       - run: bash test/apt.sh ffmpeg
+        env:
+          APT_DEBS: /home/runner/apt-debs
         timeout-minutes: 5 # A stalled mirror fails in minutes, not at the job's limit.
       - name: CI tests ffmpeg 6.1 on a known number of CPUs
         run: |
@@ -329,6 +435,13 @@ jobs:
         with:
           path: /home/runner/e2e-fixtures
           key: e2e-fixtures-${{ steps.fixtures.outputs.key }}
+      # The jars of the differential shard (test/sdkjvm/jars.txt): a changed list is a miss,
+      # which fetches from Maven Central as before and saves.
+      - if: matrix.name == 'differential'
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/jellyscale/sdkjvm
+          key: sdkjvm-jars-${{ hashFiles('test/sdkjvm/jars.txt') }}
       - name: Fetch jellyfin-web from the baseline image
         run: |
           docker create --name jf jellyfin/jellyfin:12.4

@@ -548,10 +548,10 @@ func TestImageWorkflowNeverCancelsAnEarlierCommitsRun(t *testing.T) {
 func TestCIWorkflowKeepsItsJobsAndBuildsNoImage(t *testing.T) {
 	raw := repoFile(t, ".github/workflows/ci.yml")
 	doc := parse(t, raw)
-	want := []string{"changes", "lint-and-unit", "integration-total", "integration-shard", "integration", "roles", "fixture-cache", "e2e-shard", "e2e"}
+	want := []string{"changes", "lint-and-unit", "integration-total", "integration-shard", "integration", "roles", "fixture-cache", "deb-cache", "jars-cache", "cancel-media-jobs", "e2e-shard", "e2e"}
 	jobs := jobsOf(doc)
 	if len(jobs) != len(want) {
-		t.Errorf("ci.yml has %d jobs, want the %d it had: %v", len(jobs), len(want), want)
+		t.Errorf("ci.yml has %d jobs, want the %d it has: %v", len(jobs), len(want), want)
 	}
 	for _, name := range want {
 		if jobs[name] == nil {

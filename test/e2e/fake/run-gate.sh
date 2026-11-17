@@ -6,7 +6,8 @@ set -uo pipefail
 repo=$1 work=$2 gate=$3
 shift 3
 mkdir -p "$work/play/node_modules" "$work/state" "$work/scratch"
-cp -r "$repo/test/e2e/fake/playwright-core" "$work/play/node_modules/"
+# FAKE_PLAYWRIGHT=playwright-play: a page that plays a film (for the failover gate's roll scenarios); the default one refuses everything but the sign-in.
+cp -r "$repo/test/e2e/fake/${FAKE_PLAYWRIGHT:-playwright-core}" "$work/play/node_modules/playwright-core"
 for f in $(grep -E '^cp ' "$repo/test/e2e/run.sh" | grep -oE 'test/e2e/[A-Za-z0-9_-]+\.mjs'); do cp "$repo/$f" "$work/play/"; done
 export FAKE_STATE=$work/state PATH="$repo/test/e2e/fake/bin:$PATH" TMPDIR=$work
 node "$repo/test/e2e/fake/server.cjs" >"$work/state/port" 2>/dev/null &

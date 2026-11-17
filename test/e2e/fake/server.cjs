@@ -3,6 +3,7 @@
 const http = require("node:http");
 const fs = require("node:fs");
 let table = { api: [], stream: [] };
+let turn = 0;
 http.createServer((req, res) => {
   let body = "";
   req.on("data", (c) => { body += c; });
@@ -18,6 +19,8 @@ http.createServer((req, res) => {
       res.end(JSON.stringify(table));
       return;
     }
+    // A film request is answered by the next stream replica the router holds, as the router does.
+    if (req.url.startsWith("/videos/") && table.stream.length) res.setHeader("x-backend", String(table.stream[turn++ % table.stream.length].port));
     res.end("{}");
   });
 }).listen(0, "127.0.0.1", function () { console.log(this.address().port); });
