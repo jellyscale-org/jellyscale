@@ -2484,12 +2484,11 @@
         "CONTRIBUTING.md says how a release is cut: a tag vX.Y.Z on a commit of main whose image run passed, and a GitHub release with generated notes",
         "ci.yml's four required checks and their run time are unchanged; the image workflow is not a required check"
       ],
-      "priority": 20,
-      "status": "todo",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "dependsOn": [],
       "source": "Issue #160 (from:fluster), 2026-11-16",
-      "notes": "Independent of the track-language tasks: it builds side by side with JS-118. If it lands before JS-119, it makes the Babel and Kino recipes and JS-119's checks use them; if after, it reuses JS-119's. Make the films on the runner with CI's ffmpeg (test/apt.sh) and copy them into the image, so the recipes run under the ffmpeg the tests use; alpine's ffmpeg then only has to play them, which test/image.sh shows. A second, non-administrator viewer waits for JS-033; no seeding route or flag is added (the app must not know it is tested). The password is in the compose file, not the image. Owner steps: make the ghcr.io package public once; decide the first version tag. The dogfood's private build is untouched."
+      "notes": "Independent of the track-language tasks: it builds side by side with JS-118. If it lands before JS-119, it makes the Babel and Kino recipes and JS-119's checks use them; if after, it reuses JS-119's. Make the films on the runner with CI's ffmpeg (test/apt.sh) and copy them into the image, so the recipes run under the ffmpeg the tests use; alpine's ffmpeg then only has to play them, which test/image.sh shows. A second, non-administrator viewer waits for JS-033; no seeding route or flag is added (the app must not know it is tested). The password is in the compose file, not the image. Owner steps: make the ghcr.io package public once; decide the first version tag. The dogfood's private build is untouched. Merged as #164 (2026-11-16); the first image run published main-48c17716d578 and -fixtures. Open: the pull from a machine not logged in waits for the owner to make the ghcr.io package public."
     },
     {
       "id": "JS-125",
