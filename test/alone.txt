@@ -1,0 +1,5 @@
+# Tests that run on their own, in their shard's job, after the shares of its processes have ended
+# (INTEGRATION_PROCS, test/integration.sh), with no other test process running.
+# Lines are "<package> <test> <reason>"; the reason says why the test cannot share the machine.
+internal/transcode TestTheScanReadsNoMoreOfAFilmForItsImageTrackAndNothingThatGrowsWithTheFilm measures how much of the film the scan reads, which went over its bound when three processes shared four CPUs; it runs on an idle machine
+deploy/image TestComposeFailsNamingTheImageVariableWhenItIsUnsetOrEmptyAndStartsNothing compares every compose container, network and volume of the daemon before and after, so a test of another process that brings a compose project up changes what it compares
