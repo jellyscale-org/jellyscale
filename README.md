@@ -23,7 +23,7 @@ A summary; [docs/status.md](docs/status.md) is the record of every feature.
 | 5 | Library and metadata | partial (scan, chapter images); metadata from files, trickplay, GPU encoders not built |
 | 6 | Kubernetes | partial (metrics, published images); manifests, Helm, autoscaling not built |
 | 7 | SyncPlay | not built |
-| — | Beyond Jellyfin (`/jellyscale/v1/`) | track preferences saved; hiding other languages' tracks coming |
+| — | Beyond Jellyfin (`/jellyscale/v1/`) | track languages: saved preferences and opt-in hiding of other languages' tracks done; starting in the viewer's language and a settings page coming |
 
 ## Deploy
 
