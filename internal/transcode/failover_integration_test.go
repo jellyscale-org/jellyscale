@@ -86,6 +86,9 @@ func workerProcess(id string) {
 	if os.Getenv("JELLYSCALE_TEST_SUBTITLES") != "" {
 		go w.RunSubtitles(ctx) // As main does; a test of subtitle jobs asks for it.
 	}
+	if os.Getenv("JELLYSCALE_TEST_CHAPTERS") != "" {
+		go w.RunChapterImages(ctx) // And the chapter pictures, on slots of their own (JS-112).
+	}
 	w.Run(ctx)
 }
 

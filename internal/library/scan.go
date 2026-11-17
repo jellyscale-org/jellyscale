@@ -14,7 +14,6 @@ import (
 	_ "image/png"  // Sidecar decoding.
 	"io"
 	"log/slog"
-	"os/exec"
 	"path"
 	"slices"
 	"strings"
@@ -27,6 +26,7 @@ import (
 
 	"jellyscale/internal/db"
 	"jellyscale/internal/media"
+	"jellyscale/internal/mediatool"
 	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
 	"jellyscale/internal/subtitles"
@@ -996,14 +996,12 @@ func (s *Scanner) extractFrame(ctx context.Context, lib Library, item *record, o
 	}
 	defer closeInput()
 	at := float64(probe.RunTimeTicks) / ticksPerSecond / 10
-	var out bytes.Buffer
-	cmd := exec.CommandContext(ctx, "ffmpeg", "-nostdin", "-v", "error", "-ss", fmt.Sprintf("%.3f", at), "-i", input,
-		"-frames:v", "1", "-vf", "scale=-2:720", "-q:v", "3", "-f", "image2pipe", "-c:v", "mjpeg", "-")
-	cmd.Stdout = &out
-	if err := cmd.Run(); err != nil {
+	res, err := mediatool.Run(ctx, "ffmpeg", []string{"-nostdin", "-v", "error", "-ss", fmt.Sprintf("%.3f", at), "-i", input,
+		"-frames:v", "1", "-vf", "scale=-2:720", "-q:v", "3", "-f", "image2pipe", "-c:v", "mjpeg", "-"}, mediatool.Options{})
+	if err != nil {
 		return fmt.Errorf("ffmpeg: %w", err)
 	}
-	return s.saveImage(ctx, lib, item, out.Bytes())
+	return s.saveImage(ctx, lib, item, res.Stdout)
 }
 
 func (s *Scanner) saveImage(ctx context.Context, lib Library, item *record, body []byte) error {

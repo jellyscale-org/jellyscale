@@ -1,18 +1,17 @@
 package library
 
 import (
-	"bytes"
 	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os/exec"
 	"slices"
 	"strconv"
 	"strings"
 
 	"jellyscale/internal/media"
+	"jellyscale/internal/mediatool"
 	"jellyscale/internal/playback"
 )
 
@@ -126,15 +125,13 @@ type ffprobeOutput struct {
 
 // ProbeInput runs ffprobe on a path or URL.
 func ProbeInput(ctx context.Context, input string) (Probe, error) {
-	var out, errOut bytes.Buffer
-	cmd := exec.CommandContext(ctx, "ffprobe", "-v", "error", "-show_format", "-show_streams", "-show_chapters",
-		"-of", "json", "--", input)
-	cmd.Stdout, cmd.Stderr = &out, &errOut
-	if err := cmd.Run(); err != nil {
-		return Probe{}, fmt.Errorf("ffprobe: %w: %s", err, strings.TrimSpace(errOut.String()))
+	res, err := mediatool.Run(ctx, "ffprobe", []string{"-v", "error", "-show_format", "-show_streams", "-show_chapters",
+		"-of", "json", "--", input}, mediatool.Options{})
+	if err != nil {
+		return Probe{}, fmt.Errorf("ffprobe: %w: %s", err, strings.TrimSpace(string(res.Stderr)))
 	}
 	var parsed ffprobeOutput
-	if err := json.Unmarshal(out.Bytes(), &parsed); err != nil {
+	if err := json.Unmarshal(res.Stdout, &parsed); err != nil {
 		return Probe{}, fmt.Errorf("parse ffprobe output: %w", err)
 	}
 
@@ -401,14 +398,9 @@ func dolbyVisionTitle(dv sideData) string {
 // hasHDR10Plus reads the first frame of the video for HDR10+ metadata. A failed
 // read counts as none: the label is then HDR10, as it was before.
 func hasHDR10Plus(ctx context.Context, input string) bool {
-	var out bytes.Buffer
-	cmd := exec.CommandContext(ctx, "ffprobe", "-v", "error", "-select_streams", "v:0", "-read_intervals", "%+#1",
-		"-show_frames", "-show_entries", "frame=side_data_list", "-of", "json", "--", input)
-	cmd.Stdout = &out
-	if cmd.Run() != nil {
-		return false
-	}
-	return strings.Contains(out.String(), "HDR10+")
+	res, err := mediatool.Run(ctx, "ffprobe", []string{"-v", "error", "-select_streams", "v:0", "-read_intervals", "%+#1",
+		"-show_frames", "-show_entries", "frame=side_data_list", "-of", "json", "--", input}, mediatool.Options{})
+	return err == nil && strings.Contains(string(res.Stdout), "HDR10+")
 }
 
 // streamTicks reads a stream's duration from ffprobe's "12.5" or a Matroska
@@ -514,18 +506,16 @@ func displaySubtitle(language, codec string, isDefault, isForced bool) string {
 func ReadVideoEnd(ctx context.Context, input string, lastKeyframe int64) (int64, error) {
 	// A little past the keyframe: the seek goes to the last one at or before it.
 	from := strconv.FormatFloat(float64(lastKeyframe)/ticksPerSecond+0.005, 'f', 3, 64)
-	var out, errOut bytes.Buffer
-	cmd := exec.CommandContext(ctx, "ffprobe", "-v", "error", "-select_streams", "v:0", "-read_intervals", from+"%",
-		"-show_entries", "packet=pts_time,duration_time", "-of", "csv=p=0", "--", input)
-	cmd.Stdout, cmd.Stderr = &out, &errOut
-	if err := cmd.Run(); err != nil {
-		return 0, fmt.Errorf("ffprobe: %w: %s", err, strings.TrimSpace(errOut.String()))
+	res, err := mediatool.Run(ctx, "ffprobe", []string{"-v", "error", "-select_streams", "v:0", "-read_intervals", from + "%",
+		"-show_entries", "packet=pts_time,duration_time", "-of", "csv=p=0", "--", input}, mediatool.Options{})
+	if err != nil {
+		return 0, fmt.Errorf("ffprobe: %w: %s", err, strings.TrimSpace(string(res.Stderr)))
 	}
 	// The last frame shown ends the video. A packet without a duration is
 	// given the gap before it.
 	var last, before, duration float64
 	found := false
-	for _, line := range strings.Fields(out.String()) {
+	for _, line := range strings.Fields(string(res.Stdout)) {
 		pts, length, _ := strings.Cut(line, ",")
 		t, err := strconv.ParseFloat(pts, 64)
 		if err != nil {

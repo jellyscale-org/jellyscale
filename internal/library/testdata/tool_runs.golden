@@ -1,0 +1,94 @@
+tool ffprobe
+arg -v
+arg error
+arg -show_format
+arg -show_streams
+arg -show_chapters
+arg -of
+arg json
+arg --
+arg <dir>/in.mkv
+cwd <pkg>
+stdin 
+--
+tool ffprobe
+arg -v
+arg error
+arg -select_streams
+arg v:0
+arg -read_intervals
+arg 5.005%
+arg -show_entries
+arg packet=pts_time,duration_time
+arg -of
+arg csv=p=0
+arg --
+arg <dir>/in.mkv
+cwd <pkg>
+stdin 
+--
+tool ffmpeg
+arg -nostdin
+arg -v
+arg error
+arg -ss
+arg 10.000
+arg -i
+arg <dir>/in.mkv
+arg -frames:v
+arg 1
+arg -vf
+arg scale=-2:720
+arg -q:v
+arg 3
+arg -f
+arg image2pipe
+arg -c:v
+arg mjpeg
+arg -
+cwd <pkg>
+stdin 
+--
+tool ffmpeg
+arg -nostdin
+arg -v
+arg error
+arg -seek_timestamp
+arg 1
+arg -ss
+arg 30.000
+arg -i
+arg <dir>/in.mkv
+arg -frames:v
+arg 1
+arg -an
+arg -sn
+arg -vf
+arg scale='min(400,iw)':-2
+arg -q:v
+arg 3
+arg -f
+arg image2pipe
+arg -c:v
+arg mjpeg
+arg -
+cwd <pkg>
+stdin 
+--
+tool ffprobe
+arg -v
+arg error
+arg -select_streams
+arg v:0
+arg -read_intervals
+arg %+#1
+arg -show_frames
+arg -show_entries
+arg frame=side_data_list
+arg -of
+arg json
+arg --
+arg <dir>/in.mkv
+cwd <pkg>
+stdin 
+--
