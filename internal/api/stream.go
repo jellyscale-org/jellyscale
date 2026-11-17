@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -229,6 +230,16 @@ func contentType(source items.Source) string {
 // DeviceProfile gets a direct play or a transcode, whichever the profile
 // needs; one without stays direct play.
 func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
+	s.answerPlaybackInfo(w, r, false)
+}
+
+// markedPlaybackInfo is PlaybackInfo with every track listed as itself, each audio and subtitle track marked Hidden by
+// the rule that makes the others placeholders, and each source carrying its OriginalLanguage (JS-120).
+func (s *Server) markedPlaybackInfo(w http.ResponseWriter, r *http.Request) {
+	s.answerPlaybackInfo(w, r, true)
+}
+
+func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, marked bool) {
 	id := r.PathValue("itemId")
 	if !db.ValidID(id) {
 		http.NotFound(w, r)
@@ -307,11 +318,15 @@ func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
 		if index, ok := chosenSubtitle(source, request.SubtitleStreamIndex); ok {
 			source.DefaultSubtitleStreamIndex = media.Ptr(index)
 		}
-		markOriginal(&source)
+		original := markOriginal(&source)
 		// Last, so that every choice above is made on the real tracks; the placeholders keep every Index.
 		filter := trackFilterOf(sessionOf(r).User)
 		filter.NamedAudio, filter.NamedSubtitle = request.AudioStreamIndex, request.SubtitleStreamIndex
-		if hidden := hideTracks(&source, filter); hidden > 0 {
+		if marked {
+			source.MediaStreams = everyTrack(source.MediaStreams, storedStreams(stored))
+			markHidden(&source, filter)
+			source.OriginalLanguage = &original
+		} else if hidden := hideTracks(&source, filter); hidden > 0 {
 			s.Log.Debug("hid tracks outside the viewer's languages", "user", sessionOf(r).User.ID, "item", id, "source", source.ID, "hidden", hidden)
 		}
 		result = append(result, source)
@@ -320,6 +335,31 @@ func (s *Server) playbackInfo(w http.ResponseWriter, r *http.Request) {
 		playbackDecisions.WithLabelValues(method).Inc()
 	}
 	writeJSON(w, map[string]any{"MediaSources": result, "PlaySessionId": playSession})
+}
+
+// storedStreams is the file's own track list, empty when the row is gone.
+func storedStreams(read sourceReader) []media.MediaStream {
+	stored, _, _ := read() // Read already, so no new error; a row gone leaves PlaybackInfo's list as it is.
+	return stored.Streams
+}
+
+// everyTrack is the file's whole track list in its order: a track PlaybackInfo lists is that listing, and one it drops
+// (it cannot be delivered here) is the stored track with no DeliveryUrl. Fluster's mpv sees every track in the file and
+// maps them to indexes partly by order, so none may go missing whatever a worker or a replica can do.
+func everyTrack(listed, stored []media.MediaStream) []media.MediaStream {
+	if len(stored) == 0 {
+		return listed
+	}
+	all := make([]media.MediaStream, 0, len(stored))
+	for _, stream := range stored {
+		if i := slices.IndexFunc(listed, func(l media.MediaStream) bool { return l.Type == stream.Type && l.Index == stream.Index }); i >= 0 {
+			stream = listed[i]
+		} else {
+			stream.DeliveryURL = ""
+		}
+		all = append(all, stream)
+	}
+	return all
 }
 
 // planPlayback fills in the transcoding fields of one source in the reply.

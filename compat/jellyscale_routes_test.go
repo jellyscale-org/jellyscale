@@ -27,8 +27,8 @@ func TestTheJellyscaleRoutesAreInTheJellyscaleOnlyList(t *testing.T) {
 			served++
 		}
 	}
-	if served != 2 {
-		t.Errorf("%d routes under /jellyscale/ are served, want 2", served)
+	if served != 3 { // JS-120 adds POST /jellyscale/v1/items/{itemId}/playback-info.
+		t.Errorf("%d routes under /jellyscale/ are served, want 3", served)
 	}
 }
 

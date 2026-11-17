@@ -55,6 +55,9 @@ type MediaSource struct {
 	DefaultSubtitleStreamIndex *int     `json:"DefaultSubtitleStreamIndex,omitempty"`
 	TranscodingURL             string   `json:"TranscodingUrl,omitempty"`
 	TranscodingContainer       string   `json:"TranscodingContainer,omitempty"`
+
+	// Only the marked PlaybackInfo of jellyscale's own namespace sets this (JS-120); a pointer so that "" is sent.
+	OriginalLanguage *string `json:"OriginalLanguage,omitempty"`
 }
 
 // Headers are the HTTP headers a client must send to fetch a source. A source
@@ -182,6 +185,8 @@ type MediaStream struct {
 	// Placeholder marks a track listed as a stream of Type Data at its own Index, saying nothing else of it (JS-119).
 	// It is made for an answer and never stored.
 	Placeholder bool `json:"-"`
+	// Hidden is set only by the marked PlaybackInfo of jellyscale's own namespace, on an audio or subtitle track (JS-120).
+	Hidden *bool `json:"Hidden,omitempty"`
 	// OpenAt is set by a worker for a track inside the film whose cue points
 	// the scan read. For a run whose first frame is at time t (seconds on the
 	// film's clock) it says when the run must open the film to read the picture

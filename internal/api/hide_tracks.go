@@ -1,6 +1,8 @@
 package api
 
 import (
+	"slices"
+
 	"jellyscale/internal/media"
 	"jellyscale/internal/playback"
 )
@@ -39,4 +41,17 @@ func hideTracks(source *media.MediaSource, filter playback.TrackFilter) int {
 	}
 	source.MediaStreams = streams
 	return len(hidden)
+}
+
+// markHidden is hideTracks for the marked PlaybackInfo: every track stays itself, and each audio and subtitle track says
+// whether the filter hides it.
+func markHidden(source *media.MediaSource, filter playback.TrackFilter) {
+	hidden := filter.Hidden(source.MediaStreams)
+	streams := slices.Clone(source.MediaStreams)
+	for i, stream := range streams {
+		if stream.Type == "Audio" || stream.Type == "Subtitle" {
+			streams[i].Hidden = media.Ptr(slices.Contains(hidden, stream.Index))
+		}
+	}
+	source.MediaStreams = streams
 }

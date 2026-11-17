@@ -25,6 +25,7 @@ routes:
   - {method: GET, path: "/Items/{itemId}/Similar", status: stub, role: api, access: viewer}
   - {method: GET, path: "/Items/{itemId}/SpecialFeatures", status: stub, role: api, access: viewer}
   - {method: GET, path: "/Items/{itemId}/ThemeMedia", status: stub, role: api, access: viewer}
+  - {method: POST, path: "/jellyscale/v1/items/{itemId}/playback-info", status: implemented, role: api, access: viewer}
   - {method: GET, path: "/jellyscale/v1/track-preferences", status: implemented, role: api, access: viewer}
   - {method: PATCH, path: "/jellyscale/v1/track-preferences", status: implemented, role: api, access: viewer}
   - {method: GET, path: "/LiveTv/Programs", status: stub, role: api, access: viewer}

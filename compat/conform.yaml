@@ -1,9 +1,10 @@
 # What the schema (schema-12.4.json) cannot say by itself (JS-070); read by compat/conform.
 #
 # aliases: routes Jellyfin 12.4 no longer has in its OpenAPI document that jellyscale still
-# serves for older clients (status "alias" in endpoints.yaml). An answer on one is checked as the
-# route it stands for.
+# serves for older clients (status "alias" in endpoints.yaml), and a jellyscale route whose answer is a Jellyfin
+# operation's plus fields (JS-120). An answer on one is checked as the route it stands for.
 aliases:
+  - {method: POST, route: "/jellyscale/v1/items/{itemId}/playback-info", stands_for: "/Items/{itemId}/PlaybackInfo"}
   - {method: GET, route: "/Users/{userId}/Items", stands_for: "/Items"}
   - {method: GET, route: "/Users/{userId}/Items/Latest", stands_for: "/Items/Latest"}
   - {method: GET, route: "/Users/{userId}/Items/Resume", stands_for: "/UserItems/Resume"}
