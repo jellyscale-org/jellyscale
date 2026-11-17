@@ -291,7 +291,13 @@ func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, mark
 			return
 		}
 		deliverAttachments(&source, id, sessionOf(r).Token)
-		method, refused, err := s.planPlayback(r, id, playSession, request, &source, stored)
+		// The track the viewer starts with. The plan may take it back where the copy it needs cannot start.
+		audio, hasAudio := audioChoice(sessionOf(r).User, source, request.AudioStreamIndex)
+		planned := request
+		if hasAudio {
+			planned.AudioStreamIndex = media.Ptr(playback.Number(audio))
+		}
+		method, refused, err := s.planPlayback(r, id, playSession, planned, &source, stored, &audio)
 		if err != nil {
 			s.fail(w, r, err)
 			return
@@ -312,8 +318,8 @@ func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, mark
 			return
 		}
 		deliverSubtitles(&source, id, sessionOf(r).Token, request, burn, deliverable)
-		if index, ok := defaultAudio(source); ok {
-			source.DefaultAudioStreamIndex = media.Ptr(index)
+		if hasAudio {
+			source.DefaultAudioStreamIndex = media.Ptr(audio)
 		}
 		if index, ok := chosenSubtitle(source, request.SubtitleStreamIndex); ok {
 			source.DefaultSubtitleStreamIndex = media.Ptr(index)
@@ -328,6 +334,9 @@ func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, mark
 			source.OriginalLanguage = &original
 		} else if hidden := hideTracks(&source, filter); hidden > 0 {
 			s.Log.Debug("hid tracks outside the viewer's languages", "user", sessionOf(r).User.ID, "item", id, "source", source.ID, "hidden", hidden)
+		}
+		if hasAudio {
+			listAudio(&source, audio, original)
 		}
 		result = append(result, source)
 	}
@@ -367,8 +376,9 @@ func everyTrack(listed, stored []media.MediaStream) []media.MediaStream {
 // transcoding can deliver any of them, and a stream change then asks for one.
 // method is how it will play, for the decisions counter, which the caller
 // counts once no source of the reply is refused. refused is true when the
-// source needs a transcode that can't start now.
-func (s *Server) planPlayback(r *http.Request, itemID, playSession string, request playback.Request, source *media.MediaSource, read func() (items.Source, bool, error)) (method string, refused bool, err error) {
+// source needs a transcode that can't start now. audio is the track the viewer starts with, which the plan sets to the
+// file's default where the film then plays that.
+func (s *Server) planPlayback(r *http.Request, itemID, playSession string, request playback.Request, source *media.MediaSource, read func() (items.Source, bool, error), audio *int) (method string, refused bool, err error) {
 	if s.Transcode == nil && request.DeviceProfile == nil {
 		return "direct_play", false, nil
 	}
@@ -377,6 +387,10 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 		return "", false, err
 	}
 	if !found || stored.RunTimeTicks <= 0 {
+		// A film with no probed duration can't be copied or transcoded, so what plays is the file's default track.
+		if found {
+			*audio = playbackSource(stored).DefaultAudio()
+		}
 		return "direct_play", false, nil
 	}
 	media := playbackSource(stored)
@@ -419,6 +433,7 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 		reason, err = s.Transcode.Unavailable(r.Context(), spec, user.User.ID, user.DeviceID)
 	default: // A replica with no transcodeStore asks only whether the stores differ.
 		if reason, err = transcode.StoreMismatch(r.Context(), s.Pool); err == nil && reason == "" {
+			*audio = media.DefaultAudio()
 			return "direct_play", false, nil // No worker anywhere: transcoding is simply off.
 		}
 	}
@@ -434,6 +449,7 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 			s.Log.Warn("cannot switch audio tracks or burn in subtitles, so the default plays on", "item", spec.Item, "reason", reason)
 			// So no subtitle is listed that only a transcode could draw.
 			source.SupportsTranscoding = false
+			*audio = media.DefaultAudio()
 			return "direct_play", false, nil
 		}
 		s.Log.Error("refusing to offer a transcode: "+reason, "item", spec.Item, "spec", spec.Hash())
@@ -503,23 +519,6 @@ func chosenSubtitle(source media.MediaSource, wanted *playback.Number) (int, boo
 		}
 	}
 	return 0, false
-}
-
-// defaultAudio picks the flagged audio stream, else the first.
-func defaultAudio(source media.MediaSource) (int, bool) {
-	first, found := 0, false
-	for _, stream := range source.MediaStreams {
-		if stream.Type != "Audio" {
-			continue
-		}
-		if stream.IsDefault {
-			return stream.Index, true
-		}
-		if !found {
-			first, found = stream.Index, true
-		}
-	}
-	return first, found
 }
 
 // bitrateTest sends Size bytes so the client can time the download.

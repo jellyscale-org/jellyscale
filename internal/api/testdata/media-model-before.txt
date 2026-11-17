@@ -1,6 +1,7 @@
 ## an item's details
 MediaSources[0].Bitrate = <float64>
 MediaSources[0].Container = "mkv"
+MediaSources[0].DefaultAudioStreamIndex = 1
 MediaSources[0].ETag = <string>
 MediaSources[0].Formats = []
 MediaSources[0].GenPtsInput = false

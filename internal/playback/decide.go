@@ -610,8 +610,9 @@ func Decide(request Request, source Source, canTranscode bool) Decision {
 			reasons = append(reasons, "SubtitleCodecNotSupported")
 		}
 	}
-	// Direct play can't pick a track, so any other than the default transcodes.
-	if len(reasons) == 0 && audio == source.DefaultAudio() {
+	// Direct play can't pick a track, so a client whose profile refuses secondary audio transcodes any other than the
+	// default; one with no such condition picks the track itself.
+	if len(reasons) == 0 && (audio == source.DefaultAudio() || !profile.refusesSecondaryAudio(audioStream.Codec)) {
 		return direct
 	}
 	// A codec the client plays from a file but its HLS profile doesn't take

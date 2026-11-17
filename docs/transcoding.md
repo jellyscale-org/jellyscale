@@ -35,6 +35,10 @@ Connections: each worker process opens two more Postgres connections beside the 
 
 Not built: an `api` replica killed mid-film, which `docs/status.md` keeps as the other half of the Phase 4 gate, and an autoscaler.
 
+## The viewer's audio language
+
+A viewer's saved `AudioLanguagePreference` and `PlayDefaultAudioTrack` choose the track a film starts with, as Jellyfin 12.4 does (`compat/captures/audio-default-12.4.md`), comparing languages by language (`ger`, `deu` and `de-DE` are one). PlaybackInfo names it in `DefaultAudioStreamIndex`, and so does the item, whose menu jellyfin-web's Play button sends back as `AudioStreamIndex`. A browser plays only the file's default track (the flagged one, else the first). So a preferred track that is not the file's default turns a browser's direct play into a copied stream: the video is copied where it can be (above) and the preferred track is carried, which takes a worker slot. Jellyfin does the same for a browser, whose profile has an `IsSecondaryAudio` condition (`SecondaryAudioNotSupported`). A client whose profile has no such condition, such as Fluster, whose mpv switches the track itself, direct plays and pays no slot, and `DefaultAudioStreamIndex` names the preferred track. Where the copy cannot start (no worker is free, or no replica has a `transcodeStore`), a film that plays directly keeps playing: the file's default track plays and `DefaultAudioStreamIndex` names it.
+
 ## Video copy
 
 When the video can play in the client as it is and only the audio or the container can't (H.264, HEVC or AV1 with AC3 in MKV, or in MP4), the worker copies the video, and copies the audio too when the client takes its codec in fMP4 HLS within its channel limit and a quarter of the cap (as for audio copy below), else re-encodes it to AAC. A stream then costs almost no CPU and keeps the source's picture exactly. Nothing to configure. It happens when:

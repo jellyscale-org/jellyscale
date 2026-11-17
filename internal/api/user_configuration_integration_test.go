@@ -211,14 +211,15 @@ func defaultsOf(t *testing.T, e *env, film string) []any {
 	return out
 }
 
-// Saving a setting changes no track choice (JS-121 and JS-041 make the settings act): PlaybackInfo's defaults for
-// every source of three films are as they were, for each SubtitleMode with a language the film has, for the
-// language of an audio track that is not the default and then OriginalLanguage, and for PlayDefaultAudioTrack off.
+// Saving a setting that leaves the film's own tracks the choice changes no track choice (JS-041 makes the subtitle
+// settings act; JS-121 made the audio ones act, and audio_default_integration_test.go holds what they change):
+// PlaybackInfo's defaults for every source of three films are as they were, for each SubtitleMode with a language the
+// film has, for the language of the default audio track, for OriginalLanguage, and for PlayDefaultAudioTrack off.
 func TestSavingASettingChangesNoDefaultTrack(t *testing.T) {
 	e := newEnv(t)
 	films := settingsFilms(t, e)
-	languages := map[string][2]string{ // The language of a film's subtitle track, of an audio track that is not the default.
-		"two audio languages": {"eng", "deu"}, "two subtitle languages": {"deu", "eng"}, "two subtitle languages, one forced": {"deu", "eng"},
+	languages := map[string][2]string{ // The language of a film's subtitle track, of its default audio track (eng in all three).
+		"two audio languages": {"eng", "eng"}, "two subtitle languages": {"deu", "eng"}, "two subtitle languages, one forced": {"deu", "eng"},
 	}
 	for name, film := range films {
 		before := defaultsOf(t, e, film)

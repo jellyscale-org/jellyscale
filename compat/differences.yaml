@@ -1093,3 +1093,37 @@
   paths:
     - "MediaSources[].MediaStreams"
     - "MediaStreams"
+
+- requests:
+    - "audio default: Audio Short De | deu | PlayDefaultAudioTrack false"
+    - "audio default: Audio Short De | ger | PlayDefaultAudioTrack false"
+    - "audio default: Audio Short De | de | PlayDefaultAudioTrack false"
+    - "audio default: Audio Short De | DEU | PlayDefaultAudioTrack false"
+    - "audio default: Audio Region De | deu | PlayDefaultAudioTrack false"
+    - "audio default: Audio Region De | ger | PlayDefaultAudioTrack false"
+    - "audio default: Audio Region De | de | PlayDefaultAudioTrack false"
+    - "audio default: Audio Region De | DEU | PlayDefaultAudioTrack false"
+  kind: improvement
+  reason: "a track tagged de or de-DE is German here and chosen when German is saved; Jellyfin 12.4 compares the spelling of the tag and chooses no such track (compat/captures/audio-default-12.4.md)"
+  paths:
+    - "MediaSources[].DefaultAudioStreamIndex"
+
+- requests:
+    - "audio default: Audio Dup Second | und | PlayDefaultAudioTrack false"
+    - "audio default: Audio Dup Second | xx-not-a-tag | PlayDefaultAudioTrack false"
+  kind: improvement
+  reason: "a saved value that names no language counts as no language saved here, so the flagged track answers; Jellyfin 12.4 answers the first track in the flagged track's language (compat/captures/audio-default-12.4.md)"
+  paths:
+    - "MediaSources[].DefaultAudioStreamIndex"
+
+- requests:
+    - "audio default: Audio Dup Second | deu | PlayDefaultAudioTrack false | no profile"
+    - "audio default: Audio Dup Second | OriginalLanguage | PlayDefaultAudioTrack false | no profile"
+    - "audio default: Audio Dup Second | ger | PlayDefaultAudioTrack false | no profile"
+    - "audio default: Audio Dup Second | de | PlayDefaultAudioTrack false | no profile"
+    - "audio default: Audio Dup Second | DEU | PlayDefaultAudioTrack false | no profile"
+    - "audio default: Audio Dup Second | fra | PlayDefaultAudioTrack false | no profile"
+  kind: improvement
+  reason: "Jellyfin 12.4 answers these cells 2 with a DeviceProfile and 3 without one; jellyscale answers a request with no profile as one with, so a client gets one answer (compat/captures/audio-default-12.4.md)"
+  paths:
+    - "MediaSources[].DefaultAudioStreamIndex"

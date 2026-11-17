@@ -482,7 +482,9 @@ func TestAnOptedInViewerIsListedTheTracksOutsideTheirLanguagesAsPlaceholders(t *
 			checkPlaceholders(t, "PlaybackInfo", streams, capture)
 
 			// The item's details: both lists, and the alias. The item lists the default audio track alone (invariant 32).
-			baseItem := f.item(t, 0, plain, film, false)
+			// The baseline is a viewer with the same languages and both switches off: since JS-121 the item lists the track the
+			// viewer's audio language chooses in place of the file's default, hiding hides nothing of what that leaves.
+			baseItem := f.item(t, 0, f.viewer(t, fmt.Sprintf("baseline%d", i), c.audio, c.subtitle, ""), film, false)
 			for _, alias := range []bool{false, true} {
 				answer := f.item(t, 0, v, film, alias)
 				for list, got := range listsOf(t, answer) {
