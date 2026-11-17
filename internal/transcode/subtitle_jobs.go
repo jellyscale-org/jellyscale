@@ -378,7 +378,7 @@ func (w *Worker) extractTrack(ctx context.Context, job subtitleJob, log *slog.Lo
 	if job.Kind == "chapters" {
 		// Before the source is looked up: a removed source has no row, and its
 		// pictures are still to be deleted.
-		return library.SyncChapterImages(ctx, w.Pool, job.Source, w.Media, log)
+		return library.SyncChapterImages(ctx, w.Pool, job.Source, w.jobAssets, log)
 	}
 	source, found, err := w.Items.Source(ctx, job.Item, job.Source)
 	if err != nil {
@@ -391,7 +391,7 @@ func (w *Worker) extractTrack(ctx context.Context, job subtitleJob, log *slog.Lo
 	if err != nil {
 		return err
 	}
-	assets, err := w.Media(source.AssetStoreURI)
+	assets, err := w.jobAssets(source.AssetStoreURI)
 	if err != nil {
 		return err
 	}
