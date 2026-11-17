@@ -848,7 +848,13 @@ await scenario("a viewer whose audio language is German hears the German track o
     await page.waitForSelector(".actionSheetMenuItem", { timeout: 10000 });
     const selected = await page.evaluate(() => [...document.querySelectorAll(".actionSheetMenuItem")].filter((e) => e.querySelector(".check").style.visibility !== "hidden").map((e) => e.dataset.id));
     if (selected.join() !== "2") throw new Error(`the audio menu shows ${selected.join() || "nothing"} selected, want 2`);
-    await page.mouse.click(5, 5);
+    // Closed as menuIds closes one, and waited for: a click beside it does not always close it, and then leave()'s back
+    // closed the menu instead of the player, which never sent Stopped (merge queue, run 44040147233). Each try clicks again.
+    await waitFor("the audio menu to close", async () => {
+      await page.mouse.click(5, 5);
+      return (await page.locator(".actionSheetMenuItem").count()) === 0;
+    }, 10000);
+    seen.errors = seen.errors.filter((e) => !/ActionSheet closed without resolving/.test(e));
     noErrors(seen);
     await leave(page);
   });
