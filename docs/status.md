@@ -99,7 +99,7 @@ Every viewer-visible and operator-visible feature in scope, in one list. Status 
 ### `phase6-k8s`
 
 - Kubernetes deployment, as example manifests for `kubectl` and as a Helm chart, with readiness and liveness: **not built**. Both are supported ways to install; there is no operator (decision).
-- Metrics (Prometheus): **not built**. In scope.
+- Metrics (Prometheus): **done**: every role in the process serves `/metrics` on the address `metricsListen` names ([running.md](running.md)).
 - Postgres failover (JS-029): **done**. A switchover or restart keeps the transcodes (workers take their lock again and look for their row before stopping anything), segments finished meanwhile are stored when it answers, and stream and api replicas hold a request for the database instead of answering 500 (`GET /healthz` no longer asks it). Direct play and stored segments go on through an outage (JS-085): every stream replica refreshes a snapshot of recently active sessions' tokens and serves them from it while Postgres is away, and everything that needs Postgres to decide waits; `DOMAINS.md` invariants 25 and 37. The snapshot holds sessions seen within 10 minutes, learns of a start from a notification, and serves subtitle tracks and fonts the asset store holds (JS-103).
 - Backup and restore: **not built**. In scope as documented procedure: the operator backs up Postgres and the object stores, so Jellyfin's Backup API is a non-goal (decision).
 - Migration from Jellyfin: **not built**. In scope as a one-way import of users, watch state and libraries, so that viewers keep their history. Users arrive without passwords: they set one, or sign in through OIDC (decision).
