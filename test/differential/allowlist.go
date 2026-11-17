@@ -90,6 +90,11 @@ func (a *Allowlist) Entries() []Entry { return a.entries }
 
 var indexPattern = regexp.MustCompile(`\[\d+\]`)
 
+// replayedElsewhere is the start of the names that list the cells of compat/captures/audio-default-12.4.json where
+// jellyscale answers another DefaultAudioStreamIndex than Jellyfin. internal/api replays those cells, not this tier,
+// so they are no request of requests.yaml and no entry for them is unused.
+const replayedElsewhere = "audio default: "
+
 // CheckRequests fails if an entry names a request that reqs does not have.
 func (a *Allowlist) CheckRequests(reqs []Request) error {
 	known := map[string]bool{}
@@ -98,7 +103,7 @@ func (a *Allowlist) CheckRequests(reqs []Request) error {
 	}
 	for _, e := range a.entries {
 		for _, name := range e.Requests {
-			if !known[name] {
+			if !known[name] && !strings.HasPrefix(name, replayedElsewhere) {
 				return fmt.Errorf("compat/differences.yaml: the entry for %s names the request %q, which requests.yaml does not have", e.Path, name)
 			}
 		}
@@ -140,7 +145,7 @@ func (a *Allowlist) Unused() []Entry {
 		for _, name := range e.Requests {
 			// A request that failed before its differences were filtered (an
 			// error, no rows) says nothing about whether its entries still apply.
-			if !a.failed[name] && !a.used[i][name] {
+			if !a.failed[name] && !a.used[i][name] && !strings.HasPrefix(name, replayedElsewhere) {
 				e.Requests = []string{name}
 				out = append(out, e)
 			}

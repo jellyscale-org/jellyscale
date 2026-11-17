@@ -105,7 +105,7 @@ func TestGeneratedFilmsAndSettingsNeverMoveAnIndexOrHideTheSoundOrAnUntaggedTrac
 	}
 
 	type settings struct {
-		viewer                          viewer
+		viewer, twin                    viewer // The twin has the same languages and hides nothing.
 		audioOn, subtitleOn, showAll    bool
 		audioLanguage, subtitleLanguage string
 	}
@@ -133,6 +133,7 @@ func TestGeneratedFilmsAndSettingsNeverMoveAnIndexOrHideTheSoundOrAnUntaggedTrac
 			raw = canon(prefs)
 		}
 		s.viewer = f.viewer(t, fmt.Sprintf("generated%d", i), s.audioLanguage, s.subtitleLanguage, raw)
+		s.twin = f.viewer(t, fmt.Sprintf("twin%d", i), s.audioLanguage, s.subtitleLanguage, "{}")
 		viewers = append(viewers, s)
 	}
 
@@ -176,6 +177,8 @@ func TestGeneratedFilmsAndSettingsNeverMoveAnIndexOrHideTheSoundOrAnUntaggedTrac
 
 		base := sourceOf(f.info(t, 0, plain, film, extra))
 		got := sourceOf(f.info(t, 0, s.viewer, film, extra))
+		// The audio language moves the default and the decision (JS-121), so those are compared with a viewer of the same languages.
+		twin := sourceOf(f.info(t, 0, s.twin, film, extra))
 		bs, gs := streamsOf(t, base["MediaStreams"]), streamsOf(t, got["MediaStreams"])
 		if len(bs) != len(gs) {
 			t.Fatalf("%s: %d streams, a viewer with no settings gets %d", label, len(gs), len(bs))
@@ -223,13 +226,13 @@ func TestGeneratedFilmsAndSettingsNeverMoveAnIndexOrHideTheSoundOrAnUntaggedTrac
 		if baseAudio > 0 && listedAudio == 0 {
 			t.Fatalf("%s: the film has %d audio tracks and none is listed as Audio", label, baseAudio)
 		}
-		if value, ok := base["DefaultAudioStreamIndex"].(float64); ok && value >= 0 && int(value) < len(gs) && gs[int(value)]["Type"] != "Audio" {
+		if value, ok := got["DefaultAudioStreamIndex"].(float64); ok && value >= 0 && int(value) < len(gs) && gs[int(value)]["Type"] != "Audio" {
 			t.Fatalf("%s: the default audio track %v is not listed as Audio", label, value)
 		}
 		checkDefaults(t, label, got)
 		for _, key := range []string{"DefaultAudioStreamIndex", "DefaultSubtitleStreamIndex", "SupportsDirectPlay", "SupportsTranscoding", "IsOriginal"} {
-			if got[key] != base[key] {
-				t.Fatalf("%s: %s = %v, a viewer with no settings gets %v", label, key, got[key], base[key])
+			if got[key] != twin[key] {
+				t.Fatalf("%s: %s = %v, a viewer with the same languages and no hiding gets %v", label, key, got[key], twin[key])
 			}
 		}
 	}

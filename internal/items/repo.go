@@ -391,10 +391,14 @@ func (r *Repo) UserDataFor(ctx context.Context, userID, itemID string) (map[stri
 	return UserDataDTO(itemID, d), true, nil
 }
 
-// MediaSources returns an item's stored media sources.
+// MediaSources returns an item's stored media sources, each with the file's audio tracks (AudioTracks), which the
+// stored DTO lists only the default of, read in the same statement.
 func (r *Repo) MediaSources(ctx context.Context, itemID string) ([]media.MediaSource, bool, error) {
-	var raw []byte
-	err := r.Pool.QueryRow(ctx, "SELECT COALESCE(dto->'MediaSources', '[]'::jsonb) FROM shown_items WHERE id = $1::uuid", itemID).Scan(&raw)
+	var raw, audio []byte
+	err := r.Pool.QueryRow(ctx, `SELECT COALESCE(dto->'MediaSources', '[]'::jsonb),
+		COALESCE((SELECT jsonb_object_agg(replace(m.id::text, '-', ''), (SELECT COALESCE(jsonb_agg(s), '[]'::jsonb)
+			FROM jsonb_array_elements(m.streams) s WHERE s->>'Type' = 'Audio')) FROM media_sources m WHERE m.item_id = shown_items.id), '{}'::jsonb)
+		FROM shown_items WHERE id = $1::uuid`, itemID).Scan(&raw, &audio)
 	if err == pgx.ErrNoRows {
 		return nil, false, nil
 	}
@@ -404,6 +408,13 @@ func (r *Repo) MediaSources(ctx context.Context, itemID string) ([]media.MediaSo
 	var sources []media.MediaSource
 	if err := json.Unmarshal(raw, &sources); err != nil {
 		return nil, false, err
+	}
+	var tracks map[string][]media.MediaStream
+	if err := json.Unmarshal(audio, &tracks); err != nil {
+		return nil, false, err
+	}
+	for i := range sources {
+		sources[i].AudioTracks = tracks[sources[i].ID]
 	}
 	return sources, true, nil
 }

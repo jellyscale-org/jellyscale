@@ -45,7 +45,10 @@ type MediaSource struct {
 	SupportsProbing       bool `json:"SupportsProbing"`
 	HasSegments           bool `json:"HasSegments"`
 
-	MediaStreams     []MediaStream     `json:"MediaStreams"`
+	MediaStreams []MediaStream `json:"MediaStreams"`
+	// AudioTracks is every audio stream of the file, from the stored row, which the DTO lists one of. It is read with
+	// the sources and never sent.
+	AudioTracks      []MediaStream     `json:"-"`
 	MediaAttachments []MediaAttachment `json:"MediaAttachments"`
 	Formats          []string          `json:"Formats"`
 

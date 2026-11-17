@@ -245,7 +245,7 @@ func (s *Server) getItem(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	if err := s.hideUndeliverable(r.Context(), id, dto, trackFilterOf(sessionOf(r).User)); err != nil {
+	if err := s.hideUndeliverable(r.Context(), id, dto, sessionOf(r).User); err != nil {
 		s.fail(w, r, err)
 		return
 	}
@@ -269,7 +269,7 @@ func markOriginal(source *media.MediaSource) string {
 // twice, in MediaStreams and in MediaSources. The repo leaves no attachments in
 // a DTO, so it is the stored sources that are made over: they have them, as
 // the candidates for listFonts.
-func (s *Server) hideUndeliverable(ctx context.Context, itemID string, dto map[string]any, filter playback.TrackFilter) error {
+func (s *Server) hideUndeliverable(ctx context.Context, itemID string, dto map[string]any, user User) error {
 	if _, ok := dto["MediaSources"]; !ok {
 		return nil
 	}
@@ -294,9 +294,15 @@ func (s *Server) hideUndeliverable(ctx context.Context, itemID string, dto map[s
 	// The original language is made here, from the streams the item lists, so that a
 	// film scanned earlier has it with no rescan. Each source is marked by its own
 	// default audio; the item answers the first source's language.
+	filter := trackFilterOf(user)
 	for i := range sources {
 		original := markOriginal(&sources[i])
 		hideTracks(&sources[i], filter)
+		// The details page's Play sends the track its menu selects, so the item names and lists the viewer's track.
+		if audio, ok := audioChoice(user, sources[i], nil); ok {
+			sources[i].DefaultAudioStreamIndex = media.Ptr(audio)
+			listAudio(&sources[i], audio, original)
+		}
 		if i == 0 && original != "" {
 			dto["OriginalLanguage"] = original
 		}

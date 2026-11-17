@@ -97,7 +97,12 @@ func traceReplicas(t *testing.T, e *env) []*statementLog {
 
 var writes = regexp.MustCompile(`(?i)\b(delete|update)\b`)
 
-func namesSource(sql string) bool { return strings.Contains(strings.ToLower(sql), "media_sources") }
+// namesSource is true of a statement that reads a source's row. The list of an item's sources reads the file's audio
+// tracks with them (JS-121), from the same row of the item, and is not a read of a source.
+func namesSource(sql string) bool {
+	sql = strings.ToLower(sql)
+	return strings.Contains(sql, "media_sources") && !strings.HasPrefix(sql, "select coalesce(dto->'mediasources'")
+}
 
 func count(statements []string, match func(string) bool) (n int) {
 	for _, sql := range statements {
