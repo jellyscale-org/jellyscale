@@ -867,6 +867,12 @@ fonts-dejavu-core_1.0_amd64.deb
 libfakedep_1.0_amd64.deb" "$(ls "$apt/debs" | sort)"
 FAKE_PREINSTALLED="fontconfig fonts-dejavu-core" apt_run pre_hit ffmpeg fontconfig fonts-dejavu-core
 check "... and the next run is a hit: no update, no mirror" "0 0" "$(grep -c 'apt-get.* update' "$apt/pre_hit.log") $(grep -c '^NET ' "$apt/pre_hit.log")"
+# A cache that lacks a dependency the hit needs (run 44012242557: apt could not fetch it with no mirror) falls back
+# to the mirror instead of failing the job.
+rm -f "$apt/debs"/libfakedep_*.deb; rm -rf "$apt/archives"; mkdir -p "$apt/archives"
+FAKE_PREINSTALLED="fontconfig fonts-dejavu-core" apt_run gap ffmpeg fontconfig fonts-dejavu-core
+check "a hit whose files lack a dependency still exits 0" "0" "$(cat "$apt/gap.status")"
+check "... by installing from the mirror" "INSTALLED ffmpeg" "$(grep '^INSTALLED ffmpeg' "$apt/gap.log" | tail -1)"
 
 # --- ci.yml (JS-129): the deb cache, the jars cache, the guard of the ffmpeg version, no waiting for lint-and-unit, the
 # summary and the cancelling of the media jobs when lint-and-unit fails. Each line is "name<TAB>ok" or "name<TAB>why".
