@@ -85,6 +85,7 @@ Every other method and path gets the catch-all's 404, with or without a token.
 | `GET /jellyscale/v1/track-preferences` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
 | `PATCH /jellyscale/v1/track-preferences` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
 | `POST /jellyscale/v1/items/{itemId}/playback-info` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
+| `PATCH /jellyscale/v1/users/configuration` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
 | `GET /LiveTv/Programs` | Answers a question about the server, or a stub for a feature not built | viewer | the server |
 | `GET /LiveTv/Programs/Recommended` | Answers a question about the server, or a stub for a feature not built | viewer | the server |
 | `GET /Localization/Cultures` | Answers a question about the server, or a stub for a feature not built | viewer | the server |

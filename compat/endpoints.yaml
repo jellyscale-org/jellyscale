@@ -28,6 +28,7 @@ routes:
   - {method: POST, path: "/jellyscale/v1/items/{itemId}/playback-info", status: implemented, role: api, access: viewer}
   - {method: GET, path: "/jellyscale/v1/track-preferences", status: implemented, role: api, access: viewer}
   - {method: PATCH, path: "/jellyscale/v1/track-preferences", status: implemented, role: api, access: viewer}
+  - {method: PATCH, path: "/jellyscale/v1/users/configuration", status: implemented, role: api, access: viewer}
   - {method: GET, path: "/LiveTv/Programs", status: stub, role: api, access: viewer}
   - {method: GET, path: "/LiveTv/Programs/Recommended", status: stub, role: api, access: viewer}
   - {method: GET, path: "/Localization/Cultures", status: implemented, role: api, access: viewer}

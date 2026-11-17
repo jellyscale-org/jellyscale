@@ -1,13 +1,18 @@
 package api
 
 import (
+	"bytes"
 	_ "embed"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"jellyscale/internal/db"
 )
@@ -205,4 +210,119 @@ var cultures []byte
 func listCultures(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Write(cultures) //nolint:errcheck
+}
+
+// maxConfigurationPatchBody is the largest body of PATCH /jellyscale/v1/users/configuration, as POST's.
+const maxConfigurationPatchBody = 1 << 16
+
+// patchConfiguration serves PATCH /jellyscale/v1/users/configuration: it changes the caller's fields the body names
+// and answers the whole Configuration as stored.
+func (s *Server) patchConfiguration(w http.ResponseWriter, r *http.Request) {
+	session := sessionOf(r)
+	raw, err := io.ReadAll(io.LimitReader(r.Body, maxConfigurationPatchBody+1))
+	if err != nil || len(raw) > maxConfigurationPatchBody {
+		http.Error(w, "body is unreadable or over 65,536 bytes", http.StatusBadRequest)
+		return
+	}
+	patch, names, err := parseConfigurationPatch(raw)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	body, _ := json.Marshal(patch)
+	// One statement, so a save that lands while this one waits for the row is merged into, not overwritten.
+	var stored []byte
+	err = s.Pool.QueryRow(r.Context(), `UPDATE users SET configuration = COALESCE(configuration, '{}'::jsonb) || $2::jsonb
+		WHERE id = $1::uuid RETURNING configuration`, session.User.ID, string(body)).Scan(&stored)
+	if errors.Is(err, pgx.ErrNoRows) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	if len(names) > 0 {
+		s.Log.Info("user configuration saved", "user", session.User.ID, "fields", strings.Join(names, ","))
+	}
+	writeJSON(w, configurationOf(stored))
+}
+
+// parseConfigurationPatch reads a body that is one object naming each saveable field at most once, names exact, and
+// returns the fields with their values as stored, and their names in the order sent. Values are read as POST reads
+// them, except that null is refused. The error says what is wrong.
+func parseConfigurationPatch(raw []byte) (map[string]any, []string, error) {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	if token, err := dec.Token(); err != nil || token != json.Delim('{') {
+		return nil, nil, errors.New("body must be one JSON object")
+	}
+	patch := map[string]any{}
+	var names []string
+	for dec.More() {
+		token, err := dec.Token()
+		if err != nil {
+			return nil, nil, errors.New("body is not valid JSON")
+		}
+		name, _ := token.(string)
+		var value json.RawMessage
+		if err := dec.Decode(&value); err != nil {
+			return nil, nil, errors.New("body is not valid JSON")
+		}
+		if _, repeated := patch[name]; repeated {
+			return nil, nil, fmt.Errorf("%s is named twice", name)
+		}
+		if string(value) == "null" && slices.Contains(configurationFields, name) {
+			return nil, nil, fmt.Errorf("%s is null: name a value, and clear a language with an empty string", name)
+		}
+		var stored any
+		switch name {
+		case "AudioLanguagePreference", "SubtitleLanguagePreference":
+			var text string
+			if json.Unmarshal(value, &text) != nil {
+				return nil, nil, fmt.Errorf("%s must be a string", name)
+			}
+			stored = text
+		case "PlayDefaultAudioTrack", "DisplayMissingEpisodes", "DisplayCollectionsView", "EnableLocalPassword", "HidePlayedInLatest",
+			"RememberAudioSelections", "RememberSubtitleSelections", "EnableNextEpisodeAutoPlay":
+			var on bool
+			if json.Unmarshal(value, &on) != nil {
+				return nil, nil, fmt.Errorf("%s must be true or false", name)
+			}
+			stored = on
+		case "GroupedFolders", "OrderedViews", "LatestItemsExcludes", "MyMediaExcludes":
+			var sent []string
+			if json.Unmarshal(value, &sent) != nil {
+				return nil, nil, fmt.Errorf("%s must be a list of ids", name)
+			}
+			ids, ok := compactIDs(sent)
+			if !ok {
+				return nil, nil, fmt.Errorf("%s holds an entry that is not an id", name)
+			}
+			stored = ids
+		case "SubtitleMode":
+			mode, ok := subtitleModeOf(value)
+			if !ok {
+				return nil, nil, fmt.Errorf("SubtitleMode must be one of %s, or its number", strings.Join(subtitleModes, ", "))
+			}
+			stored = mode
+		default:
+			return nil, nil, fmt.Errorf("unknown field %s (CastReceiverId cannot be saved; names are exact)", name)
+		}
+		patch[name] = stored
+		names = append(names, name)
+	}
+	if _, err := dec.Token(); err != nil { // The closing brace.
+		return nil, nil, errors.New("body is not valid JSON")
+	}
+	if _, err := dec.Token(); err != io.EOF {
+		return nil, nil, errors.New("body has text after the object")
+	}
+	return patch, names, nil
+}
+
+// configurationFields are the 15 fields a client can save.
+var configurationFields = []string{
+	"AudioLanguagePreference", "PlayDefaultAudioTrack", "SubtitleLanguagePreference", "DisplayMissingEpisodes", "GroupedFolders",
+	"SubtitleMode", "DisplayCollectionsView", "EnableLocalPassword", "OrderedViews", "LatestItemsExcludes", "MyMediaExcludes",
+	"HidePlayedInLatest", "RememberAudioSelections", "RememberSubtitleSelections", "EnableNextEpisodeAutoPlay",
 }

@@ -22,8 +22,9 @@ func TestTheTrackPreferenceRoutesAreTheOnlyOnesUnderJellyscaleAndAreViewerRoutes
 			found[routeName(route)] = route
 		}
 	}
-	if len(found) != 3 { // JS-120 adds the marked PlaybackInfo.
-		t.Errorf("%d routes under /jellyscale/, want the two of the track preferences and the marked PlaybackInfo: %v", len(found), found)
+	// JS-120 adds the marked PlaybackInfo, JS-123 PATCH /jellyscale/v1/users/configuration (users_configuration_patch_test.go).
+	if len(found) != 4 {
+		t.Errorf("%d routes under /jellyscale/, want the two of the track preferences, the marked PlaybackInfo and the users' configuration: %v", len(found), found)
 	}
 	for _, name := range trackPreferenceRoutes {
 		route, ok := found[name]
@@ -38,7 +39,7 @@ func TestTheTrackPreferenceRoutesAreTheOnlyOnesUnderJellyscaleAndAreViewerRoutes
 	}
 }
 
-func TestEndpointsYamlListsExactlyTheTwoTrackPreferenceRoutes(t *testing.T) {
+func TestEndpointsYamlListsExactlyTheRoutesUnderJellyscale(t *testing.T) {
 	raw, err := os.ReadFile("../../compat/endpoints.yaml")
 	if err != nil {
 		t.Fatal(err)
@@ -53,6 +54,7 @@ func TestEndpointsYamlListsExactlyTheTwoTrackPreferenceRoutes(t *testing.T) {
 		`- {method: POST, path: "/jellyscale/v1/items/{itemId}/playback-info", status: implemented, role: api, access: viewer}`,
 		`- {method: GET, path: "/jellyscale/v1/track-preferences", status: implemented, role: api, access: viewer}`,
 		`- {method: PATCH, path: "/jellyscale/v1/track-preferences", status: implemented, role: api, access: viewer}`,
+		`- {method: PATCH, path: "/jellyscale/v1/users/configuration", status: implemented, role: api, access: viewer}`,
 	}
 	if strings.Join(lines, "\n") != strings.Join(want, "\n") {
 		t.Errorf("compat/endpoints.yaml lists under /jellyscale/:\n%s\nwant:\n%s", strings.Join(lines, "\n"), strings.Join(want, "\n"))
