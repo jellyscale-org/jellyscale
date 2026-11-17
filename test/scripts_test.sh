@@ -261,34 +261,120 @@ printf 'shard 0/3: ran 2 of 12\nmore output\n' >"$tmp/gate"
 fails_with "a shard line that is not the last line fails" bash test/check-shards.sh line "$tmp/gate"
 fails_with "a missing file fails" bash test/check-shards.sh line "$tmp/none"
 
-# --- changes.sh: docs-only means Markdown in the root or under docs/, or tasks/prd.json.
+# --- changes.sh (JS-132): docs-only means every path is under .claude/ or tasks/, a Markdown file in the root, or docs/*.md.
 g="$tmp/git"
 git init -q "$g" && cd "$g" || exit 1
 git config user.email t@t && git config user.name t
-mkdir -p docs .claude/agents compat src tasks && echo 1 >tasks/prd.json && echo 1 >tasks/other.json && echo 1 >README.md && echo 1 >docs/a.md && echo 1 >docs/a.txt && echo 1 >src/a.go && echo 1 >.claude/agents/qa.md && echo 1 >compat/x.md
+mkdir -p docs .claude/agents .claude/workflows compat src tasks internal/tasks docs/.claude .claude-old
+echo 1 >tasks/prd.json && echo 1 >tasks/other.json && echo 1 >tasks/backlog.json && echo 1 >README.md && echo 1 >docs/a.md && echo 1 >docs/a.txt
+echo 1 >src/a.go && echo 1 >src/b.go && echo 1 >.claude/agents/qa.md && echo 1 >.claude/workflows/build.js && echo 1 >compat/x.md
+echo 1 >.claude-old/x && echo 1 >.claudeignore && echo 1 >tasks.json && echo 1 >internal/tasks/x.go && echo 1 >docs/.claude/x && mkdir -p docs/sub && echo 1 >docs/sub/x.md
+mkdir -p .github/workflows && echo 1 >.github/workflows/ci.yml
 git add -A && git commit -qm base
-changed() { git add -A && git commit -qm change && bash "$repo/test/changes.sh" HEAD~1 HEAD; }
-echo 2 >>README.md; echo 2 >>docs/a.md
-check "a root .md and docs/*.md are docs-only" docs-only "$(changed)"
-echo 2 >>tasks/prd.json; echo 2 >>docs/a.md
-check "tasks/prd.json with docs is docs-only" docs-only "$(changed)"
-echo 2 >>tasks/other.json
-check "another file under tasks/ is code" code "$(changed)"
-echo 2 >>docs/a.txt
-check "a file under docs/ that is not Markdown is code" code "$(changed)"
-echo 2 >>README.md; echo 2 >>src/a.go
-check "a Go file with a doc is code" code "$(changed)"
-echo 2 >>.claude/agents/qa.md
-check ".claude is code even for a .md" code "$(changed)"
-echo 2 >>compat/x.md
-check "compat is code even for a .md" code "$(changed)"
-git mv src/a.go docs/b.md
-check "code renamed into docs/ is code" code "$(changed)"
-git mv README.md moved.txt
-check "a renamed .md is code" code "$(changed)"
+# try <name> <want> <command...>: runs the command in the repository, asks changes.sh about it, then puts the tree back.
+try() {
+  local name=$1 want=$2; shift 2
+  "$@"
+  git add -A && git commit -qm change
+  check "changes.sh: $name" "$want" "$(bash "$repo/test/changes.sh" HEAD~1 HEAD)"
+  git reset -q --hard HEAD~1 && git clean -fdq
+}
+edit() { local f; for f in "$@"; do echo 2 >>"$f"; done; }
+try "a root .md and docs/*.md are docs-only" docs-only edit README.md docs/a.md
+try "tasks/prd.json is docs-only" docs-only edit tasks/prd.json
+try "another file under tasks/ is docs-only" docs-only edit tasks/other.json
+try "tasks/backlog.json alone is docs-only" docs-only edit tasks/backlog.json
+try "a .md under .claude/ is docs-only" docs-only edit .claude/agents/qa.md
+try "a .js under .claude/ is docs-only" docs-only edit .claude/workflows/build.js
+try "a new file of any type under .claude/ and tasks/ is docs-only" docs-only bash -c 'mkdir -p .claude/deep/er tasks/a && echo 1 >.claude/deep/er/x.yaml && echo 1 >tasks/a/b.bin'
+try ".claude/, tasks/, a root .md and docs/*.md together are docs-only" docs-only edit .claude/workflows/build.js tasks/backlog.json README.md docs/a.md
+try "a Go file with a doc is code" code edit README.md src/a.go
+try "a Go file with .claude/ and tasks/ is code" code edit .claude/agents/qa.md tasks/backlog.json src/a.go
+try "compat/x.md is code" code edit compat/x.md
+try "docs/a.txt is code" code edit docs/a.txt
+try "docs/sub/x.md is code" code edit docs/sub/x.md
+try "docs/a.txt with .claude/ is code" code edit docs/a.txt .claude/agents/qa.md
+try ".github/workflows/ci.yml is code" code edit .github/workflows/ci.yml
+try ".github/workflows/ci.yml with tasks/ is code" code edit .github/workflows/ci.yml tasks/backlog.json
+try ".claude-old/x is code" code edit .claude-old/x
+try "a root .claudeignore is code" code edit .claudeignore
+try "a root tasks.json is code" code edit tasks.json
+try "internal/tasks/x.go is code" code edit internal/tasks/x.go
+try "docs/.claude/x is code" code edit docs/.claude/x
+try "a Go file renamed into .claude/ is code" code git mv src/a.go .claude/a.go
+try "a Go file renamed into tasks/ is code" code git mv src/a.go tasks/a.go
+try "a file moved out of .claude/ to a code path is code" code git mv .claude/agents/qa.md src/qa.go
+try "a file moved out of tasks/ to a code path is code" code git mv tasks/other.json src/other.json
+try "a file moved out of .claude/ to a root .md is docs-only (both paths are accepted kinds; no rename detection is asked for)" docs-only git mv .claude/agents/qa.md moved.md
+try "a deleted Go file is code" code git rm -q src/a.go
+try "a deleted file under .claude/ is docs-only" docs-only git rm -q .claude/agents/qa.md
+try "a rename inside .claude/ is docs-only" docs-only git mv .claude/agents/qa.md .claude/agents/qa2.md
+try "a rename from .claude/ to tasks/ is docs-only" docs-only git mv .claude/agents/qa.md tasks/qa.md
+try "a rename from tasks/ to .claude/ is docs-only" docs-only git mv tasks/other.json .claude/other.json
+try "a deletion under tasks/ with a rename under .claude/ is docs-only" docs-only bash -c 'git rm -q tasks/other.json && git mv .claude/agents/qa.md .claude/qa.md'
+try "a renamed root .md that becomes .txt is code" code git mv README.md moved.txt
+try "code renamed into docs/ is code" code git mv src/a.go docs/b.md
 check "an empty diff is code" code "$(bash "$repo/test/changes.sh" HEAD HEAD)"
 check "an unreadable diff is code" code "$(bash "$repo/test/changes.sh" nosuchbase...HEAD)"
 cd "$repo" || exit 1
+
+# --- ci.yml (JS-132): the changes job on a change confined to .claude/ and tasks/. Its script is run for each event.
+cj="$tmp/changes-job"
+mkdir -p "$cj/repo" && cd "$cj/repo" || exit 1
+git init -q . && git config user.email t@t && git config user.name t
+mkdir -p .claude/workflows tasks src && echo 1 >.claude/workflows/build.js && echo 1 >tasks/backlog.json && echo 1 >src/a.go
+git add -A && git commit -qm base && base=$(git rev-parse HEAD)
+echo 2 >>.claude/workflows/build.js && echo 2 >>tasks/backlog.json && git commit -qam claude-only && claude_only=$(git rev-parse HEAD)
+echo 2 >>src/a.go && git commit -qam code && with_code=$(git rev-parse HEAD)
+python3 -I - "$repo/.github/workflows/ci.yml" "$repo/test/changes.sh" >"$cj/run.sh" <<'EOF'
+import sys, yaml
+steps = yaml.safe_load(open(sys.argv[1]))["jobs"]["changes"]["steps"]
+print([s for s in steps if s.get("id") == "diff"][0]["run"].replace("test/changes.sh", sys.argv[2]))
+EOF
+changes_job() { # event base head full: prints the job's outputs on one line
+  : >"$cj/out"
+  GITHUB_EVENT_NAME=$1 GITHUB_OUTPUT=$cj/out PR_BASE=$2 PR_HEAD=$3 QUEUE_BASE=$2 QUEUE_HEAD=$3 FULL=$4 bash "$cj/run.sh" >/dev/null 2>&1
+  tr '\n' ' ' <"$cj/out"
+}
+names() { grep -oE '\.claude/|tasks/' <<<"$1" | sort -u | wc -l | tr -d ' '; }
+out=$(changes_job merge_group "$base" "$claude_only" false)
+check "ci.yml: a merge group of .claude/ and tasks/ skips the media tiers, naming both" "code=false 2" "$(grep -o 'code=false' <<<"$out") $(names "$out")"
+check "ci.yml: ... and gives not the old reason" "0" "$(grep -c 'only docs or tasks/prd.json changed' <<<"$out")"
+out=$(changes_job pull_request "$base" "$claude_only" true)
+check "ci.yml: a ci:full pull request of .claude/ and tasks/ skips the media tiers, naming both" "code=false 2" "$(grep -o 'code=false' <<<"$out") $(names "$out")"
+out=$(changes_job merge_group "$base" "$with_code" false)
+check "ci.yml: a merge group with code runs the media tiers" "code=true" "$(grep -o 'code=true' <<<"$out")"
+out=$(changes_job pull_request "$base" "$with_code" true)
+check "ci.yml: a ci:full pull request with code runs the media tiers" "code=true" "$(grep -o 'code=true' <<<"$out")"
+out=$(changes_job pull_request "$base" "$claude_only" false)
+check "ci.yml: a pull request without ci:full says the media tiers run in the merge queue" "code=false 1" "$(grep -o 'code=false' <<<"$out") $(grep -c 'a pull request: the media tiers run in the merge queue' <<<"$out")"
+out=$(changes_job push "$base" "$with_code" false)
+check "ci.yml: a push to main says it was tested in its merge group" "code=false 1" "$(grep -o 'code=false' <<<"$out") $(grep -c 'a push to main, tested in its merge group' <<<"$out")"
+cd "$repo" || exit 1
+js132=$(python3 -I - .github/workflows/ci.yml <<'EOF'
+import sys, yaml
+jobs = yaml.safe_load(open(sys.argv[1]))["jobs"]
+lu = jobs["lint-and-unit"]
+print("lint-and-unit has no needs or if" if "needs" not in lu and "if" not in lu else "lint-and-unit has needs or if")
+want = "needs.changes.outputs.code == 'true'"
+for j in ("integration-total", "integration-shard", "roles", "e2e-shard"):
+    print(f"{j} still waits for changes and runs only for code" if jobs[j].get("needs") == "changes" and jobs[j].get("if") == want else f"{j} changed")
+print("five dealt shards plus rest" if len(jobs["integration-shard"]["strategy"]["matrix"]["include"]) == 6 else "matrix changed")
+print("cancel-media-jobs kept" if "cancel-media-jobs" in jobs else "cancel-media-jobs gone")
+print("integration says why the shards did not run" if "did not run: $WHY" in str(jobs["integration"]["steps"]) else "integration lost its reason")
+print("e2e says why the shards did not run" if "did not run: $WHY" in str(jobs["e2e"]["steps"]) else "e2e lost its reason")
+EOF
+)
+check "ci.yml: lint-and-unit runs on every change" "lint-and-unit has no needs or if" "$(sed -n 1p <<<"$js132")"
+for j in integration-total integration-shard roles e2e-shard; do
+  check "ci.yml: $j is gated on changes as before" "$j still waits for changes and runs only for code" "$(grep "^$j " <<<"$js132")"
+done
+check "ci.yml: the dealt shards and cancel-media-jobs stay" "five dealt shards plus rest cancel-media-jobs kept" "$(grep -E '^(five dealt|cancel-media)' <<<"$js132" | paste -sd' ')"
+check "ci.yml: integration and e2e still say why the shards did not run" "2" "$(grep -c 'says why the shards did not run' <<<"$js132")"
+head_ci=$(sed -n '/^jobs:/q;p' .github/workflows/ci.yml)
+head_ch=$(sed -n '/^set -uo/q;p' test/changes.sh)
+check "ci.yml's top comment gives the rule for .claude/ and tasks/ and names the guard test" "yes" "$(grep -q '\.claude/' <<<"$head_ci" && grep -q 'tasks/' <<<"$head_ci" && grep -qi 'guard' <<<"$head_ci" && echo yes || echo no)"
+check "changes.sh's top comment gives the rule for .claude/ and tasks/ and names the guard test" "yes" "$(grep -q '\.claude/' <<<"$head_ch" && grep -q 'tasks/' <<<"$head_ch" && grep -qi 'guard' <<<"$head_ch" && echo yes || echo no)"
 
 # --- fixtures: cached.sh with a stand-in ffmpeg that writes a file and logs the call.
 shim="$tmp/shim"

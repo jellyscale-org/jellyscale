@@ -4,7 +4,7 @@
 # [] for any array index, and why the difference is allowed. An entry hides nothing in
 # any other request, even one to the same route, and a name that is no request fails the
 # tier. kind is improvement (better than Jellyfin), non-goal (PRODUCT.md leaves it out)
-# or gap (to close, with the task in tasks/prd.json). A difference not listed here fails
+# or gap (to close, with the task in the task plan). A difference not listed here fails
 # the tier; an entry that no longer matches in a request is reported, so remove it. A
 # path ending in "(ids)" is which items a listing holds, and in what order when the
 # request is ordered; it must pin the Ids jellyscale answers today (jellyscale:), so a
