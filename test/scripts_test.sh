@@ -16,6 +16,23 @@ fails_with() { # name command...: the command must exit non-zero
   if "$@" >"$tmp/out" 2>&1; then echo "FAIL  $name: succeeded"; fails=$((fails + 1)); else echo "ok    $name"; fi
 }
 
+# `go test -list` answers the same until the tests change, and the real one links every test binary (about 5 CPU seconds
+# for rest). So the checkout's own listings come from a cache: the first call of each is the real one.
+gocache="$tmp/gocache"; mkdir -p "$gocache"
+cat >"$gocache/go" <<'SHIM'
+#!/bin/bash
+if [[ $1 == test && " $* " == *" -list "* && $PWD == "$GOCACHE_REPO" ]]; then
+  f=$GOCACHE_DIR/$(printf '%s\0' "$@" | md5sum | cut -c1-32)
+  if [[ ! -f $f ]]; then PATH=${PATH#"$GOCACHE_DIR":} "$GOCACHE_REAL" "$@" >"$f.$$" || { cat "$f.$$"; rm -f "$f.$$"; exit 1; }; mv "$f.$$" "$f"; fi
+  cat "$f"; exit 0
+fi
+# go starts go again by name for some commands: not this one.
+PATH=${PATH#"$GOCACHE_DIR":} exec "$GOCACHE_REAL" "$@"
+SHIM
+chmod +x "$gocache/go"
+export GOCACHE_REAL=$(go env GOROOT)/bin/go GOCACHE_DIR=$gocache GOCACHE_REPO=$repo
+export PATH="$gocache:$PATH"
+
 # --- shard.sh (JS-129): internal/transcode and internal/api are dealt by time, in one list; every test of the
 # tier lands in one shard of ci.yml's matrix, and only one. The interface these checks use, which the build gives it:
 #   test/shard.sh list <i/n|rest>   one line "<package> <test>" for each test the shard runs, the package relative
@@ -1300,18 +1317,20 @@ key = os.environ.get("JELLYSCALE_TEST_DATABASE_URL", "")
 start = time.time()
 def locked(name, fn):
     with open(fake + "/" + name, "a+") as f:
-        fcntl.flock(f, fcntl.LOCK_EX); f.seek(0); r = fn(f); fcntl.flock(f, fcntl.LOCK_UN); return r
+        fcntl.flock(f, fcntl.LOCK_EX); f.seek(0); r = fn(f); f.flush(); fcntl.flock(f, fcntl.LOCK_UN); return r  # flushed before the unlock: the next process reads what this one wrote
 rank = -1
 def note_clash(what): open(fake + "/clash.txt", "a").write(what + "\n")
 def midrun(): # a share that registered and has not finished
     return [r for r in os.listdir(fake) if r.startswith("run.") and not os.path.exists(fake + "/done." + r[4:])]
 if is_alone:
-    # Hold for a bounded time, so a build that starts this process beside the shares meets them whichever starts first,
-    # and say so when any share is running or registers meanwhile (the shares end only once all of them are running).
+    # Stay until every share has registered and ended, so a build that starts this process beside the shares meets
+    # them whichever starts first, and say so when any share is running or registers meanwhile (the shares end only
+    # once all of them are running). A build that runs this process before the shares leaves at the bound.
     open(fake + "/alone-running", "w").write("x")
     until = time.time() + 2.0
     while time.time() < until:
         if midrun(): note_clash("a share was running during the alone phase: %s" % midrun()); break
+        if len(open(fake + "/reg.txt").read().split() if os.path.exists(fake + "/reg.txt") else []) >= int(os.environ.get("FAKE_WANT_PROCS", "1")): break
         time.sleep(0.05)
     if os.path.exists(fake + "/alone-running"): os.remove(fake + "/alone-running")
 if not is_alone:
@@ -1329,6 +1348,7 @@ if not is_alone:
                 open(fake + "/barrier-timeout", "w").write("x"); sys.exit(3)
             time.sleep(0.05)
     if os.path.exists(fake + "/done.%d" % rank): os.remove(fake + "/done.%d" % rank)
+    deadline_end = time.time() + float(os.environ.get("FAKE_BARRIER_S", "60"))
     open(fake + "/run.%d" % rank, "w").write("x")
     if os.path.exists(fake + "/alone-running"): note_clash("a share registered while the alone process was running")
     if not (os.environ.get("TMPDIR") and os.path.isdir(os.environ["TMPDIR"]) and os.path.isdir(os.path.dirname(jsonfile) or ".")):
@@ -1336,7 +1356,9 @@ if not is_alone:
     if os.environ.get("FAKE_HOLD"):
         open(fake + "/held.%d" % rank, "w").write("x")
         time.sleep(120)
-    time.sleep(0.4 * rank)  # ranks end in order, so "first" and "last" to end are rank 0 and the last
+    # Ranks end in order, so "first" and "last" to end are rank 0 and the last: each waits for the one before it.
+    while rank > 0 and not os.path.exists(fake + "/done.%d" % (rank - 1)) and time.time() < deadline_end:
+        time.sleep(0.02)
 faults = {}
 for f in filter(None, os.environ.get("FAKE_FAULT", "").split(",")):
     kind, who = f.split("@")
