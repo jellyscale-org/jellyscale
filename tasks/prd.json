@@ -2625,11 +2625,10 @@
       "dependsOn": [
         "JS-129"
       ],
-      "notes": "The 20-minute and 85-runner-minute bounds come from local experiments, not from CI; if the first queue runs show a 4-vCPU runner cannot hold them at two processes for transcode and four for the rest, the lead restates them from those runs, never by removing or loosening a test. A Postgres per process, not a database per process: some transcode tests end backends chosen from pg_locks, which is cluster-wide. core: true. Planned by Fable 5.2 (.results/test-time-fable-2026-11-16.md). Owner's decisions 2026-11-16: skip the media tiers for .claude/ and tasks/ changes with a guard test (JS-132); cancel media shards when lint-and-unit fails; the merge queue builds 2 entries (back to 3 once a run costs under ~150 runner-minutes and under a fifth of runs fail) with a 90-minute check timeout, set by the lead.",
-      "passes": false,
-      "status": "todo",
-      "source": "owner 2026-11-16, Fable 5.2 test-time audit",
-      "priority": 11
+      "notes": "The 20-minute and 85-runner-minute bounds come from local experiments, not from CI; if the first queue runs show a 4-vCPU runner cannot hold them at two processes for transcode and four for the rest, the lead restates them from those runs, never by removing or loosening a test. A Postgres per process, not a database per process: some transcode tests end backends chosen from pg_locks, which is cluster-wide. core: true. Planned by Fable 5.2 (.results/test-time-fable-2026-11-16.md). Owner's decisions 2026-11-16: skip the media tiers for .claude/ and tasks/ changes with a guard test (JS-132); cancel media shards when lint-and-unit fails; the merge queue builds 2 entries (back to 3 once a run costs under ~150 runner-minutes and under a fifth of runs fail) with a 90-minute check timeout, set by the lead. 2026-11-17: CI runs 0/4 to 3/4 at two processes and rest at four. Every mutant and the JS-066, JS-104 and JS-105 regressions fail side by side; the two access mutants that make Handler() panic stop the shard partway (named) and their declaration tests fail in lint-and-unit. The lead checks the ten queue runs after merge.",
+      "passes": true,
+      "status": "done",
+      "source": "owner 2026-11-16, Fable 5.2 test-time audit"
     },
     {
       "id": "JS-131",
