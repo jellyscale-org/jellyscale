@@ -1010,8 +1010,10 @@ jar_name=$(echo "$first_jar" | awk -F: '{ print $2 "-" $3 ".jar" }')
 echo "not the pinned jar" >"$jv/cache/$jar_name"
 PATH="$jv/bin:$PATH" JELLYSCALE_SDKJVM_CACHE="$jv/cache" bash test/sdkjvm/decode.sh Foo /dev/null >"$jv/out" 2>&1; st=$?
 # --fetch only fills the cache: the push job that does it has no JDK to need.
-mkdir -p "$jv/nojava"; for t in sha256sum cut mkdir rm mv; do ln -sf "$(command -v $t)" "$jv/nojava/$t"; done; cp "$jv/bin/curl" "$jv/nojava/curl"
-PATH="$jv/nojava" /bin/bash test/sdkjvm/decode.sh --fetch >"$jv/fetch.out" 2>&1
+# Its own empty cache and its own curl log: a cold cache makes it ask Maven Central, which the checks below must not count.
+mkdir -p "$jv/nojava" "$jv/fetchcache"; for t in sha256sum cut mkdir rm mv; do ln -sf "$(command -v $t)" "$jv/nojava/$t"; done
+printf '#!/bin/sh\necho "curl $*" >>%s/fetch-curl.log\nexit 22\n' "$jv" >"$jv/nojava/curl"; chmod +x "$jv/nojava/curl"
+PATH="$jv/nojava" JELLYSCALE_SDKJVM_CACHE="$jv/fetchcache" /bin/bash test/sdkjvm/decode.sh --fetch >"$jv/fetch.out" 2>&1
 check "decode.sh --fetch does not ask for java" "0" "$(grep -c 'needs java' "$jv/fetch.out")"
 check "a restored jar whose sha256 differs from jars.txt fails" "nonzero" "$([[ $st -ne 0 ]] && echo nonzero || echo zero)"
 check "... naming the jar" "1" "$(grep -c "$jar_name" "$jv/out" | awk '{print ($1>0)}')"
