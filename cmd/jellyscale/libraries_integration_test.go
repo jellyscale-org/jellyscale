@@ -123,7 +123,13 @@ func (c *libCluster) start(roles, config string) *proc {
 
 func (c *libCluster) launch(roles, config string) *proc {
 	c.t.Helper()
-	return startProc(c.t, procSpec{bin: c.bin, dsn: c.dsn, args: []string{"--roles", roles}, config: config, listen: true,
+	return c.launchOn(c.dsn, roles, config)
+}
+
+// launchOn is launch on a database other than the cluster's.
+func (c *libCluster) launchOn(dsn, roles, config string) *proc {
+	c.t.Helper()
+	return startProc(c.t, procSpec{bin: c.bin, dsn: dsn, args: []string{"--roles", roles}, config: config, listen: true,
 		user: "admin", password: "pw-js102", path: os.Getenv("PATH"), term: true})
 }
 
@@ -286,11 +292,57 @@ func (c *libCluster) seeded() (alpha, beta, gamma string) {
 	return
 }
 
+// copyOfDatabase makes a database from the cluster's as it is now, which must
+// have no session open (a template needs none), and returns a pool on it.
+func (c *libCluster) copyOfDatabase(name string) *pgxpool.Pool {
+	c.t.Helper()
+	ctx := context.Background()
+	shared := testenv.DatabaseURL(c.t)
+	admin, err := pgx.Connect(ctx, shared)
+	if err != nil {
+		c.t.Fatal(err)
+	}
+	defer admin.Close(ctx)
+	source, err := url.Parse(c.dsn)
+	if err != nil {
+		c.t.Fatal(err)
+	}
+	// Dropped whatever happens after the CREATE below, so it is registered first.
+	c.t.Cleanup(func() {
+		cleaner, err := pgx.Connect(ctx, shared)
+		if err != nil {
+			c.t.Error(err)
+			return
+		}
+		defer cleaner.Close(ctx)
+		if _, err := cleaner.Exec(ctx, "DROP DATABASE IF EXISTS "+name+" WITH (FORCE)"); err != nil {
+			c.t.Error(err)
+		}
+	})
+	if _, err := admin.Exec(ctx, "CREATE DATABASE "+name+" TEMPLATE "+strings.TrimPrefix(source.Path, "/")); err != nil {
+		c.t.Fatal(err)
+	}
+	source.Path = "/" + name
+	pool, err := pgxpool.New(ctx, source.String())
+	if err != nil {
+		c.t.Fatal(err)
+	}
+	c.t.Cleanup(pool.Close)
+	return pool
+}
+
 // A process without the worker role writes nothing to the libraries, whatever
 // its config lists: no file, no key, an empty list, a subset of the worker's
 // list (with options that differ), a library under another name for a store
 // the worker lists, and one the database lacks. Gamma is hidden, and a list
 // that has it must not show it again.
+//
+// All 18 processes (api, stream and api,stream, each with its 6 lists) serve at
+// once before any is stopped, each on a copy of the seeded database of its own,
+// so that a write is laid to the process that made it: on one database a write
+// by an api process would be found by every subtest after it, the stream-only
+// ones included. Each is judged by its own subtest after it has exited. They
+// stop together, which a drain of 5 s each made 90 s one after another.
 func TestAProcessWithoutTheWorkerRoleWritesNothingToTheLibraries(t *testing.T) {
 	c := newLibCluster(t)
 	alpha, _, gamma := c.seeded()
@@ -308,27 +360,74 @@ func TestAProcessWithoutTheWorkerRoleWritesNothingToTheLibraries(t *testing.T) {
 		{"another name for a store the worker lists", configOf([]map[string]any{entry("Alpha renamed", alpha, true)}, "")},
 		{"a library the database lacks", configOf([]map[string]any{entry("Delta", other, true)}, "")},
 	}
+	c.pool.Close() // A database to copy has no session open.
+	type running struct {
+		name string
+		p    *proc
+		pool *pgxpool.Pool
+	}
+	var all []running
+	stamp := time.Now().UnixNano()
 	for _, roles := range []string{"api", "stream", "api,stream"} {
 		for _, list := range lists {
-			t.Run(roles+"/"+list.name, func(t *testing.T) {
-				p := c.start(roles, list.config)
-				// A replica is asked something, so that it is known to be serving.
-				time.Sleep(300 * time.Millisecond)
-				p.stop()
-				if after := c.libraryRows(); strings.Join(after, "\n") != strings.Join(before, "\n") {
-					t.Errorf("the libraries changed:\nbefore %v\nafter  %v", before, after)
-				}
-				if n := c.count("SELECT count(*) FROM items"); n != items {
-					t.Errorf("%d items, were %d", n, items)
-				}
-				if n := c.count("SELECT count(*) FROM user_item_data"); n != state {
-					t.Errorf("%d watch rows, were %d", n, state)
-				}
-				if strings.Contains(strings.ToLower(p.log.String()), "no libraries") {
-					t.Errorf("a process without the worker role logs about an empty list:\n%s", p.log.String())
-				}
-			})
+			name := fmt.Sprintf("js131_%d_p%d", stamp, len(all))
+			pool := c.copyOfDatabase(name)
+			u, _ := url.Parse(c.dsn)
+			u.Path = "/" + name
+			all = append(all, running{roles + "/" + list.name, c.launchOn(u.String(), roles, list.config), pool})
 		}
+	}
+	for _, r := range all {
+		r.p.ready() // A replica answers /healthz, so that it is known to be serving.
+	}
+	time.Sleep(300 * time.Millisecond)
+	if len(all) != 18 {
+		t.Fatalf("harness error: %d processes were started, want 18 (3 role sets of 6 lists)", len(all))
+	}
+	for _, r := range all {
+		if !r.p.alive() {
+			t.Fatalf("harness error: %s had exited before all %d were serving:\n%s", r.name, len(all), r.p.log.String())
+		}
+	}
+	t.Logf("%d processes serving at once", len(all))
+	var stopped sync.WaitGroup
+	for _, r := range all {
+		stopped.Add(1)
+		go func() { defer stopped.Done(); r.p.stop() }()
+	}
+	stopped.Wait()
+	for _, r := range all {
+		t.Run(r.name, func(t *testing.T) {
+			if r.p.alive() {
+				t.Fatal("the process had not exited when it was judged")
+			}
+			var after []string
+			rows, err := r.pool.Query(context.Background(), "SELECT to_jsonb(l)::text FROM libraries l ORDER BY id")
+			if err != nil {
+				t.Fatal(err)
+			}
+			for rows.Next() {
+				var row string
+				if err := rows.Scan(&row); err != nil {
+					t.Fatal(err)
+				}
+				after = append(after, row)
+			}
+			rows.Close()
+			if strings.Join(after, "\n") != strings.Join(before, "\n") {
+				t.Errorf("the libraries changed:\nbefore %v\nafter  %v", before, after)
+			}
+			var n int
+			if err := r.pool.QueryRow(context.Background(), "SELECT count(*) FROM items").Scan(&n); err != nil || n != items {
+				t.Errorf("%d items, were %d (%v)", n, items, err)
+			}
+			if err := r.pool.QueryRow(context.Background(), "SELECT count(*) FROM user_item_data").Scan(&n); err != nil || n != state {
+				t.Errorf("%d watch rows, were %d (%v)", n, state, err)
+			}
+			if strings.Contains(strings.ToLower(r.p.log.String()), "no libraries") {
+				t.Errorf("a process without the worker role logs about an empty list:\n%s", r.p.log.String())
+			}
+		})
 	}
 }
 

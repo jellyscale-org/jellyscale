@@ -97,7 +97,7 @@ func TestASlowDatabaseSetBeforeTheClaimCostsNoJobItsLeaseOrItsWorker(t *testing.
 	// the keeper's.
 	s := newStack(t, 1, productionPool, "JELLYSCALE_TEST_QUEUE_TIMEOUT=60s")
 	r, w, ctx := s.r, s.workers[0], context.Background()
-	count := playback.EncodedLayout(900000000).Count()
+	count := r.useSlowFilm(t)
 	// The pool's and the keeper's connections, before the claim. The lock's connection stays
 	// as it was: its looks are bounded at half a second by JS-066 and a worker whose looks
 	// all time out claims nothing, which is that task's rule and not the keeper's.
@@ -105,13 +105,7 @@ func TestASlowDatabaseSetBeforeTheClaimCostsNoJobItsLeaseOrItsWorker(t *testing.
 	w.keep.Delay(time.Second)
 	t.Cleanup(func() { w.db.Delay(0); w.keep.Delay(0) })
 	s.jobs.QueueTimeout = time.Minute // A claim under 1 s round trips is several of them; the viewer's wait for a worker is not what is looked at.
-	// The keeper's connection, if it holds one already, is made again, slowly, as the job starts.
-	w.keep.Sever()
-	if _, err := s.fetch(ctx, s.jobs, r.spec, psid(0), 0); err != nil {
-		t.Fatal(err)
-	}
-	job := r.jobOf(t, r.hash)
-	s.play(s.jobs, r.spec, psid(0), 1, count)
+	// Sampled from before the request: the ffmpeg of a short film is gone before the claim returns.
 	var expired atomic.Int64
 	var mu sync.Mutex
 	seen := map[string]bool{}
@@ -132,9 +126,18 @@ func TestASlowDatabaseSetBeforeTheClaimCostsNoJobItsLeaseOrItsWorker(t *testing.
 			time.Sleep(100 * time.Millisecond)
 		}
 	}()
+	// The keeper's connection, if it holds one already, is made again, slowly, as the job starts.
+	w.keep.Sever()
+	if _, err := s.fetch(ctx, s.jobs, r.spec, psid(0), 0); err != nil {
+		t.Fatal(err)
+	}
+	claimed := time.Now() // The round trips have been 1 s since before the claim.
+	job := r.jobOf(t, r.hash)
+	s.play(s.jobs, r.spec, psid(0), 1, count)
 	waitFor(t, "the film to be done through a slow database", 6*time.Minute, func() bool { return r.jobState(t, job) != "running" })
 	stopSampling()
 	<-sampled
+	notDoneInsideTwoLeases(t, r.jobState(t, job), claimed)
 	if got := r.jobState(t, job); got != "done" {
 		t.Errorf("the job ended %s through a slow database, want done", got)
 	}

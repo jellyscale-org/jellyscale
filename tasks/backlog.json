@@ -1454,6 +1454,33 @@
       "title": "A viewer sees the worker's name in their own TranscodingInfo",
       "status": "open",
       "notes": "transcoding_info.go:69-70; Jellyfin shows the hardware acceleration type to administrators only (SessionManager.cs:2156-2170). Show it to administrators only."
+    },
+    {
+      "id": "BL-162",
+      "source": "JS-131 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "The worker-alone heartbeat-first stall subtest can end as a harness error",
+      "status": "open",
+      "notes": "ffmpeg keeps running while the worker is stopped and can finish a segment between the deletion and SIGCONT; stopping ffmpeg for the deletion only would close the window. Reading only; all runs passed."
+    },
+    {
+      "id": "BL-163",
+      "source": "JS-131 verify",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "The burn-in kit's size is written twice",
+      "status": "open",
+      "notes": "cueFilm.write has a literal size=640x360 while kitFilmWidth/kitFilmHeight feed the specs; build the ffmpeg size from the constants."
+    },
+    {
+      "id": "BL-164",
+      "source": "JS-131 verify",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "test/mutants.sh's table is undocumented and scripts_test.sh scrapes mutant.py's usage line",
+      "status": "open",
+      "notes": "Add a --list flag to test/mutant.py and one line in docs/testing.md."
     }
   ]
 }
