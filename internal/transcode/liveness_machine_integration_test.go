@@ -7,6 +7,7 @@ import (
 	"errors"
 	"log/slog"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -14,6 +15,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"jellyscale/internal/playback"
 )
 
 // JS-084's checks against a real Postgres. They hold the rewrite to the
@@ -190,8 +193,8 @@ func TestALockedWorkerForgetsSeveralDeadWorkersAtOnceAndNoLiveOne(t *testing.T) 
 		dead = append(dead, id)
 		// A node that took a lock and no longer holds it: the row says locked, no lock is in pg_locks.
 		r.exec(t, `INSERT INTO transcode_nodes (id, roles, store, slots, locked) VALUES ($1, 'worker', '', 2, true)`, id)
-		r.exec(t, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, worker, lease_expires_at)
-			VALUES ($1, '{}', 'o', 0, 0, 'running', $2, now() + interval '10 seconds')`, "h"+id, id)
+		r.exec(t, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, worker, lease_expires_at, output_version)
+			VALUES ($1, '{}', 'o', 0, 0, 'running', $2, now() + interval '10 seconds', `+strconv.Itoa(playback.OutputVersion)+`)`, "h"+id, id)
 	}
 	waitFor(t, "every dead worker to be forgotten", 30*time.Second, func() bool {
 		return r.count(t, "SELECT count(*) FROM transcode_nodes WHERE id = ANY($1)", dead) == 0

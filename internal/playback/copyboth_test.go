@@ -242,9 +242,8 @@ func TestCopyOfBothIsItsOwnOutput(t *testing.T) {
 			}
 		}
 	}
-	// Pinned: a video copy that re-encodes its audio is what it was before
-	// this task, so segments stored by an earlier release are still served.
-	if got, want := videoOnly.Hash(), "f0dd2d5eb36ff71ec23c7ddba87d993d"; got != want {
+	// Pinned so only a deliberate output-version change alters it.
+	if got, want := videoOnly.Hash(), "3f5f4aafc59c58589a5601bb87b0259c"; got != want {
 		t.Errorf("a video copy's hash is %s, was %s", got, want)
 	}
 	ac3, eac3 := both, both

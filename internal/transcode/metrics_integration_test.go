@@ -21,6 +21,7 @@ import (
 
 	"jellyscale/internal/library"
 	"jellyscale/internal/metrics"
+	"jellyscale/internal/playback"
 	"jellyscale/internal/testenv"
 )
 
@@ -197,8 +198,8 @@ func TestReapsAreCounted(t *testing.T) {
 	if _, err := r.pool.Exec(ctx, `INSERT INTO transcode_nodes (id, roles, store, slots, locked) VALUES ('dead-x', 'worker', '', 2, true)`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.pool.Exec(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, worker, lease_expires_at)
-		VALUES ('h', '{}', 'o', 0, 0, 'running', 'dead-x', now() + interval '10 seconds')`); err != nil {
+	if _, err := r.pool.Exec(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, worker, lease_expires_at, output_version)
+		VALUES ('h', '{}', 'o', 0, 0, 'running', 'dead-x', now() + interval '10 seconds', `+strconv.Itoa(playback.OutputVersion)+`)`); err != nil {
 		t.Fatal(err)
 	}
 	if err := look(); err != nil {

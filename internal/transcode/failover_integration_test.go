@@ -16,6 +16,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -27,6 +28,7 @@ import (
 
 	"jellyscale/internal/db"
 	"jellyscale/internal/items"
+	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
 	"jellyscale/internal/testenv"
 )
@@ -952,11 +954,11 @@ func TestAWorkerWithoutItsRowRenewsClaimsAndStoresNothing(t *testing.T) {
 	r := newRig(t, nil)
 	ctx := context.Background()
 	var running int64
-	if err := r.pool.QueryRow(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, worker, lease_expires_at)
-		VALUES ('h', '{}', 'o', 0, 0, 'running', 'worker-x', now() + interval '10 seconds') RETURNING id`).Scan(&running); err != nil {
+	if err := r.pool.QueryRow(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, worker, lease_expires_at, output_version)
+		VALUES ('h', '{}', 'o', 0, 0, 'running', 'worker-x', now() + interval '10 seconds', `+strconv.Itoa(playback.OutputVersion)+`) RETURNING id`).Scan(&running); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.pool.Exec(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment) VALUES ('h2', '{}', 'o2', 0, 0)`); err != nil {
+	if _, err := r.pool.Exec(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, output_version) VALUES ('h2', '{}', 'o2', 0, 0, `+strconv.Itoa(playback.OutputVersion)+`)`); err != nil {
 		t.Fatal(err)
 	}
 	w := &Worker{ID: "worker-x", Pool: r.pool, Log: r.log, Lease: 10 * time.Second}
@@ -972,7 +974,7 @@ func TestAWorkerWithoutItsRowRenewsClaimsAndStoresNothing(t *testing.T) {
 		t.Errorf("upload without a row: %v; want it interrupted before the store", err)
 	}
 
-	if _, err := r.pool.Exec(ctx, `INSERT INTO transcode_nodes (id, roles, store, slots, locked) VALUES ('worker-x', 'worker', '', 2, true)`); err != nil {
+	if _, err := r.pool.Exec(ctx, fmt.Sprintf(`INSERT INTO transcode_nodes (id, roles, store, slots, locked, output_version) VALUES ('worker-x', 'worker', '', 2, true, %d)`, playback.OutputVersion)); err != nil {
 		t.Fatal(err)
 	}
 	if alive, _, err := w.beat(ctx, job); err != nil || !alive {
@@ -993,8 +995,8 @@ func TestReapLeavesADeadWorkersJobsAGraceToEnd(t *testing.T) {
 		t.Fatal(err)
 	}
 	var id int64
-	if err := r.pool.QueryRow(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, worker, lease_expires_at)
-		VALUES ('h', '{}', 'o', 0, 0, 'running', 'dead-x', now() + interval '10 seconds') RETURNING id`).Scan(&id); err != nil {
+	if err := r.pool.QueryRow(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, worker, lease_expires_at, output_version)
+		VALUES ('h', '{}', 'o', 0, 0, 'running', 'dead-x', now() + interval '10 seconds', `+strconv.Itoa(playback.OutputVersion)+`) RETURNING id`).Scan(&id); err != nil {
 		t.Fatal(err)
 	}
 	var startedAt, finishedAt time.Time
@@ -1143,8 +1145,8 @@ func TestReapLeavesANodeThatTookNoLockAlone(t *testing.T) {
 		t.Fatal(err)
 	}
 	var id int64
-	if err := r.pool.QueryRow(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, worker, lease_expires_at)
-		VALUES ('h', '{}', 'o', 0, 0, 'running', 'old-worker', now() + interval '10 seconds') RETURNING id`).Scan(&id); err != nil {
+	if err := r.pool.QueryRow(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, worker, lease_expires_at, output_version)
+		VALUES ('h', '{}', 'o', 0, 0, 'running', 'old-worker', now() + interval '10 seconds', `+strconv.Itoa(playback.OutputVersion)+`) RETURNING id`).Scan(&id); err != nil {
 		t.Fatal(err)
 	}
 	var leaseBefore time.Time

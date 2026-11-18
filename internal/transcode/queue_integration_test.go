@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
 
 	"jellyscale/internal/testenv"
@@ -79,9 +80,9 @@ func TestStaleQueuedJobsAreDead(t *testing.T) {
 func TestFullWorkersAreBusyNotMissing(t *testing.T) {
 	r := newRig(t, nil)
 	ctx := context.Background()
-	if _, err := r.pool.Exec(ctx, `INSERT INTO transcode_nodes (id, slots) VALUES ('w', 1);
-		INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, lease_expires_at, worker)
-		VALUES ('other', '{}', 'o', 0, 0, 'running', now() + interval '1 minute', 'w')`); err != nil {
+	r.insertNode(t, "w", 1, playback.OutputVersion)
+	if _, err := r.pool.Exec(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, lease_expires_at, worker, output_version)
+		VALUES ('other', '{}', 'o', 0, 0, 'running', now() + interval '1 minute', 'w', `+strconv.Itoa(playback.OutputVersion)+`)`); err != nil {
 		t.Fatal(err)
 	}
 	j := r.jobs(t)
@@ -157,9 +158,9 @@ func TestSeekBackBeforeTheResumePoint(t *testing.T) {
 func TestChangingStreamIsNotRefusedByTheViewersOwnJob(t *testing.T) {
 	r := newRig(t, nil)
 	ctx := context.Background()
-	if _, err := r.pool.Exec(ctx, `INSERT INTO transcode_nodes (id, slots) VALUES ('w', 1);
-		INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, lease_expires_at, worker)
-		VALUES ('other', '{}', 'old', 0, 0, 'running', now() + interval '1 minute', 'w')`); err != nil {
+	r.insertNode(t, "w", 1, playback.OutputVersion)
+	if _, err := r.pool.Exec(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, lease_expires_at, worker, output_version)
+		VALUES ('other', '{}', 'old', 0, 0, 'running', now() + interval '1 minute', 'w', `+strconv.Itoa(playback.OutputVersion)+`)`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := r.pool.Exec(ctx, `INSERT INTO transcode_viewers (play_session_id, spec_hash, user_id, device_id)
@@ -350,8 +351,8 @@ func TestRecentFailureIsNotRestartedByAnotherRequest(t *testing.T) {
 	if _, err := r.pool.Exec(ctx, "INSERT INTO transcode_nodes (id, slots) VALUES ('w', 2)"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.pool.Exec(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, error, created_at, ended_at)
-		VALUES ($1, '{}', 'o', 0, 0, 'failed', 'ffmpeg made no segment', now() - interval '5 minutes', now())`, r.hash); err != nil {
+	if _, err := r.pool.Exec(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, error, created_at, ended_at, output_version)
+		VALUES ($1, '{}', 'o', 0, 0, 'failed', 'ffmpeg made no segment', now() - interval '5 minutes', now(), `+strconv.Itoa(playback.OutputVersion)+`)`, r.hash); err != nil {
 		t.Fatal(err)
 	}
 	j := r.jobs(t)
@@ -419,8 +420,8 @@ func TestSweepingADeadWorkersJobDoesNotRefuseTheSpec(t *testing.T) {
 	if _, err := r.pool.Exec(ctx, "INSERT INTO transcode_nodes (id, slots) VALUES ('w', 2)"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.pool.Exec(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, worker, lease_expires_at)
-		VALUES ($1, '{}', 'o', 0, 3, 'running', 'dead', now() - interval '30 seconds')`, r.hash); err != nil {
+	if _, err := r.pool.Exec(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, worker, lease_expires_at, output_version)
+		VALUES ($1, '{}', 'o', 0, 3, 'running', 'dead', now() - interval '30 seconds', `+strconv.Itoa(playback.OutputVersion)+`)`, r.hash); err != nil {
 		t.Fatal(err)
 	}
 	w := &Worker{Pool: r.pool, Log: r.log}

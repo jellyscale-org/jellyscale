@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -21,6 +22,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"jellyscale/internal/db"
+	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
 	"jellyscale/internal/testenv"
 )
@@ -270,8 +272,8 @@ func (r *rig) viewerAt(t *testing.T, hash string, seen time.Duration, stopped bo
 // not run out during the test, as a live worker's has.
 func (r *rig) jobRow(t *testing.T, hash, state string, helper bool) {
 	t.Helper()
-	if _, err := r.pool.Exec(context.Background(), `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, helper, worker, lease_expires_at)
-		VALUES ($1, '{}', 'owner', 0, 0, $2, $3, 'worker', now() + interval '1 hour')`, hash, state, helper); err != nil {
+	if _, err := r.pool.Exec(context.Background(), `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, helper, worker, lease_expires_at, output_version)
+		VALUES ($1, '{}', 'owner', 0, 0, $2, $3, 'worker', now() + interval '1 hour', `+strconv.Itoa(playback.OutputVersion)+`)`, hash, state, helper); err != nil {
 		t.Fatal(err)
 	}
 }

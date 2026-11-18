@@ -375,7 +375,7 @@ func (w *Worker) run(ctx context.Context, job claimed) {
 	}
 	// Only this error says the index is wrong; a cancelled or failed run says
 	// nothing of it. The next PlaybackInfo re-encodes the film.
-	if errors.Is(err, errWrongIndex) && ctx.Err() == nil {
+	if errors.Is(err, errWrongIndex) && ctx.Err() == nil && job.Spec.Recode == "" {
 		if dropped, dropErr := w.Items.DropKeyframes(ctx, job.Spec.Source, job.Spec.ETag); dropErr != nil {
 			log.Error("dropping the wrong keyframe index failed", "source", job.Spec.Source, "error", dropErr)
 		} else if !dropped {
@@ -384,7 +384,7 @@ func (w *Worker) run(ctx context.Context, job claimed) {
 			log.Error("the film's keyframe index is wrong; it is re-encoded from now on", "source", job.Spec.Source, "error", err)
 		}
 	}
-	state, reason := "done", ""
+	state, reason, again := "done", "", false
 	switch {
 	case err == nil:
 		jobsEnded.WithLabelValues("done").Inc()
@@ -396,14 +396,15 @@ func (w *Worker) run(ctx context.Context, job claimed) {
 			log.Info("transcode interrupted", "reason", reason)
 		} else {
 			jobsEnded.WithLabelValues("failed").Inc()
-			log.Error("transcode failed", "error", err)
+			again = notTheFiles(err)
+			log.Error("transcode failed", "error", err, "again", again)
 		}
 	}
 	// A fresh context: ctx may be why we stopped.
 	finish, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()
-	if _, err := w.Pool.Exec(finish, `UPDATE transcode_jobs SET state = $2, error = NULLIF($3, ''), ended_at = now()
-		WHERE id = $1 AND state = 'running' AND worker = $4`, job.ID, state, reason, w.ID); err != nil {
+	if _, err := w.Pool.Exec(finish, `UPDATE transcode_jobs SET state = $2, error = NULLIF($3, ''), ended_at = now(), again = $5
+		WHERE id = $1 AND state = 'running' AND worker = $4`, job.ID, state, reason, w.ID, again); err != nil {
 		log.Error("recording the end of a transcode job failed", "error", err)
 	}
 	Notify(finish, w.Pool, segmentHint(job.Hash)) // Waiters should see the new state now.
@@ -502,12 +503,18 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	if job.Spec.Subtitle != nil && film.SubtitleFingerprint(*job.Spec.Subtitle) != job.Spec.SubtitleFingerprint {
 		return errors.New("the subtitle file has changed or is gone")
 	}
-	if job.Spec.Copy {
-		if film.Keyframes, film.VideoEnd, err = w.Items.Keyframes(ctx, source.ID); err != nil {
-			return fromPool(err)
-		}
+	// A copy, and the encode that stands in for a copy whose index was found wrong, are cut on the index.
+	fragments := job.Spec.Copy || job.Spec.Recode != ""
+	switch {
+	case job.Spec.Copy:
+		film.Keyframes, film.VideoEnd, err = w.Items.Keyframes(ctx, source.ID)
+	case job.Spec.Recode != "":
+		film.Keyframes, film.VideoEnd, err = w.Items.DroppedKeyframes(ctx, source.ID)
 	}
-	layout := film.Layout(job.Spec.Copy)
+	if err != nil {
+		return fromPool(err)
+	}
+	layout := film.Layout(fragments)
 	if layout.Count() == 0 {
 		return errors.New("the file has no keyframe index to copy from")
 	}
@@ -522,7 +529,8 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	if err != nil {
 		return fromStore(source.StoreURI, err)
 	}
-	input, closeInput, err := store.Input(ctx, media, source.Key, source.Size)
+	read := &readWatch{}
+	input, closeInput, err := store.InputWithFailure(ctx, media, source.Key, source.Size, read.fail)
 	if err != nil {
 		return fromStore(source.StoreURI, err)
 	}
@@ -633,11 +641,17 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	run := func(begin int) (err error) {
 		var cmd *exec.Cmd
 		var gather *gatherer
-		if job.Spec.Copy {
+		if fragments {
 			next = begin
-			video, audio := copyStart(film.Keyframes, layout, begin)
-			cmd, err = CopyCommand(ctx, input, job.Spec, film.VideoCodec(), video, audio, dir)
 			gather = newGatherer(dir, layout, film.Keyframes[0])
+			if job.Spec.Recode != "" {
+				video, audio := recodeStart(film.Keyframes, layout, begin)
+				cmd, err = RecodeCommand(ctx, input, job.Spec, film.VideoCodec(), video, audio, recodeCuts(film.Keyframes, layout, begin), dir)
+				gather.slack = recodeSlack
+			} else {
+				video, audio := copyStart(film.Keyframes, layout, begin)
+				cmd, err = CopyCommand(ctx, input, job.Spec, film.VideoCodec(), video, audio, dir)
+			}
 		} else {
 			next = begin
 			for _, stale := range globOr(filepath.Join(dir, "*.m4s")) {
@@ -908,7 +922,14 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		}
 	}
 
-	return run(job.Start)
+	err = run(job.Start)
+	if cut := read.failure(); err != nil && cut != nil && ctx.Err() == nil {
+		// ffmpeg says only that its input was invalid or ended; a read the store failed for good, which
+		// store.Reader did not heal, is the cause. It also outranks a wrong index, which would be
+		// found in output cut short by that read, and dropping an index is not undone.
+		return fromStore(source.StoreURI, cut)
+	}
+	return err
 }
 
 // globOr is filepath.Glob without the error, which only a bad pattern has.

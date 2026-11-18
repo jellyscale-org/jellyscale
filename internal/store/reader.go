@@ -116,11 +116,31 @@ func (r *Reader) Close() error {
 	return nil
 }
 
+type failureReader struct {
+	io.ReadSeeker
+	onFailure func(error)
+}
+
+func (r failureReader) Read(p []byte) (int, error) {
+	n, err := r.ReadSeeker.Read(p)
+	if err != nil && !errors.Is(err, io.EOF) {
+		r.onFailure(err)
+	}
+	return n, err
+}
+
 // Input gives ffmpeg and ffprobe something to open. A filesystem object is its
 // path. An S3 object goes through a loopback server, which keeps credentials
 // out of argv and survives a long read, where a presigned URL would expire.
 // The random path keeps other local processes out.
 func Input(ctx context.Context, s Store, key string, size int64) (string, func(), error) {
+	return InputWithFailure(ctx, s, key, size, nil)
+}
+
+// InputWithFailure is Input, and reports an error the Reader returns to the
+// media tool. A body cut that Reader resumes is not reported: only a read it
+// gives up on can be the cause of the tool's failure.
+func InputWithFailure(ctx context.Context, s Store, key string, size int64, onFailure func(error)) (string, func(), error) {
 	if path, ok := s.LocalPath(key); ok {
 		return path, func() {}, nil
 	}
@@ -143,9 +163,13 @@ func Input(ctx context.Context, s Store, key string, size int64) (string, func()
 			}
 			reader := NewReader(r.Context(), s, key, size)
 			defer reader.Close()
+			var content io.ReadSeeker = reader
+			if onFailure != nil {
+				content = failureReader{ReadSeeker: reader, onFailure: onFailure}
+			}
 			// Set, or ServeContent reads the object to sniff a type.
 			w.Header().Set("Content-Type", "application/octet-stream")
-			http.ServeContent(w, r, "", time.Time{}, reader)
+			http.ServeContent(w, r, "", time.Time{}, content)
 		}),
 	}
 	var once sync.Once

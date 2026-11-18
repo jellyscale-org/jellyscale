@@ -1,0 +1,110 @@
+{
+  "what": "jellyfin-web 12.4 (hls.js 1.6.16) in Chromium, playing a copied film through jellyscale, when one segment fails after playback has begun (JS-088)",
+  "scenario": "test/e2e/transcode.mjs, the scenarios named 'jellyfin-web after a segment fails, ...'; test/e2e/router.mjs answers segment 12 (48 s) as the fault says",
+  "window": {
+    "once": "30 s from the first failed request",
+    "every time": "45 s from the first failed request"
+  },
+  "observed": {
+    "500, once": {
+      "asks": [
+        1,
+        1
+      ],
+      "playbackInfoAgain": 0,
+      "dialog": false,
+      "pictureGoesOn": false
+    },
+    "500, every time": {
+      "asks": [
+        1,
+        1
+      ],
+      "playbackInfoAgain": 0,
+      "dialog": false,
+      "pictureGoesOn": false
+    },
+    "404, once": {
+      "asks": [
+        1,
+        1
+      ],
+      "playbackInfoAgain": 0,
+      "dialog": false,
+      "pictureGoesOn": false
+    },
+    "404, every time": {
+      "asks": [
+        1,
+        1
+      ],
+      "playbackInfoAgain": 0,
+      "dialog": false,
+      "pictureGoesOn": false
+    },
+    "stall, once": {
+      "asks": [
+        2,
+        2
+      ],
+      "playbackInfoAgain": 0,
+      "dialog": false,
+      "pictureGoesOn": true
+    },
+    "stall, every time": {
+      "asks": [
+        3,
+        7
+      ],
+      "playbackInfoAgain": 0,
+      "dialog": false,
+      "pictureGoesOn": false
+    },
+    "cut, once": {
+      "asks": [
+        2,
+        2
+      ],
+      "playbackInfoAgain": 0,
+      "dialog": false,
+      "pictureGoesOn": true
+    },
+    "cut, every time": {
+      "asks": [
+        5,
+        9
+      ],
+      "playbackInfoAgain": 0,
+      "dialog": false,
+      "pictureGoesOn": false
+    }
+  },
+  "initUnderACopy": {
+    "what": "hls.js 1.6.16 (the chunk of web-dist) in Chrome stable, headless, a playlist whose segments 0-4 are one x264 stream (baseline, ultrafast: the 'copy') and 5-11 another (high, veryfast: the 're-encode'), the EXT-X-MAP of the first; the viewer starts at 14 s and the picture is read after 22.5 s",
+    "script": "compat/captures/segment-init-spike.mjs",
+    "observed": {
+      "all segments of the first stream (control)": {
+        "frames": 292,
+        "error": null,
+        "luma diff vs control": 0.0
+      },
+      "the second stream's bare segments under the first's init": {
+        "frames": 144,
+        "error": "PIPELINE_ERROR_DECODE: Failed to send video packet for decoding",
+        "corruptedVideoFrames": 0,
+        "currentTimeGoesOn": true
+      },
+      "the second stream's init in front of its first segment (a moov in a media segment)": {
+        "frames": 290,
+        "error": null,
+        "luma diff vs control": 2.6
+      },
+      "the second stream's init in front of each of its segments": {
+        "frames": 290,
+        "error": null,
+        "luma diff vs control": 2.6
+      }
+    },
+    "notUnderstood": "An HEVC copy: this Chrome has no HEVC decoder (addSourceBuffer refuses video/mp4;codecs=hvc1.1.6.L93.90), so the HEVC case was not observed in a browser. A moov of another codec in a segment of a SourceBuffer typed hvc1 or av01 is not observed anywhere; hls.js's passthrough remuxer (web-dist, node_modules.hls.js chunk) calls generateInitSegment once; appendChangeType exists in the chunk and was not traced to what triggers it."
+  }
+}

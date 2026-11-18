@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -14,6 +15,7 @@ import (
 
 	"jellyscale/internal/db"
 	"jellyscale/internal/media"
+	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
 	"jellyscale/internal/transcode"
 )
@@ -84,7 +86,7 @@ func addFilm(t *testing.T, e *env, name string, sources ...[]media.MediaStream) 
 func transcodingOn(t *testing.T, e *env) {
 	t.Helper()
 	mustExec(t, e.pool, "TRUNCATE transcode_jobs, transcode_nodes")
-	mustExec(t, e.pool, "INSERT INTO transcode_nodes (id, roles, slots) VALUES ('w1', 'worker', 2)")
+	mustExec(t, e.pool, "INSERT INTO transcode_nodes (id, roles, slots, output_version) VALUES ('w1', 'worker', 2, "+strconv.Itoa(playback.OutputVersion)+")")
 	segments := store.NewPosix(t.TempDir())
 	for _, s := range e.apis {
 		s.Transcode = &transcode.Jobs{Pool: s.Pool, Segments: segments}

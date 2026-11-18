@@ -11,6 +11,7 @@ import (
 	"jellyscale/internal/db"
 	"jellyscale/internal/items"
 	"jellyscale/internal/playback"
+	"jellyscale/internal/store"
 	"jellyscale/internal/transcode"
 )
 
@@ -24,6 +25,12 @@ type hlsRequest struct {
 	media  playback.Source
 	layout playback.Layout
 	viewer transcode.Viewer
+	// fellBack is set when the copy's index was found wrong (JS-088): the playlists keep the copy's
+	// layout, and a segment is the stored copy one if there is one, else made by a job of recoded,
+	// the encode of the copy. hash is then recoded's, which the viewer is recorded on; copyHash is the copy's.
+	fellBack bool
+	copyHash string
+	recoded  playback.Spec
 }
 
 // hlsRequestFor validates a stream request and records its viewer. It has
@@ -59,6 +66,10 @@ func (s *Server) hlsRequestFor(w http.ResponseWriter, r *http.Request) (hlsReque
 		// The request names the copy, so it is the one place that reads the index.
 		var dbErr error
 		req.media.Keyframes, req.media.VideoEnd, dbErr = s.keyframes(r, itemID, source)
+		if dbErr == nil && len(req.media.Keyframes) == 0 && snapshotOf(r.Context()) == nil {
+			// The index was found wrong since this copy was offered: the playlist is cut from the one that was.
+			dbErr = s.dropped(r, &req)
+		}
 		if dbErr != nil {
 			s.fail(w, r, dbErr)
 			return req, false
@@ -73,6 +84,9 @@ func (s *Server) hlsRequestFor(w http.ResponseWriter, r *http.Request) (hlsReque
 	}
 	req.hash = req.spec.Hash()
 	req.layout = req.media.Layout(req.spec.Copy)
+	if req.fellBack {
+		req.goOn()
+	}
 	if snapshotOf(r.Context()) != nil {
 		return req, true // No viewer is recorded and no job started: the snapshot only reads.
 	}
@@ -83,15 +97,108 @@ func (s *Server) hlsRequestFor(w http.ResponseWriter, r *http.Request) (hlsReque
 	if n, valid := playback.ParseSegment(r.PathValue("segmentId"), req.layout.Count()); valid {
 		segment = n
 	}
-	if err := s.Transcode.Watch(r.Context(), req.viewer, req.hash, segment); err != nil {
+	return req, s.watch(w, r, &req, segment)
+}
+
+// watch records that the viewer asked for something on the spec, and answers the client if it cannot.
+func (s *Server) watch(w http.ResponseWriter, r *http.Request, req *hlsRequest, segment int) bool {
+	if err := s.watching(r, req, segment); err != nil {
 		if errors.Is(err, transcode.ErrStopped) {
 			http.Error(w, err.Error(), http.StatusGone)
 		} else {
 			s.fail(w, r, err)
 		}
-		return req, false
+		return false
 	}
-	return req, true
+	return true
+}
+
+func (s *Server) watching(r *http.Request, req *hlsRequest, segment int) error {
+	first, err := s.Transcode.WatchFirst(r.Context(), req.viewer, req.hash, segment)
+	if err == nil && first && req.fellBack {
+		// Once for each stream, not for each of its segments.
+		playbackFallbacks.Inc()
+		s.Log.Warn("a copied stream falls back to a re-encode, going on where the viewer is",
+			"item", req.spec.Item, "source", req.spec.Source, "spec", req.copyHash, "reason", "the keyframe index of the file was found wrong")
+	}
+	return err
+}
+
+// segmentOf makes segment n of the request. A stream that fell back is sent the copy's own segment where the store
+// holds one, and the encode's where not; each leads with its init segment, so that the player, which holds the copy's
+// or the encode's, takes either: a moov at the start of a media segment is an init segment to MSE. A copy whose job
+// finds the index wrong under this very request goes on at once as the encode.
+func (s *Server) segmentOf(r *http.Request, req *hlsRequest, n int) (*transcode.StoredSegment, error) {
+	for {
+		if req.fellBack {
+			segment, err := s.Transcode.Stored(r.Context(), req.copyHash, n)
+			switch {
+			case err == nil:
+				return s.startWithInit(r, segment, req.copyHash)
+			case !errors.Is(err, store.ErrNotFound):
+				return nil, err
+			}
+		}
+		spec := req.spec
+		if req.fellBack {
+			spec = req.recoded
+		}
+		segment, err := s.Transcode.Segment(r.Context(), spec, req.hash, req.viewer, n, req.params.StartSegment(req.layout))
+		var failed transcode.FailedError
+		if errors.As(err, &failed) && spec.Copy {
+			if err := s.dropped(r, req); err != nil || !req.fellBack {
+				return nil, errors.Join(err, failed)
+			}
+			req.goOn()
+			if err := s.watching(r, req, n); err != nil {
+				return nil, err
+			}
+			continue
+		}
+		if err != nil || !req.fellBack {
+			return segment, err
+		}
+		return s.startWithInit(r, segment, req.hash)
+	}
+}
+
+func (s *Server) startWithInit(r *http.Request, segment *transcode.StoredSegment, hash string) (*transcode.StoredSegment, error) {
+	init, err := s.Transcode.Init(r.Context(), hash)
+	if err != nil {
+		segment.Close()
+		return nil, err
+	}
+	segment.StartWith(init)
+	return segment, nil
+}
+
+// dropped reads the index a job found wrong, if there is one, as the one the playlist is cut from, and goes on as the encode of the copy.
+func (s *Server) dropped(r *http.Request, req *hlsRequest) error {
+	var keyframes []int64
+	var end int64
+	err := db.Retry(r.Context(), s.Pool, func() (err error) {
+		keyframes, end, err = s.Items.DroppedKeyframes(r.Context(), req.source.ID)
+		return
+	})
+	if err == nil && len(keyframes) > 0 {
+		req.useDropped(keyframes, end)
+	}
+	return err
+}
+
+// useDropped makes the index a job found wrong the one the playlist is cut from. The request goes on as an encode
+// only where the copy's codec has one: an AV1 copy is served as it was, and its segments the store lacks fail as
+// before, with no fallback logged or counted for a recovery that cannot happen.
+func (req *hlsRequest) useDropped(keyframes []int64, end int64) {
+	req.media.Keyframes, req.media.VideoEnd = keyframes, end
+	req.fellBack = playback.CanRecode(req.media.VideoCodec())
+}
+
+// goOn turns the request into the one that makes its segments with the encode of the copy.
+func (req *hlsRequest) goOn() {
+	req.copyHash = req.hash
+	req.recoded = req.spec.Recoded(req.media.VideoCodec(), req.media.ToneMap())
+	req.hash = req.recoded.Hash()
 }
 
 func playbackSource(source items.Source) playback.Source {
@@ -160,7 +267,7 @@ func (s *Server) hlsSegment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	began := time.Now()
-	segment, err := s.Transcode.Segment(r.Context(), req.spec, req.hash, req.viewer, n, req.params.StartSegment(req.layout))
+	segment, err := s.segmentOf(r, &req, n)
 	var failed transcode.FailedError
 	switch {
 	case err == nil:

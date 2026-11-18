@@ -36,7 +36,7 @@ func transcodeEnv(t *testing.T, codec, audio string) (*env, store.Store, string)
 	mustExec(t, e.pool, `UPDATE items SET run_time_ticks = 1000000000, dto = jsonb_set(dto, '{MediaSources,0}',
 		(dto->'MediaSources'->0) || '{"SupportsDirectPlay":true,"SupportsDirectStream":true,"Bitrate":2000000}')`)
 	mustExec(t, e.pool, "TRUNCATE transcode_jobs, transcode_nodes")
-	mustExec(t, e.pool, "INSERT INTO transcode_nodes (id, roles, slots) VALUES ('w1', 'worker', 2)")
+	mustExec(t, e.pool, "INSERT INTO transcode_nodes (id, roles, slots, output_version) VALUES ('w1', 'worker', 2, "+strconv.Itoa(playback.OutputVersion)+")")
 	segments := store.NewPosix(t.TempDir())
 	for _, s := range e.apis {
 		s.Transcode = &transcode.Jobs{Pool: s.Pool, Segments: segments}
@@ -402,23 +402,23 @@ func TestPlaybackInfoRefusesATranscodeThatCannotStart(t *testing.T) {
 
 	// A worker whose cores are taken refuses a spec nobody is already making...
 	for i := range 2 {
-		mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, lease_expires_at, worker)
-			VALUES ($1, '{}', 'o', 0, 0, 'running', now() + interval '1 minute', 'w1')`, "other"+string(rune('a'+i)))
+		mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, lease_expires_at, worker, output_version)
+			VALUES ($1, '{}', 'o', 0, 0, 'running', now() + interval '1 minute', 'w1', `+strconv.Itoa(playback.OutputVersion)+`)`, "other"+string(rune('a'+i)))
 	}
 	refused("cores busy")
 	// ...but joins a transcode of its own spec that already runs.
-	mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, lease_expires_at, worker)
-		VALUES ($1, '{}', 'o', 0, 0, 'running', now() + interval '1 minute', 'w1')`, hash)
+	mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, lease_expires_at, worker, output_version)
+		VALUES ($1, '{}', 'o', 0, 0, 'running', now() + interval '1 minute', 'w1', `+strconv.Itoa(playback.OutputVersion)+`)`, hash)
 	offered("same spec already running")
 
 	// A recent failure of the spec is not offered again.
 	mustExec(t, e.pool, "TRUNCATE transcode_jobs")
-	mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, error, ended_at)
-		VALUES ($1, '{}', 'o', 0, 0, 'failed', 'exec: "ffmpeg": executable file not found', now())`, hash)
+	mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, error, ended_at, output_version)
+		VALUES ($1, '{}', 'o', 0, 0, 'failed', 'exec: "ffmpeg": executable file not found', now(), `+strconv.Itoa(playback.OutputVersion)+`)`, hash)
 	refused("recent failure")
 	// ...unless another viewer's job for the spec is running.
-	mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, lease_expires_at, worker)
-		VALUES ($1, '{}', 'o', 0, 0, 'running', now() + interval '1 minute', 'w1')`, hash)
+	mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, lease_expires_at, worker, output_version)
+		VALUES ($1, '{}', 'o', 0, 0, 'running', now() + interval '1 minute', 'w1', `+strconv.Itoa(playback.OutputVersion)+`)`, hash)
 	offered("a live job beats a recent failure")
 	mustExec(t, e.pool, "DELETE FROM transcode_jobs WHERE state = 'running'")
 	mustExec(t, e.pool, "UPDATE transcode_jobs SET ended_at = now() - interval '5 minutes'")
@@ -558,8 +558,8 @@ func TestStaleQueuedJobIsNotOffered(t *testing.T) {
 	hash := specHash(t, e, lowerKeys(mustQuery(t, firstSource(e.playbackInfo(t, 0, e.item, transcodeProfileBody(t, source)))["TranscodingUrl"].(string))))
 	mustExec(t, e.pool, "DELETE FROM transcode_jobs")
 	mustExec(t, e.pool, "UPDATE transcode_nodes SET seen_at = now() - interval '1 hour'")
-	mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, created_at)
-		VALUES ($1, '{}', 'o', 0, 0, 'queued', now() - interval '1 minute')`, hash)
+	mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, created_at, output_version)
+		VALUES ($1, '{}', 'o', 0, 0, 'queued', now() - interval '1 minute', `+strconv.Itoa(playback.OutputVersion)+`)`, hash)
 	if reply := e.playbackInfo(t, 0, e.item, transcodeProfileBody(t, source)); reply["ErrorCode"] != "RateLimitExceeded" {
 		t.Fatalf("a queued job nobody will take was offered: %v", reply)
 	}
@@ -578,8 +578,8 @@ func TestLiveJobIsOfferedWithoutATranscodeStore(t *testing.T) {
 	if reply := e.playbackInfo(t, 0, e.item, transcodeProfileBody(t, source)); reply["ErrorCode"] != "RateLimitExceeded" {
 		t.Fatalf("no job, stores differ: %v", reply)
 	}
-	mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, lease_expires_at, worker)
-		VALUES ($1, '{}', 'o', 0, 0, 'running', now() + interval '1 minute', 'w1')`, hash)
+	mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, lease_expires_at, worker, output_version)
+		VALUES ($1, '{}', 'o', 0, 0, 'running', now() + interval '1 minute', 'w1', `+strconv.Itoa(playback.OutputVersion)+`)`, hash)
 	logged.Reset()
 	reply := e.playbackInfo(t, 0, e.item, transcodeProfileBody(t, source))
 	if reply["ErrorCode"] != nil || firstSource(reply)["TranscodingUrl"] == nil {

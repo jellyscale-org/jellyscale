@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -23,6 +24,7 @@ import (
 
 	"jellyscale/internal/db"
 	"jellyscale/internal/items"
+	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
 	"jellyscale/internal/testenv"
 	"jellyscale/internal/transcode"
@@ -118,8 +120,8 @@ func newOutage(t *testing.T) *outage {
 	}
 	put(2, "segment two")
 	put(-1, "the init")
-	mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, worker, lease_expires_at)
-		VALUES ($1, '{}', 'someone else', 0, 0, 'running', 'w1', now() + interval '1 hour')`, o.hash)
+	mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, worker, lease_expires_at, output_version)
+		VALUES ($1, '{}', 'someone else', 0, 0, 'running', 'w1', now() + interval '1 hour', `+strconv.Itoa(playback.OutputVersion)+`)`, o.hash)
 	return o
 }
 

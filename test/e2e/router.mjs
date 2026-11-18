@@ -18,6 +18,11 @@
 // fallback does what the shipped Caddyfile's handle_errors does when no replica of a role is ready (Postgres has been
 // away from all of them over 30 seconds, JS-085): send to every replica of the role, whatever /readyz says, and a
 // replica that refuses the connection is passed over by the retry. Off by default, where the router answers 503 itself.
+// faults (JS-088) answer matching GET requests wrongly, to see what a player does with a segment that fails:
+//   PUT /__router  {"faults": [{"match": "regex of the path and query", "mode": "500"|"404"|"stall"|"cut", "times": n}]}   times 0 is every request
+// 500 and 404 are answered by the router itself; stall takes the request and sends nothing, not even a header, until
+// the client gives up; cut sends the header and the first half of the body and then closes the connection. Each rule
+// counts the requests it matched (hits) and the ones it spoiled (faulted); {"faults": []} and {"reset": true} remove them.
 // throttle slows the direct-play response of every stream replica (/Videos/<id>/stream) to that
 // many bytes a second, so that a film is still being downloaded when a replica dies; 0 is off.
 import http from "node:http";
@@ -28,6 +33,7 @@ const initial = { stream: streamPorts.split(",").map(Number), api: apiPorts.spli
 const backends = { stream: [], api: [] };
 let throttle = 0;
 let fallback = false;
+let faults = [];
 const next = { stream: 0, api: 0 };
 
 function setBackends(role, ports) {
@@ -77,14 +83,15 @@ function control(req, res) {
   req.on("end", () => {
     if (req.method === "PUT") {
       const body = JSON.parse(Buffer.concat(chunks).toString() || "{}");
-      if (body.reset) { setBackends("stream", initial.stream); setBackends("api", initial.api); throttle = 0; fallback = false; }
+      if (body.reset) { setBackends("stream", initial.stream); setBackends("api", initial.api); throttle = 0; fallback = false; faults = []; }
+      if (body.faults) faults = body.faults.map((f) => ({ ...f, regex: new RegExp(f.match, "i"), hits: 0, faulted: 0 }));
       for (const role of ["stream", "api"]) if (body[role]) setBackends(role, body[role]);
       if (body.throttle !== undefined) throttle = body.throttle;
       if (body.fallback !== undefined) fallback = body.fallback;
       pollAll();
     }
     res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ stream: backends.stream, api: backends.api, throttle, fallback }));
+    res.end(JSON.stringify({ stream: backends.stream, api: backends.api, throttle, fallback, faults: faults.map(({ match, mode, times, hits, faulted }) => ({ match, mode, times, hits, faulted })) }));
   });
 }
 
@@ -96,7 +103,26 @@ const server = http.createServer((req, res) => {
   req.on("end", () => forward(req, res, Buffer.concat(chunks), []));
 });
 
+// The rule that spoils this request, if any.
+function faultFor(req) {
+  if (req.method !== "GET") return null;
+  for (const fault of faults) {
+    if (!fault.regex.test(req.url)) continue;
+    fault.hits++;
+    if (fault.times && fault.faulted >= fault.times) return null;
+    fault.faulted++;
+    return fault;
+  }
+  return null;
+}
+
 function forward(req, res, body, tried) {
+  const fault = tried.length ? null : faultFor(req);
+  if (fault && /^\d+$/.test(fault.mode)) {
+    res.writeHead(Number(fault.mode), { "x-routed-to": "fault" });
+    return res.end();
+  }
+  if (fault?.mode === "stall") return; // The socket stays open and silent until the client closes it.
   const target = pick(req.url, tried);
   if (!target) {
     res.writeHead(tried.length ? 502 : 503, { "x-routed-to": "none" });
@@ -107,7 +133,17 @@ function forward(req, res, body, tried) {
     { host: "127.0.0.1", port: backend.port, method: req.method, path: req.url, headers: req.headers, agent: false },
     (response) => {
       res.writeHead(response.statusCode, { ...response.headers, "x-routed-to": name, "x-backend": String(backend.port) });
-      if (throttle && isDirectPlay(req.url)) {
+      if (fault?.mode === "cut") {
+        const half = Number(response.headers["content-length"] ?? 0) / 2;
+        let sent = 0;
+        response.on("data", (chunk) => {
+          if (sent >= half) return;
+          const piece = chunk.subarray(0, Math.max(1, half - sent));
+          sent += piece.length;
+          res.write(piece);
+          if (sent >= half) setTimeout(() => res.destroy(), 50);
+        });
+      } else if (throttle && isDirectPlay(req.url)) {
         response.on("data", (chunk) => {
           res.write(chunk);
           response.pause();

@@ -319,8 +319,8 @@ func (d *driver) startWorkers(ctx context.Context, t testing.TB, dsn string) (*f
 				f.keepers[i], err = pgx.ConnectConfig(ctx, connConfig)
 			}
 			if err == nil {
-				_, err = d.pool.Exec(ctx, `INSERT INTO transcode_nodes (id, roles, store, slots, locked) VALUES ($1, 'worker', '', $2, true)
-					ON CONFLICT (id) DO UPDATE SET seen_at = now(), locked = true`, nodes[i].ID, slotsPerNode)
+				_, err = d.pool.Exec(ctx, `INSERT INTO transcode_nodes (id, roles, store, slots, locked, output_version) VALUES ($1, 'worker', '', $2, true, $3)
+					ON CONFLICT (id) DO UPDATE SET seen_at = now(), locked = true`, nodes[i].ID, slotsPerNode, playback.OutputVersion)
 			}
 			if err != nil {
 				failed.Store(err)

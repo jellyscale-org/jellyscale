@@ -27,7 +27,13 @@ type StoredSegment struct {
 	// pending is an error the reader returned with the bytes of its last read
 	// (io.Reader allows both at once), given at the next read.
 	pending error
+	// head is sent before the segment: the init segment of a stream that went on from another (JS-088).
+	head []byte
 }
+
+// StartWith makes Send write init, the stream's init segment, before the segment, so that a player that holds
+// another stream's init takes this one's: a moov at the start of a media segment is an init segment to MSE.
+func (s *StoredSegment) StartWith(init []byte) { s.head = init }
 
 // openSegment finds a stored segment: store.ErrNotFound if it is absent, empty
 // or cut before any of it could be read, which is not there yet. Any other
@@ -83,9 +89,14 @@ func (s *StoredSegment) Close() { s.reader.Close() }
 // that ended early, never a clean one.
 func (s *StoredSegment) Send(w http.ResponseWriter, head bool) error {
 	w.Header().Set("Content-Type", "video/mp4")
-	w.Header().Set("Content-Length", strconv.FormatInt(s.size, 10))
+	w.Header().Set("Content-Length", strconv.FormatInt(s.size+int64(len(s.head)), 10))
 	if head {
 		return nil
+	}
+	if len(s.head) > 0 {
+		if _, err := w.Write(s.head); err != nil {
+			return err
+		}
 	}
 	flush := http.NewResponseController(w).Flush
 	var sent int64

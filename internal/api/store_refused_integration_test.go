@@ -67,8 +67,9 @@ func (s *refusingStore) LocalPath(string) (string, bool) { return "", false }
 
 const refusedStoreURI = "s3://transcode-bucket/segments?endpoint=http://store.invalid"
 
-// The worker's put is refused by the transcode store while Postgres answers. The request waiting on the job
-// is answered 500 and its log line gives the job's error with the store's URI; a request within the 30
+// The worker's put is refused by the transcode store while Postgres answers. The refusal is not the file's, so
+// the request waiting on the job is served by fresh jobs (JS-088), three at most, and then, as the cause
+// persists, answered 500 and its log line gives the job's error with the store's URI; a request within the 30
 // seconds the failure is remembered is answered 500 and starts no job; PlaybackInfo answers RateLimitExceeded
 // with no sources and logs the same error; no ffmpeg is left, and no process took Postgres for away.
 func TestARefusedPutOfTheTranscodeStoreIsA500AndARefusalThatNameTheStore(t *testing.T) {
@@ -144,10 +145,10 @@ func TestARefusedPutOfTheTranscodeStoreIsA500AndARefusalThatNameTheStore(t *test
 
 	// The request that waits on the job whose put is refused.
 	if response, text := e.do(t, 1, "GET", entries[0], "", nil); response.StatusCode != 500 {
-		t.Fatalf("the segment request waiting on the failed job was answered %d %s, want 500", response.StatusCode, text)
+		t.Fatalf("the segment request waiting on the failed jobs was answered %d %s, want 500", response.StatusCode, text)
 	}
-	if states := scalar[string](t, e.pool, "SELECT string_agg(state, ',' ORDER BY id) FROM transcode_jobs"); states != "failed" {
-		t.Fatalf("the jobs ended %q, want one job, failed, never cancelled", states)
+	if states := scalar[string](t, e.pool, "SELECT string_agg(state, ',' ORDER BY id) FROM transcode_jobs"); states != "failed,failed,failed,failed" {
+		t.Fatalf("the jobs ended %q, want the first job and its three fresh ones, failed, never cancelled", states)
 	}
 	if reason := scalar[string](t, e.pool, "SELECT error FROM transcode_jobs"); !strings.Contains(reason, refusedStoreURI) {
 		t.Errorf("transcode_jobs.error is %q, want it to hold %s", reason, refusedStoreURI)
@@ -161,8 +162,8 @@ func TestARefusedPutOfTheTranscodeStoreIsA500AndARefusalThatNameTheStore(t *test
 	if response, text := e.do(t, 0, "GET", entries[2], "", nil); response.StatusCode != 500 {
 		t.Errorf("a segment request within the failure memory was answered %d %s, want 500", response.StatusCode, text)
 	}
-	if n := scalar[int](t, e.pool, "SELECT count(*) FROM transcode_jobs"); n != 1 {
-		t.Errorf("%d jobs exist after a request within the failure memory, want the one that failed", n)
+	if n := scalar[int](t, e.pool, "SELECT count(*) FROM transcode_jobs"); n != 4 {
+		t.Errorf("%d jobs exist after a request within the failure memory, want the four that failed", n)
 	}
 	// PlaybackInfo for the spec refuses, and says why.
 	again := e.playbackInfo(t, 0, e.item, body)

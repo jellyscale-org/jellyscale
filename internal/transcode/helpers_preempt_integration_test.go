@@ -5,6 +5,7 @@ package transcode
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -175,8 +176,8 @@ func TestAHelperNeverStopsAnotherHelper(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := r.pool.Exec(context.Background(), `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, helper)
-			VALUES ($1, $2, 'helper', $3, $3, true)`, r.hash, raw, start); err != nil {
+		if _, err := r.pool.Exec(context.Background(), `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, helper, output_version)
+			VALUES ($1, $2, 'helper', $3, $3, true, `+strconv.Itoa(playback.OutputVersion)+`)`, r.hash, raw, start); err != nil {
 			t.Fatal(err)
 		}
 	}

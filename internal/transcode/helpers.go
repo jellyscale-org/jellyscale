@@ -38,7 +38,7 @@ func (w *Worker) chunkSize() int {
 
 // chunked says whether the job makes its segments in chunks. A copy is cheap
 // and cut at the source's keyframes, so it is not.
-func (w *Worker) chunked(job claimed) bool { return !job.Spec.Copy }
+func (w *Worker) chunked(job claimed) bool { return !job.Spec.Copy && job.Spec.Recode == "" }
 
 func (w *Worker) helpBelow() float64 {
 	if w.HelpBelow > 0 {
