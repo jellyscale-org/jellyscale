@@ -274,6 +274,13 @@ type scannedFilm struct {
 	fingerprint   string // Of the track, if it is a file beside the film.
 }
 
+// The size of every film the kit writes, which its specs ask for: a larger one
+// makes ffmpeg scale each film up and encode more pixels for the same claim.
+const (
+	kitFilmWidth  = 640
+	kitFilmHeight = 360
+)
+
 func newScanned(t *testing.T, media, assets string) *scannedFilm {
 	t.Helper()
 	return newScannedThrough(t, media, assets, nil)
@@ -285,6 +292,7 @@ func newScanned(t *testing.T, media, assets string) *scannedFilm {
 func newScannedThrough(t *testing.T, media, assets string, m *meter) *scannedFilm {
 	t.Helper()
 	r := newRig(t, nil)
+	r.spec.Width, r.spec.Height = kitFilmWidth, kitFilmHeight
 	if _, err := r.pool.Exec(context.Background(), "DELETE FROM libraries"); err != nil {
 		t.Fatal(err)
 	}

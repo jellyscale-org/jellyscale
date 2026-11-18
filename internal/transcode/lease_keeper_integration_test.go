@@ -4,6 +4,8 @@ package transcode
 
 import (
 	"context"
+	"fmt"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -53,6 +55,40 @@ func (w *outageWorker) delay(d time.Duration) {
 	w.db.Delay(d)
 	w.live.Delay(d)
 	w.keep.Delay(d)
+}
+
+// twoLeases is what a job under the slow database must outlast for its test to
+// prove anything: the lease is 10 s, and a job cut at the first lease (a renewal
+// that gives up every time) ends well before a second one.
+const twoLeases = 20 * time.Second
+
+// slowFilmSeconds is the length of the film the slow-database tests play. At 1 s
+// a round trip every segment costs the job several of them, so a few segments
+// last longer than two leases, which is all the claim needs; the whole 90 s film
+// took 551 s.
+const slowFilmSeconds = 14
+
+// useSlowFilm points the rig's item at a cut of the film of slowFilmSeconds and
+// returns its number of segments.
+func (r *rig) useSlowFilm(t *testing.T) int {
+	t.Helper()
+	name := fmt.Sprintf("slow-database-%d.mkv", slowFilmSeconds)
+	run(t, "ffmpeg", "-nostdin", "-v", "error", "-y", "-i", filepath.Join(film(t), "film.mkv"), "-t", strconv.Itoa(slowFilmSeconds), "-c", "copy", filepath.Join(film(t), name))
+	source := r.useFile(t, name)
+	return playback.EncodedLayout(source.RunTimeTicks).Count()
+}
+
+// notDoneInsideTwoLeases fails the test as a harness error when its job ended
+// done within two leases of the moment the 1 s round trips were in force on the
+// job: such a run cannot tell a keeper that works from one that cuts the job at
+// its first lease. It logs how long the job took.
+func notDoneInsideTwoLeases(t *testing.T, state string, since time.Time) {
+	t.Helper()
+	lasted := time.Since(since)
+	t.Logf("the job ended %s %v after the 1 s round trips were in force on it", state, lasted.Round(time.Second))
+	if state == "done" && lasted < twoLeases {
+		t.Fatalf("harness error: the job was done in %v, inside two leases (%v): the check proves nothing; lengthen slowFilmSeconds", lasted, twoLeases)
+	}
 }
 
 // isTheRenewal matches the statement that renews a transcode job's lease: it
@@ -442,7 +478,7 @@ func TestAHoldOfOneRenewalAttemptChangesNothing(t *testing.T) {
 // stored. A renewal that waits for its connection longer than its bound would
 // give up every time and the job would be cut at the first lease.
 func TestASlowDatabaseCostsNoJobItsLeaseOrItsWorker(t *testing.T) {
-	slowAt(t, "2") // The film takes at least 45 s, which is over two leases.
+	slowAt(t, "2") // The film, cut short (slowFilmSeconds), still lasts more than two leases at 1 s a round trip.
 	// The pool as production opens it, not the kit's exec mode: there the first use
 	// of a statement on a connection is a prepare and an execute, two round trips,
 	// and at 1 s each a renewal bounded at 1.5 s that is not sent in one round trip
@@ -450,7 +486,7 @@ func TestASlowDatabaseCostsNoJobItsLeaseOrItsWorker(t *testing.T) {
 	// send its renewal in one round trip on any connection (pgx.QueryExecModeExec).
 	s := newStack(t, 1, productionPool)
 	r, w, ctx := s.r, s.workers[0], context.Background()
-	count := playback.EncodedLayout(900000000).Count()
+	count := r.useSlowFilm(t) // Before the first request.
 	if _, err := s.fetch(ctx, s.jobs, r.spec, psid(0), 0); err != nil {
 		t.Fatal(err)
 	}
@@ -463,6 +499,11 @@ func TestASlowDatabaseCostsNoJobItsLeaseOrItsWorker(t *testing.T) {
 	began := time.Now()
 	w.delay(delay) // The delay begins with the job running; TestASlowDatabaseSetBeforeTheClaim... sets it before the claim.
 	t.Cleanup(func() { w.delay(0) })
+	// The keeper's connection, made before the delay, has its renewal statement
+	// prepared already, so every renewal on it is one round trip whatever the
+	// build sends. Made again under the delay it prepares first, which is where a
+	// renewal that is not sent in one round trip shows.
+	w.keep.Sever()
 
 	var expired atomic.Int64
 	var mu sync.Mutex
@@ -487,9 +528,7 @@ func TestASlowDatabaseCostsNoJobItsLeaseOrItsWorker(t *testing.T) {
 	waitFor(t, "the film to be done through a slow database", 6*time.Minute, func() bool { return r.jobState(t, job) != "running" })
 	stopSampling()
 	<-sampled
-	if lasted := time.Since(began); lasted < 20*time.Second {
-		t.Fatalf("the film was done in %v, inside two leases: the check proves nothing", lasted)
-	}
+	notDoneInsideTwoLeases(t, r.jobState(t, job), began)
 	if got := r.jobState(t, job); got != "done" {
 		t.Errorf("the job ended %s through a slow database, want done", got)
 	}

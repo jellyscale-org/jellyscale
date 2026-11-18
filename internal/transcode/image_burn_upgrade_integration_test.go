@@ -108,7 +108,7 @@ func scannedByThePreviousRelease(t *testing.T, media, assets string) *scannedFil
 	}
 	r := &rig{dsn: dsn, pool: pool, items: &items.Repo{Pool: pool, ServerID: "srv"}, scratch: t.TempDir(), user: user,
 		log:  slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})),
-		spec: playback.Spec{AudioIndex: 1, VideoBitrate: 1_500_000, AudioBitrate: 128_000, Width: 1280, Height: 720}}
+		spec: playback.Spec{AudioIndex: 1, VideoBitrate: 1_500_000, AudioBitrate: 128_000, Width: kitFilmWidth, Height: kitFilmHeight}}
 	libs, err := library.Sync(ctx, pool, []library.Config{{Name: "cues", Kind: "movies", Media: "file://" + media, Assets: "file://" + assets}})
 	if err != nil {
 		t.Fatal(err)

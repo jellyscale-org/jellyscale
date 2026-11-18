@@ -304,7 +304,10 @@ func TestARegistryThatCannotBeAskedFailsTheRunAndNeverCountsAsTagAbsent(t *testi
 
 // A registry that says the manifest and the repository are unknown (404, as registry:2 does for an empty
 // repository) has the tag absent: the publish goes on and tries to write. The stub records the write and
-// refuses it, so the run still fails, but it is shown to have tried.
+// refuses it with a status docker push does not try again (403 DENIED: moby's push gives up at once on a denied
+// write, while it tries a 5xx again five times with a wait between, which took 100 s on CI where the same
+// stub's 500 took 1.5 s on a developer's machine), so the run fails and is shown to have tried, once for each of the image's two blobs.
+// The publish's own output is logged, which is where a push that retried says so.
 func TestARegistryThatAnswersNotFoundHasTheTagAbsentAndIsWrittenTo(t *testing.T) {
 	a, af := localImage(t, "a"), localImage(t, "af")
 	for _, code := range []string{"MANIFEST_UNKNOWN", "NAME_UNKNOWN"} {
@@ -323,13 +326,30 @@ func TestARegistryThatAnswersNotFoundHasTheTagAbsentAndIsWrittenTo(t *testing.T)
 			mu.Lock()
 			writes = append(writes, r.Method+" "+r.URL.Path)
 			mu.Unlock()
-			http.Error(w, "no writes here", http.StatusInternalServerError)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(`{"errors":[{"code":"DENIED","message":"no writes here"}]}`)) //nolint:errcheck
 		}))
 		host := strings.TrimPrefix(srv.URL, "http://")
-		publish(t, host+"/jellyscale", a, af, "tag", "v1.2.3")
+		began := time.Now()
+		exit, out := publish(t, host+"/jellyscale", a, af, "tag", "v1.2.3")
+		// One line with a time, which the CI job log keeps for a run that passed (test/report.sh timings).
+		t.Logf("%s: publish exited %d after %v, and docker push said it would retry %d times", code, exit, time.Since(began).Round(time.Second), strings.Count(out, "Retrying in"))
+		t.Logf("%s: publish output:\n%s", code, out)
+		if strings.Contains(out, "Retrying in") {
+			t.Errorf("a registry answering 404 %s and refusing every write was written to again: docker retried a refusal it must not retry:\n%s", code, out)
+		}
+		if exit == 0 {
+			t.Errorf("a registry answering 404 %s and refusing every write: the publish exited 0", code)
+		}
 		mu.Lock()
 		if len(writes) == 0 {
 			t.Errorf("a registry answering 404 %s counted as unaskable: nothing was written, so the first publish of a package would never happen", code)
+		}
+		// The image has two blobs (its layer and its config), each uploaded once at the same time; a push that
+		// tried again would write more than that.
+		if len(writes) > 2 {
+			t.Errorf("a registry answering 404 %s was written to %d times, want at most one write for each of the image's two blobs: %v", code, len(writes), writes)
 		}
 		mu.Unlock()
 		srv.Close()

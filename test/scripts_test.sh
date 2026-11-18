@@ -1670,6 +1670,15 @@ check "docs/testing.md says what test/alone.txt is for" "1" "$(grep -F 'test/alo
 check "docs/testing.md gives one command that runs exactly one process's share" "1" "$(grep -E 'INTEGRATION_SHARD=.*INTEGRATION_PROCS=.*INTEGRATION_PROC=|INTEGRATION_PROC=.*INTEGRATION_PROCS=.*INTEGRATION_SHARD=' $d | grep -c 'test/integration.sh' | awk '{print ($1>0)}')"
 check "docs/testing.md says a concurrency claim still needs its own real processes or contention" "1" "$(grep -iE 'concurrency' $d | grep -ciE 'real process|contention' | awk '{print ($1>0)}')"
 
+# 11. Every named mutant of test/mutant.py still applies to the code (its anchor is there), so that a refactor that
+# removes one is found here by name, not by whoever next runs test/mutants.sh. No test runs under a mutant.
+mutant_names=$(python3 -I test/mutant.py none "$repo" "$tmp" 2>&1 | sed -n 's/^usage: mutant.py <\([^>]*\)>.*$/\1/p' | tr '|' ' ')
+check "test/mutant.py names its mutants" "ok" "$([[ -n $mutant_names ]] && echo ok)"
+for mutant in $mutant_names; do
+  mutant_dir=$(mktemp -d "$tmp/mutant.XXXXXX")
+  check "mutant $mutant still applies" "" "$(python3 -I test/mutant.py "$mutant" "$repo" "$mutant_dir" 2>&1)"
+done
+
 echo
 [[ $fails -eq 0 ]] && echo "scripts: all passed" || echo "scripts: $fails failed"
 exit $((fails > 0))
