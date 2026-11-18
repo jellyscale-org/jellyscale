@@ -4,10 +4,14 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os/exec"
+	"sync"
+	"syscall"
 
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"jellyscale/internal/db"
+	"jellyscale/internal/store"
 )
 
 // How a job ends comes from where its error came from, not from what the error is:
@@ -88,4 +92,45 @@ func endState(ctx context.Context, err error) (state, reason string) {
 func abortedForAnother(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && (pgErr.Code == "40P01" || pgErr.Code == "40001")
+}
+
+// notTheFiles says a failed job's cause is not the file's: a store that refused or cut a read, or ffmpeg killed
+// by a signal. Such a job is made again for the request that waited on it (JS-088), where ffmpeg failing on the
+// file's own data, or its input ending early, is not (DOMAINS invariants 40, 45).
+func notTheFiles(err error) bool {
+	var stored *storeError
+	if errors.As(err, &stored) {
+		return !errors.Is(err, store.ErrNotFound)
+	}
+	var exited *exec.ExitError
+	if errors.As(err, &exited) {
+		status, ok := exited.Sys().(syscall.WaitStatus)
+		return ok && status.Signaled()
+	}
+	return false
+}
+
+// readWatch keeps the first failure store.Reader gives back to ffmpeg. A cut
+// the Reader resumes is never seen here, so it cannot replace the run's own
+// cause, such as a wrong index or data ffmpeg rejects.
+type readWatch struct {
+	mu     sync.Mutex
+	failed error
+}
+
+func (s *readWatch) fail(err error) {
+	if err == nil || err == io.EOF || errors.Is(err, context.Canceled) {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.failed == nil {
+		s.failed = err
+	}
+}
+
+func (s *readWatch) failure() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.failed
 }

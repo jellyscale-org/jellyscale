@@ -164,19 +164,19 @@ func containsRun(args, run []string) bool {
 	return false
 }
 
-// Segments made before the change splice with those made after: the version
-// and the hashes of the specs are what they were.
+// The version and the hashes of the specs change only with a deliberate bump
+// of OutputVersion (invariant 59): 5 is JS-088's fallback encode (Spec.Recode).
 func TestSpecHashesAndOutputVersionAreUnchanged(t *testing.T) {
-	if playback.OutputVersion != 4 {
-		t.Errorf("OutputVersion is %d, want 4", playback.OutputVersion)
+	if playback.OutputVersion != 5 {
+		t.Errorf("OutputVersion is %d, want 5", playback.OutputVersion)
 	}
 	plain := playback.Spec{Item: "i", Source: "s", ETag: "e", AudioIndex: 1, VideoBitrate: 1_500_000, AudioBitrate: 128_000, Width: 640, Height: 360}
-	if got, want := plain.Hash(), "54810a9cda4936b5b2e2152006f8e730"; got != want {
+	if got, want := plain.Hash(), "6a60a2da1a31a8d1b1a3c87cb6976b7e"; got != want {
 		t.Errorf("hash %s, want %s", got, want)
 	}
 	rich := withSubtitle(toneMap, 2)
 	rich.Item, rich.Source, rich.ETag, rich.AudioCopy = "i", "s", "e", "flac"
-	if got, want := rich.Hash(), "717c50ed071a58657957a37ed623d960"; got != want {
+	if got, want := rich.Hash(), "eebcc0807fdb1c502aa62bb8b3235aa4"; got != want {
 		t.Errorf("hash %s, want %s", got, want)
 	}
 }

@@ -10,9 +10,12 @@ var (
 	playbackRefusals = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "jellyscale_playbackinfo_refusals_total",
 		Help: "Sources PlaybackInfo refused because the transcode they need cannot start now."})
+	playbackFallbacks = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "jellyscale_playback_copy_fallbacks_total",
+		Help: "Streams of a copied video that went on as a re-encode because the file's keyframe index was found wrong, counted once for each stream."})
 )
 
 // Collectors are the metrics of this package.
 func Collectors() []prometheus.Collector {
-	return []prometheus.Collector{playbackDecisions, playbackRefusals}
+	return []prometheus.Collector{playbackDecisions, playbackRefusals, playbackFallbacks}
 }

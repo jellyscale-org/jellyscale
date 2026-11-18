@@ -121,6 +121,26 @@ for pair in "Lead Copy Film (2094):Zeta Film (2023)" "Lead Encode Film (2095):Ze
   to=${pair%%:*} from=${pair#*:}
   link "$t/$from/$from.mkv" "$t/$to/$to.mkv"
 done
+# JS-088: films for what a viewer sees when a segment fails or a copy's keyframe index is found wrong. Each
+# scenario plays one of its own (a spec's stored segments are reused by every later play of it): one
+# the player's reaction to a failing segment is observed on, and one each for an index found wrong where the
+# viewer is seeking to, where the job reads ahead of him, with two viewers, and with a chosen track of audio and subtitles.
+for to in "Observe Film (2160)" "Recover Pair Film (2152)"; do
+  link "$t/Zeta Film (2023)/Zeta Film (2023).mkv" "$t/$to/$to.mkv"
+done
+# Zeta's keyframes are every 2 s, so its copy is cut into the same 4 s segments as a re-encode and a build that mistakes one
+# layout for the other would pass: the two films that watch the viewer's place have a keyframe every 5 to 7 s (at 0, 5, 11, 16,
+# 23, 29, 36, 41 s and so on), Zeta's tracks otherwise, so that the layout of the copy and the grid of the re-encode disagree.
+irregular=$(awk 'BEGIN { split("5 6 5 7 6 7 5", gap, " "); t = 0; i = 1; while ((t += gap[i]) < 149) { i = i % 7 + 1; printf "%s%d", (n++ ? "," : ""), t } }')
+for to in "Recover Reach Film (2150)" "Recover Early Film (2151)"; do
+  mkdir -p "$work/media/$t/$to" && ffmpeg -nostdin -v error -y \
+    -f lavfi -i "testsrc2=size=1280x720:rate=24:duration=150" \
+    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=150" \
+    -f lavfi -i "sine=frequency=880:sample_rate=48000:duration=150" \
+    -map 0:v -map 1:a -map 2:a -c:v libx264 -preset ultrafast -crf 26 -g 1000 -sc_threshold 0 -force_key_frames "$irregular" -c:a:0 ac3 -c:a:1 aac \
+    -metadata:s:a:0 language=eng -metadata:s:a:1 language=spa "$work/media/$t/$to/$to.mkv" || exit 1
+done
+link "$t/Direct Sub Film (2060)/Direct Sub Film (2060).en.srt" "$t/Recover Early Film (2151)/Recover Early Film (2151).en.srt"
 # The films the failover gate (JS-031) kills and rolls replicas under: one direct play (the 60 MB
 # film of the outage scenario, which the router slows to a download of tens of seconds) and one
 # re-encode each for an api kill, a stream kill and a stream roll, and the three films that play on
@@ -216,7 +236,16 @@ api1=$(free) api2=$(free) stream=$(free) router=$(free)
 # api and stream run with no ffmpeg on their PATH (an empty directory): only
 # workers run media tools, and anything else that tried would fail.
 mkdir -p "$work/nobin"
-start() { PATH="$work/nobin" "$work/jellyscale" "$@" --config "$work/config-s3.json" >>"$logs/server.log" 2>&1 & pids+=($!); }
+# JS-088: each of these processes serves /metrics on a port of its own (E2E_METRICS lists them), which the scenarios
+# of a fallback from copy to re-encode sum a counter over; the replicas the failover gate starts keep config-s3.json.
+metrics_ports=()
+with_metrics() { # name: sets $made to a copy of config-s3.json that says where this process serves /metrics
+  local m; m=$(free); metrics_ports+=("$m")
+  made="$work/config-$1.json"
+  sed "s|^{\"name\"|{\"metricsListen\": \"127.0.0.1:$m\", \"name\"|" "$work/config-s3.json" >"$made"
+}
+starts=0
+start() { with_metrics "$1-$((++starts))"; PATH="$work/nobin" "$work/jellyscale" "${@:2}" --config "$made" >>"$logs/server.log" 2>&1 & pids+=($!); }
 # The worker's ffmpeg reads its input at twice the film's speed, so a transcode
 # takes a while on any machine and the stop tests find it still running.
 # E2E_NO_SHIM=1 leaves ffmpeg at full speed, to measure latency.
@@ -254,15 +283,17 @@ esac
 exec $(command -v ffmpeg) "\$@"
 E2
 chmod +x "$work/bin/ffmpeg"
+with_metrics worker
+worker_config=$made
 start_worker() {
-  PATH="$work/bin:$PATH" "$work/jellyscale" --roles=worker --config "$work/config-s3.json" >>"$logs/server.log" 2>&1 &
+  PATH="$work/bin:$PATH" "$work/jellyscale" --roles=worker --config "$worker_config" >>"$logs/server.log" 2>&1 &
   pids+=($!)
   export E2E_WORKER_PID=$!
 }
 start_worker
-start --roles=api --listen "127.0.0.1:$api1"
-start --roles=api --listen "127.0.0.1:$api2"
-start --roles=stream --listen "127.0.0.1:$stream"
+start api --roles=api --listen "127.0.0.1:$api1"
+start api --roles=api --listen "127.0.0.1:$api2"
+start stream --roles=stream --listen "127.0.0.1:$stream"
 node "$repo/test/e2e/router.mjs" "$router" "$stream" "$api1,$api2" >>"$logs/server.log" 2>&1 &
 pids+=($!)
 # A second stream replica set up wrongly, with no transcodeStore, behind its own
@@ -298,8 +329,9 @@ done
 for _ in $(seq 1 120); do [[ $(grep -c 'scan finished' "$logs/server.log") -ge 5 ]] && break; sleep 0.5; done
 
 base="http://127.0.0.1:$router"
-cp "$repo/test/e2e/conform.mjs" "$repo/test/e2e/shard.mjs" "$repo/test/e2e/player.mjs" "$repo/test/e2e/browse.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/transcode.mjs" "$repo/test/e2e/subtitles.mjs" "$repo/test/e2e/failover.mjs" "$repo/test/e2e/away.mjs" "$playwright/"
+cp "$repo/test/e2e/conform.mjs" "$repo/test/e2e/shard.mjs" "$repo/test/e2e/player.mjs" "$repo/test/e2e/recovery.mjs" "$repo/test/e2e/browse.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/transcode.mjs" "$repo/test/e2e/subtitles.mjs" "$repo/test/e2e/failover.mjs" "$repo/test/e2e/away.mjs" "$playwright/"
 result=0
+export E2E_METRICS=$(IFS=,; echo "${metrics_ports[*]}") E2E_CAPTURES="$repo/compat/captures"
 export E2E_SCRATCH="$work/scratch" E2E_MEDIA="$work/media/transcode" E2E_ASSETS="$work/assets/transcode" E2E_PG="$pg" E2E_LOG="$logs/server.log"
 # Only a whole, ordinary run says what the tree does: a selection, a repeat, a
 # browser that plays HEVC or a worker at full speed is none of that.

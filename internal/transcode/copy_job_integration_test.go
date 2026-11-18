@@ -188,9 +188,9 @@ func TestCopiedStreamWithAWrongIndexFailsAndIsReEncoded(t *testing.T) {
 	}
 	var logs logBuffer
 	r.worker(t, func(w *Worker) { w.Log = logs.logger() })
-	if _, err := r.fetch(t, r.jobs(t), psid(0), 0); err == nil {
-		t.Fatal("a segment was served from a wrong index")
-	}
+	// What the request is answered with is JS-088's to decide (the viewer goes on as a re-encode; see
+	// internal/api/recovery_integration_test.go): this test is about what the job and the index record.
+	r.fetch(t, r.jobs(t), psid(0), 0) //nolint:errcheck
 	waitFor(t, "the job to fail", 30*time.Second, func() bool { return r.count(t, "SELECT count(*) FROM transcode_jobs WHERE state = 'failed'") == 1 })
 	if reason := mustScalar(t, r, "SELECT error FROM transcode_jobs"); !strings.Contains(reason, "keyframe index is wrong") {
 		t.Fatalf("the reason is %q", reason)

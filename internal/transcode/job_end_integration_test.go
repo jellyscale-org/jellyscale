@@ -227,8 +227,9 @@ func TestAGoodJobQueuedBesideOneWhoseSpecDoesNotDecodeIsStillRun(t *testing.T) {
 }
 
 // The transcode store refuses the connection of a put, Postgres answering: the job ends failed, never
-// cancelled, with the store's URI. One job of the spec is run while the failure is remembered, and no
-// ffmpeg of it is left. No process takes Postgres for away.
+// cancelled, with the store's URI. The refusal is not the file's, so the request is served by fresh jobs, the
+// first and three more (JS-088), all failed, and no more run while the failure is remembered. No ffmpeg of
+// them is left. No process takes Postgres for away.
 func TestATranscodeStoreThatRefusesAPutFailsTheJobAndNamesTheStore(t *testing.T) {
 	dir := t.TempDir()
 	r := newRig(t, store.NewPosix(dir))
@@ -246,15 +247,15 @@ func TestATranscodeStoreThatRefusesAPutFailsTheJobAndNamesTheStore(t *testing.T)
 		t.Fatalf("the request waiting on the job got %v, want its failure naming %s", err, uri)
 	}
 	states, reasons := r.ends(t, r.hash)
-	if len(states) != 1 || states[0] != "failed" || !strings.Contains(reasons[0], uri) {
-		t.Fatalf("the jobs of the spec ended %v %q, want one job, failed, with %s in transcode_jobs.error", states, reasons, uri)
+	if !allFailedNaming(states, reasons, 4, uri) {
+		t.Fatalf("the jobs of the spec ended %v %q, want the first job and three fresh ones, failed, with %s in transcode_jobs.error", states, reasons, uri)
 	}
 	// Within the 30 seconds the failure is remembered: a request starts no job, and PlaybackInfo refuses.
 	if _, err := r.fetch(t, j, psid(1), 3); !errors.As(err, &failed) || !strings.Contains(failed.Reason, uri) {
 		t.Errorf("a request within the failure memory got %v, want the failure naming %s", err, uri)
 	}
-	if states, _ := r.ends(t, r.hash); len(states) != 1 {
-		t.Errorf("%d jobs of the spec ran while the failure was remembered, want 1", len(states))
+	if states, _ := r.ends(t, r.hash); len(states) != 4 {
+		t.Errorf("%d jobs of the spec ran while the failure was remembered, want the 4 of the first request", len(states))
 	}
 	if reason, err := j.Unavailable(context.Background(), r.spec, "", ""); err != nil || !strings.Contains(reason, uri) {
 		t.Errorf("PlaybackInfo's refusal is %q %v, want the last attempt's error with %s", reason, err, uri)
@@ -262,6 +263,19 @@ func TestATranscodeStoreThatRefusesAPutFailsTheJobAndNamesTheStore(t *testing.T)
 	waitFor(t, "no ffmpeg to be left", 10*time.Second, func() bool { return len(r.ffmpegProcesses()) == 0 })
 	neverAway(t, "the worker", &workerLog, db.Of(w.Pool))
 	neverAway(t, "the stream replica", &replicaLog, db.Of(j.Pool))
+}
+
+// allFailedNaming says that there are want jobs, each failed with a reason that holds named.
+func allFailedNaming(states, reasons []string, want int, named string) bool {
+	if len(states) != want {
+		return false
+	}
+	for i, state := range states {
+		if state != "failed" || !strings.Contains(reasons[i], named) {
+			return false
+		}
+	}
+	return true
 }
 
 // A film with a subtitle file beside it that is an image (a .sup), burnt in, is a job that reads the
@@ -311,8 +325,8 @@ func TestTheErrorOfAJobNamesTheStoreThatFailedNotTheOtherOne(t *testing.T) {
 				t.Fatalf("the request got %v, want the failure naming %s and not %s", err, named, notNamed)
 			}
 			states, reasons := r.ends(t, r.hash)
-			if len(states) != 1 || states[0] != "failed" || !strings.Contains(reasons[0], named) || strings.Contains(reasons[0], notNamed) {
-				t.Errorf("the jobs ended %v %q, want one failed naming %s and not %s", states, reasons, named, notNamed)
+			if !allFailedNaming(states, reasons, 4, named) || strings.Contains(strings.Join(reasons, "\n"), notNamed) {
+				t.Errorf("the jobs ended %v %q, want four failed (the first and three fresh ones) naming %s and not %s", states, reasons, named, notNamed)
 			}
 			if listed, marked := r.subtitleState(t); !listed || marked {
 				t.Errorf("a store's refusal hid the subtitle file (listed %v, marked unreadable %v): it is the store's failure, not the file's", listed, marked)

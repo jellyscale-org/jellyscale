@@ -503,3 +503,53 @@ func TestReaderResumesAfterAReset(t *testing.T) {
 		t.Fatalf("%d opens, err %v", reset.opens, err)
 	}
 }
+
+// InputWithFailure tells the caller what the tool read as failed, not what the Reader healed: a cut it resumed is
+// not the cause of anything the tool then does.
+func TestInputWithFailureReportsOnlyWhatTheReaderGaveUpOn(t *testing.T) {
+	ctx := context.Background()
+	inner := NewPosix(t.TempDir())
+	body := bytes.Repeat([]byte("0123456789"), 100)
+	if err := inner.Put(ctx, "k", bytes.NewReader(body)); err != nil {
+		t.Fatal(err)
+	}
+	for name, c := range map[string]struct {
+		cut       int
+		reported  bool
+		wantWhole bool
+	}{
+		"a cut the Reader resumes": {cut: 300, reported: false, wantWhole: true},
+		"a cut it gives up on":     {cut: 0, reported: true, wantWhole: false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var mu sync.Mutex
+			var reported []error
+			input, closeInput, err := InputWithFailure(ctx, remoteOnly{&resetStore{Store: inner, cut: c.cut}}, "k", int64(len(body)), func(err error) {
+				mu.Lock()
+				defer mu.Unlock()
+				reported = append(reported, err)
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer closeInput()
+			response, err := http.Get(input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer response.Body.Close()
+			got, _ := io.ReadAll(response.Body)
+			if whole := bytes.Equal(got, body); whole != c.wantWhole {
+				t.Errorf("the tool read the whole object: %v, want %v", whole, c.wantWhole)
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			if (len(reported) > 0) != c.reported {
+				t.Errorf("reported %v, want a report: %v", reported, c.reported)
+			}
+			if c.reported && !errors.Is(reported[0], syscall.ECONNRESET) {
+				t.Errorf("reported %v, want the Reader's final error", reported[0])
+			}
+		})
+	}
+}

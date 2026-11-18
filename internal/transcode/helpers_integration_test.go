@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
 	"jellyscale/internal/testenv"
 )
@@ -674,8 +675,8 @@ func TestAFailedHelperDoesNotFailTheViewer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.pool.Exec(context.Background(), `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, helper, state, error, ended_at)
-		VALUES ($1, $2, 'helper', 4, 4, true, 'failed', 'the helper could not read the film', now())`, r.hash, raw); err != nil {
+	if _, err := r.pool.Exec(context.Background(), `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, helper, state, error, ended_at, output_version)
+		VALUES ($1, $2, 'helper', 4, 4, true, 'failed', 'the helper could not read the film', now(), `+strconv.Itoa(playback.OutputVersion)+`)`, r.hash, raw); err != nil {
 		t.Fatal(err)
 	}
 	j := r.jobs(t)

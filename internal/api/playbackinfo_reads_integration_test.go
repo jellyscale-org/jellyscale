@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -17,6 +18,7 @@ import (
 	dto "github.com/prometheus/client_model/go"
 
 	"jellyscale/internal/db"
+	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
 	"jellyscale/internal/subtitles"
 )
@@ -242,8 +244,8 @@ func joinLiveJob(t *testing.T, e *env) {
 	t.Helper()
 	source := db.CompactID(e.item)
 	hash := specHash(t, e, lowerKeys(mustQuery(t, firstSource(e.playbackInfo(t, 0, e.item, profileBody(t, source, nil)))["TranscodingUrl"].(string))))
-	mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, lease_expires_at, worker)
-		VALUES ($1, '{}', 'o', 0, 0, 'running', now() + interval '1 minute', 'w1')`, hash)
+	mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, lease_expires_at, worker, output_version)
+		VALUES ($1, '{}', 'o', 0, 0, 'running', now() + interval '1 minute', 'w1', `+strconv.Itoa(playback.OutputVersion)+`)`, hash)
 }
 
 func (b branch) setup(t *testing.T) (*env, string, *statementLog) {
@@ -599,8 +601,8 @@ func TestPlaybackInfoStillCancelsAStaleQueuedJob(t *testing.T) {
 	hash := specHash(t, e, lowerKeys(mustQuery(t, firstSource(e.playbackInfo(t, 0, e.item, profileBody(t, source, nil)))["TranscodingUrl"].(string))))
 	traceReplicas(t, e)
 	mustExec(t, e.pool, "UPDATE transcode_nodes SET seen_at = now() - interval '1 hour'")
-	mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, created_at)
-		VALUES ($1, '{}', 'o', 0, 0, 'queued', now() - interval '1 minute')`, hash)
+	mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, created_at, output_version)
+		VALUES ($1, '{}', 'o', 0, 0, 'queued', now() - interval '1 minute', `+strconv.Itoa(playback.OutputVersion)+`)`, hash)
 	if reply := e.playbackInfo(t, 0, e.item, profileBody(t, source, nil)); reply["ErrorCode"] != "RateLimitExceeded" {
 		t.Fatalf("a stale queued job was offered: %v", reply)
 	}
@@ -612,8 +614,8 @@ func TestPlaybackInfoStillCancelsAStaleQueuedJob(t *testing.T) {
 
 	// Within queueTimeout it is live, whatever the workers: it is not cancelled.
 	mustExec(t, e.pool, "TRUNCATE transcode_jobs")
-	mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, created_at)
-		VALUES ($1, '{}', 'o', 0, 0, 'queued', now())`, hash)
+	mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, created_at, output_version)
+		VALUES ($1, '{}', 'o', 0, 0, 'queued', now(), `+strconv.Itoa(playback.OutputVersion)+`)`, hash)
 	if reply := e.playbackInfo(t, 0, e.item, profileBody(t, source, nil)); reply["ErrorCode"] != nil || firstSource(reply)["TranscodingUrl"] == nil {
 		t.Fatalf("a job queued just now was not joined: %v", reply)
 	}
@@ -630,8 +632,8 @@ func TestPlaybackInfoCancelsAStaleJobOnce(t *testing.T) {
 	log := traceReplicas(t, e)[0]
 	hash := specHash(t, e, lowerKeys(mustQuery(t, firstSource(e.playbackInfo(t, 0, e.item, profileBody(t, source, nil)))["TranscodingUrl"].(string))))
 	mustExec(t, e.pool, "TRUNCATE transcode_jobs")
-	mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, created_at)
-		VALUES ($1, '{}', 'o', 0, 0, 'queued', now() - interval '1 minute')`, hash)
+	mustExec(t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, created_at, output_version)
+		VALUES ($1, '{}', 'o', 0, 0, 'queued', now() - interval '1 minute', `+strconv.Itoa(playback.OutputVersion)+`)`, hash)
 	log.take()
 	e.playbackInfo(t, 0, e.item, profileBody(t, source, nil))
 	cancels := count(log.take(), func(s string) bool { return strings.Contains(s, "transcode_jobs") && writes.MatchString(s) })

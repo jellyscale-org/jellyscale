@@ -225,6 +225,7 @@ fails_with "a shard past n is refused by the gate" env E2E_SHARD=3/3 node test/e
 
 # --- player.mjs (JS-099): the e2e helpers wait out a player that reloads its source, in a page that does it in the order CI's failing run saw.
 check "the shared player helpers pass test/e2e/player_test.mjs" ok "$(node test/e2e/player_test.mjs >"$tmp/player" 2>&1 && echo ok || tail -20 "$tmp/player")"
+check "the recovery helpers pass test/e2e/recovery_test.mjs" ok "$(node test/e2e/recovery_test.mjs >"$tmp/recovery" 2>&1 && echo ok || tail -20 "$tmp/recovery")"
 check "run.sh copies player.mjs next to the gates, which import it" 1 "$(grep -c 'test/e2e/player.mjs' test/e2e/run.sh | awk '{print ($1>0)}')"
 # The record of JS-099 (docs/testing.md) ties each named failure to what failed.
 for line in "reading 'seeking'" "timed out waiting for playback past 22" "Stream ends prematurely" "image_burn_failures_integration_test.go:138" "passed 20 of 20"; do

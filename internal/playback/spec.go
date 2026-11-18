@@ -14,7 +14,7 @@ import (
 // hash includes them: bump OutputVersion with any change to the ffmpeg
 // settings, and old segments simply stop being found.
 const (
-	OutputVersion  = 4
+	OutputVersion  = 5
 	SegmentSeconds = 4
 	// Family is the encoder family; fMP4 can't splice across families.
 	Family = "x264"
@@ -188,6 +188,11 @@ type Spec struct {
 	// on it (Cost), and it is no part of the hash: the segments are the same. A
 	// spec stored before it was recorded has none.
 	SourceHeight int
+	// Recode is the codec ("h264" or "hevc") of a copy whose keyframe index was found wrong, made again as an
+	// encode of that codec, cut on the copy's own layout (CopyLayout of the index the playlist was
+	// cut from), so that the player goes on with the playlist it holds (JS-088). It is no
+	// Copy: the picture is encoded, so the segments never share a hash with the copy's.
+	Recode string
 }
 
 // NewSpec turns validated parameters into the output they ask for.
@@ -236,6 +241,25 @@ func NewSpec(item string, p Params, source Source) (Spec, error) {
 	}, nil
 }
 
+// CanRecode says a copy of this video codec can be made again as an encode when its index is found wrong.
+// AV1 cannot: its fallback is not built (docs/transcoding.md).
+func CanRecode(codec string) bool { return codec == "h264" || codec == "hevc" }
+
+// Recoded is the spec of the encode that stands in for a copy whose index was found wrong. It
+// keeps the copy's tracks, caps its picture as every re-encode is capped, and toneMap is the
+// source's, so that an HDR picture is not sent as it is to a decoder that took a copy of it.
+func (s Spec) Recoded(codec, toneMap string) Spec {
+	sourceHeight := s.Height
+	s.Width, s.Height = outputSize(Stream{Width: s.Width, Height: s.Height}, Unlimited)
+	s.Copy, s.Recode, s.ToneMap, s.SourceHeight = false, codec, toneMap, sourceHeight
+	// A copy carries the file's bitrate, or none when the file does not say.
+	budget := int64(s.Width) * int64(s.Height) * 6
+	if s.VideoBitrate <= 0 || s.VideoBitrate > budget {
+		s.VideoBitrate = budget
+	}
+	return s
+}
+
 // Hash names the spec in the segment store.
 func (s Spec) Hash() string {
 	text := fmt.Sprintf("v%d|%s|%s|%s|a%d|vb%d|ab%d|%dx%d|seg%d|%s",
@@ -250,6 +274,9 @@ func (s Spec) Hash() string {
 	}
 	if s.Copy {
 		text += "|copy"
+	}
+	if s.Recode != "" {
+		text += "|recode" + s.Recode
 	}
 	// Only an HDR source has one, so the hash of an SDR film is what it was.
 	if s.ToneMap != "" {

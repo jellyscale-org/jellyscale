@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"jellyscale/internal/db"
@@ -168,21 +168,32 @@ func SegmentKey(hash string, n int) string {
 // wait that goes on); the worker bounds a job by the segment each viewer asked
 // for last, so it rides on the write that was made anyway.
 func (j *Jobs) Watch(ctx context.Context, v Viewer, hash string, segment int) error {
-	var tag pgconn.CommandTag
-	err := db.Retry(ctx, j.Pool, func() (err error) { tag, err = j.watch(ctx, v, hash, segment); return })
-	if err == nil && tag.RowsAffected() == 0 {
-		return refusedAsStopped()
-	}
+	_, err := j.WatchFirst(ctx, v, hash, segment)
 	return err
 }
 
-func (j *Jobs) watch(ctx context.Context, v Viewer, hash string, segment int) (pgconn.CommandTag, error) {
-	return j.Pool.Exec(ctx, `INSERT INTO transcode_viewers (play_session_id, spec_hash, user_id, device_id, item_id, segment)
-		VALUES ($1, $2, $3::uuid, $4, $5, $6)
-		ON CONFLICT (play_session_id, spec_hash) DO UPDATE SET last_seen_at = now(),
-			segment = CASE WHEN EXCLUDED.segment >= 0 THEN EXCLUDED.segment ELSE transcode_viewers.segment END
-			WHERE NOT transcode_viewers.stopped AND transcode_viewers.user_id = EXCLUDED.user_id`,
-		v.PlaySessionID, hash, v.UserID, v.DeviceID, v.Item, segment)
+// WatchFirst is Watch, and says whether the viewer's first request for the spec is this one, so that
+// something is counted once for a stream and not once for each of its requests.
+func (j *Jobs) WatchFirst(ctx context.Context, v Viewer, hash string, segment int) (first bool, err error) {
+	stopped := false
+	err = db.Retry(ctx, j.Pool, func() error {
+		// xmax is 0 in the row an insert wrote, and a conflict's update sets it.
+		err := j.Pool.QueryRow(ctx, `INSERT INTO transcode_viewers (play_session_id, spec_hash, user_id, device_id, item_id, segment)
+			VALUES ($1, $2, $3::uuid, $4, $5, $6)
+			ON CONFLICT (play_session_id, spec_hash) DO UPDATE SET last_seen_at = now(),
+				segment = CASE WHEN EXCLUDED.segment >= 0 THEN EXCLUDED.segment ELSE transcode_viewers.segment END
+				WHERE NOT transcode_viewers.stopped AND transcode_viewers.user_id = EXCLUDED.user_id
+			RETURNING xmax = 0`, v.PlaySessionID, hash, v.UserID, v.DeviceID, v.Item, segment).Scan(&first)
+		stopped = errors.Is(err, pgx.ErrNoRows)
+		if stopped {
+			return nil
+		}
+		return err
+	})
+	if err == nil && stopped {
+		return false, refusedAsStopped()
+	}
+	return first, err
 }
 
 // defaultIdle is how long a spec may go without a request before its jobs stop.
@@ -230,10 +241,13 @@ func (j *Jobs) Unavailable(ctx context.Context, spec playback.Spec, userID, devi
 				(SELECT count(*) FROM counted),
 				(SELECT count(*) FROM counted WHERE output_version = $4),
 				(SELECT error FROM transcode_jobs WHERE spec_hash = $1 AND state = 'failed' AND NOT helper
+					AND (NOT again OR (SELECT count(*) FROM transcode_jobs fresh WHERE fresh.spec_hash = transcode_jobs.spec_hash
+						AND fresh.state = 'failed' AND NOT fresh.helper AND fresh.again
+						AND fresh.ended_at > now() - make_interval(secs => $3)) >= $5)
 					AND ended_at > now() - make_interval(secs => $3) ORDER BY id DESC LIMIT 1),
 				(SELECT count(*) FROM transcode_nodes WHERE (slots > 0 OR cores > 0) AND seen_at > now() - make_interval(secs => $2)
 					AND locked AND NOT `+lockHeld("transcode_nodes.id")+`)`,
-			hash, liveTiming("counted").Seconds(), failureMemory.Seconds(), playback.OutputVersion).Scan(&workers, &versionWorkers, &failure, &lockless)
+			hash, liveTiming("counted").Seconds(), failureMemory.Seconds(), playback.OutputVersion, maxRestarts+1).Scan(&workers, &versionWorkers, &failure, &lockless)
 		if err != nil {
 			return "", err
 		}
@@ -303,6 +317,26 @@ func (j *Jobs) open(ctx context.Context, hash string, n int) (*StoredSegment, er
 		err = fromStore(j.SegmentsURI, err)
 	}
 	return seg, err
+}
+
+// Init returns the init segment of a spec, or store.ErrNotFound.
+func (j *Jobs) Init(ctx context.Context, hash string) ([]byte, error) {
+	body, err := j.Segments.Open(ctx, SegmentKey(hash, -1), 0)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, err
+		}
+		return nil, fromStore(j.SegmentsURI, err)
+	}
+	defer body.Close()
+	init, err := io.ReadAll(io.LimitReader(body, 1<<20))
+	if err != nil {
+		return nil, fromStore(j.SegmentsURI, err)
+	}
+	if len(init) == 0 {
+		return nil, store.ErrNotFound
+	}
+	return init, nil
 }
 
 // Stored returns segment n of a spec (-1 is the init segment) if the store
@@ -400,6 +434,13 @@ func (j *Jobs) segment(ctx context.Context, spec playback.Spec, hash string, vie
 				return nil, err
 			}
 			switch {
+			case state.State == "failed" && state.Again && starts <= maxRestarts:
+				// Not the file's fault: a fresh job makes the segment. This request starts at most
+				// maxRestarts of them, and ensure counts the spec's recent failures, so the bound also
+				// holds when the client abandoned the request and asked again. Requests waiting on one
+				// failed job join the same fresh one.
+				job, look = 0, true
+				continue
 			case state.State == "failed":
 				return nil, FailedError{state.Error}
 			case state.State == "done" && state.covers(n):
@@ -539,10 +580,16 @@ func (j *Jobs) ensure(ctx context.Context, spec playback.Spec, hash, owner strin
 		if !found {
 			// A client that asks again after a failure, as a browser does when it
 			// abandons a request, must not start the same broken job every time.
-			// A helper's failure is not remembered: the viewer's own job is tried,
-			// and it fails too if the film is what is broken.
+			// A failure that was not the file's becomes memory when the first and
+			// maxRestarts fresh jobs have all failed within failureMemory, across
+			// requests as well as within one. A helper's failure is not remembered:
+			// the viewer's own job is tried, and fails too if the film is broken.
 			err := tx.QueryRow(ctx, `SELECT error FROM transcode_jobs WHERE spec_hash = $1 AND state = 'failed' AND NOT helper
-				AND ended_at > now() - make_interval(secs => $2) ORDER BY id DESC LIMIT 1`, hash, failureMemory.Seconds()).Scan(&failure)
+				AND (NOT again OR (SELECT count(*) FROM transcode_jobs fresh WHERE fresh.spec_hash = transcode_jobs.spec_hash
+					AND fresh.state = 'failed' AND NOT fresh.helper AND fresh.again
+					AND fresh.ended_at > now() - make_interval(secs => $2)) >= $3)
+				AND ended_at > now() - make_interval(secs => $2) ORDER BY id DESC LIMIT 1`,
+				hash, failureMemory.Seconds(), maxRestarts+1).Scan(&failure)
 			if err == nil {
 				return FailedError{"the last attempt failed: " + failure}
 			}
@@ -596,6 +643,7 @@ type jobState struct {
 	Dead         bool // Running, but its lease ran out.
 	Age          time.Duration
 	Stored       bool // Some job of the spec has recorded segment n as stored.
+	Again        bool // It failed for a cause that is not the file's.
 }
 
 // covers reports whether the job went far enough to have stored segment n.
@@ -611,12 +659,12 @@ func (s jobState) covers(n int) bool {
 func (j *Jobs) state(ctx context.Context, id int64, hash string, n int) (jobState, error) {
 	var s jobState
 	var age float64
-	err := j.Pool.QueryRow(ctx, `SELECT state, COALESCE(error, ''), state = 'running' AND lease_expires_at <= now(),
+	err := j.Pool.QueryRow(ctx, `SELECT state, COALESCE(error, ''), state = 'running' AND lease_expires_at <= now(), again,
 			extract(epoch FROM now() - created_at), start_segment, next_segment,
 			EXISTS (SELECT 1 FROM transcode_jobs WHERE spec_hash = $2
 				AND CASE WHEN $3 < 0 THEN next_segment > start_segment ELSE start_segment <= $3 AND $3 < next_segment END)
 		FROM transcode_jobs WHERE id = $1`, id, hash, n).
-		Scan(&s.State, &s.Error, &s.Dead, &age, &s.Start, &s.Next, &s.Stored)
+		Scan(&s.State, &s.Error, &s.Dead, &s.Again, &age, &s.Start, &s.Next, &s.Stored)
 	s.Age = time.Duration(age * float64(time.Second))
 	return s, err
 }

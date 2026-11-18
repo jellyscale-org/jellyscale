@@ -443,12 +443,26 @@ func (r *Repo) Keyframes(ctx context.Context, mediaSourceID string) (keyframes [
 }
 
 // DropKeyframes marks a file's index as unusable, as an empty one, so that it
-// is re-encoded and not copied. A file rescanned since, whose ETag is no longer
-// etag, has a new index that this says nothing of, and nothing is dropped.
+// is re-encoded and not copied. The index is kept apart, for the playlists that
+// were cut from it (DroppedKeyframes). A file rescanned since, whose ETag is no
+// longer etag, has a new index that this says nothing of, and nothing is dropped.
 // It reports whether a row changed.
 func (r *Repo) DropKeyframes(ctx context.Context, mediaSourceID, etag string) (bool, error) {
-	tag, err := r.Pool.Exec(ctx, "UPDATE media_sources SET keyframes = '{}' WHERE id = $1::uuid AND object_etag = $2", mediaSourceID, etag)
+	tag, err := r.Pool.Exec(ctx, `UPDATE media_sources SET keyframes = '{}',
+			dropped_keyframes = CASE WHEN cardinality(keyframes) > 0 THEN keyframes ELSE dropped_keyframes END
+		WHERE id = $1::uuid AND object_etag = $2`, mediaSourceID, etag)
 	return tag.RowsAffected() > 0, err
+}
+
+// DroppedKeyframes returns the index that DropKeyframes emptied, which the
+// playlists already handed out were cut from, and where the video ends. None if
+// the file's index was never found wrong.
+func (r *Repo) DroppedKeyframes(ctx context.Context, mediaSourceID string) (keyframes []int64, end int64, err error) {
+	err = r.Pool.QueryRow(ctx, "SELECT m.dropped_keyframes, m.video_end FROM media_sources m JOIN shown_items i ON i.id = m.item_id WHERE m.id = $1::uuid", mediaSourceID).Scan(&keyframes, &end)
+	if err == pgx.ErrNoRows {
+		return nil, 0, nil
+	}
+	return keyframes, end, err
 }
 
 // Source finds an item's media source, a specific one if mediaSourceID is set.

@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -17,6 +18,7 @@ import (
 
 	"jellyscale/internal/db"
 	"jellyscale/internal/items"
+	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
 	"jellyscale/internal/testenv"
 	"jellyscale/internal/transcode"
@@ -320,8 +322,8 @@ func (k *segKit) announce(t *testing.T, kind string, n int, withHint bool) {
 			id = scalar[int64](t, k.pool, "SELECT id FROM transcode_jobs WHERE spec_hash = $1 AND owner <> 'someone else' ORDER BY id DESC LIMIT 1", k.f.hash)
 			mustExec(t, k.pool, "UPDATE transcode_jobs SET state = 'running', worker = 'w9', lease_expires_at = now() + interval '1 hour' WHERE id = $1", id)
 		default:
-			id = scalar[int64](t, k.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, worker, lease_expires_at, helper)
-				VALUES ($1, '{}', 'someone else', 0, 0, 'running', 'w9', now() + interval '1 hour', $2) RETURNING id`, k.f.hash, kind == "helper")
+			id = scalar[int64](t, k.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, worker, lease_expires_at, helper, output_version)
+				VALUES ($1, '{}', 'someone else', 0, 0, 'running', 'w9', now() + interval '1 hour', $2, `+strconv.Itoa(playback.OutputVersion)+`) RETURNING id`, k.f.hash, kind == "helper")
 		}
 		k.others[kind] = id
 	}

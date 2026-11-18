@@ -323,22 +323,50 @@ var copyReadRate = "5"
 // and the audio is warm and whole by then, with no need to know which packet
 // the muxer will cut at. What comes before segment N is dropped.
 func CopyCommand(ctx context.Context, input string, spec playback.Spec, codec string, video, audio float64, dir string) (*exec.Cmd, error) {
+	return fragmentCommand(ctx, input, spec, codec, video, audio, dir, nil)
+}
+
+// RecodeCommand is CopyCommand for the video of a copy whose index was found wrong (spec.Recode): the
+// picture is encoded, with a keyframe at each of cuts (the times, in the source's clock in seconds, at which
+// the copy's playlist starts a segment), and the run begins at video, the start of the segment it makes
+// first. Every keyframe is a cut as in a copy, so the fragments are the playlist's segments and gather joins
+// them as it does for a copy.
+func RecodeCommand(ctx context.Context, input string, spec playback.Spec, codec string, video, audio float64, cuts []float64, dir string) (*exec.Cmd, error) {
+	if _, err := recodeArgs(codec, spec); err != nil {
+		return nil, err
+	}
+	return fragmentCommand(ctx, input, spec, codec, video, audio, dir, cuts)
+}
+
+// fragmentCommand is the run that writes a copy's fragments, with the video as it is (cuts nil) or encoded.
+func fragmentCommand(ctx context.Context, input string, spec playback.Spec, codec string, video, audio float64, dir string, cuts []float64) (*exec.Cmd, error) {
 	hasAudio := spec.AudioIndex >= 0
-	var base float64
+	recode := spec.Recode != ""
+	var base, frame float64
 	if video >= 0 {
 		var err error
-		if base, _, err = sourceTiming(ctx, input); err != nil {
+		if base, frame, err = sourceTiming(ctx, input); err != nil {
 			return nil, err
 		}
 	}
 	// Errors only: -readrate logs a warning each time it lets ffmpeg read again.
 	args := []string{"-nostdin", "-v", "error", "-progress", "pipe:1", "-nostats", "-y", "-copyts"}
 	if video >= 0 {
-		// A little past the keyframe: the seek goes to the last one at or before
-		// the time, and the file's own times are exact to a millisecond.
-		args = append(args, "-ss", seconds(max(video-base, 0)+0.005))
+		if recode {
+			// The first frame at or after the segment's start, as Command cuts a restart.
+			args = append(args, "-ss", seconds(max(video-base-frame/4, 0)))
+		} else {
+			// A little past the keyframe: the seek goes to the last one at or before
+			// the time, and the file's own times are exact to a millisecond.
+			args = append(args, "-ss", seconds(max(video-base, 0)+0.005))
+		}
 	}
-	args = append(args, "-readrate", copyReadRate, "-i", input)
+	rate := []string{"-readrate", copyReadRate}
+	if recode {
+		rate = nil // The encoder holds the run back.
+	}
+	args = append(args, rate...)
+	args = append(args, "-i", input)
 	both := spec.AudioCopy != ""
 	// A copied audio is the source's own packets and needs no grid of its own, so
 	// it comes from the one input; only a re-encoded track opens the file again,
@@ -347,14 +375,31 @@ func CopyCommand(ctx context.Context, input string, spec playback.Spec, codec st
 		if audio >= 0 {
 			args = append(args, "-ss", seconds(math.Floor(max(audio-base, 0)/aacFrame)*aacFrame))
 		}
-		args = append(args, "-readrate", copyReadRate, "-i", input)
+		args = append(args, rate...)
+		args = append(args, "-i", input)
 	}
-	args = append(args, "-map", "0:v:0", "-c:v", "copy")
-	if codec == "hevc" {
-		// The muxer writes hvc1 or hev1 by the ffmpeg version and the input's
-		// container, which would give workers different init segments. hvc1 is
-		// what the master playlist's CODECS says and what Chrome and Safari take.
-		args = append(args, "-tag:v", "hvc1")
+	args = append(args, "-map", "0:v:0")
+	if recode {
+		picture := fmt.Sprintf("yadif=mode=send_frame:parity=auto:deint=interlaced,scale=%d:%d:flags=bicubic", spec.Width, spec.Height)
+		if spec.ToneMap != "" {
+			picture += "," + playback.ToneMapFilter(spec.ToneMap)
+		}
+		encode, _ := recodeArgs(codec, spec)
+		args = append(args, "-vf", picture+",format=yuv420p")
+		args = append(args, encode...)
+		times := make([]string, len(cuts))
+		for i, cut := range cuts {
+			times[i] = seconds(cut)
+		}
+		args = append(args, "-force_key_frames", strings.Join(times, ","))
+	} else {
+		args = append(args, "-c:v", "copy")
+		if codec == "hevc" {
+			// The muxer writes hvc1 or hev1 by the ffmpeg version and the input's
+			// container, which would give workers different init segments. hvc1 is
+			// what the master playlist's CODECS says and what Chrome and Safari take.
+			args = append(args, "-tag:v", "hvc1")
+		}
 	}
 	if hasAudio && both {
 		args = append(args, "-map", "0:"+strconv.Itoa(spec.AudioIndex), "-c:a", "copy")
@@ -372,6 +417,25 @@ func CopyCommand(ctx context.Context, input string, spec playback.Spec, codec st
 		"-hls_segment_filename", filepath.Join(dir, "g%d.m4s"), filepath.Join(dir, "index.m3u8"),
 	)
 	return mediatool.Command(ctx, "ffmpeg", args...), nil
+}
+
+// recodeArgs is the encoder of a copy's video that is made again: the codec the copy had, since the
+// player's buffer is typed by the master playlist's, with the fixed B-frames and closed GOP that make
+// a restart produce the same frames, and a keyframe only where the playlist cuts (scenecut off, keyint far
+// off). An AV1 fallback is not built.
+func recodeArgs(codec string, spec playback.Spec) ([]string, error) {
+	vb := spec.VideoBitrate
+	switch codec {
+	case "h264":
+		return []string{"-c:v", "libx264", "-preset", "veryfast", "-profile:v", "high", "-level", "51",
+			"-crf", "23", "-maxrate", strconv.FormatInt(vb, 10), "-bufsize", strconv.FormatInt(2*vb, 10),
+			"-x264-params", "bframes=2:b-adapt=0:open-gop=0:scenecut=0:keyint=100000", "-forced-idr", "1"}, nil
+	case "hevc":
+		return []string{"-c:v", "libx265", "-preset", "veryfast", "-tag:v", "hvc1", "-crf", "26",
+			"-x265-params", fmt.Sprintf("bframes=2:b-adapt=0:open-gop=0:scenecut=0:keyint=100000:vbv-maxrate=%d:vbv-bufsize=%d:log-level=error", vb/1000, 2*vb/1000),
+			"-forced-idr", "1"}, nil
+	}
+	return nil, fmt.Errorf("a %s copy whose keyframe index was found wrong cannot go on: its re-encode fallback is not built", codec)
 }
 
 func seconds(v float64) string { return strconv.FormatFloat(v, 'f', 6, 64) }

@@ -2,7 +2,12 @@
 
 package api
 
-import "testing"
+import (
+	"strconv"
+	"testing"
+
+	"jellyscale/internal/playback"
+)
 
 // JS-087: PlaybackInfo offers a transcode whenever some worker has the job's
 // cost in cores free, and refuses, with jellyfin-web's dialog (the refusal is
@@ -16,7 +21,7 @@ func TestPlaybackInfoComparesTheJobsCostWithTheWorkersCores(t *testing.T) {
 	want := func(what string, cores string, offered bool) {
 		t.Helper()
 		mustExec(t, e.pool, "TRUNCATE transcode_nodes")
-		mustExec(t, e.pool, "INSERT INTO transcode_nodes (id, roles, "+cores+") VALUES ('w1', 'worker', "+map[string]string{"cores": "1", "slots": "2"}[cores]+")")
+		mustExec(t, e.pool, "INSERT INTO transcode_nodes (id, roles, output_version, "+cores+") VALUES ('w1', 'worker', "+strconv.Itoa(playback.OutputVersion)+", "+map[string]string{"cores": "1", "slots": "2"}[cores]+")")
 		reencodes, refusals := counterValue(t, reencode), counterValue(t, playbackRefusals)
 		e.playbackInfo(t, 0, e.item, transcodeProfileBody(t, source))
 		gotOffered := counterValue(t, reencode) == reencodes+1
@@ -27,7 +32,7 @@ func TestPlaybackInfoComparesTheJobsCostWithTheWorkersCores(t *testing.T) {
 	want("a worker of 1 core and a 0.8 core job", "cores", true)
 	want("a worker of the release before, with slots and no cores", "slots", true)
 	mustExec(t, e.pool, "TRUNCATE transcode_nodes")
-	mustExec(t, e.pool, "INSERT INTO transcode_nodes (id, roles, cores) VALUES ('w1', 'worker', 0.5)")
+	mustExec(t, e.pool, "INSERT INTO transcode_nodes (id, roles, cores, output_version) VALUES ('w1', 'worker', 0.5, "+strconv.Itoa(playback.OutputVersion)+")")
 	reencodes, refusals := counterValue(t, reencode), counterValue(t, playbackRefusals)
 	e.playbackInfo(t, 0, e.item, transcodeProfileBody(t, source))
 	if counterValue(t, reencode) != reencodes || counterValue(t, playbackRefusals) != refusals+1 {

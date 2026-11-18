@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -23,6 +24,7 @@ import (
 	"jellyscale/internal/db"
 	"jellyscale/internal/items"
 	"jellyscale/internal/library"
+	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
 	"jellyscale/internal/subtitles"
 	"jellyscale/internal/transcode"
@@ -462,7 +464,7 @@ func subtitleTracks(source map[string]any) map[int]map[string]any {
 func (f *subtitleFixture) enableTranscoding(t *testing.T) {
 	t.Helper()
 	mustExec(t, f.pool, "TRUNCATE transcode_jobs")
-	mustExec(t, f.pool, "INSERT INTO transcode_nodes (id, roles, slots) VALUES ('w1', 'worker', 2) ON CONFLICT DO NOTHING")
+	mustExec(t, f.pool, "INSERT INTO transcode_nodes (id, roles, slots, output_version) VALUES ('w1', 'worker', 2, "+strconv.Itoa(playback.OutputVersion)+") ON CONFLICT DO NOTHING")
 	segments := store.NewPosix(t.TempDir())
 	for _, s := range f.apis {
 		s.Transcode = &transcode.Jobs{Pool: s.Pool, Segments: segments}

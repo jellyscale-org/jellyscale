@@ -136,9 +136,7 @@ func TestJobsOfAnotherVersionAheadInTheQueueDoNotHoldUpAWorker(t *testing.T) {
 				others = append(others, r.insertQueued(t, anotherVersion, 0, false))
 			}
 			own := r.insertQueued(t, playback.OutputVersion, 0, false)
-			if _, err := r.pool.Exec(ctx, "INSERT INTO transcode_nodes (id, slots) VALUES ('w', 4)"); err != nil {
-				t.Fatal(err)
-			}
+			r.insertNode(t, "w", 4, playback.OutputVersion)
 			w := &Worker{Pool: r.pool, ID: "w"}
 			got, ok, err := w.claim(ctx)
 			if err != nil || !ok || got.ID != own {

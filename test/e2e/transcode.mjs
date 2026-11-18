@@ -12,7 +12,8 @@ import { dirname } from "node:path";
 import { promisify } from "node:util";
 import { createRequire } from "node:module";
 // The shared viewer records each page's responses for the checker (conform.mjs).
-import { advances, configure, ffmpegRuns, login, scenario, sql, time, viewer, waitFor, workerChildren } from "./player.mjs";
+import { advances, configure, parseFfmpeg, ffmpegRuns, login, scenario, sql, time, viewer, waitFor, workerChildren } from "./player.mjs";
+import { continuity, fallbacks, quality, routerFaults, samples, startSampler } from "./recovery.mjs";
 import { runLater, schedule, shardLine } from "./shard.mjs";
 
 const require = createRequire(`${process.cwd()}/`);
@@ -1866,6 +1867,193 @@ await scenario("no worker: switching audio on a direct play film keeps it playin
   if (seen.infos.length > 3) throw new Error(`the client asked ${seen.infos.length} times`);
   await leave(page);
 }, { stopsWorker: true });
+
+// ---- What jellyfin-web does when a segment fails after playback has begun (JS-088) ----
+// One segment of a film, the first the player asks for after a seek, is answered wrongly by the router (router.mjs's
+// faults), once or every time, and the page is watched: how many times the player asks for the segment, whether it
+// asks PlaybackInfo again, whether a dialog shows, and whether the picture goes on. compat/captures/segment-errors-12.4.json
+// holds what was seen (the md beside it says how), and this scenario fails when jellyfin-web, its hls.js, or the
+// server's answers to a failing segment change what the player does, which the recovery below depends on.
+const observedAfter = JSON.parse((() => { try { return readFileSync(`${process.env.E2E_CAPTURES}/segment-errors-12.4.json`, "utf8"); } catch { return "{}"; } })()).observed ?? {};
+const faultCases = [["500", "answered 500"], ["404", "answered 404"], ["stall", "no first byte"], ["cut", "connection closed mid-body"]];
+for (const [mode, what] of faultCases) for (const times of [1, 0]) {
+  const key = `${mode}, ${times ? "once" : "every time"}`;
+  await scenario(`jellyfin-web after a segment fails, ${what}, ${times ? "once" : "every time"}: how often it asks again, PlaybackInfo, the dialog, the picture`, async ({ page, seen }) => {
+    try {
+      // Segment 12 (48 s) fails whenever the player asks for it, which is after playback has begun, as it buffers
+      // ahead (the film's segments are stored by the first play, so it asks within seconds).
+      await routerFaults(base, [{ match: "/hls1/main/12\\.mp4", mode, times }]);
+      // An earlier play left a resume position, which would start the film past the segment.
+      sql("UPDATE user_item_data SET position_ticks = 0, played = false");
+      await play(page, "Transcode", "Observe Film");
+      await advances(page);
+      const infos = seen.infos.length;
+      await waitFor("the player to ask for the failing segment", async () => (await routerFaults(base))[0].faulted > 0, 60000);
+      const at = Date.now();
+      const window = times ? 30000 : 45000;
+      await new Promise((resolve) => setTimeout(resolve, window - 8000));
+      const before = await time(page);
+      await new Promise((resolve) => setTimeout(resolve, 8000));
+      const after = await time(page);
+      const observed = {
+        asks: seen.requests.filter((r) => /\/hls1\/main\/12\.mp4/.test(r.url)).length,
+        playbackInfoAgain: seen.infos.length - infos,
+        dialog: (await page.getByText("Playback Error").count()) > 0 || (await page.locator(".dialogContainer:visible").count()) > 0,
+        pictureGoesOn: after > before + 4 && after > 48,
+      };
+      console.log(`      OBSERVED ${key}: ${JSON.stringify(observed)} (${Date.now() - at} ms after the first failure)`);
+      // asks is a range where the player's own timers decide how many times it asks within the window.
+      const want = observedAfter[key];
+      if (!want || observed.asks < want.asks[0] || observed.asks > want.asks[1] || JSON.stringify({ ...observed, asks: 0 }) !== JSON.stringify({ ...want, asks: 0 })) {
+        throw new Error(`${key}: saw ${JSON.stringify(observed)}, the capture says ${JSON.stringify(want)}`);
+      }
+    } finally {
+      await routerFaults(base, []);
+    }
+  });
+}
+
+// ---- A copy whose keyframe index is found wrong goes on as a re-encode (JS-088) ----
+// The index of the film is made wrong from a keyframe on (a second late, so that the segment that ends on it does
+// not end on a keyframe of the file), as the Go checks of a wrong index do. The viewer plays on with no dialog, no
+// request answered 400 or more or abandoned, the position never going back by more than a segment or skipping
+// forward by more than a second, until it is 30 s past the bad point; the operator's log and a counter say that the
+// stream fell back, once.
+const brokenIndex = (title, from) => {
+  const [item, source] = sql(`SELECT replace(i.id::text, '-', '') || ' ' || replace(ms.id::text, '-', '') FROM media_sources ms JOIN items i ON i.id = ms.item_id WHERE i.name = '${title}'`).split(" ");
+  const keyframes = sql(`SELECT array_to_string(keyframes, ' ') FROM media_sources WHERE replace(id::text, '-', '') = '${source}'`).split(" ").map((k) => Number(k) / 1e7);
+  sql(`UPDATE media_sources SET keyframes = ARRAY(SELECT CASE WHEN n <= ${from} THEN k ELSE k + 10000000 END FROM unnest(keyframes) WITH ORDINALITY AS t(k, n) ORDER BY n) WHERE replace(id::text, '-', '') = '${source}'`);
+  // The segment that starts on keyframe `from` is the first that ends on a late one, so the first that is bad.
+  return { item, source, badPoint: keyframes[from - 1], keyframes, indexDropped: () => sql(`SELECT cardinality(keyframes) FROM media_sources WHERE replace(id::text, '-', '') = '${source}'`) === "0" };
+};
+
+// What a viewer must have had of the film from `target` on, and what the operator must have of the fallback. `since`
+// says where the logs were when the scenario began.
+async function wentOn(page, seen, { at, target, badPoint, since, label }) {
+  let shownAtBadPoint;
+  await waitFor(`${label}: the picture 30 s past the bad point (${badPoint + 30} s)`, async () => {
+    // A refusal or the dialog ends the wait: the viewer will not get there.
+    if (seen.answers.some((a) => a.at >= at && a.status >= 400 && /^\/Videos\//i.test(a.path)) || (await page.getByText("Playback Error").count()) > 0) throw new Error("the viewer was refused");
+    const now = await time(page);
+    if (shownAtBadPoint === undefined && now >= badPoint) shownAtBadPoint = await quality(page);
+    return now >= badPoint + 30;
+  }, 150000).catch(async (error) => {
+    const refused = seen.answers.filter((a) => a.at >= at && a.status >= 400 && /^\/Videos\//i.test(a.path)).map((a) => `${a.status} ${a.path.split("/").slice(-2).join("/")}`);
+    throw new Error(`${error.message}; at ${await time(page)} s, the dialog ${(await page.getByText("Playback Error").count()) ? "shows" : "does not show"}, answered 400 or more: ${[...new Set(refused)].slice(0, 4).join(", ") || "nothing"}`);
+  });
+  if ((await page.getByText("Playback Error").count()) > 0) throw new Error(`${label}: the viewer got the error dialog`);
+  const refused = seen.answers.filter((a) => a.at >= at && a.status >= 400 && /^\/Videos\//i.test(a.path));
+  if (refused.length) throw new Error(`${label}: requests answered 400 or more: ${JSON.stringify(refused.slice(0, 3).map((a) => `${a.status} ${a.path}`))}`);
+  const abandoned = seen.cut.filter((c) => c.at > at + 1500 && /\/hls1\/|\.m3u8/i.test(c.url));
+  if (abandoned.length) throw new Error(`${label}: requests abandoned: ${JSON.stringify(abandoned.slice(0, 3).map((c) => `${c.url} ${c.error}`))}`);
+  // The player decodes what it was sent: no decode error, and frames were shown for the 30 s, not only a position that
+  // went on (a re-encode that the player's init cannot decode keeps currentTime going, as the spike saw).
+  const shown = await quality(page);
+  if (shown.error) throw new Error(`${label}: the player's decoder failed: ${shown.error}`);
+  if (shown.corrupted) throw new Error(`${label}: ${shown.corrupted} corrupted video frames`);
+  if (shown.total - shownAtBadPoint.total < 24 * 20) throw new Error(`${label}: ${shown.total - shownAtBadPoint.total} frames were shown in the 30 s past the bad point, want at least ${24 * 20} of the 720 a film of 24 fps has`);
+  const problems = continuity(await samples(page), target);
+  if (problems.length) throw new Error(`${label}: the position was not kept: ${problems.slice(0, 3).join("; ")}`);
+  const lines = ffmpegLines().slice(since.ffmpeg).filter((l) => /-f hls/.test(l));
+  if (!lines.some((l) => !/-c:v copy/.test(l) && /libx264/.test(l))) throw new Error(`${label}: no ffmpeg re-encoded the picture after the index was found wrong: ${lines.map((l) => l.slice(0, 120)).join(" | ")}`);
+}
+
+const fellBack = (log, { item, source }) => log.split("\n").some((l) => /fall(s|ing)? ?back/i.test(l) && l.includes(`item=${item}`) && l.includes(`source=${source}`) && /reason=/.test(l));
+
+await scenario("a copy whose index is found wrong where the viewer seeks to goes on as a re-encode, at the viewer's place", async ({ page, seen }) => {
+  // The film's keyframes are 5 to 7 s apart (test/e2e/run.sh), so its copy's segments and the 4 s grid of a re-encode share
+  // no start after the first: a build that answers the copy's segment N with the re-encode's segment N skips or repeats
+  // the viewer by the difference, which continuity() reports.
+  const title = "Recover Reach Film";
+  const wrong = brokenIndex(title, 10), badPoint = wrong.badPoint;
+  const since = { ffmpeg: ffmpegLines().length, log: readFileSync(process.env.E2E_LOG, "utf8").length };
+  const counted = await fallbacks();
+  await play(page, "Transcode", title);
+  if (!/VideoCodec=copy/.test(transcodeUrl(seen))) throw new Error(`the film is not played as a copy: ${transcodeUrl(seen)}`);
+  await advances(page);
+  await startSampler(page);
+  const at = Date.now(), target = badPoint + 1;
+  await page.evaluate((t) => { document.querySelector("video").currentTime = t; }, target);
+  await wentOn(page, seen, { at, target, badPoint, since, label: "seek into the bad segment" });
+  if (!wrong.indexDropped()) throw new Error("the index was never found wrong, so nothing was tested");
+  if (!fellBack(readFileSync(process.env.E2E_LOG, "utf8").slice(since.log), wrong)) throw new Error(`the operator's log has no line that says the stream fell back from copy, with item=${wrong.item} source=${wrong.source} and a reason=`);
+  const counter = await fallbacks();
+  if (counter.name === null || counter.sum - counted.sum !== 1) throw new Error(`the fallback counter (${counter.name}) rose by ${counter.sum - counted.sum}, want 1 for one stream and many segments`);
+  await leave(page);
+});
+
+await scenario("a copy whose index the job finds wrong while the viewer still plays stored segments goes on as a re-encode, with the viewer's audio track and subtitle track", async ({ page, seen }) => {
+  const title = "Recover Early Film"; // Irregular keyframes, as Reach's.
+  const wrong = brokenIndex(title, 5), badPoint = wrong.badPoint;
+  const since = { ffmpeg: ffmpegLines().length, log: readFileSync(process.env.E2E_LOG, "utf8").length };
+  await play(page, "Transcode", title);
+  await advances(page);
+  // The viewer's own tracks: the second audio track and the film's English subtitles, picked in the player.
+  await page.mouse.move(600, 400);
+  await page.click(".btnAudio");
+  await page.click('[data-id="2"]');
+  await waitFor("a PlaybackInfo for audio track 2", async () => seen.infos.find((i) => Number(i.request.AudioStreamIndex) === 2));
+  await advances(page);
+  await waitFor("the subtitle menu", async () => { await page.mouse.move(400 + Math.random() * 300, 300 + Math.random() * 200); return page.click(".btnSubtitles", { timeout: 1500 }).then(() => true, () => false); });
+  await page.locator('.actionSheetMenuItem:visible:not([data-id="-1"])').first().click();
+  await advances(page);
+  await startSampler(page);
+  const at = Date.now(), target = Math.round(await time(page));
+  const found = await waitFor("the job to find the index wrong", async () => wrong.indexDropped());
+  const foundAt = await time(page);
+  if (foundAt >= badPoint - 4) throw new Error(`the index was found wrong when the viewer was at ${foundAt} s, not while he plays the stored segments before the bad point (${badPoint} s)`);
+  await wentOn(page, seen, { at, target, badPoint, since, label: "the job finds the index wrong ahead of the viewer" });
+  // After the fallback the viewer has what he chose: the re-encode maps his audio track, no request asks for another
+  // track, and the subtitle he picked is still the one shown (it is delivered to the player, not burnt in).
+  const reencodes = ffmpegLines().slice(since.ffmpeg).map((l) => parseFfmpeg(l)).filter((r) => !r.copy && /-f hls/.test(r.line));
+  if (!reencodes.length || reencodes.some((r) => r.audio !== "2")) throw new Error(`the re-encode does not map audio track 2: ${JSON.stringify(reencodes.map((r) => r.audio))}`);
+  const others = seen.hls.filter((r) => r.at >= at && r.query.get("AudioStreamIndex") !== null && r.query.get("AudioStreamIndex") !== "2");
+  if (others.length) throw new Error(`requests for another audio track after the fallback: ${others.length}`);
+  // The film's only subtitle is the English file beside it, which the server delivers as External, so jellyfin-web
+  // shows it from the file itself and asks for no PlaybackInfo when it is picked (its setSubtitleStreamIndex asks
+  // again only for a track that is not External, web-dist/main.jellyfin.bundle.js): the last PlaybackInfo says what the
+  // viewer chose of audio, and the subtitle is read from what the player shows. Line N of the file is shown from 10N + 1
+  // to 10N + 6 s (test/fixtures/make.sh), so the cue on screen is the one for the film's second.
+  const latest = seen.infos.at(-1).request;
+  if (Number(latest.AudioStreamIndex) !== 2) throw new Error(`the player's last PlaybackInfo asked for audio ${latest.AudioStreamIndex}, not 2`);
+  const cue = await waitFor("a cue of the subtitle track the viewer picked, shown after the fallback", () => page.evaluate(() => {
+    const video = document.querySelector("video");
+    const showing = [...video.textTracks].filter((track) => track.mode === "showing");
+    const text = showing.flatMap((track) => [...(track.activeCues ?? [])].map((c) => c.text.replace(/\u200e/g, ""))).join("|");
+    return showing.length === 1 && showing[0].cues?.length > 0 && /^English line \d+$/.test(text) ? { text, second: video.currentTime } : null;
+  }), 40000);
+  if (Number(cue.text.replace("English line ", "")) !== Math.floor(cue.second / 10)) throw new Error(`the cue shown is "${cue.text}" at second ${cue.second}, not the file's line for that second`);
+  const shown = await page.evaluate(() => ({ tracks: [...document.querySelector("video").textTracks].filter((t) => t.mode === "showing").length, overlay: !!document.querySelector(".videoSubtitles") }));
+  if (!shown.tracks && !shown.overlay) throw new Error(`the subtitle track is no longer shown: ${JSON.stringify(shown)}`);
+  if (!fellBack(readFileSync(process.env.E2E_LOG, "utf8").slice(since.log), wrong)) throw new Error("the operator's log does not say the stream fell back");
+  await leave(page);
+});
+
+await scenario("two viewers playing the same copy when its index is found wrong both go on as re-encodes", async (a) => {
+  const title = "Recover Pair Film", badPoint = 24;
+  const wrong = brokenIndex(title, 14);
+  const since = { ffmpeg: ffmpegLines().length, log: readFileSync(process.env.E2E_LOG, "utf8").length };
+  const counted = await fallbacks();
+  const b = await viewer();
+  try {
+    await play(a.page, "Transcode", title);
+    await play(b.page, "Transcode", title);
+    await Promise.all([advances(a.page), advances(b.page)]);
+    await Promise.all([startSampler(a.page), startSampler(b.page)]);
+    const at = Date.now();
+    const targets = [Math.round(await time(a.page)), Math.round(await time(b.page))];
+    await Promise.all([
+      wentOn(a.page, a.seen, { at, target: targets[0], badPoint, since, label: "first viewer" }),
+      wentOn(b.page, b.seen, { at, target: targets[1], badPoint, since, label: "second viewer" }),
+    ]);
+    if (!wrong.indexDropped()) throw new Error("the index was never found wrong, so nothing was tested");
+    const counter = await fallbacks();
+    if (counter.name === null || counter.sum - counted.sum !== 2) throw new Error(`the fallback counter (${counter.name}) rose by ${counter.sum - counted.sum}, want 2, one for each stream`);
+    if (!fellBack(readFileSync(process.env.E2E_LOG, "utf8").slice(since.log), wrong)) throw new Error("the operator's log does not say the streams fell back");
+  } finally {
+    await b.context.close().catch(() => {});
+  }
+});
 
 await runLater();
 await browser.close();

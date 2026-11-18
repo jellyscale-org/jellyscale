@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -130,8 +131,8 @@ func (e *env) startedJob(t *testing.T, reply map[string]any, spec playback.Spec,
 	t.Helper()
 	raw, _ := json.Marshal(spec)
 	psid := reply["PlaySessionId"].(string)
-	id := scalar[int64](t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, worker, lease_expires_at)
-		VALUES ($1, $2, $3, 0, $4, $5, NULLIF($6, ''), now() + interval '1 hour') RETURNING id`, hash, raw, psid, next, state, worker)
+	id := scalar[int64](t, e.pool, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, worker, lease_expires_at, output_version)
+		VALUES ($1, $2, $3, 0, $4, $5, NULLIF($6, ''), now() + interval '1 hour', `+strconv.Itoa(playback.OutputVersion)+`) RETURNING id`, hash, raw, psid, next, state, worker)
 	mustExec(t, e.pool, `INSERT INTO transcode_viewers (play_session_id, spec_hash, user_id, device_id, item_id, job_id)
 		VALUES ($1, $2, $3, 'device-viewer', $4, $5)`, psid, hash, e.user, db.CompactID(e.item), id)
 }

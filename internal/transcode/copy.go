@@ -50,10 +50,13 @@ type gatherer struct {
 	first int64
 	// begins is when the run's first fragment starts, or -1 until it is read.
 	begins int64
+	// slack is how far a fragment may start from where the layout says: a copy's keyframes are
+	// the file's own, and an encode's are the first frame at or after the time it was asked for.
+	slack int64
 }
 
 func newGatherer(dir string, layout playback.Layout, first int64) *gatherer {
-	return &gatherer{dir: dir, layout: layout, first: first, begins: -1}
+	return &gatherer{dir: dir, layout: layout, first: first, begins: -1, slack: tolerance}
 }
 
 // segment writes segment n as N.m4s if the fragments that make it are done and
@@ -69,7 +72,7 @@ func (g *gatherer) segment(ctx context.Context, n int, final bool) (bool, error)
 	last := n == g.layout.Count()-1
 	var mine []piece
 	for _, p := range pieces {
-		if p.start >= start-tolerance && p.start < end-tolerance {
+		if p.start >= start-g.slack && p.start < end-g.slack {
 			mine = append(mine, p)
 		}
 	}
@@ -77,12 +80,12 @@ func (g *gatherer) segment(ctx context.Context, n int, final bool) (bool, error)
 	switch {
 	case last && !final:
 		return false, nil // The last fragment is written as the file ends.
-	case !last && reached < end-tolerance:
+	case !last && reached < end-g.slack:
 		if final {
 			return false, fmt.Errorf("the input ended early: ffmpeg stopped after segment %d of %d", n-1, g.layout.Count())
 		}
 		return false, nil
-	case last && len(mine) == 0 && reached <= start+tolerance:
+	case last && len(mine) == 0 && reached <= start+g.slack:
 		// A cut input that stops at the last keyframe has no fragment in the
 		// last segment. Fragments are cut at every real keyframe, so with a
 		// good index none runs past the last segment's start: output that
@@ -90,9 +93,9 @@ func (g *gatherer) segment(ctx context.Context, n int, final bool) (bool, error)
 		// that ran past it means the last entry is false (the case below).
 		return false, fmt.Errorf("the input ended early: ffmpeg stopped at %.2fs, the last segment starts at %.2fs",
 			float64(reached)/ticksPerSecond, float64(start)/ticksPerSecond)
-	case len(mine) == 0 || math.Abs(float64(mine[0].start-start)) > tolerance:
+	case len(mine) == 0 || math.Abs(float64(mine[0].start-start)) > float64(g.slack):
 		return false, fmt.Errorf("segment %d does not start on a keyframe of the file: %w", n, errWrongIndex)
-	case !last && math.Abs(float64(mine[len(mine)-1].end-end)) > tolerance:
+	case !last && math.Abs(float64(mine[len(mine)-1].end-end)) > float64(g.slack):
 		return false, fmt.Errorf("segment %d does not end on a keyframe of the file: %w", n, errWrongIndex)
 	case last && math.Abs(float64(reached-end)) > endSlack:
 		// As checkLast does: ffmpeg exits cleanly when its input is cut short.
@@ -103,7 +106,7 @@ func (g *gatherer) segment(ctx context.Context, n int, final bool) (bool, error)
 		return false, err
 	}
 	for _, p := range pieces {
-		if p.start < end-tolerance {
+		if p.start < end-g.slack {
 			os.Remove(p.file)
 		}
 	}
@@ -216,6 +219,27 @@ func (g *gatherer) join(n int, pieces []piece) error {
 	return os.Rename(name+".tmp", name)
 }
 
+// recodeSlack is a frame at 10 fps, the most that an encode's first frame is after the time its keyframe was forced at.
+const recodeSlack = ticksPerSecond / 10
+
+// recodeStart is copyStart for an encode: it begins at the segment's own start, and its audio two seconds before it.
+func recodeStart(keyframes []int64, layout playback.Layout, n int) (video, audio float64) {
+	if n == 0 {
+		return -1, -1
+	}
+	at := float64(keyframes[0]+layout.Starts[n]) / ticksPerSecond
+	return at, at - 2
+}
+
+// recodeCuts are the times at which an encode that begins at segment n starts a segment, in the source's clock in seconds.
+func recodeCuts(keyframes []int64, layout playback.Layout, n int) []float64 {
+	cuts := make([]float64, 0, layout.Count()-n)
+	for _, start := range layout.Starts[n:] {
+		cuts = append(cuts, float64(keyframes[0]+start)/ticksPerSecond)
+	}
+	return cuts
+}
+
 // copyStart says where the run for segment n begins in the source's clock, in
 // seconds: the video at the keyframe before the segment's own, and the audio
 // two seconds before it, more than a keyframe's decode time can lead its
@@ -237,5 +261,5 @@ func (g *gatherer) reached(ctx context.Context, n int) (bool, error) {
 		return false, err
 	}
 	start, length := g.layout.Segment(n)
-	return pieces[len(pieces)-1].end >= start+length-tolerance, nil
+	return pieces[len(pieces)-1].end >= start+length-g.slack, nil
 }
