@@ -1481,6 +1481,78 @@
       "title": "test/mutants.sh's table is undocumented and scripts_test.sh scrapes mutant.py's usage line",
       "status": "open",
       "notes": "Add a --list flag to test/mutant.py and one line in docs/testing.md."
+    },
+    {
+      "id": "BL-165",
+      "source": "JS-088 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "No committed test asserts the copy-fallback metric or log line",
+      "status": "open",
+      "notes": "The behaviour was checked by a scratch test in QA's export; a regression would go unnoticed."
+    },
+    {
+      "id": "BL-166",
+      "source": "JS-088 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "The 10 s bound for a remade first segment is logged, not asserted",
+      "status": "open",
+      "notes": "Measured 0.37 to 1.1 s; a hang bound could pin it."
+    },
+    {
+      "id": "BL-167",
+      "source": "JS-088 verify",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "A recovered failure is logged at ERROR with an undocumented 'again' field and counted failed",
+      "status": "open",
+      "notes": "docs/running.md does not say that a failed job a fresh job replaced is counted too, or what again=true means."
+    },
+    {
+      "id": "BL-168",
+      "source": "JS-088 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "While Postgres is away, a stream that fell back gets bare copy segments under the re-encode's init",
+      "status": "open",
+      "notes": "hlsRequestFor skips dropped() on the snapshot path, and hlsSegment's snapshot branch sends no init in front."
+    },
+    {
+      "id": "BL-169",
+      "source": "JS-088 fix",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "Chapter pictures and subtitle jobs still observe store failures below store.Reader",
+      "status": "open",
+      "notes": "library/chapterimages.go and internal/subtitles (cache.go, attachments.go, sup.go) wrap the store in their own watchedStore; move them to store.InputWithFailure. At worst a healed cut fails a job or skips a chapter, never a stream."
+    },
+    {
+      "id": "BL-170",
+      "source": "JS-088 re-review",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "OutputVersion 5 re-encodes every film playing at the upgrade once",
+      "status": "open",
+      "notes": "Every stored segment hash changes; a per-spec job version in the claim would have limited it to fallback specs."
+    },
+    {
+      "id": "BL-171",
+      "source": "JS-088 re-review",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "An AV1 copy with a wrong index logs 'no keyframe index to copy from' after the first failure",
+      "status": "open",
+      "notes": "After failureMemory a new copy job reads the emptied index; the log should name the dropped index, every 30 s while the viewer asks."
+    },
+    {
+      "id": "BL-172",
+      "source": "JS-088 fix",
+      "reviewer": "lead",
+      "severity": "minor",
+      "title": "The HEVC fallback's x265 price is measured on synthetic testsrc2 only",
+      "status": "open",
+      "notes": "3.2 cores from 1080p, 4.0 from 4K; measure on a real film."
     }
   ]
 }
