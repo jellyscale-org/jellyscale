@@ -66,7 +66,7 @@
       "id": "D-005",
       "date": "2026-11-16",
       "task": "JS-126",
-      "tradeoff": "Every media route needs a valid token, though Jellyfin serves the video stream anonymously. An app whose player sends no token (Findroid, Android TV today) cannot play; the server is not relaxed for it, and a PlaybackInfo-based grant was set aside. Confirmed 2026-11-19: the rule stays and PRODUCT.md states the exception.",
+      "tradeoff": "Every media route needs a valid token, though Jellyfin serves the video stream anonymously. An app whose player sends no token (Findroid, Android TV today) cannot play; the server is not relaxed for it, and a PlaybackInfo-based grant was set aside. Confirmed 2026-11-19: the rule stays; PRODUCT.md states the principle (nothing is reached without authorization, a role-based model enforced on every resource) and the apps it leaves out are listed in docs/status.md as a gap.",
       "decision": "accept",
       "by": "owner",
       "serves": "owner: 'it's a bigger concern that Jellyfin isn't checking for the token'",
