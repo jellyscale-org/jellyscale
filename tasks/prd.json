@@ -2737,6 +2737,27 @@
       ],
       "source": "JS-088 post-task review (2026-11-17)",
       "notes": "JS-088's docs say SVT-AV1 is present but a restart-safe AV1 encode is not built. Cost: an SVT-AV1 encode is CPU-heavy; measure before pricing."
+    },
+    {
+      "id": "JS-134",
+      "phase": "P3",
+      "title": "An HDR copy's fallback keeps the picture's range",
+      "description": "JS-088 and JS-133 make a copy whose keyframe index is found wrong go on as an encode of the copy's codec. The fallback's picture is always `format=yuv420p`, 8 bits with no colour tags, and a copy has no tone mapping (`Spec.ToneMap` is empty), so an HDR10 or HLG HEVC or AV1 copy, which is copied only to a client whose profile shows the range (master playlist `VIDEO-RANGE=PQ` or `HLG`), would go on mid-film as PQ or HLG samples squeezed into 8 bits and tagged as SDR: washed out or banded, the failure JS-088 exists to hide. Not observed yet (found reading internal/transcode/ffmpeg.go after JS-133). PRODUCT.md: no film is second-class, and an HDR viewer keeps HDR.",
+      "acceptanceCriteria": [
+        "What a fallback segment of an HDR10 HEVC copy and of an HDR10 AV1 copy looks like to the player today is observed (colour tags and bit depth of the fallback's init and frames, ffprobe; what Chrome does with a 10-bit init after an 8-bit one and the reverse) and recorded in compat/captures, and the fallback's format follows from it",
+        "The fallback of an HDR10 or HLG copy keeps 10 bits and the copy's primaries, transfer and matrix in its bitstream and init (ffprobe of a fallback segment shows them equal to the copy's), for HEVC and AV1; an SDR copy's fallback is unchanged",
+        "A restart of an HDR fallback on another worker splices with a run from the start (invariant 22), on ffmpeg 6.1 and 9, and its price is measured from its own command",
+        "In the e2e tier, an HDR10 HEVC copy (where the runner's browser plays HEVC, else an AV1 one) whose index is found wrong plays on in jellyfin-web with no dialog and currentTime reaching 30 s past the bad point",
+        "Dolby Vision copies (base layer named in CODECS) fall back keeping their base layer's range, or the docs say why not"
+      ],
+      "priority": 18,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-133"
+      ],
+      "source": "JS-133 post-task review (2026-11-19)",
+      "notes": "The JS-133 architecture review noted the 10-bit AV1 fallback is 8-bit, observed to play; this task asks what it looks like, and covers HEVC (JS-088) too. Observe before building."
     }
   ]
 }
