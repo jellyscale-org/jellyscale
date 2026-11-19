@@ -24,6 +24,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -95,6 +96,10 @@ type config struct {
 	ShutdownGrace string `json:"shutdownGrace"`
 	grace         time.Duration
 
+	// liveness connects a worker's liveness lock and lease keeper when
+	// --liveness-database-url is given; nil connects them as the pool is.
+	liveness *pgx.ConnConfig
+
 	// MetricsListen is where /metrics is served, such as ":9090", by every role
 	// in the process and apart from the public port. Empty serves none.
 	MetricsListen string `json:"metricsListen"`
@@ -162,6 +167,27 @@ func openDatabase(ctx context.Context, dsn string, cfg config) (*pgxpool.Pool, e
 	return db.Open(ctx, dsn, db.WithMaxConns(int32(cfg.DatabaseMaxConns)))
 }
 
+// livenessURL is where a worker's liveness lock and lease keeper connect, when
+// that is not where the rest of it does. A pooler in front of the main URL may
+// not keep a session lock: this one is direct (docs/running.md).
+var livenessURL = flag.String("liveness-database-url", "", "Postgres URL, direct and session-mode, for a worker's liveness lock and lease keeper (default: the main URL)")
+
+// parseLivenessURL reads the flag, so that a bad value stops the start before
+// anything is sent to Postgres. Empty is no URL of its own.
+func parseLivenessURL(value string) (*pgx.ConnConfig, error) {
+	if value == "" {
+		return nil, nil
+	}
+	if !strings.HasPrefix(value, "postgres://") && !strings.HasPrefix(value, "postgresql://") {
+		return nil, errors.New("--liveness-database-url: want a Postgres URL such as postgres://user@host/db")
+	}
+	cfg, err := pgx.ParseConfig(value)
+	if err != nil {
+		return nil, fmt.Errorf("--liveness-database-url: %w", err)
+	}
+	return cfg, nil
+}
+
 func main() {
 	roles := flag.String("roles", "all", "comma-separated roles: api, stream, worker, or all")
 	listen := flag.String("listen", ":8096", "HTTP listen address")
@@ -198,6 +224,10 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	liveness, err := parseLivenessURL(*livenessURL)
+	if err != nil {
+		return err
+	}
 	// Without --config every key is at its default, as with a config of {}.
 	cfg, err := parseConfig([]byte("{}"))
 	if err != nil {
@@ -212,6 +242,7 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 			return fmt.Errorf("parse config: %w", err)
 		}
 	}
+	cfg.liveness = liveness
 	// Secrets come from the environment, so config files can live in Git.
 	if value := os.Getenv("JELLYSCALE_ADMIN_PASSWORD"); value != "" {
 		cfg.AdminPassword = value
@@ -416,6 +447,9 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 	}
 	if worker {
 		result.collectors = []prometheus.Collector{w}
+		if cfg.liveness != nil { // Each a connection of its own, as pgx makes of a config it is given.
+			w.LivenessConfig, w.KeeperConfig = cfg.liveness.Copy(), cfg.liveness.Copy()
+		}
 	}
 	// A worker proves it is alive with a lock of its own, so that a replica
 	// notices its death in a second; the others need no more than the row.
