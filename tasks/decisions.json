@@ -141,6 +141,26 @@
       "by": "owner",
       "serves": "owner: 'a tertiary consideration and probably something we shouldn't even include in our product support'",
       "brief": "recorded from the owner's words at the time (backfilled 2026-11-19)"
+    },
+    {
+      "id": "D-013",
+      "date": "2026-11-16",
+      "task": "access model",
+      "tradeoff": "Pictures by id are open to whoever holds the id: jellyfin-web builds picture URLs with no token and an <img> cannot send one; item ids are random. A picture by name needs a token.",
+      "decision": "accept",
+      "by": "owner",
+      "serves": "docs/access.md: playback and personal data always require authorization",
+      "brief": "docs/access.md (backfilled 2026-11-19)"
+    },
+    {
+      "id": "D-014",
+      "date": "2026-11-16",
+      "task": "access model",
+      "tradeoff": "A viewer sees no other viewer's name, where Jellyfin lets any signed-in user list every account",
+      "decision": "accept",
+      "by": "owner",
+      "serves": "docs/access.md: compatibility never means copying Jellyfin's openings",
+      "brief": "docs/access.md (backfilled 2026-11-19)"
     }
   ]
 }
