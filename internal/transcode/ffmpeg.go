@@ -378,8 +378,33 @@ func fragmentCommand(ctx context.Context, input string, spec playback.Spec, code
 	// A copied audio is the source's own packets and needs no grid of its own, so
 	// it comes from the one input; only a re-encoded track opens the file again,
 	// to start its AAC frames on their own grid.
+	// A restart of an HDR copy's fallback (spec.HDR) begins its audio before the segment, and drops what the muxer of a
+	// run from zero puts in the segments before it, as a restart of a re-encode does (seamPlan): the same packets in the
+	// first segment as a run from the start makes. The encoder's delay is that of recodeArgs' fixed two B-frames. Every
+	// other fallback keeps the audio arguments it had (JS-088, JS-133).
+	hdr := recode && spec.HDR != ""
+	drop := ""
+	if hdr && video >= 0 && hasAudio {
+		if both {
+			cut := (math.Round(video/frame) - recodeReorder) * frame
+			drop = fmt.Sprintf("noise=drop=lt(pts*tb\\,%s)", seconds(cut-1e-6))
+		}
+	}
 	if hasAudio && !both {
-		if audio >= 0 {
+		switch {
+		case hdr && video >= 0:
+			grid, err := audioGrid(ctx, input, spec)
+			if err != nil {
+				return nil, err
+			}
+			seek, first := aacCut(recodeReorder, base, frame, video, grid)
+			args = append(args, "-ss", seconds(seek))
+			drop = fmt.Sprintf("lt(pts\\,%d)", first)
+			drop = "noise=drop=" + drop
+		case hdr:
+			// The run from the start opens the track as audioGrid does, so that its packets are on the grid a restart cuts on.
+			args = append(args, "-ss", seconds(0))
+		case audio >= 0:
 			args = append(args, "-ss", seconds(math.Floor(max(audio-base, 0)/aacFrame)*aacFrame))
 		}
 		args = append(args, rate...)
@@ -392,7 +417,7 @@ func fragmentCommand(ctx context.Context, input string, spec playback.Spec, code
 			picture += "," + playback.ToneMapFilter(spec.ToneMap)
 		}
 		encode, _ := recodeArgs(codec, spec)
-		args = append(args, "-vf", picture+",format=yuv420p")
+		args = append(args, "-vf", picture+","+recodeFormat(spec))
 		args = append(args, encode...)
 		times := make([]string, len(cuts))
 		for i, cut := range cuts {
@@ -414,8 +439,14 @@ func fragmentCommand(ctx context.Context, input string, spec playback.Spec, code
 		args = append(args, "-map", "1:"+strconv.Itoa(spec.AudioIndex),
 			"-c:a", "aac", "-b:a", strconv.FormatInt(spec.AudioBitrate, 10), "-ac", "2", "-ar", strconv.Itoa(audioRate))
 	}
+	if drop != "" {
+		args = append(args, "-bsf:a", drop)
+	}
 	return mediatool.Command(ctx, "ffmpeg", append(args, fragmentOutput(dir)...)...), nil
 }
+
+// recodeReorder is how many frames recodeArgs' encoders hold back before a keyframe (bframes=2).
+const recodeReorder = 2
 
 // fragmentOutput is the muxer's end of the command that writes fragments, g0.m4s, g1.m4s ... with init.mp4.
 func fragmentOutput(dir string) []string {
@@ -503,10 +534,19 @@ func AV1SegmentCommand(ctx context.Context, input string, spec playback.Spec, st
 	if spec.ToneMap != "" {
 		picture += "," + playback.ToneMapFilter(spec.ToneMap)
 	}
-	args = append(args, "-map", "0:v:0", "-vf", picture+",format=yuv420p")
+	args = append(args, "-map", "0:v:0", "-vf", picture+","+recodeFormat(spec))
 	args = append(args, encode...)
 	args = append(args, audio...)
 	return mediatool.Command(ctx, "ffmpeg", append(args, fragmentOutput(dir)...)...), nil
+}
+
+// recodeFormat is the pixel format of a fallback's picture: 8 bits, except for an HDR copy's (spec.HDR), which keeps
+// its 10 bits. No tags are named: the decoded frames carry the copy's own and the encoders write them (compat/captures/hdr-fallback-12.4.md).
+func recodeFormat(spec playback.Spec) string {
+	if spec.HDR != "" {
+		return "format=yuv420p10le"
+	}
+	return "format=yuv420p"
 }
 
 // recodeArgs is the encoder of a copy's video that is made again: the codec the copy had, since the

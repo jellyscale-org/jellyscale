@@ -33,10 +33,13 @@ func (s Spec) Cost() float64 {
 	}
 	if s.Recode == "av1" {
 		fourK := max(s.SourceHeight, s.Height) > fourKFrom
+		// An HDR copy's fallback is not tone mapped (JS-134) but is priced as the tone-mapped one was: it is a 10-bit
+		// encode, and its measured CPU (docs/transcoding.md) is under that price on 6.1 and 9.
+		hdr := s.ToneMap != "" || s.HDR != ""
 		switch {
-		case s.ToneMap != "" && fourK:
+		case hdr && fourK:
 			return av1Cost.toneMap4K
-		case s.ToneMap != "":
+		case hdr:
 			return av1Cost.toneMap
 		case fourK:
 			return av1Cost.sdr4K

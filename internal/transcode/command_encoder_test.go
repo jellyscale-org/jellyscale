@@ -166,18 +166,18 @@ func containsRun(args, run []string) bool {
 
 // The version and the hashes of the specs change only with a deliberate bump
 // of OutputVersion (invariant 59): 5 is JS-088's fallback encode (Spec.Recode), 6 JS-133's AV1 one (a worker of 5
-// cannot make it, so it must not claim its job).
+// cannot make it, so it must not claim its job), 7 JS-134's 10-bit fallback of an HDR copy (a worker of 6 would store an 8-bit picture under its hash).
 func TestSpecHashesAndOutputVersionAreUnchanged(t *testing.T) {
-	if playback.OutputVersion != 6 {
-		t.Errorf("OutputVersion is %d, want 6", playback.OutputVersion)
+	if playback.OutputVersion != 7 {
+		t.Errorf("OutputVersion is %d, want 7", playback.OutputVersion)
 	}
 	plain := playback.Spec{Item: "i", Source: "s", ETag: "e", AudioIndex: 1, VideoBitrate: 1_500_000, AudioBitrate: 128_000, Width: 640, Height: 360}
-	if got, want := plain.Hash(), "e98004bf956a9832a0040898f0e21c95"; got != want {
+	if got, want := plain.Hash(), "cd61336aef24b04093559bcbc3d39871"; got != want {
 		t.Errorf("hash %s, want %s", got, want)
 	}
 	rich := withSubtitle(toneMap, 2)
 	rich.Item, rich.Source, rich.ETag, rich.AudioCopy = "i", "s", "e", "flac"
-	if got, want := rich.Hash(), "cda71434d6249a22a8294ff1bbac9ad9"; got != want {
+	if got, want := rich.Hash(), "ae8903fdbfaa8115ffd9ae695ca167a3"; got != want {
 		t.Errorf("hash %s, want %s", got, want)
 	}
 }

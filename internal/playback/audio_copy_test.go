@@ -250,10 +250,10 @@ func TestAudioCopyIsInTheHashAndOnlyThere(t *testing.T) {
 		t.Error("ac3 and eac3 share a hash")
 	}
 	// A spec with no copied audio hashes only its own fields and OutputVersion,
-	// pinned so that a change to the hash is never an accident. OutputVersion 5
+	// pinned so that a change to the hash is never an accident. OutputVersion 7 (JS-134) changed it again, 5
 	// changed it for copy fallback re-encodes (DOMAINS 45), 4 for one encoder
 	// thread and chunks (DOMAINS 58), and 3 for the restart cut (DOMAINS 24).
-	if got, want := (Spec{Item: "i", Source: "s", ETag: "e", AudioIndex: 1, VideoBitrate: 1, AudioBitrate: 2, Width: 3, Height: 4}).Hash(), "62bb13ad36bcad06a2152d8137589c5a"; got != want {
+	if got, want := (Spec{Item: "i", Source: "s", ETag: "e", AudioIndex: 1, VideoBitrate: 1, AudioBitrate: 2, Width: 3, Height: 4}).Hash(), "f307ea9e80353853d958b834042f9e84"; got != want {
 		t.Errorf("hash %s, want %s", got, want)
 	}
 }

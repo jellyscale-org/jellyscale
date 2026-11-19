@@ -1,0 +1,259 @@
+{
+ "jira": "JS-134",
+ "scripts": [
+  "compat/captures/hdr-fallback-observe.sh",
+  "compat/captures/hdr-fallback-streams.sh",
+  "compat/captures/hdr-fallback-spike.mjs"
+ ],
+ "browser": "Chrome (google-chrome-stable, headless) with jellyfin-web 12.4's hls.js 1.6.16",
+ "choice": "10bit-copy-tags",
+ "observed": {
+  "av1": {
+   "control": {
+    "forward": {
+     "frames": 394,
+     "videoError": null,
+     "dialog": false,
+     "reached": 30.200026,
+     "corrupted": 0,
+     "maxBackSeconds": 0,
+     "maxForwardBeyondClockSeconds": 0,
+     "colours": {
+      "before": [
+       119,
+       105.7,
+       126.1
+      ],
+      "after": [
+       117.1,
+       105.7,
+       127.5
+      ]
+     },
+     "hlsErrors": []
+    },
+    "back": {
+     "frames": 487,
+     "videoError": null,
+     "dialog": false,
+     "reached": 30.061794,
+     "corrupted": 0,
+     "maxBackSeconds": 0,
+     "maxForwardBeyondClockSeconds": 0,
+     "colours": {
+      "before": [
+       119,
+       105.7,
+       126.1
+      ],
+      "after": [
+       117,
+       105.7,
+       127.5
+      ]
+     },
+     "hlsErrors": []
+    }
+   },
+   "eight": {
+    "forward": {
+     "frames": 392,
+     "videoError": null,
+     "dialog": false,
+     "reached": 30.117056,
+     "corrupted": 0,
+     "maxBackSeconds": 0,
+     "maxForwardBeyondClockSeconds": 0,
+     "colours": {
+      "before": [
+       119,
+       105.7,
+       126
+      ],
+      "after": [
+       122.5,
+       107.8,
+       129.1
+      ]
+     },
+     "hlsErrors": []
+    },
+    "back": {
+     "frames": 487,
+     "videoError": null,
+     "dialog": false,
+     "reached": 30.059384,
+     "corrupted": 0,
+     "maxBackSeconds": 0,
+     "maxForwardBeyondClockSeconds": 0,
+     "colours": {
+      "before": [
+       119,
+       105.7,
+       126
+      ],
+      "after": [
+       122.5,
+       107.8,
+       129.1
+      ]
+     },
+     "hlsErrors": []
+    }
+   },
+   "ten": {
+    "forward": {
+     "frames": 393,
+     "videoError": null,
+     "dialog": false,
+     "reached": 30.135075,
+     "corrupted": 0,
+     "maxBackSeconds": 0,
+     "maxForwardBeyondClockSeconds": 0,
+     "colours": {
+      "before": [
+       119,
+       105.7,
+       126
+      ],
+      "after": [
+       117.1,
+       105.7,
+       127.4
+      ]
+     },
+     "hlsErrors": []
+    },
+    "back": {
+     "frames": 487,
+     "videoError": null,
+     "dialog": false,
+     "reached": 30.060989,
+     "corrupted": 0,
+     "maxBackSeconds": 0,
+     "maxForwardBeyondClockSeconds": 0,
+     "colours": {
+      "before": [
+       119,
+       105.7,
+       126.1
+      ],
+      "after": [
+       117,
+       105.8,
+       127.5
+      ]
+     },
+     "hlsErrors": []
+    }
+   }
+  },
+  "hevc": {
+   "notObserved": "this Chromium does not play hvc1.2.4.L120.B0 (MediaSource.isTypeSupported is false); an HEVC copy plays only where a hardware decoder is (E2E_HEVC=1)"
+  }
+ },
+ "ffprobe": {
+  "hevc": {
+   "copy": {
+    "toneMapped": false,
+    "init": {
+     "profile": "Main 10",
+     "pixFmt": "yuv420p10le",
+     "bitDepth": 10,
+     "primaries": "bt2020",
+     "transfer": "smpte2084",
+     "matrix": "bt2020nc",
+     "range": "tv"
+    },
+    "frames": {
+     "pixFmt": "yuv420p10le",
+     "bitDepth": 10,
+     "primaries": "bt2020",
+     "transfer": "smpte2084",
+     "matrix": "bt2020nc",
+     "range": "tv",
+     "masteringDisplay": "G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1) (max 1000 nits)",
+     "contentLightLevel": "max 1000, average 400"
+    }
+   },
+   "today": {
+    "toneMapped": true,
+    "init": {
+     "profile": "Main",
+     "pixFmt": "yuv420p",
+     "bitDepth": 8,
+     "primaries": "bt709",
+     "transfer": "bt709",
+     "matrix": "bt709",
+     "range": "tv"
+    },
+    "frames": {
+     "pixFmt": "yuv420p",
+     "bitDepth": 8,
+     "primaries": "bt709",
+     "transfer": "bt709",
+     "matrix": "bt709",
+     "range": "tv",
+     "masteringDisplay": "G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1) (max 1000 nits)",
+     "contentLightLevel": "max 1000, average 400"
+    }
+   }
+  },
+  "av1": {
+   "copy": {
+    "toneMapped": false,
+    "init": {
+     "profile": "Main",
+     "pixFmt": "yuv420p10le",
+     "bitDepth": 10,
+     "primaries": "bt2020",
+     "transfer": "smpte2084",
+     "matrix": "bt2020nc",
+     "range": "tv"
+    },
+    "frames": {
+     "pixFmt": "yuv420p10le",
+     "bitDepth": 10,
+     "primaries": "bt2020",
+     "transfer": "smpte2084",
+     "matrix": "bt2020nc",
+     "range": "tv",
+     "masteringDisplay": "G(0.265,0.690)B(0.150,0.060)R(0.680,0.320)WP(0.3127,0.3290)L(1000,0.0001) (max 1000 nits)",
+     "contentLightLevel": "max 1000, average 400"
+    }
+   },
+   "today": {
+    "toneMapped": true,
+    "init": {
+     "profile": "Main",
+     "pixFmt": "yuv420p",
+     "bitDepth": 8,
+     "primaries": "bt709",
+     "transfer": "bt709",
+     "matrix": "bt709",
+     "range": "tv"
+    },
+    "frames": {
+     "pixFmt": "yuv420p",
+     "bitDepth": 8,
+     "primaries": "bt709",
+     "transfer": "bt709",
+     "matrix": "bt709",
+     "range": "tv",
+     "masteringDisplay": "G(0.265,0.690)B(0.150,0.060)R(0.680,0.320)WP(0.3127,0.3290)L(1000,0.0001) (max 1000 nits)",
+     "contentLightLevel": "max 1000, average 400"
+    }
+   }
+  }
+ },
+ "ffprobeOnFfmpeg61": {
+  "tenBitFallbackCarriesMasteringDisplayAndContentLight": false,
+  "toneMappedFallbackCarriesMasteringDisplayAndContentLight": false,
+  "ffmpeg9": "both carried in the frames, in the tone-mapped fallback as well"
+ },
+ "timescaleMismatch": {
+  "what": "a fallback whose video timescale (12288) differs from the copy's (16000, ffmpeg's for a copy from Matroska) in the same playlist",
+  "result": "AV1, with and without audio: the player stalled at 19.97 s with bufferStalledError, the fallback's segments buffered from 24.64 s (4.64 s late), 145 frames, no video.error, no dialog; H.264 with audio went on, H.264 without audio stalled the same way",
+  "caveat": "synthetic streams; the e2e gate plays the real stack's timescales"
+ }
+}
