@@ -339,8 +339,12 @@ func TestAKilledWorkerMakingAnAV1FallbackIsReplacedAndTheSegmentsJoin(t *testing
 			t.Fatalf("segment %d: the request that waited was answered with an error: %v", n, err)
 		}
 	}
-	if got := r.owner(t); got != "worker-b" {
-		t.Errorf("the job is %q's, want worker-b's", got)
+	// The viewer has the last segment, after which the job ends, so the owner is the worker of the latest job,
+	// running or done (owner reads only a running one, and on a slow runner the job may be done by now).
+	var latest string
+	r.pool.QueryRow(context.Background(), "SELECT COALESCE(worker, '') FROM transcode_jobs ORDER BY id DESC LIMIT 1").Scan(&latest) //nolint:errcheck
+	if latest != "worker-b" {
+		t.Errorf("the job is %q's, want worker-b's", latest)
 	}
 	owned.check(t)
 	stored := t.TempDir()

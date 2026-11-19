@@ -820,7 +820,10 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		// within its window any more: they have seeked past it or gone, and its
 		// slot is better given back than held for them.
 		gate := func() bool {
-			if unbounded {
+			// A one-segment run ends by itself once its segment is made, so it is never paused (the pause
+			// would find the process just gone, and its failure lifts the lead for good); room holds the
+			// job between its runs.
+			if unbounded || segmentRuns {
 				return true
 			}
 			// Segment limit-1 is made when it is in scratch (a copy: when its
