@@ -61,6 +61,86 @@
       ],
       "brief": "# Brief: counting subtitle work in the burn-in check (replay)\n\n**Situation.** A viewer whose client cannot draw image subtitles (PGS, VobSub) gets them burned into the picture. A browser check for that behaviour (JS-071) plays such a film. It requires that no request of the play waits on subtitle extraction work, and asserts it by counting the subtitle jobs created during the play: the count must not grow.\n\n**The change.** JS-089 (a seek into a long-showing image subtitle costs no more than any seek) adds a background job. The first time a film is played, a worker copies the film's image subtitle tracks into a store. Later seeks read the small stored track instead of reading the film from far back. The viewer does not wait for this job. It creates one new job row per film, so the check's count grows by one and the check fails.\n\n**Kinds of subtitle job that exist:**\n- `track`: a text track a viewer waits for;\n- `fonts`: fonts for styled subtitles;\n- `sup`: an image track a client draws itself;\n- `chapters`: chapter pictures, background;\n- `images`: the new one, background.\n\n**Options:**\n1. Stop counting `images`, `sup`, `fonts` and `chapters` jobs in the check, and count only `track`. This is simple, and the check passes.\n2. Keep the check unchanged. JS-089 cannot ship as built.\n\n**Who is affected.** Every viewer of a film with image subtitles whose client cannot draw them; on the dogfood library, most films with PGS tracks.\n\n**Evidence.** The count grows by exactly one per first play (measured in the e2e run).\n\n\nLead's evidence (follow-up): 1. Built the narrow option: the check counts track, sup, fonts and chapters as before; only images is left out, and a second assertion requires the images count to grow by at most 1 per play. 2. A test plays through the real handlers (PlaybackInfo, both playlists, two replicas) with the images job held running: every request returns; a mutant that waits on the job fails it. Not covered then: the first segment. 3. The read cost is D-003. 4. A seek before the job finishes takes today's path at today's cost. 5. docs/subtitles.md:58 is being corrected to cite D-003.",
       "note": "First asked as a replay of the lead's original, wider amendment (count only track); the product owner refused that as wider than needed and asked for evidence, then accepted the narrow one."
+    },
+    {
+      "id": "D-005",
+      "date": "2026-11-16",
+      "task": "JS-126",
+      "tradeoff": "Every media route needs a valid token, though Jellyfin serves the video stream anonymously. An app whose player sends no token (Findroid, Android TV today) cannot play; the server is not relaxed for it, and a PlaybackInfo-based grant was set aside. Confirmed 2026-11-19: the rule stays and PRODUCT.md states the exception.",
+      "decision": "accept",
+      "by": "owner",
+      "serves": "owner: 'it's a bigger concern that Jellyfin isn't checking for the token'",
+      "brief": "recorded from the owner's words at the time (backfilled 2026-11-19)"
+    },
+    {
+      "id": "D-006",
+      "date": "2026-11-08",
+      "task": "client order",
+      "tradeoff": "jellyfin-web comes first; other clients follow (Fluster second since 2026-11-12, then the apps on Jellyfin's client libraries)",
+      "decision": "accept",
+      "by": "owner",
+      "serves": "PRODUCT.md: Clients in order",
+      "brief": "recorded from the owner's words at the time (backfilled 2026-11-19)"
+    },
+    {
+      "id": "D-007",
+      "date": "2026-11-12",
+      "task": "Fluster",
+      "tradeoff": "Fluster ships with jellyscale and adopts features beyond Jellyfin first, under /jellyscale/v1/; its compatibility ranks right after jellyfin-web's",
+      "decision": "accept",
+      "by": "owner",
+      "serves": "PRODUCT.md: ships with Fluster; Beyond Jellyfin",
+      "brief": "recorded from the owner's words at the time (backfilled 2026-11-19)"
+    },
+    {
+      "id": "D-008",
+      "date": "2026-11-12",
+      "task": "all",
+      "tradeoff": "No viewer- or operator-visible trade-off for engineering's sake: look for a design that keeps the experience first, and present a trade-off only as a last resort with the alternative's cost",
+      "decision": "accept",
+      "by": "owner",
+      "serves": "PRODUCT.md: improve on Jellyfin",
+      "brief": "recorded from the owner's words at the time (backfilled 2026-11-19)"
+    },
+    {
+      "id": "D-009",
+      "date": "2026-10-30",
+      "task": "all",
+      "tradeoff": "Improve on Jellyfin where clients allow: captures are a compatibility baseline, not a target; compatibility with current clients comes first",
+      "decision": "accept",
+      "by": "owner",
+      "serves": "PRODUCT.md: Target, Quality bar",
+      "brief": "recorded from the owner's words at the time (backfilled 2026-11-19)"
+    },
+    {
+      "id": "D-010",
+      "date": "2026-10-30",
+      "task": "scope",
+      "tradeoff": "Video only (music and photos are out); one library on one cluster, not multi-tenant; routes Jellyfin marks obsolete are not built, except thin aliases jellyfin-web still calls; SyncPlay deferred; Kodi not a target",
+      "decision": "accept",
+      "by": "owner",
+      "serves": "PRODUCT.md: scope and non-goals",
+      "brief": "recorded from the owner's words at the time (backfilled 2026-11-19)"
+    },
+    {
+      "id": "D-011",
+      "date": "2026-11-08",
+      "task": "JS-056",
+      "tradeoff": "Kubernetes install works from plain example manifests applied with kubectl as well as from a Helm chart, with a no-drift test between them",
+      "decision": "accept",
+      "by": "owner",
+      "serves": "PRODUCT.md: operating it stays boring",
+      "brief": "recorded from the owner's words at the time (backfilled 2026-11-19)"
+    },
+    {
+      "id": "D-012",
+      "date": "2026-11-19",
+      "task": "JS-061",
+      "tradeoff": "Streamystats compatibility is not part of the product's support: JS-061 is dropped",
+      "decision": "accept",
+      "by": "owner",
+      "serves": "owner: 'a tertiary consideration and probably something we shouldn't even include in our product support'",
+      "brief": "recorded from the owner's words at the time (backfilled 2026-11-19)"
     }
   ]
 }
