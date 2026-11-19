@@ -77,15 +77,19 @@ subtitled "$root/transcode/Phi Film (2037)/Phi Film (2037).mkv" aac "color=c=bla
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 (cd "$here" && go build -o "$tmp/pgs" ./pgs) || exit 1
 "$tmp/pgs" "$tmp/image.sup" 1920 1080 20,26,660,100,600,120 60,66,660,860,600,120 100,106,660,480,600,120 || exit 1
-imagefilm() { # name audio_codec subtitle_codec
+# JS-089: one PGS cue from 20 to 110 seconds, which a seek to 80 s is 60 s into.
+"$tmp/pgs" "$tmp/long.sup" 1920 1080 20,110,660,100,600,120 || exit 1
+imagefilm() { # name audio_codec subtitle_codec [sup file]
+  local sup=${4:-$tmp/image.sup}
   local video="$root/transcode/$1/$1.mkv"
   mkdir -p "$(dirname "$video")"
   [[ -f $video ]] || ffmpeg -nostdin -v error -y -f lavfi -i "color=c=black:size=640x360:rate=24:duration=120" \
-    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=120" -fix_sub_duration -i "$tmp/image.sup" \
+    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=120" -fix_sub_duration -i "$sup" \
     -map 0:v -map 1:a -map 2 -c:v libx264 -preset ultrafast -g 48 -c:a "$2" -c:s "$3" \
     -metadata:s:a:0 language=eng -metadata:s:s:0 language=eng -disposition:a:0 default -disposition:s:0 0 -default_mode passthrough "$video"
 }
 imagefilm "Pgs Film (2070)" aac copy
+imagefilm "Pgs Long Cue Film (2170)" aac copy "$tmp/long.sup"
 imagefilm "Vobsub Film (2071)" aac dvdsub
 # AC3 makes Chrome transcode it whatever the subtitle.
 imagefilm "Pgs Transcode Film (2072)" ac3 copy

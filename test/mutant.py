@@ -233,7 +233,7 @@ def cue_read_outlives_its_job(repo):
     # A run with an image track inside the film also reads the film on a context nothing ends: a read the track costs
     # that outlives its job. Fails: TestEveryReadOfAMidFilmRunEndsWithItsJob.
     source = read(repo, "internal/transcode/worker.go")
-    source = sub(source, r'(\tif image != nil && image\.Fingerprint == "" \{\n)',
+    source = sub(source, r'(\tif image != nil && image\.Fingerprint == "" && !stored \{\n)',
                  '\\1\t\tgo func() {\n\t\t\tif body, err := media.Open(context.Background(), source.Key, 0); err == nil {\n\t\t\t\tio.Copy(io.Discard, body) //nolint:errcheck\n\t\t\t\tbody.Close()\n\t\t\t}\n\t\t}()\n',
                  "the image track's block of encode")
     return {"internal/transcode/worker.go": source}

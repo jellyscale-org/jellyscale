@@ -1,6 +1,7 @@
 package library
 
 import (
+	"cmp"
 	"context"
 	"encoding/binary"
 	"errors"
@@ -60,6 +61,9 @@ type indexFile struct {
 	size  int64
 	// head is the start of the file, read once, since headers usually sit in it.
 	head []byte
+	// headSize is how much of the start is read: 0 for 64 KiB, which a film's
+	// headers may need.
+	headSize int64
 }
 
 // at reads n bytes from off, or fewer at the end of the file. A range that
@@ -88,7 +92,7 @@ func (f *indexFile) at(off, n int64) ([]byte, error) {
 }
 
 func (f *indexFile) readHead() error {
-	head, err := f.at(0, 64<<10)
+	head, err := f.at(0, cmp.Or(f.headSize, 64<<10))
 	f.head = head
 	return err
 }

@@ -496,8 +496,8 @@ func sameTrack(want, got track) bool {
 
 func TestExpectationHoldsTheCountsAndTheTwoLanguageFilmsExactly(t *testing.T) {
 	e := readExpect(t)
-	if e.filmCount != 23 || e.episodeCount != 3 || len(e.films) != 23 || len(e.episodes) != 3 {
-		t.Errorf("counts: films %d (%d named), episodes %d (%d named); want 23 and 3", e.filmCount, len(e.films), e.episodeCount, len(e.episodes))
+	if e.filmCount != 24 || e.episodeCount != 3 || len(e.films) != 24 || len(e.episodes) != 3 {
+		t.Errorf("counts: films %d (%d named), episodes %d (%d named); want 24 and 3", e.filmCount, len(e.films), e.episodeCount, len(e.episodes))
 	}
 	seen := map[string]bool{}
 	for _, f := range append(append([]string{}, e.films...), e.episodes...) {

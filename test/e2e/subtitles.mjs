@@ -36,6 +36,12 @@ const exec_ = async (cmd, args) => (await promisify(execFile)(cmd, args)).stdout
 // the picture would be another spec.
 const jobCount = () => Number(sql("SELECT count(DISTINCT spec_hash) FROM transcode_jobs"));
 const subtitleJobCount = () => Number(sql("SELECT count(*) FROM subtitle_jobs"));
+// Every subtitle job but one kind: since JS-089 a burnt image track is also stored in the
+// background (kind 'images') so that a later seek into a long cue is cheap. No run waits on that
+// job (TestNoRunWaitsForTheExtractionAndEachDrawsAsJS071Does, decision D-004); every other job, a 'sup' extraction above all, still
+// fails a burn the transcode reads itself.
+const jobsOtherThanImages = () => Number(sql("SELECT count(*) FROM subtitle_jobs WHERE kind <> 'images'"));
+const imageJobCount = () => Number(sql("SELECT count(*) FROM subtitle_jobs WHERE kind = 'images'"));
 
 // Every ffmpeg command line the worker has run, from the shim's log beside the
 // server's.
@@ -427,7 +433,8 @@ await pgsDrawnByTheClient("S3 direct play of PGS: jellyfin-web draws the track f
 function imageBurnedIn(name, library, title, codec, renderPgs = false, external = false) {
   return scenario(name, async ({ page, seen }) => {
     if (renderPgs) await page.evaluate(() => localStorage.setItem("subtitlerenderpgs", "true"));
-    const subtitleJobs = subtitleJobCount();
+    const subtitleJobs = jobsOtherThanImages();
+    const imageJobs = imageJobCount();
     const logged = ffmpegLines().length;
     await play(page, library, title);
     const first = seen.infos.at(-1);
@@ -455,7 +462,10 @@ function imageBurnedIn(name, library, title, codec, renderPgs = false, external 
     expectBright(await brightThirds(page, true), null);
     await waitFor("no ffmpeg to draw a subtitle with them off", async () => !ffmpegRuns().some((r) => r.burns), 20000);
     if (seen.subtitles.length) throw new Error("subtitle files were fetched while burning in");
-    if (!external && subtitleJobCount() !== subtitleJobs) throw new Error(`${subtitleJobCount() - subtitleJobs} subtitle jobs for a track the transcode reads itself`);
+    if (!external && jobsOtherThanImages() !== subtitleJobs) throw new Error(`${jobsOtherThanImages() - subtitleJobs} subtitle jobs for a track the transcode reads itself`);
+    // At most one: the film's image tracks are queued in the background and may land after the read, or an
+    // earlier scenario stored them already.
+    if (imageJobCount() - imageJobs > 1) throw new Error(`${imageJobCount() - imageJobs} image track jobs for one play`);
     noErrors(seen);
     await leave(page);
   });
@@ -944,6 +954,41 @@ await scenario("from the details page a German viewer plays a film whose default
     noErrors(seen);
     await leave(page);
   });
+});
+
+// JS-089. A burnt PGS track is stored by a worker once the play asks for it,
+// and a seek into a cue that began 60 s earlier is then a run that draws the cue
+// from the stored track, so it is on screen at the first frame played after the
+// seek and until it ends. The film's one cue is from 20 to 110 s; the player is
+// at 12 s when the track is picked, and seeks to 80 s once the asset store holds
+// the track (found without naming how it is stored: this film has no text track,
+// so every object under subtitles/ of its library's assets is the image track).
+// That run's ffmpeg has more inputs than a JS-071 run of the film has
+// (the film for its video and again for its audio: two), which is the stored
+// track as one more. The scenario is above runLater() so that it runs with the
+// others, before the gate decides. No error is reported.
+const storedObjects = () => (existsSync(`${process.env.E2E_ASSETS}/subtitles`) ? readdirSyncDeep(`${process.env.E2E_ASSETS}/subtitles`) : []);
+function readdirSyncDeep(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? readdirSyncDeep(join(dir, e.name)) : [join(dir, e.name)]));
+}
+await scenario("a seek into a PGS cue 60 s old, once the track is stored, shows the cue at the first frame and the run drew from the stored track", async ({ page, seen }) => {
+  const logged = ffmpegLines().length;
+  await play(page, "Transcode", "Pgs Long Cue Film");
+  await seek(page, 12);
+  await chooseBurn(page, seen, 2);
+  await waitFor("the image track to be stored by a worker", async () => storedObjects().length >= 1 && sql("SELECT count(*) FROM subtitle_jobs WHERE state IN ('queued', 'running')") === "0", 90000);
+  await seek(page, 80);
+  await waitFor("the first frames after the seek to 80 s", async () => (await time(page)) >= 80.1, 60000);
+  expectBright(await brightThirds(page, true), "top");
+  const runs = ffmpegLines().slice(logged).filter((line) => /overlay=eof_action/.test(line));
+  const seeked = runs.filter((line) => Number(/-start_number (\d+)/.exec(line)?.[1]) >= 15);
+  if (!seeked.length) throw new Error(`no run began near 80 s: ${runs.map((l) => /-start_number (\d+)/.exec(l)?.[1])}`);
+  // The film has audio, so a JS-071 run already has two inputs; the track is a third.
+  if (!seeked.some((line) => (line.match(/ -i /g) ?? []).length >= 3)) throw new Error(`the run that began near 80 s was not given the stored track as an input of its own: ${seeked.at(-1)}`);
+  await waitFor("playback to 90 s with the cue still on", async () => (await time(page)) >= 90, 60000);
+  expectBright(await brightThirds(page, true), "top");
+  noErrors(seen);
+  await leave(page);
 });
 
 await runLater();

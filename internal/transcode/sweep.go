@@ -82,7 +82,13 @@ func (w *Worker) sweep(ctx context.Context, segments, assets bool) error {
 		`UPDATE transcode_jobs SET state = 'cancelled', error = 'the worker stopped renewing its lease', ended_at = now()
 			WHERE state = 'running' AND lease_expires_at < now()`,
 		`DELETE FROM transcode_jobs WHERE state IN ('done', 'failed', 'cancelled') AND created_at < now() - interval '1 day'`,
-		`DELETE FROM subtitle_jobs WHERE state IN ('done', 'failed') AND ended_at < now() - interval '1 day'`,
+		// A finished images job that left a track out keeps its row, which is the record that
+		// the film can't give it (decision D-003): the film is not read whole again for it. The row
+		// goes with the file version it is for, the key being subtitles.ImagesKey's.
+		`DELETE FROM subtitle_jobs WHERE state IN ('done', 'failed') AND ended_at < now() - interval '1 day'
+			AND NOT (kind = 'images' AND state = 'done' AND skipped <> '{}'
+				AND EXISTS (SELECT 1 FROM media_sources m WHERE m.id::text = source_id
+					AND key = 'subtitles/' || m.id || '/' || left(encode(sha256(convert_to(m.object_etag, 'UTF8')), 'hex'), 16) || '/images'))`,
 	} {
 		if _, err := w.Pool.Exec(ctx, statement); err != nil {
 			return err

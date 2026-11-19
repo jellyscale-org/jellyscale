@@ -405,6 +405,8 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 	if decision.DirectPlay {
 		return "direct_play", false, nil
 	}
+	// Whether or not a worker can transcode it now, so that the track is stored by the time one can.
+	s.startImageTracks(r.Context(), itemID, stored, decision.Subtitle)
 	user := sessionOf(r)
 	params := playback.Params{SourceID: media.ID, AudioIndex: decision.AudioIndex, Subtitle: decision.Subtitle, VideoBitrate: decision.VideoBitrate,
 		AudioCodecs: decision.AudioCodecs, MaxAudioChannels: decision.MaxAudioChannels,

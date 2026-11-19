@@ -88,7 +88,7 @@ func videos(list []string) []string {
 	return out
 }
 
-func TestClientShMakesTwentyThreeFilmsAndThreeEpisodesAndNothingElseThatPlays(t *testing.T) {
+func TestClientShMakesTwentyFourFilmsAndThreeEpisodesAndNothingElseThatPlays(t *testing.T) {
 	dir := made(t)
 	vids := videos(files(t, dir))
 	var episodes, films []string
@@ -99,8 +99,8 @@ func TestClientShMakesTwentyThreeFilmsAndThreeEpisodesAndNothingElseThatPlays(t 
 			films = append(films, v)
 		}
 	}
-	if len(films) != 23 || len(episodes) != 3 || len(vids) != 26 {
-		t.Errorf("%d films and %d episodes (%d video files), want 23, 3 and 26:\n%s", len(films), len(episodes), len(vids), strings.Join(vids, "\n"))
+	if len(films) != 24 || len(episodes) != 3 || len(vids) != 27 {
+		t.Errorf("%d films and %d episodes (%d video files), want 24, 3 and 27:\n%s", len(films), len(episodes), len(vids), strings.Join(vids, "\n"))
 	}
 	seasons := map[string]bool{}
 	for _, e := range episodes {
@@ -271,7 +271,7 @@ func TestClientShMakesKinoFilmAsTheCriteriaListIt(t *testing.T) {
 }
 
 // Each language film has one recipe that a check can run without the other
-// twenty-one films, and client.sh uses the same.
+// twenty-two films, and client.sh uses the same.
 func TestBabelAndKinoEachComeFromOneRecipeThatRunsAlone(t *testing.T) {
 	testenv.FFmpeg(t)
 	for name, check := range map[string]func(*testing.T, string){"babel.sh": checkBabel, "kino.sh": checkKino} {
@@ -316,9 +316,9 @@ func TestClientShRunsMakeShForItsFilmsAndWritesNoFfmpegCommandOfItsOwn(t *testin
 	}
 }
 
-// make.sh, posix.sh and e2e.sh make what they made: client.sh's 21 films and 3
+// make.sh, posix.sh and e2e.sh make what they made: client.sh's 22 films and 3
 // episodes are the files make.sh makes alone.
-func TestMakeShStillMakesTwentyOneFilmsAndThreeEpisodes(t *testing.T) {
+func TestMakeShStillMakesTwentyTwoFilmsAndThreeEpisodes(t *testing.T) {
 	dir := made(t)
 	alone := t.TempDir()
 	cmd := exec.Command("bash", "test/fixtures/make.sh", alone)
@@ -327,8 +327,8 @@ func TestMakeShStillMakesTwentyOneFilmsAndThreeEpisodes(t *testing.T) {
 		t.Fatalf("make.sh: %v\n%s", err, out)
 	}
 	want := files(t, alone)
-	if n := len(videos(want)); n != 24 {
-		t.Errorf("make.sh makes %d videos, want 21 films and 3 episodes", n)
+	if n := len(videos(want)); n != 25 {
+		t.Errorf("make.sh makes %d videos, want 22 films and 3 episodes", n)
 	}
 	have := map[string]bool{}
 	for _, f := range files(t, dir) {
