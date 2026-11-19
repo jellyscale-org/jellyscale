@@ -14,7 +14,7 @@ import (
 // hash includes them: bump OutputVersion with any change to the ffmpeg
 // settings, and old segments simply stop being found.
 const (
-	OutputVersion  = 5
+	OutputVersion  = 6
 	SegmentSeconds = 4
 	// Family is the encoder family; fMP4 can't splice across families.
 	Family = "x264"
@@ -188,7 +188,7 @@ type Spec struct {
 	// on it (Cost), and it is no part of the hash: the segments are the same. A
 	// spec stored before it was recorded has none.
 	SourceHeight int
-	// Recode is the codec ("h264" or "hevc") of a copy whose keyframe index was found wrong, made again as an
+	// Recode is the codec ("h264", "hevc" or "av1") of a copy whose keyframe index was found wrong, made again as an
 	// encode of that codec, cut on the copy's own layout (CopyLayout of the index the playlist was
 	// cut from), so that the player goes on with the playlist it holds (JS-088). It is no
 	// Copy: the picture is encoded, so the segments never share a hash with the copy's.
@@ -241,9 +241,9 @@ func NewSpec(item string, p Params, source Source) (Spec, error) {
 	}, nil
 }
 
-// CanRecode says a copy of this video codec can be made again as an encode when its index is found wrong.
-// AV1 cannot: its fallback is not built (docs/transcoding.md).
-func CanRecode(codec string) bool { return codec == "h264" || codec == "hevc" }
+// CanRecode says a copy of this video codec can be made again as an encode when its index is found wrong. An
+// AV1 copy goes on as AV1: an H.264 segment cannot follow an AV1 SourceBuffer (compat/captures/av1-fallback-12.4.md).
+func CanRecode(codec string) bool { return codec == "h264" || codec == "hevc" || codec == "av1" }
 
 // Recoded is the spec of the encode that stands in for a copy whose index was found wrong. It
 // keeps the copy's tracks, caps its picture as every re-encode is capped, and toneMap is the

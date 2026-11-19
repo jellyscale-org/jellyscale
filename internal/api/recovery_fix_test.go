@@ -6,10 +6,10 @@ import (
 	"jellyscale/internal/playback"
 )
 
-// An AV1 copy has no encode to go on as: it must not enter the path that logs and counts a fallback, and a
-// copy of H.264 or HEVC must.
-func TestOnlyACopyWithAnEncodeFallsBack(t *testing.T) {
-	for codec, want := range map[string]bool{"h264": true, "hevc": true, "av1": false} {
+// A copy of H.264, HEVC or AV1 goes on as an encode (JS-133 built the AV1 one), and enters the path that logs and
+// counts a fallback.
+func TestACopyOfEachCodecFallsBack(t *testing.T) {
+	for codec, want := range map[string]bool{"h264": true, "hevc": true, "av1": true} {
 		req := hlsRequest{media: playback.Source{Streams: []playback.Stream{{Type: "Video", Codec: codec}}}}
 		req.useDropped([]int64{0, 50_000_000}, 100_000_000)
 		if req.fellBack != want {

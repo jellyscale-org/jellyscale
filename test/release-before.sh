@@ -12,4 +12,7 @@ rev=$(sed -n 's/^const releaseBefore = "\(.*\)"/\1/p' internal/transcode/one_rea
 dir=$(mktemp -d "${TMPDIR:-/tmp}/jellyscale-release-before.XXXXXX")
 trap 'rm -rf "$dir"' EXIT
 git archive "$rev" | tar -x -C "$dir"
+# At this checkout's output version: workers of another one share no jobs (see releaseBefore).
+version=$(sed -n 's/^	OutputVersion  = \([0-9]*\)$/\1/p' internal/playback/spec.go)
+sed -i "s/OutputVersion  = [0-9]*/OutputVersion  = $version/" "$dir/internal/playback/spec.go"
 (cd "$dir" && CGO_ENABLED=0 go test -tags integration -c -o "$out" ./internal/transcode)

@@ -141,6 +141,28 @@ for to in "Recover Reach Film (2150)" "Recover Early Film (2151)"; do
     -metadata:s:a:0 language=eng -metadata:s:a:1 language=spa "$work/media/$t/$to/$to.mkv" || exit 1
 done
 link "$t/Direct Sub Film (2060)/Direct Sub Film (2060).en.srt" "$t/Recover Early Film (2151)/Recover Early Film (2151).en.srt"
+# JS-133: the same irregular keyframes in AV1, one 8-bit film for the scenario that seeks into the bad segment (and, linked,
+# for the one with two viewers) and one 10-bit film for the scenario in which the job finds the index wrong ahead of the viewer.
+# SVT-AV1 in ffmpeg 6.1 (Ubuntu 24.04, which CI runs) ignores -force_key_frames, so the picture is encoded in pieces that each
+# start at a keyframe time (24 fps: a whole number of frames) and joined, as test/fixtures/e2e.sh does for Sampi.
+av1_irregular() { # film pix_fmt
+  local to=$1 pix=$2 parts from=0 t
+  parts=$(mktemp -d) && : >"$parts/list" || exit 1
+  for t in ${irregular//,/ } 150; do
+    ffmpeg -nostdin -v error -y -f lavfi -i "testsrc2=size=640x360:rate=24:duration=150" \
+      -vf "trim=start_frame=$((from * 24)):end_frame=$((t * 24)),setpts=PTS-STARTPTS" -c:v libsvtav1 -preset 10 -g 2000 -pix_fmt "$pix" "$parts/$from.mkv" 2>/dev/null || { echo "could not encode AV1 for $to" >&2; exit 1; }
+    echo "file '$parts/$from.mkv'" >>"$parts/list"
+    from=$t
+  done
+  mkdir -p "$work/media/$t_dir/$to" && ffmpeg -nostdin -v error -y -f concat -safe 0 -i "$parts/list" \
+    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=150" -f lavfi -i "sine=frequency=880:sample_rate=48000:duration=150" \
+    -map 0:v -map 1:a -map 2:a -c:v copy -c:a:0 ac3 -c:a:1 aac -metadata:s:a:0 language=eng -metadata:s:a:1 language=spa "$work/media/$t_dir/$to/$to.mkv" || exit 1
+  rm -rf "$parts"
+}
+t_dir=$t
+av1_irregular "Recover AV1 Reach Film (2161)" yuv420p
+av1_irregular "Recover AV1 Early Film (2162)" yuv420p10le
+link "$t/Recover AV1 Reach Film (2161)/Recover AV1 Reach Film (2161).mkv" "$t/Recover AV1 Pair Film (2163)/Recover AV1 Pair Film (2163).mkv"
 # The films the failover gate (JS-031) kills and rolls replicas under: one direct play (the 60 MB
 # film of the outage scenario, which the router slows to a download of tens of seconds) and one
 # re-encode each for an api kill, a stream kill and a stream roll, and the three films that play on

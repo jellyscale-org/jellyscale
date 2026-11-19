@@ -1929,7 +1929,7 @@ const brokenIndex = (title, from) => {
 
 // What a viewer must have had of the film from `target` on, and what the operator must have of the fallback. `since`
 // says where the logs were when the scenario began.
-async function wentOn(page, seen, { at, target, badPoint, since, label }) {
+async function wentOn(page, seen, { at, target, badPoint, since, label, encoder = "libx264" }) {
   let shownAtBadPoint;
   await waitFor(`${label}: the picture 30 s past the bad point (${badPoint + 30} s)`, async () => {
     // A refusal or the dialog ends the wait: the viewer will not get there.
@@ -1954,8 +1954,9 @@ async function wentOn(page, seen, { at, target, badPoint, since, label }) {
   if (shown.total - shownAtBadPoint.total < 24 * 20) throw new Error(`${label}: ${shown.total - shownAtBadPoint.total} frames were shown in the 30 s past the bad point, want at least ${24 * 20} of the 720 a film of 24 fps has`);
   const problems = continuity(await samples(page), target);
   if (problems.length) throw new Error(`${label}: the position was not kept: ${problems.slice(0, 3).join("; ")}`);
-  const lines = ffmpegLines().slice(since.ffmpeg).filter((l) => /-f hls/.test(l));
-  if (!lines.some((l) => !/-c:v copy/.test(l) && /libx264/.test(l))) throw new Error(`${label}: no ffmpeg re-encoded the picture after the index was found wrong: ${lines.map((l) => l.slice(0, 120)).join(" | ")}`);
+  // An AV1 fallback may be several ffmpeg runs, one for each piece (SVT-AV1 in ffmpeg 6.1 cannot cut one run on the playlist's layout).
+  const lines = ffmpegLines().slice(since.ffmpeg).filter((l) => encoder !== "libx264" || /-f hls/.test(l));
+  if (!lines.some((l) => !/-c:v copy/.test(l) && l.includes(encoder))) throw new Error(`${label}: no ffmpeg re-encoded the picture with ${encoder} after the index was found wrong: ${lines.map((l) => l.slice(0, 120)).join(" | ")}`);
 }
 
 const fellBack = (log, { item, source }) => log.split("\n").some((l) => /fall(s|ing)? ?back/i.test(l) && l.includes(`item=${item}`) && l.includes(`source=${source}`) && /reason=/.test(l));
@@ -2050,6 +2051,93 @@ await scenario("two viewers playing the same copy when its index is found wrong 
     const counter = await fallbacks();
     if (counter.name === null || counter.sum - counted.sum !== 2) throw new Error(`the fallback counter (${counter.name}) rose by ${counter.sum - counted.sum}, want 2, one for each stream`);
     if (!fellBack(readFileSync(process.env.E2E_LOG, "utf8").slice(since.log), wrong)) throw new Error("the operator's log does not say the streams fell back");
+  } finally {
+    await b.context.close().catch(() => {});
+  }
+});
+
+// ---- An AV1 copy whose keyframe index is found wrong goes on as an AV1 encode (JS-133) ----
+// jellyfin-web's player cannot take H.264 under an AV1 master playlist (compat/captures/av1-fallback-12.4.md), so the
+// fallback of an AV1 copy is SVT-AV1, cut on the playlist's layout and sent with its own init in front of each segment.
+// The films have the keyframes of Reach's and Early's (5 to 7 s apart) in AV1, one 8-bit and one 10-bit (test/e2e/run.sh).
+// Each scenario holds the viewer to what wentOn holds it to for x264: no dialog, no 400, no abandoned request, no decode
+// error, no corrupted frame, at least 480 of the 720 frames of 30 s, the position kept; and to the operator's side: the
+// index dropped, an SVT-AV1 ffmpeg, the counter and the log.
+const av1Plays = async ({ page, seen }, title, bits) => {
+  await play(page, "Transcode", title);
+  const source = seen.infos.at(-1).source;
+  if (!/VideoCodec=copy/.test(source.TranscodingUrl)) throw new Error(`the film is not played as a copy: ${source.TranscodingUrl}`);
+  const master = await (await fetch(new URL(source.TranscodingUrl, base))).text();
+  if (!new RegExp(`CODECS="av01\\.0\\.\\d\\dM\\.${bits}[,"]`).test(master)) throw new Error(`the master playlist does not name ${bits}-bit AV1: ${JSON.stringify(master)}`);
+};
+// What the viewer fetched of the fallback: distinct segments from the bad one on, answered 200.
+const fallbackSegments = (seen, at, from) => new Set(seen.hls.filter((r) => r.at >= at && r.status === 200 && /\/\d+\.mp4$/i.test(r.path)).map((r) => Number(/(\d+)\.mp4$/i.exec(r.path)[1])).filter((n) => n >= from - 1)).size;
+const fellBackLines = (log, { item, source }) => log.split("\n").filter((l) => /fall(s|ing)? ?back/i.test(l) && l.includes(`item=${item}`) && l.includes(`source=${source}`) && /reason=/.test(l)).length;
+
+await scenario("an AV1 copy (8-bit) whose index is found wrong where the viewer seeks to goes on as an AV1 encode, at the viewer's place, counted and logged once", async (v) => {
+  const { page, seen } = v;
+  const title = "Recover AV1 Reach Film";
+  const wrong = brokenIndex(title, 10), badPoint = wrong.badPoint;
+  const since = { ffmpeg: ffmpegLines().length, log: readFileSync(process.env.E2E_LOG, "utf8").length };
+  const counted = await fallbacks();
+  await av1Plays(v, title, "08");
+  await advances(page);
+  await startSampler(page);
+  const at = Date.now(), target = badPoint + 1;
+  await page.evaluate((t) => { document.querySelector("video").currentTime = t; }, target);
+  await wentOn(page, seen, { at, target, badPoint, since, label: "seek into the bad segment of an AV1 copy", encoder: "libsvtav1" });
+  if (!wrong.indexDropped()) throw new Error("the index was never found wrong, so nothing was tested");
+  if (fallbackSegments(seen, at, 10) < 5) throw new Error(`the viewer fetched ${fallbackSegments(seen, at, 10)} fallback segments, want at least 5 for the count to say once for a stream`);
+  const lines = fellBackLines(readFileSync(process.env.E2E_LOG, "utf8").slice(since.log), wrong);
+  if (lines !== 1) throw new Error(`the operator's log has ${lines} lines that say the stream fell back from copy with item=${wrong.item} source=${wrong.source} and a reason=, want 1`);
+  const counter = await fallbacks();
+  if (counter.name === null || counter.sum - counted.sum !== 1) throw new Error(`the fallback counter (${counter.name}) rose by ${counter.sum - counted.sum}, want 1 for one stream and many segments`);
+  await leave(page);
+});
+
+await scenario("a 10-bit AV1 copy whose index the job finds wrong while the viewer still plays stored segments goes on as an AV1 encode", async (v) => {
+  const { page, seen } = v;
+  const title = "Recover AV1 Early Film";
+  const wrong = brokenIndex(title, 5), badPoint = wrong.badPoint;
+  const since = { ffmpeg: ffmpegLines().length, log: readFileSync(process.env.E2E_LOG, "utf8").length };
+  const counted = await fallbacks();
+  await av1Plays(v, title, "10");
+  await advances(page);
+  await startSampler(page);
+  const at = Date.now(), target = Math.round(await time(page));
+  await waitFor("the job to find the index wrong", async () => wrong.indexDropped());
+  const foundAt = await time(page);
+  if (foundAt >= badPoint - 4) throw new Error(`the index was found wrong when the viewer was at ${foundAt} s, not while he plays the stored segments before the bad point (${badPoint} s)`);
+  await wentOn(page, seen, { at, target, badPoint, since, label: "the job finds the index of a 10-bit AV1 copy wrong ahead of the viewer", encoder: "libsvtav1" });
+  if (fallbackSegments(seen, at, 5) < 5) throw new Error(`the viewer fetched ${fallbackSegments(seen, at, 5)} fallback segments, want at least 5`);
+  const counter = await fallbacks();
+  if (counter.name === null || counter.sum - counted.sum !== 1) throw new Error(`the fallback counter (${counter.name}) rose by ${counter.sum - counted.sum}, want 1`);
+  if (fellBackLines(readFileSync(process.env.E2E_LOG, "utf8").slice(since.log), wrong) !== 1) throw new Error("the operator's log does not say once that the stream fell back");
+  await leave(page);
+});
+
+await scenario("two viewers playing the same AV1 copy when its index is found wrong both go on, and the counter rises by two", async (a) => {
+  const title = "Recover AV1 Pair Film";
+  const wrong = brokenIndex(title, 8), badPoint = wrong.badPoint; // The film's keyframes are 5 to 7 s apart, so this is at 41 s.
+  const since = { ffmpeg: ffmpegLines().length, log: readFileSync(process.env.E2E_LOG, "utf8").length };
+  const counted = await fallbacks();
+  const b = await viewer();
+  try {
+    await av1Plays(a, title, "08");
+    await av1Plays(b, title, "08");
+    await Promise.all([advances(a.page), advances(b.page)]);
+    await Promise.all([startSampler(a.page), startSampler(b.page)]);
+    const at = Date.now();
+    const targets = [Math.round(await time(a.page)), Math.round(await time(b.page))];
+    await Promise.all([
+      wentOn(a.page, a.seen, { at, target: targets[0], badPoint, since, label: "first viewer of an AV1 copy", encoder: "libsvtav1" }),
+      wentOn(b.page, b.seen, { at, target: targets[1], badPoint, since, label: "second viewer of an AV1 copy", encoder: "libsvtav1" }),
+    ]);
+    if (!wrong.indexDropped()) throw new Error("the index was never found wrong, so nothing was tested");
+    for (const [name, v] of [["first", a], ["second", b]]) if (fallbackSegments(v.seen, at, 8) < 5) throw new Error(`the ${name} viewer fetched fewer than 5 fallback segments`);
+    const counter = await fallbacks();
+    if (counter.name === null || counter.sum - counted.sum !== 2) throw new Error(`the fallback counter (${counter.name}) rose by ${counter.sum - counted.sum}, want 2, one for each stream`);
+    if (fellBackLines(readFileSync(process.env.E2E_LOG, "utf8").slice(since.log), wrong) < 1) throw new Error("the operator's log does not say the streams fell back");
   } finally {
     await b.context.close().catch(() => {});
   }

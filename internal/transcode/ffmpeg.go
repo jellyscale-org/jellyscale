@@ -279,6 +279,14 @@ func seamPlan(enc encoder, base, frameDuration, keyframe float64, grid int64, co
 		// product's rounding.
 		return videoSeek, max(seek-2, 0), fmt.Sprintf("noise=drop=lt(pts*tb\\,%s)", seconds(cut-1e-6))
 	}
+	audioSeek, first := aacCut(enc.reorderFrames, base, frameDuration, keyframe, grid)
+	return videoSeek, audioSeek, fmt.Sprintf("noise=drop=lt(pts\\,%d)", first)
+}
+
+// aacCut is where an AAC run seeks (relative to the file's start, as -ss counts) and the time in samples of the first
+// packet that belongs to the segment whose first frame is keyframe (seconds on the file's clock), on the grid of a run
+// from the start. reorder is how many frames the video encoder holds back before a keyframe.
+func aacCut(reorder int, base, frameDuration, keyframe float64, grid int64) (seek float64, first int64) {
 	// The grid's phase on the file's own clock, which is what -ss counts.
 	phase := float64(grid) - base*audioRate
 	// The muxer cuts audio at the keyframe's DTS. The encoder sees frame numbers,
@@ -286,13 +294,12 @@ func seamPlan(enc encoder, base, frameDuration, keyframe float64, grid int64, co
 	// taken off; a source that doesn't start on a frame boundary would
 	// otherwise be off by a fraction of a frame, enough to move the cut by
 	// an audio packet.
-	cut := (math.Round(keyframe/frameDuration)-float64(enc.reorderFrames))*frameDuration - base
+	cut := (math.Round(keyframe/frameDuration)-float64(reorder))*frameDuration - base
 	// The run starts warmupFrames before the cut: the encoder emits nothing
 	// for a frame's worth, and the delay is more than a frame of 12.5 fps.
 	firstFrame := max(int(math.Floor((cut*audioRate-phase)/1024+1e-9))-warmupFrames, int(math.Ceil(-phase/1024)))
-	audioSeek = (float64(firstFrame)*1024 + phase) / audioRate
-	first := math.Ceil((cut*audioRate-phase)/1024 - 1e-6)
-	return videoSeek, audioSeek, fmt.Sprintf("noise=drop=lt(pts\\,%d)", int64(first)*1024+grid)
+	seek = (float64(firstFrame)*1024 + phase) / audioRate
+	return seek, int64(math.Ceil((cut*audioRate-phase)/1024-1e-6))*1024 + grid
 }
 
 // copyReadRate is how many times the film's speed a copy reads its input.
@@ -407,7 +414,12 @@ func fragmentCommand(ctx context.Context, input string, spec playback.Spec, code
 		args = append(args, "-map", "1:"+strconv.Itoa(spec.AudioIndex),
 			"-c:a", "aac", "-b:a", strconv.FormatInt(spec.AudioBitrate, 10), "-ac", "2", "-ar", strconv.Itoa(audioRate))
 	}
-	args = append(args,
+	return mediatool.Command(ctx, "ffmpeg", append(args, fragmentOutput(dir)...)...), nil
+}
+
+// fragmentOutput is the muxer's end of the command that writes fragments, g0.m4s, g1.m4s ... with init.mp4.
+func fragmentOutput(dir string) []string {
+	return []string{
 		"-output_ts_offset", strconv.Itoa(tsOffset),
 		// Every keyframe is a cut: the segment length is so short that the muxer
 		// is always past it.
@@ -415,14 +427,92 @@ func fragmentCommand(ctx context.Context, input string, spec playback.Spec, code
 		"-hls_segment_type", "fmp4", "-hls_flags", "temp_file", "-hls_fmp4_init_filename", "init.mp4",
 		"-hls_segment_options", "use_editlist=0:avoid_negative_ts=disabled:movflags=+frag_discont+skip_sidx",
 		"-hls_segment_filename", filepath.Join(dir, "g%d.m4s"), filepath.Join(dir, "index.m3u8"),
-	)
-	return mediatool.Command(ctx, "ffmpeg", args...), nil
+	}
+}
+
+// AV1SegmentCommand is RecodeCommand for an AV1 copy: SVT-AV1 in ffmpeg 6.1 ignores -force_key_frames, so each
+// segment of the playlist is encoded by a run of its own, which starts on a keyframe on any ffmpeg and stops at
+// the next segment's start. start and end are the times (the source's clock, in seconds) at which the segment
+// and the one after it begin, end negative for the last; start is negative for the first, which opens the file at
+// its start. Every segment is a function of its own start and end, so a restart makes what a run from the start
+// does. The audio is cut as a run from zero cuts it: copied packets in the same span as the video's, AAC packets
+// on the grid of a run from zero (aacCut).
+func AV1SegmentCommand(ctx context.Context, input string, spec playback.Spec, start, end float64, dir string) (*exec.Cmd, error) {
+	encode, err := recodeArgs("av1", spec)
+	if err != nil {
+		return nil, err
+	}
+	hasAudio := spec.AudioIndex >= 0
+	base, frame, err := sourceTiming(ctx, input)
+	if err != nil {
+		return nil, err
+	}
+	// A quarter frame before the first frame is read as that frame on every ffmpeg (see seamPlan), and a
+	// neighbour's end is the same time, so no frame is in two segments or in none.
+	var seek float64
+	if start >= 0 {
+		seek = max(start-base-frame/4, 0)
+	}
+	args := []string{"-nostdin", "-v", "error", "-progress", "pipe:1", "-nostats", "-y", "-copyts"}
+	if start >= 0 {
+		args = append(args, "-ss", seconds(seek))
+	}
+	if end >= 0 {
+		// An input's -t counts from its seek, on the file's clock.
+		args = append(args, "-t", seconds(end-base-frame/4-seek))
+	}
+	args = append(args, "-i", input)
+	// The audio's own input, when it is re-encoded, comes before any output option.
+	var audio []string
+	switch {
+	case hasAudio && spec.AudioCopy != "":
+		// The source's own packets, from the input the video is read from.
+		audio = []string{"-map", "0:" + strconv.Itoa(spec.AudioIndex), "-c:a", "copy"}
+	case hasAudio:
+		var grid int64
+		if start >= 0 || end >= 0 {
+			if grid, err = audioGrid(ctx, input, spec); err != nil {
+				return nil, err
+			}
+		}
+		var audioSeek float64
+		drop := ""
+		if start >= 0 {
+			var first int64
+			audioSeek, first = aacCut(0, base, frame, start, grid)
+			args = append(args, "-ss", seconds(audioSeek))
+			drop = fmt.Sprintf("lt(pts\\,%d)", first)
+		}
+		if end >= 0 {
+			// Two frames more than the last packet needs, which the drop takes off.
+			_, last := aacCut(0, base, frame, end, grid)
+			args = append(args, "-t", seconds(float64(last)/audioRate-base-audioSeek+2*aacFrame))
+			if drop != "" {
+				drop += "+"
+			}
+			drop += fmt.Sprintf("gte(pts\\,%d)", last)
+		}
+		args = append(args, "-i", input)
+		audio = []string{"-map", "1:" + strconv.Itoa(spec.AudioIndex),
+			"-c:a", "aac", "-b:a", strconv.FormatInt(spec.AudioBitrate, 10), "-ac", "2", "-ar", strconv.Itoa(audioRate)}
+		if drop != "" {
+			audio = append(audio, "-bsf:a", "noise=drop="+drop)
+		}
+	}
+	picture := fmt.Sprintf("yadif=mode=send_frame:parity=auto:deint=interlaced,scale=%d:%d:flags=bicubic", spec.Width, spec.Height)
+	if spec.ToneMap != "" {
+		picture += "," + playback.ToneMapFilter(spec.ToneMap)
+	}
+	args = append(args, "-map", "0:v:0", "-vf", picture+",format=yuv420p")
+	args = append(args, encode...)
+	args = append(args, audio...)
+	return mediatool.Command(ctx, "ffmpeg", append(args, fragmentOutput(dir)...)...), nil
 }
 
 // recodeArgs is the encoder of a copy's video that is made again: the codec the copy had, since the
 // player's buffer is typed by the master playlist's, with the fixed B-frames and closed GOP that make
 // a restart produce the same frames, and a keyframe only where the playlist cuts (scenecut off, keyint far
-// off). An AV1 fallback is not built.
+// off). An AV1 fallback has one run for each segment instead.
 func recodeArgs(codec string, spec playback.Spec) ([]string, error) {
 	vb := spec.VideoBitrate
 	switch codec {
@@ -434,6 +524,9 @@ func recodeArgs(codec string, spec playback.Spec) ([]string, error) {
 		return []string{"-c:v", "libx265", "-preset", "veryfast", "-tag:v", "hvc1", "-crf", "26",
 			"-x265-params", fmt.Sprintf("bframes=2:b-adapt=0:open-gop=0:scenecut=0:keyint=100000:vbv-maxrate=%d:vbv-bufsize=%d:log-level=error", vb/1000, 2*vb/1000),
 			"-forced-idr", "1"}, nil
+	case "av1":
+		// One run for each segment (AV1SegmentCommand), so the only keyframe is the first and the others are never wanted.
+		return []string{"-c:v", "libsvtav1", "-preset", "10", "-crf", "32", "-g", "100000"}, nil
 	}
 	return nil, fmt.Errorf("a %s copy whose keyframe index was found wrong cannot go on: its re-encode fallback is not built", codec)
 }

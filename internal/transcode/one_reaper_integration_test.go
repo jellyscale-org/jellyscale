@@ -454,7 +454,11 @@ exec %[2]s "$@"
 
 // releaseBefore is main as it was when JS-030 began: the release whose worker,
 // taking its lock and reaping by itself, runs beside the new ones. Its test
-// binary is built from `git archive` of it, so the worker is that release's own.
+// binary is built from `git archive` of it, so the worker is that release's own,
+// but for the output version: workers of another one are a pool of their own and
+// never share a job (claimIn, readCapacity), so the old worker could neither
+// claim the checks' jobs nor be replaced. It is built at today's, as the release
+// before would be had no output version been bumped since (test/release-before.sh does the same).
 const releaseBefore = "a3d5945"
 
 // oldWorkerBinary builds the transcode package's integration test binary of the
@@ -475,7 +479,7 @@ func oldWorkerBinary(t *testing.T) string {
 			return
 		}
 		oldDir = dir
-		archive := exec.Command("sh", "-c", fmt.Sprintf("git -C ../.. archive %s | tar -x -C %s", releaseBefore, dir))
+		archive := exec.Command("sh", "-c", fmt.Sprintf("git -C ../.. archive %s | tar -x -C %s && sed -i 's/OutputVersion  = [0-9]*/OutputVersion  = %d/' %s/internal/playback/spec.go", releaseBefore, dir, playback.OutputVersion, dir))
 		if out, err := archive.CombinedOutput(); err != nil {
 			oldErr = fmt.Errorf("git archive %s: %v\n%s", releaseBefore, err, out)
 			return

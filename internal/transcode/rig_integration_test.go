@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"log/slog"
+	"math"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -189,6 +190,12 @@ func (r *rig) worker(t *testing.T, change func(*Worker)) (stop func()) {
 		Scratch: r.scratch, Slots: 2, Idle: 60 * time.Second, Lease: 3 * time.Second, Heartbeat: 200 * time.Millisecond,
 		// A whole film's lead, so a job runs to the end unless a test bounds it.
 		Lead: time.Hour}
+	// A job costing more cores than the two (a 4K AV1 fallback costs 2.4) is refused by a worker that declares fewer.
+	if r.spec.Item != "" {
+		if cost := r.spec.Cost(); cost > float64(w.Slots) {
+			w.Slots = int(math.Ceil(cost))
+		}
+	}
 	if change != nil {
 		change(w)
 	}

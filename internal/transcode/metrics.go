@@ -270,6 +270,14 @@ func (p *progress) add(film float64) {
 	}
 }
 
+// restart forgets the samples, for an ffmpeg that counts its film time from where it began, as each of an AV1
+// fallback's runs does: the speed would otherwise be the step from one run's last time to the next one's first.
+func (p *progress) restart() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.samples = nil
+}
+
 // pause says that ffmpeg was stopped or let go on.
 func (p *progress) pause(on bool) {
 	p.mu.Lock()

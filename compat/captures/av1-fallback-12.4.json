@@ -1,0 +1,95 @@
+{
+  "what": "jellyfin-web 12.4's hls.js 1.6.16 in Chrome 157 (Linux, software decode), an AV1 copy's master playlist (CODECS av01.0.04M.08) whose segments from 20 s are another stream, each led by its own init (JS-133)",
+  "script": "compat/captures/av1-fallback-spike.mjs",
+  "note": "forward: from 14 s to 30 s; back: seek to 10 s (an AV1 segment), to 30 s. dialog is a fatal hls.js error, which is where jellyfin-web raises its Playback Error dialog. The h264 forward row of the first run: video.error CHUNK_DEMUXER_ERROR_APPEND_FAILED, 1 frame, fatal error; of the second run (below): stalled at 16.04 s with append errors and no frame past 20 s.",
+  "choice": "av1",
+  "observed": {
+    "control": {
+      "forward": {
+        "from": 14,
+        "reached": 30.0358,
+        "frames": 389,
+        "videoError": null,
+        "corrupted": 0,
+        "fatalErrors": 0,
+        "dialog": false,
+        "maxBackSeconds": 0,
+        "maxForwardBeyondClockSeconds": 0,
+        "hlsErrors": []
+      },
+      "back": {
+        "from": 10,
+        "reached": 30.0511,
+        "frames": 486,
+        "videoError": null,
+        "corrupted": 0,
+        "fatalErrors": 0,
+        "dialog": false,
+        "maxBackSeconds": 0,
+        "maxForwardBeyondClockSeconds": 0,
+        "hlsErrors": []
+      }
+    },
+    "h264": {
+      "forward": {
+        "from": 14,
+        "reached": 0,
+        "frames": 0,
+        "videoError": null,
+        "corrupted": 0,
+        "fatalErrors": 0,
+        "dialog": false,
+        "maxBackSeconds": 16.04,
+        "maxForwardBeyondClockSeconds": 15.94,
+        "hlsErrors": [
+          "bufferAppendingError video SourceBuffer error. MediaSource readyState: ended",
+          "bufferAppendError video SourceBuffer error. MediaSource readyState: ended",
+          "bufferStalledError Playback stalling at @16.0407 due to low buffer ({\"len\":3.9592989999999"
+        ]
+      },
+      "back": {
+        "from": 10,
+        "reached": 16.0679,
+        "frames": 0,
+        "videoError": "PipelineStatus::CHUNK_DEMUXER_ERROR_APPEND_FAILED: Video stream codec h264 doesn't match SourceBuffer codecs.",
+        "corrupted": 0,
+        "fatalErrors": 1,
+        "dialog": true,
+        "maxBackSeconds": 16.07,
+        "maxForwardBeyondClockSeconds": 15.97,
+        "hlsErrors": [
+          "bufferAppendingError video SourceBuffer error. MediaSource readyState: ended",
+          "bufferAppendError video SourceBuffer error. MediaSource readyState: ended",
+          "bufferStalledError Playback stalling at @16.0407 due to low buffer ({\"len\":3.9592989999999",
+          "bufferAppendError FATAL video SourceBuffer error. MediaSource readyState: ended"
+        ]
+      }
+    },
+    "av1": {
+      "forward": {
+        "from": 14,
+        "reached": 30.138,
+        "frames": 391,
+        "videoError": null,
+        "corrupted": 0,
+        "fatalErrors": 0,
+        "dialog": false,
+        "maxBackSeconds": 0,
+        "maxForwardBeyondClockSeconds": 0,
+        "hlsErrors": []
+      },
+      "back": {
+        "from": 10,
+        "reached": 30.0469,
+        "frames": 485,
+        "videoError": null,
+        "corrupted": 0,
+        "fatalErrors": 0,
+        "dialog": false,
+        "maxBackSeconds": 0,
+        "maxForwardBeyondClockSeconds": 0,
+        "hlsErrors": []
+      }
+    }
+  }
+}

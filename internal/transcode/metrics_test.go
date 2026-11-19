@@ -243,3 +243,25 @@ func TestObserveSegmentDoesNotCountAStoppedRefusal(t *testing.T) {
 		t.Fatalf("refusedAsStopped: %v, count %v, was %v", err, counterValue(t, stopped), before)
 	}
 }
+
+// Each ffmpeg of an AV1 fallback counts its film time from where it began: after a restart the speed is that of the
+// new run, not the step from the old run's last time to the new one's first.
+func TestProgressSpeedOfARestartedRunIsThatOfTheNewRun(t *testing.T) {
+	p, c := newProgress()
+	for i := 0; i <= 4; i++ {
+		emit(t, p, 100+float64(i))
+		c.at = c.at.Add(time.Second)
+	}
+	p.restart()
+	if _, ok := p.speed(); ok {
+		t.Fatal("a run that has made nothing has a speed")
+	}
+	emit(t, p, 0)
+	for i := 1; i <= 4; i++ {
+		c.at = c.at.Add(time.Second)
+		emit(t, p, 0.5*float64(i)) // A new run starts again near zero, at half speed.
+	}
+	if speed, ok := p.speed(); !ok || speed < 0.45 || speed > 0.65 {
+		t.Fatalf("speed %v, %v; want the new run's 0.5", speed, ok)
+	}
+}
