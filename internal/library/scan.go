@@ -202,20 +202,15 @@ func (s *Scanner) Scan(ctx context.Context, lib Library) error {
 // episode is not one. The count is set before the guard against mass loss, so
 // a scan that fails on it still says how many films failed.
 func (s *Scanner) ScanCounting(ctx context.Context, lib Library) (failed int, err error) {
-	conn, err := s.Pool.Acquire(ctx)
+	lock, locked, err := db.TryLock(ctx, s.Pool, "scan:"+lib.ID)
 	if err != nil {
-		return failed, err
-	}
-	defer conn.Release()
-	var locked bool
-	if err := conn.QueryRow(ctx, "SELECT pg_try_advisory_lock(hashtextextended($1, 0))", "scan:"+lib.ID).Scan(&locked); err != nil {
 		return failed, err
 	}
 	if !locked {
 		s.Log.Info("scan already running elsewhere", "library", lib.Name)
 		return 0, ErrElsewhere
 	}
-	defer conn.Exec(context.Background(), "SELECT pg_advisory_unlock(hashtextextended($1, 0))", "scan:"+lib.ID) //nolint:errcheck
+	defer lock.Release()
 
 	objects, err := lib.Media.List(ctx, "")
 	if err != nil {
