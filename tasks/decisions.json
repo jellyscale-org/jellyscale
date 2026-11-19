@@ -1,0 +1,176 @@
+{
+  "about": "Product trade-offs and who accepted them. Each entry: id, date, task, trade-off, decision (accept | keep | escalate), by (product-owner | owner), serves (the PRODUCT.md goal or invariant), brief (the brief as given, verbatim). A Changed guarantees entry, an amended check, or a weakened DOMAINS.md or docs statement cites its decision id. No film titles, library paths or personal details: this file is public.",
+  "decisions": [
+    {
+      "id": "D-001",
+      "date": "2026-11-19",
+      "task": "JS-135, JS-136",
+      "tradeoff": "Operators choose the x264 preset; faster by default: a better picture for about 1.4 times the CPU per viewer and up to about a second more before a start on a full worker",
+      "decision": "accept",
+      "by": "owner",
+      "serves": "owner decision 2026-11-19 (PR #198)",
+      "brief": "spikes/picture-quality/README.md"
+    },
+    {
+      "id": "D-002",
+      "date": "2026-11-19",
+      "task": "JS-089",
+      "tradeoff": "A film whose image subtitle track is not copied within the one hour limit keeps today's seeks into long cues (cost grows with the cue's age) until a retry succeeds; the failure is remembered and retried on a play about once a day, or at once when the file changes, not on every play",
+      "decision": "accept",
+      "by": "product-owner",
+      "serves": "PRODUCT.md: where a capability can't yet serve every film, the gap is written down and planned; every failure is reported with its reason",
+      "conditions": [
+        "a check that a film with a remembered failure draws the showing cue as before JS-089",
+        "retries only on a play, at most once per film per day, by a check",
+        "the log names the item, the source, the reason and when it is retried",
+        "docs/running.md and DOMAINS 51 state the limit, the speed it needs, what the viewer gets meanwhile and the remedy",
+        "a task closing the gap (a size-scaled limit, a no-progress limit, or a resumable read), named as a gap in docs/status.md",
+        "the dogfood's read speed and the count of films that miss the hour, measured"
+      ],
+      "brief": "# Brief: an image subtitle read that runs out of time (JS-089)\n\n**Situation today (before JS-089).** When a viewer seeks to a point where an image subtitle (PGS) cue began long before, the server reads the film from where that cue began, so the picture can show it. The longer ago the cue began, the more of the film is read, so such a seek is slower and costs more reads than an ordinary one.\n\n**After JS-089.** The first play of a film starts a background read that copies its image subtitle tracks into a small store. Seeks then read the stored track, and every seek costs the same. The background read has a fixed limit of one hour. A film is read at the speed of its store, so a 40 GB film needs about 11 MB/s to finish within the hour.\n\n**The question.** A film whose read does not finish within the hour: what then?\n\n**Options:**\n1. **Retry on every play** (the build's first behaviour). Each play of that film starts another hour of reading. If the store is too slow for one hour, it is too slow every time, so the library is read again and again: up to an hour of store reads per play, for nothing.\n2. **Remember the failure** (the build now). It is retried about once a day, at most an hour of reads a day, or at once if the file changes. The viewer still gets the subtitle drawn as before JS-089. Only that film's seeks into long cues stay as slow as today, until a retry succeeds.\n3. **A limit that grows with the file's size**, for example the hour scaled to a minimum speed. More films finish, but a very slow store could still keep a large film reading for hours. Not built; a follow-up task.\n4. **No limit.** Every film eventually finishes, but a store that hangs holds a worker slot (of 2 background slots per worker) indefinitely.\n\n**Who is affected.** Only films too large for their store's speed: unverified how many. On the dogfood's store, a 40 GB film read in well under an hour (unverified figure).\n\n**What the viewer loses with option 2:** for such a film, the JS-089 improvement (equal-cost seeks into long image cues) does not arrive. Nothing else changes from today. Logs tell the operator, and docs/running.md says what they can do (a faster store).\n"
+    },
+    {
+      "id": "D-003",
+      "date": "2026-11-19",
+      "task": "JS-089",
+      "tradeoff": "The first play that burns an image subtitle of a film has a worker read the whole film once per file version (media-store reads, S3 egress, also when the viewer stops early) to store its image tracks, so every later seek, resume and failover into a long cue costs the same as any other",
+      "decision": "accept",
+      "by": "product-owner",
+      "serves": "PRODUCT.md goal 1: Playback never surprises a viewer",
+      "conditions": [
+        "a check that a stored or skipped film is not read again after the job sweep",
+        "docs/subtitles.md states the read, its size, S3 egress, and the metric and logs that show it",
+        "a spike task: copying the image tracks by ranged reads at the cue points the scan keeps, with no whole-film read (and the .sup copy too)",
+        "backlog: whether the background read takes throughput from the play that started it, on a large film and a slow store"
+      ],
+      "brief": "# Brief: JS-089's whole-film read when an image subtitle is first burned in\n\nThe owner has delegated this decision to you (2026-11-19). You escalated it from the time-limit brief (D-002).\n\n**Today.** A viewer whose client cannot draw image subtitles (PGS, VobSub) gets them burned into the picture. The burn reads the subtitle's packets from the same read as the video, so it costs no extra network and no storage. A seek to a point where a cue began long before reads the film back from where that cue began: about 0.3 MB and 0.04 s per second of the cue's age, uncapped. docs/transcoding.md measures 2.78 s to the first segment for a cue 50 s old at 640x360, and more for a 4K film. The owner asked on 2026-11-12 for that cost to go (the task says \"as text tracks are\": each text track is already extracted once by reading the whole film).\n\n**JS-089 as built.**\n- The first time a play burns one of a film's image tracks, a background job reads the **whole film** once to copy its image tracks into the asset store: a few MB stored, but a 40 GB remux means 40 GB of media-store reads. This happens even if the viewer stops a minute later.\n- The viewer does not wait for it. That is shown by a test in which no request of the play waits on the job.\n- Every later seek into a long cue, by anyone, reads the small stored track: equal-cost seeks whatever the cue's age.\n- It runs only when a burn of an image track is chosen, not on other plays. It runs once per film; how long the stored copy is kept is unverified.\n\n**Who is affected, and how often.**\n- Viewers of films with PGS or VobSub tracks whose client cannot draw them (for example jellyfin-web for PGS in some cases), who turn the subtitle on.\n- The read happens once per such film, ever, plus the daily retry D-002 accepted for films that time out.\n- How many films that is on the dogfood: unverified.\n- On S3 the read is egress the operator pays for. A self-hosted store pays in disk and network time.\n\n**Options.**\n1. **Ship as built.** The cost is one whole-film read per film the first time its image subtitle is burned in, including for viewers who stop early. Every viewer after gets cheap seeks.\n2. **Copy only when needed.** Start the copy on the first seek into a cue that began more than some threshold ago (say 30 s), or after the viewer has watched some minutes, so that a viewer who stops early, or never seeks, costs nothing. That first slow seek stays as slow as today; later ones are cheap. This needs a change to JS-089 and a check. Estimated at one more fix round (unverified).\n3. **Defer JS-089.** Keep today's behaviour: no whole-film read, and seeks into long image cues cost more the older the cue.\n4. **Keep the guarantee another way.** A design that learns where the image track's packets sit without reading the whole film (Matroska cue entries for the subtitle track, when the file has them) is not known to exist for the general case. Unverified; it would need a spike.\n\n**Related.** PRODUCT.md line 59: \"A transcode reads only as far ahead as the viewer needs, so a viewer who stops early doesn't cost the whole film's reading.\" DOMAINS 51 (in the JS-089 change) states the cost: \"copying a PGS track reads the whole film from the media store once for each track of each film ... as extracting text does\".\n"
+    },
+    {
+      "id": "D-004",
+      "date": "2026-11-19",
+      "task": "JS-089, JS-071",
+      "tradeoff": "The burn-in check counted every subtitle job during a play; JS-089's background images job adds one per film. The check now leaves only images out of the count, bounds it to at most 1 per play, and a test asserts no request of the play (PlaybackInfo, playlists, first segment) waits on it. The jobs a viewer waits on (track, sup, fonts) stay counted. The job's read cost is D-003, not this decision.",
+      "decision": "accept",
+      "by": "product-owner",
+      "serves": "PRODUCT.md goal 1: Playback never surprises a viewer",
+      "conditions": [
+        "the first segment, requested while the images job is held, returns without waiting; a mutant that waits fails it",
+        "both assertions kept; the amended check cites D-004",
+        "docs/subtitles.md:58 corrected in the same change, citing D-003",
+        "the seek-with-no-stored-track test stays"
+      ],
+      "brief": "# Brief: counting subtitle work in the burn-in check (replay)\n\n**Situation.** A viewer whose client cannot draw image subtitles (PGS, VobSub) gets them burned into the picture. A browser check for that behaviour (JS-071) plays such a film. It requires that no request of the play waits on subtitle extraction work, and asserts it by counting the subtitle jobs created during the play: the count must not grow.\n\n**The change.** JS-089 (a seek into a long-showing image subtitle costs no more than any seek) adds a background job. The first time a film is played, a worker copies the film's image subtitle tracks into a store. Later seeks read the small stored track instead of reading the film from far back. The viewer does not wait for this job. It creates one new job row per film, so the check's count grows by one and the check fails.\n\n**Kinds of subtitle job that exist:**\n- `track`: a text track a viewer waits for;\n- `fonts`: fonts for styled subtitles;\n- `sup`: an image track a client draws itself;\n- `chapters`: chapter pictures, background;\n- `images`: the new one, background.\n\n**Options:**\n1. Stop counting `images`, `sup`, `fonts` and `chapters` jobs in the check, and count only `track`. This is simple, and the check passes.\n2. Keep the check unchanged. JS-089 cannot ship as built.\n\n**Who is affected.** Every viewer of a film with image subtitles whose client cannot draw them; on the dogfood library, most films with PGS tracks.\n\n**Evidence.** The count grows by exactly one per first play (measured in the e2e run).\n\n\nLead's evidence (follow-up): 1. Built the narrow option: the check counts track, sup, fonts and chapters as before; only images is left out, and a second assertion requires the images count to grow by at most 1 per play. 2. A test plays through the real handlers (PlaybackInfo, both playlists, two replicas) with the images job held running: every request returns; a mutant that waits on the job fails it. Not covered then: the first segment. 3. The read cost is D-003. 4. A seek before the job finishes takes today's path at today's cost. 5. docs/subtitles.md:58 is being corrected to cite D-003.",
+      "note": "First asked as a replay of the lead's original, wider amendment (count only track); the product owner refused that as wider than needed and asked for evidence, then accepted the narrow one."
+    },
+    {
+      "id": "D-005",
+      "date": "2026-11-16",
+      "task": "JS-126",
+      "tradeoff": "Every media route needs a valid token, though Jellyfin serves the video stream anonymously. An app whose player sends no token (Findroid, Android TV today) cannot play; the server is not relaxed for it, and a PlaybackInfo-based grant was set aside. Confirmed 2026-11-19: the rule stays; PRODUCT.md states the principle (nothing is reached without authorization, a role-based model enforced on every resource) and the apps it leaves out are listed in docs/status.md as a gap.",
+      "decision": "accept",
+      "by": "owner",
+      "serves": "owner: 'it's a bigger concern that Jellyfin isn't checking for the token'",
+      "brief": "recorded from the owner's words at the time (backfilled 2026-11-19)"
+    },
+    {
+      "id": "D-006",
+      "date": "2026-11-08",
+      "task": "client order",
+      "tradeoff": "jellyfin-web comes first; other clients follow (Fluster second since 2026-11-12, then the apps on Jellyfin's client libraries)",
+      "decision": "accept",
+      "by": "owner",
+      "serves": "PRODUCT.md: Clients in order",
+      "brief": "recorded from the owner's words at the time (backfilled 2026-11-19)"
+    },
+    {
+      "id": "D-007",
+      "date": "2026-11-12",
+      "task": "Fluster",
+      "tradeoff": "Fluster ships with jellyscale and adopts features beyond Jellyfin first, under /jellyscale/v1/; its compatibility ranks right after jellyfin-web's",
+      "decision": "accept",
+      "by": "owner",
+      "serves": "PRODUCT.md: ships with Fluster; Beyond Jellyfin",
+      "brief": "recorded from the owner's words at the time (backfilled 2026-11-19)"
+    },
+    {
+      "id": "D-008",
+      "date": "2026-11-12",
+      "task": "all",
+      "tradeoff": "No viewer- or operator-visible trade-off for engineering's sake: look for a design that keeps the experience first, and present a trade-off only as a last resort with the alternative's cost",
+      "decision": "accept",
+      "by": "owner",
+      "serves": "PRODUCT.md: improve on Jellyfin",
+      "brief": "recorded from the owner's words at the time (backfilled 2026-11-19)"
+    },
+    {
+      "id": "D-009",
+      "date": "2026-10-30",
+      "task": "all",
+      "tradeoff": "Improve on Jellyfin where clients allow: captures are a compatibility baseline, not a target; compatibility with current clients comes first",
+      "decision": "accept",
+      "by": "owner",
+      "serves": "PRODUCT.md: Target, Quality bar",
+      "brief": "recorded from the owner's words at the time (backfilled 2026-11-19)"
+    },
+    {
+      "id": "D-010",
+      "date": "2026-10-30",
+      "task": "scope",
+      "tradeoff": "Video only (music and photos are out); one library on one cluster, not multi-tenant; routes Jellyfin marks obsolete are not built, except thin aliases jellyfin-web still calls; SyncPlay deferred; Kodi not a target",
+      "decision": "accept",
+      "by": "owner",
+      "serves": "PRODUCT.md: scope and non-goals",
+      "brief": "recorded from the owner's words at the time (backfilled 2026-11-19)"
+    },
+    {
+      "id": "D-011",
+      "date": "2026-11-08",
+      "task": "JS-056",
+      "tradeoff": "Kubernetes install works from plain example manifests applied with kubectl as well as from a Helm chart, with a no-drift test between them",
+      "decision": "accept",
+      "by": "owner",
+      "serves": "PRODUCT.md: operating it stays boring",
+      "brief": "recorded from the owner's words at the time (backfilled 2026-11-19)"
+    },
+    {
+      "id": "D-012",
+      "date": "2026-11-19",
+      "task": "JS-061",
+      "tradeoff": "Streamystats compatibility is not part of the product's support: JS-061 is dropped",
+      "decision": "accept",
+      "by": "owner",
+      "serves": "owner: 'a tertiary consideration and probably something we shouldn't even include in our product support'",
+      "brief": "recorded from the owner's words at the time (backfilled 2026-11-19)"
+    },
+    {
+      "id": "D-013",
+      "date": "2026-11-16",
+      "task": "access model",
+      "tradeoff": "Pictures by id are open to whoever holds the id: jellyfin-web builds picture URLs with no token and an <img> cannot send one; item ids are random. A picture by name needs a token. Confirmed 2026-11-19: static assets are a different story from application functionality; PRODUCT.md names static artwork as the one open resource.",
+      "decision": "accept",
+      "by": "owner",
+      "serves": "docs/access.md: playback and personal data always require authorization",
+      "brief": "docs/access.md (backfilled 2026-11-19)"
+    },
+    {
+      "id": "D-014",
+      "date": "2026-11-16",
+      "task": "access model",
+      "tradeoff": "A viewer sees no other viewer's name, where Jellyfin lets any signed-in user list every account",
+      "decision": "accept",
+      "by": "owner",
+      "serves": "docs/access.md: compatibility never means copying Jellyfin's openings",
+      "brief": "docs/access.md (backfilled 2026-11-19)"
+    },
+    {
+      "id": "D-015",
+      "date": "2026-11-19",
+      "task": "plan",
+      "tradeoff": "The first direction review's plan, accepted with changes: the true status record first, then real clients, then JS-089 and D-002's measurement, the presets, people, the library, the example manifests, then the engineering block; JS-141 precedes JS-091 and also answers for text tracks; JS-036 follows JS-033 directly; the Streamystats and Helm/GPU criteria left by D-012 and the JS-056 split corrected; JS-115 dropped as built by JS-030",
+      "decision": "change",
+      "by": "product-owner",
+      "serves": "PRODUCT.md: the gap is written down and planned; Playback never surprises a viewer; Installing is boring",
+      "brief": "# Plan change: applying the first direction review\n\nThe lead has drafted these changes in /home/handre/.cache/jellyscale/wt-dir/tasks/prd.json. Review them as a plan change.\n\n**From the direction review, as it decided:**\n- New JS-139 (priority 10): docs/status.md says truly what is built, with a Fluster row, gaps listed with their tasks or decision ids, and a subtitle-reads total.\n- JS-075 widened: Fluster and one token-sending client per player family. An app that sends no token is recorded as refused under D-005.\n- New JS-140 (the D-002 gap: measure first, then a limit design) and new JS-141 (the D-003 spike on ranged reads), both filed before JS-089 merges.\n- JS-056 split: the example manifests now; the Helm chart becomes JS-142 and keeps the old place.\n- JS-062 gains a start and seek time target (BL-042).\n- Order: JS-139, JS-075, JS-089, then JS-041, JS-127, JS-033, JS-037, JS-036, JS-040, JS-034, JS-045, JS-047, JS-079, JS-056 with JS-092, JS-122, then the OPS block.\n\n**Owner decisions since the review** (see tasks/decisions.json in /home/handre/.cache/jellyscale/wt-po):\n- D-005: the token rule stays, and PRODUCT.md will state the exception.\n- D-012: JS-061 (Streamystats) is dropped.\n\n**Lead's own changes:**\n- JS-115 is dropped: JS-030 (done) built one reaper per cluster with its criteria.\n\n**Placements the review did not decide, which the lead chose. Judge each:**\n1. JS-135 and JS-136 (operators choose the x264 preset, faster by default; D-001, approved by the owner) go right after JS-089, before JS-041. The review was written before they existed on main.\n2. JS-080 (file naming against real library layouts) goes after JS-047, with the library work.\n3. JS-094 (a playback id in every log line) goes after JS-092. The review said it \"keeps its place\".\n4. JS-140 goes after JS-122. JS-141 goes after JS-091, at the head of the OPS block.\n5. JS-091 (background extraction per library, an optional read of every film) goes after JS-140. The review said behind JS-045/JS-047, and also that it accepts no further whole-film-read trade-off until JS-141 reports. Should JS-091 wait for JS-141?\n"
+    }
+  ]
+}
