@@ -424,7 +424,20 @@ func (w *Worker) extractTrack(ctx context.Context, job subtitleJob, log *slog.Lo
 		return subtitles.FillSup(ctx, source, media, assets, job.Index, w.SubtitleTimeout, log)
 	}
 	if job.Key == subtitles.PassKey(source) {
-		if err := subtitles.FillText(ctx, source, media, assets, w.SubtitleTimeout, log); err != nil {
+		if err := subtitles.FillTextStalling(ctx, source, media, assets, w.SubtitleTimeout, w.SubtitleStall, log); err != nil {
+			// The tracks ffmpeg's decoder refused are marked although the pass
+			// failed, so no ask reads the film for them again.
+			var refused *subtitles.RefusedError
+			if errors.As(err, &refused) {
+				marked, stop := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+				defer stop()
+				for _, index := range refused.Tracks {
+					log.Warn("track not listed: ffmpeg can't decode it", "track", index)
+					if markErr := library.MarkUnreadable(marked, w.Pool, job.Item, index, "", source.ETag); markErr != nil {
+						return markErr
+					}
+				}
+			}
 			return err
 		}
 		// A track the pass left out is hidden until a scan sees the file change,

@@ -21,6 +21,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -211,5 +212,33 @@ func TestACommandStartedByAGoroutineWhoseThreadExitsIsNotKilled(t *testing.T) {
 	}
 	if err := cmd.Wait(); err != nil {
 		t.Fatalf("the tool did not run to its end after the goroutine that started it ended: %v", err)
+	}
+}
+
+func TestStallEndsAToolThatDoesNothingAndSparesOneThatProgresses(t *testing.T) {
+	_, err := mediatool.Run(context.Background(), "sleep", []string{"60"}, mediatool.Options{Stall: 300 * time.Millisecond})
+	if !errors.Is(err, mediatool.ErrStalled) {
+		t.Fatalf("a tool that does nothing: %v, want ErrStalled", err)
+	}
+	// A tool that writes every 100 ms for a second outlasts a stall limit of 400 ms.
+	if _, err := mediatool.Run(context.Background(), "sh", []string{"-c", "for i in 1 2 3 4 5 6 7 8 9 10; do echo x; sleep 0.1; done"}, mediatool.Options{Stall: 400 * time.Millisecond}); err != nil {
+		t.Fatalf("a tool that writes steadily: %v", err)
+	}
+	// Progress that the kernel does not count keeps a tool alive too.
+	var n atomic.Int64
+	stop := make(chan struct{})
+	defer close(stop)
+	go func() {
+		for {
+			select {
+			case <-stop:
+				return
+			case <-time.After(50 * time.Millisecond):
+				n.Add(1)
+			}
+		}
+	}()
+	if _, err := mediatool.Run(context.Background(), "sleep", []string{"1"}, mediatool.Options{Stall: 300 * time.Millisecond, Progress: n.Load}); err != nil {
+		t.Fatalf("a tool whose progress is reported: %v", err)
 	}
 }

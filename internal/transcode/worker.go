@@ -84,6 +84,9 @@ type Worker struct {
 	Stall time.Duration
 	// SubtitleTimeout bounds one subtitle extraction; zero is an hour.
 	SubtitleTimeout time.Duration
+	// SubtitleStall is how long a text-track extraction may make no progress
+	// before it is ended; zero is a minute.
+	SubtitleStall time.Duration
 	// LivenessConfig connects the liveness lock (Present). It defaults to the
 	// pool's own, which is right except in a test that wants the lock's
 	// connection to go through something else.

@@ -70,7 +70,7 @@ func workerProcess(id string) {
 		Slots: slotsOf(os.Getenv("JELLYSCALE_TEST_SLOTS")), Idle: time.Minute, Lead: time.Hour,
 		Lease: duration("JELLYSCALE_TEST_LEASE", 10*time.Second), Heartbeat: duration("JELLYSCALE_TEST_HEARTBEAT", 3*time.Second),
 		// Zero is production's 30 seconds, and a queue timeout of zero is production's 6.
-		Stall: duration("JELLYSCALE_TEST_STALL", 0), QueueTimeout: duration("JELLYSCALE_TEST_QUEUE_TIMEOUT", 0)}
+		Stall: duration("JELLYSCALE_TEST_STALL", 0), SubtitleStall: duration("JELLYSCALE_TEST_SUBTITLE_STALL", 0), QueueTimeout: duration("JELLYSCALE_TEST_QUEUE_TIMEOUT", 0)}
 	helperSettings(w)
 	if addr := os.Getenv("JELLYSCALE_TEST_LIVENESS"); addr != "" {
 		if w.LivenessConfig, err = through(dsn, addr); err != nil {

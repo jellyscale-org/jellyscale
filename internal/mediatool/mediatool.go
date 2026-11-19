@@ -8,8 +8,10 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -36,7 +38,18 @@ type Options struct {
 	// WaitDelay is how long Run waits, after the context has ended, for a
 	// process the tool started to let go of its output.
 	WaitDelay time.Duration
+	// Stall, when above zero, ends a tool that makes no progress for that long
+	// with ErrStalled. Progress is the tool's own reading and writing, as the
+	// kernel counts them for the process (Linux only: elsewhere no stall is
+	// found), and whatever number Progress returns, for a read the tool makes
+	// through a connection, which the kernel does not count as a read.
+	Stall    time.Duration
+	Progress func() int64
 }
+
+// ErrStalled is the cause of a run ended because the tool made no progress for
+// Options.Stall. The context was not the one that ended.
+var ErrStalled = errors.New("the tool made no progress")
 
 // Result is what the tool wrote. Combined is both, interleaved as they came.
 type Result struct {
@@ -118,6 +131,8 @@ func Start(cmd *exec.Cmd) error {
 
 // Run runs the tool to its end.
 func Run(ctx context.Context, tool string, args []string, o Options) (Result, error) {
+	ctx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
 	cmd := Command(ctx, tool, args...)
 	cmd.Dir, cmd.Stdin, cmd.WaitDelay = o.Dir, o.Stdin, o.WaitDelay
 	var out, errOut, all bytes.Buffer
@@ -125,7 +140,15 @@ func Run(ctx context.Context, tool string, args []string, o Options) (Result, er
 	cmd.Stdout, cmd.Stderr = &tee{&mu, &out, &all}, &tee{&mu, &errOut, &all}
 	err := Start(cmd)
 	if err == nil {
+		if o.Stall > 0 {
+			watched := make(chan struct{})
+			defer close(watched)
+			go watchStall(watched, cmd.Process.Pid, o, func() { cancel(ErrStalled) })
+		}
 		err = cmd.Wait()
+	}
+	if err != nil && errors.Is(context.Cause(ctx), ErrStalled) {
+		err = ErrStalled
 	}
 	res := Result{out.Bytes(), errOut.Bytes(), all.Bytes()}
 	text := strings.TrimSpace(all.String())
@@ -146,4 +169,47 @@ func (t *tee) Write(p []byte) (int, error) {
 	defer t.mu.Unlock()
 	t.own.Write(p)
 	return t.both.Write(p)
+}
+
+// watchStall calls stalled once the process has made no progress for o.Stall,
+// until done is closed.
+func watchStall(done <-chan struct{}, pid int, o Options, stalled func()) {
+	tick := time.NewTicker(max(o.Stall/10, 10*time.Millisecond))
+	defer tick.Stop()
+	last, since := int64(-1), time.Now()
+	for {
+		select {
+		case <-done:
+			return
+		case <-tick.C:
+		}
+		now := processIO(pid)
+		if o.Progress != nil {
+			now += o.Progress()
+		}
+		if now != last {
+			last, since = now, time.Now()
+		} else if time.Since(since) >= o.Stall {
+			stalled()
+			return
+		}
+	}
+}
+
+// processIO is the bytes the process has read and written, by the kernel's
+// count; a number that changes every call where there is no count, so that no
+// process is thought stalled for it.
+func processIO(pid int) int64 {
+	data, err := os.ReadFile("/proc/" + strconv.Itoa(pid) + "/io")
+	if err != nil {
+		return time.Now().UnixNano()
+	}
+	var total int64
+	for _, line := range strings.Split(string(data), "\n") {
+		if name, value, ok := strings.Cut(line, ": "); ok && (name == "rchar" || name == "wchar") {
+			n, _ := strconv.ParseInt(value, 10, 64)
+			total += n
+		}
+	}
+	return total
 }
