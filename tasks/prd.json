@@ -641,7 +641,7 @@
         "Passwords: changing your own needs the current one; an administrator resets another's without it; either revokes the user's other tokens, shown on a second process",
         "A revoked device or disabled user's running stream stops: forced, a direct play of the whole file read slowly when the device is revoked or the user disabled closes within 15 seconds having sent less than the file"
       ],
-      "priority": 20,
+      "priority": 21,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -660,7 +660,7 @@
         "No plain token in the database",
         "API keys created and revoked through jellyfin-web"
       ],
-      "priority": 24,
+      "priority": 25,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -698,7 +698,7 @@
         "Forced: a library is taken from a viewer mid-film; their next segment and next byte range, through another replica, answer 404 (the outage exception is DOMAINS 37's)",
         "Pictures by id stay open to whoever holds the id; watch state for hidden items stays stored and is not shown"
       ],
-      "priority": 21,
+      "priority": 22,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -717,7 +717,7 @@
         "Moonfin on the Shield and Findroid sign in with a code approved from jellyfin-web",
         "Where Quick Connect is turned off, /QuickConnect/Enabled answers false so clients fall back to a password (#104)"
       ],
-      "priority": 22,
+      "priority": 23,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -766,7 +766,7 @@
         "No viewer token in any playlist or segment URL",
         "Kodi's TranscodingUrl editing still works"
       ],
-      "priority": 23,
+      "priority": 24,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -787,7 +787,7 @@
         "A track the request names still wins over the mode",
         "In real jellyfin-web (e2e): with mode Always and language English a film starts with its English subtitle on screen; with None it starts with none"
       ],
-      "priority": 18,
+      "priority": 19,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -851,7 +851,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 25,
+      "priority": 26,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -885,7 +885,7 @@
         "GET /Shows/NextUp answers in Jellyfin 12.4's shape for the signed-in user, honours nextUpDateCutoff, and brings back a series the viewer had caught up on once a new episode is added (#101)",
         "GET /Items/Filters2 answers with the filters the library can match (#108)"
       ],
-      "priority": 26,
+      "priority": 27,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1041,7 +1041,7 @@
         "The manifests size CNPG's max_connections from their own configuration: every process's databaseMaxConns plus the direct connections each worker holds (liveness, lease keeper, and one per running scan, segment sweep or asset sweep pass), with headroom; configuration whose sum exceeds it is refused by a check",
         "Each probe states what it depends on: liveness never depends on Postgres or a store, so a database failover restarts no pod; ffmpeg threads follow the pod's CPU limit, not the node's cores"
       ],
-      "priority": 29,
+      "priority": 30,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1571,7 +1571,7 @@
         "One documented rollout order, the same in docs/running.md and ARCHITECTURE.md, and a test or check that each migration in a release is safe for the previous version's code",
         "With a stream replica of the previous decision version registered and an api replica of the new one, PlaybackInfo offers nothing the old replica would refuse (a real-process test), and docs/running.md no longer requires an order between api and stream"
       ],
-      "priority": 28,
+      "priority": 29,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1590,7 +1590,7 @@
         "GET /Items/{itemId}/LocalTrailers lists trailer files stored beside the film, as Jellyfin names them; nothing is fetched from outside the server (#108)",
         "A title that ends in a year-like number keeps it: synthetic table cases 'Harbor Lights 2049 (2017)', 'Harbor.Lights.2049.2017.1080p', 'Harbor Lights 2049' (no year), '2001 Night Garden (1968)', '1888 (2019)' and '2031' give the right title and year, and an existing library's item ids do not change"
       ],
-      "priority": 27,
+      "priority": 28,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2123,7 +2123,7 @@
         "A library with background extraction on has every text track extracted after a scan, one read per film; one without it extracts on first pick as today",
         "docs/running.md states the setting and its cost"
       ],
-      "priority": 35,
+      "priority": 36,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2140,7 +2140,7 @@
         "A process warns at startup when the cluster's registered processes approach max_connections",
         "A multi-process variant of test/stress.sh measures connections and Postgres load at 50 workers"
       ],
-      "priority": 30,
+      "priority": 31,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2150,20 +2150,25 @@
     {
       "id": "JS-093",
       "phase": "OPS",
-      "title": "DOMAINS.md as short rules, with rationale per domain",
-      "description": "DOMAINS.md is about 120 KB, with single invariants thousands of words long; every agent reads it on every task, and it drifts from the code. Each invariant becomes a rule of one to three sentences with its tests; rationale and measurements move to per-domain files that only tasks in that domain read. Documents only.",
+      "title": "DOMAINS.md defines the domains; each domain's detail lives with it",
+      "description": "DOMAINS.md is 141 KB, with single invariants thousands of words long on one line. Every agent reads it on every task, readers' tools cut its lines short, and it drifts from the code. It becomes the definition of the domains: for each domain its vocabulary, its boundary (what it owns and must not do), and its guarantees as numbered rules of one to three sentences. Each rule's full statement, rationale, measurements, tables, tests and history move whole to one file per domain under docs/domains/, read by tasks that touch that domain. Invariant numbers do not change. Documents and their checks only; no behaviour changes.",
       "acceptanceCriteria": [
-        "Every invariant in DOMAINS.md is one to three sentences naming its tests, renumbered once",
-        "Rationale and measurements live in per-domain docs linked from each rule",
-        "No rule is lost: a check lists every old invariant's tests against the new file",
-        "No invariant is longer than 600 characters; each has a stable identifier and a link to its rationale; numbers cited in code still resolve; the regex-over-prose tests are removed or replaced by tests that compare a constant with the number the doc states"
+        "DOMAINS.md is organised by domain: each has its vocabulary, its boundary (owns, must not) and its rules; every invariant belongs to exactly one domain; the preamble says what the file is, that a rule and its section in the domain file bind together, and that a change which bends either updates both in the same change",
+        "Every invariant in DOMAINS.md is one to three sentences and at most 600 characters, keeps the number it has today (none renumbered or reused; a new rule takes the next number), and links to its section in its domain file",
+        "DOMAINS.md has no line over 600 characters and is under 40 KB in all; no domain file has a line over 1,000 characters",
+        "Each domain file under docs/domains/ has one section per rule, headed by the rule's number, holding its full statement, rationale, measurements, tables and the names of its tests",
+        "Nothing is lost: a check finds each old invariant's full text under its number in its domain file, and a check lists every old invariant's tests against the new files and fails when one is missing",
+        "No guarantee is weakened: a short rule contradicts nothing in its section, and any statement that says less than today's cites a decision id from tasks/decisions.json",
+        "Every existing citation still resolves, by a check that fails on a number with no rule: in code, docs/, ARCHITECTURE.md, tasks/prd.json and tasks/decisions.json",
+        "The regex-over-prose tests are removed or replaced by tests that compare a constant with the number the doc states; a check that reads a number or table from DOMAINS.md today (the lease table of 25, the window of 37) reads it from where it now lives and still fails when doc and code differ",
+        "The pointers change in the same change: CLAUDE.md, the role files in .claude/agents/ (the product owner's read list included) and the build workflow's instructions say every agent reads DOMAINS.md, and a task's agents also read the domain file of each domain the task touches"
       ],
-      "priority": 36,
+      "priority": 18,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
       "source": "Fable 5.2 architecture review, 2026-11-12 (.results/architecture-review-2026-11-12.md); owner's answers 2026-11-12",
-      "notes": "Extended from the Fable 5.2 blind audit, 2026-11-14."
+      "notes": "Extended from the Fable 5.2 blind audit, 2026-11-14. Amended 2026-11-19 at the owner's request, decided by the product owner (D-017). Starts from a main that holds JS-089's and JS-135/JS-136's DOMAINS edits; a move, not a rewrite; does not hold the people tasks."
     },
     {
       "id": "JS-094",
@@ -2174,7 +2179,7 @@
         "PlaybackInfo, the stream requests, the job and the worker's ffmpeg log lines of one playback carry the same id",
         "docs/running.md shows how to follow one playback"
       ],
-      "priority": 31,
+      "priority": 32,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2479,7 +2484,7 @@
       ],
       "notes": "Owner, 2026-11-15: Fluster first, a page later. Planned after the track-language batch so Fluster adopts it first. 2026-11-17 (JS-121's UX review): PlayDefaultAudioTrack defaults to true, so a viewer who only saves a language keeps hearing a film's flagged track, usually its original; the page says so and offers the switch.",
       "passes": false,
-      "priority": 32,
+      "priority": 33,
       "source": "owner 2026-11-15",
       "status": "todo"
     },
@@ -2604,7 +2609,7 @@
       ],
       "notes": "Changed answers, to list in the pull request: a request naming another user's id got 200 with the caller's data and now gets 403; the Configuration 404 above. Neither is visible to a viewer using a client, which always sends its own id.Tests make their second user by SQL, as user_configuration_integration_test.go does; no seeding route is added. Jellyfin's rule is RequestHelpers.GetUserId (Jellyfin.Api/Helpers/RequestHelpers.cs:67-81 at v12.4). Owner's decisions (2026-11-16, on Fable 5.2's access model, .results/access-model-fable-2026-11-16.md): pictures by id open to whoever holds the id, by name need a token; per-library access right after JS-033; a revoked or disabled user's running stream stops within 15 s; a viewer sees no other viewer's name; an administrator manages accounts but never browses, plays or reports as another user; a Policy field jellyscale does not enforce is refused when changed (400); 'may download' is honoured; operator keys are never users; no issue is filed on Findroid for now.",
       "passes": false,
-      "priority": 19,
+      "priority": 20,
       "source": "access model",
       "status": "todo"
     },
@@ -2854,7 +2859,7 @@
         "With a store slow enough that a film's copy needs more than an hour, the copy completes and the film's seeks into long cues then cost what any seek does; a store that hangs still frees its background slot within the no-progress bound",
         "docs/running.md and DOMAINS 51 state the new rule; D-002's remembered failure applies only to what the new rule still cannot finish"
       ],
-      "priority": 33,
+      "priority": 34,
       "dependsOn": [
         "JS-089",
         "JS-143"
@@ -2874,7 +2879,7 @@
         "The same answer for text-track extraction, which today also reads the whole film (it decides what JS-091's background extraction would cost)",
         "A recommendation with what each kind of film would then cost, recorded in spikes/; a follow-up task if it works"
       ],
-      "priority": 34,
+      "priority": 35,
       "dependsOn": [
         "JS-089"
       ],
