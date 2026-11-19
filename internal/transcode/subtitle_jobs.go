@@ -262,7 +262,8 @@ func (w *Worker) runJobs(ctx context.Context, chapters bool, n int) {
 	for {
 		select {
 		case slots <- struct{}{}:
-			job, ok, err := w.claimSubtitle(ctx, chapters)
+			jobCtx, session := w.subtitleContext(ctx)
+			job, ok, err := w.claimSubtitle(ctx, chapters, session)
 			if err != nil && ctx.Err() == nil {
 				w.Log.Error("claiming a subtitle job failed", "error", err)
 			}
@@ -273,7 +274,7 @@ func (w *Worker) runJobs(ctx context.Context, chapters bool, n int) {
 					defer func() { <-slots }()
 					extractions.WithLabelValues(kind).Inc()
 					defer extractions.WithLabelValues(kind).Dec()
-					w.runSubtitle(ctx, job)
+					w.runSubtitle(ctx, jobCtx, job)
 				}()
 				continue
 			}
@@ -300,11 +301,25 @@ func (w *Worker) setID() {
 	})
 }
 
+// subtitleContext is the context a job claimed now runs in, and the session it is
+// claimed for: the worker's own while it has one, which ends when another replica
+// forgets the worker, so that its extractions end with its jobs; the process's
+// when no Present keeps the worker's row.
+func (w *Worker) subtitleContext(ctx context.Context) (context.Context, string) {
+	w.heldMu.Lock()
+	held := w.held
+	w.heldMu.Unlock()
+	if held == nil {
+		return ctx, ""
+	}
+	return held, sessionOf(held)
+}
+
 // claimSubtitle takes a queued job, or one whose worker stopped renewing its
 // lease. A job whose lease has been lost subtitleAttempts times is failed
 // instead, since whatever it does is killing its workers. Chapter-image jobs
 // and the others are claimed apart, so neither waits behind the other.
-func (w *Worker) claimSubtitle(ctx context.Context, chapters bool) (subtitleJob, bool, error) {
+func (w *Worker) claimSubtitle(ctx context.Context, chapters bool, session string) (subtitleJob, bool, error) {
 	if _, err := w.Pool.Exec(ctx, `UPDATE subtitle_jobs SET state = 'failed', permanent = true, error = 'the worker stopped renewing its lease', ended_at = now()
 		WHERE state = 'running' AND lease_expires_at < now() AND attempts >= $1`, subtitleAttempts); err != nil {
 		return subtitleJob{}, false, err
@@ -312,10 +327,10 @@ func (w *Worker) claimSubtitle(ctx context.Context, chapters bool) (subtitleJob,
 	var job subtitleJob
 	err := w.Pool.QueryRow(ctx, `UPDATE subtitle_jobs SET state = 'running', worker = $1, attempts = attempts + 1,
 			lease_expires_at = now() + make_interval(secs => $2)
-		WHERE key = (SELECT key FROM subtitle_jobs WHERE (state = 'queued' OR (state = 'running' AND lease_expires_at < now()))
+		WHERE `+registeredIn("$1", "$4::text")+` AND key = (SELECT key FROM subtitle_jobs WHERE (state = 'queued' OR (state = 'running' AND lease_expires_at < now()))
 				AND (kind = 'chapters') = $3
 			ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1)
-		RETURNING key, kind, item_id, source_id, idx`, w.ID, w.lease().Seconds(), chapters).Scan(&job.Key, &job.Kind, &job.Item, &job.Source, &job.Index)
+		RETURNING key, kind, item_id, source_id, idx`, w.ID, w.lease().Seconds(), chapters, session).Scan(&job.Key, &job.Kind, &job.Item, &job.Source, &job.Index)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return job, false, nil
 	}
@@ -325,13 +340,14 @@ func (w *Worker) claimSubtitle(ctx context.Context, chapters bool) (subtitleJob,
 // runSubtitle extracts one track, renewing the lease meanwhile, and records how
 // it ended. A job whose lease was taken is left to its new owner. Cut off from
 // the database it stops the cutMargin before the lease lapses, so that a file is never
-// read by two workers at once.
-func (w *Worker) runSubtitle(ctx context.Context, job subtitleJob) {
+// read by two workers at once. ctx is the process's and jobCtx the job's, which
+// ends with the worker's session.
+func (w *Worker) runSubtitle(ctx, jobCtx context.Context, job subtitleJob) {
 	log := w.Log.With("subtitle", job.Key)
 	// The lease keeper cancels extractCtx when the lease can no longer be trusted,
 	// the cutMargin before it lapses, so that a file is never read by two workers at
 	// once, and when it was taken from this worker.
-	extractCtx, lease := w.keepSubtitleLease(ctx, job)
+	extractCtx, lease := w.keepSubtitleLease(jobCtx, job)
 	defer lease.stop()
 	err := w.extractTrack(extractCtx, job, log)
 	if err != nil && extractCtx.Err() != nil && ctx.Err() == nil {

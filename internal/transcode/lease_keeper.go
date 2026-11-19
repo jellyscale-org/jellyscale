@@ -643,7 +643,7 @@ func (k *leaseKeeper) renewSubtitles(ctx context.Context, q queryer, jobs []*lea
 		keys[i] = job.id.key
 	}
 	rows, err := q.Query(ctx, `UPDATE subtitle_jobs s SET lease_expires_at = now() + make_interval(secs => $3)
-		FROM (SELECT key FROM subtitle_jobs WHERE key = ANY($1::text[]) AND worker = $2 AND state = 'running'
+		FROM (SELECT key FROM subtitle_jobs WHERE key = ANY($1::text[]) AND worker = $2 AND state = 'running' AND `+registeredAs("$2")+`
 			`+lockClause(skipLocked)+`) mine WHERE s.key = mine.key RETURNING s.key`,
 		pgx.QueryExecModeExec, keys, k.w.ID, k.w.lease().Seconds())
 	if err != nil {

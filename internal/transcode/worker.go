@@ -138,7 +138,7 @@ func (w *Worker) Run(ctx context.Context) {
 	for {
 		jobCtx, held := w.jobContext()
 		if held {
-			job, ok, err := w.claim(ctx)
+			job, ok, err := w.claimIn(ctx, sessionOf(jobCtx))
 			if err != nil && ctx.Err() == nil {
 				w.Log.Error("claiming a transcode job failed", "error", err)
 			}
@@ -262,11 +262,26 @@ func registeredAs(idExpr string) string {
 	return `EXISTS (SELECT 1 FROM transcode_nodes WHERE id = ` + idExpr + `)`
 }
 
+// registeredIn is registeredAs for a claim: the row must also be of the session
+// the claim was sent in, unless it names none (a worker with no Present).
+func registeredIn(idExpr, sessionExpr string) string {
+	return `EXISTS (SELECT 1 FROM transcode_nodes WHERE id = ` + idExpr + ` AND (` + sessionExpr + ` = '' OR session = ` + sessionExpr + `))`
+}
+
 // startup is extra lease for a claimed job, which is not heartbeating until
 // ffmpeg is running.
 const startup = 20 * time.Second
 
 func (w *Worker) claim(ctx context.Context) (claimed, bool, error) {
+	return w.claimIn(ctx, "")
+}
+
+// claimIn claims a job for the session the worker's context is of. The statement
+// is sent while the worker holds its row and commits later, and in between the
+// worker may have been forgotten, stopped its jobs and put its row back: the job
+// would then be taken under a context that is cancelled. It commits only while
+// the row is still of the session it was sent in, so it is left for the new one.
+func (w *Worker) claimIn(ctx context.Context, session string) (claimed, bool, error) {
 	var job claimed
 	queue := orDefault(w.QueueTimeout, queueTimeout)
 	// Most looks find nothing queued, and read one indexed row to say so.
@@ -311,10 +326,10 @@ func (w *Worker) claim(ctx context.Context) (claimed, bool, error) {
 		var raw []byte
 		err := w.Pool.QueryRow(ctx, `UPDATE transcode_jobs SET state = 'running', worker = $1,
 				lease_expires_at = now() + make_interval(secs => $2)
-			WHERE `+registeredAs("$1")+` AND id = $3 AND state = 'queued' AND created_at > now() - make_interval(secs => $4)
+			WHERE `+registeredIn("$1", "$5::text")+` AND id = $3 AND state = 'queued' AND created_at > now() - make_interval(secs => $4)
 				AND (NOT helper OR created_at < now() - make_interval(secs => 1)
 					OR NOT EXISTS (SELECT 1 FROM transcode_jobs o WHERE o.spec_hash = transcode_jobs.spec_hash AND o.worker = $1 AND o.state = 'running'))
-			RETURNING id, spec_hash, spec, start_segment, helper`, w.ID, (w.lease()+startup).Seconds(), queued.ID, queue.Seconds()).
+			RETURNING id, spec_hash, spec, start_segment, helper`, w.ID, (w.lease()+startup).Seconds(), queued.ID, queue.Seconds(), session).
 			Scan(&job.ID, &job.Hash, &raw, &job.Start, &job.Helper)
 		if errors.Is(err, pgx.ErrNoRows) {
 			continue // Another worker took it first.

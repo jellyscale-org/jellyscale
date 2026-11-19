@@ -3,6 +3,7 @@ package testenv
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"net"
 	"net/url"
 	"sync"
@@ -40,6 +41,11 @@ type DBProxy struct {
 	tripped  chan struct{} // Closed when they did.
 
 	stmt *statementHook // Armed by OnStatement.
+
+	servers map[net.Conn]struct{} // Our side of each connection to Postgres.
+	quiet   bool                  // CutServers was called: a closed server side no longer closes the client's.
+
+	statements []string // The SQL of every Query and Parse a client sent, in the order the proxy saw them.
 }
 
 // statementHook is a pair of steps around one statement, see OnStatement.
@@ -61,7 +67,7 @@ func NewDBProxy(t *testing.T, dsn string) *DBProxy {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p := &DBProxy{ln: ln, target: u.Host, conns: map[net.Conn]struct{}{}}
+	p := &DBProxy{ln: ln, target: u.Host, conns: map[net.Conn]struct{}{}, servers: map[net.Conn]struct{}{}}
 	u.Host = ln.Addr().String()
 	// Postgres sees the proxy's own address or a NAT'd port as the client, so the
 	// sessions are told apart by the name they give themselves.
@@ -80,6 +86,10 @@ func NewDBProxy(t *testing.T, dsn string) *DBProxy {
 
 // DSN is the database URL that goes through the proxy.
 func (p *DBProxy) DSN() string { return p.dsn }
+
+// Name is the application_name of every session that came through the proxy,
+// by which a test finds them in pg_stat_activity.
+func (p *DBProxy) Name() string { return p.name }
 
 // Addr is the host:port the proxy listens on.
 func (p *DBProxy) Addr() string { return p.ln.Addr().String() }
@@ -148,6 +158,31 @@ func (p *DBProxy) waitHeld() {
 	if release != nil {
 		<-release
 	}
+}
+
+// CutServers ends Postgres's side of every connection and tells the clients
+// nothing: their sockets stay open and answer nothing, as with a pooler that
+// recycled the server connection or a backend Postgres dropped on its
+// keepalives. A session advisory lock goes with the backend while the client
+// still holds the connection. Connections made later are cut the same way when
+// their server side ends.
+func (p *DBProxy) CutServers() {
+	p.mu.Lock()
+	p.quiet = true
+	servers := p.servers
+	p.servers = map[net.Conn]struct{}{}
+	p.mu.Unlock()
+	for c := range servers {
+		c.Close()
+	}
+}
+
+// Refuse sets whether new connections are accepted and closed at once, with
+// the ones that stand left alone (Away also ends those).
+func (p *DBProxy) Refuse(on bool) {
+	p.mu.Lock()
+	p.refuse = on
+	p.mu.Unlock()
 }
 
 // Sever ends every connection, on both sides, and leaves the proxy accepting
@@ -248,6 +283,7 @@ func (p *DBProxy) accept() {
 		p.mu.Lock()
 		p.accepts++
 		p.conns[client], p.conns[server] = struct{}{}, struct{}{}
+		p.servers[server] = struct{}{}
 		p.mu.Unlock()
 		go p.pipe(server, client, true)
 		go p.pipe(client, server, false)
@@ -257,8 +293,16 @@ func (p *DBProxy) accept() {
 // pipe copies until either side ends, then ends both.
 func (p *DBProxy) pipe(dst, src net.Conn, fromClient bool) {
 	buf := make([]byte, 32<<10)
+	var seen frontend
 	for {
 		n, err := src.Read(buf)
+		if n > 0 && fromClient {
+			for _, sql := range seen.feed(buf[:n]) {
+				p.mu.Lock()
+				p.statements = append(p.statements, sql)
+				p.mu.Unlock()
+			}
+		}
 		if n > 0 && fromClient && p.tripOn(buf[:n]) {
 			break
 		}
@@ -289,7 +333,12 @@ func (p *DBProxy) pipe(dst, src net.Conn, fromClient bool) {
 			break
 		}
 	}
-	dst.Close()
+	p.mu.Lock()
+	quiet := p.quiet && !fromClient // The server's side ended and the client's is to stay open.
+	p.mu.Unlock()
+	if !quiet {
+		dst.Close()
+	}
 	src.Close()
 }
 
@@ -337,4 +386,62 @@ func (p *DBProxy) afterStatement(server net.Conn) {
 		h.after()
 	}
 	close(h.done)
+}
+
+// Statements is the SQL text of every statement (a simple Query, or the Parse
+// of an extended one) that clients have sent through the proxy, in the order it
+// saw them: what a test reads to say which statements a process sent on which
+// connection. A client that prepares a statement once and then only binds it
+// sends its text once, so the check connects with default_query_exec_mode=exec,
+// which sends it every time.
+func (p *DBProxy) Statements() []string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return append([]string(nil), p.statements...)
+}
+
+// frontend reads the messages a Postgres client sends and returns the SQL of
+// the ones that carry any. A message is cut wherever the network cut it, so what
+// is not yet whole waits for the next read.
+type frontend struct {
+	buf     []byte
+	started bool // The startup message has gone by; every later message has a type byte.
+}
+
+func (f *frontend) feed(data []byte) (sql []string) {
+	f.buf = append(f.buf, data...)
+	for {
+		head := 0 // The type byte, absent before the startup message.
+		if f.started {
+			head = 1
+		}
+		if len(f.buf) < head+4 {
+			return sql
+		}
+		size := int(binary.BigEndian.Uint32(f.buf[head:]))
+		if size < 4 || len(f.buf) < head+size {
+			if size < 4 {
+				f.buf = nil // Not a protocol this reads (a TLS stream): give up on the connection.
+			}
+			return sql
+		}
+		body := f.buf[head+4 : head+size]
+		switch {
+		case !f.started:
+			// The SSL request is a message of its own, and the startup message follows it.
+			if len(body) >= 4 && binary.BigEndian.Uint32(body) != 80877103 {
+				f.started = true
+			}
+		case f.buf[0] == 'Q':
+			sql = append(sql, string(bytes.TrimRight(body, "\x00")))
+		case f.buf[0] == 'P':
+			// A name and then the query, each ended by a zero byte.
+			if i := bytes.IndexByte(body, 0); i >= 0 {
+				if j := bytes.IndexByte(body[i+1:], 0); j >= 0 {
+					sql = append(sql, string(body[i+1:i+1+j]))
+				}
+			}
+		}
+		f.buf = f.buf[head+size:]
+	}
 }

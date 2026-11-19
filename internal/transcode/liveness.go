@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -48,6 +49,7 @@ var livenessTable = []livenessTiming{
 	{"confirmGap", "lease/20", func(l time.Duration) time.Duration { return l / 20 }},
 	{"bound", "lease/20", func(l time.Duration) time.Duration { return l / 20 }},
 	{"lookPeriod", "lease/40", func(l time.Duration) time.Duration { return l / 40 }},
+	{"reaperLease", "lease/4", func(l time.Duration) time.Duration { return l / 4 }},
 	{"relockRetry", "lease/200", func(l time.Duration) time.Duration { return l / 200 }},
 	{"hold", "lease", func(l time.Duration) time.Duration { return l }},
 	{"oldJobsWait", "lease", func(l time.Duration) time.Duration { return l }},
@@ -181,6 +183,19 @@ func (s liveState) allows(a liveAction) bool {
 	return false
 }
 
+// A session is one stay of the worker's row in transcode_nodes: Present makes a
+// new one each time it puts the row back after another replica forgot it, and the
+// row carries it. A claim says which session it was sent in, so one sent before
+// the worker was forgotten cannot commit after the row is back, when the context
+// it was sent for is already cancelled.
+type sessionKey struct{}
+
+// sessionOf is the session a context of Present's belongs to, or "" for none.
+func sessionOf(ctx context.Context) string {
+	session, _ := ctx.Value(sessionKey{}).(string)
+	return session
+}
+
 // errLockLost is why a worker's jobs were stopped.
 var errLockLost = errors.New("the worker's liveness lock was lost")
 
@@ -253,8 +268,8 @@ func forgotHint(id string) string { return "forgot:" + id }
 
 // reap makes the jobs of dead workers dead at once and forgets the workers: a
 // node that took a liveness lock and no longer holds it is gone, so its row is
-// deleted (its slots stop counting) and its running jobs are left the table's
-// forgottenLease. Everything that decides a job is dead already reads
+// deleted (its slots stop counting) and its running jobs, transcode and subtitle
+// alike, are left the table's forgottenLease. Everything that decides a job is dead already reads
 // lease_expires_at, so nothing else changes. Only a worker's own look
 // (lookForTheDead) calls it, for a process that holds no lock cannot tell an
 // outage from a death (JS-104), and it forgets nobody for the table's hold after
@@ -281,6 +296,9 @@ func reap(ctx context.Context, pool *pgxpool.Pool, self string, forget bool, onl
 		expired AS (
 			UPDATE transcode_jobs SET lease_expires_at = LEAST(lease_expires_at, now() + make_interval(secs => $1))
 			WHERE state = 'running' AND worker IN (SELECT id FROM dead) RETURNING id),
+		cut AS (
+			UPDATE subtitle_jobs SET lease_expires_at = LEAST(lease_expires_at, now() + make_interval(secs => $1))
+			WHERE state = 'running' AND worker IN (SELECT id FROM dead) RETURNING key),
 		forgot AS (DELETE FROM transcode_nodes WHERE id IN (SELECT id FROM dead) RETURNING id)
 		SELECT COALESCE((SELECT array_agg(id) FROM forgot), '{}'), COALESCE((SELECT array_agg(id) FROM expired), '{}'),
 			EXISTS (SELECT 1 FROM transcode_nodes WHERE id = $2),
@@ -334,6 +352,7 @@ func (w *Worker) Present(ctx context.Context, roles, storeURI string, every time
 		}
 		state = liveNext(state, evReadyToRegister)
 		held, lose := context.WithCancelCause(ctx)
+		held = context.WithValue(held, sessionKey{}, uuid.NewString())
 		w.setHeld(held, live)
 		live, state = w.keepRow(held, lose, live, cfg, state, roles, storeURI, every)
 		if errors.Is(context.Cause(held), errLockLost) {
@@ -448,8 +467,8 @@ func (w *Worker) keepRow(held context.Context, lose context.CancelCauseFunc, liv
 			// The row carries the cores the worker declared from its first write, and
 			// slots as those cores rounded up for a replica of the release before (JS-087).
 			cores, slots := w.registered()
-			_, err := w.Pool.Exec(ctx, `INSERT INTO transcode_nodes (id, roles, store, slots, cores, locked, output_version) VALUES ($1, $2, $3, $4, $5, true, $6)
-				ON CONFLICT (id) DO UPDATE SET seen_at = now(), locked = true, slots = $4, cores = $5`, w.ID, roles, storeURI, slots, cores, playback.OutputVersion)
+			_, err := w.Pool.Exec(ctx, `INSERT INTO transcode_nodes (id, roles, store, slots, cores, locked, output_version, session) VALUES ($1, $2, $3, $4, $5, true, $6, $7)
+				ON CONFLICT (id) DO UPDATE SET seen_at = now(), locked = true, slots = $4, cores = $5, session = $7`, w.ID, roles, storeURI, slots, cores, playback.OutputVersion, sessionOf(held))
 			cancel()
 			if err == nil {
 				seen = time.Now()
@@ -543,20 +562,33 @@ func (w *Worker) lookForOwnRow(held context.Context, lockBack bool) liveEvent {
 	return evLooked
 }
 
-// look reaps, and says what it found: this worker among the dead (its own lock
-// missing, or its row gone), nothing amiss, or no answer. The look is bounded
-// well inside the grace, and a database that does not answer is not a loss.
+// look is one look of a locked worker, and says what it found: this worker among
+// the dead (its own lock missing, or its row gone), nothing amiss, or no answer.
+// Every worker finds out whether its own row is there; only the reaper (see
+// takeTheRole) looks for the dead. The look is bounded well inside the grace, and
+// a database that does not answer is not a loss.
 //
-// A node is forgotten only when this worker's earlier look, at least the
-// confirmGap before, already found its lock gone; when this worker holds its
-// own lock in the same snapshot (reap); and when this worker's own lock has not
-// ended within the hold. A worker can never miss an outage, for its own lock's
-// connection ends in it; a live worker takes its lock again within
-// milliseconds, a dead one never does (JS-029: on two CPUs a worker forgot a
-// live one and stopped its ffmpeg).
+// The reaper forgets a node only when its earlier look, at least the
+// confirmGap before, already found its lock gone; when it holds its own lock in
+// the same snapshot (reap); and when its own lock has not ended within the
+// hold. A worker can never miss an outage, for its own lock's connection ends in
+// it; a live worker takes its lock again within milliseconds, a dead one never
+// does (JS-029: on two CPUs a worker forgot a live one and stopped its ffmpeg).
 func (w *Worker) look(held context.Context) liveEvent {
 	ctx, cancel := context.WithTimeout(held, liveTiming("bound"))
 	defer cancel()
+	forget := time.Since(w.lockLost) >= liveTiming("hold")
+	here, reaper, err := w.takeTheRole(ctx, forget)
+	switch {
+	case err != nil:
+		return evLookFailed
+	case !here:
+		w.Log.Error("another replica took this worker for dead and forgot it; its lock is not where Postgres shows it")
+		return evRowGone
+	case !reaper:
+		w.lockGone = nil // Its confirmations are the reaper's, and start again with a new one.
+		return evLooked
+	}
 	var missing []string
 	if err := w.Pool.QueryRow(ctx, `SELECT COALESCE(array_agg(id), '{}') FROM transcode_nodes n WHERE locked AND NOT `+lockHeld("n.id")).Scan(&missing); err != nil {
 		return evLookFailed
@@ -574,7 +606,7 @@ func (w *Worker) look(held context.Context) liveEvent {
 		}
 	}
 	w.lockGone = seen
-	workers, jobs, here, err := reap(ctx, w.Pool, w.ID, time.Since(w.lockLost) >= liveTiming("hold"), confirmed)
+	workers, jobs, here, err := reap(ctx, w.Pool, w.ID, forget, confirmed)
 	if err != nil {
 		return evLookFailed
 	}
@@ -583,7 +615,7 @@ func (w *Worker) look(held context.Context) liveEvent {
 		// Open, yet not in pg_locks: the server's end of the connection is not
 		// the one that took the lock. That is what a pooler in transaction mode does.
 		countReaped(workers, jobs)
-		w.Log.Error("the liveness connection is open but Postgres does not show its lock; is the database URL behind a transaction-mode pooler? It must be a direct, session-mode connection", "jobs", jobs)
+		w.Log.Error("the liveness connection is open but Postgres does not show its lock; is the liveness URL (--liveness-database-url, or JELLYSCALE_DATABASE_URL without it) behind a transaction-mode pooler? It must be a direct, session-mode connection", "jobs", jobs)
 		return evOwnLockMissing
 	case !here:
 		w.Log.Error("another replica took this worker for dead and forgot it; its lock is not where Postgres shows it")
@@ -591,6 +623,37 @@ func (w *Worker) look(held context.Context) liveEvent {
 	}
 	logReaped(w.Log, workers, jobs)
 	return evLooked
+}
+
+// takeTheRole says whether this worker's row is there and whether it is the
+// reaper for this look: the one worker whose look for the dead is the cluster's.
+// The role is a row with a lease, which the reaper renews with every look and
+// another worker takes when it has lapsed, so it passes from a reaper that is
+// killed, stopped, cut off from the database or without a lock it can trust:
+// none of them renews. Only a worker fit to forget anyone asks for it, and it
+// asks in one statement, so that two workers asking at once get one answer.
+func (w *Worker) takeTheRole(ctx context.Context, fit bool) (here, reaper bool, err error) {
+	var mine, open bool
+	err = w.Pool.QueryRow(ctx, `SELECT `+registeredAs("$1")+`,
+			COALESCE((SELECT holder = $1 AND until > now() FROM transcode_reaper), false),
+			COALESCE((SELECT `+roleFree("")+` FROM transcode_reaper), true)`, w.ID).Scan(&here, &mine, &open)
+	if err != nil || !here || !fit || !(mine || open) {
+		return here, false, err
+	}
+	err = w.Pool.QueryRow(ctx, `INSERT INTO transcode_reaper (holder, until) VALUES ($1, now() + make_interval(secs => $2))
+		ON CONFLICT (singleton) DO UPDATE SET holder = $1, until = now() + make_interval(secs => $2)
+		WHERE transcode_reaper.holder = $1 OR `+roleFree("transcode_reaper.")+`
+		RETURNING true`, w.ID, liveTiming("reaperLease").Seconds()).Scan(new(bool))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return here, false, nil // Another worker took it first.
+	}
+	return here, err == nil, err
+}
+
+// roleFree is SQL true when the reaper's lease has lapsed or its holder has no
+// row any more (it was forgotten, or never was one).
+func roleFree(table string) string {
+	return `(` + table + `until <= now() OR NOT EXISTS (SELECT 1 FROM transcode_nodes WHERE id = ` + table + `holder))`
 }
 
 // nextConfirmation is how long until the first node found lockless by the last
