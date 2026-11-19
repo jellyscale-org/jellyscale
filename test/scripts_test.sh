@@ -1042,7 +1042,10 @@ for job, pkgs in lists.items():
     problems = []
     if "ImageVersion" not in key: problems.append("the key does not hold the runner image version (env.ImageVersion)")
     if not (all(p in key for p in pkgs) or "hashFiles(" in key): problems.append(f"the key does not hold the package list {pkgs}")
-    if "restore-keys" in c: problems.append("restore-keys would restore another key's files")
+    # A restore key may fall back to another runner image's files (test/apt.sh goes to the mirror
+    # if dpkg refuses them), never to another package list's.
+    for rk in str(c.get("restore-keys", "")).split():
+        if not all(p in rk for p in pkgs): problems.append(f"restore-key {rk} would restore another package list's files")
     env = {**jobs[job].get("env", {}), **steps(job)[i].get("env", {})}
     if str(env.get("APT_DEBS", "")) != str(c.get("path", "")): problems.append("APT_DEBS of the install step is not the cache's path")
     result(f"{job}: .deb cache keyed on the image version and the package list, restored before the install", "; ".join(problems) or None)
