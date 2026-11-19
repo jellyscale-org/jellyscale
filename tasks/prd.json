@@ -370,7 +370,7 @@
         "Exported over OTLP to any backend, off by default; the dogfood runs a backend and the docs show reading a stall from it",
         "Checked with real processes: a test collector receives a playback's trace from three processes, with a stall and a failover in it"
       ],
-      "priority": 56,
+      "priority": 58,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -390,7 +390,7 @@
         "Each line of a playback carries its play session id and trace id (JS-021), and a helper's start, end and failure say they are a helper's and whose",
         "Metrics beyond the transcode path: HTTP requests by role, route and status with latency, store operations and bytes by store, scan durations and errors"
       ],
-      "priority": 55,
+      "priority": 57,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -615,7 +615,7 @@
         "jellyfin-web's remote control drives another session",
         "POST /Sessions/Capabilities and /Sessions/Capabilities/Full are accepted and stored for the session, so other clients see it as a remote-control target (#106)"
       ],
-      "priority": 38,
+      "priority": 40,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -641,7 +641,7 @@
         "Passwords: changing your own needs the current one; an administrator resets another's without it; either revokes the user's other tokens, shown on a second process",
         "A revoked device or disabled user's running stream stops: forced, a direct play of the whole file read slowly when the device is revoked or the user disabled closes within 15 seconds having sent less than the file"
       ],
-      "priority": 18,
+      "priority": 20,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -660,7 +660,7 @@
         "No plain token in the database",
         "API keys created and revoked through jellyfin-web"
       ],
-      "priority": 22,
+      "priority": 24,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -677,7 +677,7 @@
         "Last use time and address recorded",
         "A read-only key is shown against the routes it may call and those it may not: each allowed route answers, each other route is refused"
       ],
-      "priority": 39,
+      "priority": 41,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -698,7 +698,7 @@
         "Forced: a library is taken from a viewer mid-film; their next segment and next byte range, through another replica, answer 404 (the outage exception is DOMAINS 37's)",
         "Pictures by id stay open to whoever holds the id; watch state for hidden items stays stored and is not shown"
       ],
-      "priority": 19,
+      "priority": 21,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -717,12 +717,12 @@
         "Moonfin on the Shield and Findroid sign in with a code approved from jellyfin-web",
         "Where Quick Connect is turned off, /QuickConnect/Enabled answers false so clients fall back to a password (#104)"
       ],
-      "priority": 20,
+      "priority": 22,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
       "source": "PRODUCT.md identity",
-      "notes": "Requested by Fluster, the client that ships with jellyscale: #104. Access: approval is own, an administrator included. (access model, 2026-11-16)"
+      "notes": "Requested by Fluster, the client that ships with jellyscale: #104. Access: approval is own, an administrator included. (access model, 2026-11-16) Needs its own guessing bound, following JS-145's design (product owner, 2026-11-19)."
     },
     {
       "id": "JS-038",
@@ -732,7 +732,7 @@
       "acceptanceCriteria": [
         "Answer shape as Jellyfin 12.4"
       ],
-      "priority": 40,
+      "priority": 42,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -748,14 +748,14 @@
         "Sign in with an OIDC provider in jellyfin-web",
         "OIDC users reach TV apps through Quick Connect"
       ],
-      "priority": 41,
+      "priority": 43,
       "status": "todo",
       "passes": false,
       "dependsOn": [
         "JS-037"
       ],
       "source": "PRODUCT.md identity",
-      "notes": ""
+      "notes": "Needs its own guessing bound, following JS-145's design (product owner, 2026-11-19)."
     },
     {
       "id": "JS-040",
@@ -766,7 +766,7 @@
         "No viewer token in any playlist or segment URL",
         "Kodi's TranscodingUrl editing still works"
       ],
-      "priority": 21,
+      "priority": 23,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -787,7 +787,7 @@
         "A track the request names still wins over the mode",
         "In real jellyfin-web (e2e): with mode Always and language English a film starts with its English subtitle on screen; with None it starts with none"
       ],
-      "priority": 16,
+      "priority": 18,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -805,7 +805,7 @@
       "acceptanceCriteria": [
         "Revoked device's token stops working"
       ],
-      "priority": 42,
+      "priority": 44,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -820,7 +820,7 @@
       "acceptanceCriteria": [
         "jellyfin-web's dashboard lists entries"
       ],
-      "priority": 43,
+      "priority": 45,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -835,7 +835,7 @@
       "acceptanceCriteria": [
         "jellyfin-web shows and changes avatars"
       ],
-      "priority": 44,
+      "priority": 46,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -851,7 +851,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 23,
+      "priority": 25,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -867,7 +867,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 45,
+      "priority": 47,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -885,7 +885,7 @@
         "GET /Shows/NextUp answers in Jellyfin 12.4's shape for the signed-in user, honours nextUpDateCutoff, and brings back a series the viewer had caught up on once a new episode is added (#101)",
         "GET /Items/Filters2 answers with the filters the library can match (#108)"
       ],
-      "priority": 24,
+      "priority": 26,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -901,7 +901,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 46,
+      "priority": 48,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -917,7 +917,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 47,
+      "priority": 49,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -933,7 +933,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 49,
+      "priority": 51,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -949,7 +949,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 50,
+      "priority": 52,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -965,7 +965,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 51,
+      "priority": 53,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -981,7 +981,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 52,
+      "priority": 54,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1003,7 +1003,7 @@
         "Operators see which encoder family and worker serve each stream (Sessions, metrics, JS-021 traces)",
         "An optional GPU worker pool requests gpu.intel.com/i915 or nvidia.com/gpu through the vendor's device plugin ; a cluster without one runs CPU workers only; documented in docs/running.md"
       ],
-      "priority": 53,
+      "priority": 55,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1023,7 +1023,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 54,
+      "priority": 56,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1041,7 +1041,7 @@
         "The manifests size CNPG's max_connections from their own configuration: every process's databaseMaxConns plus the direct connections each worker holds (liveness, lease keeper, and one per running scan, segment sweep or asset sweep pass), with headroom; configuration whose sum exceeds it is refused by a check",
         "Each probe states what it depends on: liveness never depends on Postgres or a store, so a database failover restarts no pod; ffmpeg threads follow the pod's CPU limit, not the node's cores"
       ],
-      "priority": 27,
+      "priority": 29,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1058,7 +1058,7 @@
         "KEDA's maximum worker replicas stay within the Postgres connection budget (one liveness connection per worker, on top of the pools), so scaling up never exhausts max_connections",
         "It scales on the demand metric of JS-021 (jobs waiting for a slot, helpers refused for lack of one), so each scale-up can be read back with its reason"
       ],
-      "priority": 58,
+      "priority": 60,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1076,7 +1076,7 @@
       "acceptanceCriteria": [
         "A rolling upgrade under playback loses no picture"
       ],
-      "priority": 59,
+      "priority": 61,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1093,7 +1093,7 @@
       "acceptanceCriteria": [
         "Restore tested from a backup"
       ],
-      "priority": 60,
+      "priority": 62,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1108,7 +1108,7 @@
       "acceptanceCriteria": [
         "Viewers keep their history; users set a password or use OIDC"
       ],
-      "priority": 61,
+      "priority": 63,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1143,7 +1143,7 @@
         "200 mixed streams with stated rebuffer ratio and p95s",
         "A stated target for time to first frame on a start and on a seek, held at 200 streams and recorded run over run, so 'play starts in seconds' is measured"
       ],
-      "priority": 62,
+      "priority": 64,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1161,7 +1161,7 @@
         "Two viewers on different api replicas stay in sync in jellyfin-web",
         "compat/coverage-12.4.tsv phase7-syncplay routes built (23)"
       ],
-      "priority": 63,
+      "priority": 65,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1203,7 +1203,7 @@
         "Replays run in CI and fail on a response a client would reject (status, missing field, wrong shape)",
         "No titles or paths from a real library in the captures (synthetic fixtures only)"
       ],
-      "priority": 36,
+      "priority": 38,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1278,7 +1278,7 @@
         "Each entry with task JS-068 in compat/differences.yaml is fixed and removed, or becomes an improvement or non-goal with its reason",
         "test/differential/run.sh passes with the entries removed"
       ],
-      "priority": 37,
+      "priority": 39,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1448,10 +1448,12 @@
         "Each failure becomes a task in tasks/prd.json, placed before JS-054 when it concerns the segment format",
         "docs/status.md says which clients have played which paths"
       ],
-      "priority": 11,
+      "priority": 13,
       "status": "todo",
       "passes": false,
-      "dependsOn": [],
+      "dependsOn": [
+        "JS-144"
+      ],
       "source": "Fable 5.2 state review, 2026-11-10",
       "notes": "Needs the owner's devices and about an hour; the lead prepares the test list and reads the logs. Widened by the product owner's direction review (2026-11-19): goals 1 and 3 are claimed for every client and proven for one."
     },
@@ -1569,7 +1571,7 @@
         "One documented rollout order, the same in docs/running.md and ARCHITECTURE.md, and a test or check that each migration in a release is safe for the previous version's code",
         "With a stream replica of the previous decision version registered and an api replica of the new one, PlaybackInfo offers nothing the old replica would refuse (a real-process test), and docs/running.md no longer requires an order between api and stream"
       ],
-      "priority": 26,
+      "priority": 28,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1588,7 +1590,7 @@
         "GET /Items/{itemId}/LocalTrailers lists trailer files stored beside the film, as Jellyfin names them; nothing is fetched from outside the server (#108)",
         "A title that ends in a year-like number keeps it: synthetic table cases 'Harbor Lights 2049 (2017)', 'Harbor.Lights.2049.2017.1080p', 'Harbor Lights 2049' (no year), '2001 Night Garden (1968)', '1888 (2019)' and '2031' give the right title and year, and an existing library's item ids do not change"
       ],
-      "priority": 25,
+      "priority": 27,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2075,7 +2077,7 @@
         "The extraction is one read per film, cached and shared like a text track's",
         "Every JS-071 check still passes"
       ],
-      "priority": 12,
+      "priority": 14,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2121,7 +2123,7 @@
         "A library with background extraction on has every text track extracted after a scan, one read per film; one without it extracts on first pick as today",
         "docs/running.md states the setting and its cost"
       ],
-      "priority": 33,
+      "priority": 35,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2138,7 +2140,7 @@
         "A process warns at startup when the cluster's registered processes approach max_connections",
         "A multi-process variant of test/stress.sh measures connections and Postgres load at 50 workers"
       ],
-      "priority": 28,
+      "priority": 30,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2156,7 +2158,7 @@
         "No rule is lost: a check lists every old invariant's tests against the new file",
         "No invariant is longer than 600 characters; each has a stable identifier and a link to its rationale; numbers cited in code still resolve; the regex-over-prose tests are removed or replaced by tests that compare a constant with the number the doc states"
       ],
-      "priority": 34,
+      "priority": 36,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2172,7 +2174,7 @@
         "PlaybackInfo, the stream requests, the job and the worker's ffmpeg log lines of one playback carry the same id",
         "docs/running.md shows how to follow one playback"
       ],
-      "priority": 29,
+      "priority": 31,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2191,7 +2193,7 @@
         "encode becomes a job type with named state: no function in internal/transcode is longer than 120 lines (a structure check), and the unreachable branches the audit found (run(begin), next < begin, the stale-file removal) are gone, with the integration and e2e tiers passing with no check changed",
         "Every job kind observes a store failure only where store.Reader gives up (store.InputWithFailure, JS-088): the chapter-picture, subtitle, fonts and .sup jobs no longer wrap the store below the Reader, so a cut the Reader healed never fails a job or skips a chapter (BL-169)"
       ],
-      "priority": 35,
+      "priority": 37,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2207,7 +2209,7 @@
         "A schedule trigger runs every CI job on main once a day, and test/changes.sh treats it as a full run",
         "A failing nightly run opens or updates one issue naming the failed tests"
       ],
-      "priority": 64,
+      "priority": 66,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2224,7 +2226,7 @@
         "Branch protection is the ruleset alone; the classic rule is removed",
         "A pull request touching .github/ or test/**/*.sh runs the media tiers as ci:full does, and only the ci:full label restarts a run"
       ],
-      "priority": 65,
+      "priority": 67,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2240,7 +2242,7 @@
         "An image with ffmpeg 6.1, Node and Chrome runs test/e2e/run.sh and test/roles.sh locally, to reproduce a merge-queue failure",
         "Its versions match CI's"
       ],
-      "priority": 66,
+      "priority": 68,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2304,7 +2306,7 @@
         "No Jellyfin route changes behaviour, and an unmodified Jellyfin client never sees the namespace",
         "A viewer with no history gets a sensible answer (empty or popular in the library), and another account's history never shapes a viewer's suggestions"
       ],
-      "priority": 48,
+      "priority": 50,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -2477,7 +2479,7 @@
       ],
       "notes": "Owner, 2026-11-15: Fluster first, a page later. Planned after the track-language batch so Fluster adopts it first. 2026-11-17 (JS-121's UX review): PlayDefaultAudioTrack defaults to true, so a viewer who only saves a language keeps hearing a film's flagged track, usually its original; the page says so and offers the switch.",
       "passes": false,
-      "priority": 30,
+      "priority": 32,
       "source": "owner 2026-11-15",
       "status": "todo"
     },
@@ -2602,7 +2604,7 @@
       ],
       "notes": "Changed answers, to list in the pull request: a request naming another user's id got 200 with the caller's data and now gets 403; the Configuration 404 above. Neither is visible to a viewer using a client, which always sends its own id.Tests make their second user by SQL, as user_configuration_integration_test.go does; no seeding route is added. Jellyfin's rule is RequestHelpers.GetUserId (Jellyfin.Api/Helpers/RequestHelpers.cs:67-81 at v12.4). Owner's decisions (2026-11-16, on Fable 5.2's access model, .results/access-model-fable-2026-11-16.md): pictures by id open to whoever holds the id, by name need a token; per-library access right after JS-033; a revoked or disabled user's running stream stops within 15 s; a viewer sees no other viewer's name; an administrator manages accounts but never browses, plays or reports as another user; a Policy field jellyscale does not enforce is refused when changed (400); 'may download' is honoured; operator keys are never users; no issue is filed on Findroid for now.",
       "passes": false,
-      "priority": 17,
+      "priority": 19,
       "source": "access model",
       "status": "todo"
     },
@@ -2796,7 +2798,7 @@
         "With real processes: a worker given jobs whose costs add up to its cores, at faster and at medium, keeps each at 1.2 times real time or more without a helper",
         "No viewer-visible change while every spec is veryfast: the transcode, seek and helper e2e scenarios pass as before"
       ],
-      "priority": 14,
+      "priority": 16,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -2816,7 +2818,7 @@
         "A picture test on every tier, with ffmpeg's own psnr and ssim filters (CI's ffmpeg 6.1 has no libvmaf): a real-film clip encoded through the worker at faster, against its source under a 4 Mbps cap, has a higher PSNR-Y (the spike measured +0.27 to +0.92 dB) and a higher SSIM than at veryfast",
         "The default change is listed under Changed guarantees: more CPU per viewer (fewer viewers per worker), up to about a second on a start on a full worker, a better picture"
       ],
-      "priority": 15,
+      "priority": 17,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -2831,7 +2833,7 @@
       "description": "The first direction review (2026-11-19) found docs/status.md contradicting itself and the plan: the api replica half and the AV1 fallback called not built though JS-031 and JS-133 are done, HDR direct play and copy called not built though done, Dolby Vision profile 5 called unmapped though docs/transcoding.md says it is tone mapped, and no row for Fluster, the client that ships with jellyscale. Nobody can steer by a record that contradicts itself.",
       "acceptanceCriteria": [
         "Every line of docs/status.md agrees with tasks/prd.json's done tasks and with docs/transcoding.md, docs/subtitles.md and docs/access.md; each correction names the task that built it",
-        "A Fluster row in Client coverage says what it has played against jellyscale and how that is known, or that it has not been tried",
+        "A Fluster row in Client coverage says what it has played against jellyscale and how that is known, or that it has not been tried; until JS-144 is built it names the gap (Fluster cannot connect: no CORS) and that task",
         "Known gaps are listed as gaps with the task that closes each, or 'no task' and the decision id that accepted it: re-encodes are H.264 at no more than 1080 lines; Dolby Vision profile 5 is always re-encoded; apps whose player sends no token cannot play (D-005); with JS-089: a film whose image subtitles cannot be copied within the hour (D-002)",
         "docs/subtitles.md has one paragraph totalling the whole-film reads a film's subtitles can cost (text extraction, each .sup copy, and, with JS-089, the image-track copy of D-003 and D-002's daily retry), each with what starts it",
         "JS-089's merge updates these lines to say what is then in the product"
@@ -2852,7 +2854,7 @@
         "With a store slow enough that a film's copy needs more than an hour, the copy completes and the film's seeks into long cues then cost what any seek does; a store that hangs still frees its background slot within the no-progress bound",
         "docs/running.md and DOMAINS 51 state the new rule; D-002's remembered failure applies only to what the new rule still cannot finish"
       ],
-      "priority": 31,
+      "priority": 33,
       "dependsOn": [
         "JS-089",
         "JS-143"
@@ -2872,7 +2874,7 @@
         "The same answer for text-track extraction, which today also reads the whole film (it decides what JS-091's background extraction would cost)",
         "A recommendation with what each kind of film would then cost, recorded in spikes/; a follow-up task if it works"
       ],
-      "priority": 32,
+      "priority": 34,
       "dependsOn": [
         "JS-089"
       ],
@@ -2890,7 +2892,7 @@
         "The manifests and the chart cannot drift: a test fails when they would deploy different resources (for example, the manifests are the chart rendered with its defaults, checked in)",
         "The chart sizes CNPG's max_connections as JS-056's manifests do, and installing values whose sum exceeds it fails the render"
       ],
-      "priority": 57,
+      "priority": 59,
       "dependsOn": [
         "JS-056"
       ],
@@ -2913,7 +2915,55 @@
         "JS-089"
       ],
       "source": "decision D-002; product-owner plan review 2026-11-19",
-      "priority": 13
+      "priority": 15
+    },
+    {
+      "id": "JS-144",
+      "phase": "OPS",
+      "title": "Browser-engine clients connect from any origin, without credentials",
+      "description": "Fluster (a Tauri WebView) and any web client hosted on another origin fail before sign-in: API answers carry no Access-Control-Allow-Origin and preflights answer 404 (issue #202). D-016: open to any origin, never with credentials; tokens travel only in headers or the query, so no other site can make a viewer's browser send one.",
+      "acceptanceCriteria": [
+        "Observed first: a capture on a real Jellyfin 12.4 records what it answers to a cross-origin GET, to a preflight for a route with an auth header and a JSON body, to a preflight for an unserved path, and which headers it allows and exposes; any difference jellyscale keeps is in compat/differences.yaml with its reason",
+        "A page served from another origin, in Chromium, reads GET /System/Info/Public, signs in, browses, plays a direct play with a ranged seek and a transcode with a seek, sending its token in a header, across the api and stream roles as separate processes; each step fails today",
+        "Every route in compat/endpoints.yaml, /jellyscale/v1/ included, answers a preflight for each of tauri://localhost, http://tauri.localhost, https://tauri.localhost and an https web origin, allowing the route's methods, the request headers of every token spelling in docs/access.md, Content-Type and Range; the range headers a client reads are exposed on media answers",
+        "A preflight needs no token and no Postgres: it is answered while Postgres is away and carries no information about the server",
+        "Fluster signs in and lists a library against the build, recorded as JS-075 records clients, with no titles or paths",
+        "Nothing an operator owns is opened: /metrics, /healthz and /readyz carry no cross-origin headers",
+        "No answer carries Access-Control-Allow-Credentials, and a check fails if any route sets a cookie; DOMAINS.md states that a viewer's token never travels in a cookie and no route sets one, binding JS-039 and JS-122",
+        "jellyfin-web served by jellyscale and the differential tier's clients get the answers they got before, and their gates pass",
+        "docs/access.md says a preflight is open to anyone and why, that any origin may call the API, why that does not open a viewer's account (no cookie), and what it does expose: on a server reachable only on a private network, a web page in a viewer's browser can read the open routes and the result of a sign-in attempt; docs/status.md's Fluster row is updated"
+      ],
+      "priority": 11,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "ux": true,
+      "core": false,
+      "source": "issue #202 (from:fluster); decision D-016"
+    },
+    {
+      "id": "JS-145",
+      "phase": "ID",
+      "title": "Failed sign-ins are bounded, per account and per address",
+      "description": "Nothing bounds failed sign-ins today (the user policy reports LoginAttemptsBeforeLockout -1). D-016 opens the API to any origin, so on a private-network server a web page in a viewer's browser could guess names and passwords and read the answers; servers on the internet are exposed to guessing already.",
+      "acceptanceCriteria": [
+        "Observed first: what Jellyfin 12.4 does after failed sign-ins (its LoginAttemptsBeforeLockout and what a locked account answers), recorded in compat/captures",
+        "Repeated failed sign-ins for one account, and from one address across accounts, are slowed or refused after a stated bound; the bound and how long it lasts are documented in docs/access.md, and a right password after the bound is answered as the design states, observed in a test with real processes; the longest a viewer with the right password can be kept out by someone else's guesses is a number in docs/access.md, and a check holds it",
+        "A viewer who mistypes a few times is not locked out, and a guesser cannot lock out every account by guessing (the per-address bound acts first): both shown by a test; a named account under guessing from many addresses is still reachable by its owner within that stated time",
+        "Each refusal is logged with the account and the address, never the password, and counted in a metric an operator can alert on; the metric carries no account or address label",
+        "The bound holds across api replicas (several processes share it), shown with two replicas",
+        "docs/running.md says which address counts behind an ingress and the operator declares which proxies are trusted; a forwarded header from anywhere else is ignored, shown by a test; with nothing declared, the behaviour is stated and safe: viewers behind one ingress are not treated as one guesser without the operator being told",
+        "A token already issued keeps working while its account is slowed or refused: a playing film, its progress reports and the account's other devices are unaffected, shown by a test",
+        "The answer after the bound is the same for an account that exists and one that does not (D-014)",
+        "What jellyfin-web and Fluster show on a slowed or refused sign-in is observed and recorded, and reads as 'try again later', not as a wrong password or a server fault; LoginAttemptsBeforeLockout in the user policy says what the server actually does, or the difference is listed in compat/differences.yaml"
+      ],
+      "priority": 12,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "decision D-016 (condition: failed sign-ins bounded)",
+      "ux": true,
+      "core": false
     }
   ]
 }
