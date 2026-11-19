@@ -5,8 +5,8 @@ import "testing"
 // A fallback is a re-encode, however large the copy was, and an HEVC one is
 // priced from the x265 measurements (JS-088).
 func TestRecodedCopyHonoursTheEncodeCapCostAndOutputVersion(t *testing.T) {
-	if OutputVersion != 5 {
-		t.Errorf("OutputVersion = %d, want 5: an older worker must not claim a recode job", OutputVersion)
+	if OutputVersion <= 5 {
+		t.Errorf("OutputVersion = %d, want more than 5: an older worker must not claim a recode job", OutputVersion)
 	}
 	copied := Spec{Width: 3840, Height: 2160, VideoBitrate: 40_000_000, Copy: true}
 	h264 := copied.Recoded("h264", "")

@@ -630,6 +630,8 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	unbounded := limit >= layout.Count()
 	limitAt := time.Now()
 	chunked, size := w.chunked(job), w.chunkSize()
+	// An AV1 fallback is made by one ffmpeg for each segment (AV1SegmentCommand).
+	segmentRuns := job.Spec.Recode == "av1"
 	// A track inside the film whose cue points the scan read: a run that begins
 	// mid-film reads the packet of the cue showing at its cut (a few small reads
 	// of the film, under the job's lease), and opens early enough to see it.
@@ -652,6 +654,38 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	}
 	next := job.Start // The next segment to store.
 
+	// room holds the job, before it starts the ffmpeg for segment n, until n is within the lead of its viewers, as gate
+	// holds one that runs. It reports false when the job is to end: its viewers have left it behind.
+	room := func(n int) (bool, error) {
+		for !unbounded && (n >= limit || freed) {
+			job.lease.turn()
+			if time.Since(limitAt) >= leadCheck {
+				limitAt = time.Now()
+				at, served, free, err := w.furthest(ctx, job, n)
+				switch {
+				case err != nil:
+					log.Warn("reading the viewers' segments failed", "error", err)
+				case free:
+					limit, freed = layout.Count(), true
+				case !served && n >= limit:
+					w.cancelUnwanted(ctx, job)
+					return false, nil
+				default:
+					limit, freed = limitFor(layout, at, w.lead()), false
+				}
+			}
+			if n < limit {
+				break
+			}
+			select {
+			case <-ctx.Done():
+				return false, endedBy(ctx)
+			case <-time.After(100 * time.Millisecond):
+			}
+		}
+		return true, nil
+	}
+
 	// run is the job's ffmpeg, from segment begin.
 	run := func(begin int) (err error) {
 		var cmd *exec.Cmd
@@ -659,7 +693,16 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		if fragments {
 			next = begin
 			gather = newGatherer(dir, layout, film.Keyframes[0])
-			if job.Spec.Recode != "" {
+			if job.Spec.Recode == "av1" {
+				// One ffmpeg for this segment alone; the job goes on with the next below.
+				for _, stale := range globOr(filepath.Join(dir, "*.m4s")) {
+					os.Remove(stale)
+				}
+				os.Remove(filepath.Join(dir, "index.m3u8"))
+				video, _ := recodeStart(film.Keyframes, layout, begin)
+				cmd, err = AV1SegmentCommand(ctx, input, job.Spec, video, recodeEnd(film.Keyframes, layout, begin), dir)
+				gather.slack = recodeSlack
+			} else if job.Spec.Recode != "" {
 				video, audio := recodeStart(film.Keyframes, layout, begin)
 				cmd, err = RecodeCommand(ctx, input, job.Spec, film.VideoCodec(), video, audio, recodeCuts(film.Keyframes, layout, begin), dir)
 				gather.slack = recodeSlack
@@ -682,6 +725,9 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		var stderr tail
 		cmd.Stderr = &stderr
 		cmd.Stdout = job.progress
+		if segmentRuns && job.progress != nil {
+			job.progress.restart()
+		}
 		if err := mediatool.Start(cmd); err != nil {
 			return err
 		}
@@ -706,6 +752,9 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 				job.lease.turn() // A backlog is many calls to Postgres, each of which can be slow.
 				if next >= layout.Count() {
 					return false, nil // A copied run has fragments past the end.
+				}
+				if segmentRuns && next > begin {
+					return false, nil // The run was for one segment.
 				}
 				if next < begin {
 					name := filepath.Join(dir, strconv.Itoa(next)+".m4s")
@@ -850,6 +899,9 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 				if next <= begin {
 					return fmt.Errorf("ffmpeg ended without a segment: %s", stderr.String())
 				}
+				if segmentRuns {
+					return nil // The caller starts the run for the next segment.
+				}
 				// A cut input can end exactly between two segments, leaving no
 				// partial one to notice.
 				if next < layout.Count() && !caughtUp {
@@ -927,17 +979,21 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 					stop(cause.Error())
 					return cause
 				}
-				reason := "worker is shutting down"
-				if errors.Is(context.Cause(ctx), errLockLost) {
-					reason = errLockLost.Error()
-				}
-				stop(reason)
-				return fmt.Errorf("%w: %s", errInterrupted, reason)
+				err := endedBy(ctx)
+				stop(err.Error())
+				return err
 			}
 		}
 	}
 
 	err = run(job.Start)
+	for err == nil && segmentRuns && next < layout.Count() && !w.stored(ctx, job.Hash, next) {
+		if ok, waitErr := room(next); !ok || waitErr != nil {
+			err = waitErr
+			break
+		}
+		err = run(next)
+	}
 	if cut := read.failure(); err != nil && cut != nil && ctx.Err() == nil {
 		// ffmpeg says only that its input was invalid or ended; a read the store failed for good, which
 		// store.Reader did not heal, is the cause. It also outranks a wrong index, which would be
@@ -945,6 +1001,20 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		return fromStore(source.StoreURI, cut)
 	}
 	return err
+}
+
+// endedBy is the error of a job whose context is done. The lease keeper ends it when the lease was not renewed,
+// the job is no longer this worker's, its work did not come round, or no viewer is watching; otherwise the worker
+// is shutting down.
+func endedBy(ctx context.Context) error {
+	if cause := context.Cause(ctx); errors.Is(cause, errInterrupted) {
+		return cause
+	}
+	reason := "worker is shutting down"
+	if errors.Is(context.Cause(ctx), errLockLost) {
+		reason = errLockLost.Error()
+	}
+	return fmt.Errorf("%w: %s", errInterrupted, reason)
 }
 
 // globOr is filepath.Glob without the error, which only a bad pattern has.

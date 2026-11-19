@@ -231,6 +231,14 @@ func recodeStart(keyframes []int64, layout playback.Layout, n int) (video, audio
 	return at, at - 2
 }
 
+// recodeEnd is where the segment after n starts, in the source's clock in seconds, or -1 for the last segment.
+func recodeEnd(keyframes []int64, layout playback.Layout, n int) float64 {
+	if n+1 >= layout.Count() {
+		return -1
+	}
+	return float64(keyframes[0]+layout.Starts[n+1]) / ticksPerSecond
+}
+
 // recodeCuts are the times at which an encode that begins at segment n starts a segment, in the source's clock in seconds.
 func recodeCuts(keyframes []int64, layout playback.Layout, n int) []float64 {
 	cuts := make([]float64, 0, layout.Count()-n)

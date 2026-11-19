@@ -17,6 +17,11 @@ const (
 	x265Extra = 2.4
 )
 
+// What an AV1 fallback costs, above the CPU its ffmpeg used for each second of film on the oldest ffmpeg the project
+// supports, 6.1 with SVT-AV1 1.7.0 (docs/transcoding.md: 1.76, 2.01, 3.17 and 3.82, which ffmpeg 9 with SVT-AV1 4.2.0
+// does in 0.84, 1.30, 1.91 and 2.70). A worker on 6.1 that holds jobs that add up to its cores keeps up.
+var av1Cost = struct{ sdr, sdr4K, toneMap, toneMap4K float64 }{2.0, 2.4, 3.6, 4.2}
+
 // Cost is the cores the job takes from a worker, fixed by the spec alone, so
 // every replica and worker reads the same number from a stored row. A re-encode
 // costs what it does to its source, not to its output, which is at most
@@ -25,6 +30,18 @@ const (
 func (s Spec) Cost() float64 {
 	if s.Copy {
 		return CopyCost
+	}
+	if s.Recode == "av1" {
+		fourK := max(s.SourceHeight, s.Height) > fourKFrom
+		switch {
+		case s.ToneMap != "" && fourK:
+			return av1Cost.toneMap4K
+		case s.ToneMap != "":
+			return av1Cost.toneMap
+		case fourK:
+			return av1Cost.sdr4K
+		}
+		return av1Cost.sdr
 	}
 	cost := s.encodeCost()
 	if s.Recode == "hevc" {

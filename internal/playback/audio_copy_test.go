@@ -253,7 +253,7 @@ func TestAudioCopyIsInTheHashAndOnlyThere(t *testing.T) {
 	// pinned so that a change to the hash is never an accident. OutputVersion 5
 	// changed it for copy fallback re-encodes (DOMAINS 45), 4 for one encoder
 	// thread and chunks (DOMAINS 58), and 3 for the restart cut (DOMAINS 24).
-	if got, want := (Spec{Item: "i", Source: "s", ETag: "e", AudioIndex: 1, VideoBitrate: 1, AudioBitrate: 2, Width: 3, Height: 4}).Hash(), "ccdfa410d722222b956f39f3b75e1223"; got != want {
+	if got, want := (Spec{Item: "i", Source: "s", ETag: "e", AudioIndex: 1, VideoBitrate: 1, AudioBitrate: 2, Width: 3, Height: 4}).Hash(), "62bb13ad36bcad06a2152d8137589c5a"; got != want {
 		t.Errorf("hash %s, want %s", got, want)
 	}
 }

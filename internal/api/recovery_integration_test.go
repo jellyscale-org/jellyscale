@@ -56,6 +56,9 @@ func irregularFilm(t *testing.T, dir, codec string) string {
 	t.Helper()
 	testenv.FFmpeg(t)
 	name := "Irregular " + strings.ToUpper(codec) + " Film (2024)"
+	if codec == "av1" {
+		return irregularAV1Film(t, dir, name)
+	}
 	encoder := []string{"-c:v", "libx264", "-preset", "ultrafast", "-g", "1000", "-sc_threshold", "0"}
 	if codec == "hevc" {
 		encoder = []string{"-c:v", "libx265", "-preset", "ultrafast", "-x265-params", "keyint=1000:scenecut=0:forced-idr=1:log-level=error"}
@@ -67,6 +70,32 @@ func irregularFilm(t *testing.T, dir, codec string) string {
 	}
 	ffmpegRun(t, append(args, filepath.Join(dir, name, name+".mkv"))...)
 	return "Irregular " + strings.ToUpper(codec) + " Film"
+}
+
+// irregularAV1Film is irregularFilm in AV1. SVT-AV1 in ffmpeg 6.1 (Ubuntu 24.04, which CI runs) ignores -force_key_frames,
+// so the picture is encoded in pieces that each start at a keyframe time (24 fps: a piece is a whole number of frames)
+// and joined, which any ffmpeg then reads with the same keyframes (test/fixtures/e2e.sh does the same).
+func irregularAV1Film(t *testing.T, dir, name string) string {
+	t.Helper()
+	keyframes := []int{0, 5, 11, 16, 23, 29, 36, 41, 44}
+	pieces := t.TempDir()
+	var list strings.Builder
+	for i := 0; i+1 < len(keyframes); i++ {
+		piece := filepath.Join(pieces, strconv.Itoa(i)+".mkv")
+		ffmpegRun(t, "-f", "lavfi", "-i", "testsrc2=size=640x360:rate=24:duration=44",
+			"-vf", fmt.Sprintf("trim=start_frame=%d:end_frame=%d,setpts=PTS-STARTPTS", keyframes[i]*24, keyframes[i+1]*24),
+			"-c:v", "libsvtav1", "-preset", "10", "-g", "2000", "-pix_fmt", "yuv420p", piece)
+		fmt.Fprintf(&list, "file '%s'\n", piece)
+	}
+	if err := os.WriteFile(filepath.Join(pieces, "list"), []byte(list.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, name), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	ffmpegRun(t, "-f", "concat", "-safe", "0", "-i", filepath.Join(pieces, "list"), "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=44",
+		"-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "ac3", "-b:a", "128k", filepath.Join(dir, name, name+".mkv"))
+	return "Irregular AV1 Film"
 }
 
 type recoveryRig struct {
@@ -226,9 +255,11 @@ func playUnderAWrongIndex(t *testing.T, codec, profileName string, order string)
 		t.Fatalf("the film is not offered as a copy: %s", url)
 	}
 	master := string(r.get(t, "master", url))
-	wantCodec := map[string]string{"h264": "h264", "hevc": "hevc"}[codec]
+	wantCodec := map[string]string{"h264": "h264", "hevc": "hevc", "av1": "av1"}[codec]
 	if codecs := playlistCodec(master); codecs == "" {
 		t.Fatalf("the master playlist names no codec:\n%s", master)
+	} else if codec == "av1" && !strings.HasPrefix(codecs, "av01.") {
+		t.Fatalf("the master playlist of an AV1 copy says CODECS %q", codecs)
 	}
 	base := "/videos/" + r.dashed + "/"
 	mainPlaylist := string(r.get(t, "main playlist", strings.Replace(url, "master.m3u8", "main.m3u8", 1)))
@@ -273,6 +304,12 @@ func playUnderAWrongIndex(t *testing.T, codec, profileName string, order string)
 			held, segment = again, media // A moov at the start of a segment is an init segment to MSE.
 		} else {
 			segment = media
+			if codec == "av1" {
+				// JS-133: after the fallback every segment of an AV1 copy leads with the init of its own stream, the stored
+				// copy segments too, so that the player decodes each under whichever init it holds (the two streams'
+				// inits differ, and compat/captures/av1-fallback-12.4.md shows it plays on only so).
+				t.Errorf("segment %d does not lead with the init segment of its own stream", n)
+			}
 		}
 		d := decode(t, held, segment)
 		got[n] = d
@@ -329,7 +366,7 @@ func playlistCodec(master string) string {
 }
 
 func TestAFallbackFromACopyIsDecodableUnderTheInitThePlayerHoldsAndKeepsThePlaylistsLayout(t *testing.T) {
-	for _, codec := range []struct{ name, profile string }{{"h264", ""}, {"hevc", "hevc-client"}} {
+	for _, codec := range []struct{ name, profile string }{{"h264", ""}, {"hevc", "hevc-client"}, {"av1", "chrome"}} {
 		for _, order := range []string{"the job finds the index wrong while the player is on stored segments", "the player seeks to the bad segment first"} {
 			t.Run(codec.name+", "+order, func(t *testing.T) { playUnderAWrongIndex(t, codec.name, codec.profile, order) })
 		}
