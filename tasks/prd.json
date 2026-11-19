@@ -2767,6 +2767,48 @@
       ],
       "source": "JS-133 post-task review (2026-11-19)",
       "notes": "The JS-133 architecture review noted the 10-bit AV1 fallback is 8-bit, observed to play; this task asks what it looks like, and covers HEVC (JS-088) too. Observe before building."
+    },
+    {
+      "id": "JS-135",
+      "phase": "P3",
+      "title": "A re-encode's x264 preset is part of its spec, and its price follows the preset",
+      "description": "Every x264 re-encode uses -preset veryfast (internal/transcode/ffmpeg.go, at both x264 sites). spikes/picture-quality measured faster at +2.5 VMAF on the mean and +3.5 to +5 on the worst frames for 1.2 to 1.6 times the CPU, and medium +0.5 more for 2.2 times. The owner decided (2026-11-19) that operators choose the preset, trading picture against the compute they pay for, with faster the default (JS-136). This task builds what that needs underneath: the spec carries the preset, so every worker that encodes a stream uses the same one (segments of two presets under one init segment fail in Chromium with PIPELINE_ERROR_DECODE, spikes/picture-quality), and Spec.Cost prices each preset from a film measured through a worker, so a worker admits as many jobs as it can keep at real time. The spike also found today's 0.8 cores for a 1080p job low for a hard film (1.36 CPU s per s at veryfast, pinned, unverified basis); this task measures it properly.",
+      "acceptanceCriteria": [
+        "Spec has a preset, one of superfast, veryfast, faster, fast, medium and slow; it is part of Spec.Hash, so two specs that differ only in it have different hashes, and a spec stored before the field existed reads as veryfast and keeps its hash, so its stored segments are still served",
+        "A worker encodes with the spec's preset, never a setting of its own: a test reads the arguments of a re-encode and of an H.264 copy's fallback (recodeArgs) for two presets and finds each spec's preset in each; the HEVC and AV1 fallbacks keep their own presets and say so in docs/transcoding.md",
+        "A test with real segments: a store holding a stream's segments at one preset never serves them for a spec of another preset; the second spec's job encodes its own",
+        "A measurement test, run as the AV1 rows are, logs CPU seconds per second of film for each of superfast, veryfast, faster, fast, medium and slow from a 1080p and a 4K real-film source through a worker's own command, on Ubuntu 24.04's ffmpeg 6.1 and on ffmpeg 9; docs/transcoding.md records the figures with the machine and the command",
+        "Spec.Cost has a row per preset, SDR and tone mapped, 1080p and 4K, each at or above its measured figure with the margin docs/transcoding.md gives today; veryfast's rows are corrected if the measurement says they are low, and the change in viewers per worker is listed under Changed guarantees in the pull request",
+        "With real processes: a worker given jobs whose costs add up to its cores, at faster and at medium, keeps each at 1.2 times real time or more without a helper",
+        "No viewer-visible change while every spec is veryfast: the transcode, seek and helper e2e scenarios pass as before"
+      ],
+      "priority": 21,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "spikes/picture-quality (2026-11-19), owner decision 2026-11-19",
+      "notes": "Bump OutputVersion only if the arguments of a veryfast spec change; a spec read from before the field must keep its hash (invariant: stored segments of a spec are its output)."
+    },
+    {
+      "id": "JS-136",
+      "phase": "P3",
+      "title": "Operators choose the x264 preset, faster by default",
+      "description": "The owner (2026-11-19): operators choose the preset, deciding how much picture they give up for the compute they pay for, and faster is the default unless they choose another. JS-135 put the preset in the spec and priced it; this task adds the setting, makes faster the default and shows a viewer gains picture without losing a quick start.",
+      "acceptanceCriteria": [
+        "A config key transcodePreset accepts superfast, veryfast, faster, fast, medium and slow; left out it is faster; any other value stops the start of every role with an error naming the key and the accepted values",
+        "PlaybackInfo writes the configured preset into each new spec; changing it and restarting gives new playbacks the new preset while a stream already playing keeps its spec's, and two api replicas configured differently each produce working streams (no refusal between processes is needed because the worker follows the spec)",
+        "docs/running.md gives, for each preset, the measured CPU against veryfast, the time to the first segment and the VMAF gain from spikes/picture-quality and JS-135, and says what changing it does to stored segments (new specs, the old swept as any unused spec)",
+        "e2e in jellyfin-web, on the same worker: a start and a seek at faster get their first segment no more than 1.5 times later than at veryfast, and playback does not stall",
+        "A picture test: VMAF of a real-film clip encoded through the worker at faster, against its source, is at least 2 higher than at veryfast under a 4 Mbps cap; a tier without libvmaf fails, never skips",
+        "The default change is listed under Changed guarantees: more CPU per viewer (fewer viewers per worker), up to about a second on a start on a full worker, a better picture"
+      ],
+      "priority": 22,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-135"
+      ],
+      "source": "owner decision 2026-11-19; spikes/picture-quality"
     }
   ]
 }

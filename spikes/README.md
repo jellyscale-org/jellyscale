@@ -23,6 +23,7 @@ Measured on one workstation: 16 threads, local NVMe, Postgres 18.6 and stores in
 | What do S3 reads cost? | Probe under 6MB; seek about 22MB, or 325MB for MKV with no Cues | **Go** with keyframe index |
 | Are redirects safe? | All 4 tested players follow them, but proxying is safer | **Proxy by default** |
 | What do clients really call? | Captured 34 routes from jellyfin-web 12.4 | See below |
+| Which x264 preset gives the best picture without slowing a start? | `faster`: +2.5 VMAF mean, +3.5 to +5 on the worst frames, for 1.2 to 1.6 times veryfast's CPU and about 45% longer to the first segment on the same CPUs. Two presets cannot share a spec's init segment. See [picture-quality](picture-quality/README.md) | Operator setting, `faster` by default (JS-135, JS-136) |
 
 ## NOTIFY
 

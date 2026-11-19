@@ -1,0 +1,31 @@
+## parameter sets by preset (app arguments)
+superfast 01640033ffe1001f67640033acd9407806df93ff035a03591000000300100000030300f183196001000468ef8fcbfdf8f800
+veryfast 01640033ffe1001f67640033acd9407806df93ff035a03591000000300100000030300f183196001000468ef8fcbfdf8f800
+faster 01640033ffe1001f67640033acd9407806df93ff035a03591000000300100000030300f183196001000568eae3f2c0fdf8f800
+fast 01640033ffe1001f67640033acd9407806df93ff035a03591000000300100000030300f183196001000668eae3cb22c0fdf8f800
+medium 01640033ffe1001f67640033acd9407806df93ff035a03591000000300100000030300f183196001000668ebe3cb22c0fdf8f800
+slow 01640033ffe1001f67640033acd9807806df93ff035a03591000000300100000030300f18319a001000668e978f2c8b0fdf8f800
+## with ref=3 fixed on every preset
+superfast 01640033ffe1001f67640033acd9407806df93ff035a03591000000300100000030300f183196001000568ebe3f2c0fdf8f800
+veryfast 01640033ffe1001f67640033acd9407806df93ff035a03591000000300100000030300f183196001000568ebe3f2c0fdf8f800
+faster 01640033ffe1001f67640033acd9407806df93ff035a03591000000300100000030300f183196001000568ebe3f2c0fdf8f800
+fast 01640033ffe1001f67640033acd9407806df93ff035a03591000000300100000030300f183196001000668ebe3cb22c0fdf8f800
+medium 01640033ffe1001f67640033acd9407806df93ff035a03591000000300100000030300f183196001000668ebe3cb22c0fdf8f800
+slow 01640033ffe1001f67640033acd9407806df93ff035a03591000000300100000030300f183196001000668ebe3cb22c0fdf8f800
+## with the parameter sets repeated in every keyframe (repeat-headers=1)
+## splices: init and segment 0 of A, segments 1 to 3 of B
+veryfast then veryfast: decode error lines 0, frames 384, VMAF of B's part (mean, 5th percentile, least) 95.2458 89.0301 86.1387
+veryfast then faster: decode error lines 606, frames 291, VMAF of B's part (mean, 5th percentile, least) 2.9336 0 0
+veryfast then fast: decode error lines 610, frames 291, VMAF of B's part (mean, 5th percentile, least) 2.9356 0 0
+veryfast then medium: decode error lines 74, frames 384, VMAF of B's part (mean, 5th percentile, least) 35.222 0.544 0
+veryfast then slow: decode error lines 682, frames 295, VMAF of B's part (mean, 5th percentile, least) 29.6163 0 0
+superfast then veryfast: decode error lines 0, frames 384, VMAF of B's part (mean, 5th percentile, least) 95.2458 89.0301 86.1387
+medium then veryfast: decode error lines 795, frames 338, VMAF of B's part (mean, 5th percentile, least) 2.1706 0 0
+slow then veryfast: decode error lines 969, frames 343, VMAF of B's part (mean, 5th percentile, least) 1.97 0 0
+veryfast.ref3 then faster.ref3: decode error lines 0, frames 384, VMAF of B's part (mean, 5th percentile, least) 97.844 93.3054 90.6524
+fast.ref3 then medium.ref3: decode error lines 0, frames 384, VMAF of B's part (mean, 5th percentile, least) 97.9795 93.6653 90.9625
+fast.ref3 then slow.ref3: decode error lines 0, frames 384, VMAF of B's part (mean, 5th percentile, least) 97.9149 93.6414 90.3688
+veryfast.ref3 then fast.ref3: decode error lines 0, frames 384, VMAF of B's part (mean, 5th percentile, least) 98.0161 93.4635 90.5949
+veryfast.ref3 then slow.ref3: decode error lines 0, frames 384, VMAF of B's part (mean, 5th percentile, least) 97.9149 93.6414 90.3688
+veryfast.inband then medium.inband: decode error lines 0, frames 384, VMAF of B's part (mean, 5th percentile, least) 97.9795 93.6653 90.9625
+medium.inband then veryfast.inband: decode error lines 0, frames 384, VMAF of B's part (mean, 5th percentile, least) 95.2458 89.0301 86.1387

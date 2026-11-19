@@ -1,0 +1,11 @@
+browser: Chromium 158.0.8127.18 (playwright-core headless), H.264 MSE supported: true
+pair | appended | video.error | max mean-abs-diff (per time) | corrupted/dropped/total | verdict
+veryfast:veryfast | ok | none | 0.00 (0.00, 0.00, 0.00, 0.00) | 0/143/404 ctl:0/143/404 | decodes
+veryfast:medium | ok | 3 PipelineStatus::PIPELINE_ERROR_DECODE: Failed to send video packet for decoding: {timestamp=4250000 duration=41666 size=13666 is_key_frame=0 encrypted=0} | n/a | 0/0/1 ctl:0/147/402 | error
+veryfast:fast | ok | 3 PipelineStatus::PIPELINE_ERROR_DECODE: Failed to send video packet for decoding: {timestamp=4166666 duration=41666 size=13990 is_key_frame=0 encrypted=0} | n/a | 0/0/4 ctl:0/144/404 | error
+medium:veryfast | ok | 3 PipelineStatus::PIPELINE_ERROR_DECODE: Failed to send video packet for decoding: {timestamp=4208333 duration=41666 size=19541 is_key_frame=0 encrypted=0} | n/a | 0/0/0 ctl:0/143/404 | error
+veryfast.ref3:fast.ref3 | ok | none | 3.43 (2.23, 1.70, 1.51, 3.43) | 0/149/404 ctl:0/148/404 | decodes
+veryfast.ref3:slow.ref3 | ok | none | 3.60 (2.18, 1.67, 1.65, 3.60) | 0/143/403 ctl:0/175/403 | decodes
+fast.ref3:slow.ref3 | ok | none | 0.00 (0.00, 0.00, 0.00, 0.00) | 0/144/402 ctl:0/175/403 | decodes
+veryfast.inband:medium.inband | ok | none | 0.00 (0.00, 0.00, 0.00, 0.00) | 0/144/403 ctl:0/144/404 | decodes
+medium.inband:veryfast.inband | ok | none | 0.00 (0.00, 0.00, 0.00, 0.00) | 0/147/402 ctl:0/145/402 | decodes
