@@ -4,10 +4,13 @@ package transcode
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -94,12 +97,38 @@ func TestAnImageExtractionThatRanOutOfTimeIsNotQueuedAgainByTheNextPlays(t *test
 	media := t.TempDir()
 	cueFilm{codec: "copy", seconds: 20, noise: "1M", cues: []testenv.Cue{top(6, 15)}}.write(t, media, "film")
 	s := newScanned(t, media, t.TempDir())
+	var logged lockedBuffer
+	s.log = slog.New(slog.NewJSONHandler(&logged, nil))
 	slow := newMeters(s, 0)
 	slow.film.hold.Store(true) // Reads wait until the extraction's time limit ends them.
 	stop := s.roleWorker(t, "subtitles", slow, func(w *Worker) { w.SubtitleTimeout = 3 * time.Second })
 	defer stop()
 	s.askForTracks(t, s.pool)
 	waitFor(t, "the extraction to run out of time", time.Minute, func() bool { return s.jobRowsIn(t, "failed") == 1 })
+	// The log line is the operator's only sight of it: it names the item, the source, the
+	// reason and when the film may be read again (decision D-002).
+	var line struct {
+		Msg, Item, Source, Reason string
+		Retry                     string `json:"retry_not_before"`
+	}
+	found := false
+	for _, raw := range strings.Split(logged.String(), "\n") {
+		if json.Unmarshal([]byte(raw), &line) == nil && strings.Contains(line.Msg, "ran out of time") {
+			found = true
+		}
+	}
+	retry, err := time.Parse(time.RFC3339, line.Retry)
+	if !found || line.Item != s.spec.Item || line.Source != s.source(t).ID || !strings.Contains(line.Reason, "longer than") || err != nil {
+		t.Errorf("the log has no line that names the item (%s), the source (%s), the time limit and the retry time a day on: found %v, %+v", s.spec.Item, s.source(t).ID, found, line)
+	}
+	// The retry time is when the sweep lets the failed row go: its end and the memory of a day.
+	var ended time.Time
+	if err := s.pool.QueryRow(context.Background(), "SELECT ended_at FROM subtitle_jobs").Scan(&ended); err != nil {
+		t.Fatal(err)
+	}
+	if retry.Sub(ended.Add(failedJobMemory)).Abs() > time.Second {
+		t.Errorf("the log says the film is retried from %v, and the failed job ended at %v: the memory is %v", retry, ended, failedJobMemory)
+	}
 	opens := slow.film.opens.Load()
 	if opens == 0 {
 		t.Fatal("the extraction never read the film")
@@ -116,6 +145,45 @@ func TestAnImageExtractionThatRanOutOfTimeIsNotQueuedAgainByTheNextPlays(t *test
 		t.Errorf("jobs after the plays that followed the time limit: %v, want the one failed job, for good", rows)
 	}
 	if got := slow.film.opens.Load(); got != opens {
-		t.Errorf("the film was opened %d times, %d before the plays that followed the time limit: it was read again", got, opens)
+		t.Fatalf("the film was opened %d times, %d before the plays that followed the time limit: it was read again", got, opens)
 	}
+	// The memory is a day (decision D-002): the daily sweep of finished jobs ends it, and
+	// only a play starts a new attempt, one however many plays.
+	s.sweptRows(t)
+	time.Sleep(3 * time.Second)
+	if rows := s.extractionRows(t); len(rows) != 0 || slow.film.opens.Load() != opens {
+		t.Errorf("after the memory lapsed, with no play, rows %v and %d opens (was %d): an attempt started without a play", rows, slow.film.opens.Load(), opens)
+	}
+	for range 3 {
+		s.askForTracks(t, s.pool)
+	}
+	waitFor(t, "the one attempt to run out of time again", time.Minute, func() bool { return s.jobRowsIn(t, "failed") == 1 })
+	for range 3 {
+		s.askForTracks(t, s.pool)
+	}
+	time.Sleep(3 * time.Second)
+	if rows := s.extractionRows(t); len(rows) != 1 || !strings.HasSuffix(rows[0], " failed true") {
+		t.Errorf("jobs after the plays that followed the attempt: %v, want the one failed job", rows)
+	}
+	if got := slow.film.opens.Load(); got != opens+1 {
+		t.Errorf("the film was opened %d times, want %d: one attempt after the memory lapsed", got, opens+1)
+	}
+}
+
+// lockedBuffer is a log's destination that a test reads while a worker writes.
+type lockedBuffer struct {
+	mu   sync.Mutex
+	text strings.Builder
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.text.Write(p)
+}
+
+func (b *lockedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.text.String()
 }

@@ -38,7 +38,7 @@ const jobCount = () => Number(sql("SELECT count(DISTINCT spec_hash) FROM transco
 const subtitleJobCount = () => Number(sql("SELECT count(*) FROM subtitle_jobs"));
 // Every subtitle job but one kind: since JS-089 a burnt image track is also stored in the
 // background (kind 'images') so that a later seek into a long cue is cheap. No run waits on that
-// job (TestNoRunWaitsForTheExtractionAndEachDrawsAsJS071Does); every other job, a 'sup' extraction above all, still
+// job (TestNoRunWaitsForTheExtractionAndEachDrawsAsJS071Does, decision D-004); every other job, a 'sup' extraction above all, still
 // fails a burn the transcode reads itself.
 const jobsOtherThanImages = () => Number(sql("SELECT count(*) FROM subtitle_jobs WHERE kind <> 'images'"));
 const imageJobCount = () => Number(sql("SELECT count(*) FROM subtitle_jobs WHERE kind = 'images'"));

@@ -43,6 +43,9 @@ const (
 	// take no subtitle slot: a library full of them must not hold up a viewer's
 	// track.
 	chapterSlots = 2
+	// failedJobMemory is how long the daily sweep keeps a failed job's row, which is how long a
+	// failure for good is remembered (the sweep's "1 day").
+	failedJobMemory = 24 * time.Hour
 	// imageSlots is how many films' image tracks a worker extracts at once.
 	// Nobody waits on one and its read is the whole film, up to an hour, so it
 	// takes no subtitle slot either: a few burnt films must not hold up a viewer's
@@ -437,6 +440,12 @@ func (w *Worker) runSubtitle(ctx, jobCtx context.Context, job subtitleJob) {
 	case ctx.Err() != nil:
 		// The worker is going away, which isn't the track's fault.
 		state = "queued"
+	case job.Kind == "images" && errors.Is(err, subtitles.ErrTooSlow):
+		// The operator's only sight of it: the film's viewers are told nothing (decision D-002).
+		retry := time.Now().Add(failedJobMemory)
+		log.Error("image track extraction ran out of time: the film is not read again for its tracks before the retry time, and then only by a play of it",
+			"item", job.Item, "source", job.Source, "reason", err.Error(), "retry_not_before", retry.Format(time.RFC3339))
+		state, reason = "failed", err.Error()
 	case job.Kind == "chapters":
 		log.Error("chapter image job failed", "item", job.Item, "error", err)
 		state, reason = "failed", err.Error()
