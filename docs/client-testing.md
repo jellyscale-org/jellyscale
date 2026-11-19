@@ -37,12 +37,12 @@ auth='X-Emby-Authorization: MediaBrowser Client="test", Device="test", DeviceId=
 token=$(curl -s -H "$auth" -H 'Content-Type: application/json' -d '{"Username":"test","Pw":"test"}' $base/Users/AuthenticateByName | jq -r .AccessToken)
 count() { curl -s -H "$auth, Token=\"$token\"" "$base/Items?Recursive=true&IncludeItemTypes=$1&Limit=500" | jq .TotalRecordCount; }
 for _ in $(seq 60); do   # 60 seconds, then give up
-  [ "$(count Movie)" = 23 ] && [ "$(count Episode)" = 3 ] && break
+  [ "$(count Movie)" = 24 ] && [ "$(count Episode)" = 3 ] && break
   sleep 1
 done
 ```
 
-The library has 23 films and 3 episodes. test/image.sh waits the same 60 seconds.
+The library has 24 films and 3 episodes. test/image.sh waits the same 60 seconds.
 
 ## What is in it
 
@@ -221,6 +221,14 @@ Plays: direct
 - 1: Audio eng aac
 
 ### Pgs Film
+
+Plays: direct
+
+- 0: Video none h264
+- 1: Audio eng aac, default
+- 2: Subtitle eng PGSSUB
+
+### Pgs Long Cue Film
 
 Plays: direct
 

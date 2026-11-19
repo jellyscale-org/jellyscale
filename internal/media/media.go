@@ -9,7 +9,10 @@
 // none. Every other field is sent only when it has a value.
 package media
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"io"
+)
 
 // MediaSource is one playable file of an item, as stored in media_sources and
 // in the item's DTO, and as PlaybackInfo answers it.
@@ -196,6 +199,13 @@ type MediaStream struct {
 	// showing there, t if none is. Nil: the times are not known, and the run
 	// opens the film a fixed time early. It is never stored.
 	OpenAt func(t float64) (float64, error) `json:"-"`
+	// Stored is set by a worker for a track inside the film that is stored in the
+	// asset store as a file of its own (JS-089), when the run begins mid-film. For
+	// a run whose first frame is at time t (seconds on the film's clock) it opens
+	// that file from the picture showing there, as a stream for a second input of
+	// ffmpeg. The run then opens the film at its cut and no earlier. Nil: the run
+	// reads the track from the film (OpenAt). It is never stored.
+	Stored func(t float64) (io.ReadCloser, error) `json:"-"`
 }
 
 // MarshalJSON lists a placeholder as the data stream Jellyfin 12.4 lists for a timecode track

@@ -70,6 +70,8 @@ type ImageTrack struct {
 	// packet: a muxer may write a packet well before the video of its time (ffmpeg
 	// writes a subtitle when it encodes it), and a seek to the cut then lands after it.
 	Points [][4]int64 `json:"points"`
+	// whole is the file of a stored track that is small enough to be read at once.
+	whole []byte
 }
 
 // ErrUnknownPicture means a packet of the track can't be read for what it
@@ -84,7 +86,29 @@ var imageCodecs = map[string]string{"S_HDMV/PGS": "pgs", "S_VOBSUB": "vobsub", "
 // the file's Tracks). It reads the head and the Cues, which is a small fraction
 // of the file.
 func ReadImageCues(ctx context.Context, s store.Store, key string, size int64) (ImageCues, error) {
-	file := indexFile{ctx: ctx, store: s, key: key, size: size}
+	return readImageCues(&indexFile{ctx: ctx, store: s, key: key, size: size})
+}
+
+// ReadStoredTrack is the cue points of the one track of a stored image track
+// (see Feed): a file that holds its packets and little else. A track with no
+// packet has no points. A track that fits in the head that is read (storedHead)
+// is kept whole, so that nothing of it is read twice.
+func ReadStoredTrack(ctx context.Context, s store.Store, key string, size int64) (ImageTrack, error) {
+	file := &indexFile{ctx: ctx, store: s, key: key, size: size, headSize: storedHead}
+	found, err := readImageCues(file)
+	track := found[0]
+	if int64(len(file.head)) == size {
+		track.whole = file.head
+	}
+	return track, err
+}
+
+// storedHead is how much of a stored track's start is read for its layout: the
+// Segment's header and its SeekHead, which are a few hundred bytes. A small track
+// is then all of it.
+const storedHead = 16 << 10
+
+func readImageCues(file *indexFile) (ImageCues, error) {
 	base, where, unit, tracks, err := file.matroskaLayout()
 	if errors.Is(err, ErrNoIndex) {
 		return ImageCues{}, nil // The track's times are unknown.

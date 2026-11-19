@@ -37,6 +37,7 @@ type cueFilm struct {
 	mpeg2     bool   // MPEG-2 video, as a DVD rip has.
 	seconds   int    // At 24000/1001 frames a second, as a Blu-ray's: a keyframe every 2.002 s, so one never falls on a cue's packet.
 	noise     string // The video bitrate of a noisy picture ("2M"), so reading it costs bytes; empty is black.
+	dim       bool   // The noisy picture is dark (no pixel is bright), so that picture can tell a cue's bar in it.
 	cues      []testenv.Cue
 	sup       []byte // The PGS stream itself, in place of cues.
 	beside    bool   // The track is a file beside the film (name.en.sup), not in it.
@@ -86,7 +87,11 @@ func (c cueFilm) write(t *testing.T, dir, name string) int64 {
 	case c.mpeg2:
 		args = append(args, "-c:v", "mpeg2video", "-b:v", "2M", "-g", "24")
 	case c.noise != "":
-		args = append(args, "-vf", "noise=alls=40:allf=t", "-c:v", "libx264", "-preset", "ultrafast", "-b:v", c.noise, "-minrate", c.noise, "-maxrate", c.noise, "-bufsize", c.noise, "-g", "48")
+		vf := "noise=alls=40:allf=t"
+		if c.dim {
+			vf += ",lutyuv=y=val/3"
+		}
+		args = append(args, "-vf", vf, "-c:v", "libx264", "-preset", "ultrafast", "-b:v", c.noise, "-minrate", c.noise, "-maxrate", c.noise, "-bufsize", c.noise, "-g", "48")
 	default:
 		args = append(args, "-c:v", "libx264", "-preset", "ultrafast", "-g", "48")
 	}

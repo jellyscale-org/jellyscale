@@ -340,6 +340,23 @@ func (s *Server) startFonts(ctx context.Context, itemID string, source items.Sou
 	}
 }
 
+// startImageTracks asks a worker to store the film's image tracks, without
+// waiting, when a transcode burns one that is inside the film in (see
+// transcode.StartImageTracks): a seek into a long cue is then cheap. A failure is
+// only logged: the film plays as before, and the next request asks again.
+func (s *Server) startImageTracks(ctx context.Context, itemID string, source items.Source, subtitle *int) {
+	if subtitle == nil || !slices.Contains(subtitles.ImageTracks(source), *subtitle) || snapshotOf(ctx) != nil {
+		return
+	}
+	assets, err := s.stores.Open(source.AssetStoreURI)
+	if err == nil {
+		err = transcode.StartImageTracks(ctx, s.Pool, assets, itemID, source)
+	}
+	if err != nil {
+		s.Log.Warn("image tracks job not started", "item", itemID, "source", source.ID, "error", err)
+	}
+}
+
 // sourceReader reads a source's stored row, once however often it is called.
 type sourceReader = func() (items.Source, bool, error)
 

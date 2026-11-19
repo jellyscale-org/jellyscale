@@ -43,6 +43,11 @@ const (
 	// take no subtitle slot: a library full of them must not hold up a viewer's
 	// track.
 	chapterSlots = 2
+	// imageSlots is how many films' image tracks a worker extracts at once.
+	// Nobody waits on one and its read is the whole film, up to an hour, so it
+	// takes no subtitle slot either: a few burnt films must not hold up a viewer's
+	// text track.
+	imageSlots = 2
 )
 
 var (
@@ -160,13 +165,65 @@ func StartFonts(ctx context.Context, pool *pgxpool.Pool, assets store.Store, ite
 	return nil
 }
 
+// StartImageTracks asks for the image tracks inside src's file (PGS, VobSub, DVB)
+// to be stored in the asset store (JS-089), without waiting for them, as a play
+// that burns one does: a run that begins mid-film then draws the cue showing at
+// its cut from the stored track, not by reading the film from where the cue began.
+// One job reads the film once and stores every such track, whoever asks and
+// however many tracks the film has. It asks for none that is stored, none the
+// film cannot give (left out by an earlier job that ended, or a job that failed
+// for the film's own reason; both end with a new file), and none while a job for
+// the film is live or has just failed, as for a font.
+func StartImageTracks(ctx context.Context, pool *pgxpool.Pool, assets store.Store, itemID string, src items.Source) error {
+	missing := slices.Clone(subtitles.ImageTracks(src))
+	var err error
+	missing = slices.DeleteFunc(missing, func(index int) bool {
+		if err != nil {
+			return false
+		}
+		_, statErr := assets.Stat(ctx, subtitles.ImageKey(src, index))
+		if statErr != nil && !errors.Is(statErr, store.ErrNotFound) {
+			err = statErr
+		}
+		return statErr == nil
+	})
+	if err != nil {
+		return fromStore(src.AssetStoreURI, err)
+	}
+	if len(missing) == 0 {
+		return nil
+	}
+	key := subtitles.ImagesKey(src)
+	var state string
+	var permanent bool
+	var skipped []int32
+	err = pool.QueryRow(ctx, "SELECT state, permanent, skipped FROM subtitle_jobs WHERE key = $1", key).Scan(&state, &permanent, &skipped)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+	case err != nil:
+		return fromPool(err)
+	case state == "failed" && permanent:
+		return nil
+	case state == "done":
+		missing = slices.DeleteFunc(missing, func(index int) bool { return slices.Contains(skipped, int32(index)) })
+		if len(missing) == 0 {
+			return nil
+		}
+	}
+	if err := enqueueJob(ctx, pool, subtitleJob{Key: key, Kind: "images", Item: itemID, Source: src.ID}, failureMemory); err != nil {
+		return err
+	}
+	Notify(ctx, pool, subtitleHint)
+	return nil
+}
+
 // enqueueJob queues job unless one is live. A finished or failed row is
 // replaced only once it is older than memory, so the object that has just been
 // put, and a failure that has just been reported, are found and not run again.
 func enqueueJob(ctx context.Context, pool *pgxpool.Pool, job subtitleJob, memory time.Duration) error {
 	_, err := pool.Exec(ctx, `INSERT INTO subtitle_jobs (key, kind, item_id, source_id, idx) VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (key) DO UPDATE SET state = 'queued', worker = NULL, attempts = 0, error = NULL, permanent = false, ended_at = NULL,
-			lease_expires_at = NULL, created_at = now()
+			lease_expires_at = NULL, created_at = now(), skipped = '{}'
 		WHERE subtitle_jobs.state IN ('done', 'failed') AND subtitle_jobs.ended_at < now() - make_interval(secs => $6)`,
 		job.Key, job.Kind, job.Item, job.Source, job.Index, memory.Seconds())
 	return fromPool(err)
@@ -193,7 +250,7 @@ func awaitJob(ctx context.Context, pool *pgxpool.Pool, hub *Hub, job subtitleJob
 		// A running job whose lease has lapsed is as good as queued.
 		err := pool.QueryRow(ctx, `SELECT COALESCE(j.state, ''), COALESCE(j.error, ''), COALESCE(j.permanent, false), `+workerAliveSQL+`,
 				COALESCE(j.state = 'queued' OR (j.state = 'running' AND j.lease_expires_at < now()), false),
-				EXISTS (SELECT 1 FROM subtitle_jobs WHERE state = 'running' AND lease_expires_at > now() AND kind <> 'chapters')
+				EXISTS (SELECT 1 FROM subtitle_jobs WHERE state = 'running' AND lease_expires_at > now() AND kind NOT IN ('chapters', 'images'))
 			FROM (SELECT 1) one LEFT JOIN subtitle_jobs j ON j.key = $2`, liveTiming("counted").Seconds(), job.Key).Scan(&state, &reason, &permanent, &alive, &unclaimed, &extracting)
 		if err != nil {
 			return fromPool(err)
@@ -235,26 +292,33 @@ type subtitleJob struct {
 
 // RunSubtitles claims subtitle jobs until ctx ends, up to four at a time,
 // separately from the transcode slots, and waits for its extractions to end.
+// The film's image tracks (JS-089) are claimed here too, but on imageSlots of
+// their own.
 func (w *Worker) RunSubtitles(ctx context.Context) {
-	w.runJobs(ctx, false, subtitleSlots)
+	var running sync.WaitGroup
+	running.Add(1)
+	go func() {
+		defer running.Done()
+		w.runJobs(ctx, "images", imageSlots)
+	}()
+	w.runJobs(ctx, "viewer", subtitleSlots)
+	running.Wait()
 }
 
 // RunChapterImages claims chapter-image jobs until ctx ends, two at a time, on
 // slots of their own, and waits for them to end.
 func (w *Worker) RunChapterImages(ctx context.Context) {
-	w.runJobs(ctx, true, chapterSlots)
+	w.runJobs(ctx, "chapters", chapterSlots)
 }
 
-// runJobs claims the jobs of one queue, chapter images or the rest.
-func (w *Worker) runJobs(ctx context.Context, chapters bool, n int) {
+// runJobs claims the jobs of one queue: "chapters", "images" or "viewer", the
+// kinds a viewer's request waits on.
+func (w *Worker) runJobs(ctx context.Context, queue string, n int) {
 	w.setID()
 	slots := make(chan struct{}, n)
 	var running sync.WaitGroup
 	defer running.Wait()
-	kind := "subtitles"
-	if chapters {
-		kind = "chapter_images"
-	}
+	kind := map[string]string{"viewer": "subtitles", "chapters": "chapter_images", "images": "image_tracks"}[queue]
 	wake, unsubscribe := w.Hub.Subscribe(subtitleHint)
 	defer unsubscribe()
 	ticker := time.NewTicker(time.Second)
@@ -263,7 +327,7 @@ func (w *Worker) runJobs(ctx context.Context, chapters bool, n int) {
 		select {
 		case slots <- struct{}{}:
 			jobCtx, session := w.subtitleContext(ctx)
-			job, ok, err := w.claimSubtitle(ctx, chapters, session)
+			job, ok, err := w.claimSubtitle(ctx, queue, session)
 			if err != nil && ctx.Err() == nil {
 				w.Log.Error("claiming a subtitle job failed", "error", err)
 			}
@@ -317,9 +381,9 @@ func (w *Worker) subtitleContext(ctx context.Context) (context.Context, string) 
 
 // claimSubtitle takes a queued job, or one whose worker stopped renewing its
 // lease. A job whose lease has been lost subtitleAttempts times is failed
-// instead, since whatever it does is killing its workers. Chapter-image jobs
-// and the others are claimed apart, so neither waits behind the other.
-func (w *Worker) claimSubtitle(ctx context.Context, chapters bool, session string) (subtitleJob, bool, error) {
+// instead, since whatever it does is killing its workers. Chapter-image jobs,
+// image-track jobs and the others are claimed apart, so none waits behind another.
+func (w *Worker) claimSubtitle(ctx context.Context, queue string, session string) (subtitleJob, bool, error) {
 	if _, err := w.Pool.Exec(ctx, `UPDATE subtitle_jobs SET state = 'failed', permanent = true, error = 'the worker stopped renewing its lease', ended_at = now()
 		WHERE state = 'running' AND lease_expires_at < now() AND attempts >= $1`, subtitleAttempts); err != nil {
 		return subtitleJob{}, false, err
@@ -328,9 +392,9 @@ func (w *Worker) claimSubtitle(ctx context.Context, chapters bool, session strin
 	err := w.Pool.QueryRow(ctx, `UPDATE subtitle_jobs SET state = 'running', worker = $1, attempts = attempts + 1,
 			lease_expires_at = now() + make_interval(secs => $2)
 		WHERE `+registeredIn("$1", "$4::text")+` AND key = (SELECT key FROM subtitle_jobs WHERE (state = 'queued' OR (state = 'running' AND lease_expires_at < now()))
-				AND (kind = 'chapters') = $3
+				AND (CASE WHEN kind IN ('chapters', 'images') THEN kind ELSE 'viewer' END) = $3
 			ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1)
-		RETURNING key, kind, item_id, source_id, idx`, w.ID, w.lease().Seconds(), chapters, session).Scan(&job.Key, &job.Kind, &job.Item, &job.Source, &job.Index)
+		RETURNING key, kind, item_id, source_id, idx`, w.ID, w.lease().Seconds(), queue, session).Scan(&job.Key, &job.Kind, &job.Item, &job.Source, &job.Index)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return job, false, nil
 	}
@@ -363,7 +427,11 @@ func (w *Worker) runSubtitle(ctx, jobCtx context.Context, job subtitleJob) {
 	state, reason := "done", ""
 	// Only what is the file's doing is for good; see FillFonts for the fonts,
 	// whose such failures are recorded as a result, not as a failure.
-	permanent := errors.Is(err, subtitles.ErrBadFile)
+	// A film whose image tracks could not be read within the time limit is not read
+	// again on every play, a whole-film read each time: it is left until the daily
+	// sweep of finished jobs, or the file's change, as a bad file is. The limit is
+	// not configurable, and the viewer meanwhile has the cue drawn as before JS-089.
+	permanent := errors.Is(err, subtitles.ErrBadFile) || (job.Kind == "images" && errors.Is(err, subtitles.ErrTooSlow))
 	switch {
 	case err == nil:
 	case ctx.Err() != nil:
@@ -407,7 +475,7 @@ func (w *Worker) extractTrack(ctx context.Context, job subtitleJob, log *slog.Lo
 	if err != nil {
 		return err
 	}
-	assets, err := w.jobAssets(source.AssetStoreURI)
+	assets, err := w.leasedAssets(source.AssetStoreURI, job.Key)
 	if err != nil {
 		return err
 	}
@@ -416,6 +484,22 @@ func (w *Worker) extractTrack(ctx context.Context, job subtitleJob, log *slog.Lo
 			return errors.New("the source file has changed or is gone")
 		}
 		return subtitles.FillFonts(ctx, source, media, assets, w.SubtitleTimeout, log)
+	}
+	if job.Kind == "images" {
+		if subtitles.ImagesKey(source) != job.Key {
+			return errors.New("the source file has changed or is gone")
+		}
+		left, err := subtitles.FillImages(ctx, source, media, assets, w.SubtitleTimeout, log)
+		if err != nil {
+			return err
+		}
+		// What the film can't give is not asked for again until the file changes.
+		leftOut := make([]int32, len(left))
+		for i, index := range left {
+			leftOut[i] = int32(index)
+		}
+		_, err = w.Pool.Exec(ctx, "UPDATE subtitle_jobs SET skipped = $3 WHERE key = $1 AND worker = $2", job.Key, w.ID, leftOut)
+		return fromPool(err)
 	}
 	if job.Kind == "sup" {
 		if subtitles.SupKey(source, job.Index) != job.Key {

@@ -34,7 +34,7 @@ type assetState struct {
 }
 
 // sweepAssets removes from each library's asset store what no version of any
-// file needs: the subtitle text, .sup copies, primary image, fonts manifest and
+// file needs: the subtitle text, .sup copies, stored image tracks, primary image, fonts manifest and
 // chapter pictures of a file that was removed (its item deleted after
 // missingGrace) or of the previous version of a changed file, and the fonts
 // that no remaining manifest names. Each store is listed once, then Postgres is
@@ -149,6 +149,7 @@ func (w *Worker) readAssetState(ctx context.Context, began time.Time) (assetStat
 		for _, stream := range streams {
 			current[subtitles.Key(src, stream.Index)] = true
 			current[subtitles.SupKey(src, stream.Index)] = true
+			current[subtitles.ImageKey(src, stream.Index)] = true
 		}
 		current[subtitles.FontsKey(src.ID, src.ETag)] = true
 		current[library.ChapterDir(src.ID, src.ETag)] = true
@@ -216,6 +217,8 @@ func assetKind(key string) string {
 		return "subtitles"
 	case parts[0] == "subtitles" && len(parts) == 4 && strings.HasSuffix(key, ".sup"):
 		return "sup"
+	case parts[0] == "subtitles" && len(parts) == 4 && strings.HasSuffix(key, ".mkv"):
+		return "tracks"
 	case parts[0] == "attachments" && len(parts) == 3 && strings.HasSuffix(key, ".fonts"):
 		return "manifests"
 	case parts[0] == "fonts" && len(parts) == 2:
@@ -297,7 +300,7 @@ func (w *Worker) sweepAssetStore(ctx context.Context, locks *assetLocks, uri str
 			removed[assetKind(object.Key)]++
 		}
 	}
-	w.Log.Info("swept an asset store", "store", uri, "subtitles", removed["subtitles"], "sup", removed["sup"], "images", removed["images"],
+	w.Log.Info("swept an asset store", "store", uri, "subtitles", removed["subtitles"], "sup", removed["sup"], "tracks", removed["tracks"], "images", removed["images"],
 		"fonts", removed["fonts"], "chapters", removed["chapters"], "manifests", removed["manifests"])
 	return failure
 }
@@ -378,6 +381,36 @@ func (w *Worker) jobAssets(uri string) (store.Store, error) {
 		return nil, err
 	}
 	return lockedAssets{assets, w.Pool}, nil
+}
+
+// leasedAssets is jobAssets for the puts of subtitle job key, which this worker
+// runs: a put only lands while the worker still holds the job's lease, so a worker
+// that was replaced while it read the film (the lease keeper has not yet told it)
+// stores nothing.
+func (w *Worker) leasedAssets(uri, key string) (store.Store, error) {
+	assets, err := w.jobAssets(uri)
+	if err != nil {
+		return nil, err
+	}
+	return leasedAssets{assets, w.Pool, key, w.ID}, nil
+}
+
+type leasedAssets struct {
+	store.Store
+	pool        *pgxpool.Pool
+	job, worker string
+}
+
+func (l leasedAssets) Put(ctx context.Context, key string, body io.Reader) error {
+	var held bool
+	if err := l.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM subtitle_jobs WHERE key = $1 AND worker = $2 AND state = 'running'
+		AND lease_expires_at > now())`, l.job, l.worker).Scan(&held); err != nil {
+		return err
+	}
+	if !held {
+		return errors.New("the job's lease is no longer this worker's, so nothing is stored")
+	}
+	return l.Store.Put(ctx, key, body)
 }
 
 // assetLocks is the one connection a sweep takes its delete locks on, however
@@ -480,7 +513,7 @@ func (w *Worker) assetWanted(ctx context.Context, kind, id, key string, began ti
 		return false, err
 	}
 	for _, stream := range streams {
-		if stream.Type == "Subtitle" && (key == subtitles.Key(src, stream.Index) || key == subtitles.SupKey(src, stream.Index)) {
+		if stream.Type == "Subtitle" && (key == subtitles.Key(src, stream.Index) || key == subtitles.SupKey(src, stream.Index) || key == subtitles.ImageKey(src, stream.Index)) {
 			return true, nil
 		}
 	}

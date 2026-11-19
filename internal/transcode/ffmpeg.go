@@ -64,6 +64,9 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 	burn := spec.Subtitle != nil && image == nil
 	// A track beside the film is a file of its own, read from its start.
 	external := image != nil && image.File != ""
+	// A restart draws an image track inside the film from its stored copy, a second input, when the
+	// worker has one (JS-089): the film is then opened at the cut like a film with no subtitle.
+	stored := image != nil && image.Stored != nil && start > 0
 	var base, frameDuration float64
 	if start > 0 || burn || external {
 		var err error
@@ -82,7 +85,7 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		if keyframe, err = firstFrameAt(ctx, input, seek+max(base, 0)); err != nil {
 			return nil, err
 		}
-		if image != nil && !external {
+		if image != nil && !external && !stored {
 			// The frames before the cut are decoded and dropped by trim, not -ss,
 			// so the first one kept is the same on every ffmpeg.
 			trim = fmt.Sprintf("trim=start=%s,", seconds(keyframe-frameDuration/4))
@@ -114,7 +117,7 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		// The size the track's bitmaps are placed on, which its stream may not say.
 		canvas = []string{"-canvas_size", fmt.Sprintf("%dx%d", image.Width, image.Height)}
 	}
-	if !external {
+	if !external && !stored {
 		args = append(args, canvas...)
 	}
 	args = append(args, "-i", input)
@@ -130,6 +133,17 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 			args = append(args, "-itsoffset", seconds(base))
 		}
 		args = append(args, "-i", image.File)
+	}
+	var feed io.ReadCloser
+	if stored {
+		// The track's times are the film's own, which -copyts keeps, so it needs no offset. It is
+		// read from standard input, which the worker's store reads feed as ffmpeg takes them.
+		var err error
+		if feed, err = image.Stored(keyframe); err != nil {
+			return nil, err
+		}
+		args = append(args, canvas...)
+		args = append(args, "-i", "pipe:0")
 	}
 	if image == nil {
 		args = append(args, "-map", "0:v:0")
@@ -168,7 +182,7 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		// eof_action=pass lets the video go on when the track's packets end,
 		// as they do before the film does.
 		track := fmt.Sprintf("0:%d", *spec.Subtitle)
-		if external {
+		if external || stored {
 			track = fmt.Sprintf("%d:0", inputs)
 		}
 		args = append(args, "-filter_complex", fmt.Sprintf("[0:v:0]%s%s[v];[%s]scale=%d:%d[s];[v][s]overlay=eof_action=pass:repeatlast=0,format=yuv420p[o]",
@@ -207,6 +221,9 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 		"-hls_segment_filename", filepath.Join(dir, "%d.m4s"), filepath.Join(dir, "index.m3u8"),
 	)
 	cmd := mediatool.Command(ctx, "ffmpeg", args...)
+	if feed != nil {
+		cmd.Stdin = feed
+	}
 	if burn {
 		cmd.Dir = dir // Where the subtitle filter finds its file; dir is absolute.
 	}

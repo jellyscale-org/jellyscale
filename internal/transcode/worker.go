@@ -635,10 +635,30 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 	chunked, size := w.chunked(job), w.chunkSize()
 	// An AV1 fallback is made by one ffmpeg for each segment (AV1SegmentCommand).
 	segmentRuns := job.Spec.Recode == "av1"
+	// A track inside the film that is stored (JS-089): a run that begins mid-film
+	// draws the cue showing at its cut from the stored file, read as a second
+	// input, and opens the film at its cut and no earlier. The read of the file
+	// ends with the job.
+	var feed *trackRead
+	stored := false
+	if image != nil && image.Fingerprint == "" && job.Start > 0 {
+		track, found, err := w.findStoredTrack(ctx, source, image.Index)
+		if err != nil {
+			return err
+		}
+		if found {
+			stored = true
+			feed = newTrackRead(ctx)
+			defer feed.end()
+			local := *image
+			local.Stored = func(t float64) (io.ReadCloser, error) { return feed.open(track, t) }
+			image = &local
+		}
+	}
 	// A track inside the film whose cue points the scan read: a run that begins
 	// mid-film reads the packet of the cue showing at its cut (a few small reads
 	// of the film, under the job's lease), and opens early enough to see it.
-	if image != nil && image.Fingerprint == "" {
+	if image != nil && image.Fingerprint == "" && !stored {
 		var cues library.ImageCues
 		if err := w.Pool.QueryRow(ctx, "SELECT image_cues FROM media_sources WHERE id = $1::uuid", source.ID).Scan(&cues); err != nil {
 			return fromPool(err)
@@ -734,6 +754,11 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		if err := mediatool.Start(cmd); err != nil {
 			return err
 		}
+		// A stored track that can't be read ends the run, whatever ffmpeg made meanwhile.
+		var trackFailed <-chan struct{}
+		if feed != nil {
+			trackFailed = feed.failed
+		}
 		exited := make(chan error, 1)
 		go func() { exited <- cmd.Wait() }()
 
@@ -745,6 +770,9 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		stop := func(reason string) {
 			log.Info("stopping ffmpeg", "reason", reason)
 			cmd.Process.Kill() //nolint:errcheck
+			if feed != nil {
+				feed.end() // Its read of the track may wait for the run, and ffmpeg's exit waits for it.
+			}
 			<-exited
 		}
 		// final is set once ffmpeg has exited. The segment it flushes on the way
@@ -882,7 +910,13 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		for {
 			job.lease.turn()
 			select {
+			case <-trackFailed:
+				stop("the stored track could not be read")
+				return fromStore(source.AssetStoreURI, feed.cause())
 			case err := <-exited:
+				if feed != nil && feed.cause() != nil {
+					return fromStore(source.AssetStoreURI, feed.cause())
+				}
 				caughtUp, uploadErr := upload(true)
 				// What ffmpeg made waits for Postgres, until the keeper gives the job up.
 				for errors.Is(uploadErr, errWaiting) && ctx.Err() == nil {

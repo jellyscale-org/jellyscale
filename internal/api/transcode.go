@@ -234,12 +234,14 @@ func playlist(w http.ResponseWriter, text string) {
 
 func (s *Server) masterPlaylist(w http.ResponseWriter, r *http.Request) {
 	if req, ok := s.hlsRequestFor(w, r); ok {
+		s.startImageTracks(r.Context(), req.spec.Item, req.source, req.spec.Subtitle)
 		playlist(w, playback.Master(req.spec, req.media, req.query(r)))
 	}
 }
 
 func (s *Server) mainPlaylist(w http.ResponseWriter, r *http.Request) {
 	if req, ok := s.hlsRequestFor(w, r); ok {
+		s.startImageTracks(r.Context(), req.spec.Item, req.source, req.spec.Subtitle)
 		playlist(w, playback.Main(req.layout, req.query(r)))
 	}
 }

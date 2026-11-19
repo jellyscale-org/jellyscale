@@ -5,7 +5,7 @@ image	ghcr.io/jellyscale-org/jellyscale
 compose	deploy/fixtures/compose.yaml
 user	test
 password	test
-films	23
+films	24
 episodes	3
 library	Movies	movies	movies
 library	Shows	tvshows	shows
@@ -23,6 +23,7 @@ film	Idx Beside Film
 film	Kino Film
 film	Orphan Beside Film
 film	Pgs Film
+film	Pgs Long Cue Film
 film	Pgs Transcode Film
 film	Phi Film
 film	Plain Film
@@ -49,6 +50,7 @@ plays	Idx Beside Film	direct
 plays	Kino Film	direct
 plays	Orphan Beside Film	direct
 plays	Pgs Film	direct
+plays	Pgs Long Cue Film	direct
 plays	Pgs Transcode Film	transcode
 plays	Phi Film	direct
 plays	Plain Film	direct
@@ -110,6 +112,9 @@ track	Orphan Beside Film	1	Audio	eng	aac	-
 track	Pgs Film	0	Video	none	h264	-
 track	Pgs Film	1	Audio	eng	aac	default
 track	Pgs Film	2	Subtitle	eng	PGSSUB	-
+track	Pgs Long Cue Film	0	Video	none	h264	-
+track	Pgs Long Cue Film	1	Audio	eng	aac	default
+track	Pgs Long Cue Film	2	Subtitle	eng	PGSSUB	-
 track	Pgs Transcode Film	0	Video	none	h264	-
 track	Pgs Transcode Film	1	Audio	eng	ac3	default
 track	Pgs Transcode Film	2	Subtitle	eng	PGSSUB	-
