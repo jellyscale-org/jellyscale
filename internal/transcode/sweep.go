@@ -12,6 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"jellyscale/internal/db"
 	"jellyscale/internal/store"
 )
 
@@ -112,26 +113,15 @@ type specUse struct {
 // listing the first has made out of date. A listing that fails removes
 // nothing, is logged, and leaves the size metric as it was.
 func (w *Worker) sweepSegments(ctx context.Context) {
-	conn, err := w.Pool.Acquire(ctx)
+	lock, held, err := db.TryLock(ctx, w.Pool, "sweep:segments")
 	if err != nil {
-		w.logSweepFailure(ctx, "segments", err)
-		return
-	}
-	defer conn.Release()
-	var held bool
-	if err := conn.QueryRow(ctx, "SELECT pg_try_advisory_lock(hashtextextended('sweep:segments', 0))").Scan(&held); err != nil {
 		w.logSweepFailure(ctx, "segments", err)
 		return
 	}
 	if !held {
 		return
 	}
-	defer func() {
-		// A lock left on a pooled connection would be held for good.
-		if _, err := conn.Exec(context.WithoutCancel(ctx), "SELECT pg_advisory_unlock(hashtextextended('sweep:segments', 0))"); err != nil {
-			conn.Hijack().Close(context.WithoutCancel(ctx)) //nolint:errcheck
-		}
-	}()
+	defer lock.Release()
 
 	objects, err := w.Segments.List(ctx, "segments")
 	if errors.Is(err, fs.ErrNotExist) {

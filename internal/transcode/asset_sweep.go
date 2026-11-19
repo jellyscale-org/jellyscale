@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"jellyscale/internal/db"
 	"jellyscale/internal/items"
 	"jellyscale/internal/library"
 	"jellyscale/internal/media"
@@ -40,6 +41,8 @@ type assetState struct {
 // read (a handful of queries, however many films), and only then is anything
 // removed: a sweep that cannot do both removes nothing from that store.
 func (w *Worker) sweepAssets(ctx context.Context) {
+	locks := &assetLocks{pool: w.Pool}
+	defer locks.close()
 	var began time.Time
 	rows, err := w.Pool.Query(ctx, "SELECT now(), asset_store_uri FROM libraries WHERE asset_store_uri <> '' GROUP BY asset_store_uri")
 	if err != nil {
@@ -85,7 +88,7 @@ func (w *Worker) sweepAssets(ctx context.Context) {
 		return
 	}
 	for uri, assets := range stores {
-		if err := w.sweepAssetStore(ctx, uri, assets, listed[uri], state); err != nil {
+		if err := w.sweepAssetStore(ctx, locks, uri, assets, listed[uri], state); err != nil {
 			w.logSweepFailure(ctx, "asset store "+uri, err)
 		}
 	}
@@ -225,7 +228,7 @@ func assetKind(key string) string {
 	return ""
 }
 
-func (w *Worker) sweepAssetStore(ctx context.Context, uri string, assets store.Store, objects []store.Object, state assetState) error {
+func (w *Worker) sweepAssetStore(ctx context.Context, locks *assetLocks, uri string, assets store.Store, objects []store.Object, state assetState) error {
 	current := state.keep[uri]
 	var kept []string // The manifests that stay, which name the fonts that stay.
 	var remove []store.Object
@@ -287,7 +290,7 @@ func (w *Worker) sweepAssetStore(ctx context.Context, uri string, assets store.S
 	var failure error
 	for _, object := range remove {
 		var gone bool
-		if gone, failure = w.deleteAsset(ctx, uri, assets, object.Key, state.began); failure != nil {
+		if gone, failure = w.deleteAsset(ctx, locks, uri, assets, object.Key, state.began); failure != nil {
 			break
 		}
 		if gone {
@@ -310,21 +313,22 @@ func (w *Worker) sweepAssetStore(ctx context.Context, uri string, assets store.S
 // puts after the delete, not between the question and it. A lock that is held
 // is a put in flight, and the object is left for the next sweep. It reports
 // whether the object was removed.
-func (w *Worker) deleteAsset(ctx context.Context, uri string, assets store.Store, key string, began time.Time) (bool, error) {
+func (w *Worker) deleteAsset(ctx context.Context, locks *assetLocks, uri string, assets store.Store, key string, began time.Time) (bool, error) {
 	kind := assetKind(key)
 	parts := strings.Split(key, "/")
+	lock, err := locks.get(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer locks.unlockAll(ctx)
+	var ok bool
 	if kind == "images" {
-		release, ok, err := w.holdScanLocks(ctx, uri)
-		if err != nil || !ok {
-			return false, err
-		}
-		defer release()
+		ok, err = tryScanLocks(ctx, lock, uri)
 	} else {
-		release, ok, err := w.tryAssetLock(ctx, assetLockName(key))
-		if err != nil || !ok {
-			return false, err
-		}
-		defer release()
+		ok, err = lock.Try(ctx, assetLockName(key))
+	}
+	if err != nil || !ok {
+		return false, err
 	}
 	wanted, err := w.assetWanted(ctx, kind, parts[1], key, began)
 	if err != nil || wanted {
@@ -341,28 +345,6 @@ func assetLockName(key string) string {
 		return "asset:fonts"
 	}
 	return "asset:" + strings.Split(key, "/")[1]
-}
-
-// tryAssetLock takes the advisory lock without waiting; ok is false when a put
-// holds it. A lock that cannot be released would stay on a pooled connection
-// for good, so the connection is closed instead.
-func (w *Worker) tryAssetLock(ctx context.Context, name string) (release func(), ok bool, err error) {
-	conn, err := w.Pool.Acquire(ctx)
-	if err != nil {
-		return nil, false, err
-	}
-	if err := conn.QueryRow(ctx, "SELECT pg_try_advisory_lock(hashtextextended($1, 0))", name).Scan(&ok); err != nil || !ok {
-		conn.Release()
-		return nil, false, err
-	}
-	return func() {
-		ctx := context.WithoutCancel(ctx)
-		if _, err := conn.Exec(ctx, "SELECT pg_advisory_unlock(hashtextextended($1, 0))", name); err != nil {
-			conn.Hijack().Close(ctx) //nolint:errcheck
-			return
-		}
-		conn.Release()
-	}, true, nil
 }
 
 // lockedAssets is an asset store whose puts of what a job writes hold the
@@ -398,56 +380,61 @@ func (w *Worker) jobAssets(uri string) (store.Store, error) {
 	return lockedAssets{assets, w.Pool}, nil
 }
 
-// holdScanLocks takes the scan lock of every library of the store, or none: ok
-// is false when a scan holds one. release gives them back.
-func (w *Worker) holdScanLocks(ctx context.Context, uri string) (release func(), ok bool, err error) {
-	conn, err := w.Pool.Acquire(ctx)
-	if err != nil {
-		return nil, false, err
-	}
-	rows, err := conn.Query(ctx, `SELECT id::text, pg_try_advisory_lock(hashtextextended('scan:' || id::text, 0))
-		FROM libraries WHERE asset_store_uri = $1`, uri)
-	if err != nil {
-		conn.Release()
-		return nil, false, err
-	}
-	var taken []string
-	ok = true
-	for rows.Next() {
-		var id string
-		var got bool
-		if err := rows.Scan(&id, &got); err != nil {
-			rows.Close()
-			err = errors.Join(err, unlockScans(ctx, conn, taken))
-			return nil, false, err
-		}
-		if got {
-			taken = append(taken, id)
-		} else {
-			ok = false
-		}
-	}
-	rows.Close()
-	release = func() { unlockScans(context.WithoutCancel(ctx), conn, taken) } //nolint:errcheck
-	if err := rows.Err(); err != nil || !ok {
-		release()
-		return nil, false, err
-	}
-	return release, true, nil
+// assetLocks is the one connection a sweep takes its delete locks on, however
+// many objects it deletes: opened when the first is needed, outside the pool, so
+// that the pool stays whole for the questions asked while a lock is held.
+type assetLocks struct {
+	pool *pgxpool.Pool
+	lock *db.Lock
 }
 
-// unlockScans releases the locks and the connection; a lock that cannot be
-// released would stay on a pooled connection for good, so the connection is
-// closed instead.
-func unlockScans(ctx context.Context, conn *pgxpool.Conn, ids []string) error {
-	for _, id := range ids {
-		if _, err := conn.Exec(ctx, "SELECT pg_advisory_unlock(hashtextextended('scan:' || $1::text, 0))", id); err != nil {
-			conn.Hijack().Close(ctx) //nolint:errcheck
-			return err
+func (a *assetLocks) get(ctx context.Context) (*db.Lock, error) {
+	if a.lock == nil {
+		lock, err := db.NewLock(ctx, a.pool)
+		if err != nil {
+			return nil, err
 		}
+		a.lock = lock
 	}
-	conn.Release()
-	return nil
+	return a.lock, nil
+}
+
+// unlockAll gives back what the last object took, so that nothing is held into
+// the next. A connection that cannot do it is closed, which ends the locks, and
+// the next object opens another.
+func (a *assetLocks) unlockAll(ctx context.Context) {
+	if err := a.lock.UnlockAll(context.WithoutCancel(ctx)); err != nil {
+		a.close()
+	}
+}
+
+func (a *assetLocks) close() {
+	if a.lock != nil {
+		a.lock.Release()
+		a.lock = nil
+	}
+}
+
+// tryScanLocks takes the scan lock of every library of the store, or none: ok
+// is false when a scan holds one. What it took before failing is the caller's to
+// give back.
+func tryScanLocks(ctx context.Context, lock *db.Lock, uri string) (ok bool, err error) {
+	rows, err := lock.Conn().Query(ctx, `SELECT pg_try_advisory_lock(hashtextextended('scan:' || id::text, 0))
+		FROM libraries WHERE asset_store_uri = $1`, uri)
+	if err != nil {
+		return false, err
+	}
+	ok = true
+	for rows.Next() {
+		var got bool
+		if err := rows.Scan(&got); err != nil {
+			rows.Close()
+			return false, err
+		}
+		ok = ok && got
+	}
+	rows.Close()
+	return ok && rows.Err() == nil, rows.Err()
 }
 
 // assetWanted asks Postgres about one object: whether the item names the image,
