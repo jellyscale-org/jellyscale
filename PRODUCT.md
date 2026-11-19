@@ -58,6 +58,7 @@ Jellyfin's behaviour shows what clients depend on, not what to copy. jellyscale 
 - A slow transcode is shared across the cluster instead of stalling a viewer.
 - A transcode reads only as far ahead as the viewer needs, so a viewer who stops early doesn't cost the whole film's reading.
 - Films can live in object storage as well as on disks.
+- Nothing but static artwork is reached without authorization. Streaming and every other function need a signed-in person whose role allows it, enforced on every request, where Jellyfin leaves openings.
 - A viewer's track menus can hold only the languages they use, and a film knows its original language from its own file.
 - Operators see the real encode speed and the worker for every stream.
 - Where a capability can't yet serve every film, the gap is written down and planned, not left as a quirk.
