@@ -70,6 +70,30 @@ AV1 fallback row: 4k tonemap cpu 3.82 s/s wall 0.53 s/s
 
 (`TestTheAV1FallbacksCommandsAreMeasuredOnA1080pAndA4KSource` logs the same figures for a one-segment film.) The price is the 6.1 row rounded up, 2.0, 2.4, 3.6 and 4.2 cores, so a worker on either ffmpeg that holds jobs that add up to its cores keeps up. `testsrc2` is easier than a film: not measured on one. 
 
+**An HDR copy's fallback keeps the picture's range** (JS-134). The fallback of an HDR10, HLG, HDR10+ or Dolby Vision copy (a base layer of PQ or HLG) is not tone mapped: its HEVC or AV1 encode is the copy's own picture at 10 bits, `format=yuv420p10le` and no tone-mapping filter, with no tag named, because the decoded frames carry the copy's primaries, transfer, matrix and range and both encoders write them (observed in `compat/captures/hdr-fallback-12.4.md`, with the commands that reproduce it). jellyfin-web's player was seen to take it in Chromium for a 10-bit PQ AV1 copy, in both directions across the change and under a 10-bit codec string, with the copy and the fallback at one video timescale (the same file); HEVC (this Chromium plays no `hvc1`), HLG and Dolby Vision were not observed in a browser. The e2e tier plays the AV1 case on the real stack, where the copy and the fallback have different timescales. An H.264 fallback, and the fallback of an SDR copy of any codec and bit depth, are as they were: 8 bits, and tone mapped for an HDR source. A Dolby Vision copy falls back by its base layer's transfer (profiles 7, 8.1 and 10.1 are PQ, 8.4 is HLG, so they keep 10 bits; 8.2 has an SDR base layer and goes on as an SDR copy; profile 5 has neither, so it is never copied: it is re-encoded to H.264 and tone mapped from the start, as above). The spec carries it as `Spec.HDR` (the transfer), apart from `ToneMap`, which stays "an encode that maps to SDR"; it is part of the hash.
+
+HDR fallback keeps: 10 bits (Main 10 for HEVC, profile 0 at 10 bits for AV1), colour primaries, transfer, matrix and range, as the copy has them.
+HDR fallback gap: the HDR10 mastering display is lost on ffmpeg 6.1 (the encode does not write it) and kept from ffmpeg 9, so the init segment differs with the worker's ffmpeg.
+HDR fallback gap: the HDR10 content light level is lost on ffmpeg 6.1 and kept from ffmpeg 9, as the mastering display.
+HDR fallback gap: HDR10+ dynamic metadata is lost; the picture goes on as its HDR10 base.
+HDR fallback gap: Dolby Vision dynamic metadata (the RPU, and the enhancement layer of profile 7) is lost; the picture goes on as its base layer's HDR10 or HLG.
+HDR fallback gap: lines above 1080 are lost: a 4K copy's fallback is 1920x1080 like every re-encode.
+
+An HDR fallback's own ffmpeg command used the CPU below for each second of film (user plus system, measured through a worker that made the fallback of a 6 s film of two segments, 24 fps `testsrc2` 10-bit PQ source of 1080p and of 4K, both encoders at the arguments of the fallback; wall-clock is all faster than the film plays). The price (3.2 and 4.0 cores for HEVC, 3.6 and 4.2 for AV1) is above each row. `TestTheHDRFallbacksCommandsAreMeasuredOnA1080pAndA4KSource` logs these figures. `testsrc2` is easier than a film: a real film costs more than this.
+
+HDR fallback measured on: 16 CPUs (AMD Ryzen 7 7800X3D, Linux 7.2.14), ffmpeg 9.0.2, x265 4.3, SVT-AV1 4.2.0
+HDR fallback row: hevc 1080p cpu 2.08 s/s wall 0.36 s/s
+HDR fallback row: hevc 4k cpu 3.03 s/s wall 0.41 s/s
+HDR fallback row: av1 1080p cpu 1.07 s/s wall 0.20 s/s
+HDR fallback row: av1 4k cpu 1.71 s/s wall 0.30 s/s
+
+HDR fallback measured on: 16 CPUs (AMD Ryzen 7 7800X3D, Linux 7.2.14) in Ubuntu 24.04's container (test/ffmpeg61.sh), ffmpeg 6.1.1, x265 3.5, SVT-AV1 1.7.0
+HDR fallback row: hevc 1080p cpu 1.96 s/s wall 0.34 s/s
+HDR fallback row: hevc 4k cpu 2.87 s/s wall 0.41 s/s
+HDR fallback row: av1 1080p cpu 2.09 s/s wall 0.32 s/s
+HDR fallback row: av1 4k cpu 2.40 s/s wall 0.37 s/s
+
+
 A job that fails for a cause that is not the file's is made again as the same kind of job: one request starts at most three fresh jobs, and `ensure` and PlaybackInfo count the spec's such failures (`transcode_jobs.again`) that ended within `failureMemory` (30 seconds), so a fourth failure makes them the spec's remembered failure, whichever requests the jobs were started for. hls.js abandons a request at 10 seconds and asks again, and the next one starts no job: it gets the recorded cause and PlaybackInfo refuses it, with no write from the stream role. The cause a failed job names is what the store gave back to ffmpeg: a body cut that `store.Reader` resumed is never seen by the job and cannot replace ffmpeg's own error or a wrong index (`store.InputWithFailure`).
 
 The `master.m3u8` and `main.m3u8` carry the token in their lines only when the request carried it in the query (as `ApiKey` or `api_key`, with the request's own token; any other value is not echoed). A client that sends its token in a header must send that header on every playlist and segment request. `TranscodingUrl`, the `DeliveryUrls` and the subtitle playlist still carry the token.
@@ -96,11 +120,13 @@ Jellyfin 12.4 (a `jellyfin/jellyfin:12.4` container's `encoding.xml`) has `Enabl
 | HEVC fallback re-encode of a 4K SDR source | 4.0 |
 | AV1 fallback re-encode of a 1080p SDR source | 2.0 |
 | AV1 fallback re-encode of a 4K SDR source | 2.4 |
-| AV1 fallback re-encode of a 1080p source tone mapped | 3.6 |
-| AV1 fallback re-encode of a 4K source tone mapped | 4.2 |
+| HEVC fallback re-encode of a 1080p HDR source | 3.2 |
+| HEVC fallback re-encode of a 4K HDR source | 4.0 |
+| AV1 fallback re-encode of a 1080p HDR source | 3.6 |
+| AV1 fallback re-encode of a 4K HDR source | 4.2 |
 | A copy, its audio copied or re-encoded | 0.05 |
 
-The HEVC fallback costs its corresponding x264 row plus 2.4 (less for an output under 1080p, in proportion to its pixels), a tone-mapped one included (4.4 from 1080p, 5.6 from 4K), from the measurement under Video copy above. Its output is capped at 1080 lines like any other re-encode.
+The HEVC fallback costs its corresponding x264 row plus 2.4 (less for an output under 1080p, in proportion to its pixels), from the measurement under Video copy above; an HDR copy's is not tone mapped, so its row is the SDR one's. An HDR copy's AV1 fallback is priced as the tone-mapped one was (3.6 and 4.2), above the CPU measured for it (the HDR rows under Video copy). Its output is capped at 1080 lines like any other re-encode.
 
 A job fits a worker when the costs of the jobs it holds and of this one add up to no more than its cores (a 4 core worker holds five 1080p SDR re-encodes, and a 4K tone mapped one beside one 1080p SDR), and PlaybackInfo offers a transcode whenever some one worker of the output version has the job's cost free: two workers with 2 cores free each do not hold a 3.2 core job. A job queued and not yet claimed counts, on the worker with most cores free, and a worker never claims a job that would take it over its cores; a worker without room for the oldest queued job leaves it for one that has, and takes a later job that fits. A job that costs more than the cores of every worker is refused at once. Copies are bounded apart from cores by a count per worker, 32, because a copy costs almost nothing but still reads and writes a stream; the log names the bound when every worker is at it. Helpers (Parallel transcoding) never take a worker over its cores, and a new viewer stops as many of one worker's helpers as its job needs, never a viewer's job. A worker that declares nothing, as one of the release before, takes the processors it may use (never fewer than 3.2 cores); size `transcodeCores` as the cores of the machine, less a quarter for headroom, because a new job and each seek run flat out until they are the lead ahead. Too few cores show as `cores are short` in the log, with the job's cost, and a "cannot be played at this time" dialog. The queue's cost in cores, `jellyscale_transcode_queue_cores`, is what an autoscaler should follow (docs/running.md). A paused job whose viewers have all seeked away from it is cancelled within a second and gives its cores back; jellyfin-web stops the old stream when it switches audio track or quality (`Sessions/Playing/Stopped`), which ends its job; one whose viewers have gone (a closed tab sends nothing) is ended `transcodeIdle` after their last request, as any job is. Workers and replicas roll in any order: a worker of this release keeps a positive `slots` in its row beside its cores, so a replica of the release before still counts it, and a worker of the release before is counted at its slots as cores, and a job queued by such a replica at its spec's cost.
 

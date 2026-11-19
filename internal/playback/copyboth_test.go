@@ -243,7 +243,7 @@ func TestCopyOfBothIsItsOwnOutput(t *testing.T) {
 		}
 	}
 	// Pinned so only a deliberate output-version change alters it.
-	if got, want := videoOnly.Hash(), "7a16436ef73a4b338cf176b87d2ec285"; got != want {
+	if got, want := videoOnly.Hash(), "7e8178c3f7aa8ae0f35e4f89aac0c3a0"; got != want {
 		t.Errorf("a video copy's hash is %s, was %s", got, want)
 	}
 	ac3, eac3 := both, both

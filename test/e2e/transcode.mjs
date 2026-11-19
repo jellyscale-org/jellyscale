@@ -2143,6 +2143,59 @@ await scenario("two viewers playing the same AV1 copy when its index is found wr
   }
 });
 
+// ---- An HDR10 copy whose keyframe index is found wrong keeps its range (JS-134) ----
+// The fallback of an HDR copy is the copy's own picture at 10 bits with its tags (compat/captures/hdr-fallback-12.4.md),
+// not the 8-bit tone-mapped picture JS-088 and JS-133 made. The film is HDR10 in HEVC when E2E_HEVC=1 (the browser plays
+// HEVC) and in AV1 otherwise, as CI runs it, with the irregular keyframes of Early's, and is copied with the master's
+// VIDEO-RANGE=PQ. The job finds the index wrong while the viewer plays stored copy segments, more than 4 s before the bad
+// point; he reaches 30 s past it as wentOn holds him to, and then the operator's side and the picture as the browser was
+// answered: the index dropped, an ffmpeg that encoded with the copy's codec, and a fallback segment that is 10 bits PQ.
+await scenario("an HDR10 copy whose index the job finds wrong while the viewer still plays stored segments goes on as an encode that keeps the range", async ({ page, seen }) => {
+  const title = "Recover HDR Early Film";
+  const codec = hevcPlays ? "hevc" : "av1";
+  const encoder = hevcPlays ? "libx265" : "libsvtav1";
+  const wrong = brokenIndex(title, 5), badPoint = wrong.badPoint;
+  const since = { ffmpeg: ffmpegLines().length, log: readFileSync(process.env.E2E_LOG, "utf8").length };
+  await play(page, "Transcode", title);
+  const source = seen.infos.at(-1).source;
+  if (!/VideoCodec=copy/.test(source.TranscodingUrl)) throw new Error(`the film is not played as a copy: ${source.TranscodingUrl}`);
+  const master = await (await fetch(new URL(source.TranscodingUrl, base))).text();
+  const line = master.split("\n").find((l) => l.startsWith("#EXT-X-STREAM-INF")) ?? "";
+  if (!/VIDEO-RANGE=PQ[,\s]/.test(line) || !(hevcPlays ? /CODECS="hvc1\.2\.4\.L\d+\.B0[,"]/ : /CODECS="av01\.0\.\d\dM\.10[,"]/).test(line)) throw new Error(`the master playlist does not name a ${codec} copy in PQ: ${JSON.stringify(line)}`);
+  await advances(page);
+  await startSampler(page);
+  const at = Date.now(), target = Math.round(await time(page));
+  await waitFor("the job to find the index wrong", async () => wrong.indexDropped());
+  const foundAt = await time(page);
+  if (foundAt >= badPoint - 4) throw new Error(`the index was found wrong when the viewer was at ${foundAt} s, not while he plays the stored segments more than 4 s before the bad point (${badPoint} s)`);
+  await wentOn(page, seen, { at, target, badPoint, since, label: `the job finds the index of an HDR10 ${codec} copy wrong ahead of the viewer`, encoder });
+  // What a worker's ffmpeg encoded of the picture: the copy's codec, with no tone mapping and no 8-bit pixel format.
+  const lines = ffmpegLines().slice(since.ffmpeg).filter((l) => l.includes(encoder));
+  if (!lines.length) throw new Error(`no ffmpeg encoded with ${encoder}`);
+  const eightBit = lines.filter((l) => /tonemap|zscale|(^|[ ,=:])yuv420p([ ,:]|$)/.test(l));
+  if (eightBit.length) throw new Error(`the fallback's ffmpeg tone maps or goes through an 8-bit format: ${eightBit[0].slice(0, 400)}`);
+  // A fallback segment as the browser was answered it (its init in front): the last the viewer fetched, 200, past the bad point.
+  const answered = seen.hls.filter((r) => r.at >= at && r.status === 200 && /\/(\d+)\.mp4$/i.test(r.path)).map((r) => ({ ...r, n: Number(/(\d+)\.mp4$/i.exec(r.path)[1]) })).sort((a, b) => b.n - a.n)[0];
+  if (!answered) throw new Error("the viewer fetched no segment");
+  const dir = mkdtempSync(`${tmpdir()}/hdr-fallback-`);
+  try {
+    const url = new URL(answered.path, base);
+    url.search = answered.query.toString();
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`segment ${answered.n} answered ${response.status} when asked again`);
+    writeFileSync(`${dir}/segment.mp4`, Buffer.from(await response.arrayBuffer()));
+    const probe = JSON.parse(execFileSync("ffprobe", ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=pix_fmt,color_transfer,color_primaries,color_space:frame=pix_fmt,color_transfer", "-of", "json", `${dir}/segment.mp4`]).toString());
+    const [stream] = probe.streams;
+    const frames = new Set(probe.frames.map((f) => `${f.pix_fmt} ${f.color_transfer}`));
+    if (stream.pix_fmt !== "yuv420p10le" || stream.color_transfer !== "smpte2084" || stream.color_primaries !== "bt2020" || stream.color_space !== "bt2020nc" || frames.size !== 1 || ![...frames][0].startsWith("yuv420p10le smpte2084")) {
+      throw new Error(`fallback segment ${answered.n}, as the browser was answered, is ${JSON.stringify(stream)} with frames ${[...frames]}, want 10 bits PQ in BT.2020`);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  await leave(page);
+});
+
 await runLater();
 await browser.close();
 if (failures.length) {

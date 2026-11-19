@@ -163,6 +163,32 @@ t_dir=$t
 av1_irregular "Recover AV1 Reach Film (2161)" yuv420p
 av1_irregular "Recover AV1 Early Film (2162)" yuv420p10le
 link "$t/Recover AV1 Reach Film (2161)/Recover AV1 Reach Film (2161).mkv" "$t/Recover AV1 Pair Film (2163)/Recover AV1 Pair Film (2163).mkv"
+# JS-134: the same irregular keyframes in HDR10 (10-bit PQ, BT.2020, a mastering display and a content light level), for the
+# scenario in which the job finds an HDR10 copy's index wrong ahead of the viewer: HEVC when E2E_HEVC=1 (the browser plays
+# it), AV1 otherwise as CI runs it. AV1 in pieces as above (SVT-AV1 in ffmpeg 6.1 ignores -force_key_frames).
+hdr_tags="setparams=color_primaries=bt2020:color_trc=smpte2084:colorspace=bt2020nc:range=tv,format=yuv420p10le"
+hdr_irregular() { # film
+  local to=$1 parts from=0 t
+  mkdir -p "$work/media/$t_dir/$to"
+  if [[ ${E2E_HEVC:-} == 1 ]]; then
+    ffmpeg -nostdin -v error -y -f lavfi -i "testsrc2=size=640x360:rate=24:duration=150" \
+      -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=150" -map 0:v -map 1:a -vf "$hdr_tags" \
+      -c:v libx265 -preset ultrafast -x265-params "keyint=2000:scenecut=0:open-gop=0:log-level=error:hdr10=1:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1):max-cll=1000,400" \
+      -forced-idr 1 -force_key_frames "$irregular" -tag:v hvc1 -c:a ac3 -metadata:s:a:0 language=eng "$work/media/$t_dir/$to/$to.mkv" || exit 1
+    return
+  fi
+  parts=$(mktemp -d) && : >"$parts/list" || exit 1
+  for t in ${irregular//,/ } 150; do
+    ffmpeg -nostdin -v error -y -f lavfi -i "testsrc2=size=640x360:rate=24:duration=150" \
+      -vf "trim=start_frame=$((from * 24)):end_frame=$((t * 24)),setpts=PTS-STARTPTS,$hdr_tags" -c:v libsvtav1 -preset 10 -g 2000 "$parts/$from.mkv" 2>/dev/null || { echo "could not encode AV1 for $to" >&2; exit 1; }
+    echo "file '$parts/$from.mkv'" >>"$parts/list"
+    from=$t
+  done
+  ffmpeg -nostdin -v error -y -f concat -safe 0 -i "$parts/list" -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=150" \
+    -map 0:v -map 1:a -c:v copy -c:a ac3 -metadata:s:a:0 language=eng "$work/media/$t_dir/$to/$to.mkv" || exit 1
+  rm -rf "$parts"
+}
+hdr_irregular "Recover HDR Early Film (2164)"
 # The films the failover gate (JS-031) kills and rolls replicas under: one direct play (the 60 MB
 # film of the outage scenario, which the router slows to a download of tens of seconds) and one
 # re-encode each for an api kill, a stream kill and a stream roll, and the three films that play on

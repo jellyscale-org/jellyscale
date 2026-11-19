@@ -14,7 +14,7 @@ import (
 // hash includes them: bump OutputVersion with any change to the ffmpeg
 // settings, and old segments simply stop being found.
 const (
-	OutputVersion  = 6
+	OutputVersion  = 7
 	SegmentSeconds = 4
 	// Family is the encoder family; fMP4 can't splice across families.
 	Family = "x264"
@@ -193,6 +193,10 @@ type Spec struct {
 	// cut from), so that the player goes on with the playlist it holds (JS-088). It is no
 	// Copy: the picture is encoded, so the segments never share a hash with the copy's.
 	Recode string
+	// HDR is the transfer function (PQ or HLG) of an HDR copy's picture that its HEVC or AV1 fallback keeps: the encode is
+	// 10 bits with the copy's own tags and no tone mapping (JS-134), so a decoder that took the copy for its range goes on
+	// in it. "" for every other fallback, which is 8 bits (and tone mapped, for H.264). It is never set with ToneMap.
+	HDR string
 }
 
 // NewSpec turns validated parameters into the output they ask for.
@@ -247,11 +251,18 @@ func CanRecode(codec string) bool { return codec == "h264" || codec == "hevc" ||
 
 // Recoded is the spec of the encode that stands in for a copy whose index was found wrong. It
 // keeps the copy's tracks, caps its picture as every re-encode is capped, and toneMap is the
-// source's, so that an HDR picture is not sent as it is to a decoder that took a copy of it.
+// source's (PQ, HLG or ""). An H.264 fallback maps an HDR picture to SDR; an HEVC or AV1 one keeps the
+// copy's range at 10 bits instead (HDR), since the player's buffer is typed for a 10-bit codec under a
+// master playlist that says PQ or HLG.
 func (s Spec) Recoded(codec, toneMap string) Spec {
 	sourceHeight := s.Height
 	s.Width, s.Height = outputSize(Stream{Width: s.Width, Height: s.Height}, Unlimited)
-	s.Copy, s.Recode, s.ToneMap, s.SourceHeight = false, codec, toneMap, sourceHeight
+	s.Copy, s.Recode, s.SourceHeight = false, codec, sourceHeight
+	if codec == "h264" {
+		s.ToneMap, s.HDR = toneMap, ""
+	} else {
+		s.ToneMap, s.HDR = "", toneMap
+	}
 	// A copy carries the file's bitrate, or none when the file does not say.
 	budget := int64(s.Width) * int64(s.Height) * 6
 	if s.VideoBitrate <= 0 || s.VideoBitrate > budget {
@@ -281,6 +292,9 @@ func (s Spec) Hash() string {
 	// Only an HDR source has one, so the hash of an SDR film is what it was.
 	if s.ToneMap != "" {
 		text += "|tonemap" + s.ToneMap
+	}
+	if s.HDR != "" {
+		text += "|hdr" + s.HDR
 	}
 	// Only a copy has one, so the hash of a re-encoded track is what it was.
 	if s.AudioCopy != "" {
