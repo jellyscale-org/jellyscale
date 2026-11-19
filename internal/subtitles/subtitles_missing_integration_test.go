@@ -54,3 +54,38 @@ func TestFillTextServesGoodTracksWhateverTheFileLacksOrCannotDecode(t *testing.T
 		})
 	}
 }
+
+// A film whose every listed text track is one ffmpeg refuses leaves nothing to
+// run once they are dropped: FillText succeeds with nothing stored, as it did
+// before the retry loop, and the caller marks the tracks. It must not run ffmpeg
+// with no output, which fails.
+func TestFillTextWithEveryTrackBadStoresNothingAndSucceeds(t *testing.T) {
+	for _, c := range []struct {
+		name   string
+		broken int
+		listed []int
+	}{
+		{"one missing", 0, []int{7}},
+		{"two missing", 0, []int{7, 8}},
+		{"only an undecodable one", 3, []int{3}},
+		{"a missing and an undecodable one", 3, []int{3, 7}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			dir, src := threeTrackFilm(t, c.broken)
+			src.Streams = nil
+			for _, i := range c.listed {
+				src.Streams = append(src.Streams, media.MediaStream{Index: i, Type: "Subtitle", Codec: "subrip", IsTextSubtitleStream: true})
+			}
+			assets := store.NewPosix(t.TempDir())
+			ctx := context.Background()
+			if err := FillText(ctx, src, store.NewPosix(dir), assets, 0, slog.New(slog.DiscardHandler)); err != nil {
+				t.Fatalf("FillText: %v", err)
+			}
+			for _, index := range c.listed {
+				if _, found, err := Read(ctx, assets, Key(src, index)); err != nil || found {
+					t.Errorf("track %d: stored %v, err %v; want nothing stored", index, found, err)
+				}
+			}
+		})
+	}
+}

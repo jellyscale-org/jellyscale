@@ -158,6 +158,19 @@ func FillFonts(ctx context.Context, src items.Source, media, assets store.Store,
 type watchedStore struct {
 	store.Store
 	failed atomic.Bool
+	// read is the bytes the store has given, which is how a run that reads the
+	// film through the loopback server shows it is working: the kernel counts
+	// no read of a socket as one.
+	read atomic.Int64
+	// reading counts the reads in flight, and stalledReading is whether one was
+	// when progress last found nothing new.
+	reading, stalledReading atomic.Int32
+}
+
+// progress is the bytes read so far, for mediatool.Options.Progress.
+func (w *watchedStore) progress() int64 {
+	w.stalledReading.Store(w.reading.Load())
+	return w.read.Load()
 }
 
 func (w *watchedStore) Open(ctx context.Context, key string, offset int64) (io.ReadCloser, error) {
@@ -175,7 +188,10 @@ type watchedBody struct {
 }
 
 func (b *watchedBody) Read(p []byte) (int, error) {
+	b.store.reading.Add(1)
 	n, err := b.ReadCloser.Read(p)
+	b.store.reading.Add(-1)
+	b.store.read.Add(int64(n))
 	// ffmpeg hanging up early cancels the read; that is not the store's fault.
 	if err != nil && err != io.EOF && !errors.Is(err, context.Canceled) {
 		b.store.failed.Store(true)

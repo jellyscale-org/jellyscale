@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"jellyscale/internal/mediatool"
 )
@@ -41,6 +42,11 @@ func Extract(ctx context.Context, input string, index int) (Track, error) {
 // ExtractAll reads streams indexes of input in one run of ffmpeg, so the file
 // is read once whatever the number of tracks.
 func ExtractAll(ctx context.Context, input string, indexes []int) (map[int]Track, error) {
+	return extractAll(ctx, input, indexes, 0, nil)
+}
+
+// extractAll is ExtractAll with a stall limit (see mediatool.Options); zero is none.
+func extractAll(ctx context.Context, input string, indexes []int, stall time.Duration, progress func() int64) (map[int]Track, error) {
 	dir, err := os.MkdirTemp("", "subtitles-")
 	if err != nil {
 		return nil, err
@@ -53,7 +59,7 @@ func ExtractAll(ctx context.Context, input string, indexes []int) (map[int]Track
 			args = append(args, "-map", "0:"+strconv.Itoa(index), filepath.Join(dir, fmt.Sprintf("%d-track.%s", index, ext)))
 		}
 	}
-	if err := runFFmpeg(ctx, args); err != nil {
+	if err := runFFmpegStalling(ctx, args, stall, progress); err != nil {
 		return nil, err
 	}
 	tracks := map[int]Track{}
@@ -73,11 +79,20 @@ func ExtractAll(ctx context.Context, input string, indexes []int) (map[int]Track
 
 // runFFmpeg runs ffmpeg and says whether it did what it was asked.
 func runFFmpeg(ctx context.Context, args []string) error {
+	return runFFmpegStalling(ctx, args, 0, nil)
+}
+
+// runFFmpegStalling is runFFmpeg that ends ffmpeg once it makes no progress for
+// stall (zero: never), with an error that is ErrStalled.
+func runFFmpegStalling(ctx context.Context, args []string, stall time.Duration, progress func() int64) error {
 	// A file cut short makes ffmpeg complain and exit 0, with whatever it had
 	// read, so any output at all means the tracks can't be trusted.
-	res, err := mediatool.Run(ctx, "ffmpeg", args, mediatool.Options{Output: mediatool.AnyOutputIsFailure})
+	res, err := mediatool.Run(ctx, "ffmpeg", args, mediatool.Options{Output: mediatool.AnyOutputIsFailure, Stall: stall, Progress: progress})
 	if err == nil {
 		return nil
+	}
+	if errors.Is(err, mediatool.ErrStalled) {
+		return fmt.Errorf("ffmpeg: %w", err)
 	}
 	cause, text := errors.Unwrap(err), strings.TrimSpace(string(res.Combined)) // No cause for a complaint at exit 0.
 	if !mediatool.FileFailure(err) {

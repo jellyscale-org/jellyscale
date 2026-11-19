@@ -168,11 +168,13 @@ func TestAFilmFFmpegCannotOpenCostsOneReadWhateverTracksAreAsked(t *testing.T) {
 	}
 }
 
-// A pass that fails for a reason outside the file (here ffmpeg is held past the
-// worker's time limit) is not the tracks' fault: once the failure memory has
-// passed, the next ask reads the film again and the film's good tracks are
-// served and its broken one is hidden, as they would have been.
-func TestAPassThatTimesOutIsNotRememberedAsTheTracksFault(t *testing.T) {
+// JS-090 restates the JS-028 check of a pass whose first run alone outlasts the
+// limit. A pass ended by the time limit is not the tracks' fault, and it used to
+// leave the film's good tracks unstored until the next ask. Now the same job falls
+// back to one run per track: the first ask is answered with its good track, the
+// broken track (which ffmpeg refuses to decode, alone as in the pass) is hidden,
+// and the film is read once for the pass and once for each of its three tracks.
+func TestAPassThatTimesOutFallsBackToOneRunPerTrack(t *testing.T) {
 	testenv.FFmpeg(t)
 	r := newRig(t, nil)
 	assets := r.brokenTrackFilm(t)
@@ -184,20 +186,28 @@ func TestAPassThatTimesOutIsNotRememberedAsTheTracksFault(t *testing.T) {
 	stop := r.worker(t, func(w *Worker) { w.SubtitleTimeout = 3 * time.Second })
 	defer stop()
 	j := r.jobs(t)
-	_, err := r.pick(t, j, assets, r.source(t), 2)
-	if err == nil || errors.Is(err, ErrUnreadable) {
-		t.Fatalf("the pick during a read that timed out: %v, want a failure that is not ErrUnreadable", err)
-	}
-	r.forgetFailures(t)
 	track, err := r.pick(t, j, assets, r.source(t), 2)
 	if err != nil {
-		t.Fatalf("a good track after the timed-out pass: %v", err)
+		t.Fatalf("a good track after a pass that timed out: %v", err)
 	}
 	wantTrack(t, track, 2)
 	if _, err := r.pick(t, j, assets, r.source(t), 3); !errors.Is(err, ErrUnreadable) {
 		t.Errorf("the broken track: %v, want ErrUnreadable", err)
 	}
-	if n := runs(); n > 3 {
-		t.Errorf("%d reads of the film (one timed out), want at most 3", n)
+	if track, err := r.pick(t, j, assets, r.source(t), 4); err != nil {
+		t.Errorf("track 4: %v", err)
+	} else {
+		wantTrack(t, track, 4)
+	}
+	if n := runs(); n != 4 {
+		t.Errorf("%d reads of the film (the pass that timed out and one run per track), want 4", n)
+	}
+	r.forgetFailures(t)
+	settled := runs()
+	for _, index := range []int{2, 3, 4} {
+		r.pick(t, j, assets, r.source(t), index) //nolint:errcheck
+	}
+	if n := runs() - settled; n != 0 {
+		t.Errorf("asking again after the failure memory read the film %d more times, want none", n)
 	}
 }
