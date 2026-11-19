@@ -243,7 +243,11 @@ check "one worker job copied it, with one ffmpeg run" "1 1" "$(($(sql "SELECT co
 check "the file comes in ranges, as jellyfin-web asks for it" "206 bytes 0-0/$(wc -c <"$work/pgs.1") P" "$(curl -s -D "$work/pgs.head" -o "$work/pgs.range" -r 0-0 -w '%{http_code}' "127.0.0.1:$counted1/Videos/$pgs/$pgs/Subtitles/2/0/Stream.pgssub?ApiKey=$token") $(tr -d '\r' <"$work/pgs.head" | sed -n 's/^[Cc]ontent-[Rr]ange: //p') $(cat "$work/pgs.range")"
 check "PGS asked for as WebVTT is a bad request" 400 "$(code "127.0.0.1:$counted1/Videos/$pgs/$pgs/Subtitles/2/0/Stream.vtt?ApiKey=$token")"
 check "VobSub has no file to ask for" 400 "$(code "127.0.0.1:$counted1/Videos/$vobsub/$vobsub/Subtitles/2/0/Stream.sup?ApiKey=$token")"
-subtitle_jobs_before=$(sql "SELECT count(*) FROM subtitle_jobs")
+# A burn waits on no subtitle job. JS-089's background copy of the film's image
+# tracks adds at most one `images` job, which nothing waits on (decision D-004);
+# every other kind is counted as before.
+subtitle_jobs_before=$(sql "SELECT count(*) FROM subtitle_jobs WHERE kind <> 'images'")
+image_jobs_before=$(sql "SELECT count(*) FROM subtitle_jobs WHERE kind = 'images'")
 overlays_before=$(grep -c 'overlay=eof_action' "$logs/ffmpeg.log")
 info=$(curl -s -X POST -H "$header" -H 'Content-Type: application/json' "127.0.0.1:$api1/Items/$vobsub/PlaybackInfo" \
   -d "{\"DeviceProfile\":$profile,\"MaxStreamingBitrate\":2147483647,\"AudioStreamIndex\":\"1\",\"SubtitleStreamIndex\":\"2\",\"MediaSourceId\":\"$vobsub\"}")
@@ -253,7 +257,8 @@ base=${url%%/master.m3u8*}
 main=$(curl -s "127.0.0.1:$stream$url" | sed -n 's/^\(main.m3u8.*\)$/\1/p')
 playlist=$(curl -s "127.0.0.1:$stream$base/$main")
 check "the stream role with no ffmpeg serves a segment with the track drawn in" "styp" "$(curl -s "127.0.0.1:$stream$base/$(echo "$playlist" | grep -m1 '^hls1/main/5.mp4')" | head -c 8 | tail -c 4)"
-check "a worker's ffmpeg overlaid it, on its own" "1 $subtitle_jobs_before" "$(($(grep -c 'overlay=eof_action' "$logs/ffmpeg.log") - overlays_before)) $(sql "SELECT count(*) FROM subtitle_jobs")"
+check "a worker's ffmpeg overlaid it, on its own" "1 $subtitle_jobs_before" "$(($(grep -c 'overlay=eof_action' "$logs/ffmpeg.log") - overlays_before)) $(sql "SELECT count(*) FROM subtitle_jobs WHERE kind <> 'images'")"
+check "the burn added at most one background image track job" "yes" "$( [ "$(( $(sql "SELECT count(*) FROM subtitle_jobs WHERE kind = 'images'") - image_jobs_before ))" -le 1 ] && echo yes || echo no)"
 curl -s -o /dev/null -X DELETE -H "$header" "127.0.0.1:$stream/Videos/ActiveEncodings?deviceId=i&PlaySessionId=$(echo "$info" | python3 -I -c 'import json,sys;print(json.load(sys.stdin)["PlaySessionId"])')"
 for _ in $(seq 1 40); do [[ $(pgrep -f "ffmpeg.*$work/scratch" | wc -l) -eq 0 ]] && break; sleep 0.5; done
 
