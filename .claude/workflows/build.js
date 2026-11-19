@@ -178,7 +178,11 @@ for (let attempt = 1; attempt <= 2; attempt++) {
   // review stops the run only on a blocker; its majors bind the implementer.
   const back = design.findings.filter((f) => f.severity !== 'minor')
   if (attempt === 2 || !back.length) {
-    const stops = back.filter((f) => f.severity === 'blocker')
+    // resolved.settled names Check blockers the lead settled by correcting a check
+    // (two locked requirements that contradict each other cannot be answered by the
+    // spec writer): they no longer stop the run, and the implementer is told how.
+    const settled = resolved?.settled ?? []
+    const stops = back.filter((f) => f.severity === 'blocker' && !settled.some((t) => f.title.includes(t)))
     if (stops.length) return { clean: false, stoppedAt: 'Check', open: stops, spec, design, base, specTree }
     break
   }
@@ -191,6 +195,7 @@ for (let attempt = 1; attempt <= 2; attempt++) {
 const designNotes = design.findings.length
   ? `\n\n## Design review\n${design.findings.map((f) => `- [${f.severity}] ${f.title}: ${f.scenario}`).join('\n')}\n\nEach blocker and major above binds you: build what it asks, or answer in designAnswers why not, with evidence (a measurement, a failing approach, a conflicting check). The lead reads every answer; one without evidence counts as ignoring the review.`
   : ''
+const settledNote = resolved?.settled?.length ? `\n\n## Settled by the lead\nThe lead settled the review's blockers named ${resolved.settled.map((t) => `"${t}"`).join(', ')} by correcting ${resolved.files.join(', ')}: ${resolved.note}` : ''
 // The checks are what the spec writer wrote. A file a check only cites, such as an
 // existing script the task must change, stays open to the implementer.
 const written = await agent(`${where}Run \`git diff --name-only ${base} ${specTree}\` in the repository root and return the files it lists. Do nothing else.`,
@@ -213,7 +218,7 @@ const lockedChanged = async (head, label) => {
 
 // ---- Build.
 phase('Build')
-let built = await agent(`${read('implementer')}${brief}${designNotes}${locked}\n\nImplement this. Don't commit.`, { label: 'build', phase: 'Build', ...role('implementer'), schema: IMPLEMENTED })
+let built = await agent(`${read('implementer')}${brief}${designNotes}${settledNote}${locked}\n\nImplement this. Don't commit.`, { label: 'build', phase: 'Build', ...role('implementer'), schema: IMPLEMENTED })
 if (!built) throw new Error('implementer returned nothing')
 // For the lead only: the Verify reviewers stay blind to the implementer's reasoning.
 if (built.designAnswers.length) log(`Implementer's answers to the design review: ${JSON.stringify(built.designAnswers)}`)
