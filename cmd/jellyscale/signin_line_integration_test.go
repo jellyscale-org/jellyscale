@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -36,19 +37,20 @@ func refusedByName(t *testing.T, s *signInSite, prefix string, headers ...string
 	return ""
 }
 
-// lineOf is the one `sign-in refused` line that names user.
+// lineOf is the one `sign-in refused` line that names user. The process writes it before answering, but its output
+// reaches p.log through a copying goroutine, so the line may arrive just after the answer; the wait is a hang bound.
 func lineOf(t *testing.T, p *proc, user string) string {
 	t.Helper()
-	var found []string
-	for _, line := range logLines(p, "sign-in refused") {
-		if u, _ := field(line, "user"); u == user {
-			found = append(found, line)
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(50 * time.Millisecond) {
+		for _, line := range logLines(p, "sign-in refused") {
+			if u, _ := field(line, "user"); u == user {
+				return line
+			}
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("no `sign-in refused` line names user=%s:\n%s", user, p.log.String())
 		}
 	}
-	if len(found) == 0 {
-		t.Fatalf("no `sign-in refused` line names user=%s:\n%s", user, p.log.String())
-	}
-	return found[0]
 }
 
 // quoted is the value of a key whose value the log wrote quoted, as the program that wrote it meant it (unquoted once; a

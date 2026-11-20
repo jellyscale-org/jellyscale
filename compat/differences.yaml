@@ -1185,3 +1185,11 @@
   paths:
     - "Policy.LoginAttemptsBeforeLockout"
     - "User.Policy.LoginAttemptsBeforeLockout"
+
+- requests:
+    - "the signed-in user after saving through the path route"
+    - "the signed-in user after saving through the SDK route"
+  kind: non-goal
+  reason: "Policy.InvalidLoginAttemptCount stays 0: jellyscale counts failed sign-ins per name, per known device and per address for 15 minutes (D-020), not on the user, where Jellyfin counts them on the user until a success (here the earlier request \"a sign-in with a wrong password\" made it 1)"
+  paths:
+    - "Policy.InvalidLoginAttemptCount"
