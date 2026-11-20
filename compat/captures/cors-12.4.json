@@ -1,0 +1,571 @@
+{
+ "image": "jellyfin/jellyfin:12.4",
+ "server_version": "12.4.0",
+ "origins": [
+  "tauri://localhost",
+  "https://app.example.test"
+ ],
+ "rows": [
+  {
+   "request": "open route",
+   "method": "GET",
+   "path": "/System/Info/Public",
+   "origin": "tauri://localhost",
+   "sent": {},
+   "token": false,
+   "status": 200,
+   "headers": {
+    "access-control-allow-origin": "*",
+    "vary": "Accept-Encoding"
+   },
+   "body_bytes": 212
+  },
+  {
+   "request": "open route",
+   "method": "GET",
+   "path": "/System/Info/Public",
+   "origin": "https://app.example.test",
+   "sent": {},
+   "token": false,
+   "status": 200,
+   "headers": {
+    "access-control-allow-origin": "*",
+    "vary": "Accept-Encoding"
+   },
+   "body_bytes": 212
+  },
+  {
+   "request": "open route",
+   "method": "GET",
+   "path": "/System/Info/Public",
+   "origin": null,
+   "sent": {},
+   "token": false,
+   "status": 200,
+   "headers": {
+    "vary": "Accept-Encoding"
+   },
+   "body_bytes": 212
+  },
+  {
+   "request": "viewer route with a token",
+   "method": "GET",
+   "path": "/UserViews",
+   "origin": "tauri://localhost",
+   "sent": {},
+   "token": true,
+   "status": 200,
+   "headers": {
+    "access-control-allow-origin": "*",
+    "vary": "Accept-Encoding"
+   },
+   "body_bytes": 1153
+  },
+  {
+   "request": "viewer route with a token",
+   "method": "GET",
+   "path": "/UserViews",
+   "origin": "https://app.example.test",
+   "sent": {},
+   "token": true,
+   "status": 200,
+   "headers": {
+    "access-control-allow-origin": "*",
+    "vary": "Accept-Encoding"
+   },
+   "body_bytes": 1153
+  },
+  {
+   "request": "viewer route with a token",
+   "method": "GET",
+   "path": "/UserViews",
+   "origin": null,
+   "sent": {},
+   "token": true,
+   "status": 200,
+   "headers": {
+    "vary": "Accept-Encoding"
+   },
+   "body_bytes": 1153
+  },
+  {
+   "request": "viewer route with no token",
+   "method": "GET",
+   "path": "/UserViews",
+   "origin": "tauri://localhost",
+   "sent": {},
+   "token": false,
+   "status": 401,
+   "headers": {
+    "access-control-allow-origin": "*"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "viewer route with no token",
+   "method": "GET",
+   "path": "/UserViews",
+   "origin": "https://app.example.test",
+   "sent": {},
+   "token": false,
+   "status": 401,
+   "headers": {
+    "access-control-allow-origin": "*"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "viewer route with no token",
+   "method": "GET",
+   "path": "/UserViews",
+   "origin": null,
+   "sent": {},
+   "token": false,
+   "status": 401,
+   "headers": {},
+   "body_bytes": 0
+  },
+  {
+   "request": "ranged film",
+   "method": "GET",
+   "path": "/Videos/{film}/stream?static=true&mediaSourceId={film}",
+   "origin": "tauri://localhost",
+   "sent": {
+    "Range": "bytes=100-199"
+   },
+   "token": true,
+   "status": 206,
+   "headers": {
+    "access-control-allow-origin": "*"
+   },
+   "body_bytes": 100
+  },
+  {
+   "request": "ranged film",
+   "method": "GET",
+   "path": "/Videos/{film}/stream?static=true&mediaSourceId={film}",
+   "origin": "https://app.example.test",
+   "sent": {
+    "Range": "bytes=100-199"
+   },
+   "token": true,
+   "status": 206,
+   "headers": {
+    "access-control-allow-origin": "*"
+   },
+   "body_bytes": 100
+  },
+  {
+   "request": "ranged film",
+   "method": "GET",
+   "path": "/Videos/{film}/stream?static=true&mediaSourceId={film}",
+   "origin": null,
+   "sent": {
+    "Range": "bytes=100-199"
+   },
+   "token": true,
+   "status": 206,
+   "headers": {},
+   "body_bytes": 100
+  },
+  {
+   "request": "preflight of the sign-in",
+   "method": "OPTIONS",
+   "path": "/Users/AuthenticateByName",
+   "origin": "tauri://localhost",
+   "sent": {
+    "Access-Control-Request-Method": "POST",
+    "Access-Control-Request-Headers": "authorization,content-type"
+   },
+   "token": false,
+   "status": 204,
+   "headers": {
+    "access-control-allow-headers": "authorization,content-type",
+    "access-control-allow-methods": "POST",
+    "access-control-allow-origin": "*"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "preflight of the sign-in",
+   "method": "OPTIONS",
+   "path": "/Users/AuthenticateByName",
+   "origin": "https://app.example.test",
+   "sent": {
+    "Access-Control-Request-Method": "POST",
+    "Access-Control-Request-Headers": "authorization,content-type"
+   },
+   "token": false,
+   "status": 204,
+   "headers": {
+    "access-control-allow-headers": "authorization,content-type",
+    "access-control-allow-methods": "POST",
+    "access-control-allow-origin": "*"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "preflight of the sign-in",
+   "method": "OPTIONS",
+   "path": "/Users/AuthenticateByName",
+   "origin": null,
+   "sent": {
+    "Access-Control-Request-Method": "POST",
+    "Access-Control-Request-Headers": "authorization,content-type"
+   },
+   "token": false,
+   "status": 405,
+   "headers": {
+    "allow": "DELETE, GET, POST"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "preflight asking range",
+   "method": "OPTIONS",
+   "path": "/Videos/{film}/stream?static=true&mediaSourceId={film}",
+   "origin": "tauri://localhost",
+   "sent": {
+    "Access-Control-Request-Method": "GET",
+    "Access-Control-Request-Headers": "range"
+   },
+   "token": false,
+   "status": 204,
+   "headers": {
+    "access-control-allow-headers": "range",
+    "access-control-allow-methods": "GET",
+    "access-control-allow-origin": "*"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "preflight asking range",
+   "method": "OPTIONS",
+   "path": "/Videos/{film}/stream?static=true&mediaSourceId={film}",
+   "origin": "https://app.example.test",
+   "sent": {
+    "Access-Control-Request-Method": "GET",
+    "Access-Control-Request-Headers": "range"
+   },
+   "token": false,
+   "status": 204,
+   "headers": {
+    "access-control-allow-headers": "range",
+    "access-control-allow-methods": "GET",
+    "access-control-allow-origin": "*"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "preflight asking range",
+   "method": "OPTIONS",
+   "path": "/Videos/{film}/stream?static=true&mediaSourceId={film}",
+   "origin": null,
+   "sent": {
+    "Access-Control-Request-Method": "GET",
+    "Access-Control-Request-Headers": "range"
+   },
+   "token": false,
+   "status": 405,
+   "headers": {
+    "allow": "GET, HEAD"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "preflight asking all six headers",
+   "method": "OPTIONS",
+   "path": "/Items/{film}",
+   "origin": "tauri://localhost",
+   "sent": {
+    "Access-Control-Request-Method": "GET",
+    "Access-Control-Request-Headers": "authorization,content-type,range,x-emby-authorization,x-emby-token,x-mediabrowser-token"
+   },
+   "token": false,
+   "status": 204,
+   "headers": {
+    "access-control-allow-headers": "authorization,content-type,range,x-emby-authorization,x-emby-token,x-mediabrowser-token",
+    "access-control-allow-methods": "GET",
+    "access-control-allow-origin": "*"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "preflight asking all six headers",
+   "method": "OPTIONS",
+   "path": "/Items/{film}",
+   "origin": "https://app.example.test",
+   "sent": {
+    "Access-Control-Request-Method": "GET",
+    "Access-Control-Request-Headers": "authorization,content-type,range,x-emby-authorization,x-emby-token,x-mediabrowser-token"
+   },
+   "token": false,
+   "status": 204,
+   "headers": {
+    "access-control-allow-headers": "authorization,content-type,range,x-emby-authorization,x-emby-token,x-mediabrowser-token",
+    "access-control-allow-methods": "GET",
+    "access-control-allow-origin": "*"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "preflight asking all six headers",
+   "method": "OPTIONS",
+   "path": "/Items/{film}",
+   "origin": null,
+   "sent": {
+    "Access-Control-Request-Method": "GET",
+    "Access-Control-Request-Headers": "authorization,content-type,range,x-emby-authorization,x-emby-token,x-mediabrowser-token"
+   },
+   "token": false,
+   "status": 405,
+   "headers": {
+    "allow": "DELETE, GET, POST"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "preflight asking DELETE",
+   "method": "OPTIONS",
+   "path": "/Videos/ActiveEncodings",
+   "origin": "tauri://localhost",
+   "sent": {
+    "Access-Control-Request-Method": "DELETE",
+    "Access-Control-Request-Headers": "authorization"
+   },
+   "token": false,
+   "status": 204,
+   "headers": {
+    "access-control-allow-headers": "authorization",
+    "access-control-allow-methods": "DELETE",
+    "access-control-allow-origin": "*"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "preflight asking DELETE",
+   "method": "OPTIONS",
+   "path": "/Videos/ActiveEncodings",
+   "origin": "https://app.example.test",
+   "sent": {
+    "Access-Control-Request-Method": "DELETE",
+    "Access-Control-Request-Headers": "authorization"
+   },
+   "token": false,
+   "status": 204,
+   "headers": {
+    "access-control-allow-headers": "authorization",
+    "access-control-allow-methods": "DELETE",
+    "access-control-allow-origin": "*"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "preflight asking DELETE",
+   "method": "OPTIONS",
+   "path": "/Videos/ActiveEncodings",
+   "origin": null,
+   "sent": {
+    "Access-Control-Request-Method": "DELETE",
+    "Access-Control-Request-Headers": "authorization"
+   },
+   "token": false,
+   "status": 405,
+   "headers": {
+    "allow": "DELETE"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "preflight asking PATCH",
+   "method": "OPTIONS",
+   "path": "/Items/{film}",
+   "origin": "tauri://localhost",
+   "sent": {
+    "Access-Control-Request-Method": "PATCH",
+    "Access-Control-Request-Headers": "authorization,content-type"
+   },
+   "token": false,
+   "status": 204,
+   "headers": {
+    "access-control-allow-headers": "authorization,content-type",
+    "access-control-allow-methods": "PATCH",
+    "access-control-allow-origin": "*"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "preflight asking PATCH",
+   "method": "OPTIONS",
+   "path": "/Items/{film}",
+   "origin": "https://app.example.test",
+   "sent": {
+    "Access-Control-Request-Method": "PATCH",
+    "Access-Control-Request-Headers": "authorization,content-type"
+   },
+   "token": false,
+   "status": 204,
+   "headers": {
+    "access-control-allow-headers": "authorization,content-type",
+    "access-control-allow-methods": "PATCH",
+    "access-control-allow-origin": "*"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "preflight asking PATCH",
+   "method": "OPTIONS",
+   "path": "/Items/{film}",
+   "origin": null,
+   "sent": {
+    "Access-Control-Request-Method": "PATCH",
+    "Access-Control-Request-Headers": "authorization,content-type"
+   },
+   "token": false,
+   "status": 405,
+   "headers": {
+    "allow": "DELETE, GET, POST"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "preflight asking a header outside the six",
+   "method": "OPTIONS",
+   "path": "/Users/AuthenticateByName",
+   "origin": "tauri://localhost",
+   "sent": {
+    "Access-Control-Request-Method": "POST",
+    "Access-Control-Request-Headers": "authorization,x-capture-extra"
+   },
+   "token": false,
+   "status": 204,
+   "headers": {
+    "access-control-allow-headers": "authorization,x-capture-extra",
+    "access-control-allow-methods": "POST",
+    "access-control-allow-origin": "*"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "preflight asking a header outside the six",
+   "method": "OPTIONS",
+   "path": "/Users/AuthenticateByName",
+   "origin": "https://app.example.test",
+   "sent": {
+    "Access-Control-Request-Method": "POST",
+    "Access-Control-Request-Headers": "authorization,x-capture-extra"
+   },
+   "token": false,
+   "status": 204,
+   "headers": {
+    "access-control-allow-headers": "authorization,x-capture-extra",
+    "access-control-allow-methods": "POST",
+    "access-control-allow-origin": "*"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "preflight asking a header outside the six",
+   "method": "OPTIONS",
+   "path": "/Users/AuthenticateByName",
+   "origin": null,
+   "sent": {
+    "Access-Control-Request-Method": "POST",
+    "Access-Control-Request-Headers": "authorization,x-capture-extra"
+   },
+   "token": false,
+   "status": 405,
+   "headers": {
+    "allow": "DELETE, GET, POST"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "GET of an unserved path",
+   "method": "GET",
+   "path": "/Capture/Unserved",
+   "origin": "tauri://localhost",
+   "sent": {},
+   "token": false,
+   "status": 404,
+   "headers": {
+    "access-control-allow-origin": "*"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "GET of an unserved path",
+   "method": "GET",
+   "path": "/Capture/Unserved",
+   "origin": "https://app.example.test",
+   "sent": {},
+   "token": false,
+   "status": 404,
+   "headers": {
+    "access-control-allow-origin": "*"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "GET of an unserved path",
+   "method": "GET",
+   "path": "/Capture/Unserved",
+   "origin": null,
+   "sent": {},
+   "token": false,
+   "status": 404,
+   "headers": {},
+   "body_bytes": 0
+  },
+  {
+   "request": "preflight of an unserved path",
+   "method": "OPTIONS",
+   "path": "/Capture/Unserved",
+   "origin": "tauri://localhost",
+   "sent": {
+    "Access-Control-Request-Method": "GET",
+    "Access-Control-Request-Headers": "authorization"
+   },
+   "token": false,
+   "status": 204,
+   "headers": {
+    "access-control-allow-headers": "authorization",
+    "access-control-allow-methods": "GET",
+    "access-control-allow-origin": "*"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "preflight of an unserved path",
+   "method": "OPTIONS",
+   "path": "/Capture/Unserved",
+   "origin": "https://app.example.test",
+   "sent": {
+    "Access-Control-Request-Method": "GET",
+    "Access-Control-Request-Headers": "authorization"
+   },
+   "token": false,
+   "status": 204,
+   "headers": {
+    "access-control-allow-headers": "authorization",
+    "access-control-allow-methods": "GET",
+    "access-control-allow-origin": "*"
+   },
+   "body_bytes": 0
+  },
+  {
+   "request": "preflight of an unserved path",
+   "method": "OPTIONS",
+   "path": "/Capture/Unserved",
+   "origin": null,
+   "sent": {
+    "Access-Control-Request-Method": "GET",
+    "Access-Control-Request-Headers": "authorization"
+   },
+   "token": false,
+   "status": 404,
+   "headers": {},
+   "body_bytes": 0
+  }
+ ]
+}

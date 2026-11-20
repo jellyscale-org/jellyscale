@@ -1127,3 +1127,46 @@
   reason: "Jellyfin 12.4 answers these cells 2 with a DeviceProfile and 3 without one; jellyscale answers a request with no profile as one with, so a client gets one answer (compat/captures/audio-default-12.4.md)"
   paths:
     - "MediaSources[].DefaultAudioStreamIndex"
+
+# JS-144: answers to requests from another origin, replayed from compat/captures/cors-12.4.json by
+# internal/api/cors_integration_test.go (the differential tier does not run these).
+- requests:
+    - "cors: open route"
+    - "cors: viewer route with a token"
+    - "cors: viewer route with no token"
+    - "cors: ranged film"
+    - "cors: GET of an unserved path"
+  kind: improvement
+  reason: "jellyscale lists Content-Range, Accept-Ranges and Content-Length in Access-Control-Expose-Headers, so a page on another origin can read a ranged answer; Jellyfin exposes none"
+  paths:
+    - "header access-control-expose-headers"
+
+- requests:
+    - "cors: open route"
+    - "cors: viewer route with a token"
+  kind: non-goal
+  reason: "Jellyfin's JSON answers say Vary: Accept-Encoding because it compresses them; jellyscale does not compress, and the allowed origin is `*`, so nothing varies"
+  paths:
+    - "header vary"
+
+- requests:
+    - "cors: preflight of the sign-in"
+    - "cors: preflight asking range"
+    - "cors: preflight asking all six headers"
+    - "cors: preflight asking DELETE"
+    - "cors: preflight asking PATCH"
+    - "cors: preflight asking a header outside the six"
+    - "cors: preflight of an unserved path"
+  kind: improvement
+  reason: "an OPTIONS with no Origin is no preflight and jellyscale answers it with the catch-all's 404 where Jellyfin says 405; a preflight asking a method the path does not serve, or of a path nothing serves, is answered 404 (which a browser refuses) where Jellyfin allows whatever is asked: the page is told what the path serves, not what it asked for"
+  paths:
+    - "(status)"
+
+- requests:
+    - "cors: preflight asking PATCH"
+    - "cors: preflight of an unserved path"
+  kind: improvement
+  reason: "no method or header is allowed for a method the path does not serve or a path nothing serves"
+  paths:
+    - "header access-control-allow-methods"
+    - "header access-control-allow-headers"

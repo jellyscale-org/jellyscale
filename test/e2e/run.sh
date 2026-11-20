@@ -3,7 +3,7 @@
 # infrastructure, with each role as its own process behind a router, as in
 # production: Postgres, S3 (SeaweedFS), two api replicas, a stream replica and a worker.
 # Usage: run.sh <workdir> <dir_with_playwright>
-# E2E_GATES picks which gates run, default "browse play subtitles failover transcode".
+# E2E_GATES picks which gates run, default "browse play cors subtitles failover transcode".
 # The failover gate (JS-031) kills and rolls api and stream replicas it starts itself, behind the router.
 # E2E_SHARD=i/n runs every n-th scenario of the subtitles and transcode gates,
 # starting at the i-th (test/e2e/shard.mjs): CI runs the shards side by side.
@@ -112,6 +112,8 @@ link "$t/Idx Beside Film (2122)/Idx Beside Film (2122).mkv" "$t/Idx Beside Rende
 for ext in en.sub en.idx; do
   link "$t/Idx Beside Film (2122)/Idx Beside Film (2122).$ext" "$t/Idx Beside Render Film (2124)/Idx Beside Render Film (2124).$ext"
 done
+# JS-144: the film the cors gate transcodes from a page on another origin, a film of its own so that its play starts what it asserts.
+link "$t/Zeta Film (2023)/Zeta Film (2023).mkv" "$t/Cors Film (2170)/Cors Film (2170).mkv"
 # The failure scenario cuts this copy short, so it is a copy and not a link.
 mkdir -p "$work/media/$t/Xi Film (2031)" && cp "$zeta" "$work/media/$t/Xi Film (2031)/Xi Film (2031).mkv" || exit 1
 # Two more of Zeta and of its interlaced twin, for the scenario that checks how far a
@@ -377,9 +379,10 @@ done
 for _ in $(seq 1 120); do [[ $(grep -c 'scan finished' "$logs/server.log") -ge 5 ]] && break; sleep 0.5; done
 
 base="http://127.0.0.1:$router"
-cp "$repo/test/e2e/conform.mjs" "$repo/test/e2e/shard.mjs" "$repo/test/e2e/player.mjs" "$repo/test/e2e/recovery.mjs" "$repo/test/e2e/browse.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/transcode.mjs" "$repo/test/e2e/subtitles.mjs" "$repo/test/e2e/failover.mjs" "$repo/test/e2e/away.mjs" "$playwright/"
+cp "$repo/test/e2e/conform.mjs" "$repo/test/e2e/shard.mjs" "$repo/test/e2e/player.mjs" "$repo/test/e2e/recovery.mjs" "$repo/test/e2e/browse.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/cors.mjs" "$repo/test/e2e/transcode.mjs" "$repo/test/e2e/subtitles.mjs" "$repo/test/e2e/failover.mjs" "$repo/test/e2e/away.mjs" "$playwright/"
 result=0
 export E2E_METRICS=$(IFS=,; echo "${metrics_ports[*]}") E2E_CAPTURES="$repo/compat/captures"
+export E2E_MOVIES="$work/media/movies"
 export E2E_SCRATCH="$work/scratch" E2E_MEDIA="$work/media/transcode" E2E_ASSETS="$work/assets/transcode" E2E_PG="$pg" E2E_LOG="$logs/server.log"
 # Only a whole, ordinary run says what the tree does: a selection, a repeat, a
 # browser that plays HEVC or a worker at full speed is none of that.
@@ -461,7 +464,7 @@ repeat_outs=()
 for ((iteration = 1; iteration <= repeat; iteration++)); do
   export E2E_ITERATION=$iteration
   [[ $iteration -gt 1 ]] && reset_state
-  for gate in ${E2E_GATES:-browse play subtitles failover transcode}; do
+  for gate in ${E2E_GATES:-browse play cors subtitles failover transcode}; do
     echo "=== $gate${E2E_REPEAT:+ (iteration $iteration of $repeat)}"
     dir=$logs/$gate; [[ $repeat -gt 1 ]] && dir=$logs/$gate-$iteration
     run_gate "$gate" "$dir"
