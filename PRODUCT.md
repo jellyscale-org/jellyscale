@@ -4,7 +4,7 @@ What jellyscale should be, and the experience it exists to give. It guides every
 
 ## What jellyscale is
 
-A self-hosted video server that speaks the Jellyfin client API and runs as a horizontally scalable service. Someone who has outgrown a single Jellyfin process keeps their viewers' apps, and gains a server that spreads across machines, survives losing any one of them, and keeps its films on local disks or in object storage.
+A self-hosted video server that speaks the Jellyfin client API and runs as a horizontally scalable service. Someone who has outgrown a single Jellyfin process keeps the apps their viewers use, where those apps authorize every request, and gains a server that spreads across machines, survives losing any one of them, and keeps its films on local disks or in object storage.
 
 jellyscale ships with Fluster, a desktop client that plays the original file whenever it can and shows every conversion the server makes. Fluster is a Jellyfin client in its own right, and the first to adopt anything jellyscale offers beyond Jellyfin's API.
 
@@ -46,7 +46,7 @@ When two goals pull against each other, the higher one wins.
 
 1. **Playback never surprises a viewer.** Starting, seeking, resuming, and recovering from a failure just work, for every film.
 2. **Every component scales independently,** vertically or horizontally, with no shared state outside Postgres and the stores.
-3. **Current Jellyfin clients work unmodified,** unless supporting one would create lasting technical debt.
+3. **Current Jellyfin clients that authorize every request work unmodified,** unless supporting one would create lasting technical debt.
 4. **Storage is a per-library choice** between POSIX and S3-compatible object storage, with neither a second-class citizen.
 5. **Operating it stays boring.** Postgres is the only required service, and configuration is declarative.
 
@@ -80,7 +80,7 @@ Jellyfin's behaviour shows what clients depend on, not what to copy. jellyscale 
 - **The one exception:** thin aliases for routes jellyfin-web still calls, flagged `alias` in `compat/endpoints.yaml`. Each one is removed when the web client stops calling it. Never add an alias for another client.
 - **Outside scope but called anyway:** answer with a valid empty response if the client breaks otherwise; otherwise 404.
 - **Beyond Jellyfin:** a feature Jellyfin's API has no place for lives under a jellyscale namespace of its own (`/jellyscale/v1/`), documented and versioned. Unmodified clients never see the namespace, and Fluster adopts it first. Every Jellyfin route answers as it would without it, except where a viewer has made a choice there for their own account: that choice follows them into every app (tracks they asked to hide are hidden in each), and each such difference is listed in `compat/differences.yaml`.
-- **Clients in order:** jellyfin-web first, then Fluster, then the other apps built on Jellyfin's client libraries (Findroid, Android TV, Swiftfin, Streamyfin). Kodi isn't a stated target: it works if it happens to, and no work goes in solely for it.
+- **Clients in order:** jellyfin-web first, then Fluster, then the other apps built on Jellyfin's client libraries that send their token on every media request (Swiftfin, Streamyfin). An app whose player sends no token isn't supported, and no work goes in to make it play; it plays, with no change to jellyscale, once it sends one. docs/status.md names the apps this leaves out. Kodi isn't a stated target: it works if it happens to, and no work goes in solely for it.
 
 ## Quality bar
 
