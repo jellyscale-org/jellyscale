@@ -301,7 +301,6 @@
   task: JS-068
   reason: "flags and counters Jellyfin always sends (IgnoreDts, RequiresLooping, UnplayedItemCount, MediaType Unknown and the like) that jellyscale leaves out, or computes differently"
   paths:
-    - "MediaSources[].DefaultAudioStreamIndex"
     - "MediaSources[].RequiredHttpHeaders"
     - "MediaSources[].UseMostCompatibleTranscodingProfile"
 
@@ -783,7 +782,6 @@
     - "DisplayPreferencesId"
     - "EnableMediaSourceDisplay"
     - "IsHD"
-    - "MediaSources[].DefaultAudioStreamIndex"
     - "MediaSources[].RequiredHttpHeaders"
     - "MediaSources[].UseMostCompatibleTranscodingProfile"
     - "ParentId"
@@ -1076,14 +1074,6 @@
   path: "(status)"
   kind: improvement
   reason: "jellyscale answers 401 with no token where Jellyfin 12.4 answers 200: playback and personal data always require authorization, so a client must send its token on every media request (docs/access.md, What a client must send); the capture is compat/captures/access-12.4.json"
-
-- requests:
-    - "the films library, by name"
-  kind: gap
-  task: JS-068
-  reason: "HasSubtitles, which Jellyfin sends true on a film that has subtitle tracks (Polyglot, the film of the opted-in viewer's requests) and jellyscale leaves out"
-  paths:
-    - "Items[].HasSubtitles"
 
 - requests:
     - "playback info for Babel Film, for a viewer who hides the tracks outside their languages"
