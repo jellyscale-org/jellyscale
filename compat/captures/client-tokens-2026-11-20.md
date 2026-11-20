@@ -1,6 +1,6 @@
 # Which Jellyfin clients can play from jellyscale
 
-Read-only research, 2026-11-20. The rule comes from D-026 (`tasks/decisions.json`) and `docs/access.md`: every media request (direct-play stream, HLS playlists and segments, subtitles, fonts and attachments, downloads) needs a token. Pictures by id are the only open media. jellyscale reads the token from any of seven spellings (`docs/access.md`, "What a client must send"):
+Read-only research, 2026-11-20. The rule comes from D-026 and `docs/access.md`: every media request (direct-play stream, HLS playlists and segments, subtitles, fonts and attachments, downloads) needs a token. Pictures by id are the only open media. jellyscale reads the token from any of seven spellings (`docs/access.md`, "What a client must send"):
 
 - `Authorization: MediaBrowser Token=` or `Emby Token=`
 - `X-Emby-Authorization` (either scheme)
@@ -117,7 +117,7 @@ The **Library** column matters because the Kotlin SDK decides the token question
 
 **Finamp.**
 - It sends `ApiKey` on audio, or the header when it can (music_player_background_task.dart L1377-1424).
-- jellyscale is video-only (`tasks/decisions.json` L119). `compat/endpoints.yaml` has no `/Audio` routes, so Finamp has nothing to play. It is not a candidate.
+- jellyscale is video-only (PRODUCT.md: music is a non-goal). `compat/endpoints.yaml` has no `/Audio` routes, so Finamp has nothing to play. It is not a candidate.
 - Activity: 1.0.2 on 2026-10-29.
 
 **Infuse.**
