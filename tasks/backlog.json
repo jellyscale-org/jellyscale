@@ -193,7 +193,7 @@
       "severity": "minor",
       "title": "4K HDR TrueHD criterion has no check (lead measured 73x on 4 CPUs)",
       "status": "open",
-      "notes": ""
+      "notes": " Closes when JS-152 lands (its TrueHD row) (D-038)."
     },
     {
       "id": "BL-022",
@@ -2034,7 +2034,7 @@
     {
       "id": "BL-226",
       "title": "Hard-of-hearing and audio-description tracks: flags on a film's own tracks, and whether a film can start in audio description",
-      "notes": "Issue #114. External files already carry IsHearingImpaired (DOMAINS). Evidence, by the lead: (1) whether compat/differences.yaml lists IsHearingImpaired on a film's own subtitle tracks under JS-068; if so it is already planned there; (2) how many dogfood films carry an audio track marked for the visually impaired, and whether JS-121's rule makes any of them the default for a viewer's language. If one does, plan a task after JS-041 (goal 1: playback never surprises). If none, labelling waits for a supported app that shows it.",
+      "notes": "Issue #114. External files already carry IsHearingImpaired (DOMAINS). Evidence, by the lead: (1) whether compat/differences.yaml lists IsHearingImpaired on a film's own subtitle tracks under JS-068; if so it is already planned there; (2) how many dogfood films carry an audio track marked for the visually impaired, and whether JS-121's rule makes any of them the default for a viewer's language. If one does, plan a task after JS-041 (goal 1: playback never surprises). If none, labelling waits for a supported app that shows it. Generated audio description is dropped as research-grade (D-036). A generated subtitle would lack sound cues, so it is not a hard-of-hearing track and must not be flagged as one (BL-232).",
       "status": "open",
       "severity": "minor",
       "reviewer": "product-owner",
@@ -2052,7 +2052,7 @@
     {
       "id": "BL-228",
       "title": "Search finds nothing for a misspelled title",
-      "notes": "Issue #116; beyond Jellyfin. Promote on data: the share of searches on the dogfood that answer no item and are followed by another search within a minute. No measure exists today and none is planned for this alone.",
+      "notes": "Issue #116; beyond Jellyfin. Promote on data: the share of searches on the dogfood that answer no item and are followed by another search within a minute. No measure exists today and none is planned for this alone. Typo tolerance needs no model (pg_trgm, a trusted extension, no new service). Search by description is dropped until JS-045 shows what share of titles has a synopsis, and it needs pgvector, which an operator would have to install (goal 5) (D-036).",
       "status": "open",
       "severity": "minor",
       "reviewer": "product-owner",
@@ -2075,6 +2075,42 @@
       "severity": "minor",
       "reviewer": "product-owner",
       "source": "issue triage 2026-11-20"
+    },
+    {
+      "id": "BL-232",
+      "title": "A film with no subtitle in the viewer's reading language has none to offer (generated or translated subtitles)",
+      "notes": "AI research 2026-11-20 (D-036). Promote on data, in this order: (1) the share of dogfood films with no subtitle, inside or beside the file, in any account's SubtitleLanguagePreference, and the share with none at all; (2) the films' spoken languages (JS-117). If (1) is a share viewers meet weekly, plan a spike first, not a build: wall time, cores and memory per 2 h film on a dogfood worker's CPU and iGPU; invented lines over music and silence against films with human subtitles; whether a job slows a concurrent re-encode below real time (real processes); what the worker image gains in size. Any task that follows must carry: the track is labelled machine-made wherever it is listed; invented captions stay under a bound the spike measured; it is opt-in per library and the default image and install are unchanged; it never slows a viewer's re-encode below real time; languages it serves badly are written down as a gap; it runs only on the operator's servers (D-037). Translation of an existing track waits on the same count.",
+      "source": "AI research 2026-11-20",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner"
+    },
+    {
+      "id": "BL-233",
+      "title": "A subtitle file beside the film that is out of sync stays out of sync",
+      "notes": "AI research 2026-11-20 (D-036). Not a model: speech detection and alignment, about 20-30 s per film (the tool's own figure, unverified here), stored as an offset applied on delivery with no file touched. Promote on data: the share of dogfood sidecar text subtitles whose estimated offset is over 0.5 s, or a viewer issue with a capture. Needs JS-095's queue. A film with cuts cannot be fixed by one offset, and that would be a written gap.",
+      "source": "AI research 2026-11-20",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner"
+    },
+    {
+      "id": "BL-234",
+      "title": "A client that turns on an image subtitle by default starts a whole-film read on the first play of each such film",
+      "notes": "Dogfood report 2026-11-20 (D-038): one sighting, 46.7 GB read for one film when Moonfin's default subtitle mode chose an image track. D-003 accepts the read; JS-141 and JS-143 cover it. Promote JS-141 ahead of JS-135 if JS-143's count shows more than a few such reads a week, or most of those plays abandoned early.",
+      "source": "dogfood report 2026-11-20",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner"
+    },
+    {
+      "id": "BL-235",
+      "title": "Moonfin asked for a subtitle index its own rules should not pick, on two films",
+      "notes": "Dogfood report 2026-11-20 (D-038): index 4 (a Chinese PGS track) where its rules pick English index 3; index 5 (the second English track) where index 4 exists. Possibly the index numbering of main's item, which hides non-default audio tracks (JS-147 lists them). Promote to a goal-1 task at once if JS-153's line shows the asked index differs from what the item listed; drop if it matches Moonfin's own rules. JS-075 records it.",
+      "source": "dogfood report 2026-11-20",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner"
     }
   ]
 }

@@ -370,6 +370,36 @@
       "tradeoff": "jellyscale's tests named Octave (formerly Fluster): the CORS tests used its WebView origins, two docs checks pinned an Octave row in docs/status.md, and the search-hints audit required its evidence to name Octave's issue. Given up: nothing a viewer has; the CORS checks cover a custom-scheme origin and localhost origins as before.",
       "entry": "No jellyscale test names, runs or records Octave (owner, 2026-11-20: 'We shouldn't include Octave in our testing'). The CORS tests use generic origins (app://localhost, http://app.localhost, https://app.localhost); the checks that pinned an Octave row in docs/status.md (compat TestOctaveHasOneRowThatSaysItHasNotBeenRun, internal/api TestStatusHasAnOctaveRowThatNamesTheRecordAndDoesNotCallItWorking) are removed; the search-hints audit no longer requires its evidence to name Octave's issue. The docs may still describe Octave as jellyscale's own client (D-031). Recorded Jellyfin captures keep the origins they were made with, since they record what Jellyfin did. Extends D-027.",
       "serves": "owner, 2026-11-20: 'We shouldn't include Octave in our testing.'"
+    },
+    {
+      "id": "D-036",
+      "date": "2026-11-20",
+      "by": "product-owner",
+      "task": "AI research 2026-11-20; JS-052, JS-101; BL-226, BL-228, BL-232, BL-233",
+      "decision": "change",
+      "tradeoff": "Given up, by viewers: a film with no subtitle in their language keeps none, and a series with no intro chapters or operator data gets no skip button. Kept, for operators: no model file, no larger worker image, no batch load, no Postgres extension. Neither loss is measured on the dogfood.",
+      "entry": "AI is not a roadmap theme, and no use enters the plan because it is possible. Generated or translated subtitles (BL-232) and sidecar timing (BL-233) are backlog, each with the dogfood count that promotes it and what any task must carry (machine-made label, a measured bound on invented captions, opt-in, no slower playback, written language gaps, local only per D-037). JS-052 first counts how many episodes its chapter-and-operator-data design reaches. 'No fingerprinting' (docs/status.md, until now with no decision id) is reaffirmed here and reopened only by that count. JS-101 is unchanged: no method prescribed, nothing leaves the server. Dropped: generated synopses, tags, chapter titles, outside identification (PRODUCT.md non-goals), content warnings, generated audio description, ML transcode tuning and anomaly detection (JS-135/136/148, JS-021/094), search by description (no synopses before JS-045; pgvector).",
+      "serves": "PRODUCT.md: 'every film starts that way where it can'; 'Metadata comes from files beside the film, not from outside services'; goal 5, 'Operating it stays boring. Postgres is the only required service'; 'intro skipping are there as they are in Jellyfin'."
+    },
+    {
+      "id": "D-037",
+      "date": "2026-11-20",
+      "by": "owner",
+      "task": "PRODUCT.md; BL-232",
+      "decision": "change",
+      "tradeoff": "PRODUCT.md promised only that metadata is not fetched from outside services; it said nothing about a film's audio, subtitles, watch history or logs leaving the operator's servers. Given up: any hosted service (transcription, translation, embeddings, log analysis) that would need them.",
+      "entry": "PRODUCT.md's 'Their data is theirs' gains: 'Nothing about a film or a viewer (its audio, subtitles, watch history or logs) is sent outside the operator's servers.' The owner, asked by the product owner (D-036), said exposing assets outside 'subverts the point of a media server' and deferred the wording to the lead, who wrote it. Any AI use, such as BL-232, can only ever run locally.",
+      "serves": "owner, 2026-11-20: 'if we are allowing people to ... access assets publicly, that kind of subverts the point of a media server'."
+    },
+    {
+      "id": "D-038",
+      "date": "2026-11-20",
+      "task": "JS-152, JS-153, JS-154, JS-148, JS-136, JS-041, JS-075, JS-143, JS-022",
+      "decision": "change",
+      "by": "product-owner",
+      "tradeoff": "Dogfood report (owner, 2026-11-20): 4K HDR films with a burned-in PGS subtitle re-encoded at 0.56 to 0.63 times real time and did not play; a seek into one failed with 500s; no log said why a play was re-encoded. The owner asked for the reason to be logged and for every metric to be on the metrics endpoint.",
+      "entry": "JS-152 (a seek anywhere into a re-encode gets its segment, whatever the audio), JS-153 (every playback decision logged and counted with its reasons; no title, file name or path in the line; counters on /metrics with no account, device or item label) and JS-154 (measure why a 4K HDR burn-in ran at 0.6x on the dogfood and price what keeps it playing) enter at 14, 15 and 16; the tasks at 14 and above each move down three, amending D-025 (JS-041 directly after JS-147) and D-028 (JS-122 at 15). The 4K HDR burn-in failure is a gap, neither accepted nor closed: refusing with a reason is a floor and not the closer, an output below 1080 lines needs a priced brief, and sharing the encode across the cluster and a hardware slice (BL-040) are weighed first; JS-154's brief decides. JS-136 waits for JS-154 and must not slow that film; JS-041 lists the modes that now start a burn-in; JS-148 reads its 14-day count from JS-153 and keeps to the 1080-line ceiling. Every metric a task adds is served on /metrics (owner, 2026-11-20); JS-022 checks it for the existing ones. Read from the dogfood by the lead: one worker (a single pod), a 4-core i5-6500 with an HD 530 iGPU not mounted in the pod, no helper job ran. Unverified when decided: the cause of the seek failure (DTS-HD), why Moonfin asked for the subtitle index it did, the client-side delay on direct play. Data that moved it: dogfood jobs 82, 83 and 85.",
+      "serves": "PRODUCT.md goal 1: Playback never surprises a viewer; 'A heavy film uses the whole cluster's processors rather than stalling on one machine'; 'Nothing is hidden ... every failure is reported with its reason, never silent'."
     }
   ]
 }
