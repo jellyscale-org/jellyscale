@@ -1841,6 +1841,42 @@
       "title": "Docs say an HDR fallback keeps the copy's range, but ffmpeg 6.1 writes tv for a full-range copy unless the encoder flag is given",
       "status": "open",
       "notes": "Product owner asks (evidence): Does the shipped fallback give the range flag on ffmpeg 6.1? If not it is a defect; docs/transcoding.md still claims the range is kept"
+    },
+    {
+      "id": "BL-205",
+      "source": "JS-144 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "A preflight to a double-slash path answers 204, but the real request is redirected, which a browser engine refuses",
+      "status": "open",
+      "notes": "Unverified that any client sends one; a server address with a trailing slash might. Waits on JS-075's trailing-slash check on Fluster. If it fails there, plan: answer the path without a redirect."
+    },
+    {
+      "id": "BL-206",
+      "source": "JS-144 verify",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "A hosted https client calling a server on a private address gets no Private Network Access answer",
+      "status": "open",
+      "notes": "Chromium is phasing the check in. Widens D-016's exposure, so it needs a decision; waits for a client that hits it."
+    },
+    {
+      "id": "BL-207",
+      "source": "JS-144 / docs/client-testing.md",
+      "reviewer": "product-owner",
+      "severity": "minor",
+      "title": "Fluster's own tests against the -fixtures image as a repeating check of sign-in and listing, in place of a one-off record",
+      "status": "open",
+      "notes": "Product owner asks (evidence): does Fluster's CI run its WebView against the fixtures image today?"
+    },
+    {
+      "id": "BL-208",
+      "source": "JS-144 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "Three transcode e2e scenarios failed in one full run on a loaded machine; each passes 5 of 5 alone",
+      "status": "open",
+      "notes": "Not the BL-100 stall. The three: the dashboard card and Playback info panel (timed out after 44 s, panel empty); jellyfin-web after a segment fails, answered 500, once (timed out waiting for the player to ask for the failing segment, 65 s); a slow re-encode shared by three workers (browser closed after 92 s, then the gate printed no shard line). Host had about 2 GB free RAM. Product owner asks (evidence): does any of them fail in the merge queue or on CI's runners?"
     }
   ]
 }
