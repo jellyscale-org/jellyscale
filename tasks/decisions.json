@@ -330,6 +330,16 @@
       "tradeoff": "Which apps jellyscale answers was known for four apps; a reading of sixteen apps' source (2026-11-20, none played on a device) now says which send their token. Given up: nothing a viewer had. Stated plainly for operators: Wholphin (ExoPlayer player), Jellyfin for Roku and JellyCon join Findroid and Android TV as not supported under D-026, so a Roku has no supported app and Android TV rests on Moonfin alone.",
       "entry": "JS-075 plays Jellyfin for Android's built-in ExoPlayer player (external player off) and Swiftfin's native AVPlayer player, answering D-026's open question from source; the record names the engine that played, compares each app's media requests with the source reading, and records what each app does with the missing trickplay and Quick Connect; Moonfin is played once on Android TV. D-026's 'the unit is the app' is read as the app's own players: an opt-in hand-off to another app's player (Jellyfin for Android's external player) or a mode that bypasses the server (Jellyfin for Kodi's native mode) is not supported and does not put the app out. JS-037 keeps its place and names Moonfin from source. JS-053 keeps its place: whether a 404 on trickplay is seen by a viewer is unverified, and BL-222 holds the question until JS-075 answers it. docs/status.md gains 'Which apps send their token', which says 'read from source, not played' and never 'works', and its not-supported gap names all five apps. No task for Kodi, Infuse or Wholphin's MPV player. The research is in compat/captures/client-tokens-2026-11-20.md. The lead confirmed /QuickConnect/Enabled answers false, and that a film's Path is its storage key with no scheme in either store, so the proposed Fladder backlog item (a URL-like Path) was not opened. Numbered D-030 because JS-147's D-029 was pending.",
       "serves": "PRODUCT.md goal 3: Current Jellyfin clients that authorize every request work unmodified. Quality bar: A claim of working means a real client or a real store exercised it."
+    },
+    {
+      "id": "D-031",
+      "date": "2026-11-20",
+      "task": "docs",
+      "decision": "change",
+      "by": "owner",
+      "tradeoff": "The client that ships with jellyscale is renamed from Fluster to Octave (owner: a scale spans an octave, so the client takes its name from the server's). Given up: nothing a viewer had.",
+      "entry": "Fluster is renamed Octave. Any list of clients names Octave first, as jellyscale's own client (owner, 2026-11-20: 'we ought to say that Fluster is the first class citizen'); first-class names its place, not jellyscale work for it, which D-027 rules out. The docs say 'Octave (formerly Fluster)' at first mention until the client's repository is renamed; the docs checks that matched 'Fluster' in docs/status.md and docs/access.md match 'Octave', with the same meaning. Decisions, done tasks, backlog items and issue labels keep the name they were written with.",
+      "serves": "PRODUCT.md: jellyscale ships with Octave, a desktop client that plays the original file whenever it can."
     }
   ]
 }

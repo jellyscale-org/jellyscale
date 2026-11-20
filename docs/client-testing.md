@@ -1,6 +1,6 @@
 # Testing a client against jellyscale
 
-A client that tests against jellyscale (Fluster, for one) can pin an image that holds a small synthetic library and one known user, and start it with one Compose file. Nothing in it is a real film. It is for tests only: the password is public, the only user is an administrator, and nothing is kept when it stops.
+A client that tests against jellyscale (Octave, for one) can pin an image that holds a small synthetic library and one known user, and start it with one Compose file. Nothing in it is a real film. It is for tests only: the password is public, the only user is an administrator, and nothing is kept when it stops.
 
 ## The image
 
