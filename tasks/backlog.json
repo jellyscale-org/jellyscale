@@ -2007,7 +2007,7 @@
     {
       "id": "BL-223",
       "title": "The two saved Remember settings (audio, subtitle selections) may do nothing; a per-series memory across devices is beyond Jellyfin",
-      "notes": "Issue #117. JS-041's capture records whether a progress report naming a subtitle track changes the next default with RememberSubtitleSelections on; nothing records the audio twin. Promote: if Jellyfin 12.4 carries a choice to the next episode and jellyscale does not, a saved setting does nothing (as BL-151, D-025): plan it after JS-041, with the audio twin observed the same way. A memory beyond what Jellyfin applies waits for data that viewers re-pick tracks episode after episode.",
+      "notes": "Issue #117. JS-041's capture records whether a progress report naming a subtitle track changes the next default with RememberSubtitleSelections on; nothing records the audio twin. Promote: if Jellyfin 12.4 carries a choice to the next episode and jellyscale does not, a saved setting does nothing (as BL-151, D-025): plan it after JS-041, with the audio twin observed the same way. A memory beyond what Jellyfin applies waits for data that viewers re-pick tracks episode after episode. Jellyfin 12.4 remembers a viewer's audio pick per film across reloads and sign-ins (compat/captures/audio-menu-12.4.md, 'On return'); jellyscale does not (JS-147, D-029).",
       "status": "open",
       "severity": "minor",
       "reviewer": "product-owner",
@@ -2111,6 +2111,15 @@
       "status": "open",
       "severity": "minor",
       "reviewer": "product-owner"
+    },
+    {
+      "id": "BL-236",
+      "title": "Where no transcode can run, the details item names the browser's track for every client, though a client that switches tracks itself could play the saved language",
+      "notes": "D-029, D-034 (JS-147): in the lasting states (no transcodeStore, no probed duration, no live worker that runs transcodes, differing stores) the item names and lists the track a browser will hear; PlaybackInfo for a self-switching client still names and plays the saved-language track. Promote to a task ahead of other open work if JS-075 records a supported client starting from the item's track; drop if none does. The design-around to assess then is an item answer that depends on the client.",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-147 Verify 2026-11-20"
     }
   ]
 }

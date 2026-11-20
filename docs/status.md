@@ -31,7 +31,7 @@ Every viewer-visible and operator-visible feature in scope, in one list. Status 
 - Parallel transcoding: a re-encode running below 1.2x real time gets helper jobs on other workers for the 4-segment chunks ahead of the viewer, and a new viewer who finds no worker with the cores its job costs stops the helpers that hold them, of one worker, rather than waiting; `transcodeHelpers: false` turns it off (`docs/running.md`): **done** (a burnt image subtitle gets helpers too, as its chunks draw the cue showing; helpers use a fixed threshold, not the cluster's spare capacity).
 - Local accounts with bcrypt passwords and per-device tokens; the first administrator comes from configuration: **partial** (no user management, see `identity`).
 - Sessions list and playback reporting: **partial** (listing and progress done, no operator view of devices).
-- Items' multiple audio tracks: **done**.
+- Items' multiple audio tracks: **done**. The details page's audio menu lists every audio track the viewer has not hidden (JS-147, D-018), and plays a pick as a copy of the video with that track; where a pick cannot be delivered (no transcode store, no probed duration, no worker that runs transcodes, or the roles' stores differ) it lists the viewer's track alone, and a pick that cannot be delivered is refused, never played as another track (D-029, DOMAINS 32).
 - Search by term (jellyfin-web's search page calls `GET /Items` with `searchTerm`): **done**.
 
 ### `phase3`

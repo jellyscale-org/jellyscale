@@ -270,6 +270,7 @@ func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, mark
 		wanted = request.MediaSourceID
 	}
 	playSession := randomHex(16)
+	readWorkers := s.workersOnce(r.Context())
 	var methods []string // Counted once the reply is known not to be a refusal.
 	result := make([]media.MediaSource, 0, len(sources))
 	for _, source := range sources {
@@ -297,7 +298,12 @@ func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, mark
 		if hasAudio {
 			planned.AudioStreamIndex = media.Ptr(playback.Number(audio))
 		}
-		method, refused, err := s.planPlayback(r, id, playSession, planned, &source, stored, &audio)
+		// A pick is a track the viewer named that is neither the file's default nor the one their saved language chooses: the
+		// plan plays it or refuses, never plays another (D-029). The saved language falls back to the default.
+		dflt, _ := fileDefaultAudio(source)
+		saved, _ := audioChoice(sessionOf(r).User, source, nil)
+		pick := request.DeviceProfile != nil && request.AudioStreamIndex != nil && hasAudio && audio == int(*request.AudioStreamIndex) && audio != dflt && audio != saved
+		method, refused, err := s.planPlayback(r, id, playSession, planned, &source, stored, &audio, pick, readWorkers)
 		if err != nil {
 			s.fail(w, r, err)
 			return
@@ -377,8 +383,9 @@ func everyTrack(listed, stored []media.MediaStream) []media.MediaStream {
 // method is how it will play, for the decisions counter, which the caller
 // counts once no source of the reply is refused. refused is true when the
 // source needs a transcode that can't start now. audio is the track the viewer starts with, which the plan sets to the
-// file's default where the film then plays that.
-func (s *Server) planPlayback(r *http.Request, itemID, playSession string, request playback.Request, source *media.MediaSource, read func() (items.Source, bool, error), audio *int) (method string, refused bool, err error) {
+// file's default where the film then plays that. pick is true when the request names an audio track that only a transcode
+// can play: where none can start, the source is refused rather than play another track (D-029).
+func (s *Server) planPlayback(r *http.Request, itemID, playSession string, request playback.Request, source *media.MediaSource, read func() (items.Source, bool, error), audio *int, pick bool, readWorkers func() (transcode.Workers, error)) (method string, refused bool, err error) {
 	if s.Transcode == nil && request.DeviceProfile == nil {
 		return "direct_play", false, nil
 	}
@@ -388,6 +395,9 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 	}
 	if !found || stored.RunTimeTicks <= 0 {
 		// A film with no probed duration can't be copied or transcoded, so what plays is the file's default track.
+		if found && pick {
+			return "", s.refusePick("the film has no probed duration"), nil
+		}
 		if found {
 			*audio = playbackSource(stored).DefaultAudio()
 		}
@@ -403,7 +413,7 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 		offerTranscoding(source, stored.Streams)
 	}
 	if decision.DirectPlay {
-		return "direct_play", false, nil
+		return "direct_play", false, listPlayed(readWorkers, request, media, source, *audio)
 	}
 	// Whether or not a worker can transcode it now, so that the track is stored by the time one can.
 	s.startImageTracks(r.Context(), itemID, stored, decision.Subtitle)
@@ -433,8 +443,23 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 		}
 	case s.Transcode != nil:
 		reason, err = s.Transcode.Unavailable(r.Context(), spec, user.User.ID, user.DeviceID)
+		if err == nil && reason == "" && *audio != media.DefaultAudio() {
+			// The item lists the track alone where no worker of this output version runs transcodes, so a track other
+			// than the file's default is asked of the same node read (D-029); Unavailable stays as it is for the rest.
+			// A film that needs a transcode whatever the track keeps its job, which waits for a worker of the version
+			// as it did, rather than be refused for the length of a rolling deploy.
+			plain := request
+			plain.AudioStreamIndex, plain.SubtitleStreamIndex = nil, nil
+			var w transcode.Workers
+			if w, err = readWorkers(); err == nil && !w.Transcodes && playback.Decide(plain, media, true).DirectPlay {
+				reason = "no transcode worker of this output version is running"
+			}
+		}
 	default: // A replica with no transcodeStore asks only whether the stores differ.
 		if reason, err = transcode.StoreMismatch(r.Context(), s.Pool); err == nil && reason == "" {
+			if pick {
+				return "", s.refusePick("no transcodeStore is set"), nil
+			}
 			*audio = media.DefaultAudio()
 			return "direct_play", false, nil // No worker anywhere: transcoding is simply off.
 		}
@@ -447,11 +472,17 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 		// they picked, rather than lose the player; a subtitle that was to be
 		// drawn is then missing. Otherwise there is nothing to fall back on.
 		request.AudioStreamIndex, request.SubtitleStreamIndex = nil, nil
+		if pick {
+			return "", s.refusePick(reason), nil
+		}
 		if playback.Decide(request, media, true).DirectPlay {
 			s.Log.Warn("cannot switch audio tracks or burn in subtitles, so the default plays on", "item", spec.Item, "reason", reason)
+			*audio = media.DefaultAudio()
+			if err := listPlayed(readWorkers, request, media, source, *audio); err != nil {
+				return "", false, err
+			}
 			// So no subtitle is listed that only a transcode could draw.
 			source.SupportsTranscoding = false
-			*audio = media.DefaultAudio()
 			return "direct_play", false, nil
 		}
 		s.Log.Error("refusing to offer a transcode: "+reason, "item", spec.Item, "spec", spec.Hash())
@@ -476,6 +507,31 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 		s.Log.Warn("could not keep the transcode reasons for the session list", "error", err)
 	}
 	return method, false, nil
+}
+
+// listPlayed lists no audio track but the one that plays where no worker will deliver another and the client cannot direct
+// play another itself (D-029: the reply lists no track it would not play). A client that picks tracks itself keeps them all.
+func listPlayed(readWorkers func() (transcode.Workers, error), request playback.Request, file playback.Source, source *media.MediaSource, played int) error {
+	other := slices.IndexFunc(source.MediaStreams, func(stream media.MediaStream) bool { return stream.Type == "Audio" && stream.Index != played })
+	if other < 0 {
+		return nil
+	}
+	workers, err := readWorkers()
+	if err != nil || workers.Transcodes {
+		return err
+	}
+	request.AudioStreamIndex = media.Ptr(playback.Number(source.MediaStreams[other].Index))
+	if !playback.Decide(request, file, true).DirectPlay {
+		keepAudio(source, played)
+	}
+	return nil
+}
+
+// refusePick logs why a picked track cannot be delivered and counts the refusal; the caller answers it as a refused source.
+func (s *Server) refusePick(reason string) bool {
+	s.Log.Warn("refusing a picked audio track that cannot be delivered: " + reason)
+	playbackRefusals.Inc()
+	return true
 }
 
 // offerTranscoding marks the source transcodable, and puts all of the file's

@@ -8,12 +8,14 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 
 	"jellyscale/internal/db"
 	"jellyscale/internal/items"
 	"jellyscale/internal/media"
 	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
+	"jellyscale/internal/transcode"
 )
 
 const defaultLatestLimit = 16
@@ -236,7 +238,7 @@ func (s *Server) getItem(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, s.Items.LibraryDTO(library))
 		return
 	}
-	dto, err := s.Items.Get(r.Context(), id, sessionOf(r).User.ID)
+	dto, runtime, err := s.Items.GetWithRuntime(r.Context(), id, sessionOf(r).User.ID)
 	if err != nil {
 		s.fail(w, r, err)
 		return
@@ -245,7 +247,7 @@ func (s *Server) getItem(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	if err := s.hideUndeliverable(r.Context(), id, dto, sessionOf(r).User); err != nil {
+	if err := s.hideUndeliverable(r.Context(), id, dto, runtime, sessionOf(r).User); err != nil {
 		s.fail(w, r, err)
 		return
 	}
@@ -269,7 +271,18 @@ func markOriginal(source *media.MediaSource) string {
 // twice, in MediaStreams and in MediaSources. The repo leaves no attachments in
 // a DTO, so it is the stored sources that are made over: they have them, as
 // the candidates for listFonts.
-func (s *Server) hideUndeliverable(ctx context.Context, itemID string, dto map[string]any, user User) error {
+// workersOnce reads transcode_nodes at its first call, so one request sends one statement however many sources ask.
+func (s *Server) workersOnce(ctx context.Context) func() (transcode.Workers, error) {
+	var workers transcode.Workers
+	var err error
+	var once sync.Once
+	return func() (transcode.Workers, error) {
+		once.Do(func() { workers, err = transcode.ReadWorkers(ctx, s.Pool) })
+		return workers, err
+	}
+}
+
+func (s *Server) hideUndeliverable(ctx context.Context, itemID string, dto map[string]any, runtime int64, user User) error {
 	if _, ok := dto["MediaSources"]; !ok {
 		return nil
 	}
@@ -277,10 +290,15 @@ func (s *Server) hideUndeliverable(ctx context.Context, itemID string, dto map[s
 	if err != nil {
 		return err
 	}
+	// One read of transcode_nodes serves every source, and is made only where something asks.
+	readWorkers := s.workersOnce(ctx)
 	for i := range sources {
 		source := &sources[i]
 		read := readOnce(func() (items.Source, bool, error) { return s.Items.Source(ctx, itemID, source.ID) })
-		deliverable, err := s.deliverable(ctx, *source, read)
+		deliverable, err := s.deliverableBy(ctx, *source, read, func() (bool, error) {
+			w, err := readWorkers()
+			return w.Alive, err
+		})
 		if err != nil {
 			return err
 		}
@@ -295,11 +313,30 @@ func (s *Server) hideUndeliverable(ctx context.Context, itemID string, dto map[s
 	// film scanned earlier has it with no rescan. Each source is marked by its own
 	// default audio; the item answers the first source's language.
 	filter := trackFilterOf(user)
+	// The Audio menu lists every track where a pick of one can be delivered: as a copy of the video with that track, which
+	// needs a transcode store, a probed duration and a worker (a browser's direct play plays the file's default alone), so
+	// elsewhere it lists the viewer's track alone (invariant 32, D-018).
+	pickable := false
+	if s.Transcode != nil && runtime > 0 {
+		w, err := readWorkers()
+		if err != nil {
+			return err
+		}
+		pickable = w.Transcodes
+	}
 	for i := range sources {
+		if pickable {
+			listEveryAudio(&sources[i])
+		}
 		original := markOriginal(&sources[i])
 		hideTracks(&sources[i], filter)
 		// The details page's Play sends the track its menu selects, so the item names and lists the viewer's track.
-		if audio, ok := audioChoice(user, sources[i], nil); ok {
+		// Where no pick can be delivered, a saved language cannot be either, so the file's default is what they hear (D-029).
+		audio, ok := fileDefaultAudio(sources[i])
+		if pickable {
+			audio, ok = audioChoice(user, sources[i], nil)
+		}
+		if ok {
 			sources[i].DefaultAudioStreamIndex = media.Ptr(audio)
 			listAudio(&sources[i], audio, original)
 		}

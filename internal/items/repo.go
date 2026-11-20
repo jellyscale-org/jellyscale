@@ -90,7 +90,7 @@ func (r *Repo) Find(ctx context.Context, q Query, fields Fields, withCount bool)
 	if err != nil {
 		return Result{}, err
 	}
-	hydrated, err := r.hydrate(ctx, ids, q.UserID, fields)
+	hydrated, err := r.hydrate(ctx, ids, q.UserID, fields, nil)
 	if err != nil {
 		return Result{}, err
 	}
@@ -106,14 +106,22 @@ func (r *Repo) Find(ctx context.Context, q Query, fields Fields, withCount bool)
 
 // Get returns one item's full DTO, or nil if it doesn't exist.
 func (r *Repo) Get(ctx context.Context, id, userID string) (map[string]any, error) {
-	found, err := r.hydrate(ctx, []string{id}, userID, nil)
-	if err != nil || len(found) == 0 {
-		return nil, err
-	}
-	return found[0], nil
+	dto, _, err := r.GetWithRuntime(ctx, id, userID)
+	return dto, err
 }
 
-func (r *Repo) hydrate(ctx context.Context, ids []string, userID string, fields Fields) ([]map[string]any, error) {
+// GetWithRuntime is Get with the item's probed duration in ticks (0 when it has none), read by the same statement.
+func (r *Repo) GetWithRuntime(ctx context.Context, id, userID string) (map[string]any, int64, error) {
+	runtimes := map[string]int64{}
+	found, err := r.hydrate(ctx, []string{id}, userID, nil, runtimes)
+	if err != nil || len(found) == 0 {
+		return nil, 0, err
+	}
+	return found[0], runtimes[db.CompactID(id)], nil
+}
+
+// runtimes, when not nil, gets each item's run_time_ticks by its compact id.
+func (r *Repo) hydrate(ctx context.Context, ids []string, userID string, fields Fields, runtimes map[string]int64) ([]map[string]any, error) {
 	hydrated := make([]map[string]any, 0, len(ids))
 	if len(ids) == 0 {
 		return hydrated, nil
@@ -164,6 +172,9 @@ func (r *Repo) hydrate(ctx context.Context, ids []string, userID string, fields 
 		tagChapters(dto, chapterKeys)
 		dto["UserData"] = UserDataDTO(id, UserData{position, runtime, playCount, favorite, played, lastPlayed})
 		byID[compact] = dto
+		if runtimes != nil && runtime != nil {
+			runtimes[compact] = *runtime
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

@@ -234,7 +234,8 @@ func branches() []branch {
 			prepare: func(t *testing.T, e *env) {
 				mustExec(t, e.pool, "UPDATE transcode_nodes SET seen_at = now() - interval '1 minute'")
 			}},
-		{name: "the fall-back to the default tracks", video: "h264", audio: "aac", want: "direct_play", body: second, prepare: noWorker},
+		// A pick no worker can deliver is refused, never answered with the default track (D-029; it fell back to it before).
+		{name: "a pick no worker can deliver", video: "h264", audio: "aac", want: "refused", body: second, prepare: noWorker},
 	}
 }
 
@@ -314,13 +315,17 @@ func TestPlaybackInfoReadsTheCostliestSourceOnce(t *testing.T) {
 			if n := count(statements, namesSource); n > 1 {
 				t.Errorf("%d statements name media_sources, want at most 1 (4 before the change without a worker, 3 with one):\n%s", n, listing(statements))
 			}
-			if got := len(firstSource(reply)["MediaAttachments"].([]any)); got != 1 {
-				t.Errorf("the stored font is not listed: %v", firstSource(reply)["MediaAttachments"])
-			}
 			if alive {
+				if got := len(firstSource(reply)["MediaAttachments"].([]any)); got != 1 {
+					t.Errorf("the stored font is not listed: %v", firstSource(reply)["MediaAttachments"])
+				}
 				wantDecisions(t, "a worker alive", before, map[string]float64{"copy": 1})
 			} else {
-				wantDecisions(t, "no worker alive", before, map[string]float64{"direct_play": 1})
+				// The pick of track 2 cannot be delivered, so it is refused, not played as the default (D-029).
+				if reply["ErrorCode"] != "RateLimitExceeded" {
+					t.Errorf("no worker alive: not refused: %v", reply)
+				}
+				wantDecisions(t, "no worker alive", before, map[string]float64{})
 			}
 			if got := count(statements, func(s string) bool { return strings.Contains(s, "keyframes") }); got != 1 {
 				t.Errorf("%d statements read the keyframe index, want 1:\n%s", got, listing(statements))

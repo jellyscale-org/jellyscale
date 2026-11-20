@@ -1851,21 +1851,20 @@ await scenario("no worker: the viewer gets a playback error dialog, and the clie
   if (seen.hls.length) throw new Error("the client got a stream it could not play");
 }, { stopsWorker: true });
 
-// Still without a worker: a film that direct plays keeps playing when the
-// viewer picks its other audio track, which would have needed a transcode.
-await scenario("no worker: switching audio on a direct play film keeps it playing", async ({ page, seen }) => {
+// Still without a worker: a film that direct plays cannot switch to its other audio track, which needs a transcode. The pick
+// ends in the dialog, and the client stops asking: it is never played as the default track (D-029; it kept playing before).
+// D-029: with no worker, a pick of another track cannot be delivered, so PlaybackInfo lists only the track that plays and
+// jellyfin-web hides its audio button (it shows it only for more than one track): the viewer has nothing to pick that
+// would play another track (lead's correction of the implementer's dispute; the earlier form clicked the hidden button).
+await scenario("no worker: a direct play film offers no audio track it would not play, and plays its default", async ({ page, seen }) => {
   await play(page, "Transcode", "Nu Film");
-  if (seen.infos.at(-1).source.TranscodingUrl !== undefined) throw new Error("Nu Film should direct play");
+  const source = seen.infos.at(-1).source;
+  if (source.TranscodingUrl !== undefined) throw new Error("Nu Film should direct play");
+  const audio = (source.MediaStreams ?? []).filter((s) => s.Type === "Audio").map((s) => s.Index);
+  if (audio.length !== 1) throw new Error(`PlaybackInfo lists Type Audio at ${JSON.stringify(audio)} with no worker, want the track that plays alone`);
   await advances(page);
   await page.mouse.move(600, 400);
-  await page.click(".btnAudio");
-  await page.click('[data-id="2"]');
-  await waitFor("a PlaybackInfo for track 2", async () => seen.infos.find((i) => Number(i.request.AudioStreamIndex) === 2));
-  if (await page.getByText("Playback Error").count()) throw new Error("the viewer got an error dialog");
-  await new Promise((resolve) => setTimeout(resolve, 3000));
-  await advances(page, 2);
-  if (seen.infos.length > 3) throw new Error(`the client asked ${seen.infos.length} times`);
-  await leave(page);
+  if (await page.locator(".btnAudio:not(.hide)").count()) throw new Error("the player offers an audio menu with no worker");
 }, { stopsWorker: true });
 
 // ---- What jellyfin-web does when a segment fails after playback has begun (JS-088) ----

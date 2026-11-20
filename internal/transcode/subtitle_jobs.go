@@ -15,6 +15,7 @@ import (
 
 	"jellyscale/internal/items"
 	"jellyscale/internal/library"
+	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
 	"jellyscale/internal/subtitles"
 )
@@ -75,6 +76,22 @@ func WorkerAlive(ctx context.Context, pool *pgxpool.Pool) (alive bool, err error
 // workerAliveSQL takes the seconds a report counts for as $1.
 const workerAliveSQL = `EXISTS (SELECT 1 FROM transcode_nodes
 	WHERE roles ~ '(^|,)worker(,|$)' AND seen_at > now() - make_interval(secs => $1))`
+
+// Workers is what one read of transcode_nodes says: whether a worker has reported lately (WorkerAlive), and whether a
+// picked audio track can be delivered: a worker of this output version that runs transcodes has reported lately and
+// the live roles agree on one transcodeStore (StoreMismatch). A worker with no free cores or a spec that just failed
+// is transient and not known here.
+type Workers struct{ Alive, Transcodes bool }
+
+// ReadWorkers reads Workers in one statement.
+func ReadWorkers(ctx context.Context, pool *pgxpool.Pool) (w Workers, err error) {
+	err = pool.QueryRow(ctx, "SELECT "+workerAliveSQL+`, EXISTS (SELECT 1 FROM transcode_nodes
+			WHERE roles ~ '(^|,)worker(,|$)' AND (slots > 0 OR cores > 0) AND output_version = $2 AND seen_at > now() - make_interval(secs => $1))
+		AND (SELECT count(DISTINCT store) FROM transcode_nodes
+			WHERE seen_at > now() - make_interval(secs => $1) AND NOT (store = '' AND roles = 'worker')) <= 1`,
+		liveTiming("counted").Seconds(), playback.OutputVersion).Scan(&w.Alive, &w.Transcodes)
+	return w, err
+}
 
 // FetchSubtitle returns stream index of src. A cached track is read at once.
 // Otherwise it queues a job and waits for the

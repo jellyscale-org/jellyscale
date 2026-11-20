@@ -382,7 +382,9 @@ func TestAnItemWithNoSourceAnswersAsBefore(t *testing.T) {
 // The statements one item's answer sends are what they were before the task: the value is
 // computed from what the answer already reads. testdata/original-language-statements.txt is
 // what the replica's pool sent on the tree before JS-117 (a pgx tracer, as JS-111's checks).
-// A build that reads one more row to find the language adds a line and fails here. It holds
+// A build that reads one more row to find the language adds a line and fails here. JS-147 (D-018) added one statement
+// to the item details with transcoding on: the read of transcode_nodes that says whether a picked audio track can be
+// delivered, which is also the worker check a film with subtitles made; PlaybackInfo with transcoding on, for a film of several audio tracks, sends the same one read, so that it lists no track it would not play (D-029). It holds
 // for two sources and for transcoding off and on.
 func TestAnItemsAnswersSendPostgresNoNewStatement(t *testing.T) {
 	e := newEnv(t)

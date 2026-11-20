@@ -1934,6 +1934,26 @@
       "ux": true,
       "core": false,
       "notes": "D-020: refuse (403 with Retry-After), never slow; criteria 2, 3 and 7 land together: a per-name lock without the known-device allowance does not ship. If refinement finds it too large for one build, bring a split to the product owner."
+    },
+    {
+      "id": "JS-147",
+      "phase": "ID",
+      "title": "The details page's Audio menu lets a viewer pick any audio track they have not hidden",
+      "description": "A viewer cannot pick another audio language on a film's details page in jellyfin-web, which Jellyfin 12.4 offers; no decision accepts that loss (product owner triage, 2026-11-19). PRODUCT.md: the audio and subtitles they chose.",
+      "acceptanceCriteria": [
+        "Observed first on Jellyfin 12.4: what the details page's Audio menu lists and what picking one does, recorded in compat/captures",
+        "The details page's Audio menu lists every audio track the viewer has not hidden, the chosen one selected, as Jellyfin 12.4 does; picking one plays it, in jellyfin-web (e2e)",
+        "If an existing invariant stops this for a client reason, the lead brings the product owner a trade-off brief with the cost of keeping the menu before building",
+        "Where a pick cannot be delivered for as long as the state lasts (no transcode store, no probed duration, no live worker that runs transcodes, or the roles' stores differ), the item lists the viewer's track alone, and PlaybackInfo lists no audio track it would not play: in none of these states does picking a track in the details page or the player play a different one (e2e or integration, each state) (D-029)",
+        "A pick that is neither the file's default nor the track the viewer's saved language chooses, made while no worker has the cores free or just after that transcode failed, either plays the picked track or ends in jellyfin-web's 'cannot be played at this time' dialog within seconds; it never plays another track. A saved language that cannot be delivered still falls back to the file's default and plays (observed in jellyfin-web, both states, e2e) (D-029)",
+        "docs/transcoding.md, where transcodeStore is described, tells the operator that without it a browser's audio menu offers one track; its 'keeps playing the default track' sentences are corrected to match the criterion above (D-029)"
+      ],
+      "ux": true,
+      "source": "product-owner triage 2026-11-19 (js121b)",
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "priority": 13
     }
   ]
 }

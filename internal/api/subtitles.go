@@ -496,11 +496,17 @@ func deliverSubtitles(source *media.MediaSource, itemID, token string, request p
 // when a worker returns, which only hides a track for a moment. Callers list
 // one item's source; a list would cost a store request for every track.
 func (s *Server) deliverable(ctx context.Context, source media.MediaSource, read sourceReader) (func(index int) bool, error) {
+	return s.deliverableBy(ctx, source, read, func() (bool, error) { return transcode.WorkerAlive(ctx, s.Pool) })
+}
+
+// deliverableBy is deliverable with the answer to whether a worker is alive given, so that an item that has read the
+// workers for another reason asks once.
+func (s *Server) deliverableBy(ctx context.Context, source media.MediaSource, read sourceReader, workerAlive func() (bool, error)) (func(index int) bool, error) {
 	yes := func(int) bool { return true }
 	if !slices.ContainsFunc(source.MediaStreams, func(stream media.MediaStream) bool { return stream.Type == "Subtitle" }) {
 		return yes, nil
 	}
-	if alive, err := transcode.WorkerAlive(ctx, s.Pool); alive || err != nil {
+	if alive, err := workerAlive(); alive || err != nil {
 		return yes, err
 	}
 	stored, found, err := read()

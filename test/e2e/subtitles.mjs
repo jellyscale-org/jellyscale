@@ -956,6 +956,219 @@ await scenario("from the details page a German viewer plays a film whose default
   });
 });
 
+// JS-147 (D-018): the details page's Audio menu lists every audio track the viewer has not hidden, as Jellyfin 12.4 does
+// (compat/captures/audio-menu-12.4.md, which this reads the entries, their order and their labels from: the menu is
+// jellyfin-web's own, sorted with the default first). Babel Film's menu is 1, 2, 3, 4 with 1 selected for a viewer with no
+// language and 2 for a German one; the viewer who hides the other languages (JS-119) has 1 and 4, and 1, 2, 3 and 4 again
+// once "show all tracks" is set and the page loaded again; Mono Film's has its one entry.
+const capturedMenu = (film, language) => JSON.parse(readFileSync(`${process.env.E2E_CAPTURES}/audio-menu-12.4.json`, "utf8")).web.menus.find((m) => m.film === film && m.AudioLanguagePreference === language);
+
+async function openDetails(page, title) {
+  await page.goto("about:blank"); // A full load: the item is asked for again, as a viewer coming back to the page does.
+  await page.goto(`${base}/web/`);
+  await page.waitForSelector(".card", { timeout: 30000 });
+  await page.locator(".card:visible", { hasText: "Languages" }).first().click();
+  await page.locator(".cardText a:visible", { hasText: title }).first().click();
+  await page.waitForSelector(".btnPlay:visible", { timeout: 30000 });
+  await page.waitForSelector(".selectAudio", { state: "attached", timeout: 30000 });
+  await page.waitForTimeout(500);
+}
+
+// The details page's Audio menu as the viewer sees it: its entries in order, the selected one, whether it is shown and enabled.
+const audioMenu = (page) => page.evaluate(() => {
+  const select = document.querySelector(".selectAudio");
+  return {
+    shown: !document.querySelector(".selectAudioContainer").classList.contains("hide"), enabled: !select.disabled,
+    options: [...select.options].map((o) => ({ value: o.value, label: o.textContent })), selected: select.value,
+  };
+});
+
+const sameEntries = (got, want, what) => {
+  if (JSON.stringify(got) !== JSON.stringify(want)) throw new Error(`${what}: ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
+};
+
+await scenario("the details page's Audio menu lists every audio track the viewer has not hidden, in Jellyfin's order and labels, with the viewer's own selected", async ({ page }) => {
+  const userId = await page.evaluate(() => window.ApiClient.getCurrentUserId());
+  const ok = async (method, path, body) => {
+    const answer = await apiCall(page, method, path, body);
+    if (![200, 204].includes(answer.status)) throw new Error(`${method} ${path}: ${answer.status} ${answer.text}`);
+  };
+  const babel = capturedMenu("Menu Babel", "").options; // The same tracks as Babel Film's, so the same labels (test/fixtures/babel.sh).
+  try {
+    await openDetails(page, "Babel Film");
+    const none = await audioMenu(page);
+    sameEntries(none.options, babel, "Babel Film's Audio menu for a viewer with no language saved");
+    if (!none.shown || !none.enabled || none.selected !== "1") throw new Error(`no language saved: shown ${none.shown}, enabled ${none.enabled}, selected ${none.selected}, want shown, enabled and 1`);
+    if (new Set(none.options.map((o) => o.label)).size !== none.options.length) throw new Error(`two entries read alike: ${JSON.stringify(none.options)}`);
+
+    await ok("POST", `/Users/${userId}/Configuration`, JSON.stringify({ AudioLanguagePreference: "deu", PlayDefaultAudioTrack: false }));
+    await openDetails(page, "Babel Film");
+    const german = await audioMenu(page);
+    sameEntries(german.options, babel, "Babel Film's Audio menu for a German viewer");
+    if (german.selected !== "2") throw new Error(`German viewer: selected ${german.selected}, want 2`);
+
+    await ok("POST", `/Users/${userId}/Configuration`, JSON.stringify({ AudioLanguagePreference: "eng", SubtitleLanguagePreference: "eng" }));
+    await ok("PATCH", "/jellyscale/v1/track-preferences", JSON.stringify({ HideOtherAudio: true, HideOtherSubtitles: true, ShowAllTracks: false }));
+    await openDetails(page, "Babel Film");
+    const hidden = await audioMenu(page);
+    sameEntries(hidden.options, [babel[0], babel[3]], "Babel Film's Audio menu for a viewer who hides the other languages");
+    if (hidden.selected !== "1") throw new Error(`hiding viewer: selected ${hidden.selected}, want 1`);
+
+    await ok("PATCH", "/jellyscale/v1/track-preferences", JSON.stringify({ ShowAllTracks: true }));
+    await openDetails(page, "Babel Film");
+    sameEntries((await audioMenu(page)).options, babel, "Babel Film's Audio menu with every track shown");
+
+    await openDetails(page, "Mono Film");
+    const mono = await audioMenu(page);
+    if (mono.options.map((o) => o.value).join() !== "1" || !mono.shown || mono.enabled) throw new Error(`Mono Film's menu: ${JSON.stringify(mono)}, want its one entry, 1`);
+  } finally {
+    await apiCall(page, "PATCH", "/jellyscale/v1/track-preferences", JSON.stringify({ HideOtherAudio: false, HideOtherSubtitles: false, ShowAllTracks: false }));
+    await apiCall(page, "POST", `/Users/${userId}/Configuration`, "{}");
+  }
+});
+
+// The German viewer picks an entry that is neither the selected one (2) nor the file's default (1): French, track 3, which
+// the capture shows Jellyfin 12.4 sends as AudioStreamIndex "3", answers with DefaultAudioStreamIndex 3 and plays as 3's tone.
+// jellyscale copies the video instead of re-encoding it (invariant 45). No earlier scenario plays Babel Film's third track,
+// so the first play of it makes its segments: this scenario counts the ffmpeg runs (run it in its whole gate).
+await scenario("a German viewer picks French in the details page's Audio menu and presses Play: the video is copied, track 3's tone is heard and the player's menu shows 3", async ({ page, seen }) => {
+  await withGermanViewer(page, async () => {
+    const lines = ffmpegLines().length;
+    const jobs = jobCount();
+    await openDetails(page, "Babel Film");
+    if (!(await audioMenu(page)).options.some((o) => o.value === "3")) throw new Error(`the Audio menu has no entry 3: ${JSON.stringify((await audioMenu(page)).options)}`);
+    await page.selectOption(".selectAudio", "3");
+    await page.locator(".btnPlay:visible").first().click();
+    await waitFor("video to start", async () => (await time(page)) > 0.5, 60000);
+    const info = seen.infos[0];
+    if (String(info.request.AudioStreamIndex) !== "3") throw new Error(`Play asked for AudioStreamIndex ${info.request.AudioStreamIndex}, want 3`);
+    const url = new URL(info.source.TranscodingUrl ?? "http://none/", base);
+    if (info.source.DefaultAudioStreamIndex !== 3 || info.source.SupportsDirectPlay || url.searchParams.get("VideoCodec") !== "copy" || url.searchParams.get("AudioStreamIndex") !== "3") {
+      throw new Error(`the reply is not a copy of track 3: default ${info.source.DefaultAudioStreamIndex}, direct play ${info.source.SupportsDirectPlay}, ${info.source.TranscodingUrl}`);
+    }
+    await advances(page, 2);
+    const runs = await waitFor("the stream's ffmpeg", async () => (streamRuns(lines).length ? streamRuns(lines) : null), 30000);
+    if (runs.length !== 1 || !/-c:v copy/.test(runs[0]) || /libx26[45]|libsvtav1/.test(runs[0])) throw new Error(`the video is not copied by one ffmpeg: ${runs.map((r) => r.slice(0, 400))}`);
+    if (jobCount() !== jobs + 1) throw new Error(`${jobCount() - jobs} specs started, want 1`);
+    const tone = await audioTone(page);
+    if (Math.abs(tone - 660) > 15) throw new Error(`the sound has its strongest tone at ${tone} Hz, want 660 (track 3); 440 is English and 550 German`);
+    await page.mouse.move(300, 300);
+    await page.mouse.move(600, 400);
+    await waitFor("the audio button", async () => page.click(".btnAudio", { timeout: 1500 }).then(() => true, () => false), 30000);
+    await page.waitForSelector(".actionSheetMenuItem", { timeout: 10000 });
+    const selected = await page.evaluate(() => [...document.querySelectorAll(".actionSheetMenuItem")].filter((e) => e.querySelector(".check").style.visibility !== "hidden").map((e) => e.dataset.id));
+    if (selected.join() !== "3") throw new Error(`the audio menu shows ${selected.join() || "nothing"} selected, want 3`);
+    await waitFor("the audio menu to close", async () => {
+      await page.mouse.click(5, 5);
+      return (await page.locator(".actionSheetMenuItem").count()) === 0;
+    }, 10000);
+    seen.errors = seen.errors.filter((e) => !/ActionSheet closed without resolving/.test(e));
+    noErrors(seen);
+    await leave(page);
+  });
+});
+
+// The same viewer picks English, the file's default (1), which is not the selected entry: it plays directly, track 1's
+// tone, and starts no job and no ffmpeg.
+await scenario("a German viewer picks English, the file's default, in the details page's Audio menu and presses Play: it plays directly with no job", async ({ page, seen }) => {
+  await withGermanViewer(page, async () => {
+    const lines = ffmpegLines().length;
+    const jobs = jobCount();
+    await openDetails(page, "Babel Film");
+    if (!(await audioMenu(page)).options.some((o) => o.value === "1")) throw new Error(`the Audio menu has no entry 1: ${JSON.stringify((await audioMenu(page)).options)}`);
+    await page.selectOption(".selectAudio", "1");
+    await page.locator(".btnPlay:visible").first().click();
+    await waitFor("video to start", async () => (await time(page)) > 0.5, 60000);
+    const info = seen.infos[0];
+    if (String(info.request.AudioStreamIndex) !== "1" || info.source.DefaultAudioStreamIndex !== 1 || !info.source.SupportsDirectPlay || info.source.TranscodingUrl) {
+      throw new Error(`asked for ${info.request.AudioStreamIndex}, default ${info.source.DefaultAudioStreamIndex}, direct play ${info.source.SupportsDirectPlay}, ${info.source.TranscodingUrl}: want track 1 played as it is`);
+    }
+    await advances(page, 2);
+    const heard = await audioTone(page);
+    if (Math.abs(heard - 440) > 15) throw new Error(`the sound has its strongest tone at ${heard} Hz, want 440`);
+    if (jobCount() !== jobs || streamRuns(lines).length) throw new Error(`a job started: ${jobCount() - jobs} specs, ${streamRuns(lines).map((r) => r.slice(0, 200))}`);
+    noErrors(seen);
+    await leave(page);
+  });
+});
+
+// JS-147 (D-029): a pick the server cannot deliver right now (no worker has the cores free, or the transcode of that very
+// spec just failed) is never played as another track: it ends in jellyfin-web's "Playback Error" dialog ("cannot be played at
+// this time"), which the server answers at PlaybackInfo, and the client then stops asking. The viewer's saved language is not
+// a pick: where its copy cannot start the file's default plays, directly. The item still lists every track in these states
+// (the worker is there, so the menu is that of the healthy server).
+// Busy is a job that holds 1000 cores on the live worker (a row the worker does not own is not counted, so it is the
+// worker's); the worker's heartbeat does not touch it. A failed spec is made by playing it once, then marking its job failed:
+// a failure is remembered for 30 s (failureMemory), so the replay follows at once. Neither is a state the stack can reach by
+// load: a worker whose cores are taken needs more films than the stack plays.
+const tooBusy = () => sql(`INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, state, worker, lease_expires_at, output_version, cost)
+  SELECT 'e2e-busy', '{}', 'e2e-busy', 0, 0, 'running', id, now() + interval '1 hour', output_version, 1000 FROM transcode_nodes
+  WHERE roles ~ '(^|,)worker(,|$)' ORDER BY seen_at DESC LIMIT 1`);
+
+// Picks entry 'pick' in Babel Film's details page and presses Play, and waits for the dialog. Nothing is played: no stream
+// was offered by any PlaybackInfo, no HLS request was made, and the client asked a few times and then stopped.
+async function pickRefused(page, seen, pick) {
+  await openDetails(page, "Babel Film");
+  await page.selectOption(".selectAudio", pick);
+  const asked = seen.infos.length, streams = seen.hls.length;
+  await page.locator(".btnPlay:visible").first().click();
+  await page.getByText("Playback Error").first().waitFor({ timeout: 20000 }); // A hang bound: the answer is at PlaybackInfo.
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+  const infos = seen.infos.slice(asked);
+  if (infos.length > 3) throw new Error(`the client asked PlaybackInfo ${infos.length} times`);
+  for (const info of infos) {
+    if (String(info.request.AudioStreamIndex) !== pick) throw new Error(`the page asked for AudioStreamIndex ${info.request.AudioStreamIndex}, want ${pick}`);
+    if (info.source) throw new Error(`the server offered a plan for a pick it cannot deliver: ${JSON.stringify(info.source).slice(0, 300)}`);
+  }
+  if (seen.hls.length !== streams) throw new Error(`${seen.hls.length - streams} stream requests were made for a pick that is refused`);
+}
+
+await scenario("no worker has the cores free: a German viewer's pick of French ends in the dialog and plays no other track, and the saved language plays the file's default directly", async ({ page, seen }) => {
+  await withGermanViewer(page, async () => {
+    tooBusy();
+    try {
+      await openDetails(page, "Babel Film");
+      const menu = await audioMenu(page);
+      if (menu.options.map((o) => o.value).join() !== "1,2,3,4" || menu.selected !== "2") throw new Error(`the Audio menu in a busy server: ${JSON.stringify(menu)}, want 1 to 4 with 2 selected`);
+      await pickRefused(page, seen, "3");
+      // The saved language (2) is the menu's own selection: Play sends it, and it falls back to the file's default.
+      await openDetails(page, "Babel Film");
+      const asked = seen.infos.length;
+      await page.locator(".btnPlay:visible").first().click();
+      await waitFor("video to start", async () => (await time(page)) > 0.5, 60000);
+      const info = seen.infos[asked];
+      if (String(info.request.AudioStreamIndex) !== "2") throw new Error(`Play asked for AudioStreamIndex ${info.request.AudioStreamIndex}, want the saved language's 2`);
+      if (!info.source?.SupportsDirectPlay || info.source.TranscodingUrl || info.source.DefaultAudioStreamIndex !== 1) {
+        throw new Error(`default ${info.source?.DefaultAudioStreamIndex}, direct play ${info.source?.SupportsDirectPlay}, ${info.source?.TranscodingUrl}: want track 1 played as it is`);
+      }
+      await advances(page, 2);
+      const heard = await audioTone(page);
+      if (Math.abs(heard - 440) > 15) throw new Error(`the sound has its strongest tone at ${heard} Hz, want 440 (the file's default)`);
+      await leave(page);
+    } finally {
+      sql("DELETE FROM transcode_jobs WHERE spec_hash = 'e2e-busy'");
+    }
+  });
+});
+
+await scenario("the transcode of a German viewer's pick of the untagged track just failed: asking again ends in the dialog and plays no other track", async ({ page, seen }) => {
+  await withGermanViewer(page, async () => {
+    // Track 4 is played once, so that the spec exists and PlaybackInfo offers it (the baseline the refusal is told from).
+    await openDetails(page, "Babel Film");
+    await page.selectOption(".selectAudio", "4");
+    const asked = seen.infos.length;
+    await page.locator(".btnPlay:visible").first().click();
+    await waitFor("video to start", async () => (await time(page)) > 0.5, 60000);
+    const url = new URL(seen.infos[asked].source?.TranscodingUrl ?? "http://none/", base);
+    if (url.searchParams.get("AudioStreamIndex") !== "4") throw new Error(`the healthy server did not offer track 4: ${seen.infos[asked].source?.TranscodingUrl}`);
+    await leave(page);
+    await waitFor("the spec's job to end", async () => sql("SELECT count(*) FROM transcode_jobs WHERE state IN ('queued', 'running')") === "0", 30000);
+    sql(`UPDATE transcode_jobs SET state = 'failed', error = 'ffmpeg exited 1', ended_at = now(), again = false
+      WHERE spec_hash = (SELECT spec_hash FROM transcode_jobs WHERE NOT helper ORDER BY id DESC LIMIT 1)`);
+    await pickRefused(page, seen, "4");
+  });
+});
+
 // JS-089. A burnt PGS track is stored by a worker once the play asks for it,
 // and a seek into a cue that began 60 s earlier is then a run that draws the cue
 // from the stored track, so it is on screen at the first frame played after the

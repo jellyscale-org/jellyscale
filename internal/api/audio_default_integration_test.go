@@ -810,7 +810,8 @@ func TestARequestWithNoProfileGetsThePreferredTrackAndADirectPlay(t *testing.T) 
 }
 
 // When the copy cannot start, a film that plays directly today still plays: the viewer is not shown "cannot be played", the
-// file's default track plays and DefaultAudioStreamIndex names it, also when the request named the track.
+// file's default track plays and DefaultAudioStreamIndex names it, also when the request names the saved-language track (a pick of
+// another track is refused or played, D-029).
 func TestACopyThatCannotStartFallsBackToTheFilesDefaultTrack(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -828,14 +829,14 @@ func TestACopyThatCannotStartFallsBackToTheFilesDefaultTrack(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			f := audioEnv(t)
 			german := f.listener(t, "german", "deu", false)
-			plainViewer := f.listener(t, "plain", "", true)
 			film, _ := f.film(t, "English and German", []track{eng(true), deu(false)})
 			tc.break_(t, f)
 			for who, ask := range map[string]func() doc{
-				"a deu viewer":                        func() doc { return f.ask(t, 0, german, film, nil) },
-				"a deu viewer on the other replica":   func() doc { return f.ask(t, 1, german, film, nil) },
-				"a viewer who names the German track": func() doc { return f.ask(t, 0, plainViewer, film, map[string]any{"AudioStreamIndex": "2"}) },
-				"a deu viewer who names it":           func() doc { return f.ask(t, 0, german, film, map[string]any{"AudioStreamIndex": 2}) },
+				"a deu viewer":                      func() doc { return f.ask(t, 0, german, film, nil) },
+				"a deu viewer on the other replica": func() doc { return f.ask(t, 1, german, film, nil) },
+				// A pick that is not the saved language no longer falls back (D-029): it plays that track or is refused, which
+				// TestAPickThatCannotBeDeliveredNowIsRefusedOrPlayedNeverAnotherTrack and the lasting states of audio_menu_integration_test.go check.
+				"a deu viewer who names it": func() doc { return f.ask(t, 0, german, film, map[string]any{"AudioStreamIndex": 2}) },
 			} {
 				before := decided(t)
 				reply := ask()
@@ -1135,10 +1136,10 @@ func TestAClientWithNoSecondaryAudioConditionDirectPlaysTheTrackTheViewerPrefers
 
 // jellyfin-web's details page fills its Audio menu from the item's audio streams, selects the item's
 // MediaSources[0].DefaultAudioStreamIndex and its Play button sends that menu value as AudioStreamIndex, which the
-// captured rule always answers. So GET /Items/{id} is the viewer's too: it names the track PlaybackInfo names, for each
-// source, and lists that track as its one audio stream in place of the file's default (invariant 32 holds: one
-// deliverable audio track, so the details page offers none that cannot be delivered), on both routes of the item.
-func TestTheItemNamesAndListsTheTrackPlaybackInfoNamesForEveryCapturedCell(t *testing.T) {
+// captured rule always answers. So GET /Items/{id} is the viewer's too: it names, for each source, the track PlaybackInfo
+// names, and lists every audio track of the file (JS-147, D-018: the item once listed that track alone, which took the
+// viewer's other languages out of the menu; the audio-menu check is in audio_menu_integration_test.go), on both routes.
+func TestTheItemNamesTheTrackPlaybackInfoNamesAndListsEveryTrackForEveryCapturedCell(t *testing.T) {
 	f := audioEnv(t)
 	capture := loadAudioCapture(t)
 	if len(capture.Details) == 0 {
@@ -1148,7 +1149,8 @@ func TestTheItemNamesAndListsTheTrackPlaybackInfoNamesForEveryCapturedCell(t *te
 	var wrong []string
 	cells := 0
 	for _, film := range capture.Films {
-		item, _ := f.film(t, film.Name, captureTracks(film.Audio))
+		tracks := captureTracks(film.Audio)
+		item, _ := f.film(t, film.Name, tracks)
 		for _, cell := range film.Cells {
 			key := fmt.Sprint(cell.AudioLanguagePreference, "|", cell.PlayDefaultAudioTrack)
 			v, ok := viewers[key]
@@ -1168,10 +1170,10 @@ func TestTheItemNamesAndListsTheTrackPlaybackInfoNamesForEveryCapturedCell(t *te
 							audio = append(audio, int(s["Index"].(float64)))
 						}
 					}
-					if want == -2 && len(audio) == 0 || want != -2 && slices.Equal(audio, []int{want}) {
+					if slices.Equal(audio, seq(len(tracks))) {
 						continue
 					}
-					wrong = append(wrong, fmt.Sprintf("%s (alias %v) %s: lists audio %v, want only %d", label, alias, list, audio, want))
+					wrong = append(wrong, fmt.Sprintf("%s (alias %v) %s: lists audio %v, want every track %v", label, alias, list, audio, seq(len(tracks))))
 				}
 				if got := chosen(sourceOf(reply)); got != want {
 					wrong = append(wrong, fmt.Sprintf("%s (alias %v): the item's DefaultAudioStreamIndex %d, PlaybackInfo's %d", label, alias, got, want))
