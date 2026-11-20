@@ -227,3 +227,4 @@ How the evidence was gathered, and its limits:
 - Rows in `needed` found only by a client name match carry `phase5-library` as a default slice, and the row says so; a maintainer should confirm those.
 
 - Access to every route (`docs/access.md`): **done**. Every route declares who may call it and one test asks each. A client must send its token on every media request (film bytes, playlists, segments, subtitles, fonts, download; pictures by id excepted); this is stricter than Jellyfin on purpose, which opens some of these to a caller with no token.
+- Failed sign-ins (`docs/access.md`, JS-145, D-020): **done**. Wrong passwords are counted per name (20), per known device (10) and per address (10, when `trustedProxies` is declared), each over 15 minutes, and a refused sign-in is 403 with `Retry-After`; no account is disabled and a token already issued is never touched.

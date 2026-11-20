@@ -1170,3 +1170,18 @@
   paths:
     - "header access-control-allow-methods"
     - "header access-control-allow-headers"
+
+- requests:
+    - "a sign-in with a wrong password"
+  kind: improvement
+  reason: "jellyscale refuses failed sign-ins temporarily, per name (20 in 15 minutes from devices new to the account), per known device and per address, with 403 and Retry-After, where Jellyfin 12.4 has no bound by default (D-020, compat/captures/signin-12.4.md)"
+  paths:
+    - "(status)"
+
+- requests:
+    - "a sign-in with a wrong password"
+  kind: non-goal
+  reason: "a set LoginAttemptsBeforeLockout is not honoured: jellyscale never disables an account for failed sign-ins and reports -1 for every user, where Jellyfin disables the account at the set count until an administrator enables it (D-020)"
+  paths:
+    - "Policy.LoginAttemptsBeforeLockout"
+    - "User.Policy.LoginAttemptsBeforeLockout"

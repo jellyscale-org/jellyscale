@@ -334,6 +334,46 @@ await step("the page plays a film that transcodes, with the Authorization header
   need(media.some((a) => new RegExp(`/hls1/main/${far.k}\\.`).test(a.url)), `the segment at the new place (${far.k}) was not fetched`);
 });
 
+// JS-145 (D-020): what jellyfin-web shows a viewer whose sign-in is refused. The name is invented, so it needs no account (an
+// unknown name is refused like a real one) and no other scenario signs in with it; it is new on each run, and the bounds
+// are counted in Postgres, so the 20 wrong passwords it takes are its own. The stack leaves `trustedProxies` out, so the
+// per-address bound is off and the per-name bound is what refuses.
+await step("a refused sign-in shows jellyfin-web's 403 text and stays on the sign-in form", async () => {
+  const name = `refused-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  const attempt = async (device) => {
+    const response = await fetch(`${base}/Users/AuthenticateByName`, {
+      method: "POST", headers: { Authorization: authorization(null, device), "Content-Type": "application/json" },
+      body: JSON.stringify({ Username: name, Pw: "not-the-password" }),
+    });
+    await response.text();
+    return response;
+  };
+  for (let i = 1; i <= 20; i++) {
+    const response = await attempt(`refused-${name}-${i}`);
+    need(response.status === 401, `wrong password ${i}: ${response.status}, want 401`);
+  }
+  const refused = await attempt(`refused-${name}-21`);
+  const retryAfter = refused.headers.get("retry-after");
+  need(refused.status === 403, `the 21st attempt answered ${refused.status}, want 403`);
+  need(/^\d+$/.test(retryAfter ?? "") && +retryAfter >= 1 && +retryAfter <= 900, `Retry-After ${retryAfter}, want whole seconds from 1 to 900`);
+  const web = await context.newPage();
+  try {
+    await web.goto(`${base}/web/index.html#/login.html`);
+    await web.waitForSelector("#txtManualName", { timeout: 60000 });
+    await web.fill("#txtManualName", name);
+    await web.fill("#txtManualPassword", "not-the-password");
+    await web.click("button[type=submit]");
+    const text = "You are not authorized to access the server at this time. Please contact your server administrator for more information.";
+    await web.locator(".toast", { hasText: text }).first().waitFor({ timeout: 15000 }).catch(() => {});
+    const shown = await web.evaluate(() => [...document.querySelectorAll(".toast, .dialog, .dialogContent")].map((e) => e.innerText.trim()).filter(Boolean));
+    console.log(`recorded: jellyfin-web showed ${JSON.stringify(shown)} for a 403 with Retry-After ${retryAfter}`);
+    need(shown.some((t) => t.includes(text)), `jellyfin-web showed ${JSON.stringify(shown)}, want the 403 text`);
+    need(await web.locator("#txtManualName").isVisible(), "the page left the sign-in form");
+  } finally {
+    await web.close();
+  }
+});
+
 await browser.close();
 console.log(failures.length ? `\n${failures.length} of ${steps} steps failed:\n${failures.join("\n")}` : `\nall ${steps} steps passed`);
 wholeLine(steps);

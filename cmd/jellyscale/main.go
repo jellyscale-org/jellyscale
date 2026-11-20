@@ -33,6 +33,7 @@ import (
 	"jellyscale/internal/items"
 	"jellyscale/internal/library"
 	"jellyscale/internal/metrics"
+	"jellyscale/internal/signin"
 	"jellyscale/internal/store"
 	"jellyscale/internal/transcode"
 )
@@ -100,6 +101,11 @@ type config struct {
 	// --liveness-database-url is given; nil connects them as the pool is.
 	liveness *pgx.ConnConfig
 
+	// TrustedProxies are the addresses (or CIDR prefixes) of the proxies in front of the api role, whose X-Forwarded-For says
+	// which address a sign-in came from. Absent, no address is counted toward the per-address bound; [] declares no proxy.
+	TrustedProxies *[]string `json:"trustedProxies"`
+	proxies        *signin.Proxies
+
 	// MetricsListen is where /metrics is served, such as ":9090", by every role
 	// in the process and apart from the public port. Empty serves none.
 	MetricsListen string `json:"metricsListen"`
@@ -136,6 +142,12 @@ func parseConfig(raw []byte) (config, error) {
 		cfg.grace = grace
 	}
 	// Every role reads it, so a bad one stops every start before the database is touched.
+	if cfg.TrustedProxies != nil {
+		var err error
+		if cfg.proxies, err = signin.ParseProxies(*cfg.TrustedProxies); err != nil {
+			return cfg, err
+		}
+	}
 	cfg.scan = defaultScanInterval
 	if cfg.ScanInterval != "" {
 		scan, err := time.ParseDuration(cfg.ScanInterval)
@@ -313,8 +325,12 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 	server := &api.Server{
 		Pool: pool, Items: &items.Repo{Pool: pool, ServerID: serverID}, ServerID: serverID,
 		Name: cfg.Name, WebDir: cfg.WebDir, Roles: enabled, Log: log, Transcode: transcodes.jobs, Hub: transcodes.hub,
+		Proxies: cfg.proxies,
 	}
 	if slices.Contains(enabled, api.RoleAPI) {
+		if cfg.proxies == nil {
+			log.Warn("trustedProxies is not set, so no address is counted toward the sign-in bound per address; the bounds per name and per known device hold (docs/running.md)")
+		}
 		go server.KeepReplica(ctx)
 	}
 	httpServer := &http.Server{Addr: listen, Handler: server.Handler(), ReadHeaderTimeout: 10 * time.Second}

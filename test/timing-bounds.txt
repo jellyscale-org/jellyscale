@@ -60,3 +60,7 @@ internal/transcode/image_store_slots_integration_test.go	if retry.Sub(ended.Add(
 internal/api/cors_integration_test.go	if after := live(); after >= before {	a count of live viewers of a transcode, not a time
 test/e2e/cors.mjs	need(Date.now() < deadline, `timed out waiting for ${what}: ${JSON.stringify(state)}`);	a hang bound: the wait for the page to reach its state ends after 30 s, where a right build takes a few seconds (unverified)
 test/e2e/cors.mjs	need(Date.now() < deadline, `timed out waiting for ${what}: ${JSON.stringify(state)}`);	a hang bound: the wait for the page to reach its state ends after 40 s, where a right build takes a few seconds (unverified)
+internal/api/signin_test.go	if slowest > 10 || fastest < 30 {	checks capture data (milliseconds Jellyfin 12.4 was observed to take, read from compat/captures/signin-12.4.json), not a time measured when the test runs
+internal/signin/flood_integration_test.go	if d := refusal(name); d < time.Second || d > 900*time.Second {	the Retry-After the code reports (a refusal of 1 to 900 s read from Postgres rows), not a time measured when the test runs
+internal/signin/flood_integration_test.go	if after := rows(t, pool); after > before {	a count of rows, not a time
+internal/signin/former_unknown_integration_test.go	if d := refusal(a); d < time.Second || d > 900*time.Second {	the Retry-After the code reports (a refusal of 1 to 900 s read from Postgres rows), not a time measured when the test runs

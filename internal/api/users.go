@@ -6,6 +6,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,6 +17,7 @@ import (
 
 	"jellyscale/internal/compat"
 	"jellyscale/internal/db"
+	"jellyscale/internal/signin"
 )
 
 // User is an account.
@@ -83,26 +86,67 @@ func (s *Server) authenticateByName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var user User
-	var hash string
+	hash := string(dummyHash)
 	err := s.Pool.QueryRow(r.Context(), `SELECT id::text, name, is_admin, last_login_at, configuration, password_hash
 		FROM users WHERE lower(name) = lower($1)`, body.Username).
 		Scan(&user.ID, &user.Name, &user.IsAdmin, &user.LastLoginAt, &user.Configuration, &hash)
-	if errors.Is(err, pgx.ErrNoRows) {
-		// Compare anyway, so timing doesn't reveal which names exist.
-		bcrypt.CompareHashAndPassword(dummyHash, []byte(body.Pw)) //nolint:errcheck
-		http.Error(w, "invalid username or password", http.StatusUnauthorized)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		s.fail(w, r, err)
 		return
 	}
+	// A name that is no account is compared with the dummy hash anyway, so that neither the answer nor the time it
+	// takes tells which names exist.
+	info := compat.ParseAuth(r)
+	attempt := signin.Attempt{Name: body.Username, UserID: user.ID, DeviceID: info.DeviceID}
+	peer := signin.Peer(r).String()
+	if s.Proxies != nil {
+		if client, ok := s.Proxies.Client(r); ok {
+			attempt.Address = signin.Key(client)
+		} else {
+			// A declared proxy that says nothing of the client: counting the proxy would make one guesser refuse everyone behind it.
+			signinUnattributed.Inc()
+			s.unattributedOnce.Do(func() {
+				s.Log.Warn("a sign-in came through a declared proxy with no usable forwarded address, so the per-address bound was not applied to it; check that the ingress sets X-Forwarded-For and that trustedProxies lists every proxy (docs/running.md)", "peer", peer)
+			})
+		}
+	}
+	ticket, refusal, err := signin.Begin(r.Context(), s.Pool, attempt)
 	if err != nil {
 		s.fail(w, r, err)
 		return
 	}
-	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(body.Pw)) != nil {
+	if refusal != nil {
+		signinRefusals.WithLabelValues(refusal.Bound).Inc()
+		fields := []any{"bound", refusal.Bound}
+		if attempt.Address != "" {
+			fields = append(fields, "address", attempt.Address)
+		} else {
+			// No address was attributed to the request: the peer's is every viewer's behind an ingress, and the header is the
+			// peer's word, so it is logged as received (escaped by the logger, cut short) and never counted (D-023).
+			fields = append(fields, "peer", peer)
+			if forwarded := strings.Join(r.Header.Values("X-Forwarded-For"), ", "); forwarded != "" {
+				fields = append(fields, "forwarded_unverified", forwarded[:min(len(forwarded), 256)])
+			}
+		}
+		if user.ID != "" {
+			fields = append(fields, "user", user.Name)
+		}
+		s.Log.Warn("sign-in refused", fields...)
+		// The same answer for every name: a refusal never tells a name that exists from one that does not.
+		w.Header().Set("Retry-After", strconv.Itoa(int(refusal.After/time.Second)))
+		http.Error(w, "too many failed sign-ins", http.StatusForbidden)
+		return
+	}
+	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(body.Pw)) != nil || user.ID == "" {
+		signinFailures.Inc()
 		http.Error(w, "invalid username or password", http.StatusUnauthorized)
 		return
 	}
+	if err := ticket.Release(r.Context(), s.Pool); err != nil {
+		s.fail(w, r, err)
+		return
+	}
 
-	info := compat.ParseAuth(r)
 	accessToken := randomHex(16)
 	now := time.Now().UTC()
 	// One token per device, so signing in again replaces the old one.
@@ -144,7 +188,7 @@ func (s *Server) authenticateByName(w http.ResponseWriter, r *http.Request) {
 var dummyHash, _ = bcrypt.GenerateFromPassword([]byte("jellyscale"), bcrypt.DefaultCost)
 
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
-	if _, err := s.Pool.Exec(r.Context(), "DELETE FROM devices WHERE token = $1", sessionOf(r).Token); err != nil {
+	if err := signin.SignedOut(r.Context(), s.Pool, sessionOf(r).Token); err != nil {
 		s.fail(w, r, err)
 		return
 	}

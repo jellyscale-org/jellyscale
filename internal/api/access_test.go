@@ -374,9 +374,10 @@ func TestTheAccessDocumentSaysWhatIsServedOutsideTheTableAndOnlyWhatIsBuilt(t *t
 		}
 	}
 	// A rule that would change an answer and is not built yet names the task that builds it (JS-127 answers 403 for
-	// another user's id; JS-036 is per-user libraries), so the document never claims what no build enforces.
+	// another user's id; JS-036 is per-user libraries), so the document never claims what no build enforces. JS-145 is built:
+	// its 403 is a refused sign-in, which the section Failed sign-ins describes.
 	for n, line := range strings.Split(text, "\n") {
-		if strings.Contains(line, "403") && !strings.Contains(line, "JS-127") {
+		if strings.Contains(line, "403") && !strings.Contains(line, "JS-127") && !strings.Contains(line, "refus") {
 			t.Errorf("docs/access.md line %d mentions a 403 and not JS-127, the task that builds it: %s", n+1, line)
 		}
 		if regexp.MustCompile(`(?i)per-user librar|library scope`).MatchString(line) && !strings.Contains(line, "JS-036") {
