@@ -21,8 +21,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "OutputVersion bump invalidates every stored segment",
-      "status": "open",
-      "notes": ""
+      "status": "promoted",
+      "notes": "Promoted to JS-058 (triage D-018)."
     },
     {
       "id": "BL-003",
@@ -165,8 +165,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "The e2e HDR10 copy scenario never runs in CI (needs E2E_HEVC=1)",
-      "status": "open",
-      "notes": ""
+      "status": "promoted",
+      "notes": "Promoted to JS-075."
     },
     {
       "id": "BL-019",
@@ -201,8 +201,8 @@
       "reviewer": "ux",
       "severity": "minor",
       "title": "Capture note cites a TrueHD observation its JSON lacks",
-      "status": "open",
-      "notes": ""
+      "status": "promoted",
+      "notes": "Promoted to JS-139."
     },
     {
       "id": "BL-023",
@@ -219,8 +219,8 @@
       "reviewer": "check",
       "severity": "major",
       "title": "Copy of both opens the source twice; one input splices the same (deferred to JS-074)",
-      "status": "check",
-      "notes": "Deferred to JS-074, which is done; confirm whether it was fixed there"
+      "status": "wontfix",
+      "notes": "Deferred to JS-074, which is done; confirm whether it was fixed there Closed by the product owner: docs/status.md says a copy of both opens the file once."
     },
     {
       "id": "BL-025",
@@ -264,8 +264,8 @@
       "reviewer": "qa",
       "severity": "blocker",
       "title": "A track ffmpeg hangs on until the time limit leaves the film's good text tracks unstored (documented limit; a fallback would read the picked track alone after a timeout)",
-      "status": "open",
-      "notes": ""
+      "status": "check",
+      "notes": " Check against JS-090 (js090:1 merged here)."
     },
     {
       "id": "BL-030",
@@ -318,8 +318,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "The scan decides what to re-probe from stored JSON with a special case per feature (internal/library/scan.go); a probe_version would replace the shims, before JS-045",
-      "status": "open",
-      "notes": ""
+      "status": "wontfix",
+      "notes": "Closed by the product owner: JS-086 built probe_version."
     },
     {
       "id": "BL-036",
@@ -381,8 +381,8 @@
       "reviewer": "product",
       "severity": "minor",
       "title": "Start and seek times have no stated target and no recorded trend (first-frame times are logged in test/e2e/transcode.mjs, not recorded)",
-      "status": "open",
-      "notes": ""
+      "status": "promoted",
+      "notes": "Promoted to JS-062 (D-015)."
     },
     {
       "id": "BL-043",
@@ -399,8 +399,8 @@
       "reviewer": "product",
       "severity": "minor",
       "title": "DOMAINS.md is 117 KB with lines over 14,000 characters; every role reads it",
-      "status": "open",
-      "notes": ""
+      "status": "promoted",
+      "notes": "Promoted to JS-093 (D-017)."
     },
     {
       "id": "BL-045",
@@ -417,8 +417,8 @@
       "reviewer": "product",
       "severity": "minor",
       "title": "JS-030 is a grab-bag; the one-reaper item is not needed at the target scale (ARCHITECTURE.md rule 6)",
-      "status": "open",
-      "notes": ""
+      "status": "wontfix",
+      "notes": "Closed by the product owner: JS-030 is done."
     },
     {
       "id": "BL-047",
@@ -534,8 +534,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "/healthz no longer touches Postgres, so a replica with a permanently broken database stays Ready",
-      "status": "open",
-      "notes": "The probe was changed to return 204 with no database check, as the task asks. A replica whose database is permanently unreachable (bad credentials after a rotation, a wrong host) stays in service, and every request on it then waits in db.Retry with no upper bound except the client giving up. A cap on the wait, or a separate readiness signal such as 'away longer than N minutes', would be cheap."
+      "status": "promoted",
+      "notes": "The probe was changed to return 204 with no database check, as the task asks. A replica whose database is permanently unreachable (bad credentials after a rotation, a wrong host) stays in service, and every request on it then waits in db.Retry with no upper bound except the client giving up. A cap on the wait, or a separate readiness signal such as 'away longer than N minutes', would be cheap. Promoted to JS-056."
     },
     {
       "id": "BL-060",
@@ -561,8 +561,8 @@
       "reviewer": "ux",
       "severity": "minor",
       "title": "Some stream and login requests answer 500 during an outage, against the docs' 'wait rather than answer an error'",
-      "status": "open",
-      "notes": "Subtitle requests (internal/api/subtitles.go:72, 246, 336, 457) call s.Items.Source without db.Retry, and DELETE Videos/ActiveEncodings calls Transcode.Stop (internal/transcode/jobs.go:243-249) without it. A request that passed requireAuth just before the outage began, or a PlaybackInfo-style call in that window, gets 500 'internal error'. Login (POST Users/AuthenticateByName, internal/api/users.g"
+      "status": "promoted",
+      "notes": "Subtitle requests (internal/api/subtitles.go:72, 246, 336, 457) call s.Items.Source without db.Retry, and DELETE Videos/ActiveEncodings calls Transcode.Stop (internal/transcode/jobs.go:243-249) without it. A request that passed requireAuth just before the outage began, or a PlaybackInfo-style call in that window, gets 500 'internal error'. Login (POST Users/AuthenticateByName, internal/api/users.g Promoted to JS-146."
     },
     {
       "id": "BL-063",
@@ -579,8 +579,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "Stream-role subtitle, attachment and font reads are not wrapped in Retry",
-      "status": "open",
-      "notes": "Items.Source in subtitles.go (lines 72, 246, 336, 457) and transcode.FetchSubtitle, FetchSup and StartFonts use the pool directly. Auth now waits, so a request that starts while Postgres is away waits as intended. A request that passes auth just before the outage, or one started after a brief blip, gets s.fail 500 on the first failed query. This is the same 500 the task forbids for the stream role"
+      "status": "promoted",
+      "notes": "Items.Source in subtitles.go (lines 72, 246, 336, 457) and transcode.FetchSubtitle, FetchSup and StartFonts use the pool directly. Auth now waits, so a request that starts while Postgres is away waits as intended. A request that passes auth just before the outage, or one started after a brief blip, gets s.fail 500 on the first failed query. This is the same 500 the task forbids for the stream role Promoted to JS-146."
     },
     {
       "id": "BL-065",
@@ -588,8 +588,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "/healthz no longer reflects the database at all, so a replica partitioned from Postgres stays in service",
-      "status": "open",
-      "notes": "/healthz now always answers 204. A single pod that permanently loses its path to Postgres (wrong DSN host, a network policy) is never taken out of service. db.Retry keeps its requests waiting until each client gives up. Alternative: fail /healthz only once db.Of(pool).Total() for the current outage exceeds a bound well above a switchover, such as 2 minutes. That would still satisfy the 'whole outa"
+      "status": "wontfix",
+      "notes": "/healthz now always answers 204. A single pod that permanently loses its path to Postgres (wrong DSN host, a network policy) is never taken out of service. db.Retry keeps its requests waiting until each client gives up. Alternative: fail /healthz only once db.Of(pool).Total() for the current outage exceeds a bound well above a switchover, such as 2 minutes. That would still satisfy the 'whole outa Closed by the product owner: duplicate of BL-059."
     },
     {
       "id": "BL-066",
@@ -615,8 +615,8 @@
       "reviewer": "ux",
       "severity": "minor",
       "title": "Unwrapped api and stream writes can still answer 500 across a switchover",
-      "status": "open",
-      "notes": "requireAuth waits for Postgres (db.Retry on userByToken), but the handlers' own writes are not wrapped: Sessions/Playing/Progress and /Stopped/Ping (sessions.go), planPlayback writes (stream.go ~248-412), Transcode.Stop in DELETE /Videos/ActiveEncodings (stream role, transcode.go:181 -> jobs.go:243-249). A cut that lands after the token check and before the write answers 500 'request failed' (ERRO"
+      "status": "promoted",
+      "notes": "requireAuth waits for Postgres (db.Retry on userByToken), but the handlers' own writes are not wrapped: Sessions/Playing/Progress and /Stopped/Ping (sessions.go), planPlayback writes (stream.go ~248-412), Transcode.Stop in DELETE /Videos/ActiveEncodings (stream role, transcode.go:181 -> jobs.go:243-249). A cut that lands after the token check and before the write answers 500 'request failed' (ERRO Promoted to JS-146."
     },
     {
       "id": "BL-069",
@@ -660,8 +660,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "e2e recorder silently drops a response whose body cannot be read",
-      "status": "open",
-      "notes": "test/e2e/conform.mjs wraps `await response.text()` in try/catch and returns on any error. When a gate closes a context or the browser right after an action (play.mjs:135 `first.context.close()`, `browser.close()` at the end), responses still in flight are never recorded and never checked. A violation in such a response passes. The 'checked N responses' count cannot show the loss."
+      "status": "wontfix",
+      "notes": "test/e2e/conform.mjs wraps `await response.text()` in try/catch and returns on any error. When a gate closes a context or the browser right after an action (play.mjs:135 `first.context.close()`, `browser.close()` at the end), responses still in flight are never recorded and never checked. A violation in such a response passes. The 'checked N responses' count cannot show the loss. Closed by the product owner: duplicate of BL-070."
     },
     {
       "id": "BL-074",
@@ -696,8 +696,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "A listed request that answers non-2xx is excused when Jellyfin gives the same status",
-      "status": "open",
-      "notes": "The criterion says each listed request must answer 2xx and never 404. sweep() skips a failure when `reference.answers(r, status)` returns true, meaning Jellyfin answered the same status. A route that 404s on both servers (for example because of a fixture id mismatch) is excused, and the schema check never sees its answer."
+      "status": "wontfix",
+      "notes": "The criterion says each listed request must answer 2xx and never 404. sweep() skips a failure when `reference.answers(r, status)` returns true, meaning Jellyfin answered the same status. A route that 404s on both servers (for example because of a fixture id mismatch) is excused, and the schema check never sees its answer. Closed by the product owner: duplicate of BL-072."
     },
     {
       "id": "BL-078",
@@ -705,8 +705,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "The search-hints capture note states observations its JSON does not record",
-      "status": "open",
-      "notes": "compat/captures/search-hints-12.4.md describes limit=0, limit=-1, limit=3&startIndex=3, userId=zzz (400) and a one-letter 'a' request; compat/captures/search-hints-12.4.json holds none of them. Re-observe on Jellyfin 12.4 and record them, or drop the claims."
+      "status": "promoted",
+      "notes": "compat/captures/search-hints-12.4.md describes limit=0, limit=-1, limit=3&startIndex=3, userId=zzz (400) and a one-letter 'a' request; compat/captures/search-hints-12.4.json holds none of them. Re-observe on Jellyfin 12.4 and record them, or drop the claims. Promoted to JS-139."
     },
     {
       "id": "BL-079",
@@ -858,8 +858,8 @@
       "reviewer": "ux",
       "severity": "minor",
       "title": "The compose stack never gives a replica its 30 s grace: docker stop kills it at 10 s",
-      "status": "open",
-      "notes": "Set stop_grace_period in compose.yaml to match shutdownGrace."
+      "status": "promoted",
+      "notes": "Set stop_grace_period in compose.yaml to match shutdownGrace. Promoted to JS-056."
     },
     {
       "id": "BL-095",
@@ -876,8 +876,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "The readiness lead is not tied to the grace or the documented polling interval",
-      "status": "open",
-      "notes": "Nothing checks that the documented health interval is shorter than the 5 s lead."
+      "status": "promoted",
+      "notes": "Nothing checks that the documented health interval is shorter than the 5 s lead. Promoted to JS-056."
     },
     {
       "id": "BL-097",
@@ -912,8 +912,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "The JS-099 fix was verified under ffmpeg 9 only, not CI's 6.1",
-      "status": "open",
-      "notes": "The merge queue runs it under 6.1."
+      "status": "wontfix",
+      "notes": "The merge queue runs it under 6.1. Closed by the product owner: has since run under 6.1 in the queue."
     },
     {
       "id": "BL-102",
@@ -1092,8 +1092,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "A failed start-notification LISTEN or NOTIFY is silent, so the under-1-second gap quietly becomes the 5 s refresh",
-      "status": "open",
-      "notes": "listenOnce returns on a failed connect or LISTEN without logging; sessions.go discards the pg_notify error. Behind a transaction-mode pooler notifications never arrive. Log it once, and list the session-mode connection for the stream role in ARCHITECTURE.md and docs/running.md."
+      "status": "promoted",
+      "notes": "listenOnce returns on a failed connect or LISTEN without logging; sessions.go discards the pg_notify error. Behind a transaction-mode pooler notifications never arrive. Log it once, and list the session-mode connection for the stream role in ARCHITECTURE.md and docs/running.md. Promoted to JS-056."
     },
     {
       "id": "BL-122",
@@ -1111,7 +1111,7 @@
       "severity": "minor",
       "title": "TestConcurrentStaleSyncsKeepTheNewestPosition: one of 40 concurrent UserData writes answered non-200 in CI",
       "status": "open",
-      "notes": "internal/api/smallroutes_integration_test.go:480 'writer 26: <nil>' (status not printed). Passed 30 of 30 locally under 4 CPUs. A non-200 there is a viewer's position save failing: print the status and body, then look for a deadlock or serialization error in the UserData upsert. Log saved in ~/.cache/jellyscale/js104-evidence/."
+      "notes": "internal/api/smallroutes_integration_test.go:480 'writer 26: <nil>' (status not printed). Passed 30 of 30 locally under 4 CPUs. A non-200 there is a viewer's position save failing: print the status and body, then look for a deadlock or serialization error in the UserData upsert. Log saved in ~/.cache/jellyscale/js104-evidence/. Print the status and body; a second sighting makes it a task (goal 1)."
     },
     {
       "id": "BL-124",
@@ -1363,7 +1363,7 @@
       "severity": "minor",
       "title": "Saved settings say 'Settings saved' but change no playback yet",
       "status": "open",
-      "notes": "A viewer opens Subtitles, picks German and Always, and gets 'Settings saved' and a reload that shows both. Playing a film with German subtitles shows none, because SubtitleMode and SubtitleLanguagePreference wait for JS-041 and AudioLanguagePreference and PlayDefaultAudioTrack wait for JS-121. The page makes no claim that the setting applies yet, and before this change the save failed outright, so this is an improvement. Flagged so the lead can confirm the intermediate state is acceptable for the sequence."
+      "notes": "A viewer opens Subtitles, picks German and Always, and gets 'Settings saved' and a reload that shows both. Playing a film with German subtitles shows none, because SubtitleMode and SubtitleLanguagePreference wait for JS-041 and AudioLanguagePreference and PlayDefaultAudioTrack wait for JS-121. The page makes no claim that the setting applies yet, and before this change the save failed outright, so this is an improvement. Flagged so the lead can confirm the intermediate state is acceptable for the sequence. Keep until JS-041, then close."
     },
     {
       "id": "BL-152",
@@ -1371,8 +1371,8 @@
       "reviewer": "ux",
       "severity": "minor",
       "title": "A picked language can read back as a different entry with the same code",
-      "status": "open",
-      "notes": "A viewer picks 'Portuguese (Brazil)' and saves. The code stored is 'por', shared by 'Portuguese', 'Portuguese (Brazil)' and 'Portuguese (Portugal)'. After a reload the select shows 'Portuguese', the first entry with that value. The same happens for 'Chinese (Simplified)' under 'zho' (five entries) and for 'Spanish; Latin' under 'spa'. Jellyfin 12.4 behaves the same with this list, since jellyfin-web uses ThreeLetterISOLanguageName as the value, and the acceptance criteria require the list entry for entry, so this is inherited rather than a jellyscale defect."
+      "status": "wontfix",
+      "notes": "A viewer picks 'Portuguese (Brazil)' and saves. The code stored is 'por', shared by 'Portuguese', 'Portuguese (Brazil)' and 'Portuguese (Portugal)'. After a reload the select shows 'Portuguese', the first entry with that value. The same happens for 'Chinese (Simplified)' under 'zho' (five entries) and for 'Spanish; Latin' under 'spa'. Jellyfin 12.4 behaves the same with this list, since jellyfin-web uses ThreeLetterISOLanguageName as the value, and the acceptance criteria require the list entry for entry, so this is inherited rather than a jellyscale defect. Inherited from jellyfin-web's own list."
     },
     {
       "id": "BL-153",
@@ -1489,7 +1489,7 @@
       "severity": "minor",
       "title": "No committed test asserts the copy-fallback metric or log line",
       "status": "open",
-      "notes": "The behaviour was checked by a scratch test in QA's export; a regression would go unnoticed."
+      "notes": "The behaviour was checked by a scratch test in QA's export; a regression would go unnoticed. Merged with js120:0: metrics that docs promise and no test holds."
     },
     {
       "id": "BL-166",
@@ -1515,8 +1515,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "While Postgres is away, a stream that fell back gets bare copy segments under the re-encode's init",
-      "status": "open",
-      "notes": "hlsRequestFor skips dropped() on the snapshot path, and hlsSegment's snapshot branch sends no init in front."
+      "status": "promoted",
+      "notes": "hlsRequestFor skips dropped() on the snapshot path, and hlsSegment's snapshot branch sends no init in front. Promoted to JS-146."
     },
     {
       "id": "BL-169",
@@ -1533,8 +1533,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "OutputVersion 5 re-encodes every film playing at the upgrade once",
-      "status": "open",
-      "notes": "Every stored segment hash changes; a per-spec job version in the claim would have limited it to fallback specs."
+      "status": "promoted",
+      "notes": "Every stored segment hash changes; a per-spec job version in the claim would have limited it to fallback specs. Promoted to JS-058 (triage D-018)."
     },
     {
       "id": "BL-171",
@@ -1553,6 +1553,294 @@
       "title": "The HEVC fallback's x265 price is measured on synthetic testsrc2 only",
       "status": "open",
       "notes": "3.2 cores from 1080p, 4.0 from 4K; measure on a real film."
+    },
+    {
+      "id": "BL-173",
+      "source": "cors",
+      "reviewer": "",
+      "severity": "minor",
+      "title": "An operator setting restricting CORS origins to a declared list, with refused origins reported",
+      "status": "open",
+      "notes": "Decided by D-016: waits for an operator to ask"
+    },
+    {
+      "id": "BL-174",
+      "source": "flakes",
+      "reviewer": "lead",
+      "severity": "minor",
+      "title": "The differential tier's Kotlin decode fetches the SDK from Maven Central each run; a 429 fails the tier",
+      "status": "open",
+      "notes": "Cache or pin the SDK when it next fails a queue run"
+    },
+    {
+      "id": "BL-175",
+      "source": "flakes",
+      "reviewer": "lead",
+      "severity": "minor",
+      "title": "The integration 'rest' shard takes 36-40 minutes; split it as internal/transcode is split",
+      "status": "open",
+      "notes": "Queue time: waits for the merge-queue settings to be restored to 3/60"
+    },
+    {
+      "id": "BL-176",
+      "source": "JS-125",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "The mutants meta-test adds about 2m18s to the integration tier's internal/api run",
+      "status": "open",
+      "notes": "Queue time, with the flakes item"
+    },
+    {
+      "id": "BL-177",
+      "source": "flakes",
+      "reviewer": "lead",
+      "severity": "minor",
+      "title": "TestTheScanReadsNoMoreOfAFilmForItsImageTrackAndNothingThatGrowsWithTheFilm failed again (PGS with no Cues): the scan's byte count varies with load",
+      "status": "open",
+      "notes": "Second sighting; a third makes it a task"
+    },
+    {
+      "id": "BL-178",
+      "source": "JS-089",
+      "reviewer": "lead (from the Fable adjudication)",
+      "severity": "minor",
+      "title": "The image-store test kit's fresh() truncates transcode_nodes under live workers, so a worker kept across it is taken for dead and its job rerun (cause of two JS-089 check bugs); give fresh a variant that keeps live workers, or stop every worker before it",
+      "status": "open",
+      "notes": "Fix when the image-store kit is next touched (JS-140)"
+    },
+    {
+      "id": "BL-179",
+      "source": "JS-089",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "Core race run hit its 45 min timeout in an existing sweep test; passes alone and in the rest of the set",
+      "status": "open",
+      "notes": "Same trigger as queue time"
+    },
+    {
+      "id": "BL-180",
+      "source": "JS-107",
+      "reviewer": "lead",
+      "severity": "minor",
+      "title": "Re-show JS-105's forced deadlock check's mutants with a one-second sleep before holder.Exec(low)",
+      "status": "open",
+      "notes": "Check weaker than its criterion: fix when that test is next touched"
+    },
+    {
+      "id": "BL-181",
+      "source": "JS-112",
+      "reviewer": "",
+      "severity": "minor",
+      "title": "TestAChapterFrameEndsWhenItsContextEndsEvenIfAnotherProcessHoldsItsOutput allows 60 s where the criterion says 5 s (a 30 s WaitDelay passes)",
+      "status": "open",
+      "notes": "Check weaker than its criterion: fix when that test is next touched"
+    },
+    {
+      "id": "BL-182",
+      "source": "JS-118",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "Log line carries the user UUID only; running.md gives no way to map it to a viewer name",
+      "status": "open",
+      "notes": "Waits for JS-033: add the docs line then"
+    },
+    {
+      "id": "BL-183",
+      "source": "JS-123",
+      "reviewer": "",
+      "severity": "minor",
+      "title": "PATCH /jellyscale/v1/users/configuration parses values with a second copy of POST's per-field reading (and a third copy of the 15 names)",
+      "status": "open",
+      "notes": "Fix when a field is next added"
+    },
+    {
+      "id": "BL-184",
+      "source": "JS-125",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "The empty-Access named mutant is not run against TestAccess",
+      "status": "open",
+      "notes": "The access checks have holes: a criterion of the first identity task that changes the access table (JS-033); js125:1,3,5,6 merged here"
+    },
+    {
+      "id": "BL-185",
+      "source": "JS-126",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "Capture body classifier records a 2xx error body as non-empty for stream.mkv, segment and image subtitle",
+      "status": "open",
+      "notes": "Low"
+    },
+    {
+      "id": "BL-186",
+      "source": "JS-128",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "credential check misses a valueless ApiKey as the last pair of a line",
+      "status": "open",
+      "notes": "The token-in-URL checks have holes: promote with JS-039; js128:1-3 merged here"
+    },
+    {
+      "id": "BL-187",
+      "source": "JS-130",
+      "reviewer": "",
+      "severity": "minor",
+      "title": "A killed test/scripts_test.sh run leaks its JS-130 stand-in listener processes and its /tmp/tmp.* directory",
+      "status": "open",
+      "notes": "Test-rig leak"
+    },
+    {
+      "id": "BL-188",
+      "source": "JS-130",
+      "reviewer": "",
+      "severity": "minor",
+      "title": "The two access mutants that make Server.Handler() panic stop their integration shard partway instead of failing their named declaration tests",
+      "status": "open",
+      "notes": "Test-rig mutant"
+    },
+    {
+      "id": "BL-189",
+      "source": "JS-133",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "Each AV1 fallback segment repeats the input probes",
+      "status": "open",
+      "notes": "An AV1 fallback viewer on S3 pays extra probes per segment; rare; js133:2 merged here"
+    },
+    {
+      "id": "BL-190",
+      "source": "JS-134",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "fragmentCommand HDR audio-drop code is convoluted",
+      "status": "open",
+      "notes": "Fix when that function is next changed"
+    },
+    {
+      "id": "BL-191",
+      "source": "picture",
+      "reviewer": "",
+      "severity": "minor",
+      "title": "Spike: AV1 re-encodes for clients that list AV1",
+      "status": "open",
+      "notes": "After people and library"
+    },
+    {
+      "id": "BL-192",
+      "source": "picture",
+      "reviewer": "",
+      "severity": "minor",
+      "title": "Spike: veryfast with trellis=1 and rc-lookahead=20 as a cheap tier",
+      "status": "open",
+      "notes": "Waits for JS-135's real-film measurement"
+    },
+    {
+      "id": "BL-193",
+      "source": "picture",
+      "reviewer": "",
+      "severity": "minor",
+      "title": "Spike: veryfast first segment after a start or seek under a faster stream",
+      "status": "open",
+      "notes": "Waits for JS-062's start-time target"
+    },
+    {
+      "id": "BL-194",
+      "source": "picture",
+      "reviewer": "",
+      "severity": "minor",
+      "title": "Owner decision: CRF 20 for Auto",
+      "status": "open",
+      "notes": "Product owner: not now (D-018); revisit with JS-135's real-film figures"
+    },
+    {
+      "id": "BL-195",
+      "source": "picture",
+      "reviewer": "",
+      "severity": "minor",
+      "title": "Owner decision: a bitrate ceiling that follows frame rate",
+      "status": "open",
+      "notes": "Product owner: not yet (D-018); bring a real 50 or 60 fps film measured at faster after JS-136"
+    },
+    {
+      "id": "BL-196",
+      "source": "JS-133",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "The 10-bit AV1 fallback is always 8-bit, and the capture records it as observed only for the opposite case",
+      "status": "check",
+      "notes": "check: JS-134 looked at this; confirm what a 10-bit SDR AV1 fallback now is"
+    },
+    {
+      "id": "BL-197",
+      "source": "flake",
+      "reviewer": "",
+      "severity": "minor",
+      "title": "TestAnyReplicaServesAnySegmentAndOneJobStarts (garage, copied): a heartbeat timed out 0.7 s after the job started under queue load, the job was given up for a lost lease and a second job started",
+      "status": "open",
+      "notes": "Product owner asks (evidence): Would a loaded production worker miss a heartbeat 0.7 s after a job starts and have the job restarted (a viewer rebuffering), or is this the test's short lease?"
+    },
+    {
+      "id": "BL-198",
+      "source": "flakes",
+      "reviewer": "lead",
+      "severity": "minor",
+      "title": "e2e: jellyfin-web failed to load its own CSS chunk mid-scenario ('Loading CSS chunk 91737 failed')",
+      "status": "open",
+      "notes": "Product owner asks (evidence): Which status did the server answer for the CSS chunk, or was it the test router?"
+    },
+    {
+      "id": "BL-199",
+      "source": "JS-030",
+      "reviewer": "",
+      "severity": "minor",
+      "title": "A subtitle claim sent between two of a worker's sessions binds to no session",
+      "status": "open",
+      "notes": "Product owner asks (evidence): What does a viewer notice: is the subtitle late by a lease, or lost?"
+    },
+    {
+      "id": "BL-200",
+      "source": "JS-119",
+      "reviewer": "lead",
+      "severity": "minor",
+      "title": "DefaultAudioStreamIndex does not follow a named AudioStreamIndex; observe Jellyfin 12.4 and settle it in JS-121",
+      "status": "open",
+      "notes": "Product owner asks (evidence): Did JS-121 observe Jellyfin and settle this? Name the capture line."
+    },
+    {
+      "id": "BL-201",
+      "source": "JS-128",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "The subtitle playlist still writes the token for a header request, so Fluster would refuse it too",
+      "status": "open",
+      "notes": "Product owner asks (evidence): Does Fluster ask for the subtitle playlist, and what does its viewer see?"
+    },
+    {
+      "id": "BL-202",
+      "source": "JS-133",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "Shutdown stop reason in the log changed text",
+      "status": "open",
+      "notes": "Product owner asks (evidence): What does the shutdown log line say now, and does docs/running.md quote the old text?"
+    },
+    {
+      "id": "BL-203",
+      "source": "JS-134",
+      "reviewer": "architecture",
+      "severity": "minor",
+      "title": "Capture hides a timescale stall; the worker's copy and fallback timescales may differ in production",
+      "status": "open",
+      "notes": "Product owner asks (evidence): Do the copy and fallback timescales differ in production? If so it becomes a task ahead of JS-135"
+    },
+    {
+      "id": "BL-204",
+      "source": "JS-134",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "Docs say an HDR fallback keeps the copy's range, but ffmpeg 6.1 writes tv for a full-range copy unless the encoder flag is given",
+      "status": "open",
+      "notes": "Product owner asks (evidence): Does the shipped fallback give the range flag on ffmpeg 6.1? If not it is a defect; docs/transcoding.md still claims the range is kept"
     }
   ]
 }
