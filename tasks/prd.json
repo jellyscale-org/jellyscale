@@ -1034,27 +1034,6 @@
       "source": "owner decision 2026-11-19; spikes/picture-quality"
     },
     {
-      "id": "JS-139",
-      "phase": "OPS",
-      "title": "docs/status.md says truly what is built",
-      "description": "The first direction review (2026-11-19) found docs/status.md contradicting itself and the plan: the api replica half and the AV1 fallback called not built though JS-031 and JS-133 are done, HDR direct play and copy called not built though done, Dolby Vision profile 5 called not mapped in docs/status.md, DOMAINS 53 and one line of docs/transcoding.md, and tone mapped in two others; which is true has not been observed (JS-149), and no row for Fluster, the client that ships with jellyscale. Nobody can steer by a record that contradicts itself.",
-      "acceptanceCriteria": [
-        "Every line of docs/status.md agrees with tasks/prd.json's done tasks and with docs/transcoding.md, docs/subtitles.md and docs/access.md; each correction names the task that built it",
-        "A Fluster row in Client coverage says what it has played against jellyscale and how that is known, or that it has not been tried; until JS-144 is built it names the gap (Fluster cannot connect: no CORS) and that task",
-        "Known gaps are listed as gaps with the task that closes each, or 'no task' and the decision id that accepted it, or 'no task yet' with the decision id and the task that will decide it: re-encodes are H.264 SDR at no more than 1080 lines (no task yet, D-021, JS-148); a re-encoded Dolby Vision profile 5 film's picture is not observed and the docs disagree (JS-149, D-021); profile 5 is re-encoded for every client that does not declare Dolby Vision (no task, D-021); apps whose player sends no token cannot play (D-005); with JS-089: a film whose image subtitles cannot be copied within the hour (D-002)",
-        "docs/subtitles.md has one paragraph totalling the whole-film reads a film's subtitles can cost (text extraction, each .sup copy, and, with JS-089, the image-track copy of D-003 and D-002's daily retry), each with what starts it",
-        "JS-089's merge updates these lines to say what is then in the product",
-        "DOMAINS.md, docs/running.md, docs/transcoding.md and the capture records in compat/captures agree with what is built and with their own JSON: DOMAINS no longer says an AV1 copy has no fallback or that HDR copies are not built; the jellyscale_playback_copy_fallbacks_total description names AV1; the AV1 fallback record agrees with its JSON capture and the 10-bit row has a stored capture; the HDR copy record says what was actually seen (equal timescales only) and a colour shift of 2.1 to 3.5 units",
-        "Until JS-146 is built, Postgres failover is listed as a gap naming it: during a switchover some viewer requests are answered 500 and a subtitle can be refused for 30 s",
-        "Until JS-149 is built, DOMAINS 53, docs/transcoding.md (the Video copy paragraphs and the tone mapping section) and docs/status.md each say the same thing about profile 5: it is re-encoded to H.264, whether its colours come out right is not observed, and JS-149 settles it. None says 'tone mapped' or 'looks wrong' as fact (D-021)"
-      ],
-      "priority": 10,
-      "source": "product-owner direction review 2026-11-19",
-      "status": "todo",
-      "passes": false,
-      "dependsOn": []
-    },
-    {
       "id": "JS-140",
       "phase": "P3",
       "title": "An image subtitle copy that a slow store cannot finish within the hour still arrives",

@@ -1,7 +1,7 @@
 {
   "what": "jellyfin-web 12.4's hls.js 1.6.16 in Chrome 157 (Linux, software decode), an AV1 copy's master playlist (CODECS av01.0.04M.08) whose segments from 20 s are another stream, each led by its own init (JS-133)",
   "script": "compat/captures/av1-fallback-spike.mjs",
-  "note": "forward: from 14 s to 30 s; back: seek to 10 s (an AV1 segment), to 30 s. dialog is a fatal hls.js error, which is where jellyfin-web raises its Playback Error dialog. The h264 forward row of the first run: video.error CHUNK_DEMUXER_ERROR_APPEND_FAILED, 1 frame, fatal error; of the second run (below): stalled at 16.04 s with append errors and no frame past 20 s.",
+  "note": "forward: from 14 s to 30 s; back: seek to 10 s (an AV1 segment), to 30 s. dialog is a fatal hls.js error, which is where jellyfin-web raises its Playback Error dialog. The h264 forward row is the stored run's: stalled at 16.04 s with append errors and no frame past 20 s, and no video.error and no dialog. An earlier first run, which is not stored, failed forward at once (video.error CHUNK_DEMUXER_ERROR_APPEND_FAILED, 1 frame, a fatal error), and a rerun in review, not stored either, matched it; the h264 back run failed with that error and the dialog, and the choice rests on it. av1TenBit is a run of the script kept beside this file with VARIANTS=av1ten (CODECS av01.0.04M.10, a 10-bit copy whose segments from 20 s are an 8-bit AV1 stream), output as the script printed it.",
   "choice": "av1",
   "observed": {
     "control": {
@@ -81,6 +81,32 @@
       "back": {
         "from": 10,
         "reached": 30.0469,
+        "frames": 485,
+        "videoError": null,
+        "corrupted": 0,
+        "fatalErrors": 0,
+        "dialog": false,
+        "maxBackSeconds": 0,
+        "maxForwardBeyondClockSeconds": 0,
+        "hlsErrors": []
+      }
+    },
+    "av1TenBit": {
+      "forward": {
+        "from": 14,
+        "reached": 30.129,
+        "frames": 391,
+        "videoError": null,
+        "corrupted": 0,
+        "fatalErrors": 0,
+        "dialog": false,
+        "maxBackSeconds": 0,
+        "maxForwardBeyondClockSeconds": 0,
+        "hlsErrors": []
+      },
+      "back": {
+        "from": 10,
+        "reached": 30.0493,
         "frames": 485,
         "videoError": null,
         "corrupted": 0,

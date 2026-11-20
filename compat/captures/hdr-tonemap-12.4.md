@@ -16,10 +16,10 @@ Observed, not read from source. Server: `jellyfin/jellyfin:12.4` (jellyfin-ffmpe
 
 ## What jellyscale does, and where it differs
 
-`Decide` gives the same reasons (`TestDecideMatchesJellyfinForHDR`), never copies these films, and the master playlist says `VIDEO-RANGE=SDR`. Deliberate differences:
+`Decide` gives the same reasons (`TestDecideMatchesJellyfinForHDR`), and the master playlist of a re-encode says `VIDEO-RANGE=SDR`. A client whose profile shows the range gets an HDR10, HDR10+ or HLG copy of an HEVC or AV1 film instead (JS-025, `hevc-av1-12.4.md`); what follows is the re-encode. Deliberate differences:
 
 1. **The filter chain is `zscale` and `tonemap=hable`, not `tonemapx` with `bt2390`.** `tonemapx` exists only in jellyfin-ffmpeg. `zscale` and `tonemap` are in the ffmpeg of Ubuntu 24.04 (6.1.1), Alpine 3.24 (8.1.3) and 9.0.2; `bt2390` is not among `tonemap`'s algorithms in any of them (none, linear, gamma, clip, reinhard, hable, mobius), so `hable` is the choice. `libplacebo` is in those builds too but needs a Vulkan device, which a worker without a GPU does not have.
-2. **Tone mapping follows the declared transfer function** (PQ or HLG), not the range label. Dolby Vision profile 5, which has no HDR10 base, is not mapped (Jellyfin has its own Dolby Vision handling in `tonemapx` that jellyscale does not).
+2. **Tone mapping follows the declared transfer function** (PQ or HLG), not the range label. Dolby Vision profile 5, which has no HDR10 base, is re-encoded to H.264; whether its colours come out right is not observed, and JS-149 settles it (D-021). Jellyfin has its own Dolby Vision handling in `tonemapx` that jellyscale does not.
 3. **The input is declared BT.2020 limited range**, which zscale needs when a file leaves its primaries unsaid.
 4. **The output is tagged BT.709** (`-colorspace`, `-color_primaries`, `-color_trc`, `-color_range tv`). Jellyfin's command sets none; its filter marks the frames and x264 writes them.
-5. **An H.264 HDR file is not copied** even to a client whose profile has no range limit: the master says SDR, so a copy would be shown washed out. Jellyfin copies HDR with `VIDEO-RANGE=PQ` and an SDR variant beside it for clients that say they play HDR (`hevc-av1-12.4.md`); that is not built.
+5. **An H.264 HDR file is not copied** even to a client whose profile has no range limit: the master says SDR, so a copy would be shown washed out. Jellyfin copies HDR with `VIDEO-RANGE=PQ` and an SDR variant beside it for clients that say they play HDR (`hevc-av1-12.4.md`); jellyscale copies HEVC and AV1 that way (JS-025) and has no SDR variant beside it, and an H.264 HDR file is still re-encoded.

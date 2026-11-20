@@ -7,6 +7,8 @@
 // av1-fallback-12.4.md. The master playlist says CODECS av01 as a copy's does; the fallback starts at segment 5 (20 s).
 // Run: HLS_CHUNK=web-dist/node_modules.hls.js.<hash>.chunk.js PW=<dir with playwright-core> CHROMIUM_PATH=/usr/bin/google-chrome-stable node av1-fallback-spike.mjs
 // VARIANTS (default control,h264,av1) picks the streams; each is {forward, back} as the record's two directions.
+// The variant av1ten is the 10-bit case: the master says CODECS av01.0.04M.10, the copy is A10/ (the same encode as A/ with
+// -pix_fmt yuv420p10le, 10 bit) and its segments from 20 s are C/, the 8-bit AV1 stream: VARIANTS=av1ten node av1-fallback-spike.mjs
 import http from "node:http";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -16,6 +18,8 @@ const hlsSrc = readFileSync(process.env.HLS_CHUNK, "utf8");
 const dir = process.cwd();
 const file = (p) => readFileSync(`${dir}/${p}`);
 const FALLBACK_FROM = 5;
+const copyDir = (v) => (v === "av1ten" ? "A10" : "A"); // A10 is 10 bit, A is 8 bit.
+const codecs = (v) => (v === "av1ten" ? "av01.0.04M.10" : "av01.0.04M.08");
 const server = http.createServer((req, res) => {
   const u = new URL(req.url, "http://x");
   const [, v, name] = u.pathname.split("/");
@@ -24,17 +28,17 @@ const server = http.createServer((req, res) => {
   res.setHeader("access-control-allow-origin", "*");
   if (name === "master.m3u8") {
     res.setHeader("content-type", "application/vnd.apple.mpegurl");
-    return res.end(`#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=2000000,RESOLUTION=640x360,CODECS="av01.0.04M.08"\nmain.m3u8\n`);
+    return res.end(`#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=2000000,RESOLUTION=640x360,CODECS="${codecs(v)}"\nmain.m3u8\n`);
   }
   if (name === "main.m3u8") {
     let out = "#EXTM3U\n#EXT-X-PLAYLIST-TYPE:VOD\n#EXT-X-VERSION:7\n#EXT-X-TARGETDURATION:4\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-MAP:URI=\"init.mp4\"\n";
     for (let n = 0; n < 12; n++) out += `#EXTINF:4.0,\n${n}.mp4\n`;
     res.setHeader("content-type", "application/vnd.apple.mpegurl"); return res.end(out + "#EXT-X-ENDLIST\n");
   }
-  if (name === "init.mp4") return res.end(file("A/init.mp4"));
+  if (name === "init.mp4") return res.end(file(`${copyDir(v)}/init.mp4`));
   const n = parseInt(name); if (Number.isNaN(n)) { res.statusCode = 404; return res.end(); }
-  const other = { h264: "B", av1: "C" }[v];
-  if (!other || n < FALLBACK_FROM) return res.end(file(`A/${n}.m4s`));
+  const other = { h264: "B", av1: "C", av1ten: "C" }[v];
+  if (!other || n < FALLBACK_FROM) return res.end(file(`${copyDir(v)}/${n}.m4s`));
   res.end(Buffer.concat([file(`${other}/init.mp4`), file(`${other}/${n}.m4s`)])); // Each fallback segment leads with its own init.
 });
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
