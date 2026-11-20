@@ -731,7 +731,7 @@
         "On Fluster: a sign-in refused by JS-145 (403 with Retry-After, D-020) reads as 'try again in N minutes', not as a wrong password, a refusal by the administrator or a server fault (from JS-145, D-019); a server address typed with a trailing slash still signs in; whether Fluster asks for the subtitle playlist, and what its viewer sees, is recorded (answers BL-201).",
         "Whether each device's profile declares Dolby Vision is recorded. On one that does: a profile 5 film and a profile 8.1 film from the dogfood are played, with what PlaybackInfo decided (direct play, copy or re-encode) and what the viewer saw. A profile 5 film re-encoded for a client that declares it becomes a task. If neither device declares it, or the dogfood holds no profile 5 film, docs/status.md says profile 5 on a client that declares Dolby Vision is not proven (D-021)"
       ],
-      "priority": 15,
+      "priority": 14,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1005,7 +1005,7 @@
         "With real processes: a worker given jobs whose costs add up to its cores, at faster and at medium, keeps each at 1.2 times real time or more without a helper",
         "No viewer-visible change while every spec is veryfast: the transcode, seek and helper e2e scenarios pass as before"
       ],
-      "priority": 17,
+      "priority": 16,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1025,7 +1025,7 @@
         "A picture test on every tier, with ffmpeg's own psnr and ssim filters (CI's ffmpeg 6.1 has no libvmaf): a real-film clip encoded through the worker at faster, against its source under a 4 Mbps cap, has a higher PSNR-Y (the spike measured +0.27 to +0.92 dB) and a higher SSIM than at veryfast",
         "The default change is listed under Changed guarantees: more CPU per viewer (fewer viewers per worker), up to about a second on a start on a full worker, a better picture"
       ],
-      "priority": 18,
+      "priority": 17,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1125,7 +1125,7 @@
         "JS-089"
       ],
       "source": "decision D-002; product-owner plan review 2026-11-19",
-      "priority": 16
+      "priority": 15
     },
     {
       "id": "JS-145",
@@ -1173,7 +1173,7 @@
       "status": "todo",
       "passes": false,
       "dependsOn": [],
-      "priority": 14
+      "priority": 13
     },
     {
       "id": "JS-146",
@@ -1200,7 +1200,7 @@
       "title": "A re-encoded Dolby Vision profile 5 film looks right",
       "description": "The docs disagree about a re-encoded Dolby Vision profile 5 film: DOMAINS 53 and docs/status.md say it is not mapped (green and purple), docs/transcoding.md says it is tone mapped. Nothing was observed. A wrong picture on every client that does not declare Dolby Vision breaks PRODUCT.md's promise that a re-encoded HDR film looks right on an ordinary screen (D-021).",
       "acceptanceCriteria": [
-        "Observed first: frames of a real profile 5 film (the picture really coded for profile 5, not a film that only carries the label; the synthetic 640x360 fixtures count only if shown to be so) taken through a worker's own re-encode on ffmpeg 6.1 and on ffmpeg 9, compared with the same frames from a reference that applies the Dolby Vision data; recorded in compat/captures with the measured colour difference, no title or path",
+        "Observed first on a film truly coded for profile 5: an openly licensed profile 5 sample, or a file the task makes itself and shows to be coded so (its picture decoded without the Dolby Vision data comes out wrong, as DOMAINS 53 describes, and right with it). A film that only carries the label does not count. If neither can be had, the task stops and goes to the product owner; it is never closed on a labelled-only file. Frames are taken through a worker's own re-encode on ffmpeg 6.1 and on ffmpeg 9 and compared with the same frames from a reference that applies the Dolby Vision data; recorded in compat/captures with the measured colour difference, no title or path",
         "A re-encoded profile 5 film's colours are within the stated difference of that reference on every supported ffmpeg, without a GPU on the worker; a check fails when the mapping is removed",
         "If no supported ffmpeg can do it without a GPU, the build stops and a brief goes to the product owner with each option priced, keeping the right picture among them",
         "If the observation shows the picture is already right, the task is the check that pins it and the docs",
@@ -1208,7 +1208,7 @@
         "The job's price (Spec.Cost) is at or above its measured CPU",
         "DOMAINS 53, docs/transcoding.md and docs/status.md say the one thing seen; the gap line leaves docs/status.md"
       ],
-      "priority": 13,
+      "priority": 19,
       "source": "product owner, D-021 (2026-11-19)",
       "status": "todo",
       "passes": false,
@@ -1229,7 +1229,7 @@
         "The figures go to the product owner as a brief with keeping the source's height and range priced per viewer, on CPU and on a GPU family; its decision names the task that closes the gap or accepts it, and docs/status.md's line is updated",
         "No viewer-visible change"
       ],
-      "priority": 19,
+      "priority": 18,
       "source": "product owner, D-021 (2026-11-19)",
       "status": "todo",
       "passes": false,
