@@ -26,7 +26,7 @@ var allowed = map[string]string{
 	"test/changes.sh":                          "decides which paths skip the media tiers",
 	"test/scripts_test.sh":                     "tests changes.sh and ci.yml with such paths",
 	"test/differential/allowlist.go":           "names tasks/prd.json in a comment",
-	"test/differential/files_test.go":          "a unit test that reads tasks/prd.json",
+	"test/differential/files_test.go":          "a unit test that reads tasks/prd.json and tasks/done.json",
 }
 
 // scripts are the files other than Go tests that lint-and-unit runs.
@@ -40,7 +40,7 @@ var permitted = map[string]*regexp.Regexp{
 	"internal/api/playlist_token_docs_test.go": regexp.MustCompile(`tasks/prd\.json([^\w./-]|$)`),
 	"internal/transcode/faults_docs_test.go":   regexp.MustCompile(`\.claude/workflows/build\.js([^\w./-]|$)`),
 	"test/differential/allowlist.go":           regexp.MustCompile(`tasks/prd\.json([^\w./-]|$)`),
-	"test/differential/files_test.go":          regexp.MustCompile(`tasks/prd\.json([^\w./-]|$)`),
+	"test/differential/files_test.go":          regexp.MustCompile(`tasks/(prd|done)\.json([^\w./-]|$)`),
 }
 
 // ciExempt is the part of ci.yml that may name them: the comments before jobs: and the

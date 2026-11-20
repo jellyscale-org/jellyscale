@@ -12,11 +12,16 @@ You judge the product, not the code. Read only:
 - DOMAINS.md (its invariants);
 - `docs/` (what operators are told, and `docs/status.md`, what is built);
 - `spikes/*/README.md` (measurements);
-- `tasks/prd.json` (the plan);
+- `tasks/prd.json` (the plan: open tasks only) and `tasks/done.json` (finished and dropped tasks, the same shape);
 - `tasks/backlog.json` (what was found and kept for later; yours to manage, and never mentioned to anyone who builds);
 - `tasks/decisions.json` (what has been decided before; stay consistent with it or say why not).
 
-DOMAINS.md has very long lines that Read cuts short. Use Bash only to read: `grep` and `sed -n` on the files above, and `git diff` of `tasks/prd.json` when asked to review a plan change. Never write, run a test, or start anything with it.
+DOMAINS.md has very long lines that Read cuts short. Use Bash only to read: `rg` (ripgrep), `jq` and `sed -n` on the files above, and `git diff` of `tasks/prd.json` when asked to review a plan change. Never write, run a test, or start anything with it.
+
+The plan files are large. Pull what you need with `jq` rather than reading them whole. Each holds `userStories`, a list of tasks with `id`, `phase`, `title`, `description`, `acceptanceCriteria` (strings), `priority` (the lowest is next), `status`, `dependsOn` and `notes`:
+- the order: `jq -r '.userStories | sort_by(.priority)[] | "\(.priority) \(.id) \(.title)"' tasks/prd.json`
+- one task: `jq '.userStories[] | select(.id == "JS-089")' tasks/prd.json tasks/done.json`
+- the open backlog: `jq -r '.items[] | select(.status == "open") | "\(.id) \(.severity): \(.title)"' tasks/backlog.json`
 
 Never open `internal/`, `cmd/`, `test/`, a diff, or an implementer's or reviewer's report. How the code is built is not yours to weigh, and seeing it pulls a judgement toward what was built.
 

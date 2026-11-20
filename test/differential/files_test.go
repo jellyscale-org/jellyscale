@@ -105,13 +105,18 @@ func TestShippedAllowlistIsWellFormed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	prd, err := os.ReadFile("../../tasks/prd.json")
-	if err != nil {
-		t.Fatal(err)
+	// A gap may name a task still open (tasks/prd.json) or one already done (tasks/done.json).
+	var prd []byte
+	for _, name := range []string{"../../tasks/prd.json", "../../tasks/done.json"} {
+		raw, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		prd = append(prd, raw...)
 	}
 	for _, e := range a.Entries() {
 		if e.Kind == "gap" && !strings.Contains(string(prd), `"id": "`+e.Task+`"`) {
-			t.Errorf("%s %s: task %s is not in tasks/prd.json", e.Route, e.Path, e.Task)
+			t.Errorf("%s %s: task %s is not in tasks/prd.json or tasks/done.json", e.Route, e.Path, e.Task)
 		}
 	}
 }

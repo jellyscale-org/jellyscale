@@ -60,7 +60,7 @@ After each task, record what the run found in `.results/tasks.jsonl` (gitignored
 {"type": "escape", "task": "JS-023", "date": "2026-11-08", "caught_by": "merge-queue", "defect": "...", "why_missed": "..."}
 ```
 
-`reviewer` is `check`, `qa`, `adversarial`, `architecture`, `ux` or `lead`; `evidence` is `test`, `command`, `capture` or `reading`; `caught_by` is `merge-queue`, `ci`, `dogfood` or `user`. Then mark the task done in `tasks/prd.json`, and bring the product owner what the run found and left unfixed and what the whole application now seems to need; amend `tasks/prd.json` by pull request as it decides, with the reason.
+`reviewer` is `check`, `qa`, `adversarial`, `architecture`, `ux` or `lead`; `evidence` is `test`, `command`, `capture` or `reading`; `caught_by` is `merge-queue`, `ci`, `dogfood` or `user`. Then mark the task done and move it from `tasks/prd.json` to `tasks/done.json`, which holds finished and dropped tasks so the plan holds only open work, and bring the product owner what the run found and left unfixed and what the whole application now seems to need; amend `tasks/prd.json` by pull request as it decides, with the reason.
 
 Keep a task small enough to converge in one build and one fix round: one capability, its checks and docs.
 
