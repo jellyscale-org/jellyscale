@@ -12,6 +12,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { wholeLine } from "./shard.mjs";
 import { recordResponses } from "./conform.mjs";
+import { signInShown, submitSignIn } from "./player.mjs";
 
 const require = createRequire(`${process.cwd()}/`);
 const { chromium } = require("playwright-core");
@@ -359,16 +360,13 @@ await step("a refused sign-in shows jellyfin-web's 403 text and stays on the sig
   const web = await context.newPage();
   try {
     await web.goto(`${base}/web/index.html#/login.html`);
-    await web.waitForSelector("#txtManualName", { timeout: 60000 });
-    await web.fill("#txtManualName", name);
-    await web.fill("#txtManualPassword", "not-the-password");
-    await web.click("button[type=submit]");
+    await submitSignIn(web, name, "not-the-password", 60000);
     const text = "You are not authorized to access the server at this time. Please contact your server administrator for more information.";
     await web.locator(".toast", { hasText: text }).first().waitFor({ timeout: 15000 }).catch(() => {});
     const shown = await web.evaluate(() => [...document.querySelectorAll(".toast, .dialog, .dialogContent")].map((e) => e.innerText.trim()).filter(Boolean));
     console.log(`recorded: jellyfin-web showed ${JSON.stringify(shown)} for a 403 with Retry-After ${retryAfter}`);
     need(shown.some((t) => t.includes(text)), `jellyfin-web showed ${JSON.stringify(shown)}, want the 403 text`);
-    need(await web.locator("#txtManualName").isVisible(), "the page left the sign-in form");
+    need(await signInShown(web), "the page left the sign-in form");
   } finally {
     await web.close();
   }
