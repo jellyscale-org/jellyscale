@@ -1,4 +1,4 @@
-// JS-144 (D-016): a page served from an origin other than the server's, which is what Fluster (a Tauri WebView) and
+// JS-144 (D-016): a page served from an origin other than the server's, which is what an app's embedded web view and
 // any web client hosted elsewhere are. The page here is a blank one on another port; everything it does it does with
 // fetch, as such a client does, and the token goes only in the Authorization header. The stack is the usual one: two
 // api replicas, a stream replica and a router, each a process of its own. Playwright cannot see a preflight, so the

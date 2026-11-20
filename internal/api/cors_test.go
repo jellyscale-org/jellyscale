@@ -18,7 +18,7 @@ import (
 // outside Go: a handler with one role and no database answers every preflight, which is the point (a preflight reads
 // no token and sends Postgres nothing). cors_integration_test.go asks the same of real answers, with Postgres.
 
-var corsOrigins = []string{"tauri://localhost", "http://tauri.localhost", "https://tauri.localhost", "https://app.example.test"}
+var corsOrigins = []string{"app://localhost", "http://app.localhost", "https://app.localhost", "https://app.example.test"}
 
 // The six headers a page's script sets on a request to the API.
 var corsSix = []string{"Authorization", "X-Emby-Authorization", "X-Emby-Token", "X-MediaBrowser-Token", "Content-Type", "Range"}
@@ -150,8 +150,8 @@ func TestAPreflightAllowsEachOfTheSixHeadersAloneTogetherInAnyOrderAndAnyCase(t 
 	h := corsHandler(RoleAPI)
 	var bad []string
 	try := func(what, asked string) {
-		a := corsPreflight(h, "/Users/AuthenticateByName", "tauri://localhost", "POST", asked)
-		if !a.is2xx() || !a.allowsOrigin("tauri://localhost") {
+		a := corsPreflight(h, "/Users/AuthenticateByName", "app://localhost", "POST", asked)
+		if !a.is2xx() || !a.allowsOrigin("app://localhost") {
 			bad = append(bad, fmt.Sprintf("%s (%q): status %d, origin %q", what, asked, a.Code, a.Header().Get("Access-Control-Allow-Origin")))
 			return
 		}
@@ -172,7 +172,7 @@ func TestAPreflightAllowsEachOfTheSixHeadersAloneTogetherInAnyOrderAndAnyCase(t 
 	try("reversed", strings.Join(reversed, ","))
 	try("mixed case, spaced", "aUtHoRiZaTiOn , x-EMBY-token,RANGE ,content-TYPE, X-emby-AUTHORIZATION,x-mediabrowser-TOKEN")
 	// Authorization must be in the list by its name, where a browser looks for it.
-	a := corsPreflight(h, "/Users/AuthenticateByName", "tauri://localhost", "POST", "authorization")
+	a := corsPreflight(h, "/Users/AuthenticateByName", "app://localhost", "POST", "authorization")
 	if !slices.Contains(corsList(a, "Access-Control-Allow-Headers"), "authorization") {
 		bad = append(bad, fmt.Sprintf("Authorization is not allowed by name (%q), and a browser does not take * for it", a.Header().Get("Access-Control-Allow-Headers")))
 	}
@@ -226,8 +226,8 @@ func TestAPreflightAllowsEachMethodOfARouteByNameAndHeadWhereGetIsServed(t *test
 func TestAPathInAnotherLetterCaseOrWithATrailingSlashIsAnsweredAsTheRouteItselfIs(t *testing.T) {
 	h := corsHandler(RoleAPI)
 	for _, path := range []string{"/Users/AuthenticateByName", "/users/authenticatebyname", "/USERS/AUTHENTICATEBYNAME", "/Users/AuthenticateByName/"} {
-		a := corsPreflight(h, path, "tauri://localhost", "POST", "authorization,content-type")
-		if !a.is2xx() || !a.allowsOrigin("tauri://localhost") || !a.allowsMethod("POST") || !a.allowsHeader("Content-Type") {
+		a := corsPreflight(h, path, "app://localhost", "POST", "authorization,content-type")
+		if !a.is2xx() || !a.allowsOrigin("app://localhost") || !a.allowsMethod("POST") || !a.allowsHeader("Content-Type") {
 			t.Errorf("preflight of %s: status %d, headers %v", path, a.Code, a.Header())
 		}
 	}
@@ -240,14 +240,14 @@ func TestAPathInAnotherLetterCaseOrWithATrailingSlashIsAnsweredAsTheRouteItselfI
 			spellings = append(spellings, url+"/")
 		}
 		for _, path := range spellings {
-			a := corsPreflight(h, path, "tauri://localhost", route.Method, "authorization,content-type")
-			if !a.is2xx() || !a.allowsOrigin("tauri://localhost") || !a.allowsMethod(route.Method) {
+			a := corsPreflight(h, path, "app://localhost", route.Method, "authorization,content-type")
+			if !a.is2xx() || !a.allowsOrigin("app://localhost") || !a.allowsMethod(route.Method) {
 				t.Errorf("%s %s: preflight of %s: status %d, headers %v", route.Method, route.Path, path, a.Code, a.Header())
 			}
 		}
 	}
 	// A route the process does not have is not answered as one: the ingress sends it elsewhere.
-	if a := corsPreflight(corsHandler(RoleStream), "/Users/AuthenticateByName", "tauri://localhost", "POST", "authorization"); a.Code != http.StatusNotFound && a.allowsOrigin("tauri://localhost") {
+	if a := corsPreflight(corsHandler(RoleStream), "/Users/AuthenticateByName", "app://localhost", "POST", "authorization"); a.Code != http.StatusNotFound && a.allowsOrigin("app://localhost") {
 		t.Logf("a stream process answers a preflight of an api route with %d (open question 4: the ingress never sends one)", a.Code)
 	}
 }
@@ -268,8 +268,8 @@ func TestAPreflightIsTheSameWithAnyCredentialAnyIdAndAnyServer(t *testing.T) {
 	other := (&Server{Roles: []string{RoleAPI, RoleStream}, Log: slog.New(slog.DiscardHandler), Name: "another server", ServerID: "id-two"}).Handler()
 	for _, route := range routes {
 		h := corsHandler(route.Role)
-		first := corsPreflight(h, corsURL(route), "tauri://localhost", route.Method, "authorization,range")
-		if !first.is2xx() || !first.allowsOrigin("tauri://localhost") {
+		first := corsPreflight(h, corsURL(route), "app://localhost", route.Method, "authorization,range")
+		if !first.is2xx() || !first.allowsOrigin("app://localhost") {
 			t.Errorf("%s %s: the preflight is %d and allows %q: the sameness below would hold of any refusal", route.Method, route.Path, first.Code, first.Header().Get("Access-Control-Allow-Origin"))
 		}
 		want := shape(first)
@@ -279,20 +279,20 @@ func TestAPreflightIsTheSameWithAnyCredentialAnyIdAndAnyServer(t *testing.T) {
 			{"X-Emby-Token", "no-such-token"}, {"X-MediaBrowser-Token", "no-such-token"}, {"Cookie", "X-Emby-Token=abc; ApiKey=abc"},
 		}
 		for _, credential := range credentials {
-			args := append([]string{"Origin", "tauri://localhost", "Access-Control-Request-Method", route.Method, "Access-Control-Request-Headers", "authorization,range"}, credential...)
+			args := append([]string{"Origin", "app://localhost", "Access-Control-Request-Method", route.Method, "Access-Control-Request-Headers", "authorization,range"}, credential...)
 			if got := shape(corsAsk(h, "OPTIONS", corsURL(route), args...)); got != want {
 				t.Errorf("%s %s: with %v the preflight answers\n%s\nand without a credential\n%s", route.Method, route.Path, credential, got, want)
 			}
 		}
 		// Another id, and a server of another name and id (which also has both roles).
 		changed := strings.ReplaceAll(corsURL(route), "0123456789abcdef0123456789abcdef", "ffffffffffffffffffffffffffffffff")
-		if got := shape(corsPreflight(h, changed, "tauri://localhost", route.Method, "authorization,range")); got != want {
+		if got := shape(corsPreflight(h, changed, "app://localhost", route.Method, "authorization,range")); got != want {
 			t.Errorf("%s %s: another id changes the preflight:\n%s\nvs\n%s", route.Method, route.Path, got, want)
 		}
-		if got := shape(corsPreflight(other, corsURL(route), "tauri://localhost", route.Method, "authorization,range")); got != want {
+		if got := shape(corsPreflight(other, corsURL(route), "app://localhost", route.Method, "authorization,range")); got != want {
 			t.Errorf("%s %s: another server's preflight differs:\n%s\nvs\n%s", route.Method, route.Path, got, want)
 		}
-		for name, values := range corsPreflight(h, corsURL(route), "tauri://localhost", route.Method, "authorization").Header() {
+		for name, values := range corsPreflight(h, corsURL(route), "app://localhost", route.Method, "authorization").Header() {
 			for _, value := range values {
 				for _, secret := range []string{"one", "id-one", Version} {
 					if value == secret {
@@ -317,7 +317,7 @@ func (l corsLog) WithGroup(string) slog.Handler      { return l }
 func TestAPreflightForAServedRouteIsNotLoggedAsAnUnknownRoute(t *testing.T) {
 	buf := &bytes.Buffer{}
 	h := (&Server{Roles: []string{RoleAPI, RoleStream}, Log: slog.New(corsLog{buf})}).Handler()
-	a := corsPreflight(h, "/Users/AuthenticateByName", "tauri://localhost", "POST", "authorization")
+	a := corsPreflight(h, "/Users/AuthenticateByName", "app://localhost", "POST", "authorization")
 	if !a.is2xx() {
 		t.Fatalf("status %d", a.Code)
 	}
@@ -349,8 +349,8 @@ func TestHealthAndReadinessCarryNoCrossOriginHeaderAndAnswerAsBefore(t *testing.
 		}
 	}
 	s.BeginDrain()
-	check("GET /readyz when draining", corsAsk(h, "GET", "/readyz", "Origin", "tauri://localhost"), 503, "not ready\n")
-	check("preflight of /readyz when draining", corsPreflight(h, "/readyz", "tauri://localhost", "GET", "authorization"), 404, "404 page not found\n")
+	check("GET /readyz when draining", corsAsk(h, "GET", "/readyz", "Origin", "app://localhost"), 503, "not ready\n")
+	check("preflight of /readyz when draining", corsPreflight(h, "/readyz", "app://localhost", "GET", "authorization"), 404, "404 page not found\n")
 }
 
 // No answer of a route allows credentials or sets a cookie, with a token or without: here the answers that need no
@@ -392,7 +392,7 @@ func TestEachViewerRouteAskedFromAnotherOriginWithNoTokenIsA401TheOriginMayRead(
 			continue
 		}
 		viewers++
-		for _, origin := range []string{"tauri://localhost", "https://app.example.test"} {
+		for _, origin := range []string{"app://localhost", "https://app.example.test"} {
 			a := corsAsk(corsHandler(route.Role), route.Method, corsURL(route), "Origin", origin, "Cookie", "X-Emby-Token=whatever")
 			if a.Code != 401 || strings.TrimSpace(a.Body.String()) != "unauthorized" {
 				bad = append(bad, fmt.Sprintf("%s %s from %s: %d %q, want 401 unauthorized", route.Method, route.Path, origin, a.Code, a.Body.String()))
@@ -416,12 +416,12 @@ func TestEveryAnswerOfARouteIsRightFromASharedCache(t *testing.T) {
 	for _, route := range (&Server{}).Routes() {
 		h := corsHandler(route.Role)
 		answers := []corsAnswer{
-			corsAsk(h, route.Method, corsURL(route), "Origin", "tauri://localhost"),
+			corsAsk(h, route.Method, corsURL(route), "Origin", "app://localhost"),
 			corsAsk(h, route.Method, corsURL(route), "Origin", "https://app.example.test"),
 			corsAsk(h, route.Method, corsURL(route)),
 		}
 		for i, a := range answers[:2] {
-			if !a.allowsOrigin([]string{"tauri://localhost", "https://app.example.test"}[i]) {
+			if !a.allowsOrigin([]string{"app://localhost", "https://app.example.test"}[i]) {
 				bad = append(bad, fmt.Sprintf("%s %s, request %d: the answer %d does not allow its origin (%q), so there is no cache to be right or wrong", route.Method, route.Path, i, a.Code, a.Header().Get("Access-Control-Allow-Origin")))
 			}
 		}
@@ -436,7 +436,7 @@ func TestEveryAnswerOfARouteIsRightFromASharedCache(t *testing.T) {
 		}
 		for i, a := range answers {
 			if !slices.Contains(corsList(a, "Vary"), "origin") {
-				bad = append(bad, fmt.Sprintf("%s %s, request %d (%v): origin echoed by another answer, and Vary is %q", route.Method, route.Path, i, []string{"tauri", "web", "no Origin"}[i], a.Header().Get("Vary")))
+				bad = append(bad, fmt.Sprintf("%s %s, request %d (%v): origin echoed by another answer, and Vary is %q", route.Method, route.Path, i, []string{"app", "web", "no Origin"}[i], a.Header().Get("Vary")))
 			}
 		}
 	}

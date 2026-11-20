@@ -276,7 +276,7 @@ func TestTheAudioDefaultCaptureFitsTheRuleWrittenDown(t *testing.T) {
 	}
 }
 
-// A client whose profile has no IsSecondaryAudio condition (Fluster's mpv picks the track itself) is direct played by
+// A client whose profile has no IsSecondaryAudio condition (an mpv-based client picks the track itself) is direct played by
 // Jellyfin 12.4 in every cell, whatever track it names, and the item (jellyfin-web's details page) names the track
 // PlaybackInfo names: the record says so with cells, not prose, because jellyscale's costs depend on it.
 func TestTheAudioDefaultCaptureHoldsTheProfileWithNoSecondaryAudioConditionAndTheItem(t *testing.T) {

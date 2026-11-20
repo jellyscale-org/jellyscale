@@ -156,7 +156,7 @@ compat TestNoDifferenceIsKeptForCastReceiverId 0.0
 compat TestObsoleteRoutesNeededOnlyWhenCalled 0.0
 compat TestParentalControlWaitsForRatings 0.0
 compat TestSameRoute 0.0
-compat TestSearchHintsIsAuditedAsDoneOnFlustersCall 0.0
+compat TestSearchHintsIsAuditedAsDone 0.0
 compat TestServedByError 0.0
 compat TestSliceCountsMatchRows 0.0
 compat TestStatusMdSaysForEachClientHowItsPlayerSendsTheTokenAndHowThatIsKnown 0.0

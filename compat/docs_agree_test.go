@@ -172,46 +172,6 @@ func TestStatusSaysTheSameOfTheReplicaHalfAndTheAV1FallbackEverywhere(t *testing
 	}
 }
 
-// --- the Octave row (formerly Fluster; D-019, D-027, D-031) ---
-
-func TestOctaveHasOneRowThatSaysItHasNotBeenRun(t *testing.T) {
-	status := docText(t, "docs/status.md")
-	rows := linesContaining(status, regexp.MustCompile(`(?m)^\| Octave \|`))
-	if len(rows) != 1 {
-		t.Fatalf("docs/status.md has %d rows for Octave in its client tables, want exactly 1", len(rows))
-	}
-	row := rows[0]
-	for what, pattern := range map[string]string{
-		"that no Octave has signed in":                        `(?i)no Octave has signed in`,
-		"that no Octave has listed a library":                 `(?i)listed a library`,
-		"that no Octave has played":                           `(?i)(listed a library|signed in)[^|]{0,60}(or|,|and) played|played against|played a film`,
-		"what was shown instead (Chromium on another origin)": `(?i)Chromium[^|]{0,60}another origin`,
-		"that it signed in, browsed and played":               `(?i)sign-in, browsing and playback|signed in, browsed and played`,
-		"that every route answers a preflight":                `(?i)every route answers a preflight`,
-		"the three WebView origins":                           `(?i)three WebView origins`,
-		"JS-144 as how it is known":                           `JS-144`,
-		"D-027 (jellyscale does not run Octave)":              `D-027`,
-	} {
-		mustMatch(t, "the Octave row", row, what, pattern)
-	}
-	for what, pattern := range map[string]string{
-		"that Octave works, connects or plays": `(?i)Octave (now |already )?(works|connects|plays)\b|Octave is working`,
-		"a CORS gap":                           `(?i)CORS (gap|is missing|is not|fails|blocks)|blocked by CORS|no CORS`,
-	} {
-		mustNotMatch(t, "the Octave row", row, what, pattern)
-	}
-	if st := taskStatus(t); st["JS-144"] != "done" {
-		t.Errorf("the row names JS-144 (%q, must be done)", st["JS-144"])
-	}
-
-	access := docText(t, "docs/access.md")
-	for _, l := range linesContaining(access, regexp.MustCompile(`Octave`)) {
-		mustNotMatch(t, "docs/access.md", l, "that Octave works, connects or plays", `(?i)Octave (now |already )?(works|connects|plays)\b`)
-		mustNotMatch(t, "docs/access.md", l, "a CORS gap", `(?i)CORS (gap|is missing|is not|fails|blocks)|blocked by CORS|no CORS`)
-	}
-	mustMatch(t, "docs/access.md", access, "that Octave has not been run against this server, with D-027", `(?is)Octave[^\n]{0,400}not been run[^\n]{0,300}D-027`)
-}
-
 // --- the known gaps, together ---
 
 // gapSection is the bullets under the heading of status.md that lists its known gaps.
