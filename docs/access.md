@@ -52,7 +52,17 @@ The last row is not a route with no token: Jellyfin lets any signed-in user list
 - `GET /web/`: the web client's own files, when a web directory is configured. Open to anyone.
 - `GET /`: redirects the root path alone to `/web/` when a web directory is configured. Open to anyone.
 
-Every other method and path gets the catch-all's 404, with or without a token.
+A preflight (an `OPTIONS` request with an `Origin` and `Access-Control-Request-Method`) of a route is answered 204 with no body, and every other method and path gets the catch-all's 404, with or without a token.
+
+## Other origins
+
+Any origin may call the API and media routes, and never with credentials (D-016): what has been shown is Chromium, on a page served from another origin, reading the open routes, signing in, browsing and playing, and every route answering a preflight for Fluster's three WebView origins (`tauri://localhost`, `http://tauri.localhost`, `https://tauri.localhost`). Fluster itself has not been run against this server yet; JS-075 records that run (D-019). Every answer to a request with an `Origin` carries `Access-Control-Allow-Origin: *`, and the answers a page reads ranges from list `Content-Range`, `Accept-Ranges` and `Content-Length` in `Access-Control-Expose-Headers`.
+
+A preflight is open to anyone, with no token: a browser sends it before any request that carries a token in a header, and it cannot carry one. It reads no token and sends Postgres no statement, runs no handler and tells nothing of the server; it allows the asked method where the path serves it and the headers asked, `Authorization` by name, since a browser does not take `*` for it. It is answered in `internal/api/cors.go` from the request and the route table alone.
+
+That does not open a viewer's account. No route reads or sets a cookie, so the browser sends nothing of the viewer's by itself: a page can only use a token it already holds, and a viewer route asked with none is still 401 `unauthorized` (invariant 63). What it does expose is that, on a server reachable only on a private network, a web page in a viewer's browser can read the open routes and the result of a sign-in attempt.
+
+`/healthz`, `/readyz`, `/metrics` and `/web/` are not opened: they carry no `Access-Control-*` header. A preflight of `/healthz`, `/readyz` or `/web/` gets the catch-all's 404; `/metrics` is on its own listener, which answers a preflight 405.
 
 ## Routes
 

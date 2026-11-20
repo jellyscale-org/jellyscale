@@ -180,7 +180,7 @@ func (s *Server) Handler() http.Handler {
 		s.Log.Warn("unknown route", "method", r.Method, "path", r.URL.Path)
 		http.NotFound(w, r)
 	})
-	return s.logRequests(normalize(mux))
+	return s.logRequests(normalize(cors(mux, mux)))
 }
 
 // lowerLiterals lowercases a route's fixed segments and leaves {wildcards}
