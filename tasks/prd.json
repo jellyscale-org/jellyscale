@@ -157,7 +157,8 @@
         "Disabled or deleted, at once: sign-in answers the same 401, in the same time, as a wrong password; forced with real processes, every token of the user answers 401 on the next request through another api process and through stream",
         "The last administrator: forced, two administrators each demote the other through two api processes with both statements held on the users rows until pg_stat_activity shows both waiting, then released: exactly one answers 204, the other 403, and one enabled administrator remains; the same for disable and delete (named mutant: counting administrators before the update, outside its transaction)",
         "Passwords: changing your own needs the current one; an administrator resets another's without it; either revokes the user's other tokens, shown on a second process",
-        "A revoked device or disabled user's running stream stops: forced, a direct play of the whole file read slowly when the device is revoked or the user disabled closes within 15 seconds having sent less than the file"
+        "A revoked device or disabled user's running stream stops: forced, a direct play of the whole file read slowly when the device is revoked or the user disabled closes within 15 seconds having sent less than the file",
+        "LoginAttemptsBeforeLockout stays -1 and a set value is not honoured, as compat/differences.yaml says (D-020); a new or changed password is refused if it is among the commonly guessed ones"
       ],
       "priority": 21,
       "status": "todo",
@@ -233,7 +234,8 @@
       "acceptanceCriteria": [
         "Observed against Jellyfin 12.4 first",
         "Moonfin on the Shield and Findroid sign in with a code approved from jellyfin-web",
-        "Where Quick Connect is turned off, /QuickConnect/Enabled answers false so clients fall back to a password (#104)"
+        "Where Quick Connect is turned off, /QuickConnect/Enabled answers false so clients fall back to a password (#104)",
+        "A device approved by code from a signed-in device signs in while the account's name is refused to strangers (D-020); the code routes are bounded per address so the code cannot be guessed"
       ],
       "priority": 23,
       "status": "todo",
@@ -560,7 +562,8 @@
         "Each probe states what it depends on: liveness never depends on Postgres or a store, so a database failover restarts no pod; ffmpeg threads follow the pod's CPU limit, not the node's cores",
         "The worker's liveness URL can come from the environment or a Secret, and the manifests never put a password in a process's arguments",
         "docs/running.md says which Postgres connection modes are supported (session; a transaction-mode pooler or pgx exec mode, supported or not, by a check), and the manifests connect that way",
-        "A replica whose database stays broken leaves service, and the manifests' grace period and readiness lead match the documented ones"
+        "A replica whose database stays broken leaves service, and the manifests' grace period and readiness lead match the documented ones",
+        "The example manifests declare trustedProxies for their ingress (D-020)"
       ],
       "priority": 31,
       "status": "todo",
@@ -725,7 +728,7 @@
         "An HEVC HDR copy and its fallback are played once in a browser with an HEVC decoder (E2E_HEVC=1) and recorded; until then docs/status.md says 'checked with ffmpeg only'",
         "Streamyfin's player entries in compat/clients.yaml are corrected from what the device sends",
         "Fluster, as a released build on at least one desktop platform (the engine named: WebKitGTK, WebView2 or WKWebView), signs in and lists a library against the dogfood or a main-<sha> image, before it plays; recorded with no titles or paths (from JS-144, D-019). A record from Fluster's maintainers through issue #202 counts. A failure becomes a task ahead of every other open task.",
-        "On Fluster: a wrong password past JS-145's bound reads as 'try again later', not as a wrong password or a server fault (from JS-145, D-019); a server address typed with a trailing slash still signs in; whether Fluster asks for the subtitle playlist, and what its viewer sees, is recorded (answers BL-201)."
+        "On Fluster: a sign-in refused by JS-145 (403 with Retry-After, D-020) reads as 'try again in N minutes', not as a wrong password, a refusal by the administrator or a server fault (from JS-145, D-019); a server address typed with a trailing slash still signs in; whether Fluster asks for the subtitle playlist, and what its viewer sees, is recorded (answers BL-201)."
       ],
       "priority": 14,
       "status": "todo",
@@ -1125,18 +1128,24 @@
     {
       "id": "JS-145",
       "phase": "ID",
-      "title": "Failed sign-ins are bounded, per account and per address",
+      "title": "Failed sign-ins are bounded, per name and per address",
       "description": "Nothing bounds failed sign-ins today (the user policy reports LoginAttemptsBeforeLockout -1). D-016 opens the API to any origin, so on a private-network server a web page in a viewer's browser could guess names and passwords and read the answers; servers on the internet are exposed to guessing already.",
       "acceptanceCriteria": [
-        "Observed first: what Jellyfin 12.4 does after failed sign-ins (its LoginAttemptsBeforeLockout and what a locked account answers), recorded in compat/captures",
-        "Repeated failed sign-ins for one account, and from one address across accounts, are slowed or refused after a stated bound; the bound and how long it lasts are documented in docs/access.md, and a right password after the bound is answered as the design states, observed in a test with real processes; the longest a viewer with the right password can be kept out by someone else's guesses is a number in docs/access.md, and a check holds it",
-        "A viewer who mistypes a few times is not locked out, and a guesser cannot lock out every account by guessing (the per-address bound acts first): both shown by a test; a named account under guessing from many addresses is still reachable by its owner within that stated time",
-        "Each refusal is logged with the account and the address, never the password, and counted in a metric an operator can alert on; the metric carries no account or address label",
-        "The bound holds across api replicas (several processes share it), shown with two replicas",
-        "docs/running.md says which address counts behind an ingress and the operator declares which proxies are trusted; a forwarded header from anywhere else is ignored, shown by a test; with nothing declared, the behaviour is stated and safe: viewers behind one ingress are not treated as one guesser without the operator being told",
-        "A token already issued keeps working while its account is slowed or refused: a playing film, its progress reports and the account's other devices are unaffected, shown by a test",
-        "The answer after the bound is the same for an account that exists and one that does not (D-014)",
-        "What jellyfin-web shows on a slowed or refused sign-in is observed and recorded, and reads as 'try again later', not as a wrong password or a server fault; LoginAttemptsBeforeLockout in the user policy says what the server actually does, or the difference is listed in compat/differences.yaml (what Fluster shows is recorded in JS-075, D-019)"
+        "Observed first: what Jellyfin 12.4 does after failed sign-ins (its LoginAttemptsBeforeLockout, what a locked account answers) and what jellyfin-web shows for 401, 403, 429 and 503 on sign-in, recorded in compat/captures",
+        "Per name (D-020): after 20 failed sign-ins for one name within 15 minutes, from devices that have not signed in to that account before, any number of addresses and replicas, further such sign-ins for it are refused for 15 minutes; a refused attempt checks no password and counts as no failure; a right password during the refusal is refused the same way, and signs in afterwards; no success resets a count and no account is ever disabled by failures; shown with real processes",
+        "Known devices (D-020): a device (DeviceId) that held a token for the account within the last 30 days is outside the per-name bound and has its own count for that account, 10 failures within 15 minutes then refused for 15 minutes; with the name refused to strangers under guessing from many addresses, its owner signs in from such a device at the first try, shown by a test; a guesser sending that DeviceId gets no more than that device's count",
+        "Per address (D-020): with proxies declared or `trustedProxies: []`, 10 failed sign-ins within 15 minutes from one address across all names refuse that address for 15 minutes, whatever the name or device, and a success on one account resets nothing; an IPv6 address counts as its /64; one address alone never causes a name to be refused to others, shown by a test (10 failures on one name from one address, then its owner signs in from another address on a new device)",
+        "A viewer who mistypes 9 times in a row and then types the right password signs in; every route that takes a password is bounded the same way",
+        "The bounds hold under parallel attempts: 200 sign-ins at once for one name, spread over two api replicas, check no more than 20 passwords; shown with two replicas as separate processes",
+        "A refusal answers 403 with a Retry-After header in whole seconds until it ends, readable by a cross-origin page (D-016, D-020); it is the same status, body and headers for a name that exists and one that does not (D-014), and an unknown name counts toward the per-name bound exactly as a real one",
+        "Unknown names are remembered within a fixed bound stated in docs/access.md; a flood of invented names (100,000 in a test) neither changes nor drops a real account's count, nor makes any unknown name answer differently from a real one at the same count (D-020)",
+        "Before any bound, a wrong password and an unknown name answer alike and do the same password work, so the time taken does not tell them apart; shown by a check that can fail (Jellyfin 12.4 was observed at 1 ms against 77 ms)",
+        "docs/access.md states the three bounds, how long each lasts, the worst-case guesses per account per day (1,920, plus 960 per known DeviceId the guesser holds), and the longest a viewer with the right password is kept out by someone else's guesses: none on a device that has signed in before; on a new device until 15 minutes after the guessing stops, with Quick Connect named as the way around once built; a check holds each number",
+        "Each refusal is logged with which bound refused, the address, and the account name only when the account exists (an unknown name's text is never logged, since viewers type passwords into the name box), never the password; refusals are counted in a metric labelled by bound only, and failed sign-ins in another, neither with an account or address label; docs/running.md names both for alerting",
+        "docs/running.md says which address counts behind an ingress; the operator declares `trustedProxies`; a forwarded header from any other peer is ignored, shown by a test; with the key absent the per-address bound is off, the per-name bounds hold, a warning naming the key is logged at every start-up and a metric says the bound is off (D-020); with `[]` declared, a forwarded header arriving from a private peer is logged once per process as a likely undeclared ingress; the shipped compose stack declares its ingress",
+        "A token already issued keeps working while its account or address is refused: a playing film, its progress reports and the account's other devices are unaffected, shown by a test",
+        "On jellyfin-web a refused sign-in shows the 403 text ('not authorized… at this time… contact your server administrator'), recorded from a run against the build; docs/access.md says this is what viewers read and that the administrator finds the reason in the log and metric (D-020: jellyfin-web has no 'try again later'). What Fluster shows is recorded in JS-075 (D-019)",
+        "LoginAttemptsBeforeLockout reports -1 for every user; compat/differences.yaml lists that jellyscale refuses temporarily per name and address where Jellyfin has no bound by default, and that a set value is not honoured (D-020)"
       ],
       "priority": 12,
       "status": "todo",
@@ -1144,7 +1153,8 @@
       "dependsOn": [],
       "source": "decision D-016 (condition: failed sign-ins bounded)",
       "ux": true,
-      "core": false
+      "core": false,
+      "notes": "D-020: refuse (403 with Retry-After), never slow; criteria 2, 3 and 7 land together: a per-name lock without the known-device allowance does not ship. If refinement finds it too large for one build, bring a split to the product owner."
     },
     {
       "id": "JS-147",

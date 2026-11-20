@@ -1877,6 +1877,33 @@
       "title": "Three transcode e2e scenarios failed in one full run on a loaded machine; each passes 5 of 5 alone",
       "status": "open",
       "notes": "Not the BL-100 stall. The three: the dashboard card and Playback info panel (timed out after 44 s, panel empty); jellyfin-web after a segment fails, answered 500, once (timed out waiting for the player to ask for the failing segment, 65 s); a slow re-encode shared by three workers (browser closed after 92 s, then the gate printed no shard line). Host had about 2 GB free RAM. Product owner asks (evidence): does any of them fail in the merge queue or on CI's runners?"
+    },
+    {
+      "id": "BL-209",
+      "source": "JS-145 / D-020",
+      "reviewer": "product-owner",
+      "severity": "minor",
+      "title": "jellyfin-web cannot say \"try again later\" on a refused sign-in",
+      "status": "open",
+      "notes": "Observe whether the sign-in page's branding disclaimer can carry it for a refused address. Promote with the OIDC task, which makes Branding real."
+    },
+    {
+      "id": "BL-210",
+      "source": "JS-145 / D-020",
+      "reviewer": "product-owner",
+      "severity": "minor",
+      "title": "With proxies declared, an address the account signed in from recently could count as known",
+      "status": "open",
+      "notes": "So a new device at home is not a stranger during guessing. Promote if an operator reports a viewer kept out."
+    },
+    {
+      "id": "BL-211",
+      "source": "JS-145 / D-020",
+      "reviewer": "product-owner",
+      "severity": "minor",
+      "title": "An operator-chosen permanent lock, as Jellyfin's LoginAttemptsBeforeLockout",
+      "status": "open",
+      "notes": "Promote only if an operator asks, after JS-033."
     }
   ]
 }
