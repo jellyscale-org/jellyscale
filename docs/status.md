@@ -180,7 +180,7 @@ Whether every listed request answers and passes the schema check (`yes`), and ea
 | Streamyfin | playback | yes | - |
 | Streamyfin | progress | yes | - |
 | Streamyfin | stop | yes | - |
-| Fluster | sign-in, library | not yet run | Fluster itself not yet run: no Fluster has signed in, listed a library or played against jellyscale; JS-075 records that run (D-019). Shown instead (JS-144): Chromium on another origin ran sign-in, browsing and playback, and every route answers a preflight for Fluster's three WebView origins. The record of a Fluster run goes in `compat/records/fluster.md` (Fluster's version and engine, the build's commit, the Origin its WebView sent, each request's method, route template and status with its preflight, and what the viewer saw). |
+| Fluster | sign-in, library | not run by jellyscale | No Fluster has signed in, listed a library or played against jellyscale that jellyscale knows of: Fluster is engineered by its own project to work with jellyscale, and jellyscale does not run or record it, and no task waits on it (D-027). Shown for any browser-engine client (JS-144): Chromium on another origin ran sign-in, browsing and playback, and every route answers a preflight for Fluster's three WebView origins. |
 
 ### What each client's player sends (JS-126)
 
