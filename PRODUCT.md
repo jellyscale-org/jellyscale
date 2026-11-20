@@ -6,7 +6,7 @@ What jellyscale should be, and the experience it exists to give. It guides every
 
 A self-hosted video server that speaks the Jellyfin client API and runs as a horizontally scalable service. Someone who has outgrown a single Jellyfin process keeps the apps their viewers use, where those apps authorize every request, and gains a server that spreads across machines, survives losing any one of them, and keeps its films on local disks or in object storage.
 
-jellyscale ships with Fluster, a desktop client that plays the original file whenever it can and shows every conversion the server makes. Fluster is a Jellyfin client in its own right, engineered to work with jellyscale, and the first to adopt anything jellyscale offers beyond Jellyfin's API.
+jellyscale ships with Octave (formerly Fluster), a desktop client that plays the original file whenever it can and shows every conversion the server makes. Octave is a Jellyfin client in its own right, engineered to work with jellyscale, and the first to adopt anything jellyscale offers beyond Jellyfin's API.
 
 ## Who it's for
 
@@ -68,7 +68,7 @@ Jellyfin's behaviour shows what clients depend on, not what to copy. jellyscale 
 - **Music, photos, audiobooks, channels and Live TV.** Better tools exist for those.
 - **Plugins,** .NET or otherwise.
 - **Multi-tenancy.** One library, one operator.
-- **A client that works only with jellyscale.** Fluster, which ships with it, also plays from any Jellyfin server, and what jellyscale adds beyond Jellyfin's API is something it can use, never something it needs.
+- **A client that works only with jellyscale.** Octave, which ships with it, also plays from any Jellyfin server, and what jellyscale adds beyond Jellyfin's API is something it can use, never something it needs.
 - **Administration through the dashboard:** libraries, metadata, scheduled tasks and server settings are configuration.
 - **Fetching metadata from outside services,** editing items, and uploading or deleting media through the API. An operator supplies metadata as files beside the film.
 - **Routes Jellyfin marks obsolete,** apart from the exception below.
@@ -79,8 +79,8 @@ Jellyfin's behaviour shows what clients depend on, not what to copy. jellyscale 
 - **Future-facing:** a client that depends on obsolete routes isn't well suited to jellyscale.
 - **The one exception:** thin aliases for routes jellyfin-web still calls, flagged `alias` in `compat/endpoints.yaml`. Each one is removed when the web client stops calling it. Never add an alias for another client.
 - **Outside scope but called anyway:** answer with a valid empty response if the client breaks otherwise; otherwise 404.
-- **Beyond Jellyfin:** a feature Jellyfin's API has no place for lives under a jellyscale namespace of its own (`/jellyscale/v1/`), documented and versioned. Unmodified clients never see the namespace. A feature there also reaches a viewer in a browser, on a page jellyscale serves; Fluster may adopt it first. Every Jellyfin route answers as it would without it, except where a viewer has made a choice there for their own account: that choice follows them into every app (tracks they asked to hide are hidden in each), and each such difference is listed in `compat/differences.yaml`.
-- **Clients in order:** jellyfin-web first, then the other apps built on Jellyfin's client libraries that send their token on every media request (Swiftfin, Streamyfin). Fluster isn't in the order: it is engineered to work with jellyscale, and no jellyscale work goes in for it. An app whose player sends no token isn't supported, and no work goes in to make it play; it plays, with no change to jellyscale, once it sends one. docs/status.md names the apps this leaves out. Kodi isn't a stated target: it works if it happens to, and no work goes in solely for it.
+- **Beyond Jellyfin:** a feature Jellyfin's API has no place for lives under a jellyscale namespace of its own (`/jellyscale/v1/`), documented and versioned. Unmodified clients never see the namespace. A feature there also reaches a viewer in a browser, on a page jellyscale serves; Octave may adopt it first. Every Jellyfin route answers as it would without it, except where a viewer has made a choice there for their own account: that choice follows them into every app (tracks they asked to hide are hidden in each), and each such difference is listed in `compat/differences.yaml`.
+- **Clients in order:** Octave first, as jellyscale's own client, engineered by its own project to work with jellyscale (no jellyscale work goes in for it); then jellyfin-web; then the other apps built on Jellyfin's client libraries that send their token on every media request (Swiftfin, Streamyfin). An app whose player sends no token isn't supported, and no work goes in to make it play; it plays, with no change to jellyscale, once it sends one. docs/status.md names the apps this leaves out. Kodi isn't a stated target: it works if it happens to, and no work goes in solely for it.
 
 ## Quality bar
 
