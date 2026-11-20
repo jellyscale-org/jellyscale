@@ -270,6 +270,26 @@
       "tradeoff": "In the shipped compose stack (trustedProxies absent, D-022) the refusal log named the api's peer, the ingress container, for every client, and the client's address appeared nowhere; docs/running.md said the line names which account and address.",
       "entry": "The refusal log says what its address is. When the per-address bound attributed an address to the request, the line names that address. When it did not (`trustedProxies` absent, or a declared proxy with no usable forwarded entry), the line names the peer, labelled as the peer, and also carries the X-Forwarded-For header as received, marked unverified, quoted, cut to 256 bytes and escaped; that value never counts toward a bound, never decides a refusal and is never a metric label. The behaviour is shown through the shipped compose stack itself, and docs/running.md says what the line held there. D-022 measured that the stack's ingress sees every client at the Docker bridge gateway, so in that stack as shipped the line is expected to identify the account and the bound but not the client; the docs say so, say the peer's address must never be blocked, and say the client's address is known only to whatever stands in front of the stack. Rejected: an ingress access log matched by time (a second log, holding the same gateway address); keeping the line as built with only a doc correction (it withholds the forwarded address where an ingress does see clients, and leaves operators nothing to confirm with before declaring proxies); declaring the ingress (D-022). Given up, by operators of the compose stack as shipped: jellyscale's records do not name a guessing client there, because Docker hides it before the stack sees it; a backlog item measures whether publishing the ingress to the network keeps client addresses. Also into JS-145 as doc lines: a declared ingress needs an address that survives recreation, a server with no ingress declares `[]`, household NAT shares one counted address, and a forwarded entry with a port or brackets is unusable. Unverified when decided: what the forwarded field holds in the compose stack for a remote client; how often operators investigate refusals. Amends D-022, which recorded no decision about the log.",
       "serves": "PRODUCT.md: Nothing is hidden, every failure is reported with its reason, never silent; Signing in is easy and safe; Installing is boring."
+    },
+    {
+      "id": "D-024",
+      "date": "2026-11-20",
+      "task": "JS-145",
+      "decision": "accept",
+      "by": "product-owner",
+      "tradeoff": "JS-145's criterion on the unknown-name memory (a flood of 100,000 invented names) is shown on the counting step the flood check drives, not through the function a sign-in calls (QA, reading only).",
+      "entry": "JS-145 criterion 6 is accepted as shown on the counting step FailName drives, not through Begin as a sign-in calls it (QA, reading only); BL-220 puts the flood through the sign-in path with JS-037 or JS-033, sooner if the paths are shown to count differently. Given up, by operators: proof that a flood through real sign-ins holds the same bound, until BL-220 is fixed.",
+      "serves": "PRODUCT.md: Signing in is easy and safe."
+    },
+    {
+      "id": "D-025",
+      "date": "2026-11-20",
+      "task": "JS-041, JS-093, JS-149, JS-056",
+      "decision": "change",
+      "by": "product-owner",
+      "tradeoff": "After JS-145: a viewer's saved subtitle language and mode is told 'Settings saved' and no film obeys it (BL-151), while the task that fixes it (JS-041) sat behind three measurements, a docs-only move and a profile 5 task no dogfood viewer needs.",
+      "entry": "JS-041 moves to directly after JS-147 (a saved subtitle setting that does nothing is felt by every viewer who sets it, BL-151); JS-093 sits after JS-148 and before JS-149, amending D-017's 'directly after JS-136', which D-021 displaced without a reason; JS-056 gains a criterion for the proxy-confirmation procedure when no address is counted (BL-221). Conditions: JS-093 still starts from a main holding JS-135 and JS-136's DOMAINS edits; close BL-151 when JS-041 ships.",
+      "serves": "PRODUCT.md: Their languages come first; every film starts that way where it can."
     }
   ]
 }
