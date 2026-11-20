@@ -1551,8 +1551,8 @@
       "reviewer": "lead",
       "severity": "minor",
       "title": "The HEVC fallback's x265 price is measured on synthetic testsrc2 only",
-      "status": "open",
-      "notes": "3.2 cores from 1080p, 4.0 from 4K; measure on a real film."
+      "status": "promoted",
+      "notes": "3.2 cores from 1080p, 4.0 from 4K; measure on a real film. Promoted to JS-148 (D-021)."
     },
     {
       "id": "BL-173",
@@ -1723,7 +1723,7 @@
       "severity": "minor",
       "title": "Spike: AV1 re-encodes for clients that list AV1",
       "status": "open",
-      "notes": "After people and library"
+      "notes": "After people and library Revisit with JS-148's brief (D-021)."
     },
     {
       "id": "BL-192",
