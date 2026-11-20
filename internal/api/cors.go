@@ -22,8 +22,9 @@ func cors(mux *http.ServeMux, next http.Handler) http.Handler {
 		h := w.Header()
 		h.Set("Access-Control-Allow-Origin", "*")
 		if r.Method != http.MethodOptions || r.Header.Get("Access-Control-Request-Method") == "" {
-			// What a page needs to read ranges: a header is hidden from it unless it is listed.
-			h.Set("Access-Control-Expose-Headers", "Content-Range, Accept-Ranges, Content-Length")
+			// What a page needs to read ranges, and how long a refused sign-in is refused: a header is hidden from it
+			// unless it is listed.
+			h.Set("Access-Control-Expose-Headers", "Content-Range, Accept-Ranges, Content-Length, Retry-After")
 			next.ServeHTTP(w, r)
 			return
 		}

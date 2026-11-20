@@ -235,18 +235,50 @@ func (p *proc) signInAs(t *testing.T, device string) string {
 // authenticate signs a user in on a device and gives the whole answer, for a test of what a sign-in returns.
 func (p *proc) authenticate(t *testing.T, device, user, password string) (int, []byte) {
 	t.Helper()
-	body, _ := json.Marshal(map[string]string{"Username": user, "Pw": password})
-	request, err := http.NewRequest("POST", p.url("/Users/AuthenticateByName"), bytes.NewReader(body))
+	got, err := p.signInReply(device, user, password)
 	if err != nil {
 		t.Fatal(err)
+	}
+	return got.status, got.body
+}
+
+// signInReply is one sign-in attempt with the headers the test adds (name, value pairs), whole: status, headers and
+// body. A transport error is returned, so that attempts made from goroutines can be counted.
+type signInReply struct {
+	status int
+	header http.Header
+	body   []byte
+}
+
+// signInPath is the sign-in route, spelled once in this package's tests (JS-114).
+const signInPath = "/Users/AuthenticateByName"
+
+func (p *proc) signInReply(device, user, password string, headers ...string) (signInReply, error) {
+	return p.signInReplyAt(signInPath, device, user, password, headers...)
+}
+
+// signInReplyAt is signInReply at the path the test names: the route in another letter case, or with a trailing slash.
+func (p *proc) signInReplyAt(path, device, user, password string, headers ...string) (signInReply, error) {
+	body, _ := json.Marshal(map[string]string{"Username": user, "Pw": password})
+	return p.signInBody(path, device, body, headers...)
+}
+
+// signInBody posts the bytes the test names, JSON or not.
+func (p *proc) signInBody(path, device string, body []byte, headers ...string) (signInReply, error) {
+	request, err := http.NewRequest("POST", p.url(path), bytes.NewReader(body))
+	if err != nil {
+		return signInReply{}, err
 	}
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", fmt.Sprintf(`MediaBrowser Client="c", Device="d", DeviceId="%s", Version="1"`, device))
-	response, err := (&http.Client{Timeout: time.Minute}).Do(request)
+	for i := 0; i+1 < len(headers); i += 2 {
+		request.Header.Set(headers[i], headers[i+1])
+	}
+	response, err := (&http.Client{Timeout: time.Minute, Transport: &http.Transport{DisableKeepAlives: true}}).Do(request)
 	if err != nil {
-		t.Fatal(err)
+		return signInReply{}, err
 	}
 	defer response.Body.Close()
 	raw, _ := io.ReadAll(response.Body)
-	return response.StatusCode, raw
+	return signInReply{response.StatusCode, response.Header, raw}, nil
 }

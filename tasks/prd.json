@@ -1107,37 +1107,6 @@
       "priority": 15
     },
     {
-      "id": "JS-145",
-      "phase": "ID",
-      "title": "Failed sign-ins are bounded, per name and per address",
-      "description": "Nothing bounds failed sign-ins today (the user policy reports LoginAttemptsBeforeLockout -1). D-016 opens the API to any origin, so on a private-network server a web page in a viewer's browser could guess names and passwords and read the answers; servers on the internet are exposed to guessing already.",
-      "acceptanceCriteria": [
-        "Observed first: what Jellyfin 12.4 does after failed sign-ins (its LoginAttemptsBeforeLockout, what a locked account answers) and what jellyfin-web shows for 401, 403, 429 and 503 on sign-in, recorded in compat/captures",
-        "Per name (D-020): after 20 failed sign-ins for one name within 15 minutes, from devices that have not signed in to that account before, any number of addresses and replicas, further such sign-ins for it are refused for 15 minutes; a refused attempt checks no password and counts as no failure; a right password during the refusal is refused the same way, and signs in afterwards; no success resets a count and no account is ever disabled by failures; shown with real processes",
-        "Known devices (D-020): a device (DeviceId) that held a token for the account within the last 30 days is outside the per-name bound and has its own count for that account, 10 failures within 15 minutes then refused for 15 minutes; with the name refused to strangers under guessing from many addresses, its owner signs in from such a device at the first try, shown by a test; a guesser sending that DeviceId gets no more than that device's count",
-        "Per address (D-020): with proxies declared or `trustedProxies: []`, 10 failed sign-ins within 15 minutes from one address across all names refuse that address for 15 minutes, whatever the name or device, and a success on one account resets nothing; an IPv6 address counts as its /64; one address alone never causes a name to be refused to others, shown by a test (10 failures on one name from one address, then its owner signs in from another address on a new device)",
-        "A viewer who mistypes 9 times in a row and then types the right password signs in; every route that takes a password is bounded the same way",
-        "The bounds hold under parallel attempts: 200 sign-ins at once for one name, spread over two api replicas, check no more than 20 passwords; shown with two replicas as separate processes",
-        "A refusal answers 403 with a Retry-After header in whole seconds until it ends, readable by a cross-origin page (D-016, D-020); it is the same status, body and headers for a name that exists and one that does not (D-014), and an unknown name counts toward the per-name bound exactly as a real one",
-        "Unknown names are remembered within a fixed bound stated in docs/access.md; a flood of invented names (100,000 in a test) neither changes nor drops a real account's count, nor makes any unknown name answer differently from a real one at the same count (D-020)",
-        "Before any bound, a wrong password and an unknown name answer alike and do the same password work, so the time taken does not tell them apart; shown by a check that can fail (Jellyfin 12.4 was observed at 1 ms against 77 ms)",
-        "docs/access.md states the three bounds, how long each lasts, the worst-case guesses per account per day (1,920, plus 960 per known DeviceId the guesser holds), and the longest a viewer with the right password is kept out by someone else's guesses: none on a device that has signed in before; on a new device until 15 minutes after the guessing stops, with Quick Connect named as the way around once built; a check holds each number",
-        "Each refusal is logged with which bound refused, the address, and the account name only when the account exists (an unknown name's text is never logged, since viewers type passwords into the name box), never the password; refusals are counted in a metric labelled by bound only, and failed sign-ins in another, neither with an account or address label; docs/running.md names both for alerting",
-        "docs/running.md says which address counts behind an ingress; the operator declares `trustedProxies`; a forwarded header from any other peer is ignored, shown by a test; with the key absent the per-address bound is off, the per-name bounds hold, a warning naming the key is logged at every start-up and a metric says the bound is off (D-020); with `[]` declared, a forwarded header arriving from a private peer is logged once per process as a likely undeclared ingress; the shipped compose stack declares its ingress",
-        "A token already issued keeps working while its account or address is refused: a playing film, its progress reports and the account's other devices are unaffected, shown by a test",
-        "On jellyfin-web a refused sign-in shows the 403 text ('not authorized… at this time… contact your server administrator'), recorded from a run against the build; docs/access.md says this is what viewers read and that the administrator finds the reason in the log and metric (D-020: jellyfin-web has no 'try again later'). What Fluster shows is recorded in JS-075 (D-019)",
-        "LoginAttemptsBeforeLockout reports -1 for every user; compat/differences.yaml lists that jellyscale refuses temporarily per name and address where Jellyfin has no bound by default, and that a set value is not honoured (D-020)"
-      ],
-      "priority": 12,
-      "status": "todo",
-      "passes": false,
-      "dependsOn": [],
-      "source": "decision D-016 (condition: failed sign-ins bounded)",
-      "ux": true,
-      "core": false,
-      "notes": "D-020: refuse (403 with Retry-After), never slow; criteria 2, 3 and 7 land together: a per-name lock without the known-device allowance does not ship. If refinement finds it too large for one build, bring a split to the product owner."
-    },
-    {
       "id": "JS-147",
       "phase": "ID",
       "title": "The details page's Audio menu lets a viewer pick any audio track they have not hidden",

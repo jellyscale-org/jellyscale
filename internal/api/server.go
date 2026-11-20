@@ -24,6 +24,7 @@ import (
 	"jellyscale/internal/compat"
 	"jellyscale/internal/db"
 	"jellyscale/internal/items"
+	"jellyscale/internal/signin"
 	"jellyscale/internal/store"
 	"jellyscale/internal/transcode"
 )
@@ -89,15 +90,20 @@ type Server struct {
 	Transcode *transcode.Jobs
 	// Hub wakes requests waiting on a subtitle extraction; nil means they poll.
 	Hub *transcode.Hub
+	// Proxies are the proxies in front of the server, from trustedProxies; nil when the key is absent, and then no address
+	// is counted toward a sign-in bound (docs/access.md).
+	Proxies *signin.Proxies
 	// SocketIdle closes a WebSocket that sends nothing for this long.
 	// Defaults to 60 seconds, the interval ForceKeepAlive promises.
 	SocketIdle time.Duration
 
-	stores       store.Cache
-	snapshot     snapshot
-	snapshotOnce sync.Once
-	replicaOnce  sync.Once
-	replicaID    string
+	stores           store.Cache
+	snapshot         snapshot
+	snapshotOnce     sync.Once
+	replicaOnce      sync.Once
+	forwardedOnce    sync.Once // The one log line about an ingress that is not declared.
+	unattributedOnce sync.Once // The one log line about a sign-in through a declared proxy with no usable forwarded address.
+	replicaID        string
 
 	draining atomic.Bool // Set once the process has been told to stop: readiness fails.
 	// sockets counts the WebSocket handlers still running, and closeSockets, once
@@ -138,6 +144,11 @@ func (s *Server) Handler() http.Handler {
 	db.Of(s.Pool).SetLog(s.Log)                                // Where it says Postgres went away, and came back.
 	if s.Pool != nil && slices.Contains(s.Roles, RoleStream) { // Handler tests of routes run with no database.
 		s.snapshotOnce.Do(func() { go s.keepSnapshot() })
+	}
+	if s.Proxies != nil {
+		signinAddressBound.Set(1)
+	} else {
+		signinAddressBound.Set(0)
 	}
 	mux := http.NewServeMux()
 	// Whichever roles this server has, a route nobody decided about stops it.
@@ -180,7 +191,7 @@ func (s *Server) Handler() http.Handler {
 		s.Log.Warn("unknown route", "method", r.Method, "path", r.URL.Path)
 		http.NotFound(w, r)
 	})
-	return s.logRequests(normalize(cors(mux, mux)))
+	return s.logRequests(s.noteUndeclaredIngress(normalize(cors(mux, mux))))
 }
 
 // lowerLiterals lowercases a route's fixed segments and leaves {wildcards}
@@ -328,4 +339,21 @@ func randomHex(n int) string {
 	random := make([]byte, n)
 	rand.Read(random) //nolint:errcheck
 	return hex.EncodeToString(random)
+}
+
+// noteUndeclaredIngress logs, once per process, a forwarded header that arrives from a private or loopback peer when no
+// proxy is declared: likely an ingress the operator forgot to declare. Any request carries one, not only a sign-in.
+func (s *Server) noteUndeclaredIngress(next http.Handler) http.Handler {
+	if s.Proxies == nil {
+		return next
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.Proxies.UndeclaredIngress(r) {
+			s.forwardedOnce.Do(func() {
+				s.Log.Warn("forwarded header from an undeclared proxy", "peer", signin.Peer(r),
+					"hint", "if an ingress sits in front, declare it in trustedProxies (docs/running.md)")
+			})
+		}
+		next.ServeHTTP(w, r)
+	})
 }

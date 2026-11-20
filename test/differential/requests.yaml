@@ -352,6 +352,14 @@
   ordered: true
   path: >-
     /Items/{{Movie/Polyglot (2030)}}?userId={{User/admin}}
+- name: a sign-in with a wrong password
+  route: POST /Users/AuthenticateByName
+  path: /Users/AuthenticateByName
+  status: 401
+  decode_only: true
+  method: POST
+  body: >-
+    {"Username":"admin","Pw":"not-the-password"}
 - name: saving all 16 settings through the path route
   route: POST /Users/{userId}/Configuration
   method: POST

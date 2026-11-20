@@ -63,6 +63,11 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
     ports:
       - 127.0.0.1:8096:8080
+    # config.json leaves "trustedProxies" out, so the per-address sign-in bound is off here: this port is published on
+    # 127.0.0.1 only, so Docker hands every client to Caddy from the bridge gateway, and declaring Caddy would count that one
+    # address for everyone. Declare the ingress ("trustedProxies": ["<its address>"] in config.json) only when each client
+    # reaches it with its own address; the ingress needs a fixed address that survives its being recreated, or declare its
+    # network's prefix (docs/running.md).
     depends_on:
       - api
       - api2

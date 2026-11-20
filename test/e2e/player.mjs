@@ -97,11 +97,16 @@ export function workerChildren() {
 
 export async function login(page) {
   await page.goto(`${gate.base}/web/`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector("#txtManualName", { timeout: 30000 });
-  await page.fill("#txtManualName", gate.user);
-  await page.fill("#txtManualPassword", gate.password);
-  await page.click("button[type=submit]");
+  await submitSignIn(page, gate.user, gate.password, 30000);
   await page.waitForSelector(".card", { timeout: 30000 });
+}
+
+// Fills jellyfin-web's sign-in form and submits it; every gate signs in through here.
+export async function submitSignIn(page, name, password, timeout) {
+  await page.waitForSelector("#txtManualName", { timeout });
+  await page.fill("#txtManualName", name);
+  await page.fill("#txtManualPassword", password);
+  await page.click("button[type=submit]");
 }
 
 // Whether the page shows the sign-in form: a viewer whose session ended is sent back to it.
