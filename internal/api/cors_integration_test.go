@@ -29,7 +29,7 @@ import (
 // route carry, with a token and without. The preflights alone are asked in cors_test.go with no database.
 
 const (
-	corsA = "tauri://localhost"
+	corsA = "app://localhost"
 	corsB = "https://app.example.test"
 )
 

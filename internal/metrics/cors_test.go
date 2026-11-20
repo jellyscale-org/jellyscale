@@ -18,7 +18,7 @@ func TestTheMetricsListenerOpensNothingToAnotherOrigin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, origin := range []string{"tauri://localhost", "https://app.example.test"} {
+	for _, origin := range []string{"app://localhost", "https://app.example.test"} {
 		for _, tc := range []struct {
 			method string
 			header map[string]string

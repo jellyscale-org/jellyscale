@@ -360,6 +360,16 @@
       "tradeoff": "Two additions the owner decided. /web/ is part of the standard deployment: paid by every deployment, a larger image (size unmeasured) carrying a pinned jellyfin-web that the project must keep licensed and updated. GET /Users/{userId}/Views is served for the Kodi add-on, Plezy and Tsukimi, as an exception to PRODUCT.md's rule that aliases exist only for routes jellyfin-web calls: given up, the rule's 'never', and one more route to keep until those clients stop calling it.",
       "entry": "JS-150 (the published image serves a pinned jellyfin-web at /web/, replaceable and switchable off) enters at priority 34, directly before JS-056, which now depends on it; the tasks at 34 to 71 each move down one. JS-151 (GET /Users/{userId}/Views) enters at 42, directly before JS-065, depending on JS-127, whose rule for a user id in the path applies; the tasks from JS-065 on move down one more. JS-151 observes Jellyfin 12.4 first: if the route is marked obsolete, PRODUCT.md's compatibility policy records the exception (the owner reviews the text) and compat/endpoints.yaml flags it alias with the three clients; if it is not, it is an ordinary route and PRODUCT.md is unchanged. D-026 holds: Plezy and Tsukimi are read from source for whether their players send a token, listed in docs/status.md accordingly, and no work goes in for one that sends none. Kodi stays not a gate. No other alias follows from this one.",
       "serves": "owner, 2026-11-20: 'Yes, add the exception' (#220); /web/ in the standard deployment (#221). PRODUCT.md: 'Installing is boring'; goal 3, 'Current Jellyfin clients that authorize every request work unmodified'."
+    },
+    {
+      "id": "D-035",
+      "date": "2026-11-20",
+      "task": "tests, docs",
+      "decision": "change",
+      "by": "owner",
+      "tradeoff": "jellyscale's tests named Octave (formerly Fluster): the CORS tests used its WebView origins, two docs checks pinned an Octave row in docs/status.md, and the search-hints audit required its evidence to name Octave's issue. Given up: nothing a viewer has; the CORS checks cover a custom-scheme origin and localhost origins as before.",
+      "entry": "No jellyscale test names, runs or records Octave (owner, 2026-11-20: 'We shouldn't include Octave in our testing'). The CORS tests use generic origins (app://localhost, http://app.localhost, https://app.localhost); the checks that pinned an Octave row in docs/status.md (compat TestOctaveHasOneRowThatSaysItHasNotBeenRun, internal/api TestStatusHasAnOctaveRowThatNamesTheRecordAndDoesNotCallItWorking) are removed; the search-hints audit no longer requires its evidence to name Octave's issue. The docs may still describe Octave as jellyscale's own client (D-031). Recorded Jellyfin captures keep the origins they were made with, since they record what Jellyfin did. Extends D-027.",
+      "serves": "owner, 2026-11-20: 'We shouldn't include Octave in our testing.'"
     }
   ]
 }

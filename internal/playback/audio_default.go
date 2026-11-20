@@ -67,7 +67,7 @@ func ChooseAudio(streams []Stream, saved string, playDefault bool, named *Number
 }
 
 // refusesSecondaryAudio is true when the profile limits the track with an IsSecondaryAudio condition that a track which
-// is not the file's own fails (Chrome's profile: Equals false). A client with no such condition, as Fluster's, plays
+// is not the file's own fails (Chrome's profile: Equals false). A client with no such condition, such as an mpv-based one, plays
 // any track directly, because it picks the track itself.
 func (p DeviceProfile) refusesSecondaryAudio(codec string) bool {
 	for _, profile := range p.CodecProfiles {

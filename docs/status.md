@@ -180,7 +180,7 @@ Whether every listed request answers and passes the schema check (`yes`), and ea
 | Streamyfin | playback | yes | - |
 | Streamyfin | progress | yes | - |
 | Streamyfin | stop | yes | - |
-| Octave | sign-in, library | not run by jellyscale | Octave (formerly Fluster) is jellyscale's own client. No Octave has signed in, listed a library or played against jellyscale that jellyscale knows of: Octave is engineered by its own project to work with jellyscale, and jellyscale does not run or record it, and no task waits on it (D-027). Shown for any browser-engine client (JS-144): Chromium on another origin ran sign-in, browsing and playback, and every route answers a preflight for Octave's three WebView origins. |
+| Octave | sign-in, library | not run by jellyscale | Octave (formerly Fluster) is jellyscale's own client. No Octave has signed in, listed a library or played against jellyscale that jellyscale knows of: Octave is engineered by its own project to work with jellyscale, and jellyscale does not run or record it, and no task waits on it (D-027). Shown for any browser-engine client (JS-144): Chromium on another origin ran sign-in, browsing and playback, and every route answers a preflight for an origin with a scheme of its own and for localhost origins. |
 
 ### What each client's player sends (JS-126)
 

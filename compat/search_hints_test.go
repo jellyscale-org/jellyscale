@@ -7,8 +7,8 @@ import (
 )
 
 // JS-100: GET /Search/Hints is served, and the audit, the route list and the
-// status page say so. Fluster (#102) calls it while the viewer types.
-func TestSearchHintsIsAuditedAsDoneOnFlustersCall(t *testing.T) {
+// status page say so.
+func TestSearchHintsIsAuditedAsDone(t *testing.T) {
 	var found bool
 	for _, r := range readRows(t) {
 		if r.id() != "GET /Search/Hints" {
@@ -17,9 +17,6 @@ func TestSearchHintsIsAuditedAsDoneOnFlustersCall(t *testing.T) {
 		found = true
 		if r.class != "done" {
 			t.Errorf("GET /Search/Hints is %s, want done", r.class)
-		}
-		if !strings.Contains(r.evidence, "#102") || !strings.Contains(r.evidence, "Fluster") {
-			t.Errorf("the evidence does not name Fluster's call (#102): %q", r.evidence)
 		}
 		if strings.Contains(r.evidence, "nothing calls it") {
 			t.Errorf("the evidence still says nothing calls it: %q", r.evidence)

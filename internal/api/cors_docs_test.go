@@ -43,34 +43,3 @@ func TestAccessDocSaysAPreflightIsOpenAndWhyAndWhatThatExposes(t *testing.T) {
 		}
 	}
 }
-
-// The Client coverage table has an Octave row that says what Octave has done and neither names CORS as the gap nor
-// calls Octave working or playing. That the row names a record of a real Octave against this build is not checked
-// here: the record can only be made after Build ends, and a check that a named file exists passes on a file of one word.
-func TestStatusHasAnOctaveRowThatNamesTheRecordAndDoesNotCallItWorking(t *testing.T) {
-	text := read(t, "../../docs/status.md")
-	section := text[strings.Index(text, "## Client coverage"):]
-	if end := strings.Index(section[3:], "\n## "); end > 0 {
-		section = section[:end+3]
-	}
-	var row string
-	for _, line := range strings.Split(section, "\n") {
-		if strings.HasPrefix(line, "|") && strings.Contains(line, "Octave") {
-			row = line
-		}
-	}
-	if row == "" {
-		t.Fatal("docs/status.md's Client coverage has no Octave row")
-	}
-	lower := strings.ToLower(row)
-	for _, word := range []string{"signed in", "library"} {
-		if !strings.Contains(lower, word) {
-			t.Errorf("the Octave row does not say %q: %s", word, row)
-		}
-	}
-	for _, word := range []string{"cors", "working", "playing", "works", "plays"} {
-		if strings.Contains(lower, word) {
-			t.Errorf("the Octave row says %q: %s", word, row)
-		}
-	}
-}
