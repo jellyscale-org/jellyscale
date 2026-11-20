@@ -29,7 +29,7 @@ func TestDocsSayAPlaylistCarriesTheTokenOnlyWhenTheRequestDid(t *testing.T) {
 	}
 }
 
-// JS-040's criteria stay as they are; its notes say what JS-128 already did.
+// JS-040's first two criteria stay as they are; its notes say what JS-128 already did.
 func TestJS040NotesSayHeaderRequestsAlreadyCarryNoToken(t *testing.T) {
 	raw, err := os.ReadFile("../../tasks/prd.json")
 	if err != nil {
@@ -52,7 +52,8 @@ func TestJS040NotesSayHeaderRequestsAlreadyCarryNoToken(t *testing.T) {
 		if !strings.Contains(strings.ToLower(task.Notes), "header requests already carry none") {
 			t.Errorf("JS-040's notes do not say header requests already carry none: %q", task.Notes)
 		}
-		if len(task.AcceptanceCriteria) != 2 || task.AcceptanceCriteria[0] != "No viewer token in any playlist or segment URL" || task.AcceptanceCriteria[1] != "Kodi's TranscodingUrl editing still works" {
+		// The first two stay as JS-128 left them; D-032 (issue triage) added criteria after them.
+		if len(task.AcceptanceCriteria) < 2 || task.AcceptanceCriteria[0] != "No viewer token in any playlist or segment URL" || task.AcceptanceCriteria[1] != "Kodi's TranscodingUrl editing still works" {
 			t.Errorf("JS-040's criteria changed: %q", task.AcceptanceCriteria)
 		}
 		return

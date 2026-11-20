@@ -751,7 +751,7 @@
       "severity": "minor",
       "title": "As-you-type search sends one- and two-letter terms the trigram index cannot serve",
       "status": "open",
-      "notes": "A trigram index needs three characters; shorter terms scan items. Measure on a library the size of the dogfood's before deciding whether it matters."
+      "notes": "A trigram index needs three characters; shorter terms scan items. Promote when measured: server time for 1-, 2- and 3-letter terms on GET /Items?searchTerm= (what jellyfin-web's search page sends, docs/status.md) and on /Search/Hints, on a library the size of the dogfood's and on 10,000 items. If a viewer waits long enough to notice (the bound is set from the measurement, not from the request's 50 ms), plan a prefix index. Issue #228."
     },
     {
       "id": "BL-084",
@@ -2003,6 +2003,78 @@
       "severity": "minor",
       "source": "client research 2026-11-20",
       "status": "open"
+    },
+    {
+      "id": "BL-223",
+      "title": "The two saved Remember settings (audio, subtitle selections) may do nothing; a per-series memory across devices is beyond Jellyfin",
+      "notes": "Issue #117. JS-041's capture records whether a progress report naming a subtitle track changes the next default with RememberSubtitleSelections on; nothing records the audio twin. Promote: if Jellyfin 12.4 carries a choice to the next episode and jellyscale does not, a saved setting does nothing (as BL-151, D-025): plan it after JS-041, with the audio twin observed the same way. A memory beyond what Jellyfin applies waits for data that viewers re-pick tracks episode after episode.",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "issue triage 2026-11-20"
+    },
+    {
+      "id": "BL-224",
+      "title": "PlaybackInfo may ignore EnableDirectPlay, EnableDirectStream, AllowVideoStreamCopy and AllowAudioStreamCopy",
+      "notes": "Issue #224; unverified at runtime. Evidence: (1) JS-075's records of each client's PlaybackInfo request: does any played app send one of these as false, and what did its viewer see; (2) the lead observes jellyfin-web 12.4 on a film the browser accepts but cannot play: what its second PlaybackInfo carries and what Jellyfin answers. If a supported client sends them and its viewer is left with a film that does not play, plan a task ahead of JS-054 (goal 1), with a brief on the CPU a client can then demand. If none sends them, close.",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "issue triage 2026-11-20"
+    },
+    {
+      "id": "BL-225",
+      "title": "GET /Items may ignore nameLessThan and nameStartsWithOrGreater",
+      "notes": "Issue #227. Evidence, by the lead: what jellyfin-web 12.4's letter picker sends for '#' and for a letter, and whether jellyscale's answer to those requests matches Jellyfin's in the differential tier. If jellyfin-web sends a parameter jellyscale ignores, add it to JS-068 (goal 3). A count-only jump for TV grids waits for a supported app recorded sending it (JS-075, JS-065).",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "issue triage 2026-11-20"
+    },
+    {
+      "id": "BL-226",
+      "title": "Hard-of-hearing and audio-description tracks: flags on a film's own tracks, and whether a film can start in audio description",
+      "notes": "Issue #114. External files already carry IsHearingImpaired (DOMAINS). Evidence, by the lead: (1) whether compat/differences.yaml lists IsHearingImpaired on a film's own subtitle tracks under JS-068; if so it is already planned there; (2) how many dogfood films carry an audio track marked for the visually impaired, and whether JS-121's rule makes any of them the default for a viewer's language. If one does, plan a task after JS-041 (goal 1: playback never surprises). If none, labelling waits for a supported app that shows it.",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "issue triage 2026-11-20"
+    },
+    {
+      "id": "BL-227",
+      "title": "Sort by running time on GET /Items is unobserved; a running-time range filter is beyond what any supported app shows",
+      "notes": "Issue #115. Evidence, by the lead: one differential request with SortBy=Runtime, both directions, against Jellyfin 12.4. A wrong order goes to JS-068 (jellyfin-web offers the sort). The range filter is not planned: no goal, and no supported app shows one.",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "issue triage 2026-11-20"
+    },
+    {
+      "id": "BL-228",
+      "title": "Search finds nothing for a misspelled title",
+      "notes": "Issue #116; beyond Jellyfin. Promote on data: the share of searches on the dogfood that answer no item and are followed by another search within a minute. No measure exists today and none is planned for this alone.",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "issue triage 2026-11-20"
+    },
+    {
+      "id": "BL-229",
+      "title": "A link that opens the Quick Connect approval with the code filled in, for a QR code",
+      "notes": "Issue #118. Waits for JS-037. Promote if a supported TV app (docs/status.md) shows a QR, or if sign-ins by code are started and not finished often enough to matter.",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "issue triage 2026-11-20"
+    },
+    {
+      "id": "BL-231",
+      "title": "Trailer files beside a film are not offered (GET /Items/{itemId}/LocalTrailers)",
+      "notes": "Moved out of JS-080 (D-032); issue #108. docs/status.md lists extras as out of scope and PRODUCT.md promises none. JS-080 still keeps them out of the film list. Promote if JS-080's observation of Jellyfin 12.4 shows jellyfin-web offering a trailer for a film with one beside it and viewers are shown to use it.",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "issue triage 2026-11-20"
     }
   ]
 }

@@ -340,6 +340,26 @@
       "tradeoff": "The client that ships with jellyscale is renamed from Fluster to Octave (owner: a scale spans an octave, so the client takes its name from the server's). Given up: nothing a viewer had.",
       "entry": "Fluster is renamed Octave. Any list of clients names Octave first, as jellyscale's own client (owner, 2026-11-20: 'we ought to say that Fluster is the first class citizen'); first-class names its place, not jellyscale work for it, which D-027 rules out. The docs say 'Octave (formerly Fluster)' at first mention until the client's repository is renamed; the docs checks that matched 'Fluster' in docs/status.md and docs/access.md match 'Octave', with the same meaning. Decisions, done tasks, backlog items and issue labels keep the name they were written with.",
       "serves": "PRODUCT.md: jellyscale ships with Octave, a desktop client that plays the original file whenever it can."
+    },
+    {
+      "id": "D-032",
+      "date": "2026-11-20",
+      "task": "issues #101-#228 (first issue triage); JS-040, JS-047, JS-080",
+      "decision": "change",
+      "by": "product-owner",
+      "tradeoff": "Nineteen open issues, all filed from one client, judged by PRODUCT.md alone (owner, 2026-11-20: a request is not evidence of need; adapt on usage data). Given up, by viewers generally: local trailers, typo-tolerant search, a QR approval link, a running-time filter and a server-side Resume cutoff are not planned.",
+      "entry": "JS-040 gains a criterion that nothing replacing the token ever ends a film, and a brief before building on whether TranscodingUrl and the DeliveryUrls lose the token too (#222), against DOMAINS 17, its Kodi criterion and D-005's set-aside grant; until then it covers playlists only. Amends D-027's list of features that stay: JS-080 loses its LocalTrailers criterion (BL-231), because docs/status.md lists extras as out of scope and PRODUCT.md promises none; JS-047's Filters2 criterion holds only where jellyfin-web or a supported app is observed calling it; JS-032, JS-037, JS-046, JS-049, JS-052 and JS-053 stay where they are. #202 is done (JS-144). Backlog: #228 (BL-083), #117 (BL-223), #116 (BL-228), #118 (BL-229). Evidence first: #224 (BL-224), #227 (BL-225), #114 (BL-226), #115 (BL-227). The Resume cutoff in #101 is declined. #221 (JS-150) and #220 (JS-151) are the owner's decisions, D-033; BL-230 is not opened.",
+      "serves": "PRODUCT.md: goal 1, 'Playback never surprises a viewer'; goal 3, 'Current Jellyfin clients that authorize every request work unmodified'; 'Nothing but static artwork is reached without authorization'."
+    },
+    {
+      "id": "D-033",
+      "date": "2026-11-20",
+      "task": "JS-150, JS-151, JS-056 (issues #221, #220)",
+      "decision": "change",
+      "by": "owner",
+      "tradeoff": "Two additions the owner decided. /web/ is part of the standard deployment: paid by every deployment, a larger image (size unmeasured) carrying a pinned jellyfin-web that the project must keep licensed and updated. GET /Users/{userId}/Views is served for the Kodi add-on, Plezy and Tsukimi, as an exception to PRODUCT.md's rule that aliases exist only for routes jellyfin-web calls: given up, the rule's 'never', and one more route to keep until those clients stop calling it.",
+      "entry": "JS-150 (the published image serves a pinned jellyfin-web at /web/, replaceable and switchable off) enters at priority 34, directly before JS-056, which now depends on it; the tasks at 34 to 71 each move down one. JS-151 (GET /Users/{userId}/Views) enters at 42, directly before JS-065, depending on JS-127, whose rule for a user id in the path applies; the tasks from JS-065 on move down one more. JS-151 observes Jellyfin 12.4 first: if the route is marked obsolete, PRODUCT.md's compatibility policy records the exception (the owner reviews the text) and compat/endpoints.yaml flags it alias with the three clients; if it is not, it is an ordinary route and PRODUCT.md is unchanged. D-026 holds: Plezy and Tsukimi are read from source for whether their players send a token, listed in docs/status.md accordingly, and no work goes in for one that sends none. Kodi stays not a gate. No other alias follows from this one.",
+      "serves": "owner, 2026-11-20: 'Yes, add the exception' (#220); /web/ in the standard deployment (#221). PRODUCT.md: 'Installing is boring'; goal 3, 'Current Jellyfin clients that authorize every request work unmodified'."
     }
   ]
 }
