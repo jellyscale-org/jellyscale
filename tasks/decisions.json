@@ -290,6 +290,16 @@
       "tradeoff": "After JS-145: a viewer's saved subtitle language and mode is told 'Settings saved' and no film obeys it (BL-151), while the task that fixes it (JS-041) sat behind three measurements, a docs-only move and a profile 5 task no dogfood viewer needs.",
       "entry": "JS-041 moves to directly after JS-147 (a saved subtitle setting that does nothing is felt by every viewer who sets it, BL-151); JS-093 sits after JS-148 and before JS-149, amending D-017's 'directly after JS-136', which D-021 displaced without a reason; JS-056 gains a criterion for the proxy-confirmation procedure when no address is counted (BL-221). Conditions: JS-093 still starts from a main holding JS-135 and JS-136's DOMAINS edits; close BL-151 when JS-041 ships.",
       "serves": "PRODUCT.md: Their languages come first; every film starts that way where it can."
+    },
+    {
+      "id": "D-026",
+      "date": "2026-11-20",
+      "task": "JS-037, JS-065, JS-075",
+      "decision": "change",
+      "by": "owner",
+      "tradeoff": "A client whose player sends no token on media requests is not supported, and no work goes in to make it play. Given up, by viewers of those apps: they cannot play a film from jellyscale. Today that is Findroid, and the official Android TV app's direct play (both read from source, neither played on a device); an operator moving from Jellyfin does not keep those apps for their viewers, who use jellyfin-web, Fluster or an app that sends its token instead. Nothing changes on the server: an app that starts sending its token plays with no change to jellyscale.",
+      "entry": "Findroid is dropped as a target, and the same rule holds for Android TV and any other app whose player sends no token on media requests. The unit is the app: one that sends its token on some media requests and not on others (Android TV sends it on HLS and not on direct play, as read from source) is out as a whole, and no film is transcoded only to make such an app play. Amends D-005: such an app is no longer a gap listed in docs/status.md but outside what jellyscale supports. JS-037 names Fluster and a TV app that sends its token instead of Findroid; JS-065 captures only clients whose media requests carry a token; JS-075 records a tokenless app as not supported and makes no task of it. The backlog held no open item aiming at such a client (BL-112 and BL-174 concern the Kotlin SDK decode check, which stays for any app built on that SDK). Conditions: PRODUCT.md's 'Clients in order' line says the rule (the owner reviews the text); docs/status.md and docs/access.md say 'not supported (D-026)' where they said 'a gap'; the rows of compat/clients.yaml for these apps change only together with the tests that hold docs/status.md's tables to them.",
+      "serves": "owner, 2026-11-20: 'Findroid: drop it. We don't support clients that don't send auth.' PRODUCT.md: Nothing but static artwork is reached without authorization."
     }
   ]
 }
