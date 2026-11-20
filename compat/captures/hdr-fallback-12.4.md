@@ -48,10 +48,7 @@ The colours are the mean RGB of a 64x36 canvas draw of the video before (16 to 1
 | 10 bits, the copy's tags | forward | 393 | none | no | yes | 119, 105.7, 126 and 117.1, 105.7, 127.4 |
 | | back, forward | 487 | none | no | yes | 119, 105.7, 126.1 and 117, 105.8, 127.5 |
 
-The player takes today's 8-bit fallback and the 10-bit one in both directions, under a 10-bit codec string, with each segment
-under its own init. What differs is the picture: the control and the 10-bit fallback draw the same colours before and after the
-change to within a unit of noise, the tone-mapped one shifts by 3 to 5 units. Chrome here draws HDR video through its
-own tone mapping to the screen, so the difference is the stream's, not a display's.
+The player takes today's 8-bit fallback and the 10-bit one in both directions, under a 10-bit codec string, with each segment under its own init, with the copy and the fallback at one video timescale (the same file; with unequal timescales the synthetic streams stalled, see the last section). What differs is the picture: the control and the 10-bit fallback draw the same colours before and after the change to within 2 units, the tone-mapped one shifts by 2.1 to 3.5 units (its mean RGB after the change minus before, for each channel). Chrome here draws HDR video through its own tone mapping to the screen, so the difference is the stream's, not a display's.
 
 HEVC: this Chromium does not play `hvc1.2.4.L120.B0` (`MediaSource.isTypeSupported` is false), so HEVC is not observed; it plays only with a hardware
 decoder (E2E_HEVC=1, where the e2e scenario observes it).
@@ -75,7 +72,7 @@ the owner and would not be settled by sending another format.
 ## Not a finding of the player, a finding for the build: video timescale
 
 The first runs had A at timescale 16000 (what ffmpeg gives a copy from Matroska) and B and C at 12288 (what an encode gets), and
-the player stalled at 19.97 s with `bufferStalledError`: the fallback's segments were buffered from 24.64 s, 4.64 s late. With
+the player stalled (unequal timescales) at 19.97 s with `bufferStalledError`: the fallback's segments were buffered from 24.64 s, 4.64 s late. With
 AAC in the streams as without (an H.264 pair with audio went on, without it stalled alike). The streams script now gives all three
 one timescale (`TIMESCALE`, default 12288) so the observation above is of the codec and the bit depth. The worker's own commands
 give a copy from Matroska 16000 and a fallback 12288 (`ffmpeg -c copy` and `-c:v libx264` to the hls muxer, both from one mkv),

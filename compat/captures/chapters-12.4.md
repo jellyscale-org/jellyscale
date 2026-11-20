@@ -24,5 +24,5 @@ Read from `itemDetails` and `playback-video` chunks and observed:
 
 Same item fields, names, ticks and absent `ImageTag`/`ImagePath` (`TestProbeReadsChapters`, `TestChaptersAreInTheDetailsAndInListsThatAskForThem`, and `test/e2e`'s chapter scenarios, which also check the player's markers, buttons and seeks in direct play and in a re-encode and a copy with streams starting late). Differences:
 
-1. Chapter images are not built, so the item never has `ImageTag`, `ImagePath` or a real `ImageDateModified`, even in a library an operator would want them in. Jellyfin's options for extracting them have no effect here.
+1. Chapter images are opt-in per library (`chapterImages`, off by default as in Jellyfin 12.4; JS-014, `chapter-images-12.4.md`). With it off, as in this capture, the item has no `ImageTag`, `ImagePath` or real `ImageDateModified`; with it on, each chapter carries `ImageTag` once a worker has taken its picture.
 2. QuickTime chapter tracks (`tref/chap`) are read through ffprobe's chapters; Jellyfin was not run on one.

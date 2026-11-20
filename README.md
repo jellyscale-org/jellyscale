@@ -17,8 +17,8 @@ A summary; [docs/status.md](docs/status.md) is the record of every feature.
 |---|---|---|
 | 1 | Browse | done |
 | 2 | Direct play | done |
-| 3 | Transcode | mostly done; not built: encoding to HEVC or AV1, GPU tone mapping |
-| 4 | High availability | workers and Postgres done; API replica failover not built |
+| 3 | Transcode | mostly done; not built: encoding to HEVC or AV1 as the first choice for a client (only a copy's fallback encodes to them, JS-088 and JS-133), GPU tone mapping |
+| 4 | High availability | workers, API and stream replicas (JS-031) and Postgres done; Postgres switchover has a gap (JS-146) |
 | — | Identity | partial; user management, Quick Connect and OIDC not built |
 | 5 | Library and metadata | partial (scan, chapter images); metadata from files, trickplay, GPU encoders not built |
 | 6 | Kubernetes | partial (metrics, published images); manifests, Helm, autoscaling not built |

@@ -20,6 +20,7 @@ import (
 // allowed lists the files that may name .claude or tasks/, each with why. Each must be a
 // Go file that go test ./... runs, or one of the scripts lint-and-unit runs (see scripts).
 var allowed = map[string]string{
+	"compat/docs_agree_test.go":                "a unit test that reads tasks/prd.json, tasks/done.json and tasks/decisions.json",
 	".github/workflows/ci.yml":                 "the changes job names them as the paths that skip the media tiers",
 	"internal/api/playlist_token_docs_test.go": "a unit test that reads tasks/prd.json",
 	"internal/transcode/faults_docs_test.go":   "a unit test that reads .claude/workflows/build.js",
@@ -37,6 +38,7 @@ var scripts = map[string]bool{"test/scripts_test.sh": true, "test/changes.sh": t
 // is itself a lint-and-unit script that tests those paths. tasks/prd.json must not be
 // followed by more of a name (prd.json.bak), so the match stops at the end of the path.
 var permitted = map[string]*regexp.Regexp{
+	"compat/docs_agree_test.go":                regexp.MustCompile(`tasks/(?:prd|done|decisions)\.json([^\w./-]|\.?$|\.\s)`),
 	"internal/api/playlist_token_docs_test.go": regexp.MustCompile(`tasks/prd\.json([^\w./-]|$)`),
 	"internal/transcode/faults_docs_test.go":   regexp.MustCompile(`\.claude/workflows/build\.js([^\w./-]|$)`),
 	"test/differential/allowlist.go":           regexp.MustCompile(`tasks/prd\.json([^\w./-]|$)`),
