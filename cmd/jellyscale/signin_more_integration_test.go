@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -125,7 +126,12 @@ func TestEachRefusalIsLoggedWithItsBoundAndNeverWithAnUnknownNameOrAPassword(t *
 	}
 	refusedWithin(t, "address", s.try(0, newDevice(), strings.ToUpper(byDevice), password, behindProxy(hot)...), 1, 900)
 
+	// The process writes each line before answering, but its output reaches p.log through a copying goroutine, so the
+	// last refusal's line may arrive just after its answer: wait for the four refusals' lines, with a hang bound.
 	lines := logLines(p, "sign-in refused")
+	for deadline := time.Now().Add(10 * time.Second); len(lines) < 4 && time.Now().Before(deadline); lines = logLines(p, "sign-in refused") {
+		time.Sleep(50 * time.Millisecond)
+	}
 	want := map[string]string{"name": nameAddr, "device": deviceAddr, "address": hot}
 	for bound, address := range want {
 		found := false
