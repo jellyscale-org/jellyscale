@@ -1,6 +1,8 @@
 package api
 
 import (
+	"slices"
+
 	"jellyscale/internal/media"
 	"jellyscale/internal/playback"
 )
@@ -14,11 +16,27 @@ func audioChoice(user User, source media.MediaSource, named *playback.Number) (i
 	if config.AudioLanguagePreference != nil {
 		saved = *config.AudioLanguagePreference
 	}
-	tracks := source.AudioTracks
-	if len(tracks) == 0 {
-		tracks = source.MediaStreams // A source with no stored row: what the DTO lists.
+	return playback.ChooseAudio(audioTracksOf(source), saved, config.PlayDefaultAudioTrack, named)
+}
+
+// audioTracksOf is every audio track of the file; a source with no stored row has what the DTO lists.
+func audioTracksOf(source media.MediaSource) []media.MediaStream {
+	if len(source.AudioTracks) == 0 {
+		return source.MediaStreams
 	}
-	return playback.ChooseAudio(tracks, saved, config.PlayDefaultAudioTrack, named)
+	return source.AudioTracks
+}
+
+// fileDefaultAudio is the track a browser's direct play plays: the file's default, whatever the viewer saved.
+func fileDefaultAudio(source media.MediaSource) (int, bool) {
+	return playback.ChooseAudio(audioTracksOf(source), "", false, nil)
+}
+
+// keepAudio lists no audio track but index (D-029: where a pick cannot be delivered, no track is listed that would not play).
+func keepAudio(source *media.MediaSource, index int) {
+	source.MediaStreams = slices.DeleteFunc(slices.Clone(source.MediaStreams), func(stream media.MediaStream) bool {
+		return stream.Type == "Audio" && stream.Index != index
+	})
 }
 
 // listAudio puts the track a viewer starts with among the source's streams where the DTO lists the file's default and
@@ -54,5 +72,22 @@ func listAudio(source *media.MediaSource, index int, original string) {
 	if !placed {
 		streams = append(streams, track)
 	}
+	source.MediaStreams = streams
+}
+
+// listEveryAudio lists each audio track of the file at its own Index among the source's streams, in the file's order, as
+// PlaybackInfo does where transcoding can deliver any of them. A source with no stored row lists what it did.
+func listEveryAudio(source *media.MediaSource) {
+	if len(source.AudioTracks) == 0 {
+		return
+	}
+	streams := make([]media.MediaStream, 0, len(source.MediaStreams)+len(source.AudioTracks))
+	for _, stream := range source.MediaStreams {
+		if stream.Type != "Audio" {
+			streams = append(streams, stream)
+		}
+	}
+	streams = append(streams, source.AudioTracks...)
+	slices.SortStableFunc(streams, func(a, b media.MediaStream) int { return a.Index - b.Index })
 	source.MediaStreams = streams
 }

@@ -481,9 +481,8 @@ func TestAnOptedInViewerIsListedTheTracksOutsideTheirLanguagesAsPlaceholders(t *
 			checkAs(t, "PlaybackInfo", source, base, c.data, []string{v.token}, []string{plain.token})
 			checkPlaceholders(t, "PlaybackInfo", streams, capture)
 
-			// The item's details: both lists, and the alias. The item lists the default audio track alone (invariant 32).
-			// The baseline is a viewer with the same languages and both switches off: since JS-121 the item lists the track the
-			// viewer's audio language chooses in place of the file's default, hiding hides nothing of what that leaves.
+			// The item's details: both lists, and the alias. The item lists every audio track (JS-147, D-018), a hidden one as a
+			// placeholder. The baseline is a viewer with the same languages and both switches off.
 			baseItem := f.item(t, 0, f.viewer(t, fmt.Sprintf("baseline%d", i), c.audio, c.subtitle, ""), film, false)
 			for _, alias := range []bool{false, true} {
 				answer := f.item(t, 0, v, film, alias)
@@ -499,16 +498,16 @@ func TestAnOptedInViewerIsListedTheTracksOutsideTheirLanguagesAsPlaceholders(t *
 		})
 	}
 
-	t.Run("Babel Film's item details list Data exactly at 8, 9, 10, 12, 13 and 14, and the one audio stream", func(t *testing.T) {
+	t.Run("Babel Film's item details list Data exactly at 2, 3, 8, 9, 10, 12, 13 and 14, and Audio at 1 and 4 (JS-147, D-018)", func(t *testing.T) {
 		v := f.viewer(t, "details", "eng", "eng", bothOn)
 		for _, alias := range []bool{false, true} {
 			answer := f.item(t, 0, v, f.babel, alias)
 			for list, streams := range listsOf(t, answer) {
-				if have := dataAt(streams); !slices.Equal(have, []int{8, 9, 10, 12, 13, 14}) {
-					t.Errorf("alias %v %s: Type Data at %v (types %v), want 8, 9, 10, 12, 13, 14", alias, list, have, typesOfStreams(streams))
+				if have := dataAt(streams); !slices.Equal(have, []int{2, 3, 8, 9, 10, 12, 13, 14}) {
+					t.Errorf("alias %v %s: Type Data at %v (types %v), want 2, 3, 8, 9, 10, 12, 13, 14", alias, list, have, typesOfStreams(streams))
 				}
-				if audio := strings.Count(strings.Join(typesOfStreams(streams), " "), "Audio"); audio != 1 {
-					t.Errorf("alias %v %s lists %d audio streams, want the default alone", alias, list, audio)
+				if have := audioAt(streams); !slices.Equal(have, []int{1, 4}) {
+					t.Errorf("alias %v %s: Type Audio at %v, want 1 and 4", alias, list, have)
 				}
 			}
 		}
@@ -545,15 +544,9 @@ func TestSwitchesLanguagesAndShowAllTracksDecideWhatIsHidden(t *testing.T) {
 		source := sourceOf(f.info(t, 0, v, f.babel, nil))
 		checkAs(t, label+": PlaybackInfo", source, sourceOf(f.info(t, 0, plain, f.babel, nil)), data, []string{v.token}, []string{plain.token})
 		for list, streams := range listsOf(t, f.item(t, 0, v, f.babel, false)) {
-			var want []int
-			for _, index := range data {
-				if index == 2 || index == 3 { // The item lists the default audio track alone.
-					continue
-				}
-				want = append(want, index)
-			}
-			if have := dataAt(streams); !slices.Equal(have, want) {
-				t.Errorf("%s: item %s: Type Data at %v, want %v", label, list, have, want)
+			// The item lists every audio track, so a hidden one is a placeholder there too (JS-147, D-018).
+			if have := dataAt(streams); !slices.Equal(have, data) {
+				t.Errorf("%s: item %s: Type Data at %v, want %v", label, list, have, data)
 			}
 		}
 	}
@@ -796,14 +789,10 @@ func TestAChangedSettingActsAtOnceOnEveryReplica(t *testing.T) {
 		if have := dataAt(streamsOf(t, source["MediaStreams"])); !slices.Equal(have, s.data) {
 			t.Errorf("%s: PlaybackInfo through the second process lists Type Data at %v, want %v", s.name, have, s.data)
 		}
-		want := []int{}
-		for _, index := range s.data {
-			if index != 2 && index != 3 {
-				want = append(want, index)
-			}
-		}
-		if have := dataAt(streamsOf(t, f.item(t, 1, v, f.babel, false)["MediaStreams"])); !slices.Equal(have, want) {
-			t.Errorf("%s: the item through the second process lists Type Data at %v, want %v", s.name, have, want)
+		// The item lists every audio track, so a hidden one is a placeholder there too, as in PlaybackInfo (JS-147, D-018;
+		// lead's correction of the implementer's dispute: this loop once dropped the audio placeholders 2 and 3).
+		if have := dataAt(streamsOf(t, f.item(t, 1, v, f.babel, false)["MediaStreams"])); !slices.Equal(have, s.data) {
+			t.Errorf("%s: the item through the second process lists Type Data at %v, want %v", s.name, have, s.data)
 		}
 	}
 }
@@ -827,6 +816,17 @@ func TestHidingChangesNothingButThePlaceholdersWhateverTheReplicaCanOffer(t *tes
 				mustExec(t, f.pool, "TRUNCATE transcode_nodes")
 			}
 			for _, extra := range []map[string]any{nil, {"AudioStreamIndex": 2}, {"SubtitleStreamIndex": 8}, {"AudioStreamIndex": 3, "SubtitleStreamIndex": 10}} {
+				// D-029: where no transcode can run, a pick of a track that is neither the default nor the viewer's saved
+				// language is refused, for either viewer, rather than planned with another track (lead's correction of the
+				// implementer's dispute: this loop once read a source from that answer).
+				if _, picks := extra["AudioStreamIndex"]; picks && mode != "a worker running" {
+					for _, who := range []viewer{plain, v} {
+						if sources, _ := f.info(t, 0, who, f.babel, extra)["MediaSources"].([]any); len(sources) != 0 {
+							t.Errorf("%s, %v: a pick no transcode can deliver was offered %d sources, want a refusal (D-029)", mode, extra, len(sources))
+						}
+					}
+					continue
+				}
 				base := sourceOf(f.info(t, 0, plain, f.babel, extra))
 				got := sourceOf(f.info(t, 0, v, f.babel, extra))
 				baseStreams := streamsOf(t, base["MediaStreams"])

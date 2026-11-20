@@ -483,8 +483,8 @@ func TestPlaybackInfoKeepsTheStreamsTheItemListed(t *testing.T) {
 }
 
 // A viewer who picks another audio track while no worker could take the
-// transcode keeps the default track if it plays as it is, whichever codec the
-// pick has, and gets a refusal otherwise, never a player that can't play.
+// transcode gets a refusal, whichever codec the pick has, never another track
+// (D-029); a film that needs the transcode anyway is refused too.
 func TestAudioSwitchWithoutRoomKeepsPlaying(t *testing.T) {
 	pick := func(e *env, source string) (map[string]any, string) {
 		mustExec(t, e.pool, "TRUNCATE transcode_nodes")
@@ -498,8 +498,8 @@ func TestAudioSwitchWithoutRoomKeepsPlaying(t *testing.T) {
 		e, _, source := transcodeEnv(t, "h264", "aac")
 		mustExec(t, e.pool, "UPDATE media_sources SET streams = jsonb_set(streams, '{2,Codec}', to_jsonb($1::text))", second)
 		reply, log := pick(e, source)
-		media := firstSource(reply)
-		if reply["ErrorCode"] != nil || media["SupportsDirectPlay"] != true || media["TranscodingUrl"] != nil || media["DefaultAudioStreamIndex"] != float64(1) {
+		// A pick is played as that track or refused, never replaced by the default (D-029).
+		if reply["ErrorCode"] != "RateLimitExceeded" || len(reply["MediaSources"].([]any)) != 0 {
 			t.Fatalf("second track %s: got %v", second, reply)
 		}
 		if !strings.Contains(log, "no transcode worker is running") {

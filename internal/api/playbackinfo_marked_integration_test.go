@@ -298,8 +298,8 @@ func (e *env) markedPost(t *testing.T, item string, body any) (int, []byte) {
 	return response.StatusCode, raw
 }
 
-// For a direct play, a copy and a re-encode (and a live job joined, a replica with no store, the fall-back to the
-// default tracks) the answer is PlaybackInfo's: the same decision, TranscodingUrl, defaults, and the decisions counter
+// For a direct play, a copy and a re-encode (and a live job joined, a replica with no store)
+// the answer is PlaybackInfo's: the same decision, TranscodingUrl, defaults, and the decisions counter
 // rises by one, under the same method. A refusal is PlaybackInfo's refusal and counts no decision.
 func TestTheMarkedPlaybackInfoDecidesAsPlaybackInfoDoes(t *testing.T) {
 	for _, b := range branches() {
@@ -496,6 +496,10 @@ func TestTheMarkedPlaybackInfoListsEveryTrackWhateverTheReplicaCanOffer(t *testi
 				mustExec(t, f.pool, "TRUNCATE transcode_nodes")
 			}
 			for _, extra := range []map[string]any{nil, {"AudioStreamIndex": 2}, {"SubtitleStreamIndex": 10}} {
+				// Where no worker can deliver track 2 the pick is refused, not answered (D-029; TestAPickThatCannotBeDelivered...).
+				if _, picked := extra["AudioStreamIndex"]; picked && mode != "a worker running" {
+					continue
+				}
 				got := streamsOf(t, sourceOf(f.markedOK(t, 0, v, f.babel, extra))["MediaStreams"])
 				if len(got) != len(babelTypes) {
 					t.Fatalf("%v: %d streams, the file has %d", extra, len(got), len(babelTypes))

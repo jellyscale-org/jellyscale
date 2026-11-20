@@ -221,6 +221,10 @@ var runIDs = regexp.MustCompile(`PlaySessionId=[0-9a-f]+|Tag=[0-9a-f-]+|[0-9a-f]
 // allowed only where the new value is what Jellyfin 12.4 answers, and then the
 // golden is changed with the evidence beside it. JELLYSCALE_RECORD_GOLDEN=1
 // rewrites it.
+//
+// JS-147 (D-018): the details page's answers (GET /Items/{id} and its alias) now list the film's second audio track too,
+// as Jellyfin 12.4 does (compat/captures/audio-menu-12.4.md), so the golden's item answers gained that one stream, at its
+// own Index, in both lists of both routes; nothing else of it moved.
 func TestAnswersCarryTheSameSourcesStreamsAndAttachmentsAsBefore(t *testing.T) {
 	f, mediaDir := modelEnv(t)
 	scrub := strings.NewReplacer(f.token, "<token>", db.CompactID(f.text), "<item>", db.DashedID(f.text), "<item>",

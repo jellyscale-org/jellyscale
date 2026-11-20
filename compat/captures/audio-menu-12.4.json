@@ -1,0 +1,771 @@
+{
+ "image": "jellyfin/jellyfin:12.4",
+ "version": "12.4.0",
+ "date": "2026-11-20",
+ "films": [
+  {
+   "name": "Menu Babel",
+   "scenario": "the audio of test/fixtures/babel.sh: eng (default), deu, fra, untagged",
+   "audio": [
+    {
+     "Language": "eng",
+     "IsDefault": true
+    },
+    {
+     "Language": "deu",
+     "IsDefault": false
+    },
+    {
+     "Language": "fra",
+     "IsDefault": false
+    },
+    {
+     "Language": null,
+     "IsDefault": false
+    }
+   ]
+  },
+  {
+   "name": "Menu Four",
+   "scenario": "two tracks in one language, one untagged, the default flag not on the first",
+   "audio": [
+    {
+     "Language": "eng",
+     "IsDefault": false
+    },
+    {
+     "Language": "deu",
+     "IsDefault": false
+    },
+    {
+     "Language": null,
+     "IsDefault": true
+    },
+    {
+     "Language": "deu",
+     "IsDefault": false
+    }
+   ]
+  },
+  {
+   "name": "Menu Mono",
+   "scenario": "one audio track",
+   "audio": [
+    {
+     "Language": "eng",
+     "IsDefault": true
+    }
+   ]
+  },
+  {
+   "name": "Menu Silent",
+   "scenario": "no audio track",
+   "audio": []
+  }
+ ],
+ "items": [
+  {
+   "film": "Menu Babel",
+   "AudioLanguagePreference": "",
+   "PlayDefaultAudioTrack": true,
+   "DefaultAudioStreamIndex": 1,
+   "audio": [
+    {
+     "Index": 1,
+     "DisplayTitle": "English - AAC - Mono - Default",
+     "IsDefault": true,
+     "Language": "eng"
+    },
+    {
+     "Index": 2,
+     "DisplayTitle": "German - AAC - Mono",
+     "IsDefault": false,
+     "Language": "deu"
+    },
+    {
+     "Index": 3,
+     "DisplayTitle": "French - AAC - Mono",
+     "IsDefault": false,
+     "Language": "fra"
+    },
+    {
+     "Index": 4,
+     "DisplayTitle": "AAC - Mono",
+     "IsDefault": false,
+     "Language": null
+    }
+   ],
+   "itemAudioIndexes": [
+    1,
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "film": "Menu Four",
+   "AudioLanguagePreference": "",
+   "PlayDefaultAudioTrack": true,
+   "DefaultAudioStreamIndex": 3,
+   "audio": [
+    {
+     "Index": 1,
+     "DisplayTitle": "English - AAC - Mono",
+     "IsDefault": false,
+     "Language": "eng"
+    },
+    {
+     "Index": 2,
+     "DisplayTitle": "German - AAC - Mono",
+     "IsDefault": false,
+     "Language": "deu"
+    },
+    {
+     "Index": 3,
+     "DisplayTitle": "AAC - Mono - Default",
+     "IsDefault": true,
+     "Language": null
+    },
+    {
+     "Index": 4,
+     "DisplayTitle": "German - AAC - Mono",
+     "IsDefault": false,
+     "Language": "deu"
+    }
+   ],
+   "itemAudioIndexes": [
+    1,
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "film": "Menu Mono",
+   "AudioLanguagePreference": "",
+   "PlayDefaultAudioTrack": true,
+   "DefaultAudioStreamIndex": 1,
+   "audio": [
+    {
+     "Index": 1,
+     "DisplayTitle": "English - AAC - Mono - Default",
+     "IsDefault": true,
+     "Language": "eng"
+    }
+   ],
+   "itemAudioIndexes": [
+    1
+   ]
+  },
+  {
+   "film": "Menu Silent",
+   "AudioLanguagePreference": "",
+   "PlayDefaultAudioTrack": true,
+   "DefaultAudioStreamIndex": "<absent>",
+   "audio": [],
+   "itemAudioIndexes": []
+  },
+  {
+   "film": "Menu Babel",
+   "AudioLanguagePreference": "deu",
+   "PlayDefaultAudioTrack": false,
+   "DefaultAudioStreamIndex": 2,
+   "audio": [
+    {
+     "Index": 1,
+     "DisplayTitle": "English - AAC - Mono - Default",
+     "IsDefault": true,
+     "Language": "eng"
+    },
+    {
+     "Index": 2,
+     "DisplayTitle": "German - AAC - Mono",
+     "IsDefault": false,
+     "Language": "deu"
+    },
+    {
+     "Index": 3,
+     "DisplayTitle": "French - AAC - Mono",
+     "IsDefault": false,
+     "Language": "fra"
+    },
+    {
+     "Index": 4,
+     "DisplayTitle": "AAC - Mono",
+     "IsDefault": false,
+     "Language": null
+    }
+   ],
+   "itemAudioIndexes": [
+    1,
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "film": "Menu Four",
+   "AudioLanguagePreference": "deu",
+   "PlayDefaultAudioTrack": false,
+   "DefaultAudioStreamIndex": 2,
+   "audio": [
+    {
+     "Index": 1,
+     "DisplayTitle": "English - AAC - Mono",
+     "IsDefault": false,
+     "Language": "eng"
+    },
+    {
+     "Index": 2,
+     "DisplayTitle": "German - AAC - Mono",
+     "IsDefault": false,
+     "Language": "deu"
+    },
+    {
+     "Index": 3,
+     "DisplayTitle": "AAC - Mono - Default",
+     "IsDefault": true,
+     "Language": null
+    },
+    {
+     "Index": 4,
+     "DisplayTitle": "German - AAC - Mono",
+     "IsDefault": false,
+     "Language": "deu"
+    }
+   ],
+   "itemAudioIndexes": [
+    1,
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "film": "Menu Mono",
+   "AudioLanguagePreference": "deu",
+   "PlayDefaultAudioTrack": false,
+   "DefaultAudioStreamIndex": 1,
+   "audio": [
+    {
+     "Index": 1,
+     "DisplayTitle": "English - AAC - Mono - Default",
+     "IsDefault": true,
+     "Language": "eng"
+    }
+   ],
+   "itemAudioIndexes": [
+    1
+   ]
+  },
+  {
+   "film": "Menu Silent",
+   "AudioLanguagePreference": "deu",
+   "PlayDefaultAudioTrack": false,
+   "DefaultAudioStreamIndex": "<absent>",
+   "audio": [],
+   "itemAudioIndexes": []
+  }
+ ],
+ "web": {
+  "menus": [
+   {
+    "film": "Menu Babel",
+    "AudioLanguagePreference": "",
+    "PlayDefaultAudioTrack": true,
+    "containerHidden": false,
+    "disabled": false,
+    "options": [
+     {
+      "value": "1",
+      "label": "English - AAC - Mono - Default"
+     },
+     {
+      "value": "2",
+      "label": "German - AAC - Mono"
+     },
+     {
+      "value": "3",
+      "label": "French - AAC - Mono"
+     },
+     {
+      "value": "4",
+      "label": "AAC - Mono"
+     }
+    ],
+    "selected": "1"
+   },
+   {
+    "film": "Menu Four",
+    "AudioLanguagePreference": "",
+    "PlayDefaultAudioTrack": true,
+    "containerHidden": false,
+    "disabled": false,
+    "options": [
+     {
+      "value": "3",
+      "label": "AAC - Mono - Default"
+     },
+     {
+      "value": "1",
+      "label": "English - AAC - Mono"
+     },
+     {
+      "value": "2",
+      "label": "German - AAC - Mono"
+     },
+     {
+      "value": "4",
+      "label": "German - AAC - Mono"
+     }
+    ],
+    "selected": "3"
+   },
+   {
+    "film": "Menu Mono",
+    "AudioLanguagePreference": "",
+    "PlayDefaultAudioTrack": true,
+    "containerHidden": false,
+    "disabled": true,
+    "options": [
+     {
+      "value": "1",
+      "label": "English - AAC - Mono - Default"
+     }
+    ],
+    "selected": "1"
+   },
+   {
+    "film": "Menu Silent",
+    "AudioLanguagePreference": "",
+    "PlayDefaultAudioTrack": true,
+    "containerHidden": true,
+    "disabled": true,
+    "options": [],
+    "selected": ""
+   },
+   {
+    "film": "Menu Babel",
+    "AudioLanguagePreference": "deu",
+    "PlayDefaultAudioTrack": false,
+    "containerHidden": false,
+    "disabled": false,
+    "options": [
+     {
+      "value": "1",
+      "label": "English - AAC - Mono - Default"
+     },
+     {
+      "value": "2",
+      "label": "German - AAC - Mono"
+     },
+     {
+      "value": "3",
+      "label": "French - AAC - Mono"
+     },
+     {
+      "value": "4",
+      "label": "AAC - Mono"
+     }
+    ],
+    "selected": "2"
+   },
+   {
+    "film": "Menu Four",
+    "AudioLanguagePreference": "deu",
+    "PlayDefaultAudioTrack": false,
+    "containerHidden": false,
+    "disabled": false,
+    "options": [
+     {
+      "value": "3",
+      "label": "AAC - Mono - Default"
+     },
+     {
+      "value": "1",
+      "label": "English - AAC - Mono"
+     },
+     {
+      "value": "2",
+      "label": "German - AAC - Mono"
+     },
+     {
+      "value": "4",
+      "label": "German - AAC - Mono"
+     }
+    ],
+    "selected": "2"
+   },
+   {
+    "film": "Menu Mono",
+    "AudioLanguagePreference": "deu",
+    "PlayDefaultAudioTrack": false,
+    "containerHidden": false,
+    "disabled": true,
+    "options": [
+     {
+      "value": "1",
+      "label": "English - AAC - Mono - Default"
+     }
+    ],
+    "selected": "1"
+   },
+   {
+    "film": "Menu Silent",
+    "AudioLanguagePreference": "deu",
+    "PlayDefaultAudioTrack": false,
+    "containerHidden": true,
+    "disabled": true,
+    "options": [],
+    "selected": ""
+   }
+  ],
+  "picks": [
+   {
+    "user": "viewer3",
+    "film": "Menu Babel",
+    "AudioLanguagePreference": "deu",
+    "PlayDefaultAudioTrack": false,
+    "selectedBefore": "2",
+    "picked": "3",
+    "reachedSeconds": 3,
+    "tone": 659,
+    "playerMenu": [
+     {
+      "id": "1",
+      "label": "English - AAC - Mono - Default",
+      "selected": false
+     },
+     {
+      "id": "2",
+      "label": "German - AAC - Mono",
+      "selected": false
+     },
+     {
+      "id": "3",
+      "label": "French - AAC - Mono",
+      "selected": true
+     },
+     {
+      "id": "4",
+      "label": "AAC - Mono",
+      "selected": false
+     }
+    ],
+    "infos": [
+     {
+      "AudioStreamIndex": "3",
+      "DefaultAudioStreamIndex": 3,
+      "SupportsDirectPlay": false,
+      "SupportsDirectStream": false,
+      "TranscodingUrl": {
+       "AudioStreamIndex": "3",
+       "VideoCodec": "av1,h264,vp9",
+       "TranscodeReasons": "SecondaryAudioNotSupported"
+      }
+     }
+    ],
+    "onReturn": {
+     "containerHidden": false,
+     "disabled": false,
+     "options": [
+      {
+       "value": "1",
+       "label": "English - AAC - Mono - Default"
+      },
+      {
+       "value": "2",
+       "label": "German - AAC - Mono"
+      },
+      {
+       "value": "3",
+       "label": "French - AAC - Mono"
+      },
+      {
+       "value": "4",
+       "label": "AAC - Mono"
+      }
+     ],
+     "selected": "2"
+    },
+    "afterReload": {
+     "containerHidden": false,
+     "disabled": false,
+     "options": [
+      {
+       "value": "1",
+       "label": "English - AAC - Mono - Default"
+      },
+      {
+       "value": "2",
+       "label": "German - AAC - Mono"
+      },
+      {
+       "value": "3",
+       "label": "French - AAC - Mono"
+      },
+      {
+       "value": "4",
+       "label": "AAC - Mono"
+      }
+     ],
+     "selected": "3"
+    },
+    "afterSignIn": {
+     "containerHidden": false,
+     "disabled": false,
+     "options": [
+      {
+       "value": "1",
+       "label": "English - AAC - Mono - Default"
+      },
+      {
+       "value": "2",
+       "label": "German - AAC - Mono"
+      },
+      {
+       "value": "3",
+       "label": "French - AAC - Mono"
+      },
+      {
+       "value": "4",
+       "label": "AAC - Mono"
+      }
+     ],
+     "selected": "3"
+    },
+    "errors": [
+     "HLS Error: Type: otherError Details: internalException Fatal: false"
+    ]
+   },
+   {
+    "user": "viewer4",
+    "film": "Menu Babel",
+    "AudioLanguagePreference": "deu",
+    "PlayDefaultAudioTrack": false,
+    "selectedBefore": "2",
+    "picked": "1",
+    "reachedSeconds": 3,
+    "tone": 439,
+    "playerMenu": [
+     {
+      "id": "1",
+      "label": "English - AAC - Mono - Default",
+      "selected": true
+     },
+     {
+      "id": "2",
+      "label": "German - AAC - Mono",
+      "selected": false
+     },
+     {
+      "id": "3",
+      "label": "French - AAC - Mono",
+      "selected": false
+     },
+     {
+      "id": "4",
+      "label": "AAC - Mono",
+      "selected": false
+     }
+    ],
+    "infos": [
+     {
+      "AudioStreamIndex": "1",
+      "DefaultAudioStreamIndex": 1,
+      "SupportsDirectPlay": true,
+      "SupportsDirectStream": true,
+      "TranscodingUrl": null
+     }
+    ],
+    "onReturn": {
+     "containerHidden": false,
+     "disabled": false,
+     "options": [
+      {
+       "value": "1",
+       "label": "English - AAC - Mono - Default"
+      },
+      {
+       "value": "2",
+       "label": "German - AAC - Mono"
+      },
+      {
+       "value": "3",
+       "label": "French - AAC - Mono"
+      },
+      {
+       "value": "4",
+       "label": "AAC - Mono"
+      }
+     ],
+     "selected": "2"
+    },
+    "afterReload": {
+     "containerHidden": false,
+     "disabled": false,
+     "options": [
+      {
+       "value": "1",
+       "label": "English - AAC - Mono - Default"
+      },
+      {
+       "value": "2",
+       "label": "German - AAC - Mono"
+      },
+      {
+       "value": "3",
+       "label": "French - AAC - Mono"
+      },
+      {
+       "value": "4",
+       "label": "AAC - Mono"
+      }
+     ],
+     "selected": "1"
+    },
+    "afterSignIn": {
+     "containerHidden": false,
+     "disabled": false,
+     "options": [
+      {
+       "value": "1",
+       "label": "English - AAC - Mono - Default"
+      },
+      {
+       "value": "2",
+       "label": "German - AAC - Mono"
+      },
+      {
+       "value": "3",
+       "label": "French - AAC - Mono"
+      },
+      {
+       "value": "4",
+       "label": "AAC - Mono"
+      }
+     ],
+     "selected": "1"
+    },
+    "errors": []
+   },
+   {
+    "user": "viewer5",
+    "film": "Menu Babel",
+    "AudioLanguagePreference": "",
+    "PlayDefaultAudioTrack": true,
+    "selectedBefore": "1",
+    "picked": "3",
+    "reachedSeconds": 3,
+    "tone": 659,
+    "playerMenu": [
+     {
+      "id": "1",
+      "label": "English - AAC - Mono - Default",
+      "selected": false
+     },
+     {
+      "id": "2",
+      "label": "German - AAC - Mono",
+      "selected": false
+     },
+     {
+      "id": "3",
+      "label": "French - AAC - Mono",
+      "selected": true
+     },
+     {
+      "id": "4",
+      "label": "AAC - Mono",
+      "selected": false
+     }
+    ],
+    "infos": [
+     {
+      "AudioStreamIndex": "3",
+      "DefaultAudioStreamIndex": 3,
+      "SupportsDirectPlay": false,
+      "SupportsDirectStream": false,
+      "TranscodingUrl": {
+       "AudioStreamIndex": "3",
+       "VideoCodec": "av1,h264,vp9",
+       "TranscodeReasons": "SecondaryAudioNotSupported"
+      }
+     }
+    ],
+    "onReturn": {
+     "containerHidden": false,
+     "disabled": false,
+     "options": [
+      {
+       "value": "1",
+       "label": "English - AAC - Mono - Default"
+      },
+      {
+       "value": "2",
+       "label": "German - AAC - Mono"
+      },
+      {
+       "value": "3",
+       "label": "French - AAC - Mono"
+      },
+      {
+       "value": "4",
+       "label": "AAC - Mono"
+      }
+     ],
+     "selected": "1"
+    },
+    "afterReload": {
+     "containerHidden": false,
+     "disabled": false,
+     "options": [
+      {
+       "value": "1",
+       "label": "English - AAC - Mono - Default"
+      },
+      {
+       "value": "2",
+       "label": "German - AAC - Mono"
+      },
+      {
+       "value": "3",
+       "label": "French - AAC - Mono"
+      },
+      {
+       "value": "4",
+       "label": "AAC - Mono"
+      }
+     ],
+     "selected": "3"
+    },
+    "afterSignIn": {
+     "containerHidden": false,
+     "disabled": false,
+     "options": [
+      {
+       "value": "1",
+       "label": "English - AAC - Mono - Default"
+      },
+      {
+       "value": "2",
+       "label": "German - AAC - Mono"
+      },
+      {
+       "value": "3",
+       "label": "French - AAC - Mono"
+      },
+      {
+       "value": "4",
+       "label": "AAC - Mono"
+      }
+     ],
+     "selected": "3"
+    },
+    "errors": [
+     "HLS Error: Type: otherError Details: internalException Fatal: false"
+    ]
+   }
+  ]
+ }
+}

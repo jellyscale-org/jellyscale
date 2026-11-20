@@ -42,6 +42,10 @@ Limits to know:
 
 A viewer who sets jellyfin-web's burn subtitles to "all" gets the chosen track drawn into the picture instead: the client sends no subtitle profile, the track is marked `Encode`, and a worker re-encodes with the text. "Always burn in subtitle when transcoding" does the same for a film that is transcoded anyway. Changing the track replaces the job, as an audio switch does, and a seek or restart draws the same text at the same time. When the server can't transcode, burn-in has nothing to offer and no track is listed. Deployments need a font: the image has `font-dejavu`, which libass falls back to when a style names one that isn't there.
 
+## The details page's audio menu
+
+The details page's audio menu lists every audio track the viewer has not hidden, as Jellyfin 12.4 does (JS-147, D-018, DOMAINS.md invariant 32), because a pick of another is delivered as a copy of the video with that track. Where no transcode store, probed duration or worker that runs transcodes is there to deliver it, the item lists the viewer's track alone.
+
 ## Hiding tracks outside a viewer's languages
 
 A viewer who turned on "hide other audio" or "hide other subtitles" (`PATCH /jellyscale/v1/track-preferences`, docs/api.md) is listed an audio or subtitle track outside their languages as a placeholder: a stream of Type `Data` at the track's own Index, with no language, title, codec or delivery (what Jellyfin 12.4 lists for a timecode track, `compat/captures/data-stream-12.4.md`). jellyfin-web leaves a stream of that Type out of its audio menu, subtitle menu and media info, and no other stream moves, so the default subtitle and the remembered choices stay where they were. It applies in PlaybackInfo and in one item's details, not in lists.
