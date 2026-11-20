@@ -1874,9 +1874,9 @@
       "source": "JS-144 verify",
       "reviewer": "qa",
       "severity": "minor",
-      "title": "Three transcode e2e scenarios failed in one full run on a loaded machine; each passes 5 of 5 alone",
+      "title": "Transcode e2e scenarios fail in full gate runs on a loaded machine; each passes 5 of 5 alone",
       "status": "open",
-      "notes": "Not the BL-100 stall. The three: the dashboard card and Playback info panel (timed out after 44 s, panel empty); jellyfin-web after a segment fails, answered 500, once (timed out waiting for the player to ask for the failing segment, 65 s); a slow re-encode shared by three workers (browser closed after 92 s, then the gate printed no shard line). Host had about 2 GB free RAM. Product owner asks (evidence): does any of them fail in the merge queue or on CI's runners?"
+      "notes": "Not the BL-100 stall. The three: the dashboard card and Playback info panel (timed out after 44 s, panel empty); jellyfin-web after a segment fails, answered 500, once (timed out waiting for the player to ask for the failing segment, 65 s); a slow re-encode shared by three workers (browser closed after 92 s, then the gate printed no shard line). Host had about 2 GB free RAM. Product owner asks (evidence): does any of them fail in the merge queue or on CI's runners? Second sighting (JS-145 verify, D-023): the 500-segment scenario timed out in a full gate run, with Postgres refusing connections near the end of the gate; 5 of 5 alone. Promote if it fails on the merge queue, a third time locally, or if jellyscale itself (not the test stack) is shown to have used up the connections (then with JS-092)."
     },
     {
       "id": "BL-209",
@@ -1904,6 +1904,96 @@
       "title": "An operator-chosen permanent lock, as Jellyfin's LoginAttemptsBeforeLockout",
       "status": "open",
       "notes": "Promote only if an operator asks, after JS-033."
+    },
+    {
+      "id": "BL-212",
+      "source": "JS-139 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "Two capture records state a figure their stored JSON does not hold",
+      "status": "open",
+      "notes": "compat/captures/hdr-tonemap-12.4.md gives MaxStreamingBitrate 1440987881, which is not in its JSON; compat/captures/av1-fallback-12.4.md says '389 of 384', and 384 is not stored. No viewer or operator notices; a reader of the record cannot tell an observed figure from a typed one. Correct each when its capture is next taken again or its task next touches the record. Promote if a build or a decision is found to rest on either figure."
+    },
+    {
+      "id": "BL-213",
+      "source": "JS-145 / D-022",
+      "reviewer": "product-owner",
+      "severity": "minor",
+      "title": "An operator who declares proxies while every client still arrives from one upstream address gets all viewers refused together",
+      "status": "open",
+      "notes": "Every viewer shares the counted address, so they are refused together. The server could notice many devices and names behind one counted address and warn, or keep a known device out of the address refusal. Beside BL-210; needs its own brief. Promote when an operator reports viewers refused together, or with JS-056 if its ingress is shown to pass one address for all clients."
+    },
+    {
+      "id": "BL-214",
+      "source": "JS-145 verify / D-023",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "The memory of unknown sign-in names forgets more than its bound needs under parallel floods, and never ages",
+      "status": "open",
+      "notes": "Two sightings. Round 3 (command): bound 200, 24 workers, 4,800 names left 153 rows; the striped counter is summed without a lock. Round 4 (reading only): signin_unknown keeps up to 100,000 rows of invented names for good, counters included, after their failures have aged out; a later flood evicts by fewest failures, then oldest, so stale high-count names outlive fresh ones. The stated bound holds and no viewer is refused by it; an operator sees a small table that fills and stays full. Promote when someone shows, at the shipped bound, a real name told from an invented one with fewer requests than the documented bound implies, or a stale row changing who is refused."
+    },
+    {
+      "id": "BL-215",
+      "source": "JS-145 verify / D-023",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "A right password whose sign-in ends after the match began leaves a counted failure",
+      "status": "open",
+      "notes": "Two sightings, both reading only. The failure is stored before the password is compared and taken back after. Round 3: the take-back runs on the request context, so a client hang-up could leave the count. Round 4: the take-back detaches its context but runs only when the handler reaches it, so a client disconnect, a dead process or a timed-out comparison leaves it. Which of these holds is unverified. What a viewer would notice: at 19 failures the name is refused to new devices for 15 minutes with no wrong password given. Promote at once if a test shows a client hang-up alone, database healthy, leaves a count, or a viewer is refused after right passwords only."
+    },
+    {
+      "id": "BL-216",
+      "source": "JS-145 verify / D-023",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "A forwarded entry with a port or brackets is accepted as its address",
+      "status": "open",
+      "notes": "Promote when a named ingress is shown to write entries that way."
+    },
+    {
+      "id": "BL-217",
+      "source": "JS-145 verify / D-023",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "A filtered e2e run (E2E_ONLY) of the refused-sign-in scenario fails the cors gate's 'checked no JSON responses' summary",
+      "status": "open",
+      "notes": "Beside BL-075. Cause, from round 4 (reading only): responses are recorded for the gate's main page alone, and the scenario opens a page of its own, so the JSON jellyfin-web gets during a refused sign-in is neither written nor held to the schema; run alone, the gate has checked nothing and the run-level check fails. No viewer notices; the refusal's answer as jellyfin-web receives it is not held to Jellyfin's schema in e2e. Promote when a second task's filtered command fails the same way, or a refused sign-in's body is found to differ from the schema."
+    },
+    {
+      "id": "BL-218",
+      "source": "JS-145 verify / D-023",
+      "reviewer": "product-owner",
+      "severity": "minor",
+      "title": "The compose stack as shipped cannot name a guessing client or bound per address",
+      "status": "open",
+      "notes": "Measure whether Docker keeps a remote client's source address on a port published to the network, and what publishing that way exposes. Promote when an operator runs the compose stack reachable from a network, or when the measurement is made."
+    },
+    {
+      "id": "BL-219",
+      "source": "JS-145 verify",
+      "reviewer": "adversarial",
+      "severity": "minor",
+      "title": "A right password being checked counts as a failure meanwhile, so a second sign-in in that moment can be refused for 15 minutes' worth",
+      "status": "open",
+      "notes": "Reading only, not run. With a name at 19 failures (or 9 on a known device or from one address), a right password is held as the 20th for the 80 ms or so its comparison takes; another sign-in arriving then is answered 403 with Retry-After 900, though the refusal is gone once the first completes. A viewer notices only while their name is already one short of refusal, and a retry succeeds, but jellyfin-web tells them they are not authorized. Same cause as BL-215. Promote if a test shows two right passwords together, with no wrong one in between, getting a 403, or a viewer reports being refused with the right password."
+    },
+    {
+      "id": "BL-220",
+      "source": "JS-145 verify",
+      "reviewer": "qa",
+      "severity": "minor",
+      "title": "The unknown-name flood check drives a function no sign-in calls",
+      "status": "open",
+      "notes": "Reading only. JS-145's criterion 6 says the flood drives the one function the handler calls to count a failed sign-in for a name; the check drives FailName and NameRefusal, which only tests call, while a sign-in goes through Begin (said to reach the same counting step, with the address and device steps before it). So the memory bound is shown on the counting step, not on a sign-in. Fix when a task next touches sign-in (JS-037 or JS-033): the flood goes through what a sign-in calls and the test-only pair goes. Promote sooner if the two paths are shown to count differently."
+    },
+    {
+      "id": "BL-221",
+      "source": "JS-145 verify",
+      "reviewer": "ux",
+      "severity": "minor",
+      "title": "The procedure for confirming declared proxies has no branch for an ingress that sends no usable forwarded address",
+      "status": "open",
+      "notes": "Reading only. An operator declares trustedProxies for an ingress that writes no X-Forwarded-For and follows docs/running.md: 11 wrong sign-ins for an invented name. The doc promises ten 401s and then a refusal with a log line naming the address; they get eleven 401s and no refusal line, and the only hint is a warning written once per process, which the same paragraph's 'a single failed sign-in writes no log line' contradicts. They cannot tell a working bound from an absent one. With BL-210, BL-213, BL-216 and BL-218 this is one operator experience: declaring proxies and knowing it worked. Product owner: amend JS-056 with a criterion that the confirmation procedure, followed against the example manifests' ingress, says what the operator sees and does when no address is counted; mark this promoted once tasks/prd.json carries it. Promote ahead of JS-056 if an operator reports following the procedure and being unable to tell."
     }
   ]
 }
