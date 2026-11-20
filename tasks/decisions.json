@@ -300,6 +300,26 @@
       "tradeoff": "A client whose player sends no token on media requests is not supported, and no work goes in to make it play. Given up, by viewers of those apps: they cannot play a film from jellyscale. Today that is Findroid, and the official Android TV app's direct play (both read from source, neither played on a device); an operator moving from Jellyfin does not keep those apps for their viewers, who use jellyfin-web, Fluster or an app that sends its token instead. Nothing changes on the server: an app that starts sending its token plays with no change to jellyscale.",
       "entry": "Findroid is dropped as a target, and the same rule holds for Android TV and any other app whose player sends no token on media requests. The unit is the app: one that sends its token on some media requests and not on others (Android TV sends it on HLS and not on direct play, as read from source) is out as a whole, and no film is transcoded only to make such an app play. Amends D-005: such an app is no longer a gap listed in docs/status.md but outside what jellyscale supports. JS-037 names Fluster and a TV app that sends its token instead of Findroid; JS-065 captures only clients whose media requests carry a token; JS-075 records a tokenless app as not supported and makes no task of it. The backlog held no open item aiming at such a client (BL-112 and BL-174 concern the Kotlin SDK decode check, which stays for any app built on that SDK). Conditions: PRODUCT.md's 'Clients in order' line says the rule (the owner reviews the text); docs/status.md and docs/access.md say 'not supported (D-026)' where they said 'a gap'; the rows of compat/clients.yaml for these apps change only together with the tests that hold docs/status.md's tables to them.",
       "serves": "owner, 2026-11-20: 'Findroid: drop it. We don't support clients that don't send auth.' PRODUCT.md: Nothing but static artwork is reached without authorization."
+    },
+    {
+      "id": "D-027",
+      "date": "2026-11-20",
+      "task": "JS-075, JS-037, JS-122, JS-101",
+      "decision": "change",
+      "by": "owner",
+      "tradeoff": "jellyscale is not developed for Fluster: Fluster is engineered to work with jellyscale, by its own project. No task, criterion or backlog item aims to make Fluster work, records what Fluster shows, or runs Fluster against jellyscale. Given up, by Fluster's users: jellyscale's own proof that Fluster signs in, lists and plays, and a place ahead of other work when it does not; that proof is Fluster's to give.",
+      "entry": "Lifts D-006's 'Fluster second' and D-007's 'its compatibility ranks right after jellyfin-web's' and 'adopts first' as anything jellyscale works toward; lifts D-019's conditions that JS-075 records a Fluster run, that issue #202 stays open until that record exists, and that a failed Fluster run goes ahead of everything open; lifts D-020's Fluster reading in JS-075 and D-026's naming of Fluster in JS-037. D-016 stands: any origin may call the API, never with credentials, for any browser-engine client. JS-075 loses its Fluster run and keeps its checks on the clients it plays; JS-037 names one TV app that sends its token; JS-122 and JS-101 no longer cite Fluster as the first adopter; BL-207 is closed, BL-201 and BL-205 no longer wait on a Fluster run. Features a from:fluster issue proposed stay where they serve viewers on jellyfin-web or any client (JS-032, JS-037, JS-046, JS-047, JS-049, JS-052, JS-053, JS-080). Conditions: PRODUCT.md's 'Clients in order' line no longer ranks Fluster (the owner reviews the text); docs/status.md's Fluster row, docs/access.md and docs/client-testing.md stop promising a Fluster run.",
+      "serves": "owner, 2026-11-20: 'We don't want to develop for Fluster though. Fluster will work; it will be engineered to work with Jellyscale.'"
+    },
+    {
+      "id": "D-028",
+      "date": "2026-11-20",
+      "task": "JS-122, JS-101",
+      "decision": "change",
+      "by": "product-owner",
+      "tradeoff": "After D-027, a viewer's track-language settings (JS-118, JS-119, JS-123, all done) are reachable by no viewer on a client jellyscale works for, and JS-101's suggestions would be served on a route no such client calls.",
+      "entry": "JS-122 moves to directly after JS-041 (priority 15; the tasks at 15 to 35 each move down one): the page is the only way a browser viewer turns on what is already built. JS-101 gains a criterion that a viewer in a browser sees the suggestions, the mechanism left to observation on Jellyfin 12.4; 'No Jellyfin route changes behaviour' stays. D-025's order above JS-122 is unchanged.",
+      "serves": "PRODUCT.md: Their languages come first; every film starts that way where it can."
     }
   ]
 }

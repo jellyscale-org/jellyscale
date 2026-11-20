@@ -190,8 +190,7 @@ func TestFlusterHasOneRowThatSaysItHasNotBeenRun(t *testing.T) {
 		"that every route answers a preflight":                `(?i)every route answers a preflight`,
 		"the three WebView origins":                           `(?i)three WebView origins`,
 		"JS-144 as how it is known":                           `JS-144`,
-		"JS-075 as Fluster's own run":                         `JS-075`,
-		"D-019":                                               `D-019`,
+		"D-027 (jellyscale does not run Fluster)":             `D-027`,
 	} {
 		mustMatch(t, "the Fluster row", row, what, pattern)
 	}
@@ -201,9 +200,8 @@ func TestFlusterHasOneRowThatSaysItHasNotBeenRun(t *testing.T) {
 	} {
 		mustNotMatch(t, "the Fluster row", row, what, pattern)
 	}
-	st := taskStatus(t)
-	if st["JS-144"] != "done" || st["JS-075"] == "done" || st["JS-075"] == "dropped" || st["JS-075"] == "" {
-		t.Errorf("the row names JS-144 (%q, must be done) and JS-075 (%q, must be open)", st["JS-144"], st["JS-075"])
+	if st := taskStatus(t); st["JS-144"] != "done" {
+		t.Errorf("the row names JS-144 (%q, must be done)", st["JS-144"])
 	}
 
 	access := docText(t, "docs/access.md")
@@ -211,7 +209,7 @@ func TestFlusterHasOneRowThatSaysItHasNotBeenRun(t *testing.T) {
 		mustNotMatch(t, "docs/access.md", l, "that Fluster works, connects or plays", `(?i)Fluster (now |already )?(works|connects|plays)\b`)
 		mustNotMatch(t, "docs/access.md", l, "a CORS gap", `(?i)CORS (gap|is missing|is not|fails|blocks)|blocked by CORS|no CORS`)
 	}
-	mustMatch(t, "docs/access.md", access, "that Fluster has not been run against this server, with JS-075 and D-019", `(?is)Fluster[^\n]{0,400}not been run[^\n]{0,200}JS-075[^\n]{0,100}D-019`)
+	mustMatch(t, "docs/access.md", access, "that Fluster has not been run against this server, with D-027", `(?is)Fluster[^\n]{0,400}not been run[^\n]{0,300}D-027`)
 }
 
 // --- the known gaps, together ---

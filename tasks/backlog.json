@@ -1811,9 +1811,9 @@
       "source": "JS-128",
       "reviewer": "architecture",
       "severity": "minor",
-      "title": "The subtitle playlist still writes the token for a header request, so Fluster would refuse it too",
+      "title": "The subtitle playlist still writes the token for a header request",
       "status": "open",
-      "notes": "Product owner asks (evidence): Does Fluster ask for the subtitle playlist, and what does its viewer see?"
+      "notes": "Product owner asks (evidence): does any client JS-075 runs ask for the subtitle playlist, and what does its viewer see? JS-075 records it."
     },
     {
       "id": "BL-202",
@@ -1849,7 +1849,7 @@
       "severity": "minor",
       "title": "A preflight to a double-slash path answers 204, but the real request is redirected, which a browser engine refuses",
       "status": "open",
-      "notes": "Unverified that any client sends one; a server address with a trailing slash might. Waits on JS-075's trailing-slash check on Fluster. If it fails there, plan: answer the path without a redirect."
+      "notes": "Unverified that any client sends one; a server address with a trailing slash might. Only a browser-engine client sends a preflight, so no device in JS-075 answers this; Chromium on another origin (JS-144's evidence) can. Kept until a browser-engine client reports it; then plan: answer the path without a redirect."
     },
     {
       "id": "BL-206",
@@ -1866,8 +1866,8 @@
       "reviewer": "product-owner",
       "severity": "minor",
       "title": "Fluster's own tests against the -fixtures image as a repeating check of sign-in and listing, in place of a one-off record",
-      "status": "open",
-      "notes": "Product owner asks (evidence): does Fluster's CI run its WebView against the fixtures image today?"
+      "status": "wontfix",
+      "notes": "wontfix (D-027): Fluster's tests are its own project's work; the -fixtures image stays for any client (docs/client-testing.md)."
     },
     {
       "id": "BL-208",

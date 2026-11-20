@@ -160,7 +160,7 @@
         "A revoked device or disabled user's running stream stops: forced, a direct play of the whole file read slowly when the device is revoked or the user disabled closes within 15 seconds having sent less than the file",
         "LoginAttemptsBeforeLockout stays -1 and a set value is not honoured, as compat/differences.yaml says (D-020); a new or changed password is refused if it is among the commonly guessed ones"
       ],
-      "priority": 23,
+      "priority": 24,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -179,7 +179,7 @@
         "No plain token in the database",
         "API keys created and revoked through jellyfin-web"
       ],
-      "priority": 27,
+      "priority": 28,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -217,7 +217,7 @@
         "Forced: a library is taken from a viewer mid-film; their next segment and next byte range, through another replica, answer 404 (the outage exception is DOMAINS 37's)",
         "Pictures by id stay open to whoever holds the id; watch state for hidden items stays stored and is not shown"
       ],
-      "priority": 24,
+      "priority": 25,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -233,11 +233,11 @@
       "description": "Initiate, Connect, Authorize, AuthenticateWithQuickConnect; pending codes in Postgres with a short expiry so any api replica answers.",
       "acceptanceCriteria": [
         "Observed against Jellyfin 12.4 first",
-        "Fluster (#104) and one TV app that sends its token on media requests (Moonfin on the Shield, if JS-075 records that it does) sign in with a code approved from jellyfin-web; an app whose player sends no token is not a target (D-026)",
+        "One TV app that sends its token on media requests (Moonfin on the Shield, if JS-075 records that it does) signs in with a code approved from jellyfin-web; an app whose player sends no token is not a target (D-026)",
         "Where Quick Connect is turned off, /QuickConnect/Enabled answers false so clients fall back to a password (#104)",
         "A device approved by code from a signed-in device signs in while the account's name is refused to strangers (D-020); the code routes are bounded per address so the code cannot be guessed"
       ],
-      "priority": 25,
+      "priority": 26,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -286,7 +286,7 @@
         "No viewer token in any playlist or segment URL",
         "Kodi's TranscodingUrl editing still works"
       ],
-      "priority": 26,
+      "priority": 27,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -371,7 +371,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 28,
+      "priority": 29,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -405,7 +405,7 @@
         "GET /Shows/NextUp answers in Jellyfin 12.4's shape for the signed-in user, honours nextUpDateCutoff, and brings back a series the viewer had caught up on once a new episode is added (#101)",
         "GET /Items/Filters2 answers with the filters the library can match (#108)"
       ],
-      "priority": 29,
+      "priority": 30,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -566,7 +566,7 @@
         "The example manifests declare trustedProxies for their ingress (D-020)",
         "The procedure in docs/running.md for confirming declared proxies, followed against the example manifests' ingress, says what the operator sees and does when no address is counted (every answer 401, no refusal line), and no sentence there denies a log line the server writes (D-025, BL-221)"
       ],
-      "priority": 33,
+      "priority": 34,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -722,25 +722,23 @@
       "description": "Every streaming decision so far was checked on hls.js in Chromium only. No ExoPlayer client or AVPlayer client (Swiftfin) has played a jellyscale stream (Findroid and Android TV's direct play send no token on media requests and are not targets, D-026), which the Phase 0 report left open (spikes/README.md, remaining risks 1 and 2), and the decision engine answers direct play to any client whose profile has no fMP4 HLS entry (internal/playback/decide.go). Before more is built on the segment format (JS-054), the owner plays films on real devices against the dogfood, and the lead records what each client asked for and what it played. Web-first stays the plan; this is a check that the format holds.",
       "acceptanceCriteria": [
         "The owner plays, on an ExoPlayer client and on an AVPlayer client that each send their token on media requests (a family with no such client falls under the next criterion), against the dogfood: a direct play, an HEVC or 4K film that transcodes, a seek, an audio switch, a text and an image subtitle",
-        "Fluster, and one client of each player family that sends its token on media requests (ExoPlayer, AVPlayer), play the same paths; an app whose player sends no token is recorded as refused (D-005) and not supported (D-026), never as a failure to chase, and no task comes of it; a player family with no client that sends a token is listed in docs/status.md as not proven (no client that sends a token), not a pass",
+        "An app whose player sends no token is recorded as refused (D-005) and not supported (D-026), never as a failure to chase, and no task comes of it; a player family with no client that sends a token is listed in docs/status.md as not proven (no client that sends a token), not a pass",
         "Each client's PlaybackInfo request and the server's decision are recorded from the dogfood's logs (no titles or paths in the record), with what the viewer saw",
         "Each failure becomes a task in tasks/prd.json, placed before JS-054 when it concerns the segment format",
         "docs/status.md says which clients have played which paths",
         "An HEVC HDR copy and its fallback are played once in a browser with an HEVC decoder (E2E_HEVC=1) and recorded; until then docs/status.md says 'checked with ffmpeg only'",
         "Streamyfin's player entries in compat/clients.yaml are corrected from what the device sends",
-        "Fluster, as a released build on at least one desktop platform (the engine named: WebKitGTK, WebView2 or WKWebView), signs in and lists a library against the dogfood or a main-<sha> image, before it plays; recorded with no titles or paths (from JS-144, D-019). A record from Fluster's maintainers through issue #202 counts. A failure becomes a task ahead of every other open task.",
-        "On Fluster: a sign-in refused by JS-145 (403 with Retry-After, D-020) reads as 'try again in N minutes', not as a wrong password, a refusal by the administrator or a server fault (from JS-145, D-019); a server address typed with a trailing slash still signs in; whether Fluster asks for the subtitle playlist, and what its viewer sees, is recorded (answers BL-201).",
+        "On each client played: a server address typed with a trailing slash still signs in; whether it asks for the subtitle playlist, and what its viewer sees, is recorded; what its viewer reads when a sign-in is refused by JS-145 (403 with Retry-After, D-020) is recorded in docs/access.md, and no task comes of an app's wording",
         "Whether each device's profile declares Dolby Vision is recorded. On one that does: a profile 5 film and a profile 8.1 film from the dogfood are played, with what PlaybackInfo decided (direct play, copy or re-encode) and what the viewer saw. A profile 5 film re-encoded for a client that declares it becomes a task. If neither device declares it, or the dogfood holds no profile 5 film, docs/status.md says profile 5 on a client that declares Dolby Vision is not proven (D-021)"
       ],
-      "priority": 15,
+      "priority": 16,
       "status": "todo",
       "passes": false,
       "dependsOn": [
-        "JS-144",
         "JS-145"
       ],
       "source": "Fable 5.2 state review, 2026-11-10",
-      "notes": "Needs the owner's devices and about an hour; the lead prepares the test list and reads the logs. Widened by the product owner's direction review (2026-11-19): goals 1 and 3 are claimed for every client and proven for one. Findroid and Android TV are not targets (owner, 2026-11-20, D-026); which ExoPlayer client sends its token is unverified until a device shows it."
+      "notes": "Needs the owner's devices and about an hour; the lead prepares the test list and reads the logs. Widened by the product owner's direction review (2026-11-19): goals 1 and 3 are claimed for every client and proven for one. Findroid and Android TV are not targets (owner, 2026-11-20, D-026); which ExoPlayer client sends its token is unverified until a device shows it. No Fluster run is part of this task (owner, 2026-11-20, D-027)."
     },
     {
       "id": "JS-079",
@@ -753,7 +751,7 @@
         "One documented rollout order, the same in docs/running.md and ARCHITECTURE.md, and a test or check that each migration in a release is safe for the previous version's code",
         "With a stream replica of the previous decision version registered and an api replica of the new one, PlaybackInfo offers nothing the old replica would refuse (a real-process test), and docs/running.md no longer requires an order between api and stream"
       ],
-      "priority": 31,
+      "priority": 32,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -772,7 +770,7 @@
         "GET /Items/{itemId}/LocalTrailers lists trailer files stored beside the film, as Jellyfin names them; nothing is fetched from outside the server (#108)",
         "A title that ends in a year-like number keeps it: synthetic table cases 'Harbor Lights 2049 (2017)', 'Harbor.Lights.2049.2017.1080p', 'Harbor Lights 2049' (no year), '2001 Night Garden (1968)', '1888 (2019)' and '2031' give the right title and year, and an existing library's item ids do not change"
       ],
-      "priority": 30,
+      "priority": 31,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -806,7 +804,7 @@
         "A process warns at startup when the cluster's registered processes approach max_connections",
         "A multi-process variant of test/stress.sh measures connections and Postgres load at 50 workers"
       ],
-      "priority": 34,
+      "priority": 35,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -829,7 +827,7 @@
         "The regex-over-prose tests are removed or replaced by tests that compare a constant with the number the doc states; a check that reads a number or table from DOMAINS.md today (the lease table of 25, the window of 37) reads it from where it now lives and still fails when doc and code differ",
         "The pointers change in the same change: CLAUDE.md, the role files in .claude/agents/ (the product owner's read list included) and the build workflow's instructions say every agent reads DOMAINS.md, and a task's agents also read the domain file of each domain the task touches"
       ],
-      "priority": 20,
+      "priority": 21,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -845,7 +843,7 @@
         "PlaybackInfo, the stream requests, the job and the worker's ffmpeg log lines of one playback carry the same id",
         "docs/running.md shows how to follow one playback"
       ],
-      "priority": 35,
+      "priority": 36,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -924,12 +922,13 @@
       "id": "JS-101",
       "phase": "P5",
       "title": "Recommendations from each viewer's own history, with a reason for each",
-      "description": "Fluster, the client that ships with jellyscale, asked (#110) for 'Because you watched...' suggestions. The owner decided (2026-11-12) to build them as the first feature beyond Jellyfin's API: a per-account viewer profile built from watch history on the user's own server, computed by workers and stored in Postgres, with nothing sent outside it, served under the jellyscale namespace (/jellyscale/v1/, PRODUCT.md, #112) that unmodified clients never see. It needs watch history that survives scans (JS-076) and the library's genres, people and similar items (JS-046, JS-049).",
+      "description": "Issue #110 (from:fluster) asked for 'Because you watched...' suggestions. The owner decided (2026-11-12) to build them as the first feature beyond Jellyfin's API: a per-account viewer profile built from watch history on the user's own server, computed by workers and stored in Postgres, with nothing sent outside it, served under the jellyscale namespace (/jellyscale/v1/, PRODUCT.md, #112) that unmodified clients never see. It needs watch history that survives scans (JS-076) and the library's genres, people and similar items (JS-046, JS-049).",
       "acceptanceCriteria": [
         "A worker builds and updates each account's viewer profile from that account's watch history only, and nothing leaves the server",
         "GET /jellyscale/v1/recommendations (authenticated as a Jellyfin token) answers suggestions for the signed-in viewer, each with a stated reason ('Because you watched X', a shared genre or person), documented and versioned",
         "No Jellyfin route changes behaviour, and an unmodified Jellyfin client never sees the namespace",
-        "A viewer with no history gets a sensible answer (empty or popular in the library), and another account's history never shapes a viewer's suggestions"
+        "A viewer with no history gets a sensible answer (empty or popular in the library), and another account's history never shapes a viewer's suggestions",
+        "A viewer in a browser sees their suggestions, each with its reason, with no other app: on a page jellyscale serves (as JS-122's), or where jellyfin-web already shows recommendations if what it asks there is observed on Jellyfin 12.4 first and no Jellyfin route changes behaviour"
       ],
       "priority": 53,
       "status": "todo",
@@ -940,16 +939,16 @@
         "JS-049"
       ],
       "source": "Fluster issue #110; owner decision 2026-11-12",
-      "notes": "First feature under /jellyscale/v1/; Fluster adopts it first."
+      "notes": "No surface is built for one client (D-027); a viewer in a browser sees the suggestions too (D-028)."
     },
     {
       "id": "JS-122",
       "phase": "ID",
       "title": "A settings page for viewers whose app has no place for their track languages",
-      "description": "jellyfin-web has no place to turn on hiding tracks outside a viewer's languages, to name the languages to keep, or to show all tracks (JS-118); Fluster has them first. A small page jellyscale serves, linked from jellyfin-web's user menu, gives a browser-only viewer the same switches through the /jellyscale/v1/ settings JS-118 adds.",
+      "description": "jellyfin-web has no place to turn on hiding tracks outside a viewer's languages, to name the languages to keep, or to show all tracks (JS-118). A small page jellyscale serves, linked from jellyfin-web's user menu, gives a browser-only viewer the same switches through the /jellyscale/v1/ settings JS-118 adds.",
       "acceptanceCriteria": [
         "A signed-in viewer reaches the page from jellyfin-web's user menu and sees their two opt-ins, their kept languages and 'show all tracks' as saved",
-        "Turning an opt-in on with no default language set asks for one first, as Fluster does; the page saves through the same /jellyscale/v1/ route Fluster uses, and the next PlaybackInfo in jellyfin-web reflects it",
+        "Turning an opt-in on with no default language set asks for one first; the page saves through the /jellyscale/v1/ track-preferences route (JS-118), and the next PlaybackInfo in jellyfin-web reflects it",
         "A viewer whose audio language is saved and whose PlayDefaultAudioTrack is on is told on the page that a film whose default track is in another language still starts in that track (Jellyfin's rule, and its default for every new user), and can turn it off there with one switch, saved through PATCH /jellyscale/v1/users/configuration (JS-123); the next PlaybackInfo in jellyfin-web then names the track in their language",
         "A viewer changes only their own settings; another viewer's are untouched, and an unsigned request is refused",
         "The page works at phone width and in light and dark, with no route outside /jellyscale/v1/ and no change to jellyfin-web's files"
@@ -958,9 +957,9 @@
         "JS-118",
         "JS-119"
       ],
-      "notes": "Owner, 2026-11-15: Fluster first, a page later. Planned after the track-language batch so Fluster adopts it first. 2026-11-17 (JS-121's UX review): PlayDefaultAudioTrack defaults to true, so a viewer who only saves a language keeps hearing a film's flagged track, usually its original; the page says so and offers the switch.",
+      "notes": "Owner, 2026-11-15: a page, after the track-language batch. Moved up (D-028): the settings are built and no browser viewer can reach them. 2026-11-17 (JS-121's UX review): PlayDefaultAudioTrack defaults to true, so a viewer who only saves a language keeps hearing a film's flagged track, usually its original; the page says so and offers the switch.",
       "passes": false,
-      "priority": 36,
+      "priority": 15,
       "source": "owner 2026-11-15",
       "status": "todo"
     },
@@ -986,7 +985,7 @@
       ],
       "notes": "Changed answers, to list in the pull request: a request naming another user's id got 200 with the caller's data and now gets 403; the Configuration 404 above. Neither is visible to a viewer using a client, which always sends its own id.Tests make their second user by SQL, as user_configuration_integration_test.go does; no seeding route is added. Jellyfin's rule is RequestHelpers.GetUserId (Jellyfin.Api/Helpers/RequestHelpers.cs:67-81 at v12.4). Owner's decisions (2026-11-16, on Fable 5.2's access model, .results/access-model-fable-2026-11-16.md): pictures by id open to whoever holds the id, by name need a token; per-library access right after JS-033; a revoked or disabled user's running stream stops within 15 s; a viewer sees no other viewer's name; an administrator manages accounts but never browses, plays or reports as another user; a Policy field jellyscale does not enforce is refused when changed (400); 'may download' is honoured; operator keys are never users; no issue is filed on Findroid for now.",
       "passes": false,
-      "priority": 22,
+      "priority": 23,
       "source": "access model",
       "status": "todo"
     },
@@ -1006,7 +1005,7 @@
         "With real processes: a worker given jobs whose costs add up to its cores, at faster and at medium, keeps each at 1.2 times real time or more without a helper",
         "No viewer-visible change while every spec is veryfast: the transcode, seek and helper e2e scenarios pass as before"
       ],
-      "priority": 17,
+      "priority": 18,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1026,7 +1025,7 @@
         "A picture test on every tier, with ffmpeg's own psnr and ssim filters (CI's ffmpeg 6.1 has no libvmaf): a real-film clip encoded through the worker at faster, against its source under a 4 Mbps cap, has a higher PSNR-Y (the spike measured +0.27 to +0.92 dB) and a higher SSIM than at veryfast",
         "The default change is listed under Changed guarantees: more CPU per viewer (fewer viewers per worker), up to about a second on a start on a full worker, a better picture"
       ],
-      "priority": 18,
+      "priority": 19,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1105,7 +1104,7 @@
         "JS-089"
       ],
       "source": "decision D-002; product-owner plan review 2026-11-19",
-      "priority": 16
+      "priority": 17
     },
     {
       "id": "JS-147",
@@ -1141,7 +1140,7 @@
       "status": "todo",
       "passes": false,
       "dependsOn": [],
-      "priority": 32
+      "priority": 33
     },
     {
       "id": "JS-149",
@@ -1157,7 +1156,7 @@
         "The job's price (Spec.Cost) is at or above its measured CPU",
         "DOMAINS 53, docs/transcoding.md and docs/status.md say the one thing seen; the gap line leaves docs/status.md"
       ],
-      "priority": 21,
+      "priority": 22,
       "source": "product owner, D-021 (2026-11-19)",
       "status": "todo",
       "passes": false,
@@ -1178,7 +1177,7 @@
         "The figures go to the product owner as a brief with keeping the source's height and range priced per viewer, on CPU and on a GPU family; its decision names the task that closes the gap or accepts it, and docs/status.md's line is updated",
         "No viewer-visible change"
       ],
-      "priority": 19,
+      "priority": 20,
       "source": "product owner, D-021 (2026-11-19)",
       "status": "todo",
       "passes": false,
