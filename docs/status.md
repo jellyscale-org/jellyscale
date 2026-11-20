@@ -134,7 +134,7 @@ What does not yet work for every film or viewer, each with what the viewer or op
 - A gap: a film whose picture is re-encoded comes out H.264, SDR, at no more than 1080 lines, a 4K or HDR film and one with a burned-in image subtitle included, so a viewer on a 4K or HDR screen gets 1080p SDR from it. Direct play and a copy are not capped; a copy's fallback, HEVC or AV1 (10 bit for an HDR copy), is capped at 1080 lines like any re-encode. No task yet: JS-148 measures what a taller or HDR re-encode costs and how often the dogfood's viewers get a capped one, and its brief decides the closer (D-021).
 - A gap: whether a re-encoded Dolby Vision profile 5 film's picture comes out right is not observed, and the documents disagreed about it; the film is re-encoded to H.264 for every client that does not declare Dolby Vision, and the viewer gets whatever that picture is. JS-149 observes it and makes or pins it right (D-021).
 - A gap: a Dolby Vision profile 5 film is re-encoded, never copied or direct played, for every client that does not declare Dolby Vision, because its base layer is neither HDR10 nor HLG; the viewer gets a re-encode and the operator pays its CPU. No task (D-021).
-- A gap, not supported: an app whose player sends no token on a media request is answered 401 and cannot play it. Today that is Findroid and Android TV, whose direct play sends none (the player table below, read from source). A viewer of such an app gets no film from it, where Jellyfin serves the same request to anyone (`compat/captures/access-12.4.md`), and uses jellyfin-web, Fluster or an app that sends its token. No task (D-026, amending D-005): every media route needs a token, and no work goes in to make such an app play; it plays with no change to jellyscale once it sends one.
+- A gap, not supported: an app whose player sends no token on a media request is answered 401 and cannot play it. Today that is Findroid's direct play, Android TV's direct play (the player table below), and Wholphin's (its ExoPlayer player), Jellyfin for Roku's and JellyCon's, each read from source ('Which apps send their token' below). A viewer of such an app gets no film from it, where Jellyfin serves the same request to anyone (`compat/captures/access-12.4.md`), and uses jellyfin-web, Fluster or an app that sends its token. No task (D-026, amending D-005): every media route needs a token, and no work goes in to make such an app play; it plays with no change to jellyscale once it sends one.
 - A gap: a film whose image subtitles cannot be copied within the hour keeps seeks into a long-showing cue that cost more the older the cue, and the copy is retried only by a play and at most once a day, or at once when the file changes (D-002); the viewer is not told. JS-140 closes it.
 - A gap: during a Postgres switchover or restart some viewer requests are answered 500, a subtitle can be refused for 30 s after a read that hit the outage, and a film started from the snapshot ignores the viewer's languages. JS-146 closes it.
 
@@ -194,6 +194,32 @@ The player of a client builds four requests as URLs, which the SDK operations ab
 | Streamyfin | query ApiKey, read from source | query ApiKey, from the server, read from source | query ApiKey, from the server, read from source | no token, read from source |
 
 Pictures are open by id on jellyscale (`docs/access.md`), so a client that sends no token on them is served.
+
+### Which apps send their token (D-030)
+
+Read from each app's source on 2026-11-20 (`compat/captures/client-tokens-2026-11-20.md`, with the commit and line for each). Apart from jellyfin-web in Chromium, none was played on a device against jellyscale, so this says what each app's player sends, not that the app works: an app may need something else that is not built (Quick Connect, trickplay, a server plugin). JS-075 plays the first of them on devices.
+
+Sends its token on every media request it makes, so jellyscale answers it:
+
+- jellyfin-web 12.4, in a browser: played in Chromium by the e2e tier.
+- Jellyfin Desktop (formerly Jellyfin Media Player), Jellyfin for webOS (LG): they show the jellyfin-web that jellyscale serves.
+- Jellyfin for Tizen (Samsung): it bundles its own jellyfin-web; a build from 10.10 or later sends the token, and only a build of the current release is a target.
+- Jellyfin for Android (phone and tablet), with its built-in players. Its "external player" option hands another app a URL with no token, and that app is refused.
+- Swiftfin (iOS, tvOS), Streamyfin (iOS, Android), Fladder (Android, iOS, desktop).
+- Moonfin (Android, Android TV, iOS, tvOS, desktop). Whether any part of it needs its server plugin, which jellyscale does not serve, is not known.
+- Jellyfin for Kodi, in add-on mode only. Its native (direct path) mode reads the film from a path of its own and not from jellyscale, and is not supported. Kodi is not a gate.
+
+Not supported (D-026), because the app's own player sends no token on the request named; the requests it does send a token on are still answered:
+
+- Jellyfin for Android TV: direct play.
+- Findroid: direct play and downloads.
+- Wholphin: direct play with its ExoPlayer player; its MPV player is not known.
+- Jellyfin for Roku: direct play.
+- JellyCon (Kodi): direct stream, and subtitles on a transcode.
+
+Not known: Infuse (closed source; a capture of its requests would settle it, JS-065). Nothing to play: Finamp (music is a non-goal).
+
+Each of the apps not supported plays, with no change to jellyscale, once its player sends the token.
 
 ## Feature audit against Jellyfin 12.4
 

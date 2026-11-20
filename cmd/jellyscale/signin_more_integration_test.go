@@ -288,6 +288,13 @@ func TestNoPasswordIsAnsweredWhileTheBoundsCannotBeReadOrStored(t *testing.T) {
 	// its way back. Neither is answered 401.
 	for _, when := range []string{"before", "after"} {
 		for _, name := range []string{s.account("store"), invented()} {
+			// A severed connection may still sit in the server's pool and fail the next request's first read, before any
+			// write: wait, with a hang bound, until a wrong password is answered 401 again, so each case starts healthy.
+			for deadline := time.Now().Add(10 * time.Second); s.try(0, newDevice(), invented(), "wrong").status != 401; time.Sleep(100 * time.Millisecond) {
+				if time.Now().After(deadline) {
+					t.Fatal("the server did not answer a wrong password with 401 within 10 s of the previous severed connection")
+				}
+			}
 			var hit atomic.Bool
 			cut := func() { hit.Store(true); proxy.Sever() }
 			match := func(sent []byte) bool { return writesSignIn.Match(sent) }
