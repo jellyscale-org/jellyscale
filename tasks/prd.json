@@ -233,7 +233,7 @@
       "description": "Initiate, Connect, Authorize, AuthenticateWithQuickConnect; pending codes in Postgres with a short expiry so any api replica answers.",
       "acceptanceCriteria": [
         "Observed against Jellyfin 12.4 first",
-        "Moonfin on the Shield and Findroid sign in with a code approved from jellyfin-web",
+        "Fluster (#104) and one TV app that sends its token on media requests (Moonfin on the Shield, if JS-075 records that it does) sign in with a code approved from jellyfin-web; an app whose player sends no token is not a target (D-026)",
         "Where Quick Connect is turned off, /QuickConnect/Enabled answers false so clients fall back to a password (#104)",
         "A device approved by code from a signed-in device signs in while the account's name is refused to strangers (D-020); the code routes are bounded per address so the code cannot be guessed"
       ],
@@ -242,7 +242,7 @@
       "passes": false,
       "dependsOn": [],
       "source": "PRODUCT.md identity",
-      "notes": "Requested by Fluster, the client that ships with jellyscale: #104. Access: approval is own, an administrator included. (access model, 2026-11-16) Needs its own guessing bound, following JS-145's design (product owner, 2026-11-19)."
+      "notes": "Requested by Fluster, the client that ships with jellyscale: #104. Access: approval is own, an administrator included. (access model, 2026-11-16) Needs its own guessing bound, following JS-145's design (product owner, 2026-11-19). Findroid is dropped as a target: the second client is one that sends its token on media requests (owner, 2026-11-20, D-026)."
     },
     {
       "id": "JS-038",
@@ -681,10 +681,10 @@
       "id": "JS-065",
       "phase": "OPS",
       "title": "Record and replay real client traffic",
-      "description": "Capture sessions of clients Playwright cannot drive (Android TV, Findroid, Moonfin, Infuse) against a real Jellyfin through a recording proxy, store them sanitized in compat/, and replay them against jellyscale in the integration tier.",
+      "description": "Capture sessions of clients Playwright cannot drive and that send their token on media requests (Swiftfin and Streamyfin as read from source; Moonfin and Infuse once a capture or a device run shows they do) against a real Jellyfin through a recording proxy, store them sanitized in compat/, and replay them against jellyscale in the integration tier.",
       "acceptanceCriteria": [
         "A recording proxy captures a session and strips tokens and personal data",
-        "At least Android TV (or Moonfin) and one iOS client (Infuse) are captured browsing, playing, seeking and stopping",
+        "At least one TV client and one iOS client whose captured media requests each carry a token are captured browsing, playing, seeking and stopping; an app whose player sends none (Findroid, and Android TV's direct play, as read from source) is not a target and is not captured (D-026)",
         "Replays run in CI and fail on a response a client would reject (status, missing field, wrong shape)",
         "No titles or paths from a real library in the captures (synthetic fixtures only)"
       ],
@@ -695,7 +695,7 @@
         "JS-064"
       ],
       "source": "workflow research 2026-11-07; project plan (cassettes)",
-      "notes": "TV and iOS clients are untested today; Quick Connect and OIDC in Identity need their traffic most. Moved up 2026-11-08: Findroid failed on the dogfood twice where jellyfin-web worked (#44, #47); captures of real non-web clients catch what SDK models alone don't (call order, headers, routes). Scheduled after the web-client work (user, 2026-11-08: focus on the web client first, then pivot to other clients)."
+      "notes": "TV and iOS clients are untested today; Quick Connect and OIDC in Identity need their traffic most. Moved up 2026-11-08: Findroid failed on the dogfood twice where jellyfin-web worked (#44, #47); captures of real non-web clients catch what SDK models alone don't (call order, headers, routes). Scheduled after the web-client work (user, 2026-11-08: focus on the web client first, then pivot to other clients). Findroid and Android TV are no longer capture targets: only clients that send their token on media requests are (owner, 2026-11-20, D-026)."
     },
     {
       "id": "JS-068",
@@ -719,10 +719,10 @@
       "id": "JS-075",
       "phase": "OPS",
       "title": "Real players on the dogfood: ExoPlayer and AVPlayer play jellyscale's own streams",
-      "description": "Every streaming decision so far was checked on hls.js in Chromium only. No ExoPlayer client (Android TV, Findroid) or AVPlayer client (Swiftfin) has played a jellyscale stream, which the Phase 0 report left open (spikes/README.md, remaining risks 1 and 2), and the decision engine answers direct play to any client whose profile has no fMP4 HLS entry (internal/playback/decide.go). Before more is built on the segment format (JS-054), the owner plays films on real devices against the dogfood, and the lead records what each client asked for and what it played. Web-first stays the plan; this is a check that the format holds.",
+      "description": "Every streaming decision so far was checked on hls.js in Chromium only. No ExoPlayer client or AVPlayer client (Swiftfin) has played a jellyscale stream (Findroid and Android TV's direct play send no token on media requests and are not targets, D-026), which the Phase 0 report left open (spikes/README.md, remaining risks 1 and 2), and the decision engine answers direct play to any client whose profile has no fMP4 HLS entry (internal/playback/decide.go). Before more is built on the segment format (JS-054), the owner plays films on real devices against the dogfood, and the lead records what each client asked for and what it played. Web-first stays the plan; this is a check that the format holds.",
       "acceptanceCriteria": [
-        "The owner plays, on an ExoPlayer client and on an AVPlayer client against the dogfood: a direct play, an HEVC or 4K film that transcodes, a seek, an audio switch, a text and an image subtitle",
-        "Fluster, and one client of each player family that sends its token on media requests (ExoPlayer, AVPlayer), play the same paths; an app whose player sends no token is recorded as refused by D-005, not as a failure to chase; a player family with no client that sends a token is listed in docs/status.md as not proven (no client that sends a token), a gap under D-005, not a pass",
+        "The owner plays, on an ExoPlayer client and on an AVPlayer client that each send their token on media requests (a family with no such client falls under the next criterion), against the dogfood: a direct play, an HEVC or 4K film that transcodes, a seek, an audio switch, a text and an image subtitle",
+        "Fluster, and one client of each player family that sends its token on media requests (ExoPlayer, AVPlayer), play the same paths; an app whose player sends no token is recorded as refused (D-005) and not supported (D-026), never as a failure to chase, and no task comes of it; a player family with no client that sends a token is listed in docs/status.md as not proven (no client that sends a token), not a pass",
         "Each client's PlaybackInfo request and the server's decision are recorded from the dogfood's logs (no titles or paths in the record), with what the viewer saw",
         "Each failure becomes a task in tasks/prd.json, placed before JS-054 when it concerns the segment format",
         "docs/status.md says which clients have played which paths",
@@ -740,7 +740,7 @@
         "JS-145"
       ],
       "source": "Fable 5.2 state review, 2026-11-10",
-      "notes": "Needs the owner's devices and about an hour; the lead prepares the test list and reads the logs. Widened by the product owner's direction review (2026-11-19): goals 1 and 3 are claimed for every client and proven for one."
+      "notes": "Needs the owner's devices and about an hour; the lead prepares the test list and reads the logs. Widened by the product owner's direction review (2026-11-19): goals 1 and 3 are claimed for every client and proven for one. Findroid and Android TV are not targets (owner, 2026-11-20, D-026); which ExoPlayer client sends its token is unverified until a device shows it."
     },
     {
       "id": "JS-079",
