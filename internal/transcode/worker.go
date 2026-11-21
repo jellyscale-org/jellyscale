@@ -239,10 +239,12 @@ func (w *Worker) furthest(ctx context.Context, job claimed, next int) (n int, se
 	from, to := job.Start, next+catchUpSegments
 	if job.Helper {
 		// A helper is ahead of the viewers, so none is within its window; the
-		// viewers at or before its chunk are its, and the furthest of them bounds
-		// it, not its start. A viewer far past the chunk has a job of its own,
-		// and the helpers of that one: its lead is not this helper's to fill.
-		from, to = 0, job.Start+w.chunkSize()
+		// viewers at or before its chunk are its, and so are those a request
+		// would join it for (past its chunk, within catchUpSegments of its next
+		// segment, DOMAINS 37). The furthest of them bounds it, not its start. A
+		// viewer far past that has a job of its own, and the helpers of that
+		// one: its lead is not this helper's to fill.
+		from, to = 0, max(job.Start+w.chunkSize(), next+catchUpSegments)
 	}
 	err = w.Pool.QueryRow(ctx, `SELECT
 			COALESCE(max(segment) FILTER (WHERE segment >= $3 AND segment < $4), -1),
@@ -385,7 +387,10 @@ func (w *Worker) run(ctx context.Context, job claimed) {
 	defer job.lease.stop()
 	began := time.Now()
 	jobsStarted.Inc()
-	err := cause(ctx, w.encode(ctx, job, log))
+	err := w.encode(ctx, job, log)
+	// Read before cause: the keeper may have cancelled ctx on seeing the row cancelled.
+	left := errors.Is(err, errHelperLeft)
+	err = cause(ctx, err)
 	if errors.Is(err, errNoViewer) {
 		// Nobody watches: the slot is given back and the job is no failure.
 		w.cancelUnwanted(ctx, job)
@@ -404,6 +409,11 @@ func (w *Worker) run(ctx context.Context, job claimed) {
 	}
 	state, reason, again := "done", "", false
 	switch {
+	case left:
+		// Its row was written cancelled before its ffmpeg was ended, and what it stored stays.
+		state = "cancelled"
+		jobsEnded.WithLabelValues(resultHelperLeft).Inc()
+		log.Info("transcode ended", "reason", resultHelperLeft, "elapsed", time.Since(began).Round(time.Millisecond))
 	case err == nil:
 		jobsEnded.WithLabelValues("done").Inc()
 		log.Info("transcode ended", "elapsed", time.Since(began).Round(time.Millisecond))
@@ -501,6 +511,10 @@ func writeFile(path string, body io.Reader) error {
 // errInterrupted marks a job that stopped before its work was done, because
 // the worker was going away or no longer owned the job.
 var errInterrupted = errors.New("interrupted")
+
+// errHelperLeft is how a helper's run ends when no viewer is left for it. It is no failure and no
+// interruption, so it is counted under a reason of its own.
+var errHelperLeft = errors.New("the helper's viewers have left it behind")
 
 // errWaiting says a finished segment could not be stored because Postgres is
 // away. The job is not over: the segment is kept and tried again.
@@ -871,7 +885,9 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 				return err == nil
 			}
 			wait := limit < layout.Count() && made()
-			if (wait || paused || freed) && time.Since(limitAt) >= leadCheck {
+			// A helper looks all the while, not only at its limit: its viewers may
+			// have left it behind while it makes segments no one will ask for.
+			if (wait || paused || freed || job.Helper) && time.Since(limitAt) >= leadCheck {
 				limitAt = time.Now()
 				at, served, free, err := w.furthest(ctx, job, next)
 				switch {
@@ -879,6 +895,12 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 					log.Warn("reading the viewers' segments failed", "error", err)
 				case free:
 					limit, freed = layout.Count(), true
+				case job.Helper && (!served || limitFor(layout, at, w.lead()) <= job.Start):
+					// No viewer is at or before its chunk, or the furthest is so far
+					// behind that the helper's first segment is past its lead (a
+					// viewer who sought forward or far back), and lifting the limit
+					// would make the helper run to the film's end for no one.
+					return false
 				case paused && !served:
 					return false
 				default:
@@ -978,6 +1000,9 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 					// The row first (DOMAINS 25); the ffmpeg is paused here, so it waits.
 					w.cancelUnwanted(ctx, job)
 					stop("its viewers have left it behind")
+					if job.Helper {
+						return errHelperLeft
+					}
 					return nil
 				}
 			case answered := <-job.lease.Beats:

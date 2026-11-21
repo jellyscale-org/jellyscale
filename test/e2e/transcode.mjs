@@ -1927,6 +1927,70 @@ await scenario("a slow re-encode is shared by three workers, and hls.js plays an
   }
 });
 
+// A helper whose viewer has seeked away (JS-167, D-046). Every worker's ffmpeg reads at 0.7 of the film's speed, so
+// the film is shared by three workers and a helper runs ahead of the viewer. The viewer seeks forward beyond the helper
+// and its lead (the config's 20 s), and then back to a place nothing was made. Each time the helper left behind is gone
+// within 5 seconds of the seek's first segment request, and a helper for a chunk ahead of the viewer's new place runs on
+// another worker than the new job's within 10 seconds. The bounds are the task's; they are a hang's margin on the
+// workers' 3 second heartbeat and a re-encode's start, not a speed, and the clock starts at the first request the
+// player makes for a segment after the seek.
+await scenario("a helper left behind by a seek is gone within seconds and the chunk ahead of the viewer's new place gets one", async ({ page, seen }) => {
+  const launch = process.env.E2E_WORKER;
+  if (!launch) throw new Error("the left behind scenario needs E2E_WORKER (test/e2e/run.sh sets it)");
+  const rate = `${dirname(launch)}/rate`;
+  writeFileSync(rate, "0.7");
+  const workers = [];
+  const asked = [];
+  page.on("request", (r) => { if (/\/\d+\.mp4/i.test(r.url())) asked.push(Date.now()); });
+  try {
+    for (let i = 0; i < 2; i++) workers.push(spawn(launch, [], { stdio: "ignore" }));
+    await waitFor("three workers to hold their locks", async () => sql(`SELECT count(*) FROM transcode_nodes n WHERE slots > 0 AND locked AND EXISTS (SELECT 1 FROM pg_locks l
+      WHERE l.locktype = 'advisory' AND l.classid = 27219 AND l.objsubid = 2 AND l.objid::bigint = hashtext(n.id)::bigint & 4294967295)`) === "3", 60000);
+    const firstJob = Number(sql("SELECT COALESCE(max(id), 0) FROM transcode_jobs"));
+    await play(page, "Transcode", "Left Behind Film");
+    const row = (where) => sql(`SELECT id || ' ' || start_segment || ' ' || next_segment || ' ' || worker FROM transcode_jobs WHERE ${where} ORDER BY id DESC LIMIT 1`).split(" ");
+    const helperAt = await waitFor("a helper making segments", async () => {
+      const found = row(`id > ${firstJob} AND helper AND state = 'running' AND next_segment > start_segment`);
+      return found.length === 4 ? found.map(Number).concat(found[3]) : null;
+    }, 90000);
+    let left = { id: helperAt[0], next: helperAt[2] };
+    const total = await duration(page);
+    // Beyond the helper and the 20 s lead, and with a chunk of 16 s ahead of it before the film's end.
+    let to = left.next * 4 + 110;
+    if (to > total - 30) throw new Error(`the film is ${total} s, too short to seek to ${to} s beyond a helper at segment ${left.next}`);
+    for (const [label, target] of [["forward beyond the helper and its lead", to], ["back to a place nothing was made", left.next * 4 + 55]]) {
+      const before = Number(sql("SELECT COALESCE(max(id), 0) FROM transcode_jobs"));
+      const marks = asked.length;
+      const at = Date.now();
+      await page.evaluate((t) => { document.querySelector("video").currentTime = t; }, target);
+      const first = await waitFor("the player's first segment request after the seek", async () => (asked.length > marks ? asked[marks] : null), 30000);
+      const state = () => sql(`SELECT state FROM transcode_jobs WHERE id = ${left.id}`);
+      await waitFor(`the helper left behind (job ${left.id}) to be over by 5 s after the first segment request, after a seek ${label}`, async () => {
+        if (Date.now() > first + 5000) throw new Error(`job ${left.id} is still ${state()} 5 s after the seek ${label}; ffmpeg: ${ffmpegRuns().map((r) => r.line).join(" | ")}`);
+        return state() !== "running" && !ffmpegRuns().some((r) => r.startNumber === Number(helperAt[1]));
+      }, 15000);
+      if (state() !== "cancelled") throw new Error(`the helper left behind ended as ${state()}, want cancelled`);
+      const seg = Math.floor(target / 4);
+      const ahead = await waitFor(`a helper for a chunk ahead of segment ${seg} on another worker than the new job's, within 10 s of the first segment request`, async () => {
+        if (Date.now() > first + 10000) throw new Error(`no helper for a chunk ahead of segment ${seg} 10 s after the seek ${label}: ${sql(`SELECT string_agg(id || ' ' || helper || ' ' || start_segment || ' ' || state || ' ' || COALESCE(worker, ''), '; ') FROM transcode_jobs WHERE id > ${before}`)}`);
+        const own = row(`id > ${before} AND NOT helper AND state = 'running'`);
+        const help = row(`id > ${before} AND helper AND state = 'running' AND start_segment > ${seg}`);
+        return own.length === 4 && help.length === 4 && own[3] !== help[3] ? help : null;
+      }, 15000);
+      console.log(`      seek ${label}: the helper left behind was over ${Math.max(0, Date.now() - first)} ms after the first segment request at the latest, and a helper at segment ${ahead[1]} ran beside the new job (${Date.now() - at} ms after the seek)`);
+      left = { id: ahead[0], next: Number(ahead[2]) };
+      helperAt[1] = ahead[1];
+      if (await page.getByText("Playback Error").count()) throw new Error(`a Playback Error dialog after the seek ${label}`);
+    }
+    noErrors(seen);
+    await leave(page);
+    await waitFor("every ffmpeg to exit after Stopped", async () => ffmpegRuns().length === 0, 30000);
+  } finally {
+    for (const w of workers) w.kill("SIGKILL");
+    rmSync(rate, { force: true });
+  }
+});
+
 // These stop the worker or need it gone, so they are marked and run last, on the
 // last shard (test/e2e/shard.mjs). A viewer whose transcode can't start must
 // be told, not left to jellyfin-web's retries, which never end on their own.
