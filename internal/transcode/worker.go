@@ -366,7 +366,7 @@ func (w *Worker) failUndecodable(ctx context.Context, id int64, cause error) {
 // run runs one job and records how it ended. A job someone else already
 // cancelled or replaced keeps that state.
 func (w *Worker) run(ctx context.Context, job claimed) {
-	log := w.Log.With("job", job.ID, "spec", job.Hash, "item", job.Spec.Item, "start", job.Start)
+	log := w.Log.With("job", job.ID, "spec", job.Hash, "item", job.Spec.Item, "source", job.Spec.Source, "start", job.Start)
 	log.Info("transcode started", "copy", job.Spec.Copy)
 	// A helper cancelled for a new viewer (preemptHelper) renews at once, so it
 	// gives its cores back now rather than at its next heartbeat. The first

@@ -130,6 +130,11 @@ done
 for to in "Observe Film (2160)" "Recover Pair Film (2152)"; do
   link "$t/Zeta Film (2023)/Zeta Film (2023).mkv" "$t/$to/$to.mkv"
 done
+# JS-152: copies of the interlaced film that the scenarios cut short once the scanner has read them, two to seek into the cut
+# and one to resume at it. They are copies and not links because the cut rewrites the file.
+for to in "Seek Broken Film (2181)" "Resume Broken Film (2182)" "Seek Broken Film Two (2184)"; do
+  mkdir -p "$work/media/$t/$to" && cp "$work/media/$t/Zeta Interlaced (2050)/Zeta Interlaced (2050).mkv" "$work/media/$t/$to/$to.mkv" || exit 1
+done
 # Zeta's keyframes are every 2 s, so its copy is cut into the same 4 s segments as a re-encode and a build that mistakes one
 # layout for the other would pass: the two films that watch the viewer's place have a keyframe every 5 to 7 s (at 0, 5, 11, 16,
 # 23, 29, 36, 41 s and so on), Zeta's tracks otherwise, so that the layout of the copy and the grid of the re-encode disagree.

@@ -1178,6 +1178,123 @@ await scenario("a transcode that fails: the viewer gets the dialog, and the clie
   if (seen.hls.some((r) => r.status === 200 && /\/hls1\/main\/\d+\.mp4$/i.test(r.path))) throw new Error("a broken file produced a segment");
 });
 
+// ---- A seek anywhere into a re-encode gets its segment, whatever the film's audio (JS-152) ----
+// Seek Dts Film is 30 minutes 10 seconds, its video interlaced (so re-encoded) and its audio DTS-HD MA 7.1 (the probe says so:
+// test/fixtures/e2e.sh), which Chrome can't play, so the sound is re-encoded too. It is played from the start and then sought past
+// half, beyond what the job that plays it has made or will reach in its lead.
+await scenario("a seek past half of a re-encoded DTS-HD MA film of 30 minutes: no error, the picture and the sound play on", async ({ page, seen }) => {
+  const media = process.env.E2E_MEDIA;
+  if (!media) throw new Error("E2E_MEDIA is the transcode library directory");
+  const file = `${media}/Seek Dts Film (2180)/Seek Dts Film (2180).mkv`;
+  const probe = execFileSync("ffprobe", ["-v", "error", "-select_streams", "a:0", "-show_entries", "stream=codec_name,profile,channels,duration", "-of", "csv=p=0", file]).toString().trim();
+  if (!/^dts,DTS-HD MA,8,/.test(probe)) throw new Error(`the film's audio is not DTS-HD MA 7.1: ${probe}`);
+  const length = Number(execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", file]).toString());
+  if (length < 30 * 60) throw new Error(`the film is ${length} s long, under 30 minutes`);
+  await play(page, "Transcode", "Seek Dts Film");
+  const source = seen.infos.at(-1).source;
+  if (source.SupportsDirectPlay !== false || !source.TranscodingUrl || /VideoCodec=copy/.test(source.TranscodingUrl)) throw new Error(`the film should be re-encoded: ${JSON.stringify(source).slice(0, 300)}`);
+  await advances(page);
+  noErrors(seen);
+  const total = await duration(page);
+  const target = Math.round(total * 0.6);
+  const answered = seen.answers.length;
+  await page.evaluate((t) => { document.querySelector("video").currentTime = t; }, target);
+  // The sound is decoded at the seek point: Chrome counts the bytes of audio it has decoded.
+  await waitFor("the picture past the seek point by more than a segment", async () => (await time(page)) > target + 4.5, 90000).catch(async () => {
+    throw new Error(`the picture is at ${await time(page)} s, after a seek to ${target} s; the viewer's requests: ${JSON.stringify(seen.answers.slice(answered).filter((r) => /hls1/.test(r.path)).map((r) => [r.status, r.path.split("/").pop()]).slice(0, 8))}`);
+  });
+  const decoded = () => page.evaluate(() => document.querySelector("video").webkitAudioDecodedByteCount);
+  const before = await decoded();
+  await advances(page, 3);
+  if (!(await decoded() > before)) throw new Error(`no sound was decoded after the seek to ${target} s (${before} bytes)`);
+  const bad = seen.answers.slice(answered).filter((r) => r.status >= 400 && /\/hls1\//i.test(r.path));
+  if (bad.length) throw new Error(`segment requests answered ${JSON.stringify(bad.slice(0, 3).map((r) => [r.status, r.path]))}`);
+  if (await page.getByText("Playback Error").count()) throw new Error("the viewer got a Playback Error dialog");
+  noErrors(seen);
+  await leave(page);
+});
+
+// A segment that truly cannot be made: the film is cut short once the scanner has read it, as the film's own failure, and what the
+// player does with the answer depends on whether playback has begun (compat/captures/segment-errors-12.4.md: it freezes, with no
+// dialog, and asks for nothing more). The viewer is to get the dialog in both cases, and the client to stop asking.
+const cutFilm = (title, to) => {
+  const media = process.env.E2E_MEDIA;
+  if (!media) throw new Error("E2E_MEDIA is the transcode library directory");
+  const file = `${media}/${title}/${title}.mkv`;
+  const data = readFileSync(file);
+  writeFileSync(file, data.subarray(0, Math.floor(data.length * to)));
+};
+const hlsAsked = (seen) => seen.requests.filter((r) => /\/hls1\//i.test(r.url)).length;
+
+// D-040 (lead's correction of the implementer's dispute): jellyfin-web 12.4 raises no dialog for a segment that fails after
+// playback has begun (compat/captures/segment-errors-12.4.json; DOMAINS 37). This pins what it does instead, and fails if any of
+// it changes, a dialog included, so a client or server change that reaches the dialog is noticed and the criterion tightened.
+await scenario("a seek after playback has begun into a segment that cannot be made: one 500, nothing more asked, no new job, the picture stops with no dialog (D-040)", async ({ page, seen }) => {
+  await play(page, "Transcode", "Seek Broken Film");
+  await advances(page);
+  cutFilm("Seek Broken Film (2181)", 0.55); // The scanner has the whole film's length; the file now ends 99 s in.
+  const total = await duration(page);
+  const answered = seen.hls.length;
+  await page.evaluate((t) => { document.querySelector("video").currentTime = t; }, total * 0.8);
+  await waitFor("a segment of the seek answered with a failure", async () => seen.hls.slice(answered).some((r) => r.status >= 400), 60000);
+  const failed = seen.hls.slice(answered).filter((r) => r.status >= 400);
+  if (failed.some((r) => r.status !== 500)) throw new Error(`answered ${JSON.stringify(failed.map((r) => r.status))}, want the failure (500)`);
+  const infos = seen.infos.length;
+  const jobs = Number(sql("SELECT count(*) FROM transcode_jobs"));
+  const asked = hlsAsked(seen);
+  const at = await time(page);
+  await new Promise((resolve) => setTimeout(resolve, 30000)); // A hang bound: the 30 seconds after the 500 that D-040 names.
+  const again = seen.hls.slice(answered).filter((r) => r.path === failed[0].path).length;
+  if (again !== 1) throw new Error(`the failed segment was asked for ${again} times, want once`);
+  if (hlsAsked(seen) !== asked) throw new Error(`the player asked for ${hlsAsked(seen) - asked} more segments after the 500`);
+  if (seen.infos.length !== infos) throw new Error(`PlaybackInfo was asked ${seen.infos.length - infos} more times after the 500`);
+  const jobsAfter = Number(sql("SELECT count(*) FROM transcode_jobs"));
+  if (jobsAfter !== jobs) throw new Error(`${jobsAfter - jobs} jobs started in the 30 s after the 500`);
+  if ((await time(page)) > at + 1) throw new Error(`the picture moved from ${at} s to ${await time(page)} s`);
+  if (await page.getByText("Playback Error").count()) throw new Error("a dialog appeared: jellyfin-web now reaches it after playback has begun, so D-040's criterion can be tightened");
+});
+
+// What the server can do there whatever the client shows: the answer is the failure (500) and the client stops asking once it gives up.
+await scenario("a seek after playback has begun into a segment that cannot be made: answered 500 and the player stops asking", async ({ page, seen }) => {
+  await play(page, "Transcode", "Seek Broken Film Two");
+  await advances(page);
+  cutFilm("Seek Broken Film Two (2184)", 0.55);
+  const total = await duration(page);
+  const answered = seen.hls.length;
+  await page.evaluate((t) => { document.querySelector("video").currentTime = t; }, total * 0.8);
+  await waitFor("a segment of the seek answered with a failure", async () => seen.hls.slice(answered).some((r) => r.status >= 400), 60000);
+  const other = seen.hls.slice(answered).filter((r) => r.status >= 400 && r.status !== 500);
+  if (other.length) throw new Error(`a segment that cannot be made was answered ${JSON.stringify(other.map((r) => [r.status, r.path]))}, not the failure (500)`);
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+  const asked = hlsAsked(seen);
+  await new Promise((resolve) => setTimeout(resolve, 15000));
+  if (hlsAsked(seen) !== asked) throw new Error(`the player asked for ${hlsAsked(seen) - asked} more segments after it gave up`);
+});
+
+await scenario("a play that resumes at a segment that cannot be made: the Playback Error dialog, and the client stops asking", async ({ page, seen }) => {
+  await page.goto(`${base}/web/`);
+  await page.waitForSelector(".card", { timeout: 30000 });
+  await page.locator(".card:visible", { hasText: "Transcode" }).first().click();
+  await page.locator(".cardText a:visible", { hasText: "Resume Broken Film" }).first().click();
+  await page.locator(".btnPlay:visible").first().waitFor();
+  const id = new URLSearchParams(page.url().split("?")[1]).get("id");
+  await page.evaluate(async ([id, ticks]) => {
+    const client = window.ApiClient;
+    await fetch(`${client.serverAddress()}/Sessions/Playing/Stopped`, {
+      method: "POST", headers: { Authorization: `MediaBrowser Token="${client.accessToken()}"`, "Content-Type": "application/json" },
+      body: JSON.stringify({ ItemId: id, PositionTicks: ticks }),
+    });
+  }, [id, 144 * 10_000_000]);
+  cutFilm("Resume Broken Film (2182)", 0.55);
+  await page.reload();
+  await page.locator(".btnPlay[data-action=resume]:visible").first().click();
+  await page.getByText("Playback Error").first().waitFor({ timeout: 60000 });
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+  const asked = [seen.infos.length, hlsAsked(seen)];
+  await new Promise((resolve) => setTimeout(resolve, 12000));
+  if (seen.infos.length !== asked[0] || hlsAsked(seen) !== asked[1]) throw new Error("the client kept asking after the dialog");
+});
+
 // A worker whose transcodeStore differs from the replicas': refused, with the
 // cause in the log. The row is a worker that stays alive.
 await scenario("a worker with another transcodeStore: the dialog, and the log names the cause", async ({ page, seen }) => {

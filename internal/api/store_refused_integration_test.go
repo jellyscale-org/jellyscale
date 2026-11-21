@@ -153,9 +153,10 @@ func TestARefusedPutOfTheTranscodeStoreIsA500AndARefusalThatNameTheStore(t *test
 	if reason := scalar[string](t, e.pool, "SELECT error FROM transcode_jobs"); !strings.Contains(reason, refusedStoreURI) {
 		t.Errorf("transcode_jobs.error is %q, want it to hold %s", reason, refusedStoreURI)
 	}
-	// The waiting request went to replica 1, so its line is in either log, as the refusal's below.
-	if line := lineWith(otherLog.String()+replicaLog.String(), "transcode failed"); !strings.Contains(line, refusedStoreURI) {
-		t.Errorf("the log line of the failed request %q does not hold %s:\n%s", line, refusedStoreURI, otherLog.String()+replicaLog.String())
+	// The failure is logged once per job, by the worker that ran it, with the item, the source and the reason (JS-152,
+	// criterion 4); a request that waited on it logs no line of its own. That line names the refused store.
+	if line := lineWith(workerLog.String(), "transcode failed"); !strings.Contains(line, refusedStoreURI) {
+		t.Errorf("the worker's line for the failed job %q does not hold %s:\n%s", line, refusedStoreURI, workerLog.String())
 	}
 
 	// Within the failure memory: 500, and no job is started.

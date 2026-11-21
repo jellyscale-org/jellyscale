@@ -6,7 +6,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 {
-  sha256sum *.sh pgs/*.go vobsub/*.go dovi/*.go ../../internal/testenv/*.go
+  sha256sum *.sh pgs/*.go vobsub/*.go dovi/*.go dtshd/*.dts ../../internal/testenv/*.go
   sha256sum "$(fc-match -f '%{file}' serif)"
   ffmpeg -version 2>&1 | sed -n 1p
 } | sha256sum | cut -d' ' -f1
