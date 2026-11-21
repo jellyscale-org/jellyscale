@@ -87,3 +87,18 @@ stream and the rest another with other parameters (baseline and CAVLC, then high
   (internal/api/recovery_integration_test.go) therefore requires the init the player ends up holding to be of the master
   playlist's codec; for an HEVC or AV1 copy that means the fallback encodes HEVC or AV1, not x264, and this is the
   lead's to confirm (DOMAINS invariant 45 says nothing of the codec of a re-encode that stands in for a copy).
+
+## A seek after playback has begun into a segment the server cannot make (JS-152, 2026-11-20: observed, jellyscale's own answer)
+
+Observed with the e2e scenario "a seek after playback has begun into a segment that cannot be made" (`test/e2e/transcode.mjs`):
+a re-encoded film (interlaced, 180 s) is played from the start in jellyfin-web 12.4, its file is cut at 55 % once the scanner has
+read it, and the player seeks to 80 %. The job for the seek fails ("no video frame at 144.000s") and the segment is answered 500.
+The player's console says `HLS Error: Type: networkError Details: fragLoadError Fatal: false` and then `hls.js response error code: 500`;
+there is no `[playbackmanager] onPlaybackError` line, no dialog, PlaybackInfo is asked once (before the play), 6 segment requests
+are made in all, and the picture is at 0 s with the video not seeking. Same as the table above, for a re-encode and a real seek.
+A reading of the 12.4 web client (`web-dist/main.jellyfin.bundle.js`, the hls.js error handler `EK`, which `htmlVideoPlayer`'s
+`setSrcWithHlsJs` calls as `(0, S.EK)(instance, hls, element, instance.onError, resolve, reject)`): a segment answered 400 or more
+destroys the player and calls `reject` if it still is set, else triggers the player's `error` event. `reject` is never cleared
+once `play()` has resolved, so after playback has begun that call looks like a no-op on a settled promise, which would explain
+the missing `onPlaybackError` line. This is a reading of minified code, not an observation, and the `error` event of the video
+element itself was not traced: whether any answer of the server gives the dialog after playback has begun is unverified.

@@ -233,13 +233,19 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 // audioGrid is the time, in samples, of the first AAC packet a run from the
 // start of the film makes for the audio track: the packets of every run fall
 // at that time plus whole frames of 1024 samples. Only a prefix of the track is
-// encoded, enough for one packet, and the way the run from the start opens it:
+// encoded: two frames, because a track whose decoder loses its first frames (a
+// damaged head, as DTS-HD MA 5.1 can have) makes no packet from one. The first
+// packet is the grid's. The prefix is read the way the run from the start opens it:
 // a seek to 0 trims what comes before 0, which moves the grid of a track that
 // starts a little early.
 func audioGrid(ctx context.Context, input string, spec playback.Spec) (int64, error) {
 	res, err := mediatool.Run(ctx, "ffmpeg", []string{"-nostdin", "-v", "error", "-copyts", "-ss", seconds(0), "-i", input, "-map", "0:" + strconv.Itoa(spec.AudioIndex),
-		"-frames:a", "1", "-c:a", "aac", "-b:a", strconv.FormatInt(spec.AudioBitrate, 10), "-ac", "2", "-ar", strconv.Itoa(audioRate), "-f", "framecrc", "-"}, mediatool.Options{})
+		"-frames:a", "2", "-c:a", "aac", "-b:a", strconv.FormatInt(spec.AudioBitrate, 10), "-ac", "2", "-ar", strconv.Itoa(audioRate), "-f", "framecrc", "-"}, mediatool.Options{})
 	if err != nil {
+		var failed *mediatool.Error
+		if errors.As(err, &failed) && failed.Output != "" {
+			return 0, fmt.Errorf("finding where the audio's packets fall: %w: %s", err, failed.Output)
+		}
 		return 0, fmt.Errorf("finding where the audio's packets fall: %w", err)
 	}
 	for _, line := range strings.Split(string(res.Stdout), "\n") {

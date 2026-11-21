@@ -332,6 +332,22 @@ def libraries_synced_by_the_api_role(repo):
     return {"cmd/jellyscale/main.go": source}
 
 
+def seek_audio_grid_shifted(repo):
+    # The AAC grid of a restart is half a frame off, so a seek's audio packets fall at other times than a run from the start's.
+    # Fails: TestASeekGetsItsSegment_* (JS-152), every re-encoded row.
+    code = read(repo, "internal/transcode/ffmpeg.go")
+    code = sub(code, r"return pts, nil\n", "return pts + 512, nil\n", "audioGrid's return of the first packet's time")
+    return {"internal/transcode/ffmpeg.go": code}
+
+
+def seek_failure_not_remembered(repo):
+    # ensure never finds a remembered failure, so every request after a failed job starts another.
+    # Fails: TestARequestStartsNoJobWhileAFailureIsRememberedHoweverManyAsk (JS-152).
+    code = read(repo, "internal/transcode/jobs.go")
+    code = sub(code, r"(AND ended_at > now\(\) - make_interval\(secs => \$2\) ORDER BY id DESC LIMIT 1`,\n\t\t\t\thash, failureMemory)", lambda m: m.group(1).replace("AND ended_at >", "AND false AND ended_at >"), "ensure's look for a remembered failure")
+    return {"internal/transcode/jobs.go": code}
+
+
 MUTANTS = {"empty-access": empty_access, "other-word-access": other_word_access,
            "videos-file-anyone": videos_file_anyone, "any-token": any_token,
            "token-memory": token_memory, "snapshot-first": snapshot_first,
@@ -354,7 +370,9 @@ MUTANTS = {"empty-access": empty_access, "other-word-access": other_word_access,
            "keeper-connect-bound": keeper_connect_bound,
            "keeper-renewal-two-round-trips": keeper_renewal_two_round_trips,
            "libraries-synced-by-every-role": libraries_synced_by_every_role,
-           "libraries-synced-by-the-api-role": libraries_synced_by_the_api_role}
+           "libraries-synced-by-the-api-role": libraries_synced_by_the_api_role,
+           "seek-audio-grid-shifted": seek_audio_grid_shifted,
+           "seek-failure-not-remembered": seek_failure_not_remembered}
 
 if len(sys.argv) != 4 or sys.argv[1] not in MUTANTS:
     sys.exit("usage: mutant.py <%s> <repo> <dir>" % "|".join(MUTANTS))

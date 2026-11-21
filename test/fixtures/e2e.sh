@@ -178,6 +178,22 @@ for codec in opus flac; do
     -map 0:v -map 1:a -vf interlace=scan=tff -c:v libx264 -preset ultrafast -flags +ilme+ildct -x264-params tff=1 -g 50 \
     -c:a "$encoder" -ac 2 "$file" || exit 1
 done
+# JS-152: a film of more than 30 minutes (30 minutes 10 seconds) whose video is re-encoded (interlaced) and whose audio is DTS-HD MA 7.1,
+# which Chrome can't play and no ffmpeg encoder makes: the stream is ffmpeg's own test sample (FATE's dts/master_audio_7.1_24bit.dts,
+# 1172 packets, 12.5 seconds), repeated by bytes. It is not played over with -stream_loop: Ubuntu's ffmpeg 6.1 writes a packet with
+# a repeated timestamp at every join, which no film has and which puts a seek's audio off a run from the start's whichever ffmpeg
+# transcodes. The scenario seeks it past half, beyond what the running job has made.
+dtshd="$work/media/transcode/Seek Dts Film (2180)/Seek Dts Film (2180).mkv"
+if [[ ! -f $dtshd ]]; then
+  mkdir -p "$(dirname "$dtshd")"
+  long="$work/dtshd-long.dts"
+  for _ in $(seq 146); do cat "$repo/test/fixtures/dtshd/master_audio_7.1_24bit.dts"; done > "$long"
+  ffmpeg -nostdin -v error -y \
+    -f lavfi -i "testsrc2=size=320x180:rate=25:duration=1810" -i "$long" \
+    -map 0:v -map 1:a -t 1810 -vf interlace=scan=tff -c:v libx264 -preset ultrafast -crf 35 -flags +ilme+ildct -x264-params tff=1 -g 50 \
+    -c:a copy -metadata:s:a:0 language=eng "$dtshd" || exit 1
+  rm -f "$long"
+fi
 # Films with chapters (Opening at 0 s, Middle Part at 20 s, and one untitled at
 # 45.5 s, which Jellyfin names "Chapter 3"). Chrome plays the first two as they are.
 # The other two are transcoded, the audio of one needs it (AC3, so its video is

@@ -62,7 +62,7 @@ func TestTranscodeToolRunsGetTheArgumentsStdinAndDirectoryTheyAlwaysDid(t *testi
 
 func TestTranscodeToolRunsFailWithTheTextTheyAlwaysDid(t *testing.T) {
 	want := map[string][3]string{ // exit1, signal, context
-		"audio grid":         {"finding where the audio's packets fall: exit status 1", "finding where the audio's packets fall: signal: killed", "finding where the audio's packets fall: signal: killed"},
+		"audio grid":         {"finding where the audio's packets fall: exit status 1: boom: the file is not a film", "finding where the audio's packets fall: signal: killed", "finding where the audio's packets fall: signal: killed"},
 		"ffprobe":            {"ffprobe: exit status 1: boom: the file is not a film", "ffprobe: signal: killed: ", "ffprobe: signal: killed: "},
 		"ffprobe with stdin": {"ffprobe: exit status 1: boom: the file is not a film", "ffprobe: signal: killed: ", "ffprobe: signal: killed: "},
 	}

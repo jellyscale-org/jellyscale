@@ -277,6 +277,7 @@ type scannedFilm struct {
 	track         int    // The stream burnt in.
 	served        int64  // What the meter served in all by the last seek's first segment.
 	fingerprint   string // Of the track, if it is a file beside the film.
+	shortLoop     bool   // The film's sound is a stream of less than a second played over again (the seek kit): see checkSplice.
 }
 
 // The size of every film the kit writes, which its specs ask for: a larger one
