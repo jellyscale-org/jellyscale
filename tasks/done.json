@@ -1954,6 +1954,29 @@
       "passes": true,
       "dependsOn": [],
       "priority": 13
+    },
+    {
+      "id": "JS-153",
+      "phase": "OPS",
+      "title": "Every playback decision is logged and counted with its reasons",
+      "description": "The owner (2026-11-20): 'Can we start logging why a request is being re-encoded?' On the dogfood the same day, the cause of three re-encodes had to be inferred from the job rows; an operator could not have. PRODUCT.md: nothing is hidden; they can see how it is being delivered, and every failure is reported with its reason. This is the decision's own line and counter; JS-094 carries the playback id to every later line, and JS-021 puts the decision in a trace.",
+      "acceptanceCriteria": [
+        "Each PlaybackInfo answer logs one line per media source at Info saying how it will play (direct play, copy, re-encode, or refused) and every reason, in words an operator reads without the code. jellyscale has no separate direct stream and the line does not invent one",
+        "The reasons use one vocabulary, shared by the log, the metric and the TranscodeReasons the viewer's app shows (Jellyfin's names where Jellyfin has one, jellyscale's own where it has none), listed in docs/running.md. They cover at least: the client's profile lacks the video codec, the range (HDR10, HDR10+, Dolby Vision and its profile), the container, or the audio codec or channels; the file's bitrate is over the client's or the viewer's cap; the viewer picked an audio track other than the first; an image subtitle must be burned in; the film has no usable keyframe index to copy from; and for a refusal, which of no worker, no worker with the cores free, a transcode store mismatch, or a remembered failure",
+        "The line says what the viewer will get when it is not the file: output codec, height and range, whether it is tone mapped, and whether the 1080-line ceiling lowered it (source height beside output height)",
+        "The line names the client and its version, the device name and id, the play session id (so JS-094's lines join it), the item id and the media source id, and the account as an id as other lines log it. It carries no film title, no file name and no path. Existing lines that name a source are left as they are",
+        "The line records the audio and subtitle index the request asked for (or that it asked for none) and what each resolved to: codec, language, and text or image for a subtitle; a default the server chose is marked as the server's",
+        "A decision is counted on the existing /metrics endpoint: jellyscale_playbackinfo_decisions_total{method} keeps its meaning and gains refused sources as a method or stays beside jellyscale_playbackinfo_refusals_total, which gains a reason label; a second counter by method and reason counts each reason of a decision once, so its sum over reasons may exceed the decisions and docs/running.md says so. No label carries an account, device, item or client version",
+        "With real processes: a direct play, a copy, a re-encode for each reason above, a burn-in and each refusal produce the line with that reason and move the counter read from /metrics; a request with two reasons shows both",
+        "docs/running.md shows how to read the line and the counters: finding why one viewer's film was re-encoded from its play session id or item id, how to get from an item id to the film, and a query for re-encodes by reason",
+        "No viewer-visible change"
+      ],
+      "priority": 16,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "owner request 2026-11-20; dogfood report 2026-11-20 (finding 4); D-038",
+      "notes": "Spec written from a main that holds JS-147 (it changes which audio index a request carries). JS-075's records and JS-148's 14-day count read this line and counter. JS-054's 'decision is logged and metered with its reason' adds the encoder family to this line, not a second one. Every metric a task adds is served on /metrics (owner, 2026-11-20)."
     }
   ]
 }
