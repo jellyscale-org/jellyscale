@@ -96,7 +96,7 @@
         "Exported over OTLP to any backend, off by default; the dogfood runs a backend and the docs show reading a stall from it",
         "Checked with real processes: a test collector receives a playback's trace from three processes, with a stall and a failover in it"
       ],
-      "priority": 76,
+      "priority": 78,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -117,7 +117,7 @@
         "Metrics beyond the transcode path: HTTP requests by role, route and status with latency, store operations and bytes by store, scan durations and errors",
         "Every figure the docs tell an operator to watch is a series on /metrics, and docs/running.md's table lists every series the endpoint serves, by a check (owner, 2026-11-20; D-038)"
       ],
-      "priority": 75,
+      "priority": 77,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -134,7 +134,7 @@
         "jellyfin-web's remote control drives another session",
         "POST /Sessions/Capabilities and /Sessions/Capabilities/Full are accepted and stored for the session, so other clients see it as a remote-control target (#106)"
       ],
-      "priority": 58,
+      "priority": 60,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -161,7 +161,7 @@
         "A revoked device or disabled user's running stream stops: forced, a direct play of the whole file read slowly when the device is revoked or the user disabled closes within 15 seconds having sent less than the file",
         "LoginAttemptsBeforeLockout stays -1 and a set value is not honoured, as compat/differences.yaml says (D-020); a new or changed password is refused if it is among the commonly guessed ones"
       ],
-      "priority": 39,
+      "priority": 41,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -180,7 +180,7 @@
         "No plain token in the database",
         "API keys created and revoked through jellyfin-web"
       ],
-      "priority": 43,
+      "priority": 45,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -197,7 +197,7 @@
         "Last use time and address recorded",
         "A read-only key is shown against the routes it may call and those it may not: each allowed route answers, each other route is refused"
       ],
-      "priority": 59,
+      "priority": 61,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -218,7 +218,7 @@
         "Forced: a library is taken from a viewer mid-film; their next segment and next byte range, through another replica, answer 404 (the outage exception is DOMAINS 37's)",
         "Pictures by id stay open to whoever holds the id; watch state for hidden items stays stored and is not shown"
       ],
-      "priority": 40,
+      "priority": 42,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -238,7 +238,7 @@
         "Where Quick Connect is turned off, /QuickConnect/Enabled answers false so clients fall back to a password (#104)",
         "A device approved by code from a signed-in device signs in while the account's name is refused to strangers (D-020); the code routes are bounded per address so the code cannot be guessed"
       ],
-      "priority": 41,
+      "priority": 43,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -253,7 +253,7 @@
       "acceptanceCriteria": [
         "Answer shape as Jellyfin 12.4"
       ],
-      "priority": 60,
+      "priority": 62,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -269,7 +269,7 @@
         "Sign in with an OIDC provider in jellyfin-web",
         "OIDC users reach TV apps through Quick Connect"
       ],
-      "priority": 61,
+      "priority": 63,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -289,7 +289,7 @@
         "Whatever replaces the token in a URL never ends a film: a film longer than the replacement's lifetime, a pause longer than it, a seek, a move to another stream replica and a Postgres outage served from the snapshot each go on playing with no action by the viewer, in jellyfin-web (e2e) and with a client that sends its token in a header",
         "Before building: a trade-off brief to the product owner on whether TranscodingUrl and the subtitle and attachment DeliveryUrls lose the account token too (#222), against DOMAINS 17 ('TranscodingUrl stays Jellyfin-shaped and unsigned'), the Kodi criterion above and D-005 (a PlaybackInfo-based grant was set aside); until it is answered this task covers the URLs inside playlists only. A replacement is never logged and is redacted wherever tokens are, and a media request with neither still answers 401 (D-026)"
       ],
-      "priority": 42,
+      "priority": 44,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -311,7 +311,7 @@
         "In real jellyfin-web (e2e): with mode Always and language English a film starts with its English subtitle on screen; with None it starts with none",
         "The pull request lists, under Changed guarantees, which modes now start an image subtitle by default and so a re-encode with burn-in, and docs/status.md's 4K burn-in gap names it (D-038)"
       ],
-      "priority": 24,
+      "priority": 25,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -329,7 +329,7 @@
       "acceptanceCriteria": [
         "Revoked device's token stops working"
       ],
-      "priority": 62,
+      "priority": 64,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -344,7 +344,7 @@
       "acceptanceCriteria": [
         "jellyfin-web's dashboard lists entries"
       ],
-      "priority": 63,
+      "priority": 65,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -359,7 +359,7 @@
       "acceptanceCriteria": [
         "jellyfin-web shows and changes avatars"
       ],
-      "priority": 64,
+      "priority": 66,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -375,7 +375,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 44,
+      "priority": 46,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -391,7 +391,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 65,
+      "priority": 67,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -409,7 +409,7 @@
         "GET /Shows/NextUp answers in Jellyfin 12.4's shape for the signed-in user, honours nextUpDateCutoff, and brings back a series the viewer had caught up on once a new episode is added (#101)",
         "GET /Items/Filters2 answers with the filters the library can match where this task's capture shows jellyfin-web or an app docs/status.md lists as supported calling it; otherwise it stays as it is (#108, D-032)"
       ],
-      "priority": 45,
+      "priority": 47,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -425,7 +425,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 66,
+      "priority": 68,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -441,7 +441,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 67,
+      "priority": 69,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -457,7 +457,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 69,
+      "priority": 71,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -473,7 +473,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 70,
+      "priority": 72,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -490,7 +490,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 71,
+      "priority": 73,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -506,7 +506,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 72,
+      "priority": 74,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -517,27 +517,28 @@
       "id": "JS-054",
       "phase": "P5",
       "title": "Use every GPU and CPU the cluster has",
-      "description": "A worker uses whatever encoder hardware its node exposes (NVIDIA NVENC, Intel QSV or VAAPI, AMD VAAPI) and falls back to the CPU, so a cluster with GPUs uses them, as Jellyfin does on the dogfood's Intel iGPUs. fMP4 can't splice across encoder families (spikes/seam: x264 spliced with NVENC lost half the frames), so each stream is given the best family with room when it starts, and its helpers (JS-024) and failover stay in that family. A GPU can also serve a CPU-encoded stream by decoding for it, if its frames equal software decoding, so every node still helps every stream.",
+      "description": "What JS-170 (the first slice: Intel VAAPI/QSV) leaves, under D-047's rule: NVIDIA NVENC and AMD VAAPI workers, hardware decoding for processor-encoded streams, and outputs above 1080 lines. fMP4 can't splice across encoder families (spikes/seam: x264 spliced with NVENC lost half the frames), so each stream keeps one family, and its helpers (JS-024) and failover stay in it. D-047.",
       "acceptanceCriteria": [
-        "Design reviewed before building: how a family is chosen for a stream, helpers and failover within a family, and what a viewer sees when the last worker of their stream's family is lost mid-film (playing on is the goal; a restart needs the product owner's decision); and whether a copy and a re-encode should share one slot pool (today a near-free copy holds a slot for the whole film like a multi-core re-encode); and whether a GPU family re-encodes above 1080 lines, from JS-148's figures (D-021)",
-        "A worker detects at start which encoders its node can run (a short test encode per family, not the ffmpeg build's list) and advertises them; a node with no GPU runs exactly as before",
-        "A new stream gets a GPU family when a worker of that family has a free slot, and the CPU otherwise; the encoder family stays in the spec hash and the decision is logged and metered with its reason",
-        "Helpers and failover of a GPU stream stay in its family; a seek, a restart and a helper's chunk splice cleanly on QSV/VAAPI and NVENC as the seam spike showed for one family",
-        "Hardware decoding for CPU-encoded streams only where its frames are measured equal to software decoding (per codec and family); otherwise software decoding",
-        "Tested on real hardware in its own tier chosen explicitly (never skipped): Intel QSV/VAAPI on the dogfood cluster's iGPUs and NVENC on a developer machine; jellyfin-web plays, seeks and recovers from a killed GPU worker",
-        "Operators see which encoder family and worker serve each stream (Sessions, metrics, JS-021 traces)",
-        "An optional GPU worker pool requests gpu.intel.com/i915 or nvidia.com/gpu through the vendor's device plugin ; a cluster without one runs CPU workers only; documented in docs/running.md"
+        "Design reviewed before building: how a stream's family is chosen among several hardware families and the processor; what a viewer sees when the last worker of their stream's family is lost mid-film (as JS-170 settled it, or briefed); whether a copy and a re-encode share one slot pool; and whether a GPU family re-encodes above 1080 lines, from JS-148's figures (D-021).",
+        "NVIDIA NVENC and AMD VAAPI workers detect by a bounded real test of each stage at start, with nothing configured, and choose per job by D-047's rule (the same picture within its bound, 1.2 times real time measured, within twice x264's bytes, then the least processor; the processor otherwise, logged and counted with its reason). A node with no GPU runs exactly as before.",
+        "A new stream gets a hardware family when a worker of it has room and the processor otherwise; the family stays in the spec hash; helpers and failover stay in the family; a seek, a restart and a helper's chunk splice in jellyfin-web on each family.",
+        "Hardware decoding for processor-encoded streams only where its frames are measured equal to software decoding, per codec and family; otherwise software decoding.",
+        "The tone map's curve is the one jellyscale sets in every family; no driver tone map (D-047).",
+        "Tested on real hardware in its own tier, chosen explicitly and never skipped: NVENC and AMD VAAPI on a developer machine; jellyfin-web plays, seeks and recovers from a killed GPU worker.",
+        "Operators see the family and worker of each stream (Sessions, /metrics, JS-021 traces); the overrides are JS-170's three and no more.",
+        "An optional GPU worker pool requests nvidia.com/gpu or the vendor's resource through its device plugin; documented in docs/running.md."
       ],
-      "priority": 73,
+      "priority": 75,
       "status": "todo",
       "passes": false,
       "dependsOn": [
         "JS-024",
         "JS-072",
-        "JS-075"
+        "JS-075",
+        "JS-170"
       ],
-      "source": "PRODUCT.md phase5-library; rewritten 2026-11-08: the product owner wants every GPU and CPU in the cluster used where possible, priority kept in P5",
-      "notes": "The dogfood cluster has an Intel iGPU on each of its three nodes (gpu.intel.com/i915: 1 allocatable) and the user's Jellyfin requests one; the developer machine has an RTX 4070 Ti and an AMD iGPU. GPU tone mapping (libplacebo or vendor filters) gives frames unlike zscale's, so it splices only within its own family. JS-154: the HD 530 cannot decode HEVC Main 10 or tone map in its video processor; software decode, OpenCL tone map and VAAPI encode reached 1.09x in a quiet pod, at 31 times x264's bytes at the bitrate tried. The UHD 630 nodes are measured by JS-163."
+      "source": "PRODUCT.md phase5-library; rewritten 2026-11-08: the product owner wants every GPU and CPU in the cluster used where possible, priority kept in P5; D-047",
+      "notes": "The dogfood cluster has an Intel iGPU on each of its three nodes (gpu.intel.com/i915: 1 allocatable) and the user's Jellyfin requests one; the developer machine has an RTX 4070 Ti and an AMD iGPU. GPU tone mapping (libplacebo or vendor filters) gives frames unlike zscale's, so it splices only within its own family. JS-154: the HD 530 cannot decode HEVC Main 10 or tone map in its video processor; software decode, OpenCL tone map and VAAPI encode reached 1.09x in a quiet pod, at 31 times x264's bytes at the bitrate tried. The UHD 630 nodes were measured by JS-163 and are JS-170's."
     },
     {
       "id": "JS-055",
@@ -548,7 +549,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 74,
+      "priority": 76,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -573,7 +574,7 @@
         "Workers are their own Deployment, apart from api and stream, and the manifests' check refuses more than one worker or stream replica on a transcode store or library that not every one of them can reach (a ReadWriteOnce volume), naming the key (D-045)",
         "docs/running.md says what every worker must reach (Postgres, each library, the transcode store), and the worker's termination grace matches JS-165's (D-045)"
       ],
-      "priority": 34,
+      "priority": 36,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -591,7 +592,7 @@
         "A rolling upgrade under playback loses no picture",
         "docs/running.md's upgrade section says what an OutputVersion bump costs (every film playing is re-encoded once and its stored segments orphaned), and a bump touches only the specs whose output changed, or the pull request says why it cannot"
       ],
-      "priority": 78,
+      "priority": 80,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -608,7 +609,7 @@
       "acceptanceCriteria": [
         "Restore tested from a backup"
       ],
-      "priority": 79,
+      "priority": 81,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -623,7 +624,7 @@
       "acceptanceCriteria": [
         "Viewers keep their history; users set a password or use OIDC"
       ],
-      "priority": 80,
+      "priority": 82,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -639,7 +640,7 @@
         "200 mixed streams with stated rebuffer ratio and p95s",
         "A stated target for time to first frame on a start and on a seek, held at 200 streams and recorded run over run, so 'play starts in seconds' is measured"
       ],
-      "priority": 81,
+      "priority": 83,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -657,7 +658,7 @@
         "Two viewers on different api replicas stay in sync in jellyfin-web",
         "compat/coverage-12.4.tsv phase7-syncplay routes built (23)"
       ],
-      "priority": 82,
+      "priority": 84,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -677,7 +678,7 @@
         "Replays run in CI and fail on a response a client would reject (status, missing field, wrong shape)",
         "No titles or paths from a real library in the captures (synthetic fixtures only)"
       ],
-      "priority": 56,
+      "priority": 58,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -696,7 +697,7 @@
         "test/differential/run.sh passes with the entries removed",
         "GET /Items/Latest honours groupItems as Jellyfin 12.4 does (default true): new episodes of one series are one entry with Jellyfin's count field, limit counts entries after grouping, groupItems=false keeps today's answer; this entry is matched, not kept as an improvement (#234, D-039)"
       ],
-      "priority": 57,
+      "priority": 59,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -724,7 +725,7 @@
         "For each app played: whether it asked for a Trickplay route, and whether its sign-in screen offered a code (Quick Connect), with what the server answered and what the viewer saw (nothing, a missing preview, an error); an error a viewer sees is brought to the product owner (BL-222), and no route is built in this task",
         "Moonfin on an Android TV device signs in and plays one direct play and one film that transcodes, recorded like the others with the engine that played; if it is not run, docs/status.md says no Android TV app has played; on a film with several subtitle tracks, the subtitle index Moonfin asked for and the track it resolved to are recorded, with its subtitle mode (finding 5, D-038)"
       ],
-      "priority": 27,
+      "priority": 29,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -744,7 +745,7 @@
         "One documented rollout order, the same in docs/running.md and ARCHITECTURE.md, and a test or check that each migration in a release is safe for the previous version's code",
         "With a stream replica of the previous decision version registered and an api replica of the new one, PlaybackInfo offers nothing the old replica would refuse (a real-process test), and docs/running.md no longer requires an order between api and stream"
       ],
-      "priority": 47,
+      "priority": 49,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -762,7 +763,7 @@
         "No library titles in the fixtures",
         "A title that ends in a year-like number keeps it: synthetic table cases 'Harbor Lights 2049 (2017)', 'Harbor.Lights.2049.2017.1080p', 'Harbor Lights 2049' (no year), '2001 Night Garden (1968)', '1888 (2019)' and '2031' give the right title and year, and an existing library's item ids do not change"
       ],
-      "priority": 46,
+      "priority": 48,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -779,7 +780,7 @@
         "A library with background extraction on has every text track extracted after a scan, one read per film; one without it extracts on first pick as today",
         "docs/running.md states the setting and its cost"
       ],
-      "priority": 53,
+      "priority": 55,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -796,7 +797,7 @@
         "A process warns at startup when the cluster's registered processes approach max_connections",
         "A multi-process variant of test/stress.sh measures connections and Postgres load at 50 workers"
       ],
-      "priority": 49,
+      "priority": 51,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -819,7 +820,7 @@
         "The regex-over-prose tests are removed or replaced by tests that compare a constant with the number the doc states; a check that reads a number or table from DOMAINS.md today (the lease table of 25, the window of 37) reads it from where it now lives and still fails when doc and code differ",
         "The pointers change in the same change: CLAUDE.md, the role files in .claude/agents/ (the product owner's read list included) and the build workflow's instructions say every agent reads DOMAINS.md, and a task's agents also read the domain file of each domain the task touches"
       ],
-      "priority": 36,
+      "priority": 38,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -835,7 +836,7 @@
         "PlaybackInfo, the stream requests, the job and the worker's ffmpeg log lines of one playback carry the same id",
         "docs/running.md shows how to follow one playback"
       ],
-      "priority": 50,
+      "priority": 52,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -854,7 +855,7 @@
         "encode becomes a job type with named state: no function in internal/transcode is longer than 120 lines (a structure check), and the unreachable branches the audit found (run(begin), next < begin, the stale-file removal) are gone, with the integration and e2e tiers passing with no check changed",
         "Every job kind observes a store failure only where store.Reader gives up (store.InputWithFailure, JS-088): the chapter-picture, subtitle, fonts and .sup jobs no longer wrap the store below the Reader, so a cut the Reader healed never fails a job or skips a chapter (BL-169)"
       ],
-      "priority": 54,
+      "priority": 56,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -870,7 +871,7 @@
         "A schedule trigger runs every CI job on main once a day, and test/changes.sh treats it as a full run",
         "A failing nightly run opens or updates one issue naming the failed tests"
       ],
-      "priority": 83,
+      "priority": 85,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -887,7 +888,7 @@
         "Branch protection is the ruleset alone; the classic rule is removed",
         "A pull request touching .github/ or test/**/*.sh runs the media tiers as ci:full does, and only the ci:full label restarts a run"
       ],
-      "priority": 84,
+      "priority": 86,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -903,7 +904,7 @@
         "An image with ffmpeg 6.1, Node and Chrome runs test/e2e/run.sh and test/roles.sh locally, to reproduce a merge-queue failure",
         "Its versions match CI's"
       ],
-      "priority": 85,
+      "priority": 87,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -922,7 +923,7 @@
         "A viewer with no history gets a sensible answer (empty or popular in the library), and another account's history never shapes a viewer's suggestions",
         "A viewer in a browser sees their suggestions, each with its reason, with no other app: on a page jellyscale serves (as JS-122's), or where jellyfin-web already shows recommendations if what it asks there is observed on Jellyfin 12.4 first and no Jellyfin route changes behaviour"
       ],
-      "priority": 68,
+      "priority": 70,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -951,7 +952,7 @@
       ],
       "notes": "Owner, 2026-11-15: a page, after the track-language batch. Moved up (D-028): the settings are built and no browser viewer can reach them. 2026-11-17 (JS-121's UX review): PlayDefaultAudioTrack defaults to true, so a viewer who only saves a language keeps hearing a film's flagged track, usually its original; the page says so and offers the switch.",
       "passes": false,
-      "priority": 26,
+      "priority": 28,
       "source": "owner 2026-11-15",
       "status": "todo"
     },
@@ -977,7 +978,7 @@
       ],
       "notes": "Changed answers, to list in the pull request: a request naming another user's id got 200 with the caller's data and now gets 403; the Configuration 404 above. Neither is visible to a viewer using a client, which always sends its own id.Tests make their second user by SQL, as user_configuration_integration_test.go does; no seeding route is added. Jellyfin's rule is RequestHelpers.GetUserId (Jellyfin.Api/Helpers/RequestHelpers.cs:67-81 at v12.4). Owner's decisions (2026-11-16, on Fable 5.2's access model, .results/access-model-fable-2026-11-16.md): pictures by id open to whoever holds the id, by name need a token; per-library access right after JS-033; a revoked or disabled user's running stream stops within 15 s; a viewer sees no other viewer's name; an administrator manages accounts but never browses, plays or reports as another user; a Policy field jellyscale does not enforce is refused when changed (400); 'may download' is honoured; operator keys are never users; no issue is filed on Findroid for now.",
       "passes": false,
-      "priority": 38,
+      "priority": 40,
       "source": "access model",
       "status": "todo"
     },
@@ -997,7 +998,7 @@
         "With real processes: a worker given jobs whose costs add up to its measured capacity (JS-161), at faster and at medium, keeps each at 1.2 times real time or more without a helper",
         "No viewer-visible change while every spec is veryfast: the transcode, seek and helper e2e scenarios pass as before"
       ],
-      "priority": 29,
+      "priority": 31,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1020,7 +1021,7 @@
         "The default change is listed under Changed guarantees: more CPU per viewer (fewer viewers per worker), up to about a second on a start on a full worker, a better picture",
         "A 4K HDR tone mapped re-encode, with and without a burned subtitle, holds real time at the default preset on any worker whose measured capacity admits it (JS-161), or the default does not apply to it; the pull request says, from JS-154's figures, which machines hold it at veryfast and no longer at faster (D-038, D-044)"
       ],
-      "priority": 30,
+      "priority": 32,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1039,7 +1040,7 @@
         "With a store slow enough that a film's copy needs more than an hour, the copy completes and the film's seeks into long cues then cost what any seek does; a store that hangs still frees its background slot within the no-progress bound",
         "docs/running.md and DOMAINS 51 state the new rule; D-002's remembered failure applies only to what the new rule still cannot finish"
       ],
-      "priority": 51,
+      "priority": 53,
       "dependsOn": [
         "JS-089",
         "JS-143"
@@ -1059,7 +1060,7 @@
         "The same answer for text-track extraction, which today also reads the whole film (it decides what JS-091's background extraction would cost)",
         "A recommendation with what each kind of film would then cost, recorded in spikes/; a follow-up task if it works"
       ],
-      "priority": 52,
+      "priority": 54,
       "dependsOn": [
         "JS-089"
       ],
@@ -1077,7 +1078,7 @@
         "The manifests and the chart cannot drift: a test fails when they would deploy different resources (for example, the manifests are the chart rendered with its defaults, checked in)",
         "The chart sizes CNPG's max_connections as JS-056's manifests do, and installing values whose sum exceeds it fails the render"
       ],
-      "priority": 77,
+      "priority": 79,
       "dependsOn": [
         "JS-056"
       ],
@@ -1101,7 +1102,7 @@
         "JS-089"
       ],
       "source": "decision D-002; product-owner plan review 2026-11-19",
-      "priority": 28
+      "priority": 30
     },
     {
       "id": "JS-146",
@@ -1120,7 +1121,7 @@
       "status": "todo",
       "passes": false,
       "dependsOn": [],
-      "priority": 48
+      "priority": 50
     },
     {
       "id": "JS-149",
@@ -1136,7 +1137,7 @@
         "The job's price (Spec.Cost) is at or above its measured CPU",
         "DOMAINS 53, docs/transcoding.md and docs/status.md say the one thing seen; the gap line leaves docs/status.md"
       ],
-      "priority": 37,
+      "priority": 39,
       "source": "product owner, D-021 (2026-11-19)",
       "status": "todo",
       "passes": false,
@@ -1157,7 +1158,7 @@
         "The figures go to the product owner as a brief with keeping the source's height and range priced per viewer, on CPU and on a GPU family; its decision names the task that closes the gap or accepts it, and docs/status.md's line is updated; its GPU figure is JS-163's (the HD 530 neither decodes Main 10 nor tone maps, JS-154), or is stated unmeasured if JS-163 has not run, and today's 2160-to-1080 burn-in path is measured there, not here (D-038)",
         "No viewer-visible change"
       ],
-      "priority": 31,
+      "priority": 33,
       "source": "product owner, D-021 (2026-11-19)",
       "status": "todo",
       "passes": false,
@@ -1181,7 +1182,7 @@
         "docs/status.md's line for the apps that show the server's web client says it is the build the image ships; /web/ stays open to anyone and carries no Access-Control-* header (docs/access.md unchanged)",
         "The procedure for moving to the next Jellyfin release names this pin with the others, or says none exists yet (BL-043)"
       ],
-      "priority": 33,
+      "priority": 35,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1201,7 +1202,7 @@
         "Read from source first, as D-030 did, with commit and line: whether Plezy's and Tsukimi's players send their token on every media request. docs/status.md lists each under 'sends its token' or 'not supported (D-026)' accordingly and never says either works; no further work goes in for an app whose player sends none",
         "The differential tier asks both servers the route with the signed-in user's id, and any kept difference is in compat/differences.yaml with its reason; compat/coverage-12.4.tsv and docs/status.md name the route and the three clients"
       ],
-      "priority": 55,
+      "priority": 57,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1221,7 +1222,7 @@
         "POST PlaybackInfo with a MediaSourceId in upper-case compact form, in dashed form and as an id of no source are added to test/differential/requests.yaml, as observed on Jellyfin 12.4 during JS-153: the upper-case compact id answers the same on both and is no listed difference; the dashed id (refused by Jellyfin, accepted here) and the unknown id (NoCompatibleStream on Jellyfin, an empty list here) are listed in compat/differences.yaml, each with a verdict and its reason. No answer changes unless a capture shows an app docs/status.md lists as supported sending that form (D-041)",
         "No viewer-visible change"
       ],
-      "priority": 23,
+      "priority": 24,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1239,7 +1240,7 @@
         "The subtitle twin joins if JS-041's capture shows Jellyfin keeps a subtitle pick the same way",
         "Played in jellyfin-web (e2e): a pick, a reload, a new sign-in, and the film starts with the pick"
       ],
-      "priority": 25,
+      "priority": 26,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1262,7 +1263,7 @@
         "No retry on deadlock, no skip, no raised timeout, and no product code changed to fit a test",
         "No viewer-visible change"
       ],
-      "priority": 21,
+      "priority": 22,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1272,64 +1273,30 @@
     {
       "id": "JS-161",
       "phase": "P3",
-      "dependsOn": [],
-      "title": "A worker admits only the re-encodes its own machine keeps at real time, and a play no worker can hold is refused within seconds with its reason",
-      "description": "JS-154: the dogfood's 4-core i5-6500 needs 3.8 to 4.1 CPU-seconds per second of a 4K HDR re-encode priced at 3.2, a figure measured on a machine 1.6 times faster per core; the job is admitted, runs at 0.85x and stalls with no reason. Prices stay one table in cores of a named reference machine; each worker measures its own speed against it at start and advertises its capacity in those units. D-044.",
+      "dependsOn": [
+        "JS-167",
+        "JS-168"
+      ],
+      "title": "A play is admitted only when the workers with room keep it at real time, alone or together; one they cannot keep is refused within seconds with its reason",
+      "description": "JS-154: the dogfood's 4-core i5-6500 needs 3.8 to 4.1 CPU-seconds per second of a 4K HDR re-encode priced at 3.2, a figure measured on a machine 1.6 times faster per core; the job is admitted, runs at 0.85x and stalls with no reason. Prices stay one table in cores of a named reference machine; each worker measures its own speed against it at start and advertises its capacity in those units. D-044. D-046: a play that no one worker holds but the workers with room hold together is admitted, and a viewer already watching is never taken under real time by a newcomer.",
       "acceptanceCriteria": [
-        "Design reviewed before building: what the worker measures at start and for how long, how capacity reaches every replica, a rolling upgrade beside workers of the release before, and whether an image-track extraction counts against capacity",
+        "Design reviewed before building: what the worker measures at start and for how long, how capacity reaches every replica, a rolling upgrade beside workers of the release before, and whether an image-track extraction counts against capacity. Amended by D-046: the rule for a play no one worker holds but several hold together, stated with its margin from a measurement and not from adding speeds; what a play admitted that way holds (its helpers) against a new viewer; and whether the task is too large for one build. If it is, it splits there into (a) worker speed, single-worker admission and placement and (b) shared admission, in that order, both ahead of JS-166, and (a) alone never refuses a play that two workers with room would hold together.",
         "A worker measures its speed at start without the operator declaring anything; the measurement is bounded, its bound is in docs/running.md, and its result is logged and on /metrics; transcodeCores still overrides it",
-        "With real processes: a worker throttled to the i5-6500's measured speed, alone, refuses a 4K HDR tone mapped re-encode within seconds with the 'cannot be played at this time' dialog in jellyfin-web; the log and the JS-153 decision line give the reason with the job's cost and the worker's capacity; the same play beside a second worker that holds it is made by that worker",
+        "With real processes: a worker throttled to the i5-6500's measured speed, alone, refuses a 4K HDR tone mapped re-encode within seconds with the 'cannot be played at this time' dialog in jellyfin-web; the log and the JS-153 decision line give the reason with the job's cost and the worker's capacity; the same play beside a second worker that holds it is made by that worker. Amended by D-046: the same play beside a second worker throttled to the same speed, helpers on, is admitted and plays in jellyfin-web for 10 minutes, a seek to the middle and 10 minutes more within JS-168's bound (speed at or above 1.0 after each part's first 30 seconds, no more than 3 freezes of 0.5 seconds or more per 10 minutes, none over 2 seconds); with transcodeHelpers off, or with the second worker's cores taken, it is refused within seconds with its reason.",
         "A worker at the reference machine's speed holds exactly the jobs it holds today; every row of the table is admitted by the same rule, not only the 4K one",
         "A worker given jobs that add up to its measured capacity keeps each at 1.2 times real time or more without a helper",
         "A default worker is no longer floored to the dearest job; one that cannot hold the dearest row says so once at start, in the log and on /metrics; listed under Changed guarantees citing D-044",
         "A running re-encode under 1.2 times real time that gets no helper logs once why, and the reason is counted on /metrics (BL-005)",
         "docs/transcoding.md names the reference machine and gives the i5-6500 figures; docs/status.md's gap line is updated",
-        "With workers of unequal speed, a job is given to a worker that can hold it at real time when one has room; a test with real processes shows it, or the task says it cannot and briefs (D-045)"
+        "With workers of unequal speed, a job is given to a worker that can hold it at real time when one has room: with one free worker that holds the job at 1.2 times real time alone and one free worker that does not, the viewer's job goes to the one that holds it in 10 of 10 plays from the start and 10 of 10 after a seek, with real processes (JS-162: it landed on the small worker in 2 of 2 natural first plays and stalled) (D-045; made exact by D-046)",
+        "the decision line (JS-153) and the log say whether a play was admitted on one worker or shared, with the job's cost and the capacities counted.",
+        "a viewer already watching at real time is never taken under it by another viewer starting. One figure decides it, the 1.2 times real time admission already uses: a helper of a watched job that its own worker does not hold at 1.2 alone is held as that play's own, and a new viewer whose job fits only by stopping such a helper is refused within seconds with its reason, the refusal counted (JS-164 reads it as demand). A helper of a job its worker holds at 1.2 alone is still stopped for a new viewer, as today. This is the default D-046 states; JS-168 criterion 5's figures confirm or change it, by a brief, before this task's Spec. Checked with two real workers and two viewers in jellyfin-web: the first viewer's speed stays at or above 1.0 with no freeze over 2 seconds for 5 minutes after the second asks. Listed under Changed guarantees citing D-046 (today a new viewer stops any helper)."
       ],
-      "source": "D-044; D-045",
-      "notes": "The measured 3.8 to 4.1 straddles the dogfood's 4 cores: the criteria are outcomes, not a raised number. It merges when ready. If the dogfood would then refuse plays it stalls on today, the lead tells the owner before the redeploy that carries it (the owner declined that outcome by config on 2026-11-21; D-045).",
+      "source": "D-044; D-045; D-046",
+      "notes": "The measured 3.8 to 4.1 straddles the dogfood's 4 cores: the criteria are outcomes, not a raised number. It merges when ready. If the dogfood would then refuse plays it stalls on today, the lead tells the owner before the redeploy that carries it (the owner declined that outcome by config on 2026-11-21; D-045). on a cluster one shared film fills, a second viewer is refused with a reason, even for a cheap film, where today they would start. Today the first viewer stalls in that cluster whether or not a second arrives. Refusal with a reason is the floor D-044 set; a silent stall for someone who was watching is not offered. Data that reopens it: the dogfood's count of refusals made while a helper held the cores, against the first viewers' stalls it prevented, from JS-153's counters and JS-164's gauge. (D-046)",
       "status": "todo",
       "passes": false,
       "priority": 17
-    },
-    {
-      "id": "JS-162",
-      "phase": "P3",
-      "dependsOn": [],
-      "title": "Measure whether helpers bring a re-encode that one worker makes at 0.85x to real time in jellyfin-web",
-      "description": "JS-154 added helper speeds on paper. PRODUCT.md promises a heavy film uses the whole cluster; nothing shows it does for a job no single worker holds. Measurement only, on the developer machine: no homelab change. D-044.",
-      "acceptanceCriteria": [
-        "Three worker processes pinned to 2 CPUs each (0.88x alone on this job, JS-154) and a shared store; jellyfin-web plays a real 4K HDR film re-encoded with and without a burned PGS track: time to first frame, stalls and their seconds over 10 minutes, the speed of each job, how many helpers ran, and the same after a seek to the middle",
-        "The same with two workers, and with one 2-CPU and one 6-CPU worker",
-        "Each helper refused is recorded with the rule that refused it; in particular how often the room kept for a new viewer refused one although a new viewer stops helpers, and the speed with that rule lifted for the measurement only",
-        "Recorded in docs/transcoding.md with machine and command; no film title or path",
-        "The figures come to the product owner as a brief: whether a second and third worker close the gap as built, and if not, what would, priced",
-        "No viewer-visible change"
-      ],
-      "source": "D-044",
-      "notes": "",
-      "status": "todo",
-      "passes": false,
-      "priority": 15
-    },
-    {
-      "id": "JS-163",
-      "phase": "P3",
-      "dependsOn": [],
-      "title": "Measure the 4K HDR re-encode on the dogfood cluster's other two nodes, CPU and UHD 630",
-      "description": "JS-154 measured only the 4-core node. Whether the 12- and 6-processor nodes hold the job, and whether their iGPUs decode Main 10 and tone map, is unverified. The owner approved the temporary measuring pods on both nodes on 2026-11-21 (D-045). D-044.",
-      "acceptanceCriteria": [
-        "On each node, in the same kind of temporary pod as JS-154 (own namespace, GPU through the device plugin, clip copied in, deleted after): the CPU model, today's command at the pod's CPU count with CPU-seconds per second and speed, three runs",
-        "What the iGPU offers (Main 10 decode, video-processor tone map, OpenCL tone map, H.264 and HEVC encode), and the speed and CPU of hardware decode with hardware tone map and encode, with the burn-in",
-        "The hardware encode in a quality-targeted mode: bytes against x264 veryfast at equal SSIM, on a dark and on a detailed scene",
-        "Recorded in docs/transcoding.md; figures to the product owner with BL-040's promote rule answered",
-        "No viewer-visible change, and nothing in the media namespace touched"
-      ],
-      "source": "D-044",
-      "notes": "",
-      "status": "todo",
-      "passes": false,
-      "priority": 16
     },
     {
       "id": "JS-159",
@@ -1347,7 +1314,7 @@
         "DOMAINS.md invariant 40 says the guarantee holds on every path that stores a segment; docs/status.md is updated if it speaks of it",
         "No other viewer-visible change"
       ],
-      "priority": 20,
+      "priority": 21,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1368,7 +1335,7 @@
         "docs/testing.md's JS-155 table names this task against the three sightings",
         "No viewer-visible change"
       ],
-      "priority": 22,
+      "priority": 23,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1381,45 +1348,50 @@
       "title": "An operator and an autoscaler can read that encoding is falling behind, and why",
       "description": "docs/running.md calls jellyscale_transcode_queue_cores the signal to scale workers on, but a play with no free cores is refused, not queued, and a re-encode running under real time is not queued either, so on the dogfood's stalled plays (2026-11-20) that signal read nothing. This task adds one cluster-wide number for demand beyond what the workers hold, with its reason, pulled forward from JS-021 criterion 5. PRODUCT.md: the cluster can grow and shrink with demand by itself; a heavy film uses the whole cluster's processors. D-045.",
       "acceptanceCriteria": [
-        "Observed first with real processes and recorded: what jellyscale_transcode_queue_cores reads while (a) a watched re-encode runs under real time with no helper possible and (b) a play is refused for lack of free cores. If it reads 0 in both, docs/running.md no longer calls it the signal to scale on",
+        "Observed first with real processes and recorded: what jellyscale_transcode_queue_cores reads while (a) a watched re-encode runs under real time with no helper possible and (b) a play is refused for lack of free cores. If it reads 0 in both, docs/running.md no longer calls it the signal to scale on. Amended by D-048: JS-162 read 0 at one snapshot of each stalling run (case a, once per run); case b is still unobserved.",
         "A gauge on /metrics gives, in cores and for the whole cluster, the demand the workers do not hold, by reason: jobs queued; helpers wanted by a watched job under 1.2 times real time and not started for lack of room; plays refused for lack of free cores within a stated recent window. Every worker reports the same number, as queue_cores does",
         "Each reason is above zero within 15 seconds of its condition starting and back to zero within a stated time of its ending, so an autoscaler both grows and shrinks on it; checked with two real workers for each reason",
-        "A second gauge gives the most cores free on any one worker, so an operator can keep room for the dearest job and no viewer has to be refused or stall to trigger growth",
+        "A second gauge gives, for the whole cluster and in reference cores, the dearest job a new viewer would be admitted for now, by JS-161's rule (one worker or shared). Cores held by a helper of a watched job its own worker does not hold at 1.2 times real time alone are not free; cores held by any other helper are (JS-161 criterion 11). It falls within 15 seconds of a play starting and rises within a stated time of its ending, checked with two real workers, a viewer's job and a helper. An operator or an autoscaler keeps it above the dearest job they want to start without a wait, so no viewer has to be refused or stall to trigger growth. (D-048)",
         "Not counted as demand: a job no viewer watches, a paused job, a copy reading at its own rate, and helpers when transcodeHelpers is off; docs/running.md says which slowness more workers cannot fix",
         "The only label is the reason: never a job, film, account or device",
-        "docs/running.md's metric table and docs/transcoding.md describe both gauges with an example alert and an example scaling query; BL-005's missing reason is readable here",
+        "docs/running.md's metric table and docs/transcoding.md describe both gauges with an example alert and an example scaling query; BL-005's missing reason is readable here. Amended by D-048: the example scaling query is on the room gauge, the example alert on the demand gauge; docs/running.md no longer calls `jellyscale_transcode_queue_cores` the signal to scale on, and says why.",
         "No viewer-visible change"
       ],
-      "priority": 18,
+      "priority": 19,
       "status": "todo",
       "passes": false,
-      "dependsOn": [],
-      "source": "owner direction 2026-11-21; JS-021 criterion 5; D-045",
+      "dependsOn": [
+        "JS-161"
+      ],
+      "source": "owner direction 2026-11-21; JS-021 criterion 5; D-045; D-048",
       "notes": "ux: true (operators). If JS-161 changes what a refusal for cores means, this counts JS-161's."
     },
     {
       "id": "JS-166",
       "phase": "P3",
       "title": "On the dogfood, a 4K HDR film that must be re-encoded plays without stalling, on workers running apart on the nodes that can hold it",
-      "description": "D-038 left the dogfood's 4K HDR re-encode stall a gap; JS-154 measured that one 4-core worker cannot hold the job and that helpers cannot exist with one worker. This task closes the gap on the dogfood or says it stays open: workers as their own pods on the nodes JS-163 measured, sharing the store the owner chooses. It deploys and proves; it builds nothing in jellyscale. D-045.",
+      "description": "D-038 left the dogfood's 4K HDR re-encode stall a gap; JS-154 measured that one 4-core worker cannot hold the job and that helpers cannot exist with one worker. This task closes the gap on the dogfood or says it stays open: workers as their own pods on the nodes JS-163 measured, sharing one S3 bucket as the transcode store (D-049). It deploys and proves; it builds nothing in jellyscale. D-045.",
       "acceptanceCriteria": [
         "Starts only when JS-162's and JS-163's figures have gone to the product owner as a brief (every option priced, keeping the film at real time among them) and the owner has decided the shared transcode store; each homelab change is brought to the owner before it is made. If the figures show more workers cannot bring the film to real time, nothing is deployed and the task returns to the product owner",
-        "Workers run with --roles=worker as their own pods on the nodes the figures name, each reaching Postgres, every library and the one transcode store; whether the server's pod keeps a worker role is decided from the figures and recorded",
-        "From jellyfin-web, a 4K HDR re-encode without a subtitle and one with a burned-in image subtitle each play 10 minutes with a seek: speed at or above 1.0 after the first 30 seconds, no segment request over 5 seconds after the start; recorded with ids and counts only",
+        "A worker runs with --roles=worker as its own pod on the 12-thread node; the 4-core node's pod keeps its worker role; no worker runs on the 6-processor node. Each reaches Postgres, every library and the one transcode store, an S3 bucket (transcodeStore: s3://...) in the owner's homelab. The 12-thread node's reserved requests are read first, and the worker's CPU request and limit are recorded with the reason. (D-049)",
+        "From jellyfin-web, a 4K HDR re-encode without a subtitle and one with a burned-in image subtitle each play 10 minutes with a seek: speed at or above 1.0 after the first 30 seconds, no segment request over 5 seconds after the start; recorded with ids and counts only. Amended by D-049: no more than 3 freezes of 0.5 seconds or more per 10 minutes, none over 2 seconds; three plays each; also with a subtitle extraction running beside the job.",
         "A play the cluster cannot hold is refused within seconds with its reason, never a stall, once JS-161 is deployed",
         "The time from a worker pod's creation to its first claimed job is measured on each node and recorded for JS-057",
         "A defect found in jellyscale becomes a brief, not a fix here",
-        "docs/running.md gains what running workers apart needed; docs/status.md's known gap is closed or says what is still open; no film title, path or host name anywhere"
+        "docs/running.md gains what running workers apart needed; docs/status.md's known gap is closed or says what is still open; no film title, path or host name anywhere",
+        "On the S3 bucket, measured between the nodes before the plays: the time from a worker finishing a segment to `stream` on another node serving it, for 100 segments; recorded. No shared store has been measured between machines (JS-162 used one machine's directory). (D-049)",
+        "Each worker's measured capacity (JS-161) and the speed of each job are recorded; a job slower than its worker's measured speed by more than a fifth is reported with what ran beside it (JS-162 left a 0.6x and a 0.76x run unexplained). (D-049)"
       ],
-      "priority": 19,
+      "priority": 18,
       "status": "todo",
       "passes": false,
       "dependsOn": [
-        "JS-162",
-        "JS-163"
+        "JS-161",
+        "JS-167",
+        "JS-168"
       ],
-      "source": "owner direction 2026-11-21; D-038; D-044; D-045",
-      "notes": "Waits on the owner's store decision. ux: true."
+      "source": "owner direction 2026-11-21; D-038; D-044; D-045; D-046; D-049",
+      "notes": "ux: true. The store is an S3 bucket (owner's answer, 2026-11-21: the owner sets up an S3 service in the homelab; the lead chose S3, option 1 of D-049, so workers can run on any node). Each homelab change is still brought to the owner before it is made."
     },
     {
       "id": "JS-165",
@@ -1436,7 +1408,7 @@
         "docs/running.md gives the worker's termination grace and what it bounds",
         "No start of play or seek is slower: time to first segment measured before and after"
       ],
-      "priority": 32,
+      "priority": 34,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1446,19 +1418,19 @@
     {
       "id": "JS-057",
       "phase": "P6",
-      "title": "Workers are added when encoding falls behind and removed when idle, by the cluster's own autoscaler",
-      "description": "The owner (2026-11-21): scale workers up as soon as encoding falls behind. Kubernetes' autoscaler does the scaling from JS-164's number; jellyscale never creates or removes a pod, and a cluster without an autoscaler runs as before. The example manifests (JS-056) carry it as an option. Replaces 'KEDA autoscaling'. D-045.",
+      "title": "Workers are added before the room for one more film is gone, and when encoding falls behind; removed when idle, by the cluster's own autoscaler",
+      "description": "The owner (2026-11-21): scale workers up as soon as encoding falls behind. Kubernetes' autoscaler does the scaling from JS-164's number; jellyscale never creates or removes a pod, and a cluster without an autoscaler runs as before. The example manifests (JS-056) carry it as an option. Replaces 'KEDA autoscaling'. D-045. D-048: spare room first, falling behind and refusals as the backstop and the readable reason.",
       "acceptanceCriteria": [
-        "The example manifests ship an optional autoscaler for the worker Deployment on JS-164's demand number; leaving it out changes nothing else. Which autoscaler (the built-in one with a metrics adapter, or KEDA) is chosen by what an operator must run beside it, and docs/running.md states that cost",
-        "On a real cluster, one worker and a play that falls behind or is refused: a second worker is ready and the film reaches real time; the time from demand to a ready worker, and what the triggering viewer saw meanwhile, are measured and recorded",
-        "The example keeps room for one dearest job (JS-164's free-cores gauge), and a test shows a second viewer starting with no refusal and no stall while the cluster grows",
+        "The example manifests ship an optional autoscaler for the worker Deployment on JS-164's two gauges; leaving it out changes nothing else. Which autoscaler (the built-in one with a metrics adapter, or KEDA) is chosen by what an operator must run beside it, and docs/running.md states that cost (D-048)",
+        "On a real cluster, one worker and a play that falls behind or is refused: a second worker is ready and the film reaches real time; the time from demand to a ready worker, and what the triggering viewer saw meanwhile, are measured and recorded. Amended by D-048: this is the backstop, measured with the target at zero.",
+        "By default the example keeps room for one more job of a size the operator states in cores (the example's value is the dearest re-encode in the price table); a worker is added when the room gauge falls below it. A test on a real cluster shows a second viewer starting with no refusal and no stall while the cluster grows. docs/running.md states the cost (one worker's reservation idle at all times) and how to set the target to zero and scale on falling behind alone. (D-048: the first trigger)",
         "After a stated idle time workers are removed down to the minimum, and no watched job stalls over 5 seconds (JS-165); demand that comes and goes changes the worker count no more than a stated number of times",
         "The maximum worker replicas stay within the Postgres connection budget (one liveness connection per worker on top of the pools), refused by the manifests' check otherwise",
         "Each scale-up can be read back with its reason from JS-164's number",
-        "Run on the dogfood for 14 days once the owner approves each homelab change; recorded, counts only: scale events by reason, refusals for lack of cores, stalls",
+        "Run on the dogfood for 14 days once the owner approves each homelab change; recorded, counts only: scale events by reason, refusals for lack of cores, stalls. Amended by D-048: also records the time the room was below target, and scale-ups by trigger (room, falling behind, refusal).",
         "docs/running.md documents it; docs/transcoding.md no longer says an autoscaler is not built; docs/status.md is updated"
       ],
-      "priority": 35,
+      "priority": 37,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1466,8 +1438,109 @@
         "JS-164",
         "JS-165"
       ],
-      "source": "project plan; owner direction 2026-11-21; D-045",
+      "source": "project plan; owner direction 2026-11-21; D-045; D-048",
       "notes": "JS-020 (2026-11-08): a stock Postgres (max_connections 100) is exhausted at about 90 workers; connections are the first wall when autoscaling. ux: true."
+    },
+    {
+      "id": "JS-167",
+      "phase": "P3",
+      "title": "A helper whose viewers have all seeked away stops within seconds, and its worker is free for the film's new place",
+      "description": "JS-162: on three workers a 4K HDR re-encode holds real time until the viewer seeks; the helper that was running then goes on alone with no viewer to bound it (5 min 25 s here, to the film's end in another run), holding a worker, and the film stalls at 0.72 to 0.84x. A viewer's own job is already cancelled within a second when its viewers seek away; a helper is not. PRODUCT.md: seeking and resuming just work; a heavy film uses the whole cluster's processors. D-046.",
+      "acceptanceCriteria": [
+        "Observed first with real processes and recorded in docs/transcoding.md: three equal workers, a watched re-encode under 1.2 times real time with a helper running, a forward seek past the helper and a backward seek: how long the helper runs on and the last segment it stores. The check that follows fails today.",
+        "A helper that no viewer's place bounds (every viewer of its spec is past its chunk or has seeked away from it) is stopped within 5 seconds of the seek's first segment request, its cores are free at once, and it stores nothing more than one lead (transcodeLead) past the furthest segment any viewer at or before its chunk asked for.",
+        "A helper that still has a viewer at or before its chunk is never stopped by this: with two viewers of one spec, one seeks away and the other's helper runs on.",
+        "With three equal workers each making the job under 0.9 times real time, in jellyfin-web, with and without a burned-in PGS track: 10 minutes from the start, a seek to the middle, 10 minutes more, a seek back to the first minute, 5 minutes more. In each part: speed at or above 1.0 after its first 30 seconds, no more than 3 freezes of 0.5 seconds or more per 10 minutes, none over 2 seconds (JS-162 measured 2 of about 1 second in the 10 minutes from the start). Run three times; every run within the bound. B alone after a seek is unverified (JS-162 inferred it): if three workers do not hold it, the figures come back as a brief and nothing is weakened. These long runs are a measurement made on the build and recorded in docs/transcoding.md with machine and command, as JS-162's was, not a locked check; the locked check is the short form: with throttled workers and a fixture film, after a seek a helper for the film's new place is running within 10 seconds and the helper left behind is gone within 5.",
+        "A viewer who seeks back into a stopped helper's chunk gets the first frame no more than 1 second later than a seek to a place nothing was made; measured and recorded.",
+        "A helper ended because no viewer was left for it is counted on /metrics by that reason and logged once with the job's id; no label names a job, film, account or device.",
+        "No start of play and no seek is slower with one worker or with helpers off: time to first segment measured before and after.",
+        "DOMAINS.md invariant 58 and docs/transcoding.md say what bounds a helper; docs/status.md's parallel transcoding line is updated."
+      ],
+      "priority": 15,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "D-046",
+      "notes": "ux: true.",
+      "core": true
+    },
+    {
+      "id": "JS-168",
+      "phase": "P3",
+      "title": "A film one worker cannot keep at real time is shared with every worker that has room, with no room held back for a viewer who has not asked",
+      "description": "JS-162: with two equal workers no helper ever starts; the server refused one 302 to 304 times per play, every time for the room it keeps for a new viewer, with one viewer and nothing queued, and the film stalled exactly as on one worker. With that rule lifted (measurement build) two workers held 1.00x until the seek and three held it throughout; a small worker's job was carried by a large worker's helper. The room for the next viewer is the operator's and the autoscaler's to keep (docs/transcoding.md's sizing advice, JS-164, JS-057), not a rule that idles a worker beside a stalling film. Takes BL-242. D-046.",
+      "acceptanceCriteria": [
+        "Observed first with real processes and recorded: two equal workers and one viewer of a re-encode each makes under 0.9 times real time: the helpers refused, by rule. The check that follows fails today.",
+        "A helper is queued and claimed whenever a worker has the cores for it; the room kept for a viewer who has not asked is gone at the insert and at the claim. A helper still never takes a worker over its cores, and workers deciding together still never take the same last cores (two real workers, contended).",
+        "Two equal workers each making the job under 0.9 times real time, in jellyfin-web, with and without a burned-in PGS track: 10 minutes from the start, a seek to the middle, 10 minutes more. In each part: speed at or above 1.0 after its first 30 seconds, no more than 3 freezes of 0.5 seconds or more per 10 minutes, none over 2 seconds (JS-162 measured 1.00x and 3 freezes before the seek with the rule lifted; after the seek is this task's to show, with JS-167). Run three times; every run within the bound. If two workers cannot hold it after the seek, the figures come back as a brief and nothing is weakened. These long runs are a recorded measurement on the build, not a locked check; the locked check is the short form: with two throttled workers and a fixture film, a helper starts within 10 seconds of the job being judged slow, and again within 10 seconds of a seek.",
+        "One 2-CPU and one 6-CPU worker with the viewer's job on the 2-CPU one: the same bound, throughout.",
+        "Observed and recorded, not yet changed: a second viewer arrives while helpers hold every worker. Measured in jellyfin-web, three times each for a second play of the same cost and a 1080p SDR one: the second viewer's time to first frame against the same play on an idle cluster, and the first viewer's speed and freezes for 5 minutes after. The figures come to the product owner as a brief before JS-161's Spec: D-046 states who gives way as a default (JS-161 criterion 11), and these figures confirm it or change it.",
+        "With transcodeHelpers off nothing changes; with one worker nothing changes.",
+        "No start of play and no seek is slower for a lone viewer: time to first segment measured before and after.",
+        "docs/transcoding.md, docs/status.md and DOMAINS.md invariant 58 are updated; docs/running.md keeps the advice to run with the dearest film's cores to spare and says the server no longer holds that room itself; listed under Changed guarantees citing D-046."
+      ],
+      "priority": 16,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-167"
+      ],
+      "source": "D-046; BL-242",
+      "notes": "ux: true. Takes BL-242.",
+      "core": true
+    },
+    {
+      "id": "JS-169",
+      "phase": "P4",
+      "title": "Measure whether a GPU re-encode can show the picture the processor makes, in jellyscale's own image",
+      "description": "JS-163 answered BL-040's rule in Jellyfin's image with jellyfin-ffmpeg: 4 to 5 times real time, bytes within the bound on two dark scenes, and no GPU tone map matching today's picture. This task measures what a build would rest on. No viewer-visible change. D-047.",
+      "acceptanceCriteria": [
+        "In jellyscale's own image: what it must gain for 10-bit HEVC decode, a GPU tone map with a set curve, subtitle drawing and H.264 encode on an Intel UHD 630 (packages, the image's size before and after), and JS-163's all-hardware and OpenCL rows repeated with it on both nodes, three runs each, in temporary pods of the same kind (own namespace, device plugin, deleted after).",
+        "Tone map: the settings tried to bring a GPU tone map whose curve jellyscale sets to the processor path's picture, on a dark, a detailed and a bright high-motion scene from at least two films; for each, brightness above black and SSIM against the processor path, against the bound (within 5% or one code value, whichever is more; at or above 0.99), with one frame of each kept for the brief. The driver video-processor tone maps are not candidates (D-047).",
+        "The reverse, priced: the processor path with the curve the GPU tone map and jellyfin-ffmpeg's processor tone map share, its speed on the three nodes' processors and what the image would need (JS-163: 1.98x, 1.40x and 0.97x against 1.36x, 1.06x and 0.85x).",
+        "Bytes: the hardware encoder in its quality-targeted modes against x264 veryfast with the worker's 4-second keyframes, on the three scenes, at equal SSIM and by one second measure that rewards what SSIM does not (VMAF, or named otherwise).",
+        "On the candidate path (GPU decode, the tone map with a set curve, GPU encode), not the video-processor one: how many jobs at once hold 1.2 times real time each on one node, the processor and the memory each takes, up to the count that fails.",
+        "The same row while the node's other GPU user is working, if the owner approves a way to make it work; otherwise marked unverified in the record.",
+        "The colour tags written in the bitstream are read as BT.709 by Chromium: a segment played in jellyfin-web, checked on the pixels.",
+        "A restart, a seek and a helper's chunk made on the two nodes' GPUs splice in jellyfin-web, as spikes/seam showed for one family.",
+        "Recorded in docs/transcoding.md with machine and command, no film title, path or host name; the figures come to the product owner as a brief, every option priced, keeping today's picture among them.",
+        "No viewer-visible change, and nothing in the media namespace touched."
+      ],
+      "priority": 20,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "D-047; BL-040",
+      "notes": "Measurement only. Each temporary pod is approved by the owner first, as JS-163's were. May run beside the builds ahead of it (D-047)."
+    },
+    {
+      "id": "JS-170",
+      "phase": "P4",
+      "title": "A worker finds its Intel GPU by itself and uses it for the re-encodes it does right; the operator sets nothing",
+      "description": "The first hardware slice (BL-040): one family, Intel VAAPI/QSV, on GPUs that do the whole job. The worker detects, chooses by D-047's rule and falls back to the processor; operators may turn it off, never need to tune it. NVIDIA, AMD, hardware decode for processor-encoded streams and outputs above 1080 lines stay in JS-054. PRODUCT.md: any film plays, and plays well; play starts in seconds and keeps up; operators want the server to be something they set up once and then mostly forget. D-047.",
+      "acceptanceCriteria": [
+        "Design reviewed before building: how a family is chosen for a stream; helpers and failover within the family; what a viewer sees when the last worker of their stream's family is lost mid-film (playing on is the goal; anything else is measured and briefed to the product owner before it is built, never a stall or a stop without a reason); how a hardware job is priced against a worker's capacity (JS-161); and whether the task splits (detection and choice; placement and failover).",
+        "With nothing configured, a worker tests at start each stage it would use (10-bit HEVC decode, the tone map, subtitle drawing, encode) by a bounded real run, not from the ffmpeg build's list or the device's presence; the bound is in docs/running.md; the result for each stage is logged with its reason and is on /metrics. A node with no GPU, or with none given to the pod, runs exactly as before and logs no error.",
+        "A job takes a hardware path only when, on that worker, the path's picture is within JS-169's bound of the processor path's, it measured at or above 1.2 times real time for that kind of job, and its encoder is within twice x264's bytes at equal quality in a quality-targeted mode; otherwise that job is made on the processor there. Checked with a negative case: a worker whose GPU fails a stage (the HD 530 itself in the hardware tier, cannot decode 10-bit HEVC) makes the 4K HDR re-encode on the processor and says why, once, in the log and on /metrics.",
+        "The tone map's curve is the one jellyscale sets, in every family; no driver video-processor tone map is used by any path or override. A film's re-encode on a GPU worker and on a processor worker, compared frame for frame on three scenes, is within the bound.",
+        "A new stream gets the hardware family when a worker of it has room and the processor otherwise; the family stays in the spec hash; helpers and failover stay in the family. With two UHD 630 workers, in jellyfin-web: a seek, a helper's chunk and a killed GPU worker each splice, no segment request over 5 seconds, no dialog, the position kept; 10 of 10.",
+        "Operators may set per worker, and only these: hardware off (default auto), the device, the most hardware jobs at once. An override the hardware cannot honour is refused at start with its reason. docs/running.md says none is needed.",
+        "Operators see the family and the worker serving each stream (Sessions, /metrics, the JS-153 decision line); every fall back to the processor is logged with its reason and counted by reason; no label names a job, film, account or device.",
+        "Tested on real hardware in its own tier, chosen explicitly and never skipped: the dogfood cluster's UHD 630s.",
+        "On the dogfood, each homelab change approved by the owner first (the GPU through the device plugin, no privileged container): a 4K HDR re-encode with and without a burned-in image subtitle plays 10 minutes with a seek at speed 1.0 or above after the first 30 seconds; as many at once on one GPU as JS-169 measured to hold 1.2 times real time each do so; recorded with ids and counts only.",
+        "docs/running.md (an optional GPU worker pool and its request), docs/transcoding.md and docs/status.md are updated; DOMAINS.md invariants 23 and 53 are amended citing D-047 where the tone map's filter or the family rule changes."
+      ],
+      "priority": 27,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-169",
+        "JS-161",
+        "JS-166"
+      ],
+      "source": "D-047; BL-040",
+      "notes": "ux: true. Moves to directly after JS-166 if JS-166 returns without closing the gap on processors, or the dogfood's JS-153 counters show a refusal for lack of cores with every worker running (D-047).",
+      "core": true
     }
   ]
 }
