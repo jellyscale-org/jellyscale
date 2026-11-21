@@ -1261,7 +1261,7 @@
         "Recorded in docs/transcoding.md with machine and command; no film title or path anywhere",
         "No viewer-visible change"
       ],
-      "priority": 17,
+      "priority": 15,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1271,22 +1271,25 @@
     {
       "id": "JS-155",
       "phase": "OPS",
-      "title": "Each transcode test that failed the merge queue on 2026-11-20 has a named cause, fixed where it lies",
-      "description": "Four merge-queue runs on 2026-11-20 failed on six internal/transcode integration tests, each on a PR that could not affect them (docs, plan, a CI action, a module bump), each passing on the next run. Whether any is a product race in a lease, a retry bound or a seek read is unverified. PRODUCT.md: failures are invisible; seeking and resuming just work. D-039.",
+      "title": "Each test that failed the merge queue on 2026-11-20 has a verdict from its log, and a named cause where a bounded reproduction finds one",
+      "description": "Four merge-queue runs on 2026-11-20 failed on six internal/transcode integration tests, each on a PR that could not affect them (docs, plan, a CI action, a module bump), each passing on the next run. Whether any is a product race in a lease, a retry bound or a seek read is unverified. PRODUCT.md: failures are invisible; seeking and resuming just work. D-039. Reshaped by D-042: this task reads, measures within a box and briefs; the product owner's decision on its brief names the fix tasks. The TRUNCATE deadlock is JS-158.",
       "acceptanceCriteria": [
-        "Each of these is reproduced under CI's shape (ffmpeg 6.1, 2 CPUs, -count=N) and its failure rate recorded before any fix: TestAWorkerForgottenWhileItLivesEndsItsExtractionAndItsLateRenewalMovesNoCutLeaseLater, TestAfterTheFileIsReplacedAMidFilmRunDrawsAndReadsByTheNewFilesTrack, TestACauseThatPersistsStartsAtMostThreeFreshJobsAndThenFails/the_source_store_cuts_a_read, TestWithTheTrackStoredASeekIntoALongCueReadsNoMoreOfTheFilmThanAnySeek/DVB, TestAJobThatStartsPastTheEndEndsDoneWithNoFFmpeg, and BL-197's TestAnyReplicaServesAnySegmentAndOneJobStarts",
-        "Each gets a verdict, product or test, with the cause named",
-        "A product cause states what a viewer would have seen and is fixed in the product, with a check that fails before the fix",
-        "No retry wrapper, no skip, and no raised timeout without a named cause",
-        "Each passes N of N after, with N chosen so the rate measured before would have failed",
-        "A test whose cause is not found is brought back to the product owner as a brief, not left"
+        "The sightings are these seven, each named with its queue run: TestAWorkerForgottenWhileItLivesEndsItsExtractionAndItsLateRenewalMovesNoCutLeaseLater, TestAfterTheFileIsReplacedAMidFilmRunDrawsAndReadsByTheNewFilesTrack, TestACauseThatPersistsStartsAtMostThreeFreshJobsAndThenFails/the_source_store_cuts_a_read, TestWithTheTrackStoredASeekIntoALongCueReadsNoMoreOfTheFilmThanAnySeek/DVB, TestAJobThatStartsPastTheEndEndsDoneWithNoFFmpeg, BL-197's TestAnyReplicaServesAnySegmentAndOneJobStarts, and the e2e scenario that failed the queue that day",
+        "For every sighting, from its merge-queue log and before any reproduction, the record says what failed, and what a viewer would have seen had the same thing happened on a production cluster (nothing, a rebuffer, a wrong picture or subtitle, no film), or that the log cannot tell. BL-197's question is answered there: would a loaded production worker miss a heartbeat 0.7 s after a job starts and have the job restarted, or is that the test's short lease",
+        "Reproduction is bounded: under CI's shape (ffmpeg 6.1, 2 CPUs), at most 2 hours of wall-clock per sighting and 10 hours in all, the sightings whose log points at a lease, a retry bound or a seek read first; at least one attempt per sighting runs under load like the queue's (its shard beside it), not only the test alone. Runs, failures and minutes are recorded per sighting",
+        "Each sighting ends with one of three verdicts: product (cause named), test (cause named), or cause unknown. Not reproducing is never a verdict of test and never rules a product cause out",
+        "No fix lands in this task. Each named cause goes to the product owner in one brief, with what a viewer would have seen and the size of the fix; the decision names the fix tasks, each of which has a check that forces the named condition and fails before the fix",
+        "No retry wrapper, no skip, and no raised timeout anywhere, for a named cause or an unknown one",
+        "Each cause-unknown sighting is in the same brief with what was read and tried, and what the next failing run's log would need to show; it is promoted when the same test fails the merge queue again, with that run's log",
+        "Recorded as a short table in docs/testing.md (sighting, queue run, runs and failures, verdict, cause, what a viewer would have seen); nothing checks the table's form by machine",
+        "No viewer-visible change"
       ],
-      "priority": 15,
+      "priority": 17,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
       "source": "merge queue failures 2026-11-20; D-039",
-      "notes": "Built beside JS-152. Closes BL-197."
+      "notes": "Closes BL-197 when its question is answered in the record. Reproduction runs wait until JS-154's measurements are off the machine; the log reading does not wait."
     },
     {
       "id": "JS-156",
@@ -1325,6 +1328,27 @@
       ],
       "source": "BL-223; D-039",
       "notes": ""
+    },
+    {
+      "id": "JS-158",
+      "phase": "OPS",
+      "title": "No worker started by a transcode test outlives its test, so the next test's TRUNCATE never deadlocks with it",
+      "description": "Two merge-queue runs on 2026-11-20 failed on a Postgres deadlock: a worker started by an earlier test was still recording a segment when the next test truncated the tables (read from the runs' logs by the lead). Each costs a merge-queue run of about an hour and delays the dogfood's redeploy. The cause as read is the tests'; whether the product can meet the same deadlock is not yet said. BL-178 is the same family (a kit's fresh() truncating under live workers). D-042.",
+      "acceptanceCriteria": [
+        "The record in docs/testing.md names the two queue runs, the two statements that deadlocked, and which test's worker was still alive",
+        "It says whether anything in the product, not only a test, truncates or takes the same locks against a live worker; if so, what a viewer would have seen, and that comes back to the product owner as a brief before a product fix",
+        "A check forces the condition (a worker still recording a segment when the next test's tables are truncated) and fails before the fix, with real processes or real contention",
+        "After the fix, every worker a transcode integration test starts has stopped, and its last write has finished, before that test returns; the fix is at the cause in the test kit, not test by test",
+        "BL-178's fresh() is covered by the same fix, or the record says why it is a different cause and BL-178 stays open",
+        "No retry on deadlock, no skip, no raised timeout, and no product code changed to fit a test",
+        "No viewer-visible change"
+      ],
+      "priority": 16,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "merge queue failures 2026-11-20; D-042; BL-178",
+      "notes": "Split from JS-155 by D-042: its cause is named in the logs, so it needs no reproduction box. Built beside JS-154; its check runs are short and must not run while JS-154 is measuring on the same machine."
     }
   ]
 }

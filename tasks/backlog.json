@@ -1606,7 +1606,7 @@
       "severity": "minor",
       "title": "The image-store test kit's fresh() truncates transcode_nodes under live workers, so a worker kept across it is taken for dead and its job rerun (cause of two JS-089 check bugs); give fresh a variant that keeps live workers, or stop every worker before it",
       "status": "open",
-      "notes": "Fix when the image-store kit is next touched (JS-140)"
+      "notes": "Same family as JS-158 (D-042): closed by JS-158 if its fix covers fresh(); otherwise fix when the image-store kit is next touched (JS-140)."
     },
     {
       "id": "BL-179",
@@ -1777,7 +1777,7 @@
       "severity": "minor",
       "title": "TestAnyReplicaServesAnySegmentAndOneJobStarts (garage, copied): a heartbeat timed out 0.7 s after the job started under queue load, the job was given up for a lost lease and a second job started",
       "status": "promoted",
-      "notes": "Product owner asks (evidence): Would a loaded production worker miss a heartbeat 0.7 s after a job starts and have the job restarted (a viewer rebuffering), or is this the test's short lease? Promoted into JS-155 (D-039)."
+      "notes": "Product owner asks (evidence): Would a loaded production worker miss a heartbeat 0.7 s after a job starts and have the job restarted (a viewer rebuffering), or is this the test's short lease? Promoted into JS-155 (D-039). D-042: answered from the queue log in JS-155's record; closed when that answer is recorded, or a fix task named."
     },
     {
       "id": "BL-198",
@@ -1876,7 +1876,7 @@
       "severity": "minor",
       "title": "Transcode e2e scenarios fail in full gate runs on a loaded machine; each passes 5 of 5 alone",
       "status": "open",
-      "notes": "Not the BL-100 stall. The three: the dashboard card and Playback info panel (timed out after 44 s, panel empty); jellyfin-web after a segment fails, answered 500, once (timed out waiting for the player to ask for the failing segment, 65 s); a slow re-encode shared by three workers (browser closed after 92 s, then the gate printed no shard line). Host had about 2 GB free RAM. Product owner asks (evidence): does any of them fail in the merge queue or on CI's runners? Second sighting (JS-145 verify, D-023): the 500-segment scenario timed out in a full gate run, with Postgres refusing connections near the end of the gate; 5 of 5 alone. Promote if it fails on the merge queue, a third time locally, or if jellyscale itself (not the test stack) is shown to have used up the connections (then with JS-092)."
+      "notes": "Not the BL-100 stall. The three: the dashboard card and Playback info panel (timed out after 44 s, panel empty); jellyfin-web after a segment fails, answered 500, once (timed out waiting for the player to ask for the failing segment, 65 s); a slow re-encode shared by three workers (browser closed after 92 s, then the gate printed no shard line). Host had about 2 GB free RAM. Product owner asks (evidence): does any of them fail in the merge queue or on CI's runners? Second sighting (JS-145 verify, D-023): the 500-segment scenario timed out in a full gate run, with Postgres refusing connections near the end of the gate; 5 of 5 alone. Promote if it fails on the merge queue, a third time locally, or if jellyscale itself (not the test stack) is shown to have used up the connections (then with JS-092). D-042: if the e2e scenario that failed the merge queue on 2026-11-20 is one of these three, the promote rule is met; it is then JS-155's seventh sighting and this item becomes promoted. If it is another scenario, this item is unchanged."
     },
     {
       "id": "BL-209",
