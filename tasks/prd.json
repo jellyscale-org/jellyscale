@@ -1296,6 +1296,7 @@
       "acceptanceCriteria": [
         "A listed difference the tier finds equal fails the run and names the entry; shown failing on a planted stale entry",
         "Each remaining stale entry gets a verdict and is fixed accordingly: 'sessions during a transcode' (EncodeSpeed, IsBelowRealTime: improvement); the hide-tracks requests for the opted-in viewer (MediaStreams, MediaSources[].MediaStreams: improvement); 'a sign-in with a wrong password' ((status): improvement; LoginAttemptsBeforeLockout: non-goal), whose single wrong password gets 401 from both servers and -1 from both, so the request never shows what the entries describe. A vanished deliberate difference is investigated, not deleted: either the request is changed so the difference shows (and internal/api/signin_test.go's requirement still holds), or the entry moves to a request that shows it, or the loss is brought to the product owner",
+        "POST PlaybackInfo with a MediaSourceId in upper-case compact form, in dashed form and as an id of no source are added to test/differential/requests.yaml, as observed on Jellyfin 12.4 during JS-153: the upper-case compact id answers the same on both and is no listed difference; the dashed id (refused by Jellyfin, accepted here) and the unknown id (NoCompatibleStream on Jellyfin, an empty list here) are listed in compat/differences.yaml, each with a verdict and its reason. No answer changes unless a capture shows an app docs/status.md lists as supported sending that form (D-041)",
         "No viewer-visible change"
       ],
       "priority": 18,

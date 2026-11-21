@@ -432,6 +432,16 @@
       "tradeoff": "After JS-147: six transcode tests failed four merge-queue runs in a day on PRs that could not affect them; 13 differences entries no longer differed and the tier only printed notes; Jellyfin 12.4 keeps a viewer's audio pick per film and jellyscale does not; two new issues.",
       "entry": "JS-155 (each transcode test that failed the merge queue on 2026-11-20 gets a named cause, fixed in product or test; no retry, skip or unexplained timeout; closes BL-197) enters at 15 after JS-152, because whether these are product races in leases, retries or seeks is unverified. JS-156 (the differential tier fails on a listed difference that no longer differs) enters at 18 after JS-154; the closed gaps among the stale entries are removed now (DefaultAudioStreamIndex in two 'flags and counters' entries, HasSubtitles), and the deliberate differences (sessions' encode speed, hide-track placeholders, the wrong-password entries) get a verdict in JS-156, a vanished improvement being investigated, not deleted. The lead found the 13 notes predate JS-147, so they are not all its own. JS-157 (a viewer's audio pick for a film kept on return as Jellyfin 12.4 keeps it) enters at 20 after JS-041, meeting BL-223's rule by capture. JS-068 gains the groupItems criterion (#234) and keeps its place. Hiding from Continue Watching (#233) is BL-237, waiting for dogfood data on stale rows and a supported app that can show it. D-034's JS-075 criterion and its backlog item (BL-236) were already applied with JS-147. Amends D-038's order: tasks from JS-153 move down one, from JS-041 two, from JS-122 three.",
       "serves": "PRODUCT.md: Failures are invisible; Seeking and resuming just work; Their library feels alive, as they are in Jellyfin; the audio and subtitles they chose."
+    },
+    {
+      "id": "D-041",
+      "date": "2026-11-20",
+      "task": "JS-153, JS-156; BL-239",
+      "decision": "change",
+      "by": "product-owner",
+      "tradeoff": "JS-153's run left two minors: PlaybackInfo's MediaSourceId match was observed equal to Jellyfin 12.4 for an upper-case compact id and different for a dashed and an unknown id, recorded nowhere; a refused decision line does not say whether a copy or a re-encode was refused.",
+      "entry": "JS-156 gains a criterion: the three MediaSourceId requests enter the differential tier, the equal one unlisted, the two differences listed with a verdict, no answer changed unless a supported app is captured sending that form (the plan's differential rule; no viewer is shown noticing). The refused line's missing method is BL-239: refusals on the dogfood are unverified and no open criterion needs the split; it is promoted by a refusal count above zero on the dogfood for a reason that does not name the method, or by JS-154's decision choosing to refuse with a reason. Given up meanwhile, by an operator: telling a refused copy from a refused re-encode without looking up the film. No change of order: JS-148's 14-day count runs from 2026-11-20 and cannot close before 2026-12-04; BL-235 is read from the live line at the next Moonfin play. D-040 is JS-152's, in its own pull request.",
+      "serves": "PRODUCT.md: Nothing is hidden: every failure is reported with its reason, never silent. Compatibility policy: Target: the current Jellyfin release, currently 12.4."
     }
   ]
 }
