@@ -206,3 +206,46 @@ Measured 2026-11-21 on a 4K Dolby Vision (profile 7) HEVC Main 10 PQ film with a
 - **Cheaper outputs on the i5-6500:** x264 ultrafast 0.91; 720 lines 1.04 to 1.11; 720 lines with jellyfin-ffmpeg's `tonemapx` 1.22.
 
 What follows (D-044, D-045): JS-161 measures each worker's speed against a reference machine and refuses a play no worker can hold, with its reason; JS-162 measures helpers end to end; JS-163 measures the cluster's other nodes; JS-166 runs workers apart on the nodes that can hold the job.
+
+## Helpers on a slow re-encode (JS-162)
+
+Measured 2026-11-21 on the developer machine (AMD Ryzen 7 7800X3D, ffmpeg 9.0.2, jellyscale at 9947830) with the 4K HDR re-encode above, in headless Chrome through jellyfin-web. Worker processes pinned with `taskset` to 2 CPUs each (0.85 to 0.91x alone on this job, a stand-in for the dogfood's i5-6500) or 6 CPUs, a shared `file://` store on a local directory, Postgres in Docker, defaults otherwise (`transcodeCores` undeclared, so a 2-CPU worker counted 3.2 cores). Each run played 10 minutes from the start, then seeked to the middle and played 5 minutes more (not 10, a deviation accepted by D-046); one run per configuration. A freeze is a stretch of 0.5 s or more where the film advances less than half the wall time.
+
+| Workers (CPUs) | 10 min from the start | 5 min after a seek to the middle |
+|---|---|---|
+| 2 (one worker) | 0.87 to 0.90x, 39 to 51 freezes in 5 min | 0.88 to 0.89x |
+| 2+2 | 0.87 to 0.90x, 75 to 98 freezes; no helper ever started | 0.85 to 0.88x |
+| 2+2+2 | 1.00x, 2 freezes of about 1 s | 0.72 to 0.84x, 53 to 54 freezes |
+| 2+6, the viewer's job on the 2-CPU worker | 0.76 to 0.89x, freezes up to 5 s; no helper | 1.00x (the new job landed on the 6) |
+| 2+2+2, room rule lifted (measurement build) | 0.99x, 3 freezes | 0.99x, 2 freezes |
+| 2+2, room rule lifted | 1.00x, 3 freezes | 0.86x |
+| 2+6, room rule lifted | 0.99x, 3 freezes | 1.00x |
+
+With and without a burned-in PGS track the figures were the same within the ranges shown. No error dialog appeared; jellyfin-web shows a re-encode under real time as frequent freezes of 0.7 to 1.5 s.
+
+- **The room kept for a new viewer refuses the helper that would close the gap.** It refused 141 to 304 times per play (once per 3 s heartbeat) with one viewer on the cluster and nothing queued, although a new viewer already stops helpers.
+- **A helper whose viewer has seeked away runs on unbounded.** With no viewer in its window its limit becomes the film's end: one held a worker for 5 min 25 s making segments nobody watched, another made the rest of the film. Its cores kept the viewer's new job from getting a helper.
+- **The job does not go to the worker that holds it.** With a 2-CPU and a 6-CPU worker it landed on the 2-CPU one in 2 of 2 first plays.
+- **No signal showed the stall.** `jellyscale_transcode_queue_cores` read 0 on every process at the one snapshot of each run, 300 s in, every stalling run included, while `jellyscale_transcode_job_speed_ratio` read 0.73 to 0.91. The refusals were visible only in the measurement build's logs.
+- Unexplained: two runs where jobs ran at 0.6x and 0.76x (BL-245). Unmeasured: a second viewer arriving while helpers run, an S3 store, the network between machines.
+
+What follows (D-046): JS-167 stops a helper no viewer's place bounds; JS-168 drops the room rule; JS-161 places the job on the worker that holds it and admits a play several workers hold together.
+
+## The dogfood's other nodes and their GPUs (JS-163)
+
+Measured 2026-11-21 in temporary pods on the dogfood cluster's two other nodes (own namespace, GPU through the device plugin, deleted after), with jellyfin-ffmpeg 8.1.3 in Jellyfin 12.4's image, not jellyscale's. A 60 s window of a 4K Dolby Vision (profile 7) HEVC Main 10 PQ film, the PGS track burned in, three runs each unless stated.
+
+| Node | Today's command, all CPUs | At 4 physical cores |
+|---|---|---|
+| 12-thread node (Intel i5-10500T, 6 cores / 12 threads) | 1.36 to 1.38x, 7.1 to 7.2 CPU-seconds per second | 0.92 to 0.93x, 4.05 to 4.08 |
+| 6-processor node (Intel i5-8500T, 6 cores) | 1.06 to 1.10x, 4.5 to 4.6 | 0.90 to 0.91x, 4.12 to 4.14 |
+| 4-core node (Intel i5-6500, JS-154) | | 0.83 to 0.87x, 3.8 to 3.9 |
+
+- **Processors.** At 4 cores every node needs about 4.1 CPU-seconds per second against a price of 3.2. Only the 12-thread node holds 1.2x on its processor. The 6-processor node already has 94% of its CPU and 98% of its memory requested. jellyfin-ffmpeg's `tonemapx` in place of `zscale` + `tonemap` runs 1.98x, 1.40x and 0.97x on the three nodes, at a picture about a quarter darker (BL-244).
+- **The UHD 630 on both nodes** decodes HEVC Main 10, tone maps in its video processor (VAAPI and QSV) and with OpenCL, and encodes H.264 and HEVC. Decode, tone map, burn-in and H.264 encode all on the GPU, in a quality-targeted mode: 3.93 to 5.24x for 0.16 to 0.27 CPU-seconds per second (VAAPI ICQ and QSV). With the OpenCL tone map: 3.85 to 3.97x for 0.5 to 0.7 (one run). Three video-processor jobs at once on one GPU: 1.51 to 1.97x each; five ran out of the pod's 3 GiB (BL-246).
+- **Bytes** against x264 veryfast at equal SSIM, on a dark and a detailed scene of one film: 0.97 to 1.47 times x264's. The margin is thin: at about twice x264's bytes the hardware is only about 0.0003 SSIM above it. BL-040's rule (1.2x with the burn-in, within twice x264's bytes) holds on both nodes.
+- **No GPU tone map gives today's picture.** Brightness above black on the detailed scene: today 18.7, VAAPI video processor 6.5 (SSIM 0.933 against today's), QSV video processor 25.6 (0.977), OpenCL hable 13.4 (0.988), the same as `tonemapx` (13.2). The video processors' tone maps take no parameters.
+- Today's colour tag options fail after GPU decode in ffmpeg 8; the same tags written in the bitstream (`h264_metadata`) work.
+- Unmeasured: jellyscale's own image, a bright or high-motion scene, memory per job, speed while the GPU's other user works, a real worker pod's speed beside its other work.
+
+What follows (D-047, D-049): JS-169 measures, in jellyscale's own image, whether a GPU tone map with a set curve reaches the processor's picture; JS-170 is the first hardware slice; JS-166 runs a processor worker on the 12-thread node beside the 4-core node's.

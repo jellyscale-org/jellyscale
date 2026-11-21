@@ -363,8 +363,8 @@
       "reviewer": "product",
       "severity": "minor",
       "title": "JS-054 is too large for one build: slice detection and one family (Intel VAAPI/QSV on a UHD 630 node, not the HD 530) from placement and failover",
-      "status": "open",
-      "notes": " Promote when JS-163 shows hardware decode, tone map and encode hold 1.2x with the burn-in at no more than twice x264's bytes for equal SSIM, and a worker runs on such a node (D-044)."
+      "status": "promoted",
+      "notes": " Promote when JS-163 shows hardware decode, tone map and encode hold 1.2x with the burn-in at no more than twice x264's bytes for equal SSIM, and a worker runs on such a node (D-044). Promoted to JS-169 and JS-170 (D-047)."
     },
     {
       "id": "BL-041",
@@ -2169,9 +2169,9 @@
     {
       "id": "BL-242",
       "title": "A helper is refused unless a whole job's room stays free elsewhere, although a new viewer stops helpers; a 6-core worker beside a 4-core one therefore helps nobody",
-      "notes": "JS-154 (reading roomForHelper, ledger.place/room). Promote from JS-162's third criterion (D-044).",
+      "notes": "JS-154 (reading roomForHelper, ledger.place/room). Promote from JS-162's third criterion (D-044). Promoted to JS-168 (D-046).",
       "source": "JS-154",
-      "status": "open",
+      "status": "promoted",
       "severity": "minor",
       "reviewer": "product-owner"
     },
@@ -2180,6 +2180,33 @@
       "title": "A viewer refused for lack of cores while a new worker is starting could be held for it instead of refused",
       "notes": "Promote when JS-057 measures demand-to-ready under about 10 seconds and its 14-day count shows refusals followed by a successful retry (D-045).",
       "source": "owner direction 2026-11-21",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner"
+    },
+    {
+      "id": "BL-244",
+      "title": "The processor tone map could run 1.1 to 1.5 times as fast with the curve jellyfin-ffmpeg's filter uses (measured 1.98x, 1.40x and 0.97x against 1.36x, 1.06x and 0.85x on the three nodes), at a picture about a quarter darker than today's and a different ffmpeg in the image",
+      "notes": "Promote when JS-169's brief shows which curve is right, or that one picture across processor and GPU needs it (D-047).",
+      "source": "JS-163",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner"
+    },
+    {
+      "id": "BL-245",
+      "title": "Two JS-162 runs made the job slower than the rest (0.6x and 0.76x) with no cause found",
+      "notes": "Promote when JS-166's record shows a job more than a fifth under its worker's measured speed with nothing beside it (D-046).",
+      "source": "JS-162",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner"
+    },
+    {
+      "id": "BL-246",
+      "title": "More than three hardware re-encodes on one iGPU is unmeasured (five ran out of 3 GB in the measuring pod)",
+      "notes": "Promote when JS-169 gives the memory per job, as a bound in JS-170's \"most hardware jobs at once\" default (D-047).",
+      "source": "JS-163",
       "status": "open",
       "severity": "minor",
       "reviewer": "product-owner"
