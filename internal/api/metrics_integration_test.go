@@ -3,6 +3,7 @@
 package api
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -18,10 +19,22 @@ func counterValue(t *testing.T, c prometheus.Counter) float64 {
 	return m.GetCounter().GetValue()
 }
 
+// refusedTotal is the refusals counter summed over its reasons.
+func refusedTotal(t *testing.T) float64 {
+	t.Helper()
+	var sum float64
+	for name, value := range series(t) {
+		if strings.HasPrefix(name, refusalsName) {
+			sum += value
+		}
+	}
+	return sum
+}
+
 func TestPlaybackInfoCountsItsDecisions(t *testing.T) {
 	e, _, source := transcodeEnv(t, "hevc", "aac")
 	reencode, direct := playbackDecisions.WithLabelValues("reencode"), playbackDecisions.WithLabelValues("direct_play")
-	reencodes, directs, refusals := counterValue(t, reencode), counterValue(t, direct), counterValue(t, playbackRefusals)
+	reencodes, directs, refusals := counterValue(t, reencode), counterValue(t, direct), refusedTotal(t)
 	delta := func(what string, c prometheus.Counter, was *float64, want float64) {
 		t.Helper()
 		if got := counterValue(t, c); got != *was+want {
@@ -29,10 +42,17 @@ func TestPlaybackInfoCountsItsDecisions(t *testing.T) {
 		}
 		*was = counterValue(t, c)
 	}
+	deltaRefused := func(what string, was *float64, want float64) {
+		t.Helper()
+		if got := refusedTotal(t); got != *was+want {
+			t.Errorf("%s: %v, was %v, want %v more", what, got, *was, want)
+		}
+		*was = refusedTotal(t)
+	}
 
 	e.playbackInfo(t, 0, e.item, transcodeProfileBody(t, source))
 	delta("a transcode", reencode, &reencodes, 1)
-	delta("refusals after a transcode", playbackRefusals, &refusals, 0)
+	deltaRefused("refusals after a transcode", &refusals, 0)
 
 	e.playbackInfo(t, 0, e.item, map[string]any{"MediaSourceId": source}) // No profile.
 	delta("direct play", direct, &directs, 1)
@@ -40,7 +60,7 @@ func TestPlaybackInfoCountsItsDecisions(t *testing.T) {
 
 	mustExec(t, e.pool, "UPDATE transcode_nodes SET seen_at = now() - interval '1 minute'")
 	e.playbackInfo(t, 0, e.item, transcodeProfileBody(t, source))
-	delta("a refusal", playbackRefusals, &refusals, 1)
+	deltaRefused("a refusal", &refusals, 1)
 	delta("a refused source counted as a transcode", reencode, &reencodes, 0)
 }
 

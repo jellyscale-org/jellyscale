@@ -219,9 +219,16 @@ func viewerJobs(job capJob) bool { return !job.Helper && !job.Own }
 // room says whether a job of the cost fits on some worker, and if not, why, in
 // the words of a refusal.
 func (l *ledger) room(job capJob) (string, bool) {
+	_, text := l.why(job)
+	return text, text == ""
+}
+
+// why is room's answer with the reason of the refusal beside its words: playback.NoWorkerWithFreeCores, or
+// playback.WorkersAtCopyBound. Both are empty where the job fits.
+func (l *ledger) why(job capJob) (reason, text string) {
 	for _, n := range l.nodes {
 		if l.fits(n.ID, job) {
-			return "", true
+			return "", ""
 		}
 	}
 	mostCores, mostFree, atBound := 0.0, 0.0, true
@@ -232,11 +239,11 @@ func (l *ledger) room(job capJob) (string, bool) {
 	}
 	switch {
 	case job.Copy && atBound:
-		return fmt.Sprintf("every worker holds %d copies, the most it takes (output version %d)", copyBound, playback.OutputVersion), false
+		return playback.WorkersAtCopyBound, fmt.Sprintf("every worker holds %d copies, the most it takes (output version %d)", copyBound, playback.OutputVersion)
 	case job.Cost > mostCores+coresSlack:
-		return fmt.Sprintf("cores are short: the job costs %.1f cores and the most any worker has is %g (output version %d)", job.Cost, mostCores, playback.OutputVersion), false
+		return playback.NoWorkerWithFreeCores, fmt.Sprintf("cores are short: the job costs %.1f cores and the most any worker has is %g (output version %d)", job.Cost, mostCores, playback.OutputVersion)
 	}
-	return fmt.Sprintf("cores are short: the job costs %.1f cores and the most any worker has free is %.1f (output version %d)", job.Cost, max(mostFree, 0), playback.OutputVersion), false
+	return playback.NoWorkerWithFreeCores, fmt.Sprintf("cores are short: the job costs %.1f cores and the most any worker has free is %.1f (output version %d)", job.Cost, max(mostFree, 0), playback.OutputVersion)
 }
 
 // preemptHelpers cancels the helpers that a viewer's job of the cost needs

@@ -95,7 +95,7 @@ func expireStale(ctx context.Context, pool *pgxpool.Pool, timeout time.Duration)
 }
 
 // StoreMismatch says why the running processes can't share segments, or
-// returns "" if they can. Every process records its roles and transcodeStore in
+// returns "" if they can. Its reason is playback.TranscodeStoreMismatch. Every process records its roles and transcodeStore in
 // transcode_nodes, and this compares them, so a missing store and a different
 // one are found the same way. A URI never holds credentials (invariant 12), so
 // it can be named. A process that is only a worker and has no store just extracts
@@ -213,17 +213,25 @@ const failureMemory = 30 * time.Second
 // before it deletes the old one, which is about to free its cores. Helpers
 // don't either: a new viewer stops them (preemptHelpers). A queued job no worker
 // has claimed yet does, on the worker with the most cores free.
-func (j *Jobs) Unavailable(ctx context.Context, spec playback.Spec, userID, deviceID string) (reason string, err error) {
+func (j *Jobs) Unavailable(ctx context.Context, spec playback.Spec, userID, deviceID string) (text string, err error) {
+	_, text, err = j.Refusal(ctx, spec, userID, deviceID)
+	return text, err
+}
+
+// Refusal is Unavailable with the reason of the refusal beside its words: one of playback.NoWorkerRunning,
+// NoWorkerWithFreeCores, WorkersAtCopyBound, TranscodeStoreMismatch and RememberedFailure, or "" with no words where the
+// transcode can start. The words may name a file (a failure's own text does); the reason never does.
+func (j *Jobs) Refusal(ctx context.Context, spec playback.Spec, userID, deviceID string) (reason, text string, err error) {
 	// Only workers forget dead workers (lookForTheDead): a replica holds no
 	// liveness lock, so it may have missed an outage altogether, and would
 	// forget live workers still taking their lock again. It counts a worker
 	// only while its lock is held, and writes nothing.
 	queue, hash := orDefault(j.QueueTimeout, queueTimeout), spec.Hash()
 	if err := expireStale(ctx, j.Pool, queue); err != nil {
-		return "", err
+		return "", "", err
 	}
 	if live, err := LiveJob(ctx, j.Pool, hash); err != nil || live {
-		return "", err // A live job is joined, whatever failed before.
+		return "", "", err // A live job is joined, whatever failed before.
 	}
 	// A refusal that rests on a worker whose lock is gone is looked at again for
 	// a grace: it is either taking its lock again, or never will.
@@ -249,36 +257,36 @@ func (j *Jobs) Unavailable(ctx context.Context, spec playback.Spec, userID, devi
 					AND locked AND NOT `+lockHeld("transcode_nodes.id")+`)`,
 			hash, liveTiming("counted").Seconds(), failureMemory.Seconds(), playback.OutputVersion, maxRestarts+1).Scan(&workers, &versionWorkers, &failure, &lockless)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
-		short := ""
+		short, shortReason := "", ""
 		if versionWorkers > 0 {
 			nodes, jobs, err := readCapacity(ctx, j.Pool, capQuery{Filter: "NOT locked OR " + lockHeld("id"), Queue: queue, UserID: userID, DeviceID: deviceID})
 			if err != nil {
-				return "", err
+				return "", "", err
 			}
 			l := newLedger(nodes, jobs, viewerJobs)
 			l.placeQueued(jobs, viewerJobs)
-			short, _ = l.room(capJob{Cost: spec.Cost(), Copy: spec.Copy})
+			shortReason, short = l.why(capJob{Cost: spec.Cost(), Copy: spec.Copy})
 		}
 		if failure == nil && (workers == 0 || short != "") && lockless > 0 && time.Now().Before(deadline) {
 			select {
 			case <-ctx.Done():
-				return "", ctx.Err()
+				return "", "", ctx.Err()
 			case <-time.After(liveTiming("refusalPoll")):
 			}
 			continue
 		}
-		if reason, err := StoreMismatch(ctx, j.Pool); err != nil || reason != "" {
-			return reason, err
+		if text, err := StoreMismatch(ctx, j.Pool); err != nil || text != "" {
+			return playback.TranscodeStoreMismatch, text, err
 		}
 		switch {
 		case failure != nil:
-			return "the last attempt failed: " + *failure, nil
+			return playback.RememberedFailure, "the last attempt failed: " + *failure, nil
 		case workers == 0:
-			return "no transcode worker is running", nil
+			return playback.NoWorkerRunning, "no transcode worker is running", nil
 		}
-		return short, nil
+		return shortReason, short, nil
 	}
 }
 

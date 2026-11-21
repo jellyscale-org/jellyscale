@@ -156,8 +156,9 @@ Every metric starts with `jellyscale_`, and the Go runtime and process metrics (
 | `jellyscale_segment_wait_seconds{source,kind,outcome}` | stream | Histogram of how long a segment request took. `source`: `store` (already stored), `waited` (on a job that was already queued or running, whoever started it), `started` (a job this request started), `none` (ended before it looked). `kind`: `reencode` or `copy`. `outcome`: `ok`, `timeout` (90 s), `failed`, `refused`, `canceled` (the client left), `error`. The slow cases are the ones that never return a segment, so they are in it. |
 | `jellyscale_segment_stalls_total{kind}` | stream | Requests that took over 5 seconds, whatever their outcome. |
 | `jellyscale_segment_requests_refused_total{reason}` | stream | Requests refused as `stopped` (a playlist or segment request of a session that ended, answered 410), `no_worker` or `busy` (a segment that needed a job and found none, or no worker with the cores free). |
-| `jellyscale_playbackinfo_decisions_total{method}` | api | How PlaybackInfo said a source plays: `direct_play`, `copy` or `reencode`. jellyscale has no separate direct stream. |
-| `jellyscale_playbackinfo_refusals_total` | api | Sources refused because the transcode they need cannot start. |
+| `jellyscale_playbackinfo_decisions_total{method}` | api | How PlaybackInfo answers said a source plays: `direct_play`, `copy` or `reencode`. jellyscale has no separate direct stream. It counts answers, not plays: a client that asks and never plays is counted, and one that plays twice from one answer is counted once. A refused answer is not counted here. |
+| `jellyscale_playbackinfo_refusals_total{reason}` | api | Sources refused because the transcode they need cannot start, by the reason (`NoWorkerRunning`, `NoWorkerWithFreeCores`, `TranscodeStoreMismatch`, `RememberedFailure`, `WorkersAtCopyBound`, `NoWorkerOfThisOutputVersion`, `NoTranscodeStore` or `NoProbedDuration`; one for each refused answer, so its sum over reasons is the number of refusals). |
+| `jellyscale_playbackinfo_decision_reasons_total{method,reason}` | api | The reasons of the decisions counted in `decisions_total`, one for each reason of each decision under that decision's method. A decision with two reasons adds two, so the sum over reasons may exceed the decisions, and a decision with no reason adds none. A refused answer adds none. These count PlaybackInfo answers, not plays, and every `reason` is one of those listed under "Why a film plays as it does". The labels are only `method` and `reason`: never an account, device, client or film. |
 | `jellyscale_playback_copy_fallbacks_total` | stream | Streams of a copied video that went on as a re-encode (x264, x265 or SVT-AV1, by the copy's codec) because a job found the file's keyframe index wrong, counted once for each stream and not for each of its segments. The log says which film (`item`, `source`) and why (`reason`). A copy stays bit for bit the file's video until then (invariant 45). |
 | `jellyscale_scan_last_failed_films{library}` | worker | How many films the last scan this process ran of the library could not store (the file could not be read or probed, or the write failed; an episode skipped for having no season and episode number is not one). The count is of that scan alone, and a scan that fails on the loss guard still reports it. `jellyscale_scan_last_success` is 0 when any film could not be stored. A stored film that can no longer be probed keeps its item and is counted at every scan. |
 | `jellyscale_scan_last_duration_seconds{library}`, `jellyscale_scan_last_success{library}`, `jellyscale_scan_last_timestamp_seconds{library}` | worker | The last scan this process ran of the library (by library ID): how long it took, whether it succeeded (1) or failed (0, also when any film could not be stored), and when it ended (seconds since the epoch). These describe the scans this replica ran: a scan another replica holds the lock for is not reported here and leaves the series as they were, so a replica that keeps losing the lock shows an old timestamp. Alert on `time() - max(jellyscale_scan_last_timestamp_seconds)` across workers, and read `jellyscale_scan_last_success` from the series with the newest timestamp. |
@@ -165,3 +166,58 @@ Every metric starts with `jellyscale_`, and the Go runtime and process metrics (
 | `jellyscale_db_pool_acquires_total`, `jellyscale_db_pool_acquire_wait_seconds_total` | every role | Connections acquired, and the time spent waiting for one; the rate of the second over the first is the average wait. |
 
 Counters and histograms count from the process's start. A stream request that is still waiting is not yet in the histogram, so a hung one shows when it ends (at 90 s at the latest).
+
+## Why a film plays as it does
+
+Each api process writes one line at Info for each source a PlaybackInfo answer lists, with the message `playback decision`; an answer that lists two sources writes two lines, and one that names a source writes one. An answer that is refused (no source, `ErrorCode` `RateLimitExceeded`) writes one line, `method=refused`, for the source refused and for no other. A request that gets no answer (a bad body, a bad token, an unknown item, a database failure) writes none. The line says how the source plays, in the counters' words: `method=direct_play`, `copy` (the video as it is, whatever the audio and container need) or `reencode` (H.264 SDR). Its keys:
+
+- `reasons`: every reason of the decision, comma separated, from the list below. A copy, a re-encode and a refusal always have some; a refusal has exactly one. A direct play has none, unless it gave up a transcode: then `asked` is `copy` or `reencode`, `asked_reasons` are the reasons of the transcode that was asked, and `reasons` is why none was given.
+- `client`, `client_version`, `device`, `device_id`, `user` (the account's id, as the other api lines print it), `item` and `source` (a dashed lower case id whatever form the request used) and `play_session`, which is the answer's `PlaySessionId` and the same on every later line of that play.
+- `out_codec`, `out_height`, `out_range` and `src_height` (copy and re-encode): what the viewer gets and the file's height. A copy is the file's own codec and height, in the range it sends (a Dolby Vision file as its base layer); a re-encode is `h264`, `SDR`, at most 1080 lines. `tone_mapped=yes` when the encode maps an HDR picture to SDR, and `ceiling_lowered=yes` when the 1080 line ceiling made the picture smaller than the same request would have got without it.
+- `src_range` and `src_dv_profile`: the file's range and its Dolby Vision profile, where the row was read.
+- `audio_asked` (the index the request gave, or `none`), `audio_index`, `audio_codec`, `audio_language` (the track that plays) and `audio_by`: `client` if the request named that track, `server` if it named none or named an index that is no audio track, so the file's default or the viewer's saved language chose it.
+- `subtitle_asked` (as given, `-1` included, or `none`) and what it resolved to: `subtitle_index`, `subtitle_codec`, `subtitle_language` and `subtitle_kind` (`text` or `image`), `none` for `-1` or an index that is no subtitle track. The server picks no subtitle, so none is marked as its choice.
+
+A line never holds a title, a file name or a path. To find why one viewer's film was re-encoded, search the api logs for the play session id (the `PlaySessionId` of the answer, which the TranscodingUrl carries too): `grep 'playback decision' | grep play_session=<id>`. To find the decisions for a film, search for `item=<id>`. The ids are printed dashed and lower case. To get from an item id as the line prints it to the film, ask Postgres: `select name, type from items where id = '<item>'`.
+
+The counters say how often. Re-encodes by reason over the last day, summed over the api replicas:
+
+```
+sum by (reason) (increase(jellyscale_playbackinfo_decision_reasons_total{method="reencode"}[1d]))
+```
+
+The reasons are Jellyfin's names where Jellyfin has one (the `TranscodeReasons` of its API) and jellyscale's own where it has none. A name is spelled the same in the line, in the counters' `reason` label and in a TranscodingUrl's `TranscodeReasons`, and every name in a source's `TranscodeReasons` (and in `GET /Sessions`) is in its line. A reason only the line and the counters hold, such as `KeyframeIndexUnusable` or the track pick, never reaches a client.
+
+Why the client's profile or the request does not allow the file as it is:
+
+- `ContainerNotSupported`: the client's profile does not list the file's container.
+- `VideoCodecNotSupported`: the profile does not list the video codec, or the codec is one jellyscale never copies (anything but H.264, HEVC and AV1), so the video is re-encoded.
+- `AudioCodecNotSupported`: the profile does not list the audio codec of the track that plays.
+- `SubtitleCodecNotSupported`: a subtitle is drawn into the picture, which takes a re-encode; for an image track and for a text track.
+- `SecondaryAudioNotSupported`: the track that plays is not the file's default, and the client's profile cannot pick it itself.
+- `VideoProfileNotSupported`: the client refuses the video's profile, or its profile cannot be named for the playlist (for example HEVC other than Main and Main 10).
+- `VideoLevelNotSupported`: the video's level is over what the client's profile allows.
+- `VideoResolutionNotSupported`: the picture's width or height is over what the client's profile allows.
+- `InterlacedVideoNotSupported`: the video is interlaced and the client's profile does not allow it.
+- `AudioChannelsNotSupported`: the track has more channels than the client's profile allows.
+- `ContainerBitrateExceedsLimit`: the file's bitrate is over the cap, whether the client profile's or the request's `MaxStreamingBitrate`.
+- `VideoRangeTypeNotSupported`: the client's profile does not list the file's range (HDR10, HDR10+, HLG or Dolby Vision); `src_range` and `src_dv_profile` say which.
+
+Why the video is not sent as it is, which only jellyscale names:
+
+- `KeyframeIndexUnusable`: the video is in a codec that is copied (H.264, HEVC, AV1) but the file has no keyframe index, or its keyframes are too far apart to cut segments on.
+- `BitrateUnknownUnderCap`: a cap applies and the file does not say its bitrate, so nothing shows that a copy fits it.
+- `VideoRangeNotCopyable`: the range cannot be copied: H.264 in HDR, or Dolby Vision profile 5.
+- `VideoRangeUnknown`: the file's range has not been scanned yet; a rescan fills it in.
+
+Why a transcode was refused (a refused line carries exactly one of these), or, on a direct play line, why none was given:
+
+- `NoWorkerRunning`: no transcode worker is running.
+- `NoWorkerWithFreeCores`: workers run, but none has the cores free that the job costs.
+- `TranscodeStoreMismatch`: the running processes have different `transcodeStore` settings, so they cannot share segments.
+- `RememberedFailure`: the same transcode failed a moment ago, and is not offered again until the failure is forgotten; the log's own lines, not the decision line, say what failed.
+- `WorkersAtCopyBound`: every worker already holds as many copies as it takes.
+- `NoWorkerOfThisOutputVersion`: a track other than the file's default was asked, and no worker of this release's output version runs transcodes (see the rolling update).
+- `NoTranscodeStore`: a track pick or a transcode was asked and no `transcodeStore` is set, so transcoding is off.
+- `NoProbedDuration`: the film has no probed duration, so it can be neither copied nor transcoded.
+

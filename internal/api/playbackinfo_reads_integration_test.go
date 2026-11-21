@@ -369,13 +369,13 @@ func TestPlaybackInfoRefusalCountsNoDecision(t *testing.T) {
 	e, _, source := transcodeEnv(t, "hevc", "aac")
 	secondSource(t, e)
 	mustExec(t, e.pool, "UPDATE transcode_nodes SET seen_at = now() - interval '1 minute'")
-	before, refusals := decided(t), counterValue(t, playbackRefusals)
+	before, refusals := decided(t), refusedTotal(t)
 	reply := e.playbackInfo(t, 0, e.item, profileBody(t, source, nil))
 	if reply["ErrorCode"] != "RateLimitExceeded" {
 		t.Fatalf("not refused: %v", reply)
 	}
 	wantDecisions(t, "a refusal", before, map[string]float64{})
-	if got := counterValue(t, playbackRefusals); got != refusals+1 {
+	if got := refusedTotal(t); got != refusals+1 {
 		t.Errorf("refusals rose by %v, want 1", got-refusals)
 	}
 }
@@ -390,7 +390,7 @@ func TestPlaybackInfoRefusalAfterAPlayableSourceCountsNoDecision(t *testing.T) {
 	mustExec(t, e.pool, "UPDATE media_sources SET streams = replace(streams::text, 'hevc', 'h264')::jsonb WHERE id = $1::uuid", e.item)
 	mustExec(t, e.pool, "UPDATE transcode_nodes SET seen_at = now() - interval '1 minute'")
 	log := traceReplicas(t, e)[0]
-	before, refusals := decided(t), counterValue(t, playbackRefusals)
+	before, refusals := decided(t), refusedTotal(t)
 	log.take()
 	reply := e.playbackInfo(t, 0, e.item, map[string]any{"DeviceProfile": capturedProfile(t)})
 	statements := log.take()
@@ -401,7 +401,7 @@ func TestPlaybackInfoRefusalAfterAPlayableSourceCountsNoDecision(t *testing.T) {
 		t.Errorf("a refusal lists %d sources", len(sources))
 	}
 	wantDecisions(t, "a refusal after a source that plays", before, map[string]float64{})
-	if got := counterValue(t, playbackRefusals); got != refusals+1 {
+	if got := refusedTotal(t); got != refusals+1 {
 		t.Errorf("refusals rose by %v, want 1", got-refusals)
 	}
 	if n := count(statements, namesSource); n > 2 {
