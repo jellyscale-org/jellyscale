@@ -13,7 +13,7 @@
       "severity": "minor",
       "title": "helper slot protection is a count, not a reservation",
       "status": "open",
-      "notes": ""
+      "notes": " Re-read against JS-162's end-to-end figures; close those the figures answer (D-045)."
     },
     {
       "id": "BL-002",
@@ -40,7 +40,7 @@
       "severity": "minor",
       "title": "helpers spawn helpers",
       "status": "open",
-      "notes": ""
+      "notes": " Re-read against JS-162's end-to-end figures; close those the figures answer (D-045)."
     },
     {
       "id": "BL-005",
@@ -48,8 +48,8 @@
       "reviewer": "ux",
       "severity": "minor",
       "title": "no reason shown to operators when a burnt-image job gets no helpers",
-      "status": "open",
-      "notes": ""
+      "status": "promoted",
+      "notes": " Planned as JS-161's seventh criterion (D-044); its helper-wanted reason is also JS-164's (D-045)."
     },
     {
       "id": "BL-006",
@@ -58,7 +58,7 @@
       "severity": "minor",
       "title": "helper placement counts slots, not CPU",
       "status": "open",
-      "notes": ""
+      "notes": " Re-read against JS-162's end-to-end figures; close those the figures answer (D-045)."
     },
     {
       "id": "BL-007",
@@ -76,7 +76,7 @@
       "severity": "minor",
       "title": "paused helpers keep their slots; a second new viewer can queue",
       "status": "open",
-      "notes": ""
+      "notes": " Re-read against JS-162's end-to-end figures; close those the figures answer (D-045)."
     },
     {
       "id": "BL-009",
@@ -362,9 +362,9 @@
       "source": "state review 2026-11-10",
       "reviewer": "product",
       "severity": "minor",
-      "title": "JS-054 is too large for one build: slice detection and one family (Intel QSV/VAAPI on the dogfood) from placement and failover",
+      "title": "JS-054 is too large for one build: slice detection and one family (Intel VAAPI/QSV on a UHD 630 node, not the HD 530) from placement and failover",
       "status": "open",
-      "notes": ""
+      "notes": " Promote when JS-163 shows hardware decode, tone map and encode hold 1.2x with the burn-in at no more than twice x264's bytes for equal SSIM, and a worker runs on such a node (D-044)."
     },
     {
       "id": "BL-041",
@@ -904,7 +904,7 @@
       "severity": "minor",
       "title": "The burn-in stall ('timed out waiting for playback past 22') was not reproduced or explained",
       "status": "open",
-      "notes": "Jobs.segment waits for a job within catchUpSegments; a plausible mechanism for the stall in seeCue. Watch the failure ledger."
+      "notes": "Jobs.segment waits for a job within catchUpSegments; a plausible mechanism for the stall in seeCue. Watch the failure ledger. Not the dogfood stall (JS-154: CPU speed); whether the scenario ever ran under real time is unverified (D-044)."
     },
     {
       "id": "BL-101",
@@ -1120,7 +1120,7 @@
       "severity": "minor",
       "title": "A queued job is counted on the worker with the most free cores, while any worker that fits may claim it",
       "status": "open",
-      "notes": "capacity.go place/placeQueued against worker.go claim. The error is on the safe side (refuses too much, never offers too much) and lasts only while the job is queued."
+      "notes": "capacity.go place/placeQueued against worker.go claim. The error is on the safe side (refuses too much, never offers too much) and lasts only while the job is queued. Promote when JS-092's 50-worker measurement or an autoscaled deployment shows a queued job refused while a worker that fits exists, or the capacity reads loading Postgres (D-045)."
     },
     {
       "id": "BL-125",
@@ -1129,7 +1129,7 @@
       "severity": "minor",
       "title": "Every worker reads all capacity rows each second while a queued job fits nowhere",
       "status": "open",
-      "notes": "readCapacity runs two queries per worker per second during an unfit job's queueTimeout. Skip the read when free cores are below the smallest queued cost."
+      "notes": "readCapacity runs two queries per worker per second during an unfit job's queueTimeout. Skip the read when free cores are below the smallest queued cost. Promote when JS-092's 50-worker measurement or an autoscaled deployment shows a queued job refused while a worker that fits exists, or the capacity reads loading Postgres (D-045)."
     },
     {
       "id": "BL-126",
@@ -1776,8 +1776,8 @@
       "reviewer": "",
       "severity": "minor",
       "title": "TestAnyReplicaServesAnySegmentAndOneJobStarts (garage, copied): a heartbeat timed out 0.7 s after the job started under queue load, the job was given up for a lost lease and a second job started",
-      "status": "promoted",
-      "notes": "Product owner asks (evidence): Would a loaded production worker miss a heartbeat 0.7 s after a job starts and have the job restarted (a viewer rebuffering), or is this the test's short lease? Promoted into JS-155 (D-039). D-042: answered from the queue log in JS-155's record; closed when that answer is recorded, or a fix task named."
+      "status": "wontfix",
+      "notes": "Product owner asks (evidence): Would a loaded production worker miss a heartbeat 0.7 s after a job starts and have the job restarted (a viewer rebuffering), or is this the test's short lease? Promoted into JS-155 (D-039). D-042: answered from the queue log in JS-155's record; closed when that answer is recorded, or a fix task named. D-043: answered in JS-155's record (the rig's 3 s lease; production cuts only after 9.5 s with no renewal answered); no fix task. Reopen if the same test fails the queue again, or if the dogfood's logs show a job given up for a lost lease while Postgres was up."
     },
     {
       "id": "BL-198",
@@ -2097,7 +2097,7 @@
     {
       "id": "BL-234",
       "title": "A client that turns on an image subtitle by default starts a whole-film read on the first play of each such film",
-      "notes": "Dogfood report 2026-11-20 (D-038): one sighting, 46.7 GB read for one film when Moonfin's default subtitle mode chose an image track. D-003 accepts the read; JS-141 and JS-143 cover it. Promote JS-141 ahead of JS-135 if JS-143's count shows more than a few such reads a week, or most of those plays abandoned early.",
+      "notes": "Dogfood report 2026-11-20 (D-038): one sighting, 46.7 GB read for one film when Moonfin's default subtitle mode chose an image track. D-003 accepts the read; JS-141 and JS-143 cover it. Promote JS-141 ahead of JS-135 if JS-143's count shows more than a few such reads a week, or most of those plays abandoned early. JS-154: job 82 ran at 0.6x beside this extraction on the same 4 cores, against 0.85x alone; the dogfood's log shows the extraction starting beside jobs 82 and 85, and job 83 within its run. JS-161's design review decides whether an extraction counts against capacity (D-044).",
       "source": "dogfood report 2026-11-20",
       "status": "open",
       "severity": "minor",
@@ -2144,6 +2144,42 @@
       "title": "A refused playback decision line does not say whether a copy or a re-encode was refused",
       "notes": "JS-153 minor. The refused line carries one refusal reason and no asked method, where a direct play that gave up a transcode carries asked and asked_reasons. WorkersAtCopyBound implies a copy; NoWorkerWithFreeCores, NoWorkerRunning and RememberedFailure do not say. An operator sizing workers cannot tell a cheap copy refused from a re-encode refused without looking up the film. Refusals on the dogfood: unverified. Promote as a criterion (the refused line and jellyscale_playbackinfo_refusals_total carry what was asked, with its reasons) when jellyscale_playbackinfo_refusals_total on the dogfood is above zero for a reason that does not name the method, or when JS-154's decision chooses refusing with a reason: the task that does it carries the criterion. D-041.",
       "source": "JS-153 run",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner"
+    },
+    {
+      "id": "BL-240",
+      "title": "A burnt-in seek once read 688 KiB more of the film than the same seek read before",
+      "notes": "JS-155 sighting (TestWithTheTrackStoredASeekIntoALongCueReadsNoMoreOfTheFilmThanAnySeek/DVB, #235), cause unknown. Promote when the same test fails the queue again, with the read offsets JS-160 adds, or if the dogfood's first-segment time after a seek into a burnt-in film is slower than a plain seek. D-043.",
+      "source": "JS-155 record",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner"
+    },
+    {
+      "id": "BL-241",
+      "title": "An e2e POST failed to fetch right after a Postgres restart",
+      "notes": "JS-155 sighting (subtitles gate, 'a viewer who hides the tracks outside their languages...', #239), cause unknown. Promote when it fails again with the requestfailed text JS-160 prints. If that text or the router shows jellyscale dropped or refused the connection, it joins JS-146. D-043.",
+      "source": "JS-155 record",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner"
+    },
+    {
+      "id": "BL-242",
+      "title": "A helper is refused unless a whole job's room stays free elsewhere, although a new viewer stops helpers; a 6-core worker beside a 4-core one therefore helps nobody",
+      "notes": "JS-154 (reading roomForHelper, ledger.place/room). Promote from JS-162's third criterion (D-044).",
+      "source": "JS-154",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner"
+    },
+    {
+      "id": "BL-243",
+      "title": "A viewer refused for lack of cores while a new worker is starting could be held for it instead of refused",
+      "notes": "Promote when JS-057 measures demand-to-ready under about 10 seconds and its 14-day count shows refusals followed by a successful retry (D-045).",
+      "source": "owner direction 2026-11-21",
       "status": "open",
       "severity": "minor",
       "reviewer": "product-owner"

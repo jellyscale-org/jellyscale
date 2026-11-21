@@ -1997,6 +1997,51 @@
       "dependsOn": [],
       "source": "dogfood report, owner, 2026-11-20 (finding 1); D-038",
       "notes": "The dogfood's job 83, start=1183. No film title or path in checks, fixtures or the pull request. BL-021 (the 4K HDR TrueHD criterion has no check) closes with this task's TrueHD row."
+    },
+    {
+      "id": "JS-154",
+      "phase": "P3",
+      "title": "Measure why a 4K HDR film with a burned-in subtitle ran at 0.6 times real time on the dogfood, and price what keeps it playing",
+      "description": "On the dogfood (2026-11-20) three plays of 4K HDR10+/Dolby Vision films with a PGS subtitle were re-encoded to 1080p SDR, tone mapped with the subtitle burned in, at 0.56 to 0.63 times real time; the viewer got no film. docs/transcoding.md prices that job at 3.2 cores and docs/status.md says a re-encode under 1.2 times real time gets helpers on other workers, burned subtitles included; neither kept it playing. Read from the dogfood by the lead: one worker only (a single pod with every role), a 4-core i5-6500 (Skylake, iGPU HD 530), pod CPU limit 4, /dev/dri not mounted, no helper job ran. PRODUCT.md goal 1, and: a heavy film uses the whole cluster's processors rather than stalling on one machine. This task measures and briefs; the product owner's decision on the brief names the task that closes it.",
+      "acceptanceCriteria": [
+        "Recorded from the dogfood for those three jobs, ids and counts only: how many workers ran and the cores each declared, the CPU model, the job's priced cost against the CPU it used, whether helpers were wanted, started or refused and why, and the speed with them. The record says why sharing across the cluster did not bring the film to real time",
+        "Measured through a worker's own command from a real 4K HDR film with a PGS track, on 2, 4 and 8 CPUs and on the dogfood worker's own CPU count, on ffmpeg 6.1 and ffmpeg 9: today's path (2160 HDR to 1080 SDR H.264, tone mapped, subtitle burned in), with CPU seconds per second of film, the speed alone and with helpers on two other workers, and where the cost goes (decoding, tone mapping, the burn-in, the encode)",
+        "The same film measured, for the measurement only, with what might make it cheaper: a faster preset, an output of 720 lines, and the dogfood's Intel iGPU decoding and encoding (its generation recorded), each with its speed and what the viewer would lose in picture",
+        "If the measured cost is above the priced 3.2 cores, the brief says what raising the price does on the dogfood: which plays are then refused within seconds with a reason instead of stalling, and how many viewers a worker holds",
+        "The figures go to the product owner as a brief with every option priced, keeping 'the film plays in real time on the dogfood' among them: making helpers lift it, a first hardware slice (BL-040), a cheaper output for a burn-in, and refusing with a reason. Whether BL-100's burn-in stall is this one is said. A change to the owner's homelab (another worker, the iGPU device in the pod) is brought to the owner before it is made",
+        "Any figure this task adds for operators is served on the existing /metrics endpoint",
+        "Recorded in docs/transcoding.md with machine and command; no film title or path anywhere",
+        "No viewer-visible change"
+      ],
+      "priority": 15,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "dogfood report, owner, 2026-11-20 (finding 2); D-038; D-021",
+      "notes": "Jobs 82, 83 and 85. The product owner's position before the figures: refusing with a reason is a floor, not the closer; an output below 1080 lines is a loss that needs the brief; sharing the encode across the cluster and hardware are weighed first."
+    },
+    {
+      "id": "JS-155",
+      "phase": "OPS",
+      "title": "Each test that failed the merge queue on 2026-11-20 has a verdict from its log, and a named cause where a bounded reproduction finds one",
+      "description": "Four merge-queue runs on 2026-11-20 failed on six internal/transcode integration tests, each on a PR that could not affect them (docs, plan, a CI action, a module bump), each passing on the next run. Whether any is a product race in a lease, a retry bound or a seek read is unverified. PRODUCT.md: failures are invisible; seeking and resuming just work. D-039. Reshaped by D-042: this task reads, measures within a box and briefs; the product owner's decision on its brief names the fix tasks. The TRUNCATE deadlock is JS-158.",
+      "acceptanceCriteria": [
+        "The sightings are these seven, each named with its queue run: TestAWorkerForgottenWhileItLivesEndsItsExtractionAndItsLateRenewalMovesNoCutLeaseLater, TestAfterTheFileIsReplacedAMidFilmRunDrawsAndReadsByTheNewFilesTrack, TestACauseThatPersistsStartsAtMostThreeFreshJobsAndThenFails/the_source_store_cuts_a_read, TestWithTheTrackStoredASeekIntoALongCueReadsNoMoreOfTheFilmThanAnySeek/DVB, TestAJobThatStartsPastTheEndEndsDoneWithNoFFmpeg, BL-197's TestAnyReplicaServesAnySegmentAndOneJobStarts, and the e2e scenario that failed the queue that day",
+        "For every sighting, from its merge-queue log and before any reproduction, the record says what failed, and what a viewer would have seen had the same thing happened on a production cluster (nothing, a rebuffer, a wrong picture or subtitle, no film), or that the log cannot tell. BL-197's question is answered there: would a loaded production worker miss a heartbeat 0.7 s after a job starts and have the job restarted, or is that the test's short lease",
+        "Reproduction is bounded: under CI's shape (ffmpeg 6.1, 2 CPUs), at most 2 hours of wall-clock per sighting and 10 hours in all, the sightings whose log points at a lease, a retry bound or a seek read first; at least one attempt per sighting runs under load like the queue's (its shard beside it), not only the test alone. Runs, failures and minutes are recorded per sighting Amended by D-043: no reproduction is run; each named cause's fix task forces its condition with a check that fails first.",
+        "Each sighting ends with one of three verdicts: product (cause named), test (cause named), or cause unknown. Not reproducing is never a verdict of test and never rules a product cause out",
+        "No fix lands in this task. Each named cause goes to the product owner in one brief, with what a viewer would have seen and the size of the fix; the decision names the fix tasks, each of which has a check that forces the named condition and fails before the fix",
+        "No retry wrapper, no skip, and no raised timeout anywhere, for a named cause or an unknown one",
+        "Each cause-unknown sighting is in the same brief with what was read and tried, and what the next failing run's log would need to show; it is promoted when the same test fails the merge queue again, with that run's log",
+        "Recorded as a short table in docs/testing.md (sighting, queue run, runs and failures, verdict, cause, what a viewer would have seen); nothing checks the table's form by machine Amended by D-043: the runs column reads 'none run (D-043)'.",
+        "No viewer-visible change"
+      ],
+      "priority": 17,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [],
+      "source": "merge queue failures 2026-11-20; D-039",
+      "notes": "Closes BL-197 when its question is answered in the record. Reproduction runs wait until JS-154's measurements are off the machine; the log reading does not wait."
     }
   ]
 }

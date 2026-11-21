@@ -71,3 +71,19 @@ Command: `E2E_GATES=subtitles E2E_ONLY='POSIX burn-in of (PGS for a viewer|VobSu
 transcode.mjs had its own copy of the old `advances` (its quality-change scenario reloads into the same `<video>` and calls it); it now uses the shared one. play.mjs's "time advances" step starts a fresh page and does not reload into a `<video>`, so it keeps its own check.
 
 **The ffprobe line.** `Stream ends prematurely at 0, should be 561347` is the logged outcome of the Open that TestAFailedReadOfTheCueTimesNeverLeavesASegmentWithoutTheCue (internal/transcode/image_burn_failures_integration_test.go:138) fails on purpose (`when Open 1 of the film fails once: the request ended with transcode failed: ffprobe: exit status 1: ...`); a passing test logs it with `t.Logf`, it is not a check that failed. CI runs 43274439881 (2026-11-12) , 43267973772 (2026-11-12) and 42966977119 (2026-11-11) carry the line, and in each the failing test is another one (TestKillPathsEndFFmpeg/the_lease_is_lost in the first), not this one. No CI run shows this test failing, so no fix or test is owed. `taskset -c 4-7 test/integration.sh -run '^TestAFailedReadOfTheCueTimesNeverLeavesASegmentWithoutTheCue$' -count=20`: DONE 20 tests, 20 passed (passed 20 of 20), with the other task building meanwhile.
+
+## JS-155: the merge-queue failures of 2026-11-20
+
+Read from each failing run's log and the code it exercises; no reproduction was run (D-042, D-043). Each named cause has its own fix task, whose check must force the condition and fail first.
+
+| Sighting | Queue run | Runs and failures | Verdict | Cause | What a viewer would have seen | Task |
+|---|---|---|---|---|---|---|
+| TestAWorkerForgottenWhileItLivesEndsItsExtractionAndItsLateRenewalMovesNoCutLeaseLater | #223 | none run (D-043) | test | the test's hold catches the lease keeper's first renewal in flight, then blocks every reconnect, so the renewal it waits for never comes | nothing | JS-160 |
+| TestAfterTheFileIsReplacedAMidFilmRunDrawsAndReadsByTheNewFilesTrack | #225 | none run (D-043) | test | the asset sweep removed the old track before the new one was stored, so the count-based wait never reached its target | nothing | JS-160 |
+| TestACauseThatPersistsStartsAtMostThreeFreshJobsAndThenFails/the_source_store_cuts_a_read | #225, #230 | none run (D-043) | product, from reading, not reproduced | the worker's periodic upload check can store the cut-short segment ffmpeg flushes on an early input end before the exit path refuses it (invariant 40) | a freeze or jump of up to about 4 s, stored for every viewer of that spec until swept | JS-159 |
+| TestWithTheTrackStoredASeekIntoALongCueReadsNoMoreOfTheFilmThanAnySeek/DVB | #235 | none run (D-043) | cause unknown | one burnt-in seek read 688 KiB more than the others; the log does not say which part | at most a slower first segment | BL-240 |
+| TestAJobThatStartsPastTheEndEndsDoneWithNoFFmpeg | #235 | none run (D-043) | test, likely | a job inserted with no viewer row is cancelled by the lease keeper's first renewal, racing its own end | nothing (a real job always has a viewer) | JS-160 |
+| TestAnyReplicaServesAnySegmentAndOneJobStarts (BL-197) | #185 | none run (D-043) | test | the rig's 3 s lease: no renewal answered for 2.5 s cut the job; production cuts only after 9.5 s with none answered | nothing | none (BL-197 answered) |
+| e2e "a viewer who hides the tracks outside their languages..." | #239 | none run (D-043) | cause unknown | the first POST after the previous scenario's Postgres restart failed to fetch, most likely between the browser and the test router | the setting not saved; the page would show an error | BL-241 |
+
+The Postgres deadlock seen on #223 and #239 is JS-158.

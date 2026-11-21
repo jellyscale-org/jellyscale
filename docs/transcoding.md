@@ -186,3 +186,23 @@ A film in PQ (HDR10) or HLG that is re-encoded to H.264 is tone mapped to SDR BT
 It is done in software with ffmpeg's `zscale` and `tonemap` filters, which every ffmpeg the project is tested with has (6.1.1 on Ubuntu 24.04, 8.1 on Alpine, 9.0). `libplacebo` would need a GPU on the worker and is not used. Tone mapping is the expensive part of an HDR transcode: on this 16 core machine, x264 veryfast to 1080p cost 40.5 CPU seconds for 20 s of 1080p HDR10 against 15.2 without the mapping (2.7 times), and 63.7 CPU seconds for 20 s of 4K HEVC against 32.2 (2.0 times), about 3.2 cores to keep one 4K HDR stream in real time. A 4K HDR re-encode is costed at 3.2 cores for this reason (see Sizing a worker). The output is bigger than an unmapped re-encode of the same film, by 11% to 16% for the 1080p clip and 16% to 38% for the 4K one in two measurements (11.9 MB against 10.7 MB, and 6.4 MB against 5.5 MB), under the same bitrate cap, 8-bit, at most 1080 lines.
 
 Upgrading from a version without tone mapping, roll in this order: workers, then `stream` replicas, then `api` replicas. Both `stream` and `api` replicas queue tone-mapped jobs (a master playlist request starts one). A worker from before this release that claimed one would not know the spec's `ToneMap`, would re-encode the picture without mapping it and store the washed-out segments under the tone-mapped hash, where viewers get them for the 24 hours of retention with nothing in any log. The same holds when rolling back: roll back the `api` and `stream` replicas first, so no tone-mapped job is queued when the first old worker starts. Once every worker is new, none can claim one wrongly. This is a known departure (ARCHITECTURE, Known departures), the same exposure as copied audio, so workers roll first and roll back last. A `stream` replica of this release still serves an older `api` replica's copy of an H.264 HDR film as a copy, so a playback begun during the upgrade keeps going.
+
+## A 4K HDR re-encode on a slow worker (JS-154)
+
+Measured 2026-11-21 on a 4K Dolby Vision (profile 7) HEVC Main 10 PQ film with a PGS track, 120 s and 60 s windows, through the worker's own command (2160 HDR to 1920x1080 SDR H.264, tone mapped, the PGS track burned in), three runs each.
+
+| Machine | CPUs | Speed (x real time) | CPU-seconds per second of film |
+|---|---|---|---|
+| Developer machine (AMD Ryzen 7 7800X3D), ffmpeg 9 | 2 / 4 / 8 / 16 | 0.88 / 1.55 / 2.63 / 3.10 | 2.23 / 2.43 / 2.69 / 4.19 |
+| Same, ffmpeg 6.1 | 2 / 4 / 8 | 0.89 / 1.60 / 2.44 | 2.20 / 2.31 / 2.68 |
+| Same, the release image's ffmpeg 8.1.3 | 4 | 1.70 | 2.27 |
+| The dogfood's worker node (Intel i5-6500, 4 cores), alone in a pod | 4 | 0.81 to 0.87 | 3.77 to 4.07 |
+| Same, no subtitle burned in | 4 | 0.84 to 0.86 | 3.81 to 3.88 |
+
+- **Where the cost goes** (developer machine, CPU-seconds per second): decode 1.19, scale 0.12, tone mapping 0.66, burn-in 0.00, encode 0.47. On the i5-6500: decode 2.07, with scale 2.26, with tone mapping 3.26, with burn-in 3.34, the whole job 3.8 to 3.9. The burn-in costs nothing; decode and tone mapping are the cost.
+- **The price is a core of a faster machine.** `Spec.Cost` prices this job at 3.2 cores, measured on a 16-thread machine. The i5-6500 needs about 1.6 times the CPU-seconds for the same work, so the job is admitted on a 4-core worker and runs at about 0.85 times real time. On the dogfood it ran at 0.56 to 0.63 because the film's PGS track was being extracted from the whole file on the same cores at the same time.
+- **No helper can start with one worker.** A helper must fit the job's price on a worker and still leave that much free elsewhere (`roomForHelper`).
+- **The node's iGPU (Intel HD 530, Skylake)** does not decode HEVC Main 10 and cannot tone map in its video processor. Software decode with OpenCL tone mapping and VAAPI H.264 encode reached 1.09 to 1.12 times real time in a quiet pod, at 31 times x264's bytes for equal SSIM at the bitrate tried.
+- **Cheaper outputs on the i5-6500:** x264 ultrafast 0.91; 720 lines 1.04 to 1.11; 720 lines with jellyfin-ffmpeg's `tonemapx` 1.22.
+
+What follows (D-044, D-045): JS-161 measures each worker's speed against a reference machine and refuses a play no worker can hold, with its reason; JS-162 measures helpers end to end; JS-163 measures the cluster's other nodes; JS-166 runs workers apart on the nodes that can hold the job.
