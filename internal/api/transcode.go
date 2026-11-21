@@ -284,7 +284,8 @@ func (s *Server) hlsSegment(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusGone)
 		return
 	case errors.As(err, &failed):
-		s.Log.Warn("a viewer's transcode failed", "item", req.spec.Item, "spec", req.hash, "segment", n, "reason", failed.Reason)
+		// The worker logs the failed job once, with its source; a line per refused request would repeat it.
+		s.Log.Debug("a viewer's transcode failed", "item", req.spec.Item, "spec", req.hash, "segment", n, "reason", failed.Reason)
 		http.Error(w, "transcode failed", http.StatusInternalServerError)
 		return
 	case errors.Is(err, transcode.ErrNoWorker), errors.Is(err, transcode.ErrBusy), errors.Is(err, transcode.ErrOtherVersion):

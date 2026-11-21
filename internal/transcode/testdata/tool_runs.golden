@@ -10,7 +10,7 @@ arg in.mkv
 arg -map
 arg 0:1
 arg -frames:a
-arg 1
+arg 2
 arg -c:a
 arg aac
 arg -b:a
