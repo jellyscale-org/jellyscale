@@ -308,9 +308,12 @@ func (s Spec) Hash() string {
 // bits per pixel at 24 fps. Steps are common heights, and sizes are even.
 // Nothing goes above MaxHeight, because software x264 at 4K needs more CPU
 // than a worker usually has to keep up with playback.
-func outputSize(video Stream, bitrate int64) (int, int) {
+func outputSize(video Stream, bitrate int64) (int, int) { return sizeUnder(video, bitrate, MaxHeight) }
+
+// sizeUnder is outputSize with the ceiling given.
+func sizeUnder(video Stream, bitrate int64, ceiling int) (int, int) {
 	budget := bitrate * 25 / 24
-	heights := []int{min(video.Height&^1, MaxHeight)}
+	heights := []int{min(video.Height&^1, ceiling)}
 	for _, h := range []int{2160, 1440, 1080, 720, 540, 360, 240} {
 		if h < heights[0] {
 			heights = append(heights, h)
@@ -324,6 +327,32 @@ func outputSize(video Stream, bitrate int64) (int, int) {
 		}
 	}
 	return max(width, 2), height
+}
+
+// Output is what the viewer gets of a source that is copied or re-encoded, for the decision line: the picture's codec, height
+// and range, whether the encode maps it to SDR, and whether MaxHeight lowered it.
+type Output struct {
+	Codec, Range   string
+	Height         int
+	ToneMapped     bool
+	CeilingLowered bool
+}
+
+// Output is what Decide's decision gives. A copy is the file's own codec and height, in the range it sends (a Dolby Vision
+// file as its base layer). A re-encode is H.264 SDR, at the height NewSpec gives it; the ceiling lowered it when the same bitrate
+// would have carried more lines without it. The source must have a video that NewSpec accepts.
+func (s Source) Output(d Decision) Output {
+	video, _ := s.video()
+	if d.Copy {
+		sent := video.VideoRangeType
+		if base, ok := baseLayer(video); ok {
+			sent = base
+		}
+		return Output{Codec: video.Codec, Height: video.Height, Range: sent}
+	}
+	_, height := outputSize(video, d.VideoBitrate)
+	_, uncapped := sizeUnder(video, d.VideoBitrate, math.MaxInt)
+	return Output{Codec: "h264", Height: height, Range: "SDR", ToneMapped: s.ToneMap() != "", CeilingLowered: uncapped > height}
 }
 
 // ParseSegment reads "-1.mp4" (the init segment, as -1) or "12.mp4" and

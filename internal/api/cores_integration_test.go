@@ -22,10 +22,10 @@ func TestPlaybackInfoComparesTheJobsCostWithTheWorkersCores(t *testing.T) {
 		t.Helper()
 		mustExec(t, e.pool, "TRUNCATE transcode_nodes")
 		mustExec(t, e.pool, "INSERT INTO transcode_nodes (id, roles, output_version, "+cores+") VALUES ('w1', 'worker', "+strconv.Itoa(playback.OutputVersion)+", "+map[string]string{"cores": "1", "slots": "2"}[cores]+")")
-		reencodes, refusals := counterValue(t, reencode), counterValue(t, playbackRefusals)
+		reencodes, refusals := counterValue(t, reencode), refusedTotal(t)
 		e.playbackInfo(t, 0, e.item, transcodeProfileBody(t, source))
 		gotOffered := counterValue(t, reencode) == reencodes+1
-		if gotOffered != offered || (counterValue(t, playbackRefusals) == refusals+1) == offered {
+		if gotOffered != offered || (refusedTotal(t) == refusals+1) == offered {
 			t.Errorf("%s: offered %v, want %v", what, gotOffered, offered)
 		}
 	}
@@ -33,9 +33,9 @@ func TestPlaybackInfoComparesTheJobsCostWithTheWorkersCores(t *testing.T) {
 	want("a worker of the release before, with slots and no cores", "slots", true)
 	mustExec(t, e.pool, "TRUNCATE transcode_nodes")
 	mustExec(t, e.pool, "INSERT INTO transcode_nodes (id, roles, cores, output_version) VALUES ('w1', 'worker', 0.5, "+strconv.Itoa(playback.OutputVersion)+")")
-	reencodes, refusals := counterValue(t, reencode), counterValue(t, playbackRefusals)
+	reencodes, refusals := counterValue(t, reencode), refusedTotal(t)
 	e.playbackInfo(t, 0, e.item, transcodeProfileBody(t, source))
-	if counterValue(t, reencode) != reencodes || counterValue(t, playbackRefusals) != refusals+1 {
+	if counterValue(t, reencode) != reencodes || refusedTotal(t) != refusals+1 {
 		t.Errorf("a 0.8 core job on a worker of 0.5 cores was offered, not refused")
 	}
 }

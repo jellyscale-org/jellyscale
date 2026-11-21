@@ -1,0 +1,2316 @@
+## direct play
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "aac",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": true,
+     "IsTextSubtitleStream": false,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Index": 2,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": true,
+   "SupportsDirectStream": true,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingSubProtocol": "http",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+## a copy for the audio codec
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "ac3",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=copy\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026VideoBitrate=2147291647\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=AudioCodecNotSupported",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## a copy for the container
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "aac",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": true,
+     "IsTextSubtitleStream": false,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Index": 2,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=copy\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026VideoBitrate=2147291647\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=ContainerNotSupported",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## a copy for the audio channels
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 6,
+     "Codec": "aac",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=copy\u0026AudioCodec=opus,flac\u0026AudioStreamIndex=1\u0026VideoBitrate=2147291647\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=AudioChannelsNotSupported",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## a re-encode for the video codec
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "aac",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": true,
+     "IsTextSubtitleStream": false,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Index": 2,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=h264\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026VideoBitrate=2147291647\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=VideoCodecNotSupported",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## a re-encode for a file over the client profile's cap
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "aac",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": true,
+     "IsTextSubtitleStream": false,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Index": 2,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=h264\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026VideoBitrate=808000\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=ContainerBitrateExceedsLimit",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## a re-encode for a file over the request's cap
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "aac",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": true,
+     "IsTextSubtitleStream": false,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Index": 2,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=h264\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026VideoBitrate=808000\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=ContainerBitrateExceedsLimit",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## a re-encode for a cap on a file of unknown bitrate
+{
+ "MediaSources": [
+  {
+   "Bitrate": 0,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "ac3",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=h264\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026VideoBitrate=808000\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=AudioCodecNotSupported",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## a copy of the file's second audio track the client cannot pick itself
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 2,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "aac",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": true,
+     "IsTextSubtitleStream": false,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Index": 2,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=copy\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=2\u0026VideoBitrate=2147291647\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## a text subtitle burned in
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "aac",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": true,
+     "IsTextSubtitleStream": false,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Index": 2,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=h264\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026SubtitleStreamIndex=3\u0026VideoBitrate=2147291647\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=SubtitleCodecNotSupported",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## an image subtitle burned in
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "aac",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": true,
+     "IsTextSubtitleStream": false,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Index": 2,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=h264\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026SubtitleStreamIndex=3\u0026VideoBitrate=2147291647\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=SubtitleCodecNotSupported",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## a subtitle beside the film burned in
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "aac",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": true,
+     "IsTextSubtitleStream": false,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Index": 2,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=h264\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026SubtitleStreamIndex=3\u0026VideoBitrate=2147291647\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=SubtitleCodecNotSupported",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## a subtitle index that is no subtitle track
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "aac",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": true,
+     "IsTextSubtitleStream": false,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Index": 2,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": true,
+   "SupportsDirectStream": true,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingSubProtocol": "http",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+## no subtitle asked
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "aac",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": true,
+     "IsTextSubtitleStream": false,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Index": 2,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": true,
+   "SupportsDirectStream": true,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingSubProtocol": "http",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+## an audio index that is no audio track
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "aac",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": true,
+     "IsTextSubtitleStream": false,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Index": 2,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": true,
+   "SupportsDirectStream": true,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingSubProtocol": "http",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+## no audio index asked
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "aac",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": true,
+     "IsTextSubtitleStream": false,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Index": 2,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": true,
+   "SupportsDirectStream": true,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingSubProtocol": "http",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+## an HEVC film with no keyframe index under a profile that takes HEVC
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "aac",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": true,
+     "IsTextSubtitleStream": false,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Index": 2,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=h264\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026VideoBitrate=2147291647\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=VideoCodecNotSupported",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## an H.264 film with no keyframe index
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "ac3",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=h264\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026VideoBitrate=2147291647\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=AudioCodecNotSupported",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## an H.264 film whose keyframes are too far apart
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "ac3",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=h264\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026VideoBitrate=2147291647\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=AudioCodecNotSupported",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## a film in a codec that is never copied
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "aac",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": true,
+     "IsTextSubtitleStream": false,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Index": 2,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=h264\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026VideoBitrate=2147291647\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=VideoCodecNotSupported",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## H.264 in HDR
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "ac3",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=h264\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026VideoBitrate=2147291647\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=AudioCodecNotSupported",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## Dolby Vision profile 5
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "ac3",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=h264\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026VideoBitrate=2147291647\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=VideoCodecNotSupported,AudioCodecNotSupported",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## a range that is not scanned yet
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "ac3",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=h264\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026VideoBitrate=2147291647\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=AudioCodecNotSupported",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## a codec profile that cannot be named
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "ac3",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=h264\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026VideoBitrate=2147291647\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=VideoCodecNotSupported,AudioCodecNotSupported,VideoProfileNotSupported",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## a level the client refuses on a film whose container it lacks
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "aac",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": true,
+     "IsTextSubtitleStream": false,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Index": 2,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=h264\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026VideoBitrate=2147291647\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=ContainerNotSupported",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## a resolution the client refuses on a film whose container it lacks
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "aac",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": true,
+     "IsTextSubtitleStream": false,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Index": 2,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=h264\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026VideoBitrate=2147291647\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=ContainerNotSupported",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## a profile the client refuses on a film whose container it lacks
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "aac",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": true,
+     "IsTextSubtitleStream": false,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Index": 2,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=h264\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026VideoBitrate=2147291647\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=ContainerNotSupported",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## a range the client refuses on a film whose container it lacks
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "aac",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": true,
+     "IsTextSubtitleStream": false,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Index": 2,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=h264\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026VideoBitrate=2147291647\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=ContainerNotSupported,VideoCodecNotSupported,AudioCodecNotSupported",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## two reasons are both named
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "ac3",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": false,
+   "SupportsDirectStream": false,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingContainer": "mp4",
+   "TranscodingSubProtocol": "hls",
+   "TranscodingUrl": "/videos/<item>/master.m3u8?DeviceId=probe-dev-1\u0026MediaSourceId=<item>\u0026VideoCodec=h264\u0026AudioCodec=aac,opus,flac\u0026AudioStreamIndex=1\u0026VideoBitrate=808000\u0026AudioBitrate=192000\u0026AudioSampleRate=48000\u0026SegmentContainer=mp4\u0026MinSegments=1\u0026PlaySessionId=<id>\u0026ApiKey=<token>\u0026TranscodingMaxAudioChannels=2\u0026RequireAvc=false\u0026EnableAudioVbrEncoding=true\u0026Tag=abc123\u0026MaxFramerate=24\u0026TranscodeReasons=AudioCodecNotSupported,ContainerBitrateExceedsLimit",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+TranscodingInfo null
+## the GET route
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "aac",
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": true,
+     "IsTextSubtitleStream": false,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Index": 2,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    }
+   ],
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": true,
+   "SupportsDirectStream": true,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingSubProtocol": "http",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}
+## the jellyscale route
+{
+ "MediaSources": [
+  {
+   "Bitrate": 2000000,
+   "Container": "mkv",
+   "DefaultAudioStreamIndex": 1,
+   "DefaultSubtitleStreamIndex": -1,
+   "Formats": [],
+   "GenPtsInput": false,
+   "HasSegments": false,
+   "Id": "<item>",
+   "IgnoreDts": false,
+   "IgnoreIndex": false,
+   "IsInfiniteStream": false,
+   "IsRemote": false,
+   "MediaAttachments": [],
+   "MediaStreams": [
+    {
+     "Index": 0,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Video"
+    },
+    {
+     "Channels": 2,
+     "Codec": "aac",
+     "Hidden": false,
+     "Index": 1,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": true,
+     "IsTextSubtitleStream": false,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Hidden": false,
+     "Index": 2,
+     "IsDefault": true,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": false,
+     "SupportsExternalStream": false,
+     "Type": "Audio"
+    },
+    {
+     "Codec": "subrip",
+     "Hidden": false,
+     "Index": 3,
+     "IsDefault": false,
+     "IsExternal": false,
+     "IsForced": false,
+     "IsHearingImpaired": false,
+     "IsInterlaced": false,
+     "IsOriginal": false,
+     "IsTextSubtitleStream": true,
+     "Language": "eng",
+     "SupportsExternalStream": false,
+     "Type": "Subtitle"
+    }
+   ],
+   "OriginalLanguage": "eng",
+   "Protocol": "File",
+   "ReadAtNativeFramerate": false,
+   "RequiredHttpHeaders": {},
+   "RequiresClosing": false,
+   "RequiresLooping": false,
+   "RequiresOpening": false,
+   "RunTimeTicks": 0,
+   "Size": 0,
+   "SupportsDirectPlay": true,
+   "SupportsDirectStream": true,
+   "SupportsProbing": true,
+   "SupportsTranscoding": true,
+   "TranscodingSubProtocol": "http",
+   "Type": "Default"
+  }
+ ],
+ "PlaySessionId": "<id>"
+}

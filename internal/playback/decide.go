@@ -184,10 +184,13 @@ func (s Source) VideoCodec() string {
 // show the range is the profile's say (Decide). A source scanned before the
 // range was recorded is re-encoded until a rescan fills it in, and so is
 // H.264 in HDR, which the api never offered a copy of.
-func (s Source) CanCopy() bool {
+func (s Source) CanCopy() bool { return s.canServeCopy() && s.copyableRange() }
+
+// copyableRange is the range test of CanCopy.
+func (s Source) copyableRange() bool {
 	video, _ := s.video()
 	_, dolbyVision := baseLayer(video)
-	return s.canServeCopy() && (video.VideoRangeType == "SDR" || dolbyVision || (video.Codec != "h264" && plainHDR(video.VideoRangeType)))
+	return video.VideoRangeType == "SDR" || dolbyVision || (video.Codec != "h264" && plainHDR(video.VideoRangeType))
 }
 
 // plainHDR is a range type of HDR that is no Dolby Vision.
@@ -557,7 +560,10 @@ type Decision struct {
 	DirectPlay bool
 	// Reasons are Jellyfin's TranscodeReasons names. A transcode forced only by
 	// the audio track choice has none.
-	Reasons    []string
+	Reasons []string
+	// Also are the reasons that only the decision line and its counters hold, which no TranscodeReasons names: what keeps the
+	// video from being copied beyond what the client's profile says, and the track pick (Why lists both).
+	Also       []string
 	AudioIndex int
 	// Subtitle is the text track to draw into the picture, or nil.
 	Subtitle *int
@@ -570,6 +576,15 @@ type Decision struct {
 	// Copy: the video goes to the client as it is. The audio is copied too when
 	// Source.copyAudio allows it, else re-encoded.
 	Copy bool
+}
+
+// Why is every reason of the decision: the TranscodeReasons and the ones only the line holds.
+func (d Decision) Why() []string {
+	why := slices.Clone(d.Reasons)
+	for _, reason := range d.Also {
+		why = withReason(why, reason)
+	}
+	return why
 }
 
 // Decide chooses direct play or transcode. canTranscode is false when this
@@ -694,7 +709,51 @@ func Decide(request Request, source Source, canTranscode bool) Decision {
 		!slices.Contains(decision.Reasons, "VideoProfileNotSupported") {
 		decision.Reasons = append(decision.Reasons, "VideoProfileNotSupported")
 	}
+	if audio != source.DefaultAudio() && profile.refusesSecondaryAudio(audioStream.Codec) {
+		decision.Also = append(decision.Also, "SecondaryAudioNotSupported")
+	}
+	if !profile.playsContainer(source.Container) {
+		// Jellyfin names the container alone, and not the limits the client puts on the video and audio, which a file in
+		// a container it plays would have named; the line holds them all.
+		decision.Also = append(decision.Also, profile.limits("Video", video.Codec, video, audioStream)...)
+		decision.Also = append(decision.Also, profile.limits("VideoAudio", audioStream.Codec, video, audioStream)...)
+	}
+	if !decision.Copy {
+		decision.Also = append(decision.Also, source.notCopied(profile, video, !fits && !slices.Contains(reasons, "ContainerBitrateExceedsLimit"))...)
+	}
 	return decision
+}
+
+// notCopied names what keeps the video from being sent as it is, apart from what the client's profile says: a cap on a file
+// that does not give its bitrate (unknownCap), and, for a codec that is copied and that the client takes in HLS, a keyframe
+// index that cannot cut segments, a codec profile that cannot be named, and a range a copy cannot send.
+func (s Source) notCopied(profile *DeviceProfile, video Stream, unknownCap bool) []string {
+	var why []string
+	if unknownCap {
+		why = append(why, BitrateUnknownUnderCap)
+	}
+	if _, ok := s.video(); ok && !s.Copyable() {
+		// jellyscale never copies this codec, whatever the profile lists, so the line says the codec is the cause.
+		// Jellyfin's name is the nearest there is.
+		return append(why, "VideoCodecNotSupported")
+	}
+	if !s.Copyable() || !profile.hlsMP4(video.Codec) {
+		return why
+	}
+	if _, cut := s.copyLayout(); !cut {
+		why = append(why, KeyframeIndexUnusable)
+	}
+	if s.codecs() == "" {
+		why = append(why, "VideoProfileNotSupported")
+	}
+	switch {
+	case s.copyableRange():
+	case video.VideoRangeType == "":
+		why = append(why, VideoRangeUnknown)
+	default:
+		why = append(why, VideoRangeNotCopyable)
+	}
+	return why
 }
 
 // SplitBitrate divides the cap between video and audio so they sum to it, as
@@ -785,6 +844,13 @@ func (p DeviceProfile) reasons(source Source, video Stream, audio int) []string 
 		reasons = append(reasons, p.limits("VideoAudio", audioStream.Codec, video, audioStream)...)
 	}
 	return reasons
+}
+
+// playsContainer reports whether a direct play profile of video takes the container.
+func (p DeviceProfile) playsContainer(container string) bool {
+	return slices.ContainsFunc(p.DirectPlayProfiles, func(d DirectPlayProfile) bool {
+		return strings.EqualFold(d.Type, "Video") && listHas(d.Container, container)
+	})
 }
 
 // limits checks the CodecProfiles that apply to a codec. Only properties the
