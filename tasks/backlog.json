@@ -2219,6 +2219,15 @@
       "source": "JS-168 criterion 5 measurement; D-050",
       "title": "A cheap second play is refused on a cluster one shared film fills, though it might run beside the helper",
       "notes": "Under D-050 a 1080p second play is refused while a helper the first viewer needs holds the cores; measured, it would have started in 2.6 s and played at 1.00x, but the first viewer fell to about 0.8x. Whether a helper on the cores left beside a 0.8-core job keeps the first viewer at real time is unverified. Promote when the dogfood counts such a refusal with the helper-held reason, or a measurement (rule lifted for the measurement only, beside other work) shows both viewers within JS-168's bound, 3 of 3."
+    },
+    {
+      "id": "BL-249",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-173; D-055",
+      "title": "A worker that has lost its liveness lock is still counted as alive and as room, by everything but the refusal for cores, for up to 10 s after the loss or after it ends a job",
+      "notes": "A viewer's picked audio or burnt-in subtitle can be admitted, a helper left unpreempted, or a job left for that worker, and the viewer waits the queue timeout (6 s) or the rescue when the worker never relocks. Unmeasured; none seen. The cure is counting a worker only with its lock held, as the refusal does. Promote when the dogfood's logs show a worker relocking for longer than `counted`, or a queue timeout or a late start within `counted` of a worker losing its lock; or when JS-161 or JS-164 make one of these readers decide an admission or a gauge."
     }
   ]
 }

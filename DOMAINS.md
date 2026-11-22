@@ -116,7 +116,7 @@ Worker liveness is a state machine (`livenessTransitions` decides the next state
 - row gone, ready to register: registering (once no job of the old session runs and a new lock is held)
 - registering, locked, relocking and row gone, shutdown: stopped
 
-A look or registration Postgres does not answer within its bound is no event: nothing is stopped or forgotten. A look runs every `lookPeriod`, and at once when the lock's connection ends, when a reap forgets this worker, and when a node first seen lockless has been so for the `confirmGap`. Only a locked worker claims, forgets others and refreshes seen_at; a relocking one only reads its own row and retries the lock, its jobs going on.
+A look or registration Postgres does not answer within its bound is no event: nothing is stopped or forgotten. A look runs every `lookPeriod`, and at once when the lock's connection ends, when a reap forgets this worker, and when a node first seen lockless has been so for the `confirmGap`. Only a locked worker claims, forgets others and refreshes seen_at (save a worker ending its own job, D-055); a relocking one retries the lock.
 
 The reaper forgets another only when all three conditions hold: the node's lock is gone in this look and in its look at least `confirmGap` earlier; it holds its own lock in the same `pg_locks` snapshot; its own lock has not ended within the `hold`. A worker killed during an outage is forgotten up to the hold later. A replica forgets nobody. A worker without its row claims, renews and stores nothing, but for a renewal already waiting when its row is deleted. A worker's row is inserted once per lock, and a claim commits only in its row's session. 
 
