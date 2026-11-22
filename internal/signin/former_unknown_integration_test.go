@@ -23,7 +23,7 @@ func TestANameThatFailedBeforeItsAccountExistedKeepsItsCountThroughAFlood(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer pool.Close()
+	t.Cleanup(pool.Close) // before clear's, which runs first
 	clear(t, pool)
 	t.Cleanup(func() { clear(t, pool) })
 
