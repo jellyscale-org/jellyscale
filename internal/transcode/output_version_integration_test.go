@@ -242,41 +242,46 @@ func TestAHelperOfAnotherVersionIsNotPreemptedForAViewerWithASlot(t *testing.T) 
 	}
 }
 
-// A queued helper of the worker's version is claimed only while a slot of its
-// version stays free after it, however many idle slots another version has.
-func TestAHelperIsNotClaimedForASlotOfAnotherVersion(t *testing.T) {
-	r := newRig(t, nil)
+// A queued helper of the worker's version is claimed only where cores of its
+// version hold it, however many idle cores another version has (invariant 59;
+// no room is kept for a viewer who has not asked, JS-168, D-046): a worker of
+// one core that runs a viewer's job of 0.8 does not take it, and one of two does.
+func TestAHelperIsNotClaimedForACoreOfAnotherVersion(t *testing.T) {
 	ctx := context.Background()
-	r.insertNode(t, "own", 2, playback.OutputVersion)
-	r.insertNode(t, "other", 2, anotherVersion)
-	r.insertRunning(t, "specA", "own", playback.OutputVersion, false)
-	helper := r.insertQueued(t, playback.OutputVersion, 2*time.Second, true)
-	w := &Worker{Pool: r.pool, ID: "own"}
-	if got, ok, err := w.claim(ctx); err != nil || ok {
-		t.Fatalf("the worker claimed helper %d (%+v %v %v) with no slot of its version left to spare after it", helper, got, ok, err)
+	for slots, want := range map[int]bool{1: false, 2: true} {
+		t.Run(fmt.Sprint(slots, " cores of its own version"), func(t *testing.T) {
+			r := newRig(t, nil)
+			r.insertNode(t, "own", slots, playback.OutputVersion)
+			r.insertNode(t, "other", 2, anotherVersion)
+			r.insertRunning(t, "specA", "own", playback.OutputVersion, false)
+			helper := r.insertQueued(t, playback.OutputVersion, 2*time.Second, true)
+			w := &Worker{Pool: r.pool, ID: "own"}
+			if got, ok, err := w.claim(ctx); err != nil || ok != want {
+				t.Fatalf("claim of helper %d on %d cores of its version beside a 0.8 core job: %+v %v %v, want claimed %v", helper, slots, got, ok, err, want)
+			}
+		})
 	}
 }
 
-// A helper is queued only while a slot of its version stays free after it:
-// with the worker of the job's version at one viewer and one spare slot, and a
-// worker of another version idle, no helper is queued.
-func TestNoHelperIsQueuedOnTheStrengthOfAnotherVersionsIdleSlots(t *testing.T) {
+// A helper is queued only where cores of its version hold it: with the worker of
+// the job's version at one viewer and no core to spare, and a worker of another
+// version idle, no helper is queued.
+func TestNoHelperIsQueuedOnTheStrengthOfAnotherVersionsIdleCores(t *testing.T) {
 	slow(t)
 	r := newRig(t, nil)
 	dir := r.ownStore(t)
 	r.insertNode(t, "idle-other", 4, anotherVersion)
-	r.workers(t, 1, 2, 6, dir) // The version of this build; one viewer leaves one slot.
+	r.workers(t, 1, 1, 6, dir) // The version of this build; one core, and the viewer's job costs 0.8 of it.
 	j := r.jobs(t)
 	r.playInBackground(t, j, psid(0))
 	waitFor(t, "the viewer's job to be running", time.Minute, func() bool {
 		return r.count(t, "SELECT count(*) FROM transcode_jobs WHERE state = 'running' AND NOT helper") == 1
 	})
-	// A helper needs two free slots of its version (one for itself, one for the
-	// next viewer); there is one. The record of what happens is the rows; the
-	// wait only gives a helper the chance to appear.
+	// The record of what happens is the rows; the wait only gives a helper the
+	// chance to appear.
 	time.Sleep(10 * time.Second)
 	if n := r.count(t, "SELECT count(*) FROM transcode_jobs WHERE helper"); n != 0 {
-		t.Errorf("%d helper rows: a helper was queued for the idle slots of a worker of version %d, which cannot take it", n, anotherVersion)
+		t.Errorf("%d helper rows: a helper was queued for the idle cores of a worker of version %d, which cannot take it", n, anotherVersion)
 	}
 }
 

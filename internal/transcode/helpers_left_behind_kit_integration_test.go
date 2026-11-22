@@ -69,6 +69,7 @@ type clusterOpts struct {
 	heartbeat time.Duration // 3 s when zero.
 	idle      time.Duration
 	noHelpers bool
+	cores     float64 // The cores each worker declares; one slot's worth (1) when zero. JS-168's checks give the cost of one job, 0.8.
 	// proxied sends the statements of every worker but the first through a proxy
 	// (c.proxy), which the test delays, holds and reads; the first runs the viewer's
 	// own job, direct, and the others start after the viewer's first segment.
@@ -102,6 +103,9 @@ func (r *rig) cluster(t *testing.T, o clusterOpts) *cluster {
 				w.Idle = o.idle
 			}
 			w.NoHelpers = o.noHelpers
+			if o.cores > 0 {
+				w.Cores = o.cores
+			}
 			w.Log = log.logger()
 			if through {
 				apply(w)

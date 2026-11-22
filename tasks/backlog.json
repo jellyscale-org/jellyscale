@@ -12,8 +12,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "helper slot protection is a count, not a reservation",
-      "status": "open",
-      "notes": " Re-read against JS-162's end-to-end figures; close those the figures answer (D-045)."
+      "status": "promoted",
+      "notes": " Re-read against JS-162's end-to-end figures; close those the figures answer (D-045). Answered by JS-168: no room is held back and a helper is placed by its cost in cores (D-046, D-050)."
     },
     {
       "id": "BL-002",
@@ -57,8 +57,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "helper placement counts slots, not CPU",
-      "status": "open",
-      "notes": " Re-read against JS-162's end-to-end figures; close those the figures answer (D-045)."
+      "status": "promoted",
+      "notes": " Re-read against JS-162's end-to-end figures; close those the figures answer (D-045). Answered by JS-168: no room is held back and a helper is placed by its cost in cores (D-046, D-050)."
     },
     {
       "id": "BL-007",
@@ -2219,6 +2219,15 @@
       "source": "JS-168 criterion 5 measurement; D-050",
       "title": "A cheap second play is refused on a cluster one shared film fills, though it might run beside the helper",
       "notes": "Under D-050 a 1080p second play is refused while a helper the first viewer needs holds the cores; measured, it would have started in 2.6 s and played at 1.00x, but the first viewer fell to about 0.8x. Whether a helper on the cores left beside a 0.8-core job keeps the first viewer at real time is unverified. Promote when the dogfood counts such a refusal with the helper-held reason, or a measurement (rule lifted for the measurement only, beside other work) shows both viewers within JS-168's bound, 3 of 3."
+    },
+    {
+      "id": "BL-248",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-168 merge-queue regression; D-052",
+      "title": "A slow job on a worker with idle cores gets no helper on that worker",
+      "notes": "D-052 keeps helpers off the worker running the viewers' own job. Promote when a measurement shows a same-worker helper brings such a job to 1.0x or above, or when the dogfood (JS-166, the 12-thread node) shows a job under 1.2x on a worker with at least the job's cost free and no other worker to help."
     }
   ]
 }
