@@ -30,7 +30,9 @@ concurrency:
 # integration and e2e checks pass at once saying so; the label ci:full runs the
 # media tiers on the pull request too. A merge group or a ci:full pull request
 # that changes only .claude/, tasks/ and Markdown in the root or docs/ skips them
-# (test/changes.sh). That is safe because the guard test (test/mediaguard, run by
+# (test/changes.sh). A change with nothing outside tasks/ and that Markdown (a plan
+# change) skips lint-and-unit too: the plan is not tested in CI (owner, 2026-11-22);
+# the lead runs go test ./compat/ before pushing one. That is safe because the guard test (test/mediaguard, run by
 # lint-and-unit) fails when any file outside those, but a short allowlist of unit tests and
 # scripts, names .claude/ or tasks/. A push
 # to main was tested in its merge group: it runs lint-and-unit and refills the
@@ -41,6 +43,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       code: ${{ steps.diff.outputs.code }}
+      plan: ${{ steps.diff.outputs.plan }}
       why: ${{ steps.diff.outputs.why }}
     steps:
       - uses: actions/checkout@v7
@@ -54,25 +57,37 @@ jobs:
           QUEUE_HEAD: ${{ github.event.merge_group.head_sha }}
           FULL: ${{ contains(github.event.pull_request.labels.*.name, 'ci:full') }}
         run: |
-          code=true why=""
+          code=true why="" kind=""
+          case $GITHUB_EVENT_NAME in
+          pull_request) kind=$(bash test/changes.sh "$PR_BASE...$PR_HEAD") ;;
+          merge_group) kind=$(bash test/changes.sh "$QUEUE_BASE" "$QUEUE_HEAD") ;;
+          esac
           case $GITHUB_EVENT_NAME in
           pull_request)
             if [ "$FULL" != true ]; then
               code=false why="a pull request: the media tiers run in the merge queue (label ci:full runs them here)"
-            elif [ "$(bash test/changes.sh "$PR_BASE...$PR_HEAD")" = docs-only ]; then
+            elif [ "$kind" != code ]; then
               code=false why="only .claude/, tasks/ and Markdown changed"
             fi ;;
           merge_group)
-            if [ "$(bash test/changes.sh "$QUEUE_BASE" "$QUEUE_HEAD")" = docs-only ]; then
+            if [ "$kind" != code ]; then
               code=false why="only .claude/, tasks/ and Markdown changed"
             fi ;;
           push) code=false why="a push to main, tested in its merge group" ;;
           esac
+          # A plan change (tasks/ and Markdown, nothing under .claude/) is not tested at all (owner, 2026-11-22).
+          plan=false
+          [ "$kind" = plan ] && plan=true why="only tasks/ and Markdown changed: a plan change, which CI does not test"
           echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "plan=$plan" >> "$GITHUB_OUTPUT"
           echo "why=$why" >> "$GITHUB_OUTPUT"
-          echo "media tiers: $code${why:+ ($why)}"
+          echo "media tiers: $code, plan change: $plan${why:+ ($why)}"
 
   lint-and-unit:
+    # Skipped for a plan change, which reports as passed; run whenever the changes
+    # job failed or said nothing, so a broken classifier never skips the tests.
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.plan != 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

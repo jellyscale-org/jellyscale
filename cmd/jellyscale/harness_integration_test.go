@@ -94,40 +94,28 @@ type proc struct {
 	version  int    // Of the build, for the tests that run two.
 	roles    string
 	workerID string
+	spec     procSpec   // With the config's path in its arguments.
+	dir      string     // Where its config is.
+	begun    time.Time  // When the running start was made.
+	unbound  time.Time  // When the running start was first seen to say it listens with no socket listening.
+	lost     [][2]int64 // The windows (UnixNano) of the starts that lost their port.
 }
 
 // startProc starts the process and returns without waiting for it. However the test ends, the process does not
-// outlive it.
+// outlive it. A process that loses its port (see until) is started again on another address; p.addr, p.cmd, p.log and
+// p.exited are those of the start that is running.
 func startProc(t *testing.T, s procSpec) *proc {
 	t.Helper()
-	dir := t.TempDir()
-	args := append([]string(nil), s.args...)
+	p := &proc{t: t, spec: s, dir: t.TempDir(), user: s.user, password: s.password, term: s.term}
+	p.spec.args = append([]string(nil), s.args...)
 	if s.config != "" {
-		path := filepath.Join(dir, "config.json")
+		path := filepath.Join(p.dir, "config.json")
 		if err := os.WriteFile(path, []byte(s.config), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		args = append(args, "--config", path)
+		p.spec.args = append(p.spec.args, "--config", path)
 	}
-	p := &proc{t: t, log: &logSink{}, exited: make(chan struct{}), user: s.user, password: s.password, term: s.term}
-	if s.listen {
-		p.addr = freeAddr(t)
-		args = append(args, "--listen", p.addr)
-	}
-	path := s.path
-	if path == "" {
-		path = dir
-	}
-	p.cmd = exec.Command(s.bin, args...)
-	p.cmd.Env = append(os.Environ(), "JELLYSCALE_DATABASE_URL="+s.dsn, "PATH="+path)
-	if s.password != "" {
-		p.cmd.Env = append(p.cmd.Env, "JELLYSCALE_ADMIN_PASSWORD="+s.password)
-	}
-	p.cmd.Stdout, p.cmd.Stderr = p.log, p.log
-	if err := p.cmd.Start(); err != nil {
-		t.Fatal(err)
-	}
-	go func() { p.status = p.cmd.Wait(); close(p.exited) }()
+	p.begin()
 	t.Cleanup(func() {
 		if p.term {
 			p.stop()
@@ -138,18 +126,86 @@ func startProc(t *testing.T, s procSpec) *proc {
 	return p
 }
 
-// until waits for ready, polling; the process exiting first fails the test at once with its log.
+// begin makes one start of the process, on an address of its own if it listens.
+func (p *proc) begin() {
+	p.t.Helper()
+	s := p.spec
+	args := append([]string(nil), s.args...)
+	p.addr = ""
+	if s.listen {
+		p.addr = freeAddr(p.t)
+		args = append(args, "--listen", p.addr)
+	}
+	path := s.path
+	if path == "" {
+		path = p.dir
+	}
+	p.log, p.exited, p.status = &logSink{}, make(chan struct{}), nil
+	cmd := exec.Command(s.bin, args...)
+	cmd.Env = append(os.Environ(), "JELLYSCALE_DATABASE_URL="+s.dsn, "PATH="+path)
+	if s.password != "" {
+		cmd.Env = append(cmd.Env, "JELLYSCALE_ADMIN_PASSWORD="+s.password)
+	}
+	cmd.Stdout, cmd.Stderr = p.log, p.log
+	p.begun, p.unbound = time.Now(), time.Time{}
+	if err := cmd.Start(); err != nil {
+		p.t.Fatal(err)
+	}
+	p.cmd = cmd
+	exited := p.exited
+	go func() { p.status = cmd.Wait(); close(exited) }()
+}
+
+// until waits for ready, polling; the process exiting first fails the test at once with its log. Its address is chosen before
+// it binds, so another socket can take it first (merge-queue run 44983050791): a start that says it could not bind, or whose
+// address is held by a process that is not its own, is ended and started again on a new address, at most launchStarts starts
+// in all, and nothing of it is left for the test to read.
 func (p *proc) until(limit time.Duration, what string, ready func() bool) {
 	p.t.Helper()
 	deadline := time.Now().Add(limit)
-	for !ready() {
+	for {
+		if p.lostPort() {
+			p.restart()
+			continue
+		}
+		bound := true // Nothing is known to hold its address that should not, or it binds none.
+		if p.binds() {
+			switch p.owner() {
+			case ownerForeign:
+				p.restart()
+				continue
+			case ownerNone:
+				bound = false
+				if p.unbound.IsZero() {
+					p.unbound = time.Now()
+				} else if time.Since(p.unbound) > bindGrace {
+					if strings.Contains(p.log.String(), "msg=listening") {
+						p.restart() // It says it listens and nothing does: a start that failed to bind and is stuck on its way out.
+						continue
+					}
+					bound = true // It binds nothing a socket shows, as a stand-in for the binary does not.
+				}
+			}
+		}
+		if bound && ready() {
+			p.forgetLostStarts()
+			return
+		}
 		if !p.alive() {
+			if p.lostPort() { // It said so and exited after the read at the top of this loop.
+				p.restart()
+				continue
+			}
 			p.t.Fatalf("the process exited (%v) while waiting for %s:\n%s", p.status, what, p.log)
 		}
 		if time.Now().After(deadline) {
+			if p.lostPort() {
+				p.restart()
+				continue
+			}
 			p.t.Fatalf("timed out after %v waiting for %s:\n%s", limit, what, p.log)
 		}
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 	}
 }
 
