@@ -20,7 +20,7 @@ var (
 		Name: "jellyscale_transcode_jobs_started_total", Help: "Transcode jobs a worker began."})
 	jobsEnded = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "jellyscale_transcode_jobs_ended_total",
-		Help: "Transcode jobs that ended: done, failed, or interrupted (cut short, not failed)."}, []string{"result"})
+		Help: "Transcode jobs that ended: done, failed, interrupted (cut short, not failed), or helper_left_behind (a helper whose viewers all seeked away from it, stopped and cancelled)."}, []string{"result"})
 	reaped = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "jellyscale_transcode_reaped_total",
 		Help: "Workers forgotten and jobs cut short because a worker's liveness lock was gone."}, []string{"what"})
@@ -36,6 +36,9 @@ var (
 	segmentRefused = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "jellyscale_segment_requests_refused_total", Help: "Requests refused: stopped (a playlist or segment of an ended session), no_worker, other_version (workers run, none of the job's output version) or busy (a segment that needed a job)."}, []string{"reason"})
 )
+
+// resultHelperLeft is the result of a helper stopped because no viewer is left for it.
+const resultHelperLeft = "helper_left_behind"
 
 // stallAfter is how long a segment request may take before it counts as a
 // stall; jellyfin-web gives up on a request at 10 seconds.

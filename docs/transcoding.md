@@ -249,3 +249,54 @@ Measured 2026-11-21 in temporary pods on the dogfood cluster's two other nodes (
 - Unmeasured: jellyscale's own image, a bright or high-motion scene, memory per job, speed while the GPU's other user works, a real worker pod's speed beside its other work.
 
 What follows (D-047, D-049): JS-169 measures, in jellyscale's own image, whether a GPU tone map with a set curve reaches the processor's picture; JS-170 is the first hardware slice; JS-166 runs a processor worker on the 12-thread node beside the 4-core node's.
+
+## A helper whose viewers have seeked away (JS-167)
+
+JS-162 found that a helper whose viewer seeked away went on alone: `furthest` found no viewer at or before its chunk, returned -1, and `limitFor(layout, -1, lead)` is the film's end, so the helper's limit was lifted to the end of the film and it held a worker for it (5 min 25 s in one run). A helper looked at the viewers only while at its limit, so a helper running short of it never noticed.
+
+Built (D-046): a helper reads the viewers every 500 ms (`leadCheck`) for as long as it runs. It is stopped, its row cancelled before its ffmpeg is ended, when no viewer is left for it: every viewer has made a forward seek beyond it (none at or before its chunk, or within `catchUpSegments` of its next segment past its chunk, where a request joins it, invariant 37), or has made a backward seek so far (the middle of the film to its first minute) that the lead past the furthest of them ends before the helper's first segment. A viewer playing on past its chunk into segments the helper makes bounds it, as one at or before its chunk does, and no helper stores a lead past the furthest segment asked for. A viewer who steps back but stays within a lead of the helper's first segment keeps it; a failed read of the viewers is neither a reason to stop it nor to lift its limit; a viewer that asked for no segment frees it while it is seen. What it stored stays stored, and a viewer coming back to the chunk gets a job at the first missing segment. It is counted under `helper_left_behind` in `jellyscale_transcode_jobs_ended_total` and logged once.
+
+Measured 2026-11-21 on the developer machine (AMD Ryzen 7 7800X3D, ffmpeg 9.0.2) with JS-162's harness, adapted: before is 45fa298, after f0bde61, each built from `git archive`. A 30-minute stream-copied window of another 4K HDR film than JS-162's (HEVC Main 10 PQ, with its first audio track and one PGS track, not all its streams), in headless Chrome through jellyfin-web. Three workers pinned with `taskset` to 2 physical cores each (one alone made the job at 0.89x, 0.86x as watched), Postgres in Docker, defaults otherwise (the room rule JS-168 drops still in force). Commands, from the harness directory: `./run.sh <name> <commit> <burn 0|1> play:600,seek:900,play:600,seek:30,play:300 w1:0,1 w2:2,3 w3:4,5` (`long.sh` runs all eight), `short.sh` for the rest, `analyze.py` and `m4.py` for the figures. Freezes are counted as JS-162 counted them, sampled every 0.25 s.
+
+**The helper left behind.** For each helper running at a seek: how long it ran on after the seek, timed from the worker's log, and the last segment it stored.
+
+| Build | Forward seek (10 min in, to the middle) | Backward seek (from 10 min past the middle to the first minute) |
+|---|---|---|
+| Before, no subtitle | ran on 279 s, storing segments 160 to 223, up to where the viewer's new job began | held its worker, paused, for 302 s to the end of the run; last stored 378 |
+| Before, PGS burned in (a disturbed run, below) | ran on 385 s, storing 164 to 223; the viewer's first frame after the seek took 23 s | the same: paused for 302 s; last stored 352 |
+| After, six runs | stopped 0.2 to 0.6 s after the seek, within a second of its first segment request; last stored 162 or 163, the furthest asked 150 or 151 | stopped 0.1 to 0.4 s after the seek; last stored 386 to 388, the furthest asked 376 or 377 |
+
+Every helper running at a seek in the after runs was logged as `helper_left_behind` (the counter on `/metrics` was not scraped). None stored more than 13 segments past the furthest asked for (the lead is 15).
+
+**The long bounds.** After, three runs without a subtitle and three with the PGS track burned in. Speed is film over wall time from 30 s into the part, rounded to two places.
+
+| Part | Speed | Freezes of 0.5 s or more | Longest |
+|---|---|---|---|
+| 10 min from the start | 1.00 in 6 of 6 | 3 in every run, all in the first 30 s | 0.75 to 1.5 s |
+| 10 min after a seek to the middle | 1.00 in 6 of 6 | 1 or 2, all in the first 30 s | 0.75 to 1.25 s |
+| 5 min after a seek back to the first minute | 1.00 in 6 of 6 | none | none |
+
+The bound held in every run. Before, the 10 minutes after the seek ran at 0.93x with 55 freezes, longest 1.25 s (no subtitle), and 0.76x with 68 freezes of up to 8.8 s (burned in, disturbed), one run each. The seek back lands on segments made in the first 10 minutes, so the last part needs no transcode and shows little.
+
+**A seek back into a stopped helper's chunk.** After, three workers: play 90 s, seek to 20 min, play 15 s, then seek either to the first missing segment of a chunk whose helper was stopped as `helper_left_behind`, or to 10 min, where nothing was made. Five of each; first frame after the last seek.
+
+| Seek | First frame |
+|---|---|
+| Into the stopped helper's chunk | 6.37 to 6.56 s in 4 trials; 11.01 s in the one where the chosen helper had stored nothing of its chunk |
+| To a place nothing was made | 12.17 to 12.47 s |
+
+No later, so within the bound of 1 s. jellyfin-web first asks for the segment before the one it seeks to, so a seek where that one is stored skips a whole segment's wait. Like for like, the new job's first segment came 6.10 to 6.21 s after the seek into the helper's chunk and 6.78 to 7.11 s after the seek to a fresh place.
+
+**Time to first segment.** From the click or the seek to the response to the first segment asked for, and to the first frame. Five trials each; the seek, to 15 min, after 20 s of play.
+
+| Workers | Build | Start: first segment; first frame | Seek: first segment; first frame |
+|---|---|---|---|
+| One | before | 6.06 to 6.71 s; 6.56 to 7.10 s | 6.76 to 8.57 s (median 6.99); 11.71 to 13.77 s |
+| One | after | 6.06 to 7.95 s; 6.56 to 8.41 s | 7.08 to 8.66 s (median 7.12); 11.76 to 13.71 s |
+| Three, `transcodeHelpers: false` | before | 5.99 to 6.62 s; 6.56 to 7.08 s | 6.20 to 6.32 s; 11.01 to 11.41 s |
+| Three, `transcodeHelpers: false` | after | 6.11 to 6.29 s; 6.56 to 6.81 s | 6.20 to 6.40 s; 11.01 to 11.26 s |
+
+The ranges overlap. The one-worker seek's median is 0.13 s later after, within the 0.25 s sampling and taken while the machine was busy, so no slowdown is shown, though one that small is not ruled out.
+
+- **The machine was busy for part of this.** From about 21:05 another build's integration tests ran on it, unpinned and on any core, the workers' included. The first seven long runs had the machine to themselves apart from the harness, except the before run with burn-in: its load average reached 11 by its end against 6 to 7 in the others, and every job, the viewer's and the helpers', fell to 0.40 to 0.72x around the seek (0.60 to 0.90x in the after runs with burn-in), so its figures are likely inflated by something outside the harness; the run without a subtitle shows the same behaviour undisturbed. The last long run (burn-in) was busy for its last 8 minutes, the end of the 10 minutes after the seek and the 5 minutes after the seek back, and its figures are in the table above. The seek-back and time-to-first-segment trials were all taken busy, at a load average of 1 to 12 (the harness's three workers account for up to about 6). Each run's load is in its `uptime.txt`.
+- The before build had one run per configuration. In a 30-minute window the after runs' helpers never reached the film's end. Unmeasured: a second viewer of the same film (the locked check covers the helper it keeps), an S3 store, the network between machines.
