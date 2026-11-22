@@ -76,7 +76,7 @@
       "severity": "minor",
       "title": "paused helpers keep their slots; a second new viewer can queue",
       "status": "open",
-      "notes": " Re-read against JS-162's end-to-end figures; close those the figures answer (D-045)."
+      "notes": "Re-read against JS-162's end-to-end figures; close those the figures answer (D-045). Read in JS-161's design review (criterion 1 as amended by D-050)."
     },
     {
       "id": "BL-009",
@@ -129,8 +129,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "Preempting a helper when it cannot free a slot for the viewer",
-      "status": "open",
-      "notes": ""
+      "status": "promoted",
+      "notes": "Promoted into JS-161 criterion 11 (D-050)."
     },
     {
       "id": "BL-015",
@@ -328,7 +328,7 @@
       "severity": "minor",
       "title": "The 1600-stream control-plane ceiling was measured on empty tables; ended-job lookups and the sweep's delete by created_at are unindexed (amend JS-030)",
       "status": "open",
-      "notes": ""
+      "notes": "D-050: also measure the WAL and vacuum cost of the heartbeat, lease, viewer-position and reaper tables (none is UNLOGGED), and rerun test/stress.sh with several helpers per heavy viewer (each helper reads the viewers every 500 ms since JS-167). Promote on Postgres load from polling on the dogfood (JS-164's metrics), JS-092's many-process measurement, or a target past a few thousand streams. Any timeout on the viewers read needs another way to give up a job on a dead pool first (DOMAINS 25; one failed its check twice in JS-167's queue runs)."
     },
     {
       "id": "BL-037",
@@ -481,7 +481,7 @@
       "severity": "minor",
       "title": "TestSeekBackBeforeTheResumePoint keeps a 20 s bound that is under ten times a right build under load",
       "status": "open",
-      "notes": "queue_integration_test.go (`time.Since(began) > 20*time.Second`, listed in test/timing-bounds.txt as a hang bound of 'a few seconds'). On a right build with one contended CPU (taskset -c 0 plus 4 busy loops) the seek took 4.27 s, so the bound is about 4.7x. docs/testing.md says a bound closer than ten times a right build is a bar. A slower runner can exceed it. A wait-for-event with a context dead"
+      "notes": "queue_integration_test.go (`time.Since(began) > 20*time.Second`, listed in test/timing-bounds.txt as a hang bound of 'a few seconds'). On a right build with one contended CPU (taskset -c 0 plus 4 busy loops) the seek took 4.27 s, so the bound is about 4.7x. docs/testing.md says a bound closer than ten times a right build is a bar. A slower runner can exceed it. A wait-for-event with a context dead Same family as JS-171's seek bound (D-050); promote if it fails the merge queue."
     },
     {
       "id": "BL-054",
@@ -2213,6 +2213,15 @@
     },
     {
       "id": "BL-247",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-168 criterion 5 measurement; D-050",
+      "title": "A cheap second play is refused on a cluster one shared film fills, though it might run beside the helper",
+      "notes": "Under D-050 a 1080p second play is refused while a helper the first viewer needs holds the cores; measured, it would have started in 2.6 s and played at 1.00x, but the first viewer fell to about 0.8x. Whether a helper on the cores left beside a 0.8-core job keeps the first viewer at real time is unverified. Promote when the dogfood counts such a refusal with the helper-held reason, or a measurement (rule lifted for the measurement only, beside other work) shows both viewers within JS-168's bound, 3 of 3."
+    },
+    {
+      "id": "BL-248",
       "status": "open",
       "severity": "minor",
       "reviewer": "product-owner",
