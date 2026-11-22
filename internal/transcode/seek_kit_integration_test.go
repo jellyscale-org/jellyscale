@@ -306,13 +306,25 @@ func (s *scannedFilm) fromTheStart(t *testing.T, from, to int, parent string) st
 	s.fresh(t)
 	stop := s.rig.worker(t, func(w *Worker) { w.Slots, w.NoHelpers = 2, true })
 	defer stop()
-	s.playThrough(t, s.jobs(t), psid(0), 0, to)
+	s.playFromTheStart(t, s.jobs(t), psid(0), to)
 	dir, err := os.MkdirTemp(parent, "reference-")
 	if err != nil {
 		t.Fatal(err)
 	}
 	s.storedTo(t, dir, from, to)
 	return dir
+}
+
+// playFromTheStart plays segments 0 to to-1 of the film as a viewer does, under playThrough's bound of 180 seconds, and logs how many
+// segments that made and how long it took (JS-171: on CI's two CPUs a run of 453 or of 229 segments outlasted the bound). A check
+// that sets runCeiling says how much film a run from the start may make, counted in segments, which no machine's speed changes.
+func (s *scannedFilm) playFromTheStart(t *testing.T, j *Jobs, psid string, to int) {
+	t.Helper()
+	if s.runCeiling > 0 && to > s.runCeiling {
+		t.Fatalf("the run from the film's start makes %d segments, want at most %d: it times against a bound of 180 seconds and a right build must finish well inside it on CI's two CPUs (JS-171)", to, s.runCeiling)
+	}
+	_, total := s.playThrough(t, j, psid, 0, to)
+	t.Logf("the run from the film's start: %d segments in %s (bound 180s)", to, total.Round(100*time.Millisecond))
 }
 
 // aSeek is what a seek to a segment of a film made: the segment as the store holds it, the init segment
