@@ -15,19 +15,27 @@ import (
 func TestSeveralSeeksInOnePlayEachGetTheirSegment(t *testing.T) {
 	films := newSeekFilms(t)
 	a := seekRow(t, "dtshdma-8")
-	severalSeeks(t, films, a, films.film(t, a))
+	severalSeeks(t, films, a, films.film(t, a), seekPlan{targets: []int{12, seekSegment, 1183/4 + 1, 452}, last: 452})
+}
+
+// seekPlan is where a check's seeks go in a film and how much film its run from the start may make.
+type seekPlan struct {
+	targets []int // The segments sought, in the order they are sought.
+	last    int   // The film's last segment: it has last+1.
+	ceiling int   // The most segments the run from the start may make (JS-171); 0 is no limit.
 }
 
 // severalSeeks plays the film of the audio at media from its start and seeks as the test above says, with a burnt image subtitle.
-func severalSeeks(t *testing.T, films *seekFilms, a seekAudio, media string) {
+// The film of the full check is seekFilmSeconds long: 453 segments, 452 of 4 seconds and one of 2.
+func severalSeeks(t *testing.T, films *seekFilms, a seekAudio, media string, plan seekPlan) {
 	s := films.rig(t, media, a)
+	s.runCeiling = plan.ceiling
 	s.apply(a, false, true)
-	const last = 452 // 453 segments: 452 of 4 seconds and one of 2
-	targets := []int{12, seekSegment, 1183/4 + 1, last}
+	last, targets := plan.last, plan.targets
 	// One run of the whole film from its start, from which each seek's neighbours are kept.
 	s.fresh(t)
 	whole := s.rig.worker(t, func(w *Worker) { w.Slots, w.NoHelpers = 2, true })
-	s.playThrough(t, s.jobs(t), psid(0), 0, last+1)
+	s.playFromTheStart(t, s.jobs(t), psid(0), last+1)
 	whole()
 	refs := map[int]string{}
 	for _, n := range targets {
@@ -186,25 +194,32 @@ func aSeekThroughAFailover(t *testing.T, s *scannedFilm, reference string) {
 
 // The film read through a store that has no path (an S3 bucket: ffmpeg is given a loopback URL, as in
 // production), where the probe of the audio and the seek's reads are ranged reads of a URL.
+// JS-171: this check ran 229 segments from the film's start for each row, which took 180 seconds for truehd-6 on CI's two CPUs and
+// was cut at segment 218 (queue run 45008394219). The film here is 32 segments (31 of 4 seconds and one of 2), the seek is at 17,
+// past half (16) and inside the burnt image subtitle (65 to 73 seconds; segment 17 begins at 68), and the run from the start that
+// the seek's segment is compared with makes 19 segments, at most storeRunCeiling: 17 seconds of the 180 the bound allows, at the
+// 1.2 segments a second truehd-6 made on that queue run. The 180 seconds are not touched.
+const (
+	storeFilmSeconds = 31*4 + 2
+	storeSeekSegment = 17
+	storeRunCeiling  = 20
+)
+
 func TestASeekPastHalfIntoAFilmReadFromAStoreWithNoPathGetsItsSegment(t *testing.T) {
 	films := newSeekFilms(t)
 	for _, name := range []string{"aac-2", "truehd-6", "dtshdma-8"} {
 		t.Run(name, func(t *testing.T) {
-			var a seekAudio
-			for _, row := range seekAudios() {
-				if row.name == name {
-					a = row
-				}
-			}
-			media := films.film(t, a)
+			a := seekRow(t, name)
+			media := films.filmOf(t, a, storeFilmSeconds)
 			s := films.rig(t, media, a)
+			s.runCeiling = storeRunCeiling
 			s.apply(a, false, true)
-			reference := s.fromTheStart(t, seekSegment-1, seekSegment+2, t.TempDir())
+			reference := s.fromTheStart(t, storeSeekSegment-1, storeSeekSegment+2, t.TempDir())
 			s.fresh(t)
 			stop := s.worker(t, newMeter(media, 0))
 			defer stop()
-			_, err := s.fetchAt(t, s.jobs(t), psid(0), seekSegment, seekSegment)
-			checkSegment(t, s.got(t, seekSegment, err), reference, seekSegment)
+			_, err := s.fetchAt(t, s.jobs(t), psid(0), storeSeekSegment, storeSeekSegment)
+			checkSegment(t, s.got(t, storeSeekSegment, err), reference, storeSeekSegment)
 		})
 	}
 }

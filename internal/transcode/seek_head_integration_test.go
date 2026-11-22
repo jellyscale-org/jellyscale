@@ -63,12 +63,29 @@ func TestASeekIntoAFilmWhoseAudioHeadIsLostGetsItsSegmentWithSound(t *testing.T)
 	}
 }
 
-// In one play of the film that fails above, several seeks each get their segment the same way: a short one that starts a new
-// job, one past half, one as far in as the dogfood's (1183 seconds) and one into the film's last segment.
+// JS-171: this check ran the whole of a film of 453 segments from its start before it seeked, which took 180 seconds on CI's
+// two CPUs and was cut at segment 354 (queue run 45008394219). The film here is 30 segments (29 of 4 seconds and one of 2), and
+// its run from the start may make at most lostHeadRunCeiling of them: 15 seconds of the 180 the bound allows, at the 2 segments
+// a second of that queue run. The ceiling counts segments, which no machine's speed changes, and the 180 seconds are not touched.
+const (
+	lostHeadFilmSeconds = 29*4 + 2
+	lostHeadLastSegment = 29
+	lostHeadRunCeiling  = 30
+)
+
+// lostHeadSeeks are the seeks of the check below, each further from the one before than a job's catch-up of 3 segments (catchUpSegments)
+// and its lead of 2 beyond the segment fetched, so that each starts a new job: a short one, one past half the film (segment 16 begins
+// at 64 seconds, inside the burnt image subtitle that shows from 65 to 73) and one into the film's last segment. The dogfood's seek,
+// 1183 seconds in, needs a film of more than 296 segments, which the ceiling above refuses: the full check
+// (TestSeveralSeeksInOnePlayEachGetTheirSegment, with its film of 453 segments) keeps it for the other audio rows.
+var lostHeadSeeks = []int{8, 16, lostHeadLastSegment}
+
+// In one play of the film that fails above, several seeks each get their segment the same way, with a burnt image subtitle.
 func TestSeveralSeeksInOnePlayOfAFilmWhoseAudioHeadIsLostEachGetTheirSegment(t *testing.T) {
 	films := newSeekFilms(t)
 	a := seekRow(t, "dtshdma-6-head")
-	severalSeeks(t, films, a, films.film(t, a))
+	severalSeeks(t, films, a, films.filmOf(t, a, lostHeadFilmSeconds),
+		seekPlan{targets: lostHeadSeeks, last: lostHeadLastSegment, ceiling: lostHeadRunCeiling})
 }
 
 // Each command that cuts a restart asks where the audio's packets fall, and none may end for a track whose head is lost: the
