@@ -374,24 +374,27 @@ func TestAKilledHelperIsReplacedAndTheViewerKeepsPlaying(t *testing.T) {
 	}
 }
 
-// A helper takes a slot only if another stays free for a viewer who has not
-// asked yet.
-func TestHelpersNeverTakeTheLastFreeSlot(t *testing.T) {
+// A helper takes the cores of any worker that has them, and no room is kept for
+// a viewer who has not asked yet (JS-168, D-046): a new viewer stops a helper
+// (TestTwoNewViewersStartAtOnceWhileHelpersHoldTheSlots). A helper never takes a
+// worker over its cores (invariant 59), which here is one job a worker.
+func TestHelpersTakeEveryWorkerWithRoomAndNoMore(t *testing.T) {
 	slow(t)
-	t.Run("three slots in all: a main job and one helper, and the third stays free for a new viewer", func(t *testing.T) {
+	t.Run("three one-job workers: a main job and a helper on each of the other two, never a fourth job", func(t *testing.T) {
 		r := newRig(t, nil)
 		r.workers(t, 3, 1, 4, r.ownStore(t))
 		j := r.jobs(t)
 		r.playInBackground(t, j, psid(0))
-		waitFor(t, "a helper to run beside the main job", 40*time.Second, func() bool { return r.activeJobs(t) >= 2 })
+		waitFor(t, "a helper on each of the two other workers", 60*time.Second, func() bool { return r.activeJobs(t) == 3 })
 		// The three workers decide at the same moment, in separate processes; a
-		// race that gave two helpers shows as three jobs.
+		// race that gave a fourth job shows as four rows.
 		for end := time.Now().Add(20 * time.Second); time.Now().Before(end); time.Sleep(50 * time.Millisecond) {
-			if n := r.activeJobs(t); n > 2 {
-				t.Fatalf("%d jobs queued or running on 3 slots, so a helper took the last free one: %+v", n, r.jobsOf(t, r.hash))
+			if n := r.activeJobs(t); n > 3 {
+				t.Fatalf("%d jobs queued or running on 3 workers of one job each: %+v", n, r.jobsOf(t, r.hash))
 			}
 		}
-		// Another stream of the same file, started now, gets that slot.
+		// Another stream of the same file, started now, has no free worker: it
+		// gets one by stopping a helper, and is served.
 		other := r.spec
 		other.VideoBitrate = 900_000
 		hash := other.Hash()
@@ -402,18 +405,21 @@ func TestHelpersNeverTakeTheLastFreeSlot(t *testing.T) {
 			t.Fatal(err)
 		}
 		if _, err := bytesOf(j.Segment(ctx, other, hash, viewer, 0, 0)); err != nil {
-			t.Fatalf("the new viewer was refused (%v) though a slot stayed free for it", err)
+			t.Fatalf("the new viewer was refused (%v) though a helper's cores could be taken for it", err)
+		}
+		if n := r.helperRows(t, "cancelled"); n < 1 {
+			t.Errorf("no helper was stopped for the new viewer: %+v", r.jobsOf(t, r.hash))
 		}
 	})
-	t.Run("two slots in all: the main job takes one and no helper starts", func(t *testing.T) {
+	t.Run("two one-job workers: the main job takes one and a helper the other", func(t *testing.T) {
 		r := newRig(t, nil)
 		r.workers(t, 2, 1, 4, r.ownStore(t))
 		j := r.jobs(t)
 		r.playInBackground(t, j, psid(0))
-		waitFor(t, "the main job to run", 30*time.Second, func() bool { return len(running(r.jobsOf(t, r.hash))) == 1 })
-		for end := time.Now().Add(15 * time.Second); time.Now().Before(end); time.Sleep(100 * time.Millisecond) {
-			if jobs := r.jobsOf(t, r.hash); len(jobs) != 1 {
-				t.Fatalf("a helper was started with only the last free slot to run on: %+v", jobs)
+		waitFor(t, "a helper to run beside the main job", 60*time.Second, func() bool { return len(running(r.jobsOf(t, r.hash))) == 2 && r.helperRows(t, "running") == 1 })
+		for end := time.Now().Add(10 * time.Second); time.Now().Before(end); time.Sleep(100 * time.Millisecond) {
+			if n := r.activeJobs(t); n > 2 {
+				t.Fatalf("%d jobs on 2 workers of one job each: %+v", n, r.jobsOf(t, r.hash))
 			}
 		}
 	})

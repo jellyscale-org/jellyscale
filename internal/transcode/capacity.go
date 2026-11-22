@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"maps"
 	"math"
 	"runtime"
 	"slices"
@@ -171,10 +170,6 @@ func newLedger(nodes []capNode, jobs []capJob, keep func(capJob) bool) *ledger {
 		}
 	}
 	return l
-}
-
-func (l *ledger) clone() *ledger {
-	return &ledger{nodes: l.nodes, cores: l.cores, free: maps.Clone(l.free), copies: maps.Clone(l.copies)}
 }
 
 func (l *ledger) take(worker string, job capJob) {

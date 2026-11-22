@@ -201,7 +201,7 @@ Measured 2026-11-21 on a 4K Dolby Vision (profile 7) HEVC Main 10 PQ film with a
 
 - **Where the cost goes** (developer machine, CPU-seconds per second): decode 1.19, scale 0.12, tone mapping 0.66, burn-in 0.00, encode 0.47. On the i5-6500: decode 2.07, with scale 2.26, with tone mapping 3.26, with burn-in 3.34, the whole job 3.8 to 3.9. The burn-in costs nothing; decode and tone mapping are the cost.
 - **The price is a core of a faster machine.** `Spec.Cost` prices this job at 3.2 cores, measured on a 16-thread machine. The i5-6500 needs about 1.6 times the CPU-seconds for the same work, so the job is admitted on a 4-core worker and runs at about 0.85 times real time. On the dogfood it ran at 0.56 to 0.63 because the film's PGS track was being extracted from the whole file on the same cores at the same time.
-- **No helper can start with one worker.** A helper must fit the job's price on a worker and still leave that much free elsewhere (`roomForHelper`).
+- **No helper can start with one worker.** A helper must fit the job's price on a worker that has those cores free (`roomForHelper`), and a lone worker holds no second job of the price beside the viewer's. Since JS-168 no room is kept for a viewer who has not asked (D-046).
 - **The node's iGPU (Intel HD 530, Skylake)** does not decode HEVC Main 10 and cannot tone map in its video processor. Software decode with OpenCL tone mapping and VAAPI H.264 encode reached 1.09 to 1.12 times real time in a quiet pod, at 31 times x264's bytes for equal SSIM at the bitrate tried.
 - **Cheaper outputs on the i5-6500:** x264 ultrafast 0.91; 720 lines 1.04 to 1.11; 720 lines with jellyfin-ffmpeg's `tonemapx` 1.22.
 
@@ -229,7 +229,7 @@ With and without a burned-in PGS track the figures were the same within the rang
 - **No signal showed the stall.** `jellyscale_transcode_queue_cores` read 0 on every process at the one snapshot of each run, 300 s in, every stalling run included, while `jellyscale_transcode_job_speed_ratio` read 0.73 to 0.91. The refusals were visible only in the measurement build's logs.
 - Unexplained: two runs where jobs ran at 0.6x and 0.76x (BL-245). Unmeasured: a second viewer arriving while helpers run, an S3 store, the network between machines.
 
-What follows (D-046): JS-167 stops a helper no viewer's place bounds; JS-168 drops the room rule; JS-161 places the job on the worker that holds it and admits a play several workers hold together.
+What follows (D-046): JS-167 stops a helper no viewer's place bounds; JS-168 (built) drops the room rule: a helper is queued and claimed wherever a worker has exactly its cost free, counting running and queued jobs and only workers of the output version, and a viewer who has asked is claimed before any helper; no room is held back for a viewer who has not asked, which the operator and the autoscaler keep (run with the cores of the dearest film to spare, docs/running.md), so on a cluster that helpers fill a new viewer starts by stopping a helper. The long measurements of JS-168 are not yet taken: two equal workers and a 2+6 pair in jellyfin-web, before and after a seek, with and without a burned-in PGS track; a second viewer arriving while helpers hold every worker; the time to first segment of a start and of a seek, before and after. A separate agent takes them on this section's harness. JS-161 places the job on the worker that holds it and admits a play several workers hold together.
 
 ## The dogfood's other nodes and their GPUs (JS-163)
 

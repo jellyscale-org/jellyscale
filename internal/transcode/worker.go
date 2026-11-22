@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -302,8 +303,6 @@ func (w *Worker) claimIn(ctx context.Context, session string) (claimed, bool, er
 	// What the worker holds is what its rows say, and what it still runs: a job
 	// someone cancelled keeps its cores until ffmpeg is gone.
 	mine := newLedger(nodes, jobs, func(j capJob) bool { return j.Worker == w.ID })
-	running := newLedger(nodes, jobs, func(capJob) bool { return true })
-	running.placeQueued(jobs, func(j capJob) bool { return !j.Helper })
 	if _, registered := mine.free[w.ID]; !registered {
 		return job, false, nil
 	}
@@ -312,21 +311,14 @@ func (w *Worker) claimIn(ctx context.Context, session string) (claimed, bool, er
 	mine.copies[w.ID] = max(mine.copies[w.ID], copies)
 	// A helper goes to a worker that has no job of its spec, or after a second
 	// to one that has, if none took it (a dead helper's replacement, with the
-	// other workers busy). It goes only while room stays for a viewer who has not
-	// asked yet; that was so when it was queued, not necessarily now. A job of
-	// another output version is not here, as if it were not there; one that does
-	// not fit is left for a worker that has the cores, and a later one that fits
-	// goes first.
+	// other workers busy). No room is kept for a viewer who has not asked (D-046);
+	// one who has goes before any helper. A job of another output version is not
+	// here, as if it were not there; one that does not fit is left for a worker
+	// that has the cores, and a later one that fits goes first.
+	sort.SliceStable(jobs, func(i, j int) bool { return !jobs[i].Helper && jobs[j].Helper })
 	for _, queued := range jobs {
 		if queued.Worker != "" || !mine.fits(w.ID, queued) {
 			continue
-		}
-		if queued.Helper {
-			after := running.clone()
-			after.take(w.ID, queued)
-			if _, spare := after.room(capJob{Cost: queued.Cost}); !spare {
-				continue
-			}
 		}
 		var raw []byte
 		err := w.Pool.QueryRow(ctx, `UPDATE transcode_jobs SET state = 'running', worker = $1,
@@ -334,6 +326,9 @@ func (w *Worker) claimIn(ctx context.Context, session string) (claimed, bool, er
 			WHERE `+registeredIn("$1", "$5::text")+` AND id = $3 AND state = 'queued' AND created_at > now() - make_interval(secs => $4)
 				AND (NOT helper OR created_at < now() - make_interval(secs => 1)
 					OR NOT EXISTS (SELECT 1 FROM transcode_jobs o WHERE o.spec_hash = transcode_jobs.spec_hash AND o.worker = $1 AND o.state = 'running'))
+				-- A helper waits while a viewer's job is queued: the viewer who has asked goes first, whatever this worker read earlier.
+				AND (NOT helper OR NOT EXISTS (SELECT 1 FROM transcode_jobs q WHERE NOT q.helper AND q.state = 'queued' AND q.output_version = transcode_jobs.output_version
+					AND q.created_at > now() - make_interval(secs => $4)))
 			RETURNING id, spec_hash, spec, start_segment, helper`, w.ID, (w.lease()+startup).Seconds(), queued.ID, queue.Seconds(), session).
 			Scan(&job.ID, &job.Hash, &raw, &job.Start, &job.Helper)
 		if errors.Is(err, pgx.ErrNoRows) {

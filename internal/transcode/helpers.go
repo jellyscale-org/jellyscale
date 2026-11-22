@@ -55,7 +55,8 @@ func live(j string) string {
 
 // startHelper starts a helper job for the first chunk ahead of the job that is
 // not made, claimed or about to be, and within the lead. next is the job's
-// next segment. It starts none unless room stays for a new viewer.
+// next segment. It starts none unless a worker has the helper's cost free; no
+// room is kept for a viewer who has not asked (D-046).
 func (w *Worker) startHelper(ctx context.Context, job claimed, next int, layout playback.Layout) error {
 	at, served, _, err := w.furthest(ctx, job, next)
 	if err != nil || !served {
@@ -159,8 +160,8 @@ func (w *Worker) chunkFree(ctx context.Context, job claimed, next int) (bool, er
 }
 
 // roomForHelper says whether a helper of the cost fits on a worker, with the
-// queued jobs counted as placed, and leaves room for a viewer who has not asked
-// yet: a job of the same cost still fits somewhere after it. Under the helpers
+// queued jobs counted as placed. No room is kept for a viewer who has not asked
+// (D-046): the operator and the autoscaler keep it. Under the helpers
 // lock, so that helpers decided at once do not each see the room the others take.
 func roomForHelper(ctx context.Context, tx pgx.Tx, queue time.Duration, cost float64) (bool, error) {
 	nodes, jobs, err := readCapacity(ctx, tx, capQuery{Filter: "true", Queue: queue})
@@ -171,9 +172,6 @@ func roomForHelper(ctx context.Context, tx pgx.Tx, queue time.Duration, cost flo
 	l := newLedger(nodes, jobs, all)
 	l.placeQueued(jobs, all)
 	helper := capJob{Cost: cost}
-	if _, placed := l.place(helper); !placed {
-		return false, nil
-	}
-	_, spare := l.room(helper)
-	return spare, nil
+	_, placed := l.place(helper)
+	return placed, nil
 }

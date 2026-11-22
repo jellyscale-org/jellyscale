@@ -229,8 +229,8 @@ func TestAPreemptedHelpersChunkIsMadeByTheJobThatAskedForIt(t *testing.T) {
 	r.workers(t, 2, 2, 6, r.ownStore(t))
 	j := r.jobs(t)
 	ended := r.playToTheEnd(t, j, psid(0))
-	waitFor(t, "two helpers to run beside the main job", 60*time.Second, func() bool {
-		return len(running(r.jobsOf(t, r.hash))) == 3 && r.helperRows(t, "running") == 2
+	waitFor(t, "three helpers to run beside the main job", 60*time.Second, func() bool {
+		return len(running(r.jobsOf(t, r.hash))) == 4 && r.helperRows(t, "running") == 3
 	})
 	for i, bitrate := range []int64{800_000, 900_000} {
 		spec, hash := r.otherStream(bitrate)
@@ -248,29 +248,22 @@ func TestAPreemptedHelpersChunkIsMadeByTheJobThatAskedForIt(t *testing.T) {
 		}
 		stopped++
 		chunkEnd := min((row.Start/6+1)*6, filmSegments)
-		// The chunk is left to the jobs already making the film: no new helper
-		// starts in it, and each of its segments is made by another job. Which
+		// Each of the chunk's segments is made by another job, and none twice (JS-168,
+		// D-046: no room is kept for a viewer, so once a worker has the cores a new
+		// helper may be asked for the chunk, which is no fault; it was checked that
+		// none started in it when room was always kept back). Which
 		// one depends on timing (the job before the chunk goes on into it, a
 		// helper or not, or the viewer's next request starts a job there), so
 		// only that is checked (JS-081's lead correction: requiring one job to
 		// span the chunk, or a non-helper to make it, failed a right build).
-		for _, other := range rows {
-			if other.ID > row.ID && other.Helper && other.Start >= row.Start && other.Start < chunkEnd {
-				t.Errorf("helper job %d started at segment %d in the stopped helper's chunk %d to %d: %+v", other.ID, other.Start, row.Start, chunkEnd-1, rows)
-			}
-		}
+		// A segment counts as made when it is stored (the viewer has it) and no two rows
+		// cover it (madeTwice, below). Not "some other row covers it": a helper stopped
+		// at Start 18, Next 18 may store segment 18 before its row's next_segment is
+		// written, which no row then records, and a right build passed or failed on that
+		// timing (the review of JS-168's first checks).
 		for n := row.Start; n < chunkEnd; n++ {
-			// A segment the helper stored before it was stopped is made: the
-			// viewer has it, and which segments a stopped helper got to store
-			// depends on timing as much as which job makes the rest.
-			made := n < row.Next
-			for _, other := range rows {
-				if other.ID != row.ID && other.Start <= n && n < other.Next {
-					made = true
-				}
-			}
-			if !made {
-				t.Errorf("segment %d of the stopped helper's chunk %d to %d was made by no job: %+v", n, row.Start, chunkEnd-1, rows)
+			if !r.stored(n) {
+				t.Errorf("segment %d of the stopped helper's chunk %d to %d was never made: %+v", n, row.Start, chunkEnd-1, rows)
 			}
 		}
 	}

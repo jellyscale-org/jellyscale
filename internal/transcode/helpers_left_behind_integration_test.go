@@ -59,8 +59,9 @@ func TestAHelperWhoseViewerSeekedForwardBeyondItIsEnded(t *testing.T) {
 func TestTwoHelpersWhoseViewerSeekedAwayAreEachEndedCountedAndLogged(t *testing.T) {
 	slow(t)
 	r := newRig(t, nil)
-	// Four slots: the main job, two helpers, and the one a helper never takes.
-	c := r.cluster(t, clusterOpts{n: 4, lead: 60 * time.Second})
+	// Three slots: the main job and a helper on each of the other two, which is exactly two helpers (JS-168 keeps no
+	// slot for a viewer who has not asked, so a fourth worker would run a third that may have stored nothing at the seek).
+	c := r.cluster(t, clusterOpts{n: 3, lead: 60 * time.Second})
 	s := r.mainStream()
 	c.viewerAt(t, psid(0), 0)
 	var live []hrow
@@ -116,7 +117,9 @@ func TestTwoHelpersWhoseViewerSeekedAwayAreEachEndedCountedAndLogged(t *testing.
 func TestOneHelperWhoseViewerSeekedAwayAddsOneToTheCounterAndOneLogLine(t *testing.T) {
 	slow(t)
 	r := newRig(t, nil)
-	c := r.cluster(t, clusterOpts{n: 3, lead: 60 * time.Second})
+	// Two workers: the viewer's job on one and exactly one helper on the other
+	// (three equal workers run two helpers, JS-168).
+	c := r.cluster(t, clusterOpts{n: 2, lead: 60 * time.Second})
 	sc := r.forwardScene(t, c, "running")
 	before := endedCounts(t, c.ws[c.ids[0]])
 	sk := r.seek(t, c.j, sc.s, psid(0), 20)
@@ -403,7 +406,7 @@ func TestAHelperWhoseViewerSeekedBackFarBehindItIsEnded(t *testing.T) {
 // Forced: the seek's job and two new viewers' jobs, queued as rows (no preemption is
 // asked, which would stop a helper by another road), need all three slots of the
 // cluster, whatever held them (the viewer's own job, which the seek cancels, and the
-// helpers the viewer left behind, of which a cluster of three keeps one at most). Which
+// helpers the viewer left behind, of which a cluster of three keeps two at most). Which
 // job takes which slot does not matter. The seek is made right after a heartbeat of
 // a helper's worker: its beats are on a grid of 10 s (a put's renewal does not
 // move it), and a lease that moved with no segment stored beside it is one, so the lease
@@ -618,8 +621,14 @@ func TestARunningHelperReadsTheViewersAtMostOncePerHalfSecond(t *testing.T) {
 	}
 	was := count()
 	time.Sleep(6 * time.Second)
-	if reads := count() - was; reads > 14 { // 12 in 6 seconds, and two for a look in flight at each end.
-		t.Errorf("the workers read the viewers' furthest segment %d times in 6 seconds with one helper and a main job's end, want at most 2 a second", reads)
+	// JS-168: three equal workers run two helpers for the one viewer, and each reads twice a second (invariant 57),
+	// so the bound is per helper row the spec has, not for one: 12 in 6 seconds each, and two for a look in flight at each end.
+	helpers := len(r.helpersOf(t, r.hash))
+	if helpers < 1 {
+		helpers = 1
+	}
+	if reads := count() - was; reads > 14*helpers {
+		t.Errorf("the workers read the viewers' furthest segment %d times in 6 seconds with %d helper(s) and a main job's end, want at most 2 a second each", reads, helpers)
 	}
 }
 

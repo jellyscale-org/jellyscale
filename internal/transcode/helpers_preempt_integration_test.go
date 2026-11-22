@@ -13,10 +13,10 @@ import (
 	"jellyscale/internal/playback"
 )
 
-// A new viewer never waits behind a helper (JS-072). Helpers fill every free
-// slot but one, so a second viewer arriving at the same moment as a first has
-// no slot; it takes a helper's, and the helper's chunk falls back to the job
-// that asked for help.
+// A new viewer never waits behind a helper (JS-072). Helpers fill every
+// worker with room (no room is kept for a viewer who has not asked, JS-168,
+// D-046), so a second viewer has no free slot; it takes a helper's, and the
+// helper's chunk falls back to the job that asked for help.
 //
 // These tests use two names the task implies and the build must add, so they
 // do not compile until it has: Worker.NoHelpers (true: the worker's jobs ask
@@ -51,8 +51,8 @@ func (r *rig) helperRows(t *testing.T, state string) (n int) {
 }
 
 // helpedViewer sets up the cluster of these tests: two worker processes of two slots, so
-// four slots; one viewer playing the film from the start takes one and, because
-// a helper never takes the last free slot, two helpers take two more. It
+// four slots; one viewer playing the film from the start takes one and three
+// helpers take the other three. It
 // returns once they run, and the channel the viewer's slowest segment arrives
 // on when it has played the film.
 func (r *rig) helpedViewer(t *testing.T) (*Jobs, chan time.Duration) {
@@ -60,14 +60,14 @@ func (r *rig) helpedViewer(t *testing.T) (*Jobs, chan time.Duration) {
 	r.workers(t, 2, 2, 6, r.ownStore(t))
 	j := r.jobs(t)
 	played := r.playInBackground(t, j, psid(0))
-	waitFor(t, "two helpers to run beside the main job", 60*time.Second, func() bool {
-		return len(running(r.jobsOf(t, r.hash))) == 3 && r.helperRows(t, "running") == 2
+	waitFor(t, "three helpers to run beside the main job", 60*time.Second, func() bool {
+		return len(running(r.jobsOf(t, r.hash))) == 4 && r.helperRows(t, "running") == 3
 	})
 	return j, played
 }
 
-// Two viewers start at the same moment, with one slot free: one takes it and
-// the other must take a helper's. Both get a first segment (the time is logged next to an
+// Two viewers start at the same moment, with every slot held by a helper or the
+// viewer: each takes a helper's (one on each worker). Both get a first segment (the time is logged next to an
 // idle cluster's, not judged), and no job of a viewer is the one stopped.
 func TestTwoNewViewersStartAtOnceWhileHelpersHoldTheSlots(t *testing.T) {
 	slow(t)
@@ -90,8 +90,8 @@ func TestTwoNewViewersStartAtOnceWhileHelpersHoldTheSlots(t *testing.T) {
 	t.Logf("first segment on an idle cluster: %v", alone.Round(10*time.Millisecond))
 
 	r.playInBackground(t, j, psid(0))
-	waitFor(t, "two helpers to run beside the main job", 60*time.Second, func() bool {
-		return len(running(r.jobsOf(t, r.hash))) == 3 && r.helperRows(t, "running") == 2
+	waitFor(t, "three helpers to run beside the main job", 60*time.Second, func() bool {
+		return len(running(r.jobsOf(t, r.hash))) == 4 && r.helperRows(t, "running") == 3
 	})
 
 	type result struct {
@@ -161,7 +161,7 @@ func TestAPreemptedHelpersChunkIsStillMade(t *testing.T) {
 	}
 }
 
-// Helpers hold the cluster full (four slots, three helpers and no main job,
+// Helpers hold the cluster full (four slots, four helpers and no main job,
 // the rows a dead main job and a race can leave): a helper that wants a slot
 // waits for one, and never stops another helper for it.
 func TestAHelperNeverStopsAnotherHelper(t *testing.T) {
@@ -181,11 +181,11 @@ func TestAHelperNeverStopsAnotherHelper(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, start := range []int{4, 8, 12} {
+	for _, start := range []int{4, 8, 12, 16} {
 		insert(start)
 	}
-	waitFor(t, "three helpers to run", 30*time.Second, func() bool { return r.helperRows(t, "running") == 3 })
-	insert(16) // A fourth: the cluster has a slot left, which a helper may not take.
+	waitFor(t, "four helpers to run", 30*time.Second, func() bool { return r.helperRows(t, "running") == 4 })
+	insert(20) // A fifth: no worker has the cores, and a helper stops no other helper for it.
 	for end := time.Now().Add(10 * time.Second); time.Now().Before(end); time.Sleep(100 * time.Millisecond) {
 		if n := r.helperRows(t, "cancelled"); n != 0 {
 			t.Fatalf("%d helpers were stopped for another helper: %+v", n, r.jobsOf(t, r.hash))
