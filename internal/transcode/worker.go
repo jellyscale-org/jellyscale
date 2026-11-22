@@ -247,6 +247,12 @@ func (w *Worker) furthest(ctx context.Context, job claimed, next int) (n int, se
 		// one: its lead is not this helper's to fill.
 		from, to = 0, max(job.Start+w.chunkSize(), next+catchUpSegments)
 	}
+	// The job's loop makes this read on its own turn, and the lease keeper gives
+	// up a job whose loop does not come round within the lease, so a read that
+	// does not answer is cut at the bound of a database call and counted as one
+	// that failed, which every caller already treats as no news.
+	ctx, cancel := context.WithTimeout(ctx, liveTiming("bound"))
+	defer cancel()
 	err = w.Pool.QueryRow(ctx, `SELECT
 			COALESCE(max(segment) FILTER (WHERE segment >= $3 AND segment < $4), -1),
 			COALESCE(bool_or(segment < 0), false)
