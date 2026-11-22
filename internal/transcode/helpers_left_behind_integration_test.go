@@ -548,8 +548,15 @@ func TestAHelperIsNotStoppedAndItsLimitIsNotLiftedWhenTheReadOfTheViewersFails(t
 			}
 		}
 	}
-	c.proxy.Delay(2 * time.Second)
-	watch("reads that take 2 seconds", 8*time.Second)
+	// A delay is paid on every packet, so a read that needs a new connection of the
+	// pool (the workers share one) takes six times it: 12 s at 2 s, measured, past
+	// the 10 s lease. The helper's loop makes that read on its own turn, and a loop
+	// that does not turn for a lease is given up (DOMAINS 25,
+	// TestAJobWhoseWorkHasNotComeRoundIsGivenUpWhileTheKeeperStillAnswers), so the
+	// longest the loop can wait here is a read begun just before the hold, 6 x 0.5 s
+	// of delay and then the 4 s hold: 7 s, 3 s short of the lease.
+	c.proxy.Delay(500 * time.Millisecond)
+	watch("reads that take half a second", 8*time.Second)
 	c.proxy.Delay(0)
 	c.proxy.Hold()
 	watch("reads that do not answer", 4*time.Second)
