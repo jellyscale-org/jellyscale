@@ -321,10 +321,10 @@ try() {
   git reset -q --hard HEAD~1 && git clean -fdq
 }
 edit() { local f; for f in "$@"; do echo 2 >>"$f"; done; }
-try "a root .md and docs/*.md are docs-only" docs-only edit README.md docs/a.md
-try "tasks/prd.json is docs-only" docs-only edit tasks/prd.json
-try "another file under tasks/ is docs-only" docs-only edit tasks/other.json
-try "tasks/backlog.json alone is docs-only" docs-only edit tasks/backlog.json
+try "a root .md and docs/*.md are a plan change" plan edit README.md docs/a.md
+try "tasks/prd.json is a plan change" plan edit tasks/prd.json
+try "another file under tasks/ is a plan change" plan edit tasks/other.json
+try "tasks/backlog.json alone is a plan change" plan edit tasks/backlog.json
 try "a .md under .claude/ is docs-only" docs-only edit .claude/agents/qa.md
 try "a .js under .claude/ is docs-only" docs-only edit .claude/workflows/build.js
 try "a new file of any type under .claude/ and tasks/ is docs-only" docs-only bash -c 'mkdir -p .claude/deep/er tasks/a && echo 1 >.claude/deep/er/x.yaml && echo 1 >tasks/a/b.bin'
@@ -354,6 +354,9 @@ try "a rename from .claude/ to tasks/ is docs-only" docs-only git mv .claude/age
 try "a rename from tasks/ to .claude/ is docs-only" docs-only git mv tasks/other.json .claude/other.json
 try "a deletion under tasks/ with a rename under .claude/ is docs-only" docs-only bash -c 'git rm -q tasks/other.json && git mv .claude/agents/qa.md .claude/qa.md'
 try "a renamed root .md that becomes .txt is code" code git mv README.md moved.txt
+try "a new file under tasks/ with docs/*.md is a plan change" plan bash -c 'mkdir -p tasks/a && echo 1 >tasks/a/b.json && echo 2 >>docs/a.md'
+try "tasks/ with one file under .claude/ is docs-only, not a plan change" docs-only edit tasks/prd.json .claude/agents/qa.md
+try "a rename from tasks/ to a root .md is a plan change" plan git mv tasks/other.json other.md
 try "code renamed into docs/ is code" code git mv src/a.go docs/b.md
 check "an empty diff is code" code "$(bash "$repo/test/changes.sh" HEAD HEAD)"
 check "an unreadable diff is code" code "$(bash "$repo/test/changes.sh" nosuchbase...HEAD)"
@@ -367,6 +370,7 @@ mkdir -p .claude/workflows tasks src && echo 1 >.claude/workflows/build.js && ec
 git add -A && git commit -qm base && base=$(git rev-parse HEAD)
 echo 2 >>.claude/workflows/build.js && echo 2 >>tasks/backlog.json && git commit -qam claude-only && claude_only=$(git rev-parse HEAD)
 echo 2 >>src/a.go && git commit -qam code && with_code=$(git rev-parse HEAD)
+echo 3 >>tasks/backlog.json && git commit -qam plan && plan_only=$(git rev-parse HEAD)
 python3 -I - "$repo/.github/workflows/ci.yml" "$repo/test/changes.sh" >"$cj/run.sh" <<'EOF'
 import sys, yaml
 steps = yaml.safe_load(open(sys.argv[1]))["jobs"]["changes"]["steps"]
@@ -389,6 +393,16 @@ out=$(changes_job pull_request "$base" "$with_code" true)
 check "ci.yml: a ci:full pull request with code runs the media tiers" "code=true" "$(grep -o 'code=true' <<<"$out")"
 out=$(changes_job pull_request "$base" "$claude_only" false)
 check "ci.yml: a pull request without ci:full says the media tiers run in the merge queue" "code=false 1" "$(grep -o 'code=false' <<<"$out") $(grep -c 'a pull request: the media tiers run in the merge queue' <<<"$out")"
+for ev in pull_request merge_group; do
+  out=$(changes_job $ev "$with_code" "$plan_only" false)
+  check "ci.yml: a $ev of tasks/ alone is a plan change, saying so" "code=false plan=true 1" "$(grep -o 'code=false' <<<"$out") $(grep -o 'plan=true' <<<"$out") $(grep -c 'a plan change, which CI does not test' <<<"$out")"
+  out=$(changes_job $ev "$base" "$claude_only" true)
+  check "ci.yml: a $ev with .claude/ is not a plan change" "plan=false" "$(grep -o 'plan=false' <<<"$out")"
+  out=$(changes_job $ev "$base" "$with_code" true)
+  check "ci.yml: a $ev with code is not a plan change" "plan=false" "$(grep -o 'plan=false' <<<"$out")"
+done
+out=$(changes_job push "$plan_only" "$plan_only" false)
+check "ci.yml: a push to main is never a plan change" "plan=false" "$(grep -o 'plan=false' <<<"$out")"
 out=$(changes_job push "$base" "$with_code" false)
 check "ci.yml: a push to main says it was tested in its merge group" "code=false 1" "$(grep -o 'code=false' <<<"$out") $(grep -c 'a push to main, tested in its merge group' <<<"$out")"
 cd "$repo" || exit 1
@@ -396,7 +410,7 @@ js132=$(python3 -I - .github/workflows/ci.yml <<'EOF'
 import sys, yaml
 jobs = yaml.safe_load(open(sys.argv[1]))["jobs"]
 lu = jobs["lint-and-unit"]
-print("lint-and-unit has no needs or if" if "needs" not in lu and "if" not in lu else "lint-and-unit has needs or if")
+print("lint-and-unit is skipped only for a plan change" if lu.get("needs") == "changes" and lu.get("if") == "${{ !cancelled() && needs.changes.outputs.plan != 'true' }}" else "lint-and-unit is skipped for something else")
 want = "needs.changes.outputs.code == 'true'"
 for j in ("integration-total", "integration-shard", "roles", "e2e-shard"):
     print(f"{j} still waits for changes and runs only for code" if jobs[j].get("needs") == "changes" and jobs[j].get("if") == want else f"{j} changed")
@@ -406,7 +420,7 @@ print("integration says why the shards did not run" if "did not run: $WHY" in st
 print("e2e says why the shards did not run" if "did not run: $WHY" in str(jobs["e2e"]["steps"]) else "e2e lost its reason")
 EOF
 )
-check "ci.yml: lint-and-unit runs on every change" "lint-and-unit has no needs or if" "$(sed -n 1p <<<"$js132")"
+check "ci.yml: lint-and-unit runs on every change but a plan change (owner, 2026-11-22)" "lint-and-unit is skipped only for a plan change" "$(sed -n 1p <<<"$js132")"
 for j in integration-total integration-shard roles e2e-shard; do
   check "ci.yml: $j is gated on changes as before" "$j still waits for changes and runs only for code" "$(grep "^$j " <<<"$js132")"
 done
