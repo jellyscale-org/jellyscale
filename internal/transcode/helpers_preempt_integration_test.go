@@ -51,8 +51,9 @@ func (r *rig) helperRows(t *testing.T, state string) (n int) {
 }
 
 // helpedViewer sets up the cluster of these tests: two worker processes of two slots, so
-// four slots; one viewer playing the film from the start takes one and three
-// helpers take the other three. It
+// four slots; one viewer playing the film from the start takes one and two
+// helpers take the other worker's two: no helper runs beside the viewers' own
+// job (D-052). It
 // returns once they run, and the channel the viewer's slowest segment arrives
 // on when it has played the film.
 func (r *rig) helpedViewer(t *testing.T) (*Jobs, chan time.Duration) {
@@ -60,14 +61,14 @@ func (r *rig) helpedViewer(t *testing.T) (*Jobs, chan time.Duration) {
 	r.workers(t, 2, 2, 6, r.ownStore(t))
 	j := r.jobs(t)
 	played := r.playInBackground(t, j, psid(0))
-	waitFor(t, "three helpers to run beside the main job", 60*time.Second, func() bool {
-		return len(running(r.jobsOf(t, r.hash))) == 4 && r.helperRows(t, "running") == 3
+	waitFor(t, "two helpers to run beside the main job", 60*time.Second, func() bool {
+		return len(running(r.jobsOf(t, r.hash))) == 3 && r.helperRows(t, "running") == 2
 	})
 	return j, played
 }
 
-// Two viewers start at the same moment, with every slot held by a helper or the
-// viewer: each takes a helper's (one on each worker). Both get a first segment (the time is logged next to an
+// Two viewers start at the same moment, with one slot free (the viewers'
+// worker runs no helper, D-052): one takes it and the other must take a helper's. Both get a first segment (the time is logged next to an
 // idle cluster's, not judged), and no job of a viewer is the one stopped.
 func TestTwoNewViewersStartAtOnceWhileHelpersHoldTheSlots(t *testing.T) {
 	slow(t)
@@ -90,8 +91,8 @@ func TestTwoNewViewersStartAtOnceWhileHelpersHoldTheSlots(t *testing.T) {
 	t.Logf("first segment on an idle cluster: %v", alone.Round(10*time.Millisecond))
 
 	r.playInBackground(t, j, psid(0))
-	waitFor(t, "three helpers to run beside the main job", 60*time.Second, func() bool {
-		return len(running(r.jobsOf(t, r.hash))) == 4 && r.helperRows(t, "running") == 3
+	waitFor(t, "two helpers to run beside the main job", 60*time.Second, func() bool {
+		return len(running(r.jobsOf(t, r.hash))) == 3 && r.helperRows(t, "running") == 2
 	})
 
 	type result struct {

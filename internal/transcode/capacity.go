@@ -76,6 +76,7 @@ type capJob struct {
 	Copy   bool
 	Helper bool
 	Own    bool // The asking viewer's.
+	Spec   string
 	Start  int
 }
 
@@ -108,7 +109,7 @@ func readCapacity(ctx context.Context, q interface {
 	if err != nil {
 		return nil, nil, err
 	}
-	rows, err = q.Query(ctx, `SELECT id, COALESCE(worker, ''), helper, start_segment,
+	rows, err = q.Query(ctx, `SELECT id, COALESCE(worker, ''), helper, start_segment, spec_hash,
 			owner IN (SELECT play_session_id FROM transcode_viewers WHERE user_id::text = $3 AND device_id = $4),
 			COALESCE((spec->>'Copy')::boolean, false), cost::float8, CASE WHEN cost IS NULL THEN spec END
 		FROM transcode_jobs WHERE output_version = $1
@@ -124,7 +125,7 @@ func readCapacity(ctx context.Context, q interface {
 		var job capJob
 		var cost *float64
 		var spec []byte
-		if err := rows.Scan(&job.ID, &job.Worker, &job.Helper, &job.Start, &job.Own, &job.Copy, &cost, &spec); err != nil {
+		if err := rows.Scan(&job.ID, &job.Worker, &job.Helper, &job.Start, &job.Spec, &job.Own, &job.Copy, &cost, &spec); err != nil {
 			return nil, nil, err
 		}
 		if job.Cost, err = costOf(cost, spec); err != nil {
@@ -184,10 +185,13 @@ func (l *ledger) fits(worker string, job capJob) bool {
 }
 
 // place takes the job on the worker with the most cores free that holds it.
-func (l *ledger) place(job capJob) (string, bool) {
+func (l *ledger) place(job capJob) (string, bool) { return l.placeOff(job, nil) }
+
+// placeOff is place without the workers in barred.
+func (l *ledger) placeOff(job capJob, barred map[string]bool) (string, bool) {
 	best := ""
 	for _, n := range l.nodes {
-		if l.fits(n.ID, job) && (best == "" || l.free[n.ID] > l.free[best]) {
+		if !barred[n.ID] && l.fits(n.ID, job) && (best == "" || l.free[n.ID] > l.free[best]) {
 			best = n.ID
 		}
 	}
@@ -248,15 +252,17 @@ func (l *ledger) why(job capJob) (reason, text string) {
 // whether any helper was, so the caller can send preemptHint once the
 // transaction commits and the helpers stop at once rather than at their next
 // heartbeat. What a helper stored stays, and the rest of its chunk is made when
-// a viewer reaches it, as after a seek. Called under the helpers lock.
-func preemptHelpers(ctx context.Context, tx pgx.Tx, queue time.Duration, job capJob) (bool, error) {
+// a viewer reaches it, as after a seek. Called under the helpers lock. With
+// stuck set the job has waited queued with room counted for it, which no worker
+// took (a killed worker is counted until it is forgotten), so room is not asked.
+func preemptHelpers(ctx context.Context, tx pgx.Tx, queue time.Duration, job capJob, stuck bool) (bool, error) {
 	nodes, jobs, err := readCapacity(ctx, tx, capQuery{Filter: "true", Queue: queue})
 	if err != nil {
 		return false, err
 	}
 	l := newLedger(nodes, jobs, func(capJob) bool { return true })
 	l.placeQueued(jobs, func(j capJob) bool { return !j.Helper })
-	if _, ok := l.room(job); ok {
+	if _, ok := l.room(job); ok && !stuck {
 		return false, nil
 	}
 	var cancel []int64
@@ -275,7 +281,7 @@ func preemptHelpers(ctx context.Context, tx pgx.Tx, queue time.Duration, job cap
 			}
 			free, stop = free+helper.Cost, append(stop, helper.ID)
 		}
-		if free >= job.Cost-coresSlack && (!job.Copy || copies < copyBound) && (cancel == nil || len(stop) < len(cancel)) {
+		if len(stop) > 0 && free >= job.Cost-coresSlack && (!job.Copy || copies < copyBound) && (cancel == nil || len(stop) < len(cancel)) {
 			cancel = stop
 		}
 	}

@@ -229,8 +229,8 @@ func TestAPreemptedHelpersChunkIsMadeByTheJobThatAskedForIt(t *testing.T) {
 	r.workers(t, 2, 2, 6, r.ownStore(t))
 	j := r.jobs(t)
 	ended := r.playToTheEnd(t, j, psid(0))
-	waitFor(t, "three helpers to run beside the main job", 60*time.Second, func() bool {
-		return len(running(r.jobsOf(t, r.hash))) == 4 && r.helperRows(t, "running") == 3
+	waitFor(t, "two helpers to run beside the main job", 60*time.Second, func() bool {
+		return len(running(r.jobsOf(t, r.hash))) == 3 && r.helperRows(t, "running") == 2
 	})
 	for i, bitrate := range []int64{800_000, 900_000} {
 		spec, hash := r.otherStream(bitrate)

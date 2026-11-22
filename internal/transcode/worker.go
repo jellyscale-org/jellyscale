@@ -310,8 +310,9 @@ func (w *Worker) claimIn(ctx context.Context, session string) (claimed, bool, er
 	mine.free[w.ID] = min(mine.free[w.ID], mine.cores[w.ID]-local)
 	mine.copies[w.ID] = max(mine.copies[w.ID], copies)
 	// A helper goes to a worker that has no job of its spec, or after a second
-	// to one that has, if none took it (a dead helper's replacement, with the
-	// other workers busy). No room is kept for a viewer who has not asked (D-046);
+	// to one that has only helpers of it, if none took it (a dead helper's
+	// replacement, with the other workers busy); never to one running a job of
+	// its spec that is not a helper (D-052). No room is kept for a viewer who has not asked (D-046);
 	// one who has goes before any helper. A job of another output version is not
 	// here, as if it were not there; one that does not fit is left for a worker
 	// that has the cores, and a later one that fits goes first.
@@ -324,8 +325,9 @@ func (w *Worker) claimIn(ctx context.Context, session string) (claimed, bool, er
 		err := w.Pool.QueryRow(ctx, `UPDATE transcode_jobs SET state = 'running', worker = $1,
 				lease_expires_at = now() + make_interval(secs => $2)
 			WHERE `+registeredIn("$1", "$5::text")+` AND id = $3 AND state = 'queued' AND created_at > now() - make_interval(secs => $4)
-				AND (NOT helper OR created_at < now() - make_interval(secs => 1)
-					OR NOT EXISTS (SELECT 1 FROM transcode_jobs o WHERE o.spec_hash = transcode_jobs.spec_hash AND o.worker = $1 AND o.state = 'running'))
+				AND (NOT helper OR (NOT EXISTS (SELECT 1 FROM transcode_jobs v WHERE v.spec_hash = transcode_jobs.spec_hash AND v.worker = $1 AND v.state = 'running' AND NOT v.helper)
+					AND (created_at < now() - make_interval(secs => 1)
+						OR NOT EXISTS (SELECT 1 FROM transcode_jobs o WHERE o.spec_hash = transcode_jobs.spec_hash AND o.worker = $1 AND o.state = 'running'))))
 				-- A helper waits while a viewer's job is queued: the viewer who has asked goes first, whatever this worker read earlier.
 				AND (NOT helper OR NOT EXISTS (SELECT 1 FROM transcode_jobs q WHERE NOT q.helper AND q.state = 'queued' AND q.output_version = transcode_jobs.output_version
 					AND q.created_at > now() - make_interval(secs => $4)))

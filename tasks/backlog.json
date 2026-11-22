@@ -2210,6 +2210,15 @@
       "status": "open",
       "severity": "minor",
       "reviewer": "product-owner"
+    },
+    {
+      "id": "BL-247",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-168 merge-queue regression; D-052",
+      "title": "A slow job on a worker with idle cores gets no helper on that worker",
+      "notes": "D-052 keeps helpers off the worker running the viewers' own job. Promote when a measurement shows a same-worker helper brings such a job to 1.0x or above, or when the dogfood (JS-166, the 12-thread node) shows a job under 1.2x on a worker with at least the job's cost free and no other worker to help."
     }
   ]
 }

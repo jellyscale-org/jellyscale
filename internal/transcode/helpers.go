@@ -129,7 +129,7 @@ func (w *Worker) insertHelper(ctx context.Context, job claimed, chunk, start int
 		if !watched {
 			return nil
 		}
-		fits, err := roomForHelper(ctx, tx, orDefault(w.QueueTimeout, queueTimeout), job.Spec.Cost())
+		fits, err := roomForHelper(ctx, tx, orDefault(w.QueueTimeout, queueTimeout), job.Hash, job.Spec.Cost())
 		if err != nil || !fits {
 			return err
 		}
@@ -159,19 +159,34 @@ func (w *Worker) chunkFree(ctx context.Context, job claimed, next int) (bool, er
 	return !taken, fromPool(err)
 }
 
-// roomForHelper says whether a helper of the cost fits on a worker, with the
-// queued jobs counted as placed. No room is kept for a viewer who has not asked
-// (D-046): the operator and the autoscaler keep it. Under the helpers
+// roomForHelper says whether a helper of the spec and cost fits on a worker that
+// may claim it, with the queued jobs counted as placed. A worker running a job of
+// the spec that is not a helper never claims its helper (D-052), so it is no room
+// for it, nor for the spec's queued helpers. No room is kept for a viewer who has
+// not asked (D-046): the operator and the autoscaler keep it. Under the helpers
 // lock, so that helpers decided at once do not each see the room the others take.
-func roomForHelper(ctx context.Context, tx pgx.Tx, queue time.Duration, cost float64) (bool, error) {
+func roomForHelper(ctx context.Context, tx pgx.Tx, queue time.Duration, spec string, cost float64) (bool, error) {
 	nodes, jobs, err := readCapacity(ctx, tx, capQuery{Filter: "true", Queue: queue})
 	if err != nil {
 		return false, err
 	}
-	all := func(capJob) bool { return true }
-	l := newLedger(nodes, jobs, all)
-	l.placeQueued(jobs, all)
-	helper := capJob{Cost: cost}
-	_, placed := l.place(helper)
+	barred := map[string]bool{}
+	for _, j := range jobs {
+		if j.Worker != "" && !j.Helper && j.Spec == spec {
+			barred[j.Worker] = true
+		}
+	}
+	l := newLedger(nodes, jobs, func(capJob) bool { return true })
+	for _, j := range jobs {
+		if j.Worker != "" {
+			continue
+		}
+		if j.Helper && j.Spec == spec {
+			l.placeOff(j, barred)
+		} else {
+			l.place(j)
+		}
+	}
+	_, placed := l.placeOff(capJob{Cost: cost}, barred)
 	return placed, nil
 }
