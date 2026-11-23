@@ -42,6 +42,9 @@ const filmTicks = int64(100_000_000_000) // Ten thousand seconds in ticks.
 type env struct {
 	pool       *pgxpool.Pool
 	servers    []*httptest.Server // Two "replicas", each with its own pool.
+	replicas   []*pgxpool.Pool    // Theirs.
+	replicaApp string             // The application_name of the replicas' sessions.
+	ended      sync.Once
 	apis       []*Server
 	user       string
 	token      string
@@ -52,13 +55,17 @@ type env struct {
 	uri        string
 }
 
-func newEnv(t *testing.T) *env { return newEnvOn(t, "") }
+func newEnv(t *testing.T) *env {
+	t.Helper()
+	return newEnvOn(t, "")
+}
 
 // newEnvOn serves the film from the named S3 target in JELLYSCALE_TEST_S3, or a
 // directory when it is empty.
 func newEnvOn(t *testing.T, s3Target string) *env {
 	t.Helper()
 	dsn := testenv.DatabaseURL(t)
+	testenv.NoStrays(t, dsn) // First, so it runs after every cleanup of the env's replicas, workers and of the test.
 	ctx := context.Background()
 	e := &env{}
 	var err error
@@ -66,6 +73,9 @@ func newEnvOn(t *testing.T, s3Target string) *env {
 		t.Fatal(err)
 	}
 	t.Cleanup(e.pool.Close)
+	// An earlier env of the test is over before its tables are truncated: each of its replicas reads the snapshot
+	// (media_sources, items, libraries) until its pool closes, which a TRUNCATE of libraries must not meet.
+	endEarlierEnvs(e.pool)
 	if _, err := e.pool.Exec(ctx, "TRUNCATE libraries, users CASCADE"); err != nil {
 		t.Fatal(err)
 	}
@@ -93,20 +103,56 @@ func newEnvOn(t *testing.T, s3Target string) *env {
 	e.user, e.token = e.addUser(t, "viewer")
 	e.other, e.otherToken = e.addUser(t, "other")
 
+	e.replicaApp = "api-env-" + uuid.NewString()
+	liveEnvs.Lock()
+	liveEnvs.envs = append(liveEnvs.envs, e)
+	liveEnvs.Unlock()
+	t.Cleanup(func() { e.end(e.pool) })
+	replicaDSN := dsn + map[bool]string{true: "&", false: "?"}[strings.Contains(dsn, "?")] + "application_name=" + e.replicaApp
 	for range 2 {
-		pool, err := db.Open(ctx, dsn)
+		pool, err := db.Open(ctx, replicaDSN)
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(pool.Close)
+		e.replicas = append(e.replicas, pool)
 		s := &Server{Pool: pool, Items: &items.Repo{Pool: pool, ServerID: "srv"}, Roles: []string{RoleAPI, RoleStream},
 			Log: failureLog(t), SocketIdle: 700 * time.Millisecond}
 		server := httptest.NewServer(s.Handler())
-		t.Cleanup(server.Close)
 		e.apis = append(e.apis, s)
 		e.servers = append(e.servers, server)
 	}
 	return e
+}
+
+// liveEnvs are the envs of the tests that have not ended them.
+var liveEnvs struct {
+	sync.Mutex
+	envs []*env
+}
+
+func endEarlierEnvs(admin *pgxpool.Pool) {
+	liveEnvs.Lock()
+	earlier := liveEnvs.envs
+	liveEnvs.envs = nil
+	liveEnvs.Unlock()
+	for _, e := range earlier {
+		e.end(admin)
+	}
+}
+
+// end stops the env's replicas: the servers, then the sessions of their pools, then the pools. A snapshot read that
+// waits for a lock would keep a pool's Close waiting, and one that is running holds tables a TRUNCATE needs, so the
+// sessions are ended and not waited for.
+func (e *env) end(admin *pgxpool.Pool) {
+	e.ended.Do(func() {
+		for _, server := range e.servers {
+			server.Close()
+		}
+		admin.Exec(context.Background(), "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE application_name = $1 AND pid <> pg_backend_pid()", e.replicaApp) //nolint:errcheck
+		for _, pool := range e.replicas {
+			pool.Close()
+		}
+	})
 }
 
 // putOnS3 stores the film on a target and returns its store URI.

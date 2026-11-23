@@ -62,6 +62,7 @@ type statementHook struct {
 // NewDBProxy listens on a port of its own and forwards to the database of dsn.
 func NewDBProxy(t *testing.T, dsn string) *DBProxy {
 	t.Helper()
+	NoWorkersLeft(t, dsn) // Before the proxy's own cleanup, which keeps sessions open until it runs.
 	u, err := url.Parse(dsn)
 	if err != nil {
 		t.Fatal(err)

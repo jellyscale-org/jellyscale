@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"jellyscale/internal/db"
@@ -89,6 +90,41 @@ type rig struct {
 	scratch  string
 	storeURI string // What workers register as their transcodeStore.
 	log      *slog.Logger
+	kept     []*keptWorker
+}
+
+// keptWorker is a worker the rig started, which fresh ends and starts again around the truncate that forgets the
+// nodes: a TRUNCATE under a live worker meets its writes, and a worker whose row is forgotten takes itself for dead
+// (BL-178).
+type keptWorker struct {
+	start func() (stop func())
+	stop  func() // Of the worker that runs.
+	ended bool   // The test stopped it, for good.
+}
+
+// keep starts a worker and returns the stop that ends it for good, whichever start of it is running.
+func (r *rig) keep(start func() (stop func())) (stop func()) {
+	w := &keptWorker{start: start, stop: start()}
+	r.kept = append(r.kept, w)
+	return func() {
+		w.ended = true
+		w.stop()
+	}
+}
+
+// whileWorkersAreStopped runs forget with every worker the test has not stopped ended, and starts them again.
+func (r *rig) whileWorkersAreStopped(forget func()) {
+	for _, w := range r.kept {
+		if !w.ended {
+			w.stop()
+		}
+	}
+	forget()
+	for _, w := range r.kept {
+		if !w.ended {
+			w.stop = w.start()
+		}
+	}
 }
 
 // sharedState is what outlives a test's rows in the database: the user triggers
@@ -119,6 +155,7 @@ func newRig(t *testing.T, segments store.Store) *rig {
 	t.Helper()
 	testenv.FFmpeg(t)
 	dsn := testenv.DatabaseURL(t)
+	testenv.NoStrays(t, dsn) // First, so it runs after every cleanup of the rig's workers and of the test.
 	dir := film(t)
 	pool, err := db.Open(context.Background(), dsn)
 	if err != nil {
@@ -181,12 +218,25 @@ func (r *rig) jobs(t *testing.T) *Jobs {
 // stops it and waits for its ffmpeg to be gone.
 func (r *rig) worker(t *testing.T, change func(*Worker)) (stop func()) {
 	t.Helper()
-	pool, err := db.Open(context.Background(), r.dsn)
+	return r.keep(func() func() { return r.startWorker(t, change) })
+}
+
+func (r *rig) startWorker(t *testing.T, change func(*Worker)) (stop func()) {
+	t.Helper()
+	id := uuid.NewString()
+	// Each worker's sessions carry a name of their own, unless the test named them, so that its stop can wait for
+	// exactly them (sessionsEnded).
+	dsn, app := r.dsn, applicationNameOf(t, r.dsn)
+	if app == "" {
+		app = "rig-worker-" + id
+		dsn = withApplicationName(t, r.dsn, app)
+	}
+	pool, err := db.Open(context.Background(), dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var media store.Cache
-	w := &Worker{ID: uuid.NewString(), Pool: pool, Items: &items.Repo{Pool: pool, ServerID: "srv"}, Segments: r.segments, Log: r.log, Media: media.Open,
+	w := &Worker{ID: id, Pool: pool, Items: &items.Repo{Pool: pool, ServerID: "srv"}, Segments: r.segments, Log: r.log, Media: media.Open,
 		Scratch: r.scratch, Slots: 2, Idle: 60 * time.Second, Lease: 3 * time.Second, Heartbeat: 200 * time.Millisecond,
 		// A whole film's lead, so a job runs to the end unless a test bounds it.
 		Lead: time.Hour}
@@ -233,6 +283,9 @@ func (r *rig) worker(t *testing.T, change func(*Worker)) (stop func()) {
 			cancel()
 			<-done
 			pool.Close()
+			// A statement whose context was cancelled can still be running in Postgres after the pool is closed: the
+			// cancel request reaches the server later. The worker is stopped when none of its sessions still works.
+			sessionsEnded(t, r.dsn, app)
 		})
 	}
 	t.Cleanup(stop)
@@ -361,4 +414,46 @@ func s3Segments(t *testing.T) map[string]store.Store {
 
 func isMP4Segment(data []byte) bool {
 	return len(data) > 1000 && bytes.Contains(data[:16], []byte("styp"))
+}
+
+// applicationNameOf is the application_name a DSN gives its sessions, or "".
+func applicationNameOf(t testing.TB, dsn string) string {
+	t.Helper()
+	cfg, err := pgx.ParseConfig(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return cfg.RuntimeParams["application_name"]
+}
+
+// sessionsEnded waits until no session named app is running a statement or holding a transaction, and fails the
+// test if one still is after 30 seconds.
+func sessionsEnded(t testing.TB, dsn, app string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	conn, err := pgx.Connect(ctx, withApplicationName(t, dsn, "rig-stop"))
+	if err != nil {
+		t.Errorf("checking that %s's sessions ended: %v", app, err)
+		return
+	}
+	defer conn.Close(context.Background())
+	for {
+		var working int
+		err := conn.QueryRow(ctx, `SELECT count(*) FROM pg_stat_activity WHERE application_name = $1
+			AND state IN ('active', 'idle in transaction', 'idle in transaction (aborted)')`, app).Scan(&working)
+		if err != nil {
+			t.Errorf("%s still had a session working in Postgres when its worker was stopped: %v", app, err)
+			return
+		}
+		if working == 0 {
+			return
+		}
+		select {
+		case <-ctx.Done():
+			t.Errorf("%s still had %d sessions working in Postgres 30 s after its worker was stopped", app, working)
+			return
+		case <-time.After(20 * time.Millisecond):
+		}
+	}
 }
