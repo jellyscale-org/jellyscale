@@ -574,13 +574,15 @@
         "The example manifests declare trustedProxies for their ingress (D-020)",
         "The procedure in docs/running.md for confirming declared proxies, followed against the example manifests' ingress, says what the operator sees and does when no address is counted (every answer 401, no refusal line), and no sentence there denies a log line the server writes (D-025, BL-221)",
         "Workers are their own Deployment, apart from api and stream, and the manifests' check refuses more than one worker or stream replica on a transcode store or library that not every one of them can reach (a ReadWriteOnce volume), naming the key (D-045)",
-        "docs/running.md says what every worker must reach (Postgres, each library, the transcode store), and the worker's termination grace matches JS-165's (D-045)"
+        "docs/running.md says what every worker must reach (Postgres, each library, the transcode store), and the worker's termination grace matches JS-165's (D-045)",
+        "The example manifests declare no transcodeCores and give workers CPU requests equal to limits in whole cores (D-064)"
       ],
       "priority": 46,
       "status": "todo",
       "passes": false,
       "dependsOn": [
-        "JS-150"
+        "JS-150",
+        "JS-177"
       ],
       "source": "PRODUCT.md phase6-k8s",
       "notes": "JS-020 (2026-11-08): each worker holds one Postgres connection for its liveness lock, outside the pool, so a stock Postgres (max_connections 100) is exhausted at about 90 workers, long before its CPU (one primary carried 1600 streams on two cores' worth). Connections are the first wall when autoscaling. User (2026-11-08): plain manifests for kubectl are wanted beside the chart, not Helm only."
@@ -1256,27 +1258,6 @@
       "notes": ""
     },
     {
-      "id": "JS-158",
-      "phase": "OPS",
-      "title": "No worker started by a transcode test outlives its test, so the next test's TRUNCATE never deadlocks with it",
-      "description": "Two merge-queue runs on 2026-11-20 failed on a Postgres deadlock: a worker started by an earlier test was still recording a segment when the next test truncated the tables (read from the runs' logs by the lead). Each costs a merge-queue run of about an hour and delays the dogfood's redeploy. The cause as read is the tests'; whether the product can meet the same deadlock is not yet said. BL-178 is the same family (a kit's fresh() truncating under live workers). D-042.",
-      "acceptanceCriteria": [
-        "The record in docs/testing.md names the two queue runs, the two statements that deadlocked, and which test's worker was still alive",
-        "It says whether anything in the product, not only a test, truncates or takes the same locks against a live worker; if so, what a viewer would have seen, and that comes back to the product owner as a brief before a product fix",
-        "A check forces the condition (a worker still recording a segment when the next test's tables are truncated) and fails before the fix, with real processes or real contention",
-        "After the fix, every worker a transcode integration test starts has stopped, and its last write has finished, before that test returns; the fix is at the cause in the test kit, not test by test",
-        "BL-178's fresh() is covered by the same fix, or the record says why it is a different cause and BL-178 stays open",
-        "No retry on deadlock, no skip, no raised timeout, and no product code changed to fit a test",
-        "No viewer-visible change"
-      ],
-      "priority": 19,
-      "status": "todo",
-      "passes": false,
-      "dependsOn": [],
-      "source": "merge queue failures 2026-11-20; D-042; BL-178",
-      "notes": "Split from JS-155 by D-042: its cause is named in the logs, so it needs no reproduction box. Built beside JS-154; its check runs are short and must not run while JS-154 is measuring on the same machine."
-    },
-    {
       "id": "JS-175",
       "phase": "OPS",
       "title": "Each of the 12 merge-queue runs that failed in the last 18 has a verdict from its log, and the causes that recur are fixed at their cause",
@@ -1380,7 +1361,7 @@
         "A defect found in jellyscale becomes a brief, not a fix here",
         "docs/running.md gains what running workers apart needed; docs/status.md's known gap is closed or says what is still open; no film title, path or host name anywhere",
         "On the S3 bucket, measured between the nodes before the plays: the time from a worker finishing a segment to `stream` on another node serving it, for 100 segments; recorded. No shared store has been measured between machines (JS-162 used one machine's directory). (D-049)",
-        "Each worker's declared transcodeCores (from JS-163's figures, brought to the owner as a homelab change) and the speed of each job are recorded; a job slower than real time on a worker whose declared capacity covers it, or slower than expected by more than a fifth, is reported with what ran beside it. (D-049, D-062)"
+        "Each worker's declared transcodeCores (from JS-163's figures, brought to the owner as a homelab change) and the speed of each job are recorded; a job slower than real time on a worker whose declared capacity covers it, or slower than expected by more than a fifth, is reported with what ran beside it. (D-049, D-062) Amended by D-064: the declared figures are corrected from this task's own job speeds, and the 12-thread node's worker gets CPU requests equal to limits in whole cores so ffmpeg is not throttled (each a homelab change brought to the owner). Only the parts that missed the bound are played again. A miss in the first 30 seconds after a seek is recorded for JS-174. A burned-in miss that remains returns as a brief. That the cluster holds one 4K play is recorded in docs/status.md, not chased here."
       ],
       "priority": 23,
       "status": "todo",
@@ -1493,6 +1474,31 @@
       "source": "D-047; BL-040",
       "notes": "ux: true. Moves to directly after JS-166 if JS-166 returns without closing the gap on processors, or the dogfood's JS-153 counters show a refusal for lack of cores with every worker running (D-047).",
       "core": true
+    },
+    {
+      "id": "JS-177",
+      "phase": "P3",
+      "title": "A worker learns what it holds from the jobs it runs; the operator declares no capacity, and a film is never admitted to stall on a worker that overstates itself",
+      "description": "JS-166 measured that declared capacity fails operators: the dogfood's i5-6500 worker declares 3, below a 4K job's 3.2, so it can never help (a helper needs the full price); the 12-thread worker declares 3.5 under a CPU limit of 8, was throttled in 93% of periods and ran the job at about 1.0x; and an operator cannot know a CPU's speed against the reference machine. D-062's start-up benchmark failed on a busy host. D-064: a worker learns what it holds from the jobs it runs, price times measured speed, starting from its processors with a container CPU limit counted, lowered when jobs run under the 1.2x admission bound and raised slowly with margin, smoothed over minutes; transcodeCores becomes an optional ceiling. BL-259's bars are criteria 2 to 4.",
+      "acceptanceCriteria": [
+        "Design reviewed from JS-166's figures, recorded in docs/transcoding.md before Spec. The review says: what lowers the figure and what must not (a slow source read, a slow store upload, paused time); what the first viewer on an overstated worker gets, and for how long; whether the figure survives a restart; whether a figure learned on one price row holds for the others; the smoothing window and margin. Each unverified leaf gets a check or returns as a brief. If the task is too large for one build, it splits into (a) criteria 2 to 4, 6 and 7 and (b) criterion 5, both ahead of JS-056.",
+        "Nothing to declare. An undeclared worker registers at once and starts no ffmpeg of its own. It begins from its processors, with a container CPU limit counted. D-062's 9 tests pass unamended.",
+        "No stall admitted twice. A worker throttled to the i5-6500's speed converges, within the stated time, to within a fifth of what it holds. From then on, a play it can't keep at 1.2x is refused within seconds with its reason, or admitted shared and played within JS-168's bound.",
+        "No refusal for a neighbour's busy moment. On 4 test processes and 4 CPUs, a short burst moves the figure by no more than the stated margin and refuses no play the worker holds. A lowered figure rises again within the stated time after the load drops.",
+        "An idle worker helps. A watched re-encode under 1.2x, on a worker whose learned capacity is below the job's price, becomes a shared play. A helper is claimed on a worker with 0.78 of the price free, and the viewer returns to real time.",
+        "transcodeCores is an optional ceiling. A learned figure never exceeds it. Listed under Changed guarantees citing D-064.",
+        "The operator can see it and act. /metrics and the log give the capacity and its source (assumed, learned, ceiling), and the log notes moves of more than a fifth. docs/running.md gains \"Sizing workers\": requests equal to limits in whole cores; the CPUs already measured against the price rows; what to do about cores refusals and slow-job-no-helper counts; a whole node for a 4K-capable worker."
+      ],
+      "priority": 21,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-166",
+        "JS-041"
+      ],
+      "core": true,
+      "source": "D-064; brief-learned-capacity.md; BL-259",
+      "notes": "Order set by D-064: after JS-041, before JS-127. ux: true. After it merges, the dogfood drops its declared figures (a homelab change for the owner). If one build cannot hold it, it splits into (a) criteria 2 to 4, 6 and 7 and (b) criterion 5, both ahead of JS-056."
     }
   ]
 }

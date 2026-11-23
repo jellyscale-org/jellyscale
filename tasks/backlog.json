@@ -2321,12 +2321,12 @@
     },
     {
       "id": "BL-259",
-      "status": "open",
+      "status": "closed",
       "severity": "major",
       "reviewer": "lead",
       "source": "JS-161 merge-queue run 45135324010; D-062",
       "title": "A worker that declares nothing on a CPU slower than the reference, or on SMT threads, counts more than it holds: a play it cannot keep is admitted and stalls, where a declared worker refuses with a reason",
-      "notes": "A redesigned measurement must never delay registration, never slow a film being watched, keep its figure within a stated margin on a busy host, and be shown on a 4-process, 4-CPU run before it merges. Promote on any of: the assumed-capacity slow reason counted on any deployment; JS-166 criterion 9 showing a declared figure wrong by more than a fifth; JS-056 starting (the example manifests' default must then be right); an issue carrying such a log line."
+      "notes": "A redesigned measurement must never delay registration, never slow a film being watched, keep its figure within a stated margin on a busy host, and be shown on a 4-process, 4-CPU run before it merges. Promote on any of: the assumed-capacity slow reason counted on any deployment; JS-166 criterion 9 showing a declared figure wrong by more than a fifth; JS-056 starting (the example manifests' default must then be right); an issue carrying such a log line. Promoted into JS-177 (D-064); its four bars are JS-177 criteria 2 to 4."
     },
     {
       "id": "BL-260",
