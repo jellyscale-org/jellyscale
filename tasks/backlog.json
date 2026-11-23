@@ -1605,8 +1605,8 @@
       "reviewer": "lead (from the Fable adjudication)",
       "severity": "minor",
       "title": "The image-store test kit's fresh() truncates transcode_nodes under live workers, so a worker kept across it is taken for dead and its job rerun (cause of two JS-089 check bugs); give fresh a variant that keeps live workers, or stop every worker before it",
-      "status": "open",
-      "notes": "Same family as JS-158 (D-042): closed by JS-158 if its fix covers fresh(); otherwise fix when the image-store kit is next touched (JS-140)."
+      "status": "closed",
+      "notes": "Same family as JS-158 (D-042): closed by JS-158 if its fix covers fresh(); otherwise fix when the image-store kit is next touched (JS-140). Closed by D-063: covered by JS-158's fix of the kits' fresh()."
     },
     {
       "id": "BL-179",
@@ -2285,12 +2285,12 @@
     },
     {
       "id": "BL-255",
-      "status": "open",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "lead",
       "source": "JS-159/JS-161 triage; D-061",
       "title": "A build run returned clean while the implementer listed acceptance items as unfinished",
-      "notes": "A task could merge with a viewer-facing criterion unverified. Until promoted the lead reads the unfinished list at each run's end. Promote on: a second such run, or any merged task later found with an unverified criterion; then a one-line build.js change made when no run is going."
+      "notes": "A task could merge with a viewer-facing criterion unverified. Until promoted the lead reads the unfinished list at each run's end. Promote on: a second such run, or any merged task later found with an unverified criterion; then a one-line build.js change made when no run is going. Promoted on its second occurrence (JS-161's rebuild, 2026-11-23) and fixed by #261: build.js returns unfinished items and such a run is not clean."
     },
     {
       "id": "BL-256",
@@ -2327,6 +2327,15 @@
       "source": "JS-161 merge-queue run 45135324010; D-062",
       "title": "A worker that declares nothing on a CPU slower than the reference, or on SMT threads, counts more than it holds: a play it cannot keep is admitted and stalls, where a declared worker refuses with a reason",
       "notes": "A redesigned measurement must never delay registration, never slow a film being watched, keep its figure within a stated margin on a busy host, and be shown on a 4-process, 4-CPU run before it merges. Promote on any of: the assumed-capacity slow reason counted on any deployment; JS-166 criterion 9 showing a declared figure wrong by more than a fifth; JS-056 starting (the example manifests' default must then be right); an issue carrying such a log line."
+    },
+    {
+      "id": "BL-260",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "lead",
+      "source": "JS-158 record; D-063",
+      "title": "A job end aborted by a deadlock with the dead-node reap leaves the job running until its lease ends",
+      "notes": "The viewers waiting on that job stall for up to the lease (about 30 s, unverified), with no reason shown; it needs a worker forgotten while it still lives (BL-249). Read from two statements, seen in no run. Promote on: a 40P01 on a job end in the dogfood's logs, a fault schedule or JS-175's counted runs, or JS-165 criterion 1's observation; it then becomes a criterion of JS-165."
     }
   ]
 }
