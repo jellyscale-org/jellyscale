@@ -453,6 +453,11 @@ func (j *Jobs) segment(ctx context.Context, spec playback.Spec, hash string, vie
 			if err := db.Retry(ctx, j.Pool, func() error { return j.queuedTooLong(ctx, job, state) }); err != nil {
 				return nil, err
 			}
+			if state.State == "queued" && state.Age > orDefault(j.QueueTimeout, queueTimeout)/2 {
+				if err := db.Retry(ctx, j.Pool, func() error { return j.makeRoom(ctx, job) }); err != nil {
+					return nil, err
+				}
+			}
 			switch {
 			case state.State == "failed" && state.Again && starts <= maxRestarts:
 				// Not the file's fault: a fresh job makes the segment. This request starts at most
@@ -544,6 +549,42 @@ func (j *Jobs) queuedTooLong(ctx context.Context, job int64, state jobState) err
 	return ErrBusy
 }
 
+// makeRoom stops the helpers a queued viewer's job needs gone, as ensure does
+// for a new one, once it has waited half the queue timeout and no worker took
+// it. Room was counted for it when it was asked, but a worker that was killed
+// is counted until it is forgotten, and a failover job would otherwise find the
+// others full of helpers (D-046). Sooner, a slow claim would cost a helper.
+func (j *Jobs) makeRoom(ctx context.Context, job int64) error {
+	preempted := false
+	err := pgx.BeginFunc(ctx, j.Pool, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended('helpers', 0))"); err != nil {
+			return err
+		}
+		var cost *float64
+		var spec []byte
+		var queued bool
+		err := tx.QueryRow(ctx, `SELECT state = 'queued' AND NOT helper, cost::float8, CASE WHEN cost IS NULL THEN spec END
+			FROM transcode_jobs WHERE id = $1`, job).Scan(&queued, &cost, &spec)
+		if err != nil || !queued {
+			return err
+		}
+		c, err := costOf(cost, spec)
+		if err != nil {
+			return err
+		}
+		var copied bool
+		if err := tx.QueryRow(ctx, "SELECT COALESCE((spec->>'Copy')::boolean, false) FROM transcode_jobs WHERE id = $1", job).Scan(&copied); err != nil {
+			return err
+		}
+		preempted, err = preemptHelpers(ctx, tx, orDefault(j.QueueTimeout, queueTimeout), capJob{Cost: c, Copy: copied}, true)
+		return err
+	})
+	if preempted {
+		Notify(ctx, j.Pool, preemptHint)
+	}
+	return err
+}
+
 func orDefault(d, fallback time.Duration) time.Duration {
 	if d > 0 {
 		return d
@@ -628,7 +669,7 @@ func (j *Jobs) ensure(ctx context.Context, spec playback.Spec, hash, owner strin
 			return namesJob(ctx, tx, owner, hash, id)
 		}
 		created = true
-		if preempted, err = preemptHelpers(ctx, tx, orDefault(j.QueueTimeout, queueTimeout), capJob{Cost: spec.Cost(), Copy: spec.Copy}); err != nil {
+		if preempted, err = preemptHelpers(ctx, tx, orDefault(j.QueueTimeout, queueTimeout), capJob{Cost: spec.Cost(), Copy: spec.Copy}, false); err != nil {
 			return err
 		}
 		err = tx.QueryRow(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, output_version, cost)

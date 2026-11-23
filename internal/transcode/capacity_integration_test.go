@@ -481,6 +481,12 @@ func TestAHelperIsNeitherQueuedNorClaimedWhereItWouldOverrunAWorker(t *testing.T
 			t.Run(fmt.Sprint(cores, " cores"), func(t *testing.T) {
 				r := newRig(t, nil)
 				r.addNode(t, "w", cores, playback.OutputVersion)
+				if wantRows == 1 {
+					// A second worker running nothing of the spec, where the helper
+					// goes: a lone worker queues no helper beside its viewers' own
+					// job (D-052, D-053).
+					r.addNode(t, "w2", cores, playback.OutputVersion)
+				}
 				helped, id := r.running(t, "sdr4k", "w")
 				r.running(t, "sdr4k", "w") // 3.2 held; a 1.6 helper would be 4.8.
 				r.watchedBy(t, helped, "device")
