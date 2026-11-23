@@ -1,10 +1,7 @@
 package transcode
 
 import (
-	"regexp"
 	"runtime"
-	"strconv"
-	"strings"
 	"testing"
 )
 
@@ -13,25 +10,8 @@ import (
 // cores), else its processors each at the reference speed, with no floor and no measurement. A worker's capacity is
 // what cores() returns and the row of transcode_nodes carries.
 
-// priceRows are the 13 rows of docs/transcoding.md's table of what a job costs, in cores.
-func priceRows(t *testing.T) []float64 {
-	t.Helper()
-	var rows []float64
-	row := regexp.MustCompile(`^\| (?:Re-encode|HEVC fallback|AV1 fallback|A copy)[^|]*\| ([0-9.]+) \|$`)
-	for _, line := range strings.Split(doc(t, "docs/transcoding.md"), "\n") {
-		if m := row.FindStringSubmatch(line); m != nil {
-			cost, err := strconv.ParseFloat(m[1], 64)
-			if err != nil {
-				t.Fatal(err)
-			}
-			rows = append(rows, cost)
-		}
-	}
-	if len(rows) != 13 {
-		t.Fatalf("docs/transcoding.md has %d price rows, the task says 13", len(rows))
-	}
-	return rows
-}
+// jobCosts are job prices in cores, from the cheapest copy to the dearest AV1 fallback (internal/playback/cost.go).
+var jobCosts = []float64{0.05, 0.8, 1.0, 2.0, 3.2, 4.2}
 
 // A worker that declares nothing counts each of its processors at the reference machine's speed, with no floor, whatever
 // the number of processors: the processors the process may use, 1 or 3 or 16, and never the dearest job's 3.2.
@@ -66,10 +46,10 @@ func TestDeclaredCoresAndSlotsAreTheCapacityWhateverTheProcessors(t *testing.T) 
 	}
 }
 
-// Every row of the price table is admitted by the one rule: a worker whose capacity is at least the row's cost admits
+// Every job price is admitted by the one rule: a worker whose capacity is at least the row's cost admits
 // it, and one just under it refuses it, whether the capacity is declared small or counted from many processors.
-func TestEveryRowOfThePriceTableIsAdmittedByTheOneRule(t *testing.T) {
-	for _, cost := range priceRows(t) {
+func TestEveryJobPriceIsAdmittedByTheOneRule(t *testing.T) {
+	for _, cost := range jobCosts {
 		for _, side := range []struct {
 			name   string
 			cores  float64

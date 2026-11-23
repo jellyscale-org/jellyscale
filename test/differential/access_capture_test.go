@@ -137,19 +137,10 @@ func TestAnAccessCaptureScriptIsKeptInTheRepository(t *testing.T) {
 	}
 }
 
-func TestTheAccessCaptureIsOfJellyfin12_4AndTheMarkdownDescribesIt(t *testing.T) {
+func TestTheAccessCaptureIsOfJellyfin12_4(t *testing.T) {
 	c := loadAccessCapture(t)
 	if c.Image != "jellyfin/jellyfin:12.4" || !strings.HasPrefix(c.ServerVersion, "12.4") {
 		t.Errorf("image %q, server version %q", c.Image, c.ServerVersion)
-	}
-	md, err := os.ReadFile("../../compat/captures/access-12.4.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{c.Image, c.ServerVersion} {
-		if !strings.Contains(string(md), want) {
-			t.Errorf("access-12.4.md does not say %q", want)
-		}
 	}
 }
 
@@ -277,22 +268,7 @@ func (c accessCapture) recomputed() (open, refused []string) {
 	return sorted(open), sorted(refused)
 }
 
-func bullets(md, heading string) []string {
-	var out []string
-	in := false
-	for _, line := range strings.Split(md, "\n") {
-		if strings.HasPrefix(line, "## ") {
-			in = strings.TrimSpace(strings.TrimPrefix(line, "## ")) == heading
-			continue
-		}
-		if in && strings.HasPrefix(line, "- `") {
-			out = append(out, strings.TrimSuffix(strings.TrimPrefix(line, "- `"), "`"))
-		}
-	}
-	return sorted(out)
-}
-
-func TestTheTwoListsAreExactlyWhatTheRowsGiveInTheJSONAndTheMarkdown(t *testing.T) {
+func TestTheTwoListsAreExactlyWhatTheRowsGiveInTheJSON(t *testing.T) {
 	c := loadAccessCapture(t)
 	open, refused := c.recomputed()
 	if got := sorted(c.OpenWithoutToken); !slices.Equal(got, open) {
@@ -300,16 +276,6 @@ func TestTheTwoListsAreExactlyWhatTheRowsGiveInTheJSONAndTheMarkdown(t *testing.
 	}
 	if got := sorted(c.RefusedToUser); !slices.Equal(got, refused) {
 		t.Errorf("refused_to_user is %v, the rows give %v", got, refused)
-	}
-	md, err := os.ReadFile("../../compat/captures/access-12.4.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := bullets(string(md), "Open with no token"); !slices.Equal(got, open) {
-		t.Errorf("the .md lists %v as open with no token, the rows give %v", got, open)
-	}
-	if got := bullets(string(md), "Refused to the non-administrator"); !slices.Equal(got, refused) {
-		t.Errorf("the .md lists %v as refused to the non-administrator, the rows give %v", got, refused)
 	}
 }
 

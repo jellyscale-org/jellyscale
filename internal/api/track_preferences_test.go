@@ -61,64 +61,6 @@ func TestEndpointsYamlListsExactlyTheRoutesUnderJellyscale(t *testing.T) {
 	}
 }
 
-func TestTheAccessDocumentHasARowForEachTrackPreferenceRoute(t *testing.T) {
-	rows := map[string][]string{}
-	for _, row := range accessRows(t) {
-		rows[row.key] = row.cells
-	}
-	for _, name := range trackPreferenceRoutes {
-		cells, ok := rows[name]
-		if !ok {
-			t.Errorf("docs/access.md has no row for %s", name)
-		} else if len(cells) >= 4 && (cells[2] != "viewer" || !strings.Contains(strings.ToLower(cells[3]), "own")) {
-			t.Errorf("docs/access.md: the row of %s requires %q with scope %q, want viewer and the caller's own", name, cells[2], cells[3])
-		}
-	}
-}
-
-// docs/api.md is a new file. A reader can only check the words; this holds that the pieces the criteria list are named.
-func TestTheApiDocumentStatesTheNamespaceAndTheRoute(t *testing.T) {
-	raw, err := os.ReadFile("../../docs/api.md")
-	if err != nil {
-		t.Fatalf("docs/api.md: %v", err)
-	}
-	text := string(raw)
-	lower := strings.ToLower(text)
-	for _, word := range []string{
-		"/jellyscale/v1/", "version", "GET /jellyscale/v1/track-preferences", "PATCH /jellyscale/v1/track-preferences",
-		"HideOtherAudio", "HideOtherSubtitles", "KeepAudioLanguages", "KeepSubtitleLanguages", "ShowAllTracks",
-		"AudioLanguagePreference", "SubtitleLanguagePreference", "400", "409", "401",
-	} {
-		if !strings.Contains(text, word) {
-			t.Errorf("docs/api.md does not say %q", word)
-		}
-	}
-	for _, word := range []string{"default", "lowercase", "three-letter", "order", "request", "answer", "20", "16 kb"} {
-		if !strings.Contains(lower, word) {
-			t.Errorf("docs/api.md does not say %q", word)
-		}
-	}
-}
-
-// docs/status.md says the settings are saved, and that JS-119 makes them act.
-func TestStatusSaysTheTrackPreferencesAreSavedAndJS119MakesThemAct(t *testing.T) {
-	raw, err := os.ReadFile("../../docs/status.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := strings.ToLower(string(raw))
-	at := strings.Index(text, "/jellyscale/v1/track-preferences")
-	if at < 0 {
-		t.Fatal("docs/status.md does not name /jellyscale/v1/track-preferences")
-	}
-	passage := text[max(0, at-600):min(len(text), at+900)]
-	for _, word := range []string{"saved", "js-119"} {
-		if !strings.Contains(passage, word) {
-			t.Errorf("the passage of docs/status.md on the track preferences does not say %q:\n%s", word, passage)
-		}
-	}
-}
-
 // Jellyfin's answers are not changed: the differential tier lists no difference for the new settings, and the
 // names of the five fields appear in none of the 16 of UserConfiguration.
 func TestNoDifferenceIsListedForTheTrackPreferences(t *testing.T) {

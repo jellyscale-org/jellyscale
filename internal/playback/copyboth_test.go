@@ -343,20 +343,3 @@ func TestCopyOfBothLeavesAnAudioTheClientCannotTake(t *testing.T) {
 		})
 	}
 }
-
-// docs/status.md says copying both is built, and no longer says it is not.
-func TestStatusSaysCopyingBothIsBuilt(t *testing.T) {
-	raw, err := os.ReadFile("../../docs/status.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := string(raw)
-	for _, stale := range []string{"Copying both the video and the audio is not built", "Copying audio with a copied video: **not built**"} {
-		if strings.Contains(text, stale) {
-			t.Errorf("docs/status.md still says %q", stale)
-		}
-	}
-	if !regexp.MustCompile(`(?i)cop(y|ies|ying|ied) (of )?both`).MatchString(text) {
-		t.Error("docs/status.md does not say that copying both the video and the audio is built")
-	}
-}

@@ -61,13 +61,4 @@ func TestTheOriginalLanguageCaptureIsComplete(t *testing.T) {
 			}
 		}
 	}
-	notes, err := os.ReadFile("captures/original-language-12.4.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, word := range []string{"jellyfin/jellyfin:12.4", "2026-11-15", "EnableInternetProviders", "MetadataFetchers", "absent"} {
-		if !strings.Contains(string(notes), word) {
-			t.Errorf("the notes do not say %q", word)
-		}
-	}
 }

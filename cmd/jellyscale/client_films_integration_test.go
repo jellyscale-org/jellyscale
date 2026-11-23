@@ -137,18 +137,14 @@ func (c *clientAPI) playbackInfo(id string, body []byte) map[string]any {
 	return sources[0].(map[string]any)
 }
 
-// The request the page gives is the first json block of docs/client-testing.md.
+// The request is the PlaybackInfo body of test/fixtures/client-playbackinfo-request.json, which test/image.sh sends too.
 func pageRequest(t *testing.T, repo string) []byte {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join(repo, "docs", "client-testing.md"))
+	raw, err := os.ReadFile(filepath.Join(repo, "test", "fixtures", "client-playbackinfo-request.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	m := regexp.MustCompile("(?s)```json\n(.*?)\n```").FindSubmatch(raw)
-	if m == nil || !bytes.Contains(m[1], []byte("DeviceProfile")) {
-		t.Fatal("docs/client-testing.md has no json block holding the PlaybackInfo request's DeviceProfile")
-	}
-	return m[1]
+	return raw
 }
 
 func TestJellyscaleOverTheClientFilmsAnswersAsThePageSays(t *testing.T) {

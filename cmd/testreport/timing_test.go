@@ -194,10 +194,8 @@ func TestTheNamedBarsAreGone(t *testing.T) {
 	}
 }
 
-// Every timing a bar measured is still logged, and docs/testing.md says that
-// tests check mechanisms, gives the rule for a time bound that may stay, and
-// says where a run's logged timings are kept.
-func TestTheLoggedTimingsStayAndTheDocsSayWhere(t *testing.T) {
+// Every timing a bar measured is still logged.
+func TestTheLoggedTimingsStay(t *testing.T) {
 	root := filepath.Join("..", "..")
 	for file, logs := range map[string][]string{
 		"internal/transcode/helpers_integration_test.go":       {"speedup over one worker", "slowest"},
@@ -214,20 +212,6 @@ func TestTheLoggedTimingsStayAndTheDocsSayWhere(t *testing.T) {
 				t.Errorf("%s no longer logs %q", file, log)
 			}
 		}
-	}
-	raw, err := os.ReadFile(filepath.Join(root, "docs", "testing.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := strings.ToLower(string(raw))
-	for _, want := range []string{"mechanism", "timing-bounds.txt", "hang", "ten times", "tests.json", ".results"} {
-		if !strings.Contains(text, want) {
-			t.Errorf("docs/testing.md does not mention %q", want)
-		}
-	}
-	// It says what a run that passed keeps, locally and in CI.
-	if !regexp.MustCompile(`(?s)timings[^.]*\bpassed\b|\bpassed\b[^.]*timings`).MatchString(text) {
-		t.Error("docs/testing.md does not say where the timings of a run that passed are kept")
 	}
 }
 

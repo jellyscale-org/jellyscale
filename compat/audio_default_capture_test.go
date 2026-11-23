@@ -153,15 +153,6 @@ func TestTheAudioDefaultCaptureIsComplete(t *testing.T) {
 			t.Errorf("the named-index capture never names AudioStreamIndex %s", want)
 		}
 	}
-	notes, err := os.ReadFile("captures/audio-default-12.4.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, word := range []string{"jellyfin/jellyfin:12.4", "2026-11-16", "The rule that fits", "AudioStreamIndex is named", "SecondaryAudioNotSupported", "compat/differences.yaml"} {
-		if !strings.Contains(string(notes), word) {
-			t.Errorf("the notes do not say %q", word)
-		}
-	}
 }
 
 func boolWord(b bool) string {

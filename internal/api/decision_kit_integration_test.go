@@ -44,7 +44,7 @@ import (
 //	                 number that is no subtitle track
 //
 // THE VOCABULARY. Jellyfin's names are the TranscodeReason enum of compat/schema-12.4.json; jellyscale's own are not in it.
-// The reasons below are what these checks pin; test/reasonsdocs pins the whole list against docs/running.md and the code.
+// The reasons below are what these checks pin.
 //
 //	Jellyfin's:  ContainerNotSupported VideoCodecNotSupported AudioCodecNotSupported SubtitleCodecNotSupported
 //	             SecondaryAudioNotSupported VideoProfileNotSupported VideoLevelNotSupported VideoResolutionNotSupported

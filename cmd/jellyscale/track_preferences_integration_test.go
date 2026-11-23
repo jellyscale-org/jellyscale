@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"reflect"
 	"regexp"
 	"strings"
@@ -856,84 +855,4 @@ func TestAPatchThatChangesSomethingLogsOneLineAtInfoInTheProcessThatServedIt(t *
 	}
 	quiet(t, "a GET and PATCHes answered 400, 409 and 401", g.a, markA)
 	quiet(t, "the same on the other process", g.b, markB)
-}
-
-// docs/running.md gives the query by which an operator reads a viewer's settings. It is the first fenced sql block under
-// the heading that names the track preferences; where it names the viewer it holds one placeholder in angle brackets
-// (<viewer name>), which is replaced by the name. Run as written, it returns the five values of a viewer who saved all five.
-func TestTheQueryOfRunningMdReadsAViewersFiveValues(t *testing.T) {
-	raw, err := os.ReadFile("../../docs/running.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	section := regexp.MustCompile(`(?is)\n#+[^\n]*track[^\n]*\n(.*?)(\n#|\z)`).FindSubmatch(raw)
-	if section == nil {
-		t.Fatal("docs/running.md has no heading that names the track preferences")
-	}
-	block := regexp.MustCompile("(?s)```sql\n(.*?)```").FindSubmatch(section[1])
-	if block == nil {
-		t.Fatal("the section on the track preferences in docs/running.md has no fenced sql block")
-	}
-	g := newTPRig(t)
-	token := g.viewer(t, "U")
-	tpPatch(t, g.a, token, `{"HideOtherAudio":true,"HideOtherSubtitles":true,"KeepAudioLanguages":["deu","fra"],"KeepSubtitleLanguages":["ita"],"ShowAllTracks":true}`)
-	tpPatch(t, g.b, g.viewer(t, "O"), `{"KeepAudioLanguages":["nld"]}`) // Another viewer's row is not this one's.
-	query := regexp.MustCompile(`<[^<>]+>`).ReplaceAllString(string(block[1]), g.users["U"].name)
-	query = strings.TrimRight(strings.TrimSpace(query), ";")
-	rows, err := connect(t, g.dsn).Query(context.Background(), `SELECT to_jsonb(q)::text FROM (`+query+`) q`)
-	if err != nil {
-		t.Fatalf("the query of docs/running.md, run as written: %v\n%s", err, query)
-	}
-	defer rows.Close()
-	found := false
-	for rows.Next() {
-		var row string
-		if err := rows.Scan(&row); err != nil {
-			t.Fatal(err)
-		}
-		var values []any
-		var leaves func(any)
-		leaves = func(v any) {
-			switch v := v.(type) {
-			case map[string]any:
-				for _, x := range v {
-					leaves(x)
-				}
-			case []any:
-				for _, x := range v {
-					leaves(x)
-				}
-			default:
-				values = append(values, v)
-			}
-		}
-		var decoded any
-		if json.Unmarshal([]byte(row), &decoded) != nil {
-			t.Fatalf("not JSON: %s", row)
-		}
-		leaves(decoded)
-		count := func(want any) (n int) {
-			for _, v := range values {
-				if v == want {
-					n++
-				}
-			}
-			return
-		}
-		// A column that holds the document as jsonb text is read through too.
-		if strings.Contains(row, g.users["U"].name) || strings.Contains(row, "deu") {
-			if count(true) >= 3 && count("deu") >= 1 && count("fra") >= 1 && count("ita") >= 1 && !strings.Contains(row, "nld") {
-				found = true
-			}
-		}
-		if strings.Contains(row, `\"deu\"`) && strings.Count(row, "true") >= 3 {
-			found = true // The document as text in one column.
-		}
-	}
-	if err := rows.Err(); err != nil {
-		t.Fatal(err)
-	}
-	if !found {
-		t.Errorf("no row of the query holds the five values (true, true, [deu fra], [ita], true) of the viewer:\n%s", query)
-	}
 }

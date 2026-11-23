@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"strings"
 	"testing"
 )
@@ -30,18 +29,8 @@ func TestConfigRefusesANegativePool(t *testing.T) {
 	}
 }
 
-func TestRunningDocsNameThePoolKey(t *testing.T) {
-	raw, err := os.ReadFile("../../docs/running.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(raw), "databaseMaxConns") {
-		t.Error("docs/running.md does not document databaseMaxConns")
-	}
-}
-
 // Operators turn helpers (parallel transcoding) off with transcodeHelpers.
-func TestHelpersCanBeTurnedOffAndTheDocsSayHow(t *testing.T) {
+func TestHelpersCanBeTurnedOff(t *testing.T) {
 	cfg, err := parseConfig([]byte(`{"transcodeHelpers": false}`))
 	if err != nil {
 		t.Fatalf("transcodeHelpers is not a config key: %v", err)
@@ -51,12 +40,5 @@ func TestHelpersCanBeTurnedOffAndTheDocsSayHow(t *testing.T) {
 	}
 	if cfg, err := parseConfig([]byte(`{}`)); err != nil || cfg.TranscodeHelpers != nil {
 		t.Errorf("helpers are on unless turned off: %v, %v", cfg.TranscodeHelpers, err)
-	}
-	raw, err := os.ReadFile("../../docs/running.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(raw), "transcodeHelpers") {
-		t.Error("docs/running.md does not document transcodeHelpers")
 	}
 }

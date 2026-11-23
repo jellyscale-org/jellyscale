@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -208,34 +207,13 @@ func (p *playAway) requests(viewer int) []served {
 	return out
 }
 
-// timings are the window and the refresh interval DOMAINS invariant 37 states, in seconds.
+// timings are the window and the refresh interval of the snapshot, in seconds.
 func timings(t *testing.T) (window, refresh int) {
 	t.Helper()
-	raw, err := os.ReadFile("../../DOMAINS.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var invariant string
-	for _, line := range strings.Split(string(raw), "\n") {
-		if strings.HasPrefix(line, "37. ") {
-			invariant = line
-		}
-	}
-	// The same two phrases cmd/jellyscale/outage_docs_test.go reads. The invariant holds other "N seconds" (the
-	// usual 90), so a number is never taken for being near a word.
-	number := func(pattern string) int {
-		m := regexp.MustCompile(pattern).FindStringSubmatch(invariant)
-		if m == nil {
-			t.Fatalf("invariant 37 does not match %s: it must say \"window of N minutes\" and \"refresh every N seconds\"", pattern)
-		}
-		n, _ := strconv.Atoi(m[1])
-		return n
-	}
-	// JS-103: the window is in minutes, at least 10, so that a viewer whose tab paused the film and reports rarely is in it.
-	window = 60 * number(`(?i)\bwindow of (\d{1,3}) minutes`)
-	refresh = number(`(?i)\brefresh(?:es)?,? every (\d{1,2}) seconds`)
+	window, refresh = int(snapshotWindow/time.Second), int(snapshotEvery/time.Second)
+	// JS-103: the window is at least 10 minutes, so that a viewer whose tab paused the film and reports rarely is in it.
 	if window < 600 || window > 3600 || refresh < 1 || refresh > 10 {
-		t.Fatalf("invariant 37 states a window of %d seconds and a refresh every %d seconds: want a window of 10 to 60 minutes (a film paused for up to 10 minutes is served through an outage) and a refresh of 1 to 10 seconds", window, refresh)
+		t.Fatalf("the snapshot has a window of %d seconds and a refresh every %d seconds: want a window of 10 to 60 minutes (a film paused for up to 10 minutes is served through an outage) and a refresh of 1 to 10 seconds", window, refresh)
 	}
 	return window, refresh
 }

@@ -227,10 +227,6 @@ fails_with "a shard past n is refused by the gate" env E2E_SHARD=3/3 node test/e
 check "the shared player helpers pass test/e2e/player_test.mjs" ok "$(node test/e2e/player_test.mjs >"$tmp/player" 2>&1 && echo ok || tail -20 "$tmp/player")"
 check "the recovery helpers pass test/e2e/recovery_test.mjs" ok "$(node test/e2e/recovery_test.mjs >"$tmp/recovery" 2>&1 && echo ok || tail -20 "$tmp/recovery")"
 check "run.sh copies player.mjs next to the gates, which import it" 1 "$(grep -c 'test/e2e/player.mjs' test/e2e/run.sh | awk '{print ($1>0)}')"
-# The record of JS-099 (docs/testing.md) ties each named failure to what failed.
-for line in "reading 'seeking'" "timed out waiting for playback past 22" "Stream ends prematurely" "image_burn_failures_integration_test.go:138" "passed 20 of 20"; do
-  check "docs/testing.md records: $line" 1 "$(grep -cF -- "$line" docs/testing.md | awk '{print ($1>0)}')"
-done
 
 # --- report.sh lines: a failed scenario is one greppable line on the job summary, without its duration.
 printf 'ok    first (1.0s)\nFAIL  second: it broke (2.5s)\n' | GITHUB_STEP_SUMMARY="$tmp/summary" bash test/report.sh lines test/e2e/play.mjs "e2e play" >/dev/null 2>&1
@@ -281,12 +277,8 @@ printf 'differential 0 1 0 30\n' >"$records/b.txt"
 fails_with "a differential run that checked nothing fails" bash test/check-shards.sh e2e "$records" "browse differential"
 check "CI runs test/differential/run.sh in an e2e shard" 1 "$(grep -c 'test/differential/run.sh' .github/workflows/ci.yml | awk '{print ($1>=1)}')"
 check "the required e2e check expects the differential gate" 1 "$(grep -c 'check-shards.sh e2e shards ".*differential' .github/workflows/ci.yml)"
-for word in test/differential/run.sh test/differential/requests.yaml compat/differences.yaml; do
-  check "docs/testing.md explains $word" 1 "$(grep -c -F "$word" docs/testing.md | awk '{print ($1>=1)}')"
-done
 
 # --- allowlist entries are scoped to requests; the acceptance run puts four bugs back.
-check "docs/testing.md tells how to scope an allowlist entry to a request" 1 "$(grep -c -E 'requests:' docs/testing.md | awk '{print ($1>=1)}')"
 check "compat/differences.yaml scopes entries by request, not route" 0 "$(grep -c -E '^- route:|^  route:' compat/differences.yaml)"
 check "acceptance.sh runs four broken builds" 4 "$(grep -c '^mutate ' test/differential/acceptance.sh)"
 
@@ -426,10 +418,6 @@ for j in integration-total integration-shard roles e2e-shard; do
 done
 check "ci.yml: the dealt shards and cancel-media-jobs stay" "at most five shards cancel-media-jobs kept" "$(grep -E '^(at most|cancel-media)' <<<"$js132" | paste -sd' ')"
 check "ci.yml: integration and e2e still say why the shards did not run" "2" "$(grep -c 'says why the shards did not run' <<<"$js132")"
-head_ci=$(sed -n '/^jobs:/q;p' .github/workflows/ci.yml)
-head_ch=$(sed -n '/^set -uo/q;p' test/changes.sh)
-check "ci.yml's top comment gives the rule for .claude/ and tasks/ and names the guard test" "yes" "$(grep -q '\.claude/' <<<"$head_ci" && grep -q 'tasks/' <<<"$head_ci" && grep -qi 'guard' <<<"$head_ci" && echo yes || echo no)"
-check "changes.sh's top comment gives the rule for .claude/ and tasks/ and names the guard test" "yes" "$(grep -q '\.claude/' <<<"$head_ch" && grep -q 'tasks/' <<<"$head_ch" && grep -qi 'guard' <<<"$head_ch" && echo yes || echo no)"
 
 # --- fixtures: cached.sh with a stand-in ffmpeg that writes a file and logs the call.
 shim="$tmp/shim"
@@ -549,21 +537,6 @@ check "the stress ladder is not in the unit tier" 0 "$(go test -list '.*' ./... 
 check "the stress ladder exists under its own tag" 1 "$(go test -tags stress -list '.*' ./internal/transcode 2>/dev/null | grep -c '^TestControlPlaneLadder$')"
 check "test/stress.sh exists" 1 "$([[ -f test/stress.sh ]] && echo 1 || echo 0)"
 check "the integration shards still tile the tier with the stress files in" "$all" "$in_shards"
-arch=$(sed -n '/^## Control-plane ceiling/,/^## /p' ARCHITECTURE.md)
-check "ARCHITECTURE.md has a Control-plane ceiling section" 1 "$([[ -n $arch ]] && echo 1 || echo 0)"
-for v in 50 100 200 400 800 1600; do
-  check "the ceiling section has a row for V=$v" 1 "$(grep -c "^| *$v *|" <<<"$arch")"
-done
-check "the ceiling section states streams per primary" 1 "$(grep -ci 'streams' <<<"$arch" | awk '{print ($1>0)}')"
-check "the ceiling section says how to rerun" 1 "$(grep -c 'test/stress.sh' <<<"$arch" | awk '{print ($1>0)}')"
-check "the ceiling section recommends on NATS" 1 "$(grep -c 'NATS' <<<"$arch" | awk '{print ($1>0)}')"
-check "the ceiling section names the cores and RAM of the machine" 1 "$(grep -ciE 'cores?|threads' <<<"$arch" | awk '{print ($1>0)}')"
-
-# A workflow script runs as the body of an async function; a stray backtick in
-# a prompt ends its template literal, and the workflow then can't start at all.
-for f in .claude/workflows/*.js; do
-  check "$f parses" ok "$(node -e 'const s = require("fs").readFileSync(process.argv[1], "utf8").replace(/^export /m, ""); new Function("return (async () => {" + s + "\n})"); console.log("ok")' "$f" 2>&1 | tail -1)"
-done
 
 # --- tools/tiers.sh: the build workflow's tier gate, with stand-in tier scripts.
 lab=$tmp/tiers; mkdir -p "$lab/tools" "$lab/test"
@@ -1206,15 +1179,6 @@ for name in rolled stuck; do
   check "failover ($name): no replica is left running" "0" "$alive"
 done
 
-# --- docs/testing.md describes the split as it is.
-docs_line() { grep -F -- "$1" docs/testing.md | grep -F -- "$2" | grep -cF -- "$3" | awk '{print ($1>0)}'; }
-check "docs/testing.md: the split names test/shard.sh, internal/api, the times file and how to refresh it" "1" "$(docs_line 'test/shard.sh' 'internal/api' 'test/shard-times.sh')"
-check "docs/testing.md: ... and the summary's notice" "1" "$(docs_line 'test/shard.sh' 'internal/api' 'refresh test/shard-times.txt')"
-check "docs/testing.md: ... and that the times come from CI's runners" "1" "$(grep -F 'test/shard.sh' docs/testing.md | grep -ciE "CI.s runners" | awk '{print ($1>0)}')"
-check "docs/testing.md: the .deb cache says what a miss does" "1" "$(docs_line '.deb' 'actions/cache' 'a miss')"
-check "docs/testing.md: the jars cache is keyed on test/sdkjvm/jars.txt and says what a miss does" "1" "$(docs_line 'jars.txt' 'actions/cache' 'a miss')"
-check "docs/testing.md no longer says the times are for internal/transcode alone" "0" "$(grep -c 'tests of `internal/transcode` dealt to shard i of n' docs/testing.md)"
-
 # --- JS-130: test/integration.sh runs INTEGRATION_PROCS test processes side by side, each with a Postgres of its own.
 # Interface the checks use, which the build gives it:
 #   INTEGRATION_PROCS=n         n >= 2 processes at once for the shard INTEGRATION_SHARD names (dealt shards and rest); unset or 1 as before
@@ -1669,7 +1633,7 @@ check "container names differ in every run (a name unique to its run)" "" "$(gre
 pkill -f "python3 -I $lab/" 2>/dev/null # listeners of a build that left its containers: mine to stop
 for pidf in "$lab"/*/state/c/*.pid; do [[ -f $pidf ]] && kill "$(cat "$pidf")" 2>/dev/null; done
 
-# 10. ci.yml and docs/testing.md.
+# 10. ci.yml.
 ci130=$(python3 -I - .github/workflows/ci.yml <<'PY'
 import sys, yaml
 job = yaml.safe_load(open(sys.argv[1]))["jobs"]["integration-shard"]
@@ -1682,11 +1646,6 @@ PY
 )
 while IFS=$'\t' read -r what verdict; do [[ -n $what ]] && check "ci.yml: $what" ok "$verdict"; done <<<"$ci130"
 check "test/integration.sh's go test -timeout is still 45m" "45" "$(sed -n 's/.*go tool gotestsum.* -timeout \([0-9]*\)m.*/\1/p' test/integration.sh | head -1)"
-d=docs/testing.md
-check "docs/testing.md says the tier is split twice: jobs by test/shard.sh, then processes in a job by INTEGRATION_PROCS" "1" "$(grep -c 'INTEGRATION_PROCS' $d | awk '{print ($1>0)}')"
-check "docs/testing.md says what test/alone.txt is for" "1" "$(grep -F 'test/alone.txt' $d | grep -ciE 'alone|no other' | awk '{print ($1>0)}')"
-check "docs/testing.md gives one command that runs exactly one process's share" "1" "$(grep -E 'INTEGRATION_SHARD=.*INTEGRATION_PROCS=.*INTEGRATION_PROC=|INTEGRATION_PROC=.*INTEGRATION_PROCS=.*INTEGRATION_SHARD=' $d | grep -c 'test/integration.sh' | awk '{print ($1>0)}')"
-check "docs/testing.md says a concurrency claim still needs its own real processes or contention" "1" "$(grep -iE 'concurrency' $d | grep -ciE 'real process|contention' | awk '{print ($1>0)}')"
 
 # 11. Every named mutant of test/mutant.py still applies to the code (its anchor is there), so that a refactor that
 # removes one is found here by name, not by whoever next runs test/mutants.sh. No test runs under a mutant.

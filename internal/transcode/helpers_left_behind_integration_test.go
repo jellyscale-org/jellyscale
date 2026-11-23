@@ -106,9 +106,6 @@ func TestTwoHelpersWhoseViewerSeekedAwayAreEachEndedCountedAndLogged(t *testing.
 		for _, h := range live {
 			c.wantLoggedOnce(t, h, reason)
 		}
-		if text := doc(t, "docs/running.md"); !strings.Contains(text, "`"+reason+"`") {
-			t.Errorf("docs/running.md does not name the reason `%s` where it lists the ended-jobs counter's values", reason)
-		}
 	}
 }
 

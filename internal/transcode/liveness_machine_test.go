@@ -392,3 +392,27 @@ func withoutTransitions(src string) string {
 	}
 	return src[:i] + src[i+end+3:]
 }
+
+// Every duration that decides a wait in Unavailable comes from the table,
+// polling included: no time.After or time.Sleep of a literal in jobs.go.
+func TestNoLiteralWaitInTheRefusalLoop(t *testing.T) {
+	raw, err := os.ReadFile("jobs.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m := regexp.MustCompile(`time\.(After|Sleep)\([^)]*(Millisecond|Second)`).FindString(string(raw)); m != "" {
+		t.Errorf("jobs.go waits a literal duration outside the table: %s", m)
+	}
+}
+
+// test/stress.sh runs the stress driver, whose fake workers hold what a real
+// worker does: a liveness lock's connection and, since JS-105, a keeper's.
+func TestTheStressScriptsFakeWorkersHoldAKeepersConnectionToo(t *testing.T) {
+	driver, err := os.ReadFile("stress_driver_test.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !regexp.MustCompile(`(?i)keeper`).Match(driver) {
+		t.Error("stress_driver_test.go does not open a lease keeper's connection for each fake worker: the stress table's connection counts would be one per worker too low")
+	}
+}

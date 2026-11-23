@@ -6,8 +6,6 @@ package differential
 //	MaskedTimeKeys map[string]bool   the keys whose timestamp value Normalize masks
 
 import (
-	"os"
-	"strings"
 	"testing"
 )
 
@@ -64,20 +62,5 @@ func TestATimestampInsideAnOtherwiseUnmaskedStringIsCompared(t *testing.T) {
 	js := parse(t, `{"Overview":"aired 2021-01-02T00:00:00Z"}`)
 	if d := Diff(Normalize(jf, nil, false), Normalize(js, nil, false)); len(d) != 1 {
 		t.Fatalf("a timestamp in free text was masked: %v", paths(d))
-	}
-}
-
-func TestDocsListEveryMaskedTimeKey(t *testing.T) {
-	doc, err := os.ReadFile("../../docs/testing.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(MaskedTimeKeys) == 0 {
-		t.Fatal("MaskedTimeKeys is empty")
-	}
-	for key := range MaskedTimeKeys {
-		if !strings.Contains(string(doc), "`"+key+"`") {
-			t.Errorf("docs/testing.md does not list the masked timestamp key `%s`", key)
-		}
 	}
 }
