@@ -89,6 +89,41 @@ type rig struct {
 	scratch  string
 	storeURI string // What workers register as their transcodeStore.
 	log      *slog.Logger
+	kept     []*keptWorker
+}
+
+// keptWorker is a worker the rig started, which fresh ends and starts again around the truncate that forgets the
+// nodes: a TRUNCATE under a live worker meets its writes, and a worker whose row is forgotten takes itself for dead
+// (BL-178).
+type keptWorker struct {
+	start func() (stop func())
+	stop  func() // Of the worker that runs.
+	ended bool   // The test stopped it, for good.
+}
+
+// keep starts a worker and returns the stop that ends it for good, whichever start of it is running.
+func (r *rig) keep(start func() (stop func())) (stop func()) {
+	w := &keptWorker{start: start, stop: start()}
+	r.kept = append(r.kept, w)
+	return func() {
+		w.ended = true
+		w.stop()
+	}
+}
+
+// whileWorkersAreStopped runs forget with every worker the test has not stopped ended, and starts them again.
+func (r *rig) whileWorkersAreStopped(forget func()) {
+	for _, w := range r.kept {
+		if !w.ended {
+			w.stop()
+		}
+	}
+	forget()
+	for _, w := range r.kept {
+		if !w.ended {
+			w.stop = w.start()
+		}
+	}
 }
 
 // sharedState is what outlives a test's rows in the database: the user triggers
@@ -119,6 +154,7 @@ func newRig(t *testing.T, segments store.Store) *rig {
 	t.Helper()
 	testenv.FFmpeg(t)
 	dsn := testenv.DatabaseURL(t)
+	testenv.NoStrays(t, dsn) // First, so it runs after every cleanup of the rig's workers and of the test.
 	dir := film(t)
 	pool, err := db.Open(context.Background(), dsn)
 	if err != nil {
@@ -180,6 +216,11 @@ func (r *rig) jobs(t *testing.T) *Jobs {
 // worker runs a worker until the test ends. Cancelling the returned function
 // stops it and waits for its ffmpeg to be gone.
 func (r *rig) worker(t *testing.T, change func(*Worker)) (stop func()) {
+	t.Helper()
+	return r.keep(func() func() { return r.startWorker(t, change) })
+}
+
+func (r *rig) startWorker(t *testing.T, change func(*Worker)) (stop func()) {
 	t.Helper()
 	pool, err := db.Open(context.Background(), r.dsn)
 	if err != nil {

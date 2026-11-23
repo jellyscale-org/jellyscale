@@ -146,6 +146,11 @@ func (s *scannedFilm) metered(t *testing.T, m meters, change ...func(*Worker)) (
 // the other go on. It is rig.worker's body with one loop.
 func (s *scannedFilm) roleWorker(t *testing.T, role string, m meters, change ...func(*Worker)) (stop func()) {
 	t.Helper()
+	return s.rig.keep(func() func() { return s.startRoleWorker(t, role, m, change...) })
+}
+
+func (s *scannedFilm) startRoleWorker(t *testing.T, role string, m meters, change ...func(*Worker)) (stop func()) {
+	t.Helper()
 	r := s.rig
 	pool, err := db.Open(context.Background(), r.dsn)
 	if err != nil {
