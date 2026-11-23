@@ -650,6 +650,17 @@
       "decision": "accept",
       "serves": "PRODUCT.md quality bar: 'Failure modes are designed, tested and reported'; goal 1 through JS-161's existing criteria.",
       "entry": "Both JS-168 minors are already criteria of JS-161 (D-050) and are dropped as covered. The lease-keeper check and the flood tests' time go to JS-175 (criteria 6 and 5). JS-172's replaced check is accepted as built: it fails on a build that exceeds the ceiling, and the lost race-forcing check is BL-251, promoted on any row count over the bound or the next change to the cap. BL-250 keeps test/integration.sh ignoring a package path. docs/testing.md is corrected in the plan PR: series 1 ran on 4 CPUs with 18 of 20 runs complete, the 116 rows are the same run's first total and not a separate sighting, and JS-171's timings are added. The docs word-presence finding is dropped under BL-020. BL-175 is taken by JS-175."
+    },
+    {
+      "id": "D-060",
+      "date": "2026-11-23",
+      "by": "product-owner",
+      "task": "JS-161, JS-176",
+      "brief": "A rolling restart of a worker that declares nothing (brief-js161-restart.md): JS-161's worker measures its speed (bound 15 s; 6.1 to 7.6 s on a CI runner) before it registers, so a segment request waiting through a restart passes the 6 s queue timeout and is refused (test/roles.sh, queue run 45132952457). A worker that declares transcodeCores or transcodeSlots now registers at once and measures beside its work. Options: A keep, B count the reference speed until measured, C register at once for work already admitted only, D shorten the measurement, E hold JS-161.",
+      "tradeoff": "Given up until JS-176 merges: on a cluster whose workers declare nothing and restart without a surge, with no other worker with room, a request in flight during the restart can be refused and a picture already playing freezes. The dogfood declares 3 and is unaffected.",
+      "decision": "accept",
+      "entry": "JS-161 merges with option A as a dated gap, not a rule: an undeclared worker registers only after measuring (bound 15 s), so on a cluster with no other worker with room a request in flight during a restart can be refused, and a picture already playing freezes. Given up until JS-176 merges, by viewers of clusters whose workers declare nothing and restart without a surge; the dogfood declares 3 and is unaffected. docs/status.md, docs/running.md and Changed guarantees say so, citing this. The guarantee is kept by option C as JS-176 at priority 20, which JS-166 depends on: a replacement registers at once for work already admitted and counts nothing for new plays until measured. Rejected: B (admits on a guess, the silent stall JS-161 removes), D (does not close the window and adds noise to a figure measured at 0.19 and 0.46 on one host), E (the dogfood's measured stall waits). Advising operators to declare capacity is a stopgap and leaves the docs with JS-176. Start-time measurement noise goes to the backlog (BL-252). Reopens on: JS-176's design review showing C needs more than one build (it returns as a brief), or a refused in-flight request on any deployment before it merges (JS-176 moves directly after JS-161).",
+      "serves": "PRODUCT.md: 'Nothing breaks the viewers' evening. Upgrades, a lost machine and a database failover happen without interrupting anyone.' D-044: capacity is measured on the worker at start, not declared."
     }
   ]
 }

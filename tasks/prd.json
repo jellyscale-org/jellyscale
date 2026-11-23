@@ -1275,6 +1275,26 @@
       "notes": "Split from JS-155 by D-042: its cause is named in the logs, so it needs no reproduction box. Built beside JS-154; its check runs are short and must not run while JS-154 is measuring on the same machine."
     },
     {
+      "id": "JS-176",
+      "phase": "P3",
+      "title": "A worker that declares nothing is restarted without freezing a film it was making",
+      "description": "JS-161 measures a worker's speed before it registers (bound 15 s; 6.1 to 7.6 s on a CI runner), so a replacement that declares nothing registers after the 6 s a waiting segment request is given, and on a cluster with no other worker with room the request is refused: before playback has begun jellyfin-web asks again, after it has begun the picture freezes. A worker that declares its capacity registers at once. D-060 (option C): a replacement registers at once for work already admitted and counts nothing for new plays until measured. PRODUCT.md: upgrades and a lost machine interrupt no one.",
+      "acceptanceCriteria": [
+        "With real processes and workers that declare nothing: a film is playing as a re-encode on the only worker; the worker stops and its replacement starts 3 seconds after a segment request, with its measurement held to the full bound. The waiting request is answered with the segment, not 503, and playback goes on. This is test/roles.sh's restart check, undeclared, and it fails on JS-161 as merged.",
+        "Until its measurement ends, the replacement admits no new play on a guess. A play asked for in that window is admitted once measured, or refused within seconds with its reason; it is never admitted and then stalled.",
+        "A reclaimed job the replacement turns out not to hold at 1.2 times real time is logged once with its reason and counted (JS-161 criterion 7's line); it is not stopped.",
+        "docs/running.md drops the advice to declare capacity for restarts and docs/status.md drops the gap line. The Changed guarantees entry of D-060 is closed."
+      ],
+      "priority": 20,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-161"
+      ],
+      "source": "JS-161 merge-queue escape (run 45132952457); D-060",
+      "notes": "core: true, ux: true. If the design review finds option C needs more than one build, it returns to the product owner as a brief (D-060)."
+    },
+    {
       "id": "JS-175",
       "phase": "OPS",
       "title": "Each of the 12 merge-queue runs that failed in the last 18 has a verdict from its log, and the causes that recur are fixed at their cause",
@@ -1440,7 +1460,8 @@
       "dependsOn": [
         "JS-161",
         "JS-167",
-        "JS-168"
+        "JS-168",
+        "JS-176"
       ],
       "source": "owner direction 2026-11-21; D-038; D-044; D-045; D-046; D-049",
       "notes": "ux: true. The store is an S3 bucket (owner's answer, 2026-11-21: the owner sets up an S3 service in the homelab; the lead chose S3, option 1 of D-049, so workers can run on any node). Each homelab change is still brought to the owner before it is made."

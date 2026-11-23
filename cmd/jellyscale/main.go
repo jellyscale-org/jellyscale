@@ -469,13 +469,20 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 	}
 	// A worker measures its speed against the reference machine before it registers, so that its row carries the
 	// capacity it measured from its first write (JS-161); until then it is in no row and claims nothing. A worker that
-	// declares its cores measures too, and says so, but its row carries what it declared.
+	// declares its cores measures too, and says so, but its row carries what it declared, so it registers at once:
+	// a replacement in a rolling restart must claim the job a viewer is waiting on within the queue timeout.
 	measured := make(chan struct{})
 	if worker {
+		declared := cfg.TranscodeCores > 0 || cfg.TranscodeSlots > 0
+		if declared {
+			close(measured)
+		}
 		running.Add(1)
 		go func() {
 			defer running.Done()
-			defer close(measured)
+			if !declared {
+				defer close(measured)
+			}
 			w.MeasureSpeed(ctx)
 		}()
 	}

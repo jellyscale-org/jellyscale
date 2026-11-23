@@ -2255,6 +2255,15 @@
       "source": "JS-172 (escape recorded); D-059",
       "title": "The ceiling on stored unknown sign-in names is checked by a set-up excess, not by a forced race between writers",
       "notes": "The check fails on a build that forgets 2 names per sign-in and passes 3 of 3 on the build; the 10-flood observation under CI's shape is the evidence for concurrent writers (docs/testing.md, JS-172). An operator would notice only if the signin tables grew past the bound in docs/access.md. Promote when any deployment or queue run shows a row count over the bound plus the sign-ins in flight, or when the code that caps the count is next changed, which then needs a check under real contention before it merges (CLAUDE.md: concurrency claims need real processes or real contention)."
+    },
+    {
+      "id": "BL-252",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "lead",
+      "source": "JS-161 merge-queue run 45132952457; D-060",
+      "title": "A worker's measured capacity depends on what else ran on the host at its start, and is kept until the next start",
+      "notes": "One CI runner measured speed 0.19 and 0.46 on two starts minutes apart. An operator would notice the same worker admitting a 4K play after one restart and refusing it after another. Promote on either: a dogfood worker's logged capacity differing between two starts by enough to change which price-table rows it holds; or a dogfood refusal or stall traced to a start-time measurement."
     }
   ]
 }
