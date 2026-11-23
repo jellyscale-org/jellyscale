@@ -17,6 +17,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"jellyscale/internal/db"
 	"jellyscale/internal/media"
 	"jellyscale/internal/store"
 	"jellyscale/internal/subtitles"
@@ -870,5 +871,22 @@ func TestTheDefaultSubtitleFollowsTheFilesBesideTheFilmThroughARescan(t *testing
 	third := ask("the default file and the first one removed")
 	if third == first || third == second || third.language == "deu" || third.language == "eng" && third.external {
 		t.Errorf("after both files were removed the film still starts on %+v (earlier %+v, then %+v)", third, first, second)
+	}
+	// The removed files leave their Indexes unused, and the item names a track by its position as well as its Index: it must
+	// fill the gap with a placeholder and name what PlaybackInfo names, not no track at all (invariant 32).
+	response, raw := f.do(t, 0, "GET", "/Items/"+db.CompactID(f.text)+"?userId="+db.CompactID(id), token, nil)
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("the item after the removal: %d %s", response.StatusCode, raw)
+	}
+	var reply doc
+	if err := json.Unmarshal(raw, &reply); err != nil {
+		t.Fatal(err)
+	}
+	item := defaultSubtitle(sourceOf(reply))
+	if item == -2 {
+		item = -1
+	}
+	if item != third.index {
+		t.Errorf("after both files were removed the item names %d and PlaybackInfo %d", item, third.index)
 	}
 }

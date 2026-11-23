@@ -352,6 +352,10 @@ func (s *Server) hideUndeliverable(ctx context.Context, itemID string, dto map[s
 			chosen = runtime > 0 && s.burnInCanStart(ctx, itemID, sources[i], reads[i], index, audio, user)
 		}
 		if chosen {
+			// A subtitle file removed from beside the film leaves its Index unused, and jellyfin-web reads the default both as an
+			// Index and as a position, so the placeholders PlaybackInfo lists are here too, or the item would name no track
+			// where PlaybackInfo names one.
+			fillRemoved(&sources[i], storedStreams(reads[i]))
 			nameSubtitle(&sources[i], index)
 		}
 		if i == 0 && original != "" {
