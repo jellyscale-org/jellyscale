@@ -2258,12 +2258,75 @@
     },
     {
       "id": "BL-252",
-      "status": "open",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "lead",
       "source": "JS-161 merge-queue run 45132952457; D-060",
       "title": "A worker's measured capacity depends on what else ran on the host at its start, and is kept until the next start",
-      "notes": "One CI runner measured speed 0.19 and 0.46 on two starts minutes apart. An operator would notice the same worker admitting a 4K play after one restart and refusing it after another. Promote on either: a dogfood worker's logged capacity differing between two starts by enough to change which price-table rows it holds; or a dogfood refusal or stall traced to a start-time measurement."
+      "notes": "One CI runner measured speed 0.19 and 0.46 on two starts minutes apart. An operator would notice the same worker admitting a 4K play after one restart and refusing it after another. Promote on either: a dogfood worker's logged capacity differing between two starts by enough to change which price-table rows it holds; or a dogfood refusal or stall traced to a start-time measurement. Closed into BL-259 by D-062."
+    },
+    {
+      "id": "BL-253",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "lead",
+      "source": "JS-159/JS-161 triage; D-061",
+      "title": "While a segment waits for its successor it is re-read whole every 100 ms",
+      "notes": "A worker making large segments (a 4K copy) spends about a tenth of a core per job re-reading (QA's figure on a file, not inside the worker). Promote on: JS-166 criterion 9 reporting a job slower than expected by more than a fifth with nothing running beside it. Kin to BL-245."
+    },
+    {
+      "id": "BL-254",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "lead",
+      "source": "JS-159/JS-161 triage; D-061",
+      "title": "A segment that cannot be measured is held until its successor appears or ffmpeg exits, and nothing says so",
+      "notes": "A viewer would get a start or seek later by the time one more segment takes; an operator finds no cause in the log. Promote on: a start or seek over 5 s in JS-166 criterion 3 or JS-174's time to first frame with no other cause in the log; first criterion then the log line and counted reason. Which films or segments cannot be measured is not yet known."
+    },
+    {
+      "id": "BL-255",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "lead",
+      "source": "JS-159/JS-161 triage; D-061",
+      "title": "A build run returned clean while the implementer listed acceptance items as unfinished",
+      "notes": "A task could merge with a viewer-facing criterion unverified. Until promoted the lead reads the unfinished list at each run's end. Promote on: a second such run, or any merged task later found with an unverified criterion; then a one-line build.js change made when no run is going."
+    },
+    {
+      "id": "BL-256",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "lead",
+      "source": "JS-159/JS-161 triage; D-061",
+      "title": "A queued job placed as shared is counted at 0.78 of its cost on one worker with no partner check; a stale one holds cores until it expires",
+      "notes": "A newcomer is refused for cores a job nobody is making holds, until it expires. Promote on: a dogfood refusal whose decision line shows cores held by a queued job no worker claimed. Kin to BL-124; triage together."
+    },
+    {
+      "id": "BL-257",
+      "status": "closed",
+      "severity": "minor",
+      "reviewer": "lead",
+      "source": "JS-159/JS-161 triage; D-061",
+      "title": "A measurement that reaches its bound counts each processor at the reference speed",
+      "notes": "Closed by D-062: no start-up measurement is left to time out."
+    },
+    {
+      "id": "BL-258",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "lead",
+      "source": "JS-159/JS-161 triage; D-061",
+      "title": "A held film stays held up to 60 s after its viewer leaves without a Stopped report",
+      "notes": "In a two-viewer household the second viewer is refused for up to a minute after the first closes a tab or app. Promote on: a dogfood decision line refusing for a held film whose last segment request was more than 10 s earlier. Kin to BL-243 and BL-247."
+    },
+    {
+      "id": "BL-259",
+      "status": "open",
+      "severity": "major",
+      "reviewer": "lead",
+      "source": "JS-161 merge-queue run 45135324010; D-062",
+      "title": "A worker that declares nothing on a CPU slower than the reference, or on SMT threads, counts more than it holds: a play it cannot keep is admitted and stalls, where a declared worker refuses with a reason",
+      "notes": "A redesigned measurement must never delay registration, never slow a film being watched, keep its figure within a stated margin on a busy host, and be shown on a 4-process, 4-CPU run before it merges. Promote on any of: the assumed-capacity slow reason counted on any deployment; JS-166 criterion 9 showing a declared figure wrong by more than a fifth; JS-056 starting (the example manifests' default must then be right); an issue carrying such a log line."
     }
   ]
 }
