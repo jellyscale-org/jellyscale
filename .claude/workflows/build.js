@@ -93,14 +93,17 @@ const LOCKED = {
 const { task, tests = [], id = '', ux = false, core = false, resolved = null, refine = true } = args
 let { acceptance = [] } = args
 // args.root runs the task in its own worktree, so two tasks can build side by side.
-const where = args.root ? `Work only in the checkout at ${args.root}: cd there before anything else, run every command from it, and never read or change another checkout of this repository.\n\n` : ''
+// Each advisor call sends the agent's whole context, uncached, to a costlier model: 142 calls cost about a fifth as much
+// as every workflow agent's own work over JS-168..JS-173 (owner, 2026-11-22).
+const advice = 'If you have an advisor tool, call it at most twice: once before you commit to an approach, and once before you report.\n\n'
+const where = (args.root ? `Work only in the checkout at ${args.root}: cd there before anything else, run every command from it, and never read or change another checkout of this repository.\n\n` : '') + advice
 // Told to every later reviewer and fixer, so a corrected check is not reported or restored as tampering.
 const resolvedNote = resolved ? `\n\nThe lead corrected these locked check files after a dispute, on purpose; review the corrected version and never restore the original: ${resolved.files.join(', ')}. ${resolved.note}` : ''
 if (!task) throw new Error('build needs args.task')
 
 // ---- Refine: thin criteria predicted the tasks that went back to Spec (JS-027,
 // JS-028: two criteria each, five attempts between them), so before any check is
-// written the strongest model sharpens them against the code. It may only make a
+// written a strong model sharpens them against the code. It may only make a
 // criterion more exact; the lead reads the changes it logs and records them in
 // tasks/prd.json. A later attempt passes the refined list with refine: false.
 const REFINED = {
@@ -113,7 +116,7 @@ const REFINED = {
 }
 if (refine) {
   const refined = await agent(`${where}You sharpen the acceptance criteria of one jellyscale task before its checks are written. Read PRODUCT.md, the parts of DOMAINS.md and ARCHITECTURE.md the task touches, and the code it will change (targeted reads, not whole trees). Then rewrite the criteria so a spec writer can turn each into a check that fails on a plausible wrong build:\n- Name the cases a wrong build would get wrong: counts and bounds (how many reads, runs, jobs; "at most", "each"), failures that are the file's and failures that are not (store, timeout, signal, lost lease), several of a thing as well as one, a replaced or changed file, two replicas or workers at once, and what the viewer or operator sees.\n- Split a criterion that holds several claims; state an "always" or "whatever X does" claim only with the bound it really has.\n- Keep every guarantee the criteria give: never drop, weaken or narrow one, and never add a feature the task did not ask for. If a criterion seems wrong, keep it and say why in changes.\n- Keep the criteria few and plain: one line each, no implementation.\nDo not edit any file, and do not run tests, Docker or servers.\n\n## Task${id ? ` ${id}` : ''}\n${task}\n\n## Acceptance criteria\n${acceptance.map((line) => `- ${line}`).join('\n')}`,
-    { label: 'refine criteria', phase: 'Spec', model: 'claude-fable-5-2', effort: 'high', schema: REFINED })
+    { label: 'refine criteria', phase: 'Spec', model: 'claude-opus-5-5', effort: 'high', schema: REFINED })
   if (refined && refined.acceptance.length) {
     acceptance = refined.acceptance
     log(`Refined criteria (record in tasks/prd.json): ${JSON.stringify(refined)}`)
