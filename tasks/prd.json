@@ -161,7 +161,7 @@
         "A revoked device or disabled user's running stream stops: forced, a direct play of the whole file read slowly when the device is revoked or the user disabled closes within 15 seconds having sent less than the file",
         "LoginAttemptsBeforeLockout stays -1 and a set value is not honoured, as compat/differences.yaml says (D-020); a new or changed password is refused if it is among the commonly guessed ones"
       ],
-      "priority": 45,
+      "priority": 27,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -180,7 +180,7 @@
         "No plain token in the database",
         "API keys created and revoked through jellyfin-web"
       ],
-      "priority": 49,
+      "priority": 51,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -218,7 +218,7 @@
         "Forced: a library is taken from a viewer mid-film; their next segment and next byte range, through another replica, answer 404 (the outage exception is DOMAINS 37's)",
         "Pictures by id stay open to whoever holds the id; watch state for hidden items stays stored and is not shown"
       ],
-      "priority": 46,
+      "priority": 28,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -238,7 +238,7 @@
         "Where Quick Connect is turned off, /QuickConnect/Enabled answers false so clients fall back to a password (#104)",
         "A device approved by code from a signed-in device signs in while the account's name is refused to strangers (D-020); the code routes are bounded per address so the code cannot be guessed"
       ],
-      "priority": 47,
+      "priority": 29,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -289,7 +289,7 @@
         "Whatever replaces the token in a URL never ends a film: a film longer than the replacement's lifetime, a pause longer than it, a seek, a move to another stream replica and a Postgres outage served from the snapshot each go on playing with no action by the viewer, in jellyfin-web (e2e) and with a client that sends its token in a header",
         "Before building: a trade-off brief to the product owner on whether TranscodingUrl and the subtitle and attachment DeliveryUrls lose the account token too (#222), against DOMAINS 17 ('TranscodingUrl stays Jellyfin-shaped and unsigned'), the Kodi criterion above and D-005 (a PlaybackInfo-based grant was set aside); until it is answered this task covers the URLs inside playlists only. A replacement is never logged and is redacted wherever tokens are, and a media request with neither still answers 401 (D-026)"
       ],
-      "priority": 48,
+      "priority": 50,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -311,7 +311,7 @@
         "In real jellyfin-web (e2e): with mode Always and language English a film starts with its English subtitle on screen; with None it starts with none",
         "The pull request lists, under Changed guarantees, which modes now start an image subtitle by default and so a re-encode with burn-in, and docs/status.md's 4K burn-in gap names it (D-038)"
       ],
-      "priority": 29,
+      "priority": 25,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -373,9 +373,11 @@
       "description": "Poster and fanart images, .nfo files and embedded tags as the only metadata source.",
       "acceptanceCriteria": [
         "Matches a Jellyfin 12.4 capture where a client calls it",
-        "Played or browsed in jellyfin-web"
+        "Played or browsed in jellyfin-web",
+        "In jellyfin-web, a film and a series in a POSIX library and in an S3 library each show their poster, backdrop and synopsis on the home row, the library grid and the details page; neither store is slower to first poster by more than a measured, recorded margin.",
+        "A film with no image and no .nfo beside it shows as it does today, and the scan logs no error for it."
       ],
-      "priority": 50,
+      "priority": 30,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -409,7 +411,7 @@
         "GET /Shows/NextUp answers in Jellyfin 12.4's shape for the signed-in user, honours nextUpDateCutoff, and brings back a series the viewer had caught up on once a new episode is added (#101)",
         "GET /Items/Filters2 answers with the filters the library can match where this task's capture shows jellyfin-web or an app docs/status.md lists as supported calling it; otherwise it stays as it is (#108, D-032)"
       ],
-      "priority": 51,
+      "priority": 31,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -574,7 +576,7 @@
         "Workers are their own Deployment, apart from api and stream, and the manifests' check refuses more than one worker or stream replica on a transcode store or library that not every one of them can reach (a ReadWriteOnce volume), naming the key (D-045)",
         "docs/running.md says what every worker must reach (Postgres, each library, the transcode store), and the worker's termination grace matches JS-165's (D-045)"
       ],
-      "priority": 40,
+      "priority": 46,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -622,9 +624,11 @@
       "title": "Migration from Jellyfin",
       "description": "One-way import of users, watch state and libraries.",
       "acceptanceCriteria": [
-        "Viewers keep their history; users set a password or use OIDC"
+        "Viewers keep their history; users set a password or use OIDC",
+        "Against a real Jellyfin 12.4 with two users who each have a watched film, a film stopped partway and a favourite: after the import each user signs in to jellyscale (by setting a password) and finds the same played marks, the same resume position to the second, and the same favourites.",
+        "The import is run from the operator's side with a documented command, changes nothing in the Jellyfin it reads, can be run twice with the same result, and reports every user or item it could not carry, with the reason."
       ],
-      "priority": 86,
+      "priority": 32,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -725,7 +729,7 @@
         "For each app played: whether it asked for a Trickplay route, and whether its sign-in screen offered a code (Quick Connect), with what the server answered and what the viewer saw (nothing, a missing preview, an error); an error a viewer sees is brought to the product owner (BL-222), and no route is built in this task",
         "Moonfin on an Android TV device signs in and plays one direct play and one film that transcodes, recorded like the others with the engine that played; if it is not run, docs/status.md says no Android TV app has played; on a film with several subtitle tracks, the subtitle index Moonfin asked for and the track it resolved to are recorded, with its subtitle mode (finding 5, D-038)"
       ],
-      "priority": 33,
+      "priority": 40,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -820,7 +824,7 @@
         "The regex-over-prose tests are removed or replaced by tests that compare a constant with the number the doc states; a check that reads a number or table from DOMAINS.md today (the lease table of 25, the window of 37) reads it from where it now lives and still fails when doc and code differ",
         "The pointers change in the same change: CLAUDE.md, the role files in .claude/agents/ (the product owner's read list included) and the build workflow's instructions say every agent reads DOMAINS.md, and a task's agents also read the domain file of each domain the task touches"
       ],
-      "priority": 42,
+      "priority": 48,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -952,7 +956,7 @@
       ],
       "notes": "Owner, 2026-11-15: a page, after the track-language batch. Moved up (D-028): the settings are built and no browser viewer can reach them. 2026-11-17 (JS-121's UX review): PlayDefaultAudioTrack defaults to true, so a viewer who only saves a language keeps hearing a film's flagged track, usually its original; the page says so and offers the switch.",
       "passes": false,
-      "priority": 32,
+      "priority": 39,
       "source": "owner 2026-11-15",
       "status": "todo"
     },
@@ -978,7 +982,7 @@
       ],
       "notes": "Changed answers, to list in the pull request: a request naming another user's id got 200 with the caller's data and now gets 403; the Configuration 404 above. Neither is visible to a viewer using a client, which always sends its own id.Tests make their second user by SQL, as user_configuration_integration_test.go does; no seeding route is added. Jellyfin's rule is RequestHelpers.GetUserId (Jellyfin.Api/Helpers/RequestHelpers.cs:67-81 at v12.4). Owner's decisions (2026-11-16, on Fable 5.2's access model, .results/access-model-fable-2026-11-16.md): pictures by id open to whoever holds the id, by name need a token; per-library access right after JS-033; a revoked or disabled user's running stream stops within 15 s; a viewer sees no other viewer's name; an administrator manages accounts but never browses, plays or reports as another user; a Policy field jellyscale does not enforce is refused when changed (400); 'may download' is honoured; operator keys are never users; no issue is filed on Findroid for now.",
       "passes": false,
-      "priority": 44,
+      "priority": 26,
       "source": "access model",
       "status": "todo"
     },
@@ -998,7 +1002,7 @@
         "With real processes: a worker given jobs whose costs add up to its measured capacity (JS-161), at faster and at medium, keeps each at 1.2 times real time or more without a helper",
         "No viewer-visible change while every spec is veryfast: the transcode, seek and helper e2e scenarios pass as before"
       ],
-      "priority": 35,
+      "priority": 42,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1021,7 +1025,7 @@
         "The default change is listed under Changed guarantees: more CPU per viewer (fewer viewers per worker), up to about a second on a start on a full worker, a better picture",
         "A 4K HDR tone mapped re-encode, with and without a burned subtitle, holds real time at the default preset on any worker whose measured capacity admits it (JS-161), or the default does not apply to it; the pull request says, from JS-154's figures, which machines hold it at veryfast and no longer at faster (D-038, D-044)"
       ],
-      "priority": 36,
+      "priority": 43,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1102,7 +1106,7 @@
         "JS-089"
       ],
       "source": "decision D-002; product-owner plan review 2026-11-19",
-      "priority": 34
+      "priority": 41
     },
     {
       "id": "JS-146",
@@ -1137,7 +1141,7 @@
         "The job's price (Spec.Cost) is at or above its measured CPU",
         "DOMAINS 53, docs/transcoding.md and docs/status.md say the one thing seen; the gap line leaves docs/status.md"
       ],
-      "priority": 43,
+      "priority": 49,
       "source": "product owner, D-021 (2026-11-19)",
       "status": "todo",
       "passes": false,
@@ -1158,7 +1162,7 @@
         "The figures go to the product owner as a brief with keeping the source's height and range priced per viewer, on CPU and on a GPU family; its decision names the task that closes the gap or accepts it, and docs/status.md's line is updated; its GPU figure is JS-163's (the HD 530 neither decodes Main 10 nor tone maps, JS-154), or is stated unmeasured if JS-163 has not run, and today's 2160-to-1080 burn-in path is measured there, not here (D-038)",
         "No viewer-visible change"
       ],
-      "priority": 37,
+      "priority": 44,
       "source": "product owner, D-021 (2026-11-19)",
       "status": "todo",
       "passes": false,
@@ -1182,7 +1186,7 @@
         "docs/status.md's line for the apps that show the server's web client says it is the build the image ships; /web/ stays open to anyone and carries no Access-Control-* header (docs/access.md unchanged)",
         "The procedure for moving to the next Jellyfin release names this pin with the others, or says none exists yet (BL-043)"
       ],
-      "priority": 39,
+      "priority": 34,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1222,7 +1226,7 @@
         "POST PlaybackInfo with a MediaSourceId in upper-case compact form, in dashed form and as an id of no source are added to test/differential/requests.yaml, as observed on Jellyfin 12.4 during JS-153: the upper-case compact id answers the same on both and is no listed difference; the dashed id (refused by Jellyfin, accepted here) and the unknown id (NoCompatibleStream on Jellyfin, an empty list here) are listed in compat/differences.yaml, each with a verdict and its reason. No answer changes unless a capture shows an app docs/status.md lists as supported sending that form (D-041)",
         "No viewer-visible change"
       ],
-      "priority": 28,
+      "priority": 37,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1240,7 +1244,7 @@
         "The subtitle twin joins if JS-041's capture shows Jellyfin keeps a subtitle pick the same way",
         "Played in jellyfin-web (e2e): a pick, a reload, a new sign-in, and the film starts with the pick"
       ],
-      "priority": 30,
+      "priority": 33,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1263,12 +1267,34 @@
         "No retry on deadlock, no skip, no raised timeout, and no product code changed to fit a test",
         "No viewer-visible change"
       ],
-      "priority": 26,
+      "priority": 19,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
       "source": "merge queue failures 2026-11-20; D-042; BL-178",
       "notes": "Split from JS-155 by D-042: its cause is named in the logs, so it needs no reproduction box. Built beside JS-154; its check runs are short and must not run while JS-154 is measuring on the same machine."
+    },
+    {
+      "id": "JS-175",
+      "phase": "OPS",
+      "title": "Each of the 12 merge-queue runs that failed in the last 18 has a verdict from its log, and the causes that recur are fixed at their cause",
+      "description": "12 of the last 18 merge-queue runs failed (lead, 2026-11-22), nearly every one on a different test; one shard process hit its 45-minute timeout. Each costs about 45 minutes and a requeue, and delays the dogfood's redeploy. Whether any is a product race is unverified. Same shape as JS-155 (D-042). D-058.",
+      "acceptanceCriteria": [
+        "docs/testing.md gains a table of the 12 runs: run id, the test that failed, its message, and a verdict from the log: a cause already owned (JS-158's deadlock, JS-159, one of JS-160's three, JS-171's port, JS-173's refusal), a new named cause, or unknown with what the log lacks. The table gives the count per cause, so it says whether the 12 are one cause or many.",
+        "For every verdict that is the product's, what a viewer or operator would have seen in production is written beside it, and it returns to the product owner as a brief before any product fix. Nothing in the product is changed by this task.",
+        "A new test cause seen in two or more runs gets a check that forces its condition and fails before the fix, with real processes or real contention, and is fixed at its cause in the test kit. A cause seen once, or one whose forcing check cannot fail, is recorded as unknown and left.",
+        "Reproduction is bounded: 2 hours a sighting and 8 in all, under CI's shape (ffmpeg 6.1, 2 CPUs).",
+        "The shard that hit 45 minutes is named with its healthy time over the 18 runs and what it was running when stopped. If its healthy time is within 10 minutes of the timeout, it is split as internal/transcode is split, with no test dropped (closes BL-175); the record gives the time each of JS-172's flood tests adds to it.",
+        "TestAHeldWorkerEndsAJobWaitingForItsSubtitleTrackBeforeItsLeaseRunsOut is run 20 times under CI's shape on main after JS-173 merges; a failure is added to the table with its verdict.",
+        "After JS-158 and this task merge, the next 10 queue runs are counted in docs/testing.md with each failure's cause; the count and the causes come to the product owner at that triage.",
+        "No retry, skip, raised timeout or widened bound; no product code changed to fit a test; no viewer-visible change."
+      ],
+      "priority": 22,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "lead 2026-11-22; D-058",
+      "notes": "ux: false, core: false. Reads JS-158's and JS-159's records when they exist; waits for neither. Does not hold any merge (owner, 2026-11-21). Runs beside JS-161; its reproduction runs do not share a machine with JS-174's measurement. If criterion 1 shows one cause behind most of the 12, the lead brings that count back before criteria 3 to 5 are built, and the task is cut to that cause."
     },
     {
       "id": "JS-161",
@@ -1322,84 +1348,12 @@
       "core": null
     },
     {
-      "id": "JS-171",
-      "phase": "OPS",
-      "dependsOn": [],
-      "title": "A launched test process never loses its port, and the seek checks finish well inside their bound on CI",
-      "description": "Two test causes cost JS-167 merge-queue runs this week: a launched process losing its port, and two seek checks with no margin under their 180 s bound on CI. JS-161 lands through the same queue.",
-      "acceptanceCriteria": [
-        "docs/testing.md records queue run 44983050791: the test (TestAProcessWithoutTheWorkerRoleWritesNothingToTheLibraries, shard rest, go test process 2 of 4), which of its 18 processes exited and its log line (bind: address already in use, on the address the harness chose), the cause (the harness closes its listener before the process binds), and what took the port only if shown, otherwise marked unverified",
-        "docs/testing.md records queue run 45008394219: the two checks (TestSeveralSeeksInOnePlayOfAFilmWhoseAudioHeadIsLostEachGetTheirSegment, cut at segment 354 of 453; TestASeekPastHalfIntoAFilmReadFromAStoreWithNoPathGetsItsSegment/truehd-6, cut at segment 218 of 229), the cause (a right build's run from the film's start outlasting its 180 s bound), and their times on JS-152's own queue run 44909282472 (197.7 s and 178.9 s against 180 s), saying what each figure times (the whole test and the truehd-6 subtest, both passed)",
-        "A check takes, with a real socket, the address the harness chose for a real jellyscale process before that process binds, through the launch the 18-process test uses; before the fix it fails on that process's exit with bind: address already in use, as run 44983050791 did",
-        "After the fix the launch survives it: with the port taken once, taken several times in a row, taken for several of 18 processes launched at once, and taken by another process the harness launched (in this go test process or one beside it), each launched process itself answers /healthz on the address its test is handed, never the socket that took the port",
-        "What a test reads of a launched process (its log, its exit, what it wrote to its database) is one process's, with nothing of a start that lost its port mixed in",
-        "A process that exits for any other reason (a refused config, an unreachable Postgres) is started once and fails its test at once with its log, as today; if the address is taken at every attempt the fix makes, the test fails within a stated number of attempts naming the address, and never hangs",
-        "Measured and recorded in docs/testing.md with machine and command, not asserted by a test: 50 runs of the 18-process test under CI's shape (2 CPUs, the rest shard as CI runs it: INTEGRATION_PROCS=4 with the other three processes running), all 18 serving at once in each; in 50 of 50 every process binds and the test passes, and the record says how many launches met a taken port",
-        "The port fix is in the test harness and holds for every test that launches a listening process through it, not only the 18-process test. If it needs the app to do anything it does not do for an operator, that is not built and returns as a brief",
-        "Measured and recorded in docs/testing.md with machine and command, not asserted by a test: under CI's shape (ffmpeg 6.1, 2 CPUs, the whole of the checks' shard running as CI runs it), in 10 runs of 10, the step the 180 s bound times in each of the two checks (the whole run from the film's start; in the store check, for each of its rows aac-2, truehd-6 and dtshdma-8) takes at most 18 s on a right build; the check logs that time",
-        "That margin comes from the run from the start making less film, which a check counts in segments and which fails today (453 and 229 segments): the 180 s bound, go test's 45-minute limit and every other wait of these checks are no longer than today, and the run is not split under several bounds",
-        "Each check keeps what it claims: the film whose audio head is lost, one play, and seeks that each start a new job (a short one, one past half the film, one into its last segment); the store with no path, its three audio rows and a seek past half; a burnt image subtitle; every seek's segment compared with a run from the film's start and made by one job begun at that segment. The seek as far in as the dogfood's (1183 s) is kept or its loss is named in the brief below, never dropped silently",
-        "Each of the two checks, as shortened, still fails on the build before JS-152 (the product code of b920b19) for the reason it names, shown by its output: the lost-head check at each of its seeks, the seek getting no segment and its job's recorded reason saying ffmpeg made no packet",
-        "If less film cannot give the 18 s of the measurement above while a check keeps what it claims and still fails on the build before JS-152, that check stays as it is and the measured times, with what would be lost, return as a brief; no bound is raised and no check, row or seek is removed meanwhile",
-        "No retry of a test, no skip, no raised or added timeout; no product code changed to fit a test (nothing outside test files, test scripts, internal/testenv and docs); no other check weakened: the seek matrix (TestASeekGetsItsSegment_*) keeps its film of more than 30 minutes and its seek past half for every row (JS-152 criterion 2); no viewer-visible change"
-      ],
-      "source": "JS-167 merge queue (runs 44983050791, 45008394219); D-050",
-      "notes": "Builds beside JS-161 and never holds it, nor JS-041 or JS-157 (D-050).",
-      "status": "todo",
-      "passes": false,
-      "priority": 19,
-      "core": null
-    },
-    {
-      "id": "JS-172",
-      "phase": "P3",
-      "dependsOn": [],
-      "title": "What is stored for unknown sign-in names has a ceiling no flood raises, and its check fails only on a build that exceeds it",
-      "description": "The sign-in flood check saw the unknown-name store 14 rows past its bound under CI load. The product promises a ceiling no flood raises; whether the build or the check is wrong is observed first.",
-      "acceptanceCriteria": [
-        "Observed first under CI's shape (2 CPUs, -count=20) and recorded in docs/testing.md with queue run 44986442604: rows per signin_* table before and after each of 10 successive floods of 20,000 names past the bound with 16 writers; which table the 116 and the 14 rows were in; whether the excess rises flood over flood",
-        "The rule holds: the count never rises from flood to flood, and during a flood is over the bound by no more than the sign-ins in flight",
-        "If the build meets the rule, the check is amended to assert it, and is shown to fail on a build that leaks one row per flood and on one with no cap. docs/access.md states the bound with its slack. Both cite D-050",
-        "If the build does not meet it, the product is fixed. A fix that would slow a sign-in measurably, or needs a lock across replicas, is briefed first",
-        "JS-145 criterion 8 still holds: no real account's count changes and no unknown name answers differently",
-        "The record gives BL-214's undershoot at the shipped bound, with no fix unless its promotion rule is met; BL-220 stays open",
-        "No retry, skip or raised timeout"
-      ],
-      "source": "JS-167 merge queue (run 44986442604); D-050",
-      "notes": "Builds beside JS-161 and never holds it, nor JS-041 or JS-157 (D-050).",
-      "status": "todo",
-      "passes": false,
-      "priority": 20,
-      "core": null
-    },
-    {
-      "id": "JS-173",
-      "phase": "P2",
-      "dependsOn": [],
-      "title": "A viewer is never refused for the cores of a job that has just been given up",
-      "description": "A CI-shaped run saw PlaybackInfo refuse a spec for cores ('the most any worker has free is 0.0') right after a held worker's job was given up, 1 run of 3.",
-      "acceptanceCriteria": [
-        "A check forces the order (PlaybackInfo asked right after a job is given up by a held worker) with real processes, and fails before any fix",
-        "The record says what a viewer would have seen in production: a retry or failover answered \"cannot be played\" for cores that were free, and for how long",
-        "Verdict is product, test or cause unknown (D-042); not reproducing is never a verdict of test",
-        "If product: the cores a given-up, stopped or failed-over job held are free for admission by the time its viewer can ask again, shown on every give-up path; the fix returns as a brief first if it changes what a lease guarantees",
-        "If test: the test waits for what it claims and still fails on a wrong product",
-        "No retry, skip or raised timeout; no product code changed to fit a test",
-        "JS-161's admission keeps this check passing"
-      ],
-      "source": "JS-167 CI-shaped run (lease_keeper_integration_test.go:313); D-050",
-      "notes": "Builds beside JS-161 and never holds it, nor JS-041 or JS-157 (D-050).",
-      "status": "todo",
-      "passes": false,
-      "priority": 21,
-      "core": null
-    },
-    {
       "id": "JS-159",
       "phase": "P3",
       "title": "A segment cut short because its input ended early is never stored, however the worker's upload check and ffmpeg's exit are ordered",
       "description": "Read from two merge-queue runs on 2026-11-20 (JS-155's record, not reproduced): a job whose source read was cut for good failed, yet its request was answered with a segment and no error. As read, the worker's periodic upload check can store the cut-short segment ffmpeg flushes on the way out before the worker sees ffmpeg exit, and only the exit path applies invariant 40. A viewer would get a freeze or jump of up to about 4 s at that place, as would every viewer of that spec until its segments are swept, and no failure is reported. DOMAINS.md invariant 40; PRODUCT.md: seeking and resuming just work; every failure is reported with its reason. D-043.",
       "acceptanceCriteria": [
+        "On main as it stands after JS-168 and JS-173, under CI's shape (ffmpeg 6.1, 2 CPUs, a fresh database each run), recovery_integration_test.go's two cut-read cases (the request that waited, and the cause that persists) are each run 20 times and the count of failures recorded. For the waiting-request case the record says what the 24 bytes are and which path answered them, and whether its cause is this task's (a cut-short segment stored before the exit is seen) or another.",
         "A check with real ffmpeg, under CI's shape (ffmpeg 6.1, 2 CPUs), forces the order: ffmpeg has put its cut-short last segment in place and is held before it exits, and the worker's upload check runs. It fails before the fix. If it cannot be made to fail, nothing is built: the sighting's verdict returns to cause unknown and the product owner is told",
         "After the fix, in that order and in the opposite one, no segment shorter than its place is stored: at segment 0 and at a later segment, for a re-encode and for a copied stream, for a source read that fails for good and for a file that ends early",
         "The film's true last segment (the playlist's last, within 1.5 s of its length) is still stored, and whole segments made before the cut are still stored and served",
@@ -1408,14 +1362,16 @@
         "No start of play or seek on a healthy film is slower: time to first segment is measured before and after",
         "No product code changed to fit the check; no retry, skip or raised timeout",
         "DOMAINS.md invariant 40 says the guarantee holds on every path that stores a segment; docs/status.md is updated if it speaks of it",
-        "No other viewer-visible change"
+        "No other viewer-visible change",
+        "If the waiting-request case has another cause, nothing is built for it here: it returns to the product owner as a brief with what a viewer would see (a broken segment, a stated failure, or a retry), and JS-159 finishes without it.",
+        "After the fix both cases pass 20 of 20 under CI's shape, with no check amended, retried, skipped or given a longer wait; the waiting request gets the segment from a fresh job, and the persisting cause gets the failure that names its reason after at most three fresh jobs."
       ],
-      "priority": 25,
+      "priority": 16,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
       "source": "JS-155 record (merge-queue runs of #225 and #230); D-042; D-043",
-      "notes": "core: true. Check runs must not run while JS-154 is measuring on the same machine. Segments already stored short stay until the sweep unless the dogfood count shows any."
+      "notes": "core: true. Check runs must not run while JS-154 is measuring on the same machine. Segments already stored short stay until the sweep unless the dogfood count shows any. Moved from 25 to 16 and amended by D-057; builds beside JS-161. Core: true; it and JS-158 may run together, but neither runs its checks on a machine where JS-174 is measuring."
     },
     {
       "id": "JS-160",
@@ -1431,7 +1387,7 @@
         "docs/testing.md's JS-155 table names this task against the three sightings",
         "No viewer-visible change"
       ],
-      "priority": 27,
+      "priority": 24,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1453,7 +1409,7 @@
         "docs/running.md's metric table and docs/transcoding.md describe both gauges with an example alert and an example scaling query; BL-005's missing reason is readable here. Amended by D-048: the example scaling query is on the room gauge, the example alert on the demand gauge; docs/running.md no longer calls `jellyscale_transcode_queue_cores` the signal to scale on, and says why.",
         "No viewer-visible change"
       ],
-      "priority": 23,
+      "priority": 35,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1478,7 +1434,7 @@
         "On the S3 bucket, measured between the nodes before the plays: the time from a worker finishing a segment to `stream` on another node serving it, for 100 segments; recorded. No shared store has been measured between machines (JS-162 used one machine's directory). (D-049)",
         "Each worker's measured capacity (JS-161) and the speed of each job are recorded; a job slower than its worker's measured speed by more than a fifth is reported with what ran beside it (JS-162 left a 0.6x and a 0.76x run unexplained). (D-049)"
       ],
-      "priority": 22,
+      "priority": 23,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1504,7 +1460,7 @@
         "docs/running.md gives the worker's termination grace and what it bounds",
         "No start of play or seek is slower: time to first segment measured before and after"
       ],
-      "priority": 38,
+      "priority": 45,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1526,7 +1482,7 @@
         "Run on the dogfood for 14 days once the owner approves each homelab change; recorded, counts only: scale events by reason, refusals for lack of cores, stalls. Amended by D-048: also records the time the room was below target, and scale-ups by trigger (room, falling behind, refusal).",
         "docs/running.md documents it; docs/transcoding.md no longer says an autoscaler is not built; docs/status.md is updated"
       ],
-      "priority": 41,
+      "priority": 47,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1536,31 +1492,6 @@
       ],
       "source": "project plan; owner direction 2026-11-21; D-045; D-048",
       "notes": "JS-020 (2026-11-08): a stock Postgres (max_connections 100) is exhausted at about 90 workers; connections are the first wall when autoscaling. ux: true."
-    },
-    {
-      "id": "JS-168",
-      "phase": "P3",
-      "title": "A film one worker cannot keep at real time is shared with every worker that has room, with no room held back for a viewer who has not asked",
-      "description": "JS-162: with two equal workers no helper ever starts; the server refused one 302 to 304 times per play, every time for the room it keeps for a new viewer, with one viewer and nothing queued, and the film stalled exactly as on one worker. With that rule lifted (measurement build) two workers held 1.00x until the seek and three held it throughout; a small worker's job was carried by a large worker's helper. The room for the next viewer is the operator's and the autoscaler's to keep (docs/transcoding.md's sizing advice, JS-164, JS-057), not a rule that idles a worker beside a stalling film. Takes BL-242. D-046.",
-      "acceptanceCriteria": [
-        "Observed first with real processes and recorded: two equal workers and one viewer of a re-encode each makes under 0.9 times real time: the helpers refused, by rule. The check that follows fails today.",
-        "A helper is queued and claimed whenever a worker has the cores for it; the room kept for a viewer who has not asked is gone at the insert and at the claim. A helper still never takes a worker over its cores, and workers deciding together still never take the same last cores (two real workers, contended).",
-        "Two equal workers each making the job under 0.9 times real time, in jellyfin-web, with and without a burned-in PGS track: 10 minutes from the start, a seek to the middle, 10 minutes more. In each part: speed at or above 1.0 after its first 30 seconds, no more than 3 freezes of 0.5 seconds or more per 10 minutes, none over 2 seconds (JS-162 measured 1.00x and 3 freezes before the seek with the rule lifted; after the seek is this task's to show, with JS-167). Run three times; every run within the bound. If two workers cannot hold it after the seek, the figures come back as a brief and nothing is weakened. These long runs are a recorded measurement on the build, not a locked check; the locked check is the short form: with two throttled workers and a fixture film, a helper starts within 10 seconds of the job being judged slow, and again within 10 seconds of a seek.",
-        "One 2-CPU and one 6-CPU worker with the viewer's job on the 2-CPU one: the same bound, throughout.",
-        "Observed and recorded, not yet changed: a second viewer arrives while helpers hold every worker. Measured in jellyfin-web, three times each for a second play of the same cost and a 1080p SDR one: the second viewer's time to first frame against the same play on an idle cluster, and the first viewer's speed and freezes for 5 minutes after. The figures come to the product owner as a brief before JS-161's Spec: D-046 states who gives way as a default (JS-161 criterion 11), and these figures confirm it or change it.",
-        "With transcodeHelpers off nothing changes. With one worker nothing changes: no helper is queued or claimed, whatever cores the worker has free, and every check that passed on 30af59c passes unamended, but for the 16-core subcase of the helper capacity check, which gains a second worker (D-053), and the setup of the cross-version subtest 'an idle worker of another version does not count as a slot for a viewer', whose helper now runs on a second worker of the version, with its assertions kept and one added: the helper is stopped when the third viewer asks, not by the half-timeout rescue (D-054). A helper is never claimed by a worker that is at that moment running a viewer's, a seek's or a failover's job of its spec. A worker running only helpers of that spec may still take another when it has the cores, after the one-second wait, as before (a dead helper's replacement). Checked with real processes: one worker with cores for three jobs and two viewers of one spec has one job; two workers, the viewers' job on one, has its helper on the other in 10 of 10 (D-052).",
-        "No start of play and no seek is slower for a lone viewer: time to first segment measured before and after.",
-        "docs/transcoding.md, docs/status.md and DOMAINS.md invariant 58 are updated; docs/running.md keeps the advice to run with the dearest film's cores to spare and says the server no longer holds that room itself; listed under Changed guarantees citing D-046."
-      ],
-      "priority": 16,
-      "status": "todo",
-      "passes": false,
-      "dependsOn": [
-        "JS-167"
-      ],
-      "source": "D-046; BL-242",
-      "notes": "ux: true. Takes BL-242.",
-      "core": true
     },
     {
       "id": "JS-169",
@@ -1579,7 +1510,7 @@
         "Recorded in docs/transcoding.md with machine and command, no film title, path or host name; the figures come to the product owner as a brief, every option priced, keeping today's picture among them.",
         "No viewer-visible change, and nothing in the media namespace touched."
       ],
-      "priority": 24,
+      "priority": 36,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1603,7 +1534,7 @@
         "On the dogfood, each homelab change approved by the owner first (the GPU through the device plugin, no privileged container): a 4K HDR re-encode with and without a burned-in image subtitle plays 10 minutes with a seek at speed 1.0 or above after the first 30 seconds; as many at once on one GPU as JS-169 measured to hold 1.2 times real time each do so; recorded with ids and counts only.",
         "docs/running.md (an optional GPU worker pool and its request), docs/transcoding.md and docs/status.md are updated; DOMAINS.md invariants 23 and 53 are amended citing D-047 where the tone map's filter or the family rule changes."
       ],
-      "priority": 31,
+      "priority": 38,
       "status": "todo",
       "passes": false,
       "dependsOn": [

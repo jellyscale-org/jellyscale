@@ -1578,8 +1578,8 @@
       "reviewer": "lead",
       "severity": "minor",
       "title": "The integration 'rest' shard takes 36-40 minutes; split it as internal/transcode is split",
-      "status": "open",
-      "notes": "Queue time: waits for the merge-queue settings to be restored to 3/60"
+      "status": "promoted",
+      "notes": "Queue time: waits for the merge-queue settings to be restored to 3/60 Promoted into JS-175 criterion 5 (D-058): a shard process has now hit the timeout."
     },
     {
       "id": "BL-176",
@@ -2237,6 +2237,24 @@
       "source": "JS-173; D-055",
       "title": "A worker that has lost its liveness lock is still counted as alive and as room, by everything but the refusal for cores, for up to 10 s after the loss or after it ends a job",
       "notes": "A viewer's picked audio or burnt-in subtitle can be admitted, a helper left unpreempted, or a job left for that worker, and the viewer waits the queue timeout (6 s) or the rescue when the worker never relocks. Unmeasured; none seen. The cure is counting a worker only with its lock held, as the refusal does. Promote when the dogfood's logs show a worker relocking for longer than `counted`, or a queue timeout or a late start within `counted` of a worker losing its lock; or when JS-161 or JS-164 make one of these readers decide an admission or a gauge."
+    },
+    {
+      "id": "BL-250",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "qa",
+      "source": "JS-172; D-059",
+      "title": "test/integration.sh given a package path runs the whole tier unless -run is given",
+      "notes": "Nobody who watches or operates notices. It costs whoever runs it about 40 minutes and can make a run look like it covered only one package. Promote when .results/tasks.jsonl shows it cost a run (a QA or build phase that ran the whole tier by mistake) twice, or fix it when test/integration.sh is next changed for another reason. The fix, when made, is that a path it cannot honour is refused at once, as test/e2e/run.sh refuses a missing web-dist."
+    },
+    {
+      "id": "BL-251",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "lead",
+      "source": "JS-172 (escape recorded); D-059",
+      "title": "The ceiling on stored unknown sign-in names is checked by a set-up excess, not by a forced race between writers",
+      "notes": "The check fails on a build that forgets 2 names per sign-in and passes 3 of 3 on the build; the 10-flood observation under CI's shape is the evidence for concurrent writers (docs/testing.md, JS-172). An operator would notice only if the signin tables grew past the bound in docs/access.md. Promote when any deployment or queue run shows a row count over the bound plus the sign-ins in flight, or when the code that caps the count is next changed, which then needs a check under real contention before it merges (CLAUDE.md: concurrency claims need real processes or real contention)."
     }
   ]
 }
