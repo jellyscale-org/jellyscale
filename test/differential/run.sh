@@ -96,7 +96,7 @@ sleep 2
 
 cat >"$work/config.json" <<E2
 {"name": "differential", "adminUser": "admin", "scanInterval": "1h",
- "transcodeStore": "file://$work/segments", "transcodeScratch": "$work/scratch", "libraries": [
+ "transcodeStore": "file://$work/segments", "transcodeScratch": "$work/scratch", "transcodeCores": 4, "libraries": [
   {"name": "Movies", "kind": "movies", "media": "file://$media/movies", "assets": "file://$work/assets/movies"},
   {"name": "Shows", "kind": "tvshows", "media": "file://$media/shows", "assets": "file://$work/assets/shows"},
   {"name": "HDR", "kind": "movies", "media": "file://$media/hdr", "assets": "file://$work/assets/hdr"},

@@ -17,7 +17,9 @@ package mediatool_test
 import (
 	"context"
 	"errors"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -240,5 +242,36 @@ func TestStallEndsAToolThatDoesNothingAndSparesOneThatProgresses(t *testing.T) {
 	}()
 	if _, err := mediatool.Run(context.Background(), "sleep", []string{"1"}, mediatool.Options{Stall: 300 * time.Millisecond, Progress: n.Load}); err != nil {
 		t.Fatalf("a tool whose progress is reported: %v", err)
+	}
+}
+
+// JS-161: a transcode is started through Command and must keep its parent's priority, so that the priority an
+// extraction takes (internal/subtitles) is not made the transcode's too, which would starve it beside any other
+// process on the worker. Mutant: lower the priority of every tool in Command.
+func TestACommandKeepsItsParentsPriority(t *testing.T) {
+	stat := func(pid string) string {
+		raw, err := os.ReadFile("/proc/" + pid + "/stat")
+		if err != nil {
+			t.Fatal(err)
+		}
+		fields := strings.Fields(string(raw[strings.LastIndex(string(raw), ")")+2:]))
+		return fields[16] // The nice value: field 19 of the line, 17th after the name.
+	}
+	out := filepath.Join(t.TempDir(), "nice")
+	t.Setenv("PRIORITY_OUT", out)
+	testenv.Shims(t, map[string]string{"ffmpeg": `awk '{print $19}' /proc/$$/stat > "$PRIORITY_OUT"`})
+	cmd := mediatool.Command(context.Background(), "ffmpeg", "-i", "in")
+	if err := mediatool.Start(cmd); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Wait(); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := strings.TrimSpace(string(raw)), stat("self"); got != want {
+		t.Errorf("the tool runs at nice %s, its parent at %s", got, want)
 	}
 }

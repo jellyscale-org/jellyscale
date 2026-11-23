@@ -24,7 +24,7 @@ var jellyfin = strings.Fields(`ContainerNotSupported VideoCodecNotSupported Audi
 
 var own = strings.Fields(`KeyframeIndexUnusable BitrateUnknownUnderCap VideoRangeNotCopyable VideoRangeUnknown
 	NoWorkerRunning NoWorkerWithFreeCores TranscodeStoreMismatch RememberedFailure WorkersAtCopyBound NoWorkerOfThisOutputVersion
-	NoTranscodeStore NoProbedDuration`)
+	NoTranscodeStore NoProbedDuration CoresHeldByWatchedFilm`)
 
 func TestJellyfinsNamesAreInItsEnumAndJellyscalesOwnAreNot(t *testing.T) {
 	raw, err := os.ReadFile("../../compat/schema-12.4.json")

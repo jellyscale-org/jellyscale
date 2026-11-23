@@ -45,6 +45,9 @@ type Options struct {
 	// through a connection, which the kernel does not count as a read.
 	Stall    time.Duration
 	Progress func() int64
+	// Background runs the tool at the lowest priority (nice 19), so that it takes only the cores the jobs beside it
+	// leave: a worker's extraction holds no cores in any ledger. A transcode is never started this way.
+	Background bool
 }
 
 // ErrStalled is the cause of a run ended because the tool made no progress for
@@ -133,6 +136,9 @@ func Start(cmd *exec.Cmd) error {
 func Run(ctx context.Context, tool string, args []string, o Options) (Result, error) {
 	ctx, cancel := context.WithCancelCause(ctx)
 	defer cancel(nil)
+	if _, err := exec.LookPath("nice"); o.Background && err == nil {
+		tool, args = "nice", append([]string{"-n", "19", tool}, args...)
+	}
 	cmd := Command(ctx, tool, args...)
 	cmd.Dir, cmd.Stdin, cmd.WaitDelay = o.Dir, o.Stdin, o.WaitDelay
 	var out, errOut, all bytes.Buffer

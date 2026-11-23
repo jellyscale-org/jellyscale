@@ -53,14 +53,40 @@ func live(j string) string {
 		OR ` + j + `.state = 'running' AND ` + j + `.lease_expires_at > now())`
 }
 
+// askForHelp is startHelper for a job that runs under HelpBelow: it says why none was asked for or none could be, in a
+// word of unhelped_jobs_total's, or "" where a helper was queued or the job has nothing a helper could make (BL-005).
+func (w *Worker) askForHelp(ctx context.Context, job claimed, chunked bool, next int, layout playback.Layout) (string, error) {
+	switch {
+	case w.NoHelpers:
+		return "helpers_off", nil
+	case !chunked:
+		return "not_chunked", nil
+	}
+	noRoom, err := w.startHelper(ctx, job, next, layout)
+	if err != nil || !noRoom {
+		return "", err
+	}
+	var others int
+	err = w.Pool.QueryRow(ctx, `SELECT count(*) FROM transcode_nodes WHERE output_version = $1 AND id <> $2 AND (slots > 0 OR cores > 0)
+		AND seen_at > now() - make_interval(secs => $3)`, playback.OutputVersion, w.ID, liveTiming("counted").Seconds()).Scan(&others)
+	if err != nil {
+		return "", err
+	}
+	if others == 0 {
+		return "lone_worker", nil
+	}
+	return "no_room", nil
+}
+
 // startHelper starts a helper job for the first chunk ahead of the job that is
 // not made, claimed or about to be, and within the lead. next is the job's
 // next segment. It starts none unless a worker has the helper's cost free; no
-// room is kept for a viewer who has not asked (D-046).
-func (w *Worker) startHelper(ctx context.Context, job claimed, next int, layout playback.Layout) error {
+// room is kept for a viewer who has not asked (D-046). noRoom says a chunk wanted a helper and no worker had room
+// for it.
+func (w *Worker) startHelper(ctx context.Context, job claimed, next int, layout playback.Layout) (noRoom bool, err error) {
 	at, served, _, err := w.furthest(ctx, job, next)
 	if err != nil || !served {
-		return err
+		return false, err
 	}
 	limit := min(limitFor(layout, at, w.lead()), layout.Count())
 	size := w.chunkSize()
@@ -70,13 +96,13 @@ func (w *Worker) startHelper(ctx context.Context, job claimed, next int, layout 
 			continue
 		}
 		if start >= limit {
-			return nil
+			return false, nil
 		}
-		if done, err := w.insertHelper(ctx, job, chunk, start); done || err != nil {
-			return err
+		if done, noRoom, err := w.tryHelper(ctx, job, chunk, start); done || err != nil {
+			return noRoom, err
 		}
 	}
-	return nil
+	return false, nil
 }
 
 // firstMissing is the first segment of [from, to) that is not stored. A chunk
@@ -100,9 +126,15 @@ func (w *Worker) firstMissing(ctx context.Context, hash string, from, to int) (i
 // Under the lock that serializes every decision to take cores for a helper, as
 // ensure's serializes a spec's jobs.
 func (w *Worker) insertHelper(ctx context.Context, job claimed, chunk, start int) (done bool, err error) {
+	done, _, err = w.tryHelper(ctx, job, chunk, start)
+	return done, err
+}
+
+// tryHelper is insertHelper that also says whether the helper was not queued for want of room.
+func (w *Worker) tryHelper(ctx context.Context, job claimed, chunk, start int) (done, noRoom bool, err error) {
 	raw, err := json.Marshal(job.Spec)
 	if err != nil {
-		return true, err
+		return true, false, err
 	}
 	size := w.chunkSize()
 	err = pgx.BeginFunc(ctx, w.Pool, func(tx pgx.Tx) error {
@@ -131,16 +163,17 @@ func (w *Worker) insertHelper(ctx context.Context, job claimed, chunk, start int
 		}
 		fits, err := roomForHelper(ctx, tx, orDefault(w.QueueTimeout, queueTimeout), job.Hash, job.Spec.Cost())
 		if err != nil || !fits {
+			noRoom = err == nil
 			return err
 		}
 		_, err = tx.Exec(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, helper, output_version, cost)
 			VALUES ($1, $2, 'helper', $3, $3, true, $4, $5)`, job.Hash, raw, start, playback.OutputVersion, job.Spec.Cost())
 		return err
 	})
-	if err == nil && done {
+	if err == nil && done && !noRoom {
 		Notify(ctx, w.Pool, jobHint)
 	}
-	return done, err
+	return done, noRoom, err
 }
 
 // chunkFree says whether the job may go on into the chunk that begins at
@@ -187,6 +220,7 @@ func roomForHelper(ctx context.Context, tx pgx.Tx, queue time.Duration, spec str
 			l.place(j)
 		}
 	}
-	_, placed := l.placeOff(capJob{Cost: cost}, barred)
+	// A play that runs on more than one worker needs only the share of the helper's cost free on its partner.
+	_, placed := l.placeOff(capJob{Cost: cost, Helper: true, Share: sharedSpec(nodes, jobs, spec, cost)}, barred)
 	return placed, nil
 }

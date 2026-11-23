@@ -467,12 +467,35 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 			w.LivenessConfig, w.KeeperConfig = cfg.liveness.Copy(), cfg.liveness.Copy()
 		}
 	}
+	// A worker measures its speed against the reference machine before it registers, so that its row carries the
+	// capacity it measured from its first write (JS-161); until then it is in no row and claims nothing. A worker that
+	// declares its cores measures too, and says so, but its row carries what it declared.
+	measured := make(chan struct{})
+	if worker {
+		running.Add(1)
+		go func() {
+			defer running.Done()
+			defer close(measured)
+			w.MeasureSpeed(ctx)
+		}()
+	}
+	afterMeasuring := func() bool {
+		select {
+		case <-measured:
+			return true
+		case <-ctx.Done():
+			return false
+		}
+	}
 	// A worker proves it is alive with a lock of its own, so that a replica
 	// notices its death in a second; the others need no more than the row.
 	running.Add(1)
 	go func() {
 		defer running.Done()
 		if worker {
+			if !afterMeasuring() {
+				return
+			}
 			w.Present(ctx, strings.Join(roles, ","), cfg.TranscodeStore, transcode.LivenessHeartbeat())
 		} else {
 			transcode.Register(ctx, pool, log, id, strings.Join(roles, ","), cfg.TranscodeStore, 0, transcode.LivenessHeartbeat())
@@ -483,12 +506,16 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 		running.Add(1)
 		go func() {
 			defer running.Done()
-			w.RunSubtitles(ctx)
+			if afterMeasuring() {
+				w.RunSubtitles(ctx)
+			}
 		}()
 		running.Add(1)
 		go func() {
 			defer running.Done()
-			w.RunChapterImages(ctx)
+			if afterMeasuring() {
+				w.RunChapterImages(ctx)
+			}
 		}()
 	}
 	if segments == nil {
@@ -503,7 +530,9 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 	running.Add(1)
 	go func() {
 		defer running.Done()
-		w.Run(ctx)
+		if afterMeasuring() {
+			w.Run(ctx)
+		}
 	}()
 	finish()
 	return result, nil
