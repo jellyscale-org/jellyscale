@@ -428,7 +428,10 @@ func (w *Worker) run(ctx context.Context, job claimed) {
 	// A fresh context: ctx may be why we stopped.
 	finish, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()
-	if _, err := w.Pool.Exec(finish, `UPDATE transcode_jobs SET state = $2, error = NULLIF($3, ''), ended_at = now(), again = $5
+	// The end of a job is a sign of life: a worker that was stopped past the lease and ends its job is seen in the
+	// same statement, so no viewer's question finds the job's row ended and its worker not counted.
+	if _, err := w.Pool.Exec(finish, `WITH seen AS (UPDATE transcode_nodes SET seen_at = now() WHERE $4 = id)
+		UPDATE transcode_jobs SET state = $2, error = NULLIF($3, ''), ended_at = now(), again = $5
 		WHERE id = $1 AND state = 'running' AND worker = $4`, job.ID, state, reason, w.ID, again); err != nil {
 		log.Error("recording the end of a transcode job failed", "error", err)
 	}
