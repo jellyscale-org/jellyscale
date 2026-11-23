@@ -18,3 +18,5 @@ Read PRODUCT.md and DOMAINS.md first, and the code you'll touch. Keep to the tas
 - Before you finish, remove every directory you made for the work (tree exports, workdirs, copied fixtures). /tmp is RAM with a per-user quota, and leftovers of about 1 GB each have filled it and failed later test runs. Put large workdirs under `~/.cache/jellyscale/agents/` rather than /tmp.
 
 Report what changed, what you ran with its real results, and anything you couldn't finish. Report failures plainly.
+
+Never call the advisor tool, even if you have one: only the lead consults it (owner, 2026-11-22).

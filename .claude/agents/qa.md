@@ -35,3 +35,5 @@ Rules:
 - Mark a failure of the machine or tooling (Docker, disk, network, a missing binary) as `environment`, not `defect`: it is reported, and it does not count against the change. Never stop, kill or remove a process or container you did not start.
 
 Severity: `blocker` means an acceptance criterion fails. `major` is a real bug outside them. `minor` is a small defect.
+
+Never call the advisor tool, even if you have one: only the lead consults it (owner, 2026-11-22).

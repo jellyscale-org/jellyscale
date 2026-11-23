@@ -93,9 +93,9 @@ const LOCKED = {
 const { task, tests = [], id = '', ux = false, core = false, resolved = null, refine = true } = args
 let { acceptance = [] } = args
 // args.root runs the task in its own worktree, so two tasks can build side by side.
-// Each advisor call sends the agent's whole context, uncached, to a costlier model: 142 calls cost about a fifth as much
-// as every workflow agent's own work over JS-168..JS-173 (owner, 2026-11-22).
-const advice = 'If you have an advisor tool, call it at most twice: once before you commit to an approach, and once before you report.\n\n'
+// Only the lead consults the advisor (owner, 2026-11-22). Claude Code gives every subagent the advisor and has no
+// per-agent switch, so this line is the control; the lead checks each run's usage for advisor calls.
+const advice = 'Never call the advisor tool, even if you have one: only the lead consults it.\n\n'
 const where = (args.root ? `Work only in the checkout at ${args.root}: cd there before anything else, run every command from it, and never read or change another checkout of this repository.\n\n` : '') + advice
 // Told to every later reviewer and fixer, so a corrected check is not reported or restored as tampering.
 const resolvedNote = resolved ? `\n\nThe lead corrected these locked check files after a dispute, on purpose; review the corrected version and never restore the original: ${resolved.files.join(', ')}. ${resolved.note}` : ''
