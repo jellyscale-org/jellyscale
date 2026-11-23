@@ -956,6 +956,80 @@ await scenario("from the details page a German viewer plays a film whose default
   });
 });
 
+// JS-041: the details page starts the film on the subtitle the viewer's mode and language choose. Trio Film's text subtitles
+// are 2 fra (the first), 3 deu (flagged default) and 4 eng (test/fixtures/trio.sh), each with one cue, "Trio track N", from 1 to
+// 5 seconds, and its audio is one English track that plays as it is. jellyfin-web fills its Subtitles menu from the item,
+// selects the item's DefaultSubtitleStreamIndex (Off is -1) and sends the menu's value as SubtitleStreamIndex when Play is
+// pressed (compat/captures/subtitles-default-12.4.md), so the viewer's mode must already be in the item. Nothing before these
+// scenarios plays Trio Film, so its text tracks are read for the first time here.
+async function withSubtitleMode(page, settings, run) {
+  const userId = await page.evaluate(() => window.ApiClient.getCurrentUserId());
+  const post = (body) => apiCall(page, "POST", `/Users/${userId}/Configuration`, JSON.stringify(body));
+  const saved = await post(settings);
+  if (saved.status !== 204) throw new Error(`saving the settings: ${saved.status} ${saved.text}`);
+  try {
+    await run();
+  } finally {
+    await post({});
+  }
+}
+
+async function openTrio(page) {
+  await page.goto("about:blank"); // A full load: the item is asked for again, as a viewer coming back to the page does.
+  await page.goto(`${base}/web/`);
+  await page.waitForSelector(".card", { timeout: 30000 });
+  await page.locator(".card:visible", { hasText: "Languages" }).first().click();
+  await page.locator(".cardText a:visible", { hasText: "Trio Film" }).first().click();
+  await page.waitForSelector(".btnPlay:visible", { timeout: 30000 });
+  await page.waitForSelector(".selectSubtitles", { state: "attached", timeout: 30000 });
+  await page.waitForTimeout(500);
+  return page.evaluate(() => {
+    const select = document.querySelector(".selectSubtitles");
+    return { options: [...select.options].map((o) => ({ value: o.value, label: o.textContent })), selected: select.value };
+  });
+}
+
+await scenario("a viewer with mode Always and English opens Trio Film's details page, sees the English track selected in the Subtitles menu, and Play shows its cue", async ({ page, seen }) => {
+  await withSubtitleMode(page, { SubtitleMode: "Always", SubtitleLanguagePreference: "eng" }, async () => {
+    const menu = await openTrio(page);
+    // jellyfin-web puts the track flagged default first, as it does in the Audio menu; the order is its own, so the entries are compared sorted.
+    const values = menu.options.map((o) => Number(o.value)).sort((a, b) => a - b).join();
+    if (values !== "-1,2,3,4") throw new Error(`the Subtitles menu lists ${values}, want Off and the film's three tracks -1,2,3,4`);
+    if (menu.selected !== "4") throw new Error(`the Subtitles menu has ${menu.selected} selected (${JSON.stringify(menu.options)}), want the English track 4, not the first (2) or the flagged one (3)`);
+    await page.locator(".btnPlay:visible").first().click();
+    await waitFor("video to start", async () => (await time(page)) > 0.5, 60000);
+    const info = seen.infos[0];
+    if (String(info.request.SubtitleStreamIndex) !== "4") throw new Error(`Play asked for SubtitleStreamIndex ${info.request.SubtitleStreamIndex}, want 4`);
+    if (info.source.DefaultSubtitleStreamIndex !== 4) throw new Error(`the reply's DefaultSubtitleStreamIndex is ${info.source.DefaultSubtitleStreamIndex}, want 4`);
+    await seek(page, 2);
+    await waitFor("the English track's cue", async () => (await activeText(page)) === "Trio track 4");
+    noErrors(seen);
+    await leave(page);
+  });
+});
+
+await scenario("a viewer with mode None opens Trio Film's details page, sees Off selected in the Subtitles menu, and Play shows no cue", async ({ page, seen }) => {
+  await withSubtitleMode(page, { SubtitleMode: "None", SubtitleLanguagePreference: "eng" }, async () => {
+    const menu = await openTrio(page);
+    if (menu.selected !== "-1") throw new Error(`the Subtitles menu has ${menu.selected} selected (${JSON.stringify(menu.options)}), want Off (-1)`);
+    await page.locator(".btnPlay:visible").first().click();
+    await waitFor("video to start", async () => (await time(page)) > 0.5, 60000);
+    const info = seen.infos[0];
+    if (String(info.request.SubtitleStreamIndex) !== "-1") throw new Error(`Play asked for SubtitleStreamIndex ${info.request.SubtitleStreamIndex}, want -1`);
+    await seek(page, 2);
+    // Every track's cue is on from 1 to 5 seconds: through them, with a second to spare, nothing is shown.
+    const shown = [];
+    for (let i = 0; i < 6; i++) {
+      shown.push(await activeText(page));
+      await page.waitForTimeout(500);
+    }
+    if (shown.some(Boolean)) throw new Error(`a cue is on screen with mode None: ${JSON.stringify(shown)}`);
+    if ((await time(page)) < 3.5) throw new Error("the film did not play on through the cue window");
+    noErrors(seen);
+    await leave(page);
+  });
+});
+
 // JS-147 (D-018): the details page's Audio menu lists every audio track the viewer has not hidden, as Jellyfin 12.4 does
 // (compat/captures/audio-menu-12.4.md, which this reads the entries, their order and their labels from: the menu is
 // jellyfin-web's own, sorted with the default first). Babel Film's menu is 1, 2, 3, 4 with 1 selected for a viewer with no

@@ -99,8 +99,13 @@ const replayedElsewhere = "audio default: "
 // internal/api/cors_integration_test.go replays (JS-144).
 const replayedByTheCorsCheck = "cors: "
 
+// replayedByTheSubtitleDefaultCheck is the start of the names of the cells of compat/captures/subtitles-default-12.4.json
+// where jellyscale answers another DefaultSubtitleStreamIndex than Jellyfin, which internal/api replays (JS-041).
+const replayedByTheSubtitleDefaultCheck = "subtitle default: "
+
 func replayed(name string) bool {
-	return strings.HasPrefix(name, replayedElsewhere) || strings.HasPrefix(name, replayedByTheCorsCheck)
+	return strings.HasPrefix(name, replayedElsewhere) || strings.HasPrefix(name, replayedByTheCorsCheck) ||
+		strings.HasPrefix(name, replayedByTheSubtitleDefaultCheck)
 }
 
 // CheckRequests fails if an entry names a request that reqs does not have.

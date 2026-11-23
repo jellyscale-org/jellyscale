@@ -231,6 +231,8 @@ bash "$repo/test/fixtures/babel.sh" "$work/media" || exit 1
 # Kino Film (German first) and Mono Film (English only), for the scenarios of a viewer whose audio language is German (JS-121).
 bash "$repo/test/fixtures/kino.sh" "$work/media" || exit 1
 bash "$repo/test/fixtures/mono.sh" "$work/media" || exit 1
+# Trio Film (JS-041): the first, the flagged-default and the English subtitle are three tracks, for the scenarios of the default subtitle.
+bash "$repo/test/fixtures/trio.sh" "$work/media" || exit 1
 
 s3="endpoint=http://127.0.0.1:$seaweed_port&region=us-east-1"
 # config.json, which posix.sh wrote, keeps segments in a directory; this one puts

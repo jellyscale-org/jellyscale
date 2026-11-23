@@ -292,6 +292,8 @@ func (s *Server) hideUndeliverable(ctx context.Context, itemID string, dto map[s
 	}
 	// One read of transcode_nodes serves every source, and is made only where something asks.
 	readWorkers := s.workersOnce(ctx)
+	deliverables := make([]func(int) bool, len(sources))
+	reads := make([]sourceReader, len(sources))
 	for i := range sources {
 		source := &sources[i]
 		read := readOnce(func() (items.Source, bool, error) { return s.Items.Source(ctx, itemID, source.ID) })
@@ -305,9 +307,7 @@ func (s *Server) hideUndeliverable(ctx context.Context, itemID string, dto map[s
 		if err := s.listFonts(ctx, itemID, source, false, read); err != nil {
 			return err
 		}
-		source.MediaStreams = slices.DeleteFunc(slices.Clone(source.MediaStreams), func(stream media.MediaStream) bool {
-			return stream.Type == "Subtitle" && !deliverable(stream.Index)
-		})
+		deliverables[i], reads[i] = deliverable, read
 	}
 	// The original language is made here, from the streams the item lists, so that a
 	// film scanned earlier has it with no rescan. Each source is marked by its own
@@ -340,6 +340,20 @@ func (s *Server) hideUndeliverable(ctx context.Context, itemID string, dto map[s
 			sources[i].DefaultAudioStreamIndex = media.Ptr(audio)
 			listAudio(&sources[i], audio, original)
 		}
+		// The mode chooses among every track, as PlaybackInfo does, and only then is a track no worker can extract dropped, so a
+		// choice that cannot be delivered is no default here as there, never a lower-ranked track (invariant 32).
+		index, chosen := subtitleChoice(user, sources[i].MediaStreams, languageOfAudio(sources[i], audio))
+		image := chosen && slices.ContainsFunc(sources[i].MediaStreams, func(stream media.MediaStream) bool { return stream.Index == index && stream.IsImage() })
+		sources[i].MediaStreams = slices.DeleteFunc(slices.Clone(sources[i].MediaStreams), func(stream media.MediaStream) bool {
+			return stream.Type == "Subtitle" && !deliverables[i](stream.Index)
+		})
+		if chosen && image {
+			// Only a transcode draws it, as PlaybackInfo's plan decides: with none that can start there is no default.
+			chosen = runtime > 0 && s.burnInCanStart(ctx, itemID, sources[i], reads[i], index, audio, user)
+		}
+		if chosen {
+			nameSubtitle(&sources[i], index)
+		}
 		if i == 0 && original != "" {
 			dto["OriginalLanguage"] = original
 		}
@@ -349,6 +363,15 @@ func (s *Server) hideUndeliverable(ctx context.Context, itemID string, dto map[s
 		dto["MediaStreams"] = sources[0].MediaStreams
 	}
 	return nil
+}
+
+// nameSubtitle gives the source the subtitle the viewer's mode and language chose, where the item lists that track at its own
+// position (jellyfin-web reads the number both ways, so a track that is not there is no default). The details page then
+// selects it and its Play sends it, as PlaybackInfo does with no track named.
+func nameSubtitle(source *media.MediaSource, index int) {
+	if index < len(source.MediaStreams) && source.MediaStreams[index].Type == "Subtitle" && source.MediaStreams[index].Index == index {
+		source.DefaultSubtitleStreamIndex = media.Ptr(index)
+	}
 }
 
 func (s *Server) itemAncestors(w http.ResponseWriter, r *http.Request) {
