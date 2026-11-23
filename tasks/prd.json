@@ -1286,7 +1286,7 @@
       "title": "Measure the first 30 seconds after a start and a seek of a shared re-encode, on a quiet machine, with helpers started late and at once",
       "description": "JS-168's two workers held a shared 4K HDR re-encode at 1.00x, but a freeze over 2 s came in 9 of 18 parts, all within the first 21 s after a first frame, on a machine at load average 5 to 33. Whether that is the machine or the product, and whether asking for helpers at the start and the seek shortens it, is measured here; nothing is weakened meanwhile (D-051).",
       "acceptanceCriteria": [
-        "On a quiet machine: load average under 1 with the harness stopped before each run, and no more than 1 above the harness's own during it. A run outside that is discarded and repeated, and every run's load is recorded. If the developer machine cannot be made quiet, this criterion is taken on the dogfood under JS-166 instead and the record says so",
+        "On a quiet machine: load average under 1 with the harness stopped before each run, and no more than 1 above the harness's own during it. A run outside that is discarded and repeated, and every run's load is recorded. If the developer machine cannot be made quiet, it returns to the product owner as a brief (D-065)",
         "Two 2-CPU workers as in JS-168, in jellyfin-web, without a subtitle and with the PGS track burned in: play 60 seconds, seek to the middle, play 60 seconds; 10 trials of each",
         "For each part: time to first frame, each freeze's start and length, the longest freeze, the player's buffered lead at each freeze, and when the first helper's first segment was stored, counted from the first frame",
         "The same 10 trials with a helper asked for at the job's start and at the seek, not after the job is judged slow. The rule is lifted for the measurement only and nothing is merged",
@@ -1296,7 +1296,7 @@
         "No viewer-visible change"
       ],
       "source": "JS-168 measurement; D-051",
-      "notes": "What each result decides (D-051): as built, no freeze over 2 s in 20 of 20 parts on the quiet machine: the bound is met, the record says so and docs/status.md's gap line closes citing D-051. As built it misses and with helpers at the start it is met in 20 of 20: JS-161 part (b) gains \"A play admitted as shared has its helpers asked for at its start and at each seek, not after it is judged slow; on two throttled workers no freeze over 2 seconds in the first 30 seconds of a start or a seek, 10 of 10 (D-051).\" It misses both ways: back to the product owner as a brief, with holding the first frame priced from a measurement of how far the server can steer jellyfin-web's buffering. Built beside JS-161 and never holds its merge.",
+      "notes": "What each result decides (D-051): as built, no freeze over 2 s in 20 of 20 parts on the quiet machine: the bound is met, the record says so and docs/status.md's gap line closes citing D-051. As built it misses and with helpers at the start it is met in 20 of 20: JS-161 part (b) gains \"A play admitted as shared has its helpers asked for at its start and at each seek, not after it is judged slow; on two throttled workers no freeze over 2 seconds in the first 30 seconds of a start or a seek, 10 of 10 (D-051).\" It misses both ways: back to the product owner as a brief, with holding the first frame priced from a measurement of how far the server can steer jellyfin-web's buffering. Built beside JS-161 and never holds its merge. JS-166's record (tasks/done.json) holds the first-30-seconds figures of its eight seeks at a CPU limit of 8, for this task (D-064, D-065).",
       "status": "todo",
       "passes": false,
       "priority": 18,
@@ -1346,33 +1346,6 @@
       ],
       "source": "owner direction 2026-11-21; JS-021 criterion 5; D-045; D-048",
       "notes": "ux: true (operators). If JS-161 changes what a refusal for cores means, this counts JS-161's."
-    },
-    {
-      "id": "JS-166",
-      "phase": "P3",
-      "title": "On the dogfood, a 4K HDR film that must be re-encoded plays without stalling, on workers running apart on the nodes that can hold it",
-      "description": "D-038 left the dogfood's 4K HDR re-encode stall a gap; JS-154 measured that one 4-core worker cannot hold the job and that helpers cannot exist with one worker. This task closes the gap on the dogfood or says it stays open: workers as their own pods on the nodes JS-163 measured, sharing one S3 bucket as the transcode store (D-049). It deploys and proves; it builds nothing in jellyscale. D-045.",
-      "acceptanceCriteria": [
-        "Starts only when JS-162's and JS-163's figures have gone to the product owner as a brief (every option priced, keeping the film at real time among them) and the owner has decided the shared transcode store; each homelab change is brought to the owner before it is made. If the figures show more workers cannot bring the film to real time, nothing is deployed and the task returns to the product owner",
-        "A worker runs with --roles=worker as its own pod on the 12-thread node; the 4-core node's pod keeps its worker role; no worker runs on the 6-processor node. Each reaches Postgres, every library and the one transcode store, an S3 bucket (transcodeStore: s3://...) in the owner's homelab. The 12-thread node's reserved requests are read first, and the worker's CPU request and limit are recorded with the reason. (D-049)",
-        "From jellyfin-web, a 4K HDR re-encode without a subtitle and one with a burned-in image subtitle each play 10 minutes with a seek: speed at or above 1.0 after the first 30 seconds, no segment request over 5 seconds after the start; recorded with ids and counts only. Amended by D-049: no more than 3 freezes of 0.5 seconds or more per 10 minutes, none over 2 seconds; three plays each; also with a subtitle extraction running beside the job. Freezes in the first 30 seconds after each start and each seek are recorded apart from the rest, with their lengths (D-051).",
-        "A play the cluster cannot hold is refused within seconds with its reason, never a stall, once JS-161 is deployed",
-        "The time from a worker pod's creation to its first claimed job is measured on each node and recorded for JS-057",
-        "A defect found in jellyscale becomes a brief, not a fix here",
-        "docs/running.md gains what running workers apart needed; docs/status.md's known gap is closed or says what is still open; no film title, path or host name anywhere",
-        "On the S3 bucket, measured between the nodes before the plays: the time from a worker finishing a segment to `stream` on another node serving it, for 100 segments; recorded. No shared store has been measured between machines (JS-162 used one machine's directory). (D-049)",
-        "Each worker's declared transcodeCores (from JS-163's figures, brought to the owner as a homelab change) and the speed of each job are recorded; a job slower than real time on a worker whose declared capacity covers it, or slower than expected by more than a fifth, is reported with what ran beside it. (D-049, D-062) Amended by D-064: the declared figures are corrected from this task's own job speeds, and the 12-thread node's worker gets CPU requests equal to limits in whole cores so ffmpeg is not throttled (each a homelab change brought to the owner). Only the parts that missed the bound are played again. A miss in the first 30 seconds after a seek is recorded for JS-174. A burned-in miss that remains returns as a brief. That the cluster holds one 4K play is recorded in docs/status.md, not chased here."
-      ],
-      "priority": 23,
-      "status": "todo",
-      "passes": false,
-      "dependsOn": [
-        "JS-161",
-        "JS-167",
-        "JS-168"
-      ],
-      "source": "owner direction 2026-11-21; D-038; D-044; D-045; D-046; D-049",
-      "notes": "ux: true. The store is an S3 bucket (owner's answer, 2026-11-21: the owner sets up an S3 service in the homelab; the lead chose S3, option 1 of D-049, so workers can run on any node). Each homelab change is still brought to the owner before it is made."
     },
     {
       "id": "JS-165",
@@ -1498,7 +1471,7 @@
       ],
       "core": true,
       "source": "D-064; brief-learned-capacity.md; BL-259",
-      "notes": "Order set by D-064: after JS-041, before JS-127. ux: true. After it merges, the dogfood drops its declared figures (a homelab change for the owner). If one build cannot hold it, it splits into (a) criteria 2 to 4, 6 and 7 and (b) criterion 5, both ahead of JS-056."
+      "notes": "Order set by D-064: after JS-041, before JS-127. ux: true. After it merges, the dogfood drops its declared figures (a homelab change for the owner). If one build cannot hold it, it splits into (a) criteria 2 to 4, 6 and 7 and (b) criterion 5, both ahead of JS-056. D-065: the dogfood's declared 3.2 is known to be conservative (about 3.4 to 3.6 by two runs, unverified). The design review takes JS-166's before and after figures as they are and asks for no new dogfood runs."
     }
   ]
 }

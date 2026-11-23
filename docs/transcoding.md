@@ -254,6 +254,22 @@ Measured 2026-11-21 in temporary pods on the dogfood cluster's two other nodes (
 
 What follows (D-047, D-049): JS-169 measures, in jellyscale's own image, whether a GPU tone map with a set curve reaches the processor's picture; JS-170 is the first hardware slice; JS-166 runs a processor worker on the 12-thread node beside the 4-core node's.
 
+## A 4K HDR re-encode on the dogfood's 12-thread worker (JS-166, D-065)
+
+One cluster's figures, taken 2026-11-23 and not sizing guidance for any other: one worker pod on the 12-thread node (`--roles=worker`, its own pod), with the 4-core node's all-roles worker beside it declaring 3, which a 3.2 job does not fit, so no helper ever ran and every job below ran alone. 600 seconds of play in Chromium through jellyfin-web, with the transcode store on S3 (Garage) in the cluster; each row is the same worker, the CPU limit changed. The job's speed is `transcode_jobs.encode_speed`.
+
+| CPU limit (request), declared | Parts | Job speed | Viewer, after the first 30 s |
+|---|---|---|---|
+| 8 (0.5), 3.5 | 16: 8 starts and 8 seeks to the middle, three films, with and without the PGS track burned in | 0.897 to 1.137, median 0.97; 11 of 16 below 1.0. ffmpeg was throttled in 93% of CPU periods (a reading taken during the runs) | 12 had no more than 3 freezes of 0.5 s or more; 4 had more: three starts (0.992, 0.981, 0.984; 4, 15 and 9 freezes, longest 1.0, 1.25, 1.25 s) and a burned-in seek (0.963; 25, longest 2.0 s) |
+| 12 (6), 3.2 | 2 starts, the same two specs as two of the misses, their stored segments deleted first so each was re-encoded from zero | 1.36 without a subtitle (1.032 at limit 8), 1.285 burned in (0.995 at limit 8); one run each | 1.000, no freeze of 0.5 s or more anywhere in the part (the first 30 s included), no segment request over 5 s |
+
+- **Not measured after the CPU limit went to 12:** the second burned-in start, the seek, three plays of each part, a play beside a subtitle extraction, a second 4K play being refused (BL-261, D-065). A first replay of the four missed parts served the segments the earlier runs had stored, encoded nothing and is not counted.
+- **The request is 6, not the limit's 12.** D-064 asked for requests equal to limits in whole cores. The node's other workloads already request 4.85 of its 12 threads, and a request of 7 or 12 would not schedule, so the worker requests 6 and may use all 12 when its neighbours leave them. The speeds above hold for whatever those neighbours used during the two runs, which was not recorded; the speed when they use their full requests is not known.
+- **Declared 3.2 is conservative.** The two speeds imply the worker holds about 3.4 to 3.6 at the 1.2x admission bound (derived from two runs, never run as a declared figure). It stays at 3.2 until JS-177 drops the declared figures.
+- **A second 4K play** was refused with the limit at 8, with a 4K play running: four PlaybackInfo requests (two films, twice each) came back `RateLimitExceeded` with no media source in 12 to 52 ms, and jellyfin-web showed "This media cannot be played at this time due to rate limits" 790 ms after the click.
+- **Seeks, for JS-174 (D-051).** With the limit at 8 every one of the 8 seeks had a freeze in its first 30 seconds after the first frame, 0.75 to 2.75 s long, three of them (2.75, 2.75 and 2.5 s) over the 2 s bound; of the starts only two burned-in ones had any there (two freezes each, longest 1.75 s). The seek was not played again at limit 12.
+- **Pod creation to the first job claimed** (JS-057): the 12-thread worker 1.7 and 5.5 s in two restarts (creation times are whole seconds, so plus or minus 1 s); the 4-core node's pod 7.7 s in one of three, the other two claiming at 37 and 58 s, which was not looked into.
+
 ## A helper whose viewers have seeked away (JS-167)
 
 JS-162 found that a helper whose viewer seeked away went on alone: `furthest` found no viewer at or before its chunk, returned -1, and `limitFor(layout, -1, lead)` is the film's end, so the helper's limit was lifted to the end of the film and it held a worker for it (5 min 25 s in one run). A helper looked at the viewers only while at its limit, so a helper running short of it never noticed.
