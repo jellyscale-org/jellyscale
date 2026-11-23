@@ -30,6 +30,7 @@ Tests that need ffmpeg, Postgres, S3 or a font live in `*_integration_test.go` f
 - Observe a real Jellyfin 12.4 before implementing a protocol. Don't port Jellyfin code.
 - Match the surrounding code. Comments explain why, not what.
 - Tests must be able to fail. When fixing a bug, show the regression test catches it.
+- Test only application logic: what the product does. Never write a test that reads documentation or rule files (Markdown, `tasks/`, `.claude/`) or checks their wording; a criterion about docs is met by writing them, and reviewers judge it by reading the diff (owner, 2026-11-23).
 - Concurrency claims need a test with real processes or real contention; a single process proves little.
 - Disposable infrastructure uses Docker-assigned ports. Never connect to a service already running on this machine.
 - Wait for a long run with one command: run it in the foreground with a timeout (up to 10 minutes, then run it again), or start it once in the background and wait for its notification. Never start a polling loop (`until …; do sleep …; done`) each turn: every background command stays a running task in the owner's list until it exits, and one QA agent left 45 of them (2026-11-15).
