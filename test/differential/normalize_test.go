@@ -46,7 +46,7 @@ func paths(diffs []Difference) []string {
 }
 
 func TestSameItemUnderDifferentIdsNormalizesEqual(t *testing.T) {
-	jf := parse(t, `{"Id":"1069c0ddbff1bccf43b43c6a8d9c93b9","Name":"Alpha Film (2021)","Type":"Movie","UserData":{"Key":"1069c0dd-bff1-bccf-43b4-3c6a8d9c93b9","ItemId":"1069c0ddbff1bccf43b43c6a8d9c93b9"}}`)
+	jf := parse(t, `{"Id":"1069c0ddbff1bccf43b43c6a8d9c93b9","Name":"Alpha Film (2021)","Type":"Movie","UserData":{"Key":"1069c0dd-bff1-bccf-43b4-3c6a8d9c93b9","ItemId":"1069c0ddbff1bccf43b43c6a8d9c93b9"}}`) // gitleaks:allow
 	js := parse(t, `{"Id":"b3f2a8d0-1111-4222-8333-444455556666","Name":"Alpha Film (2021)","Type":"Movie","UserData":{"Key":"b3f2a8d0-1111-4222-8333-444455556666","ItemId":"b3f2a8d0111142228333444455556666"}}`)
 	a := Normalize(jf, ItemKeys(jf), false)
 	b := Normalize(js, ItemKeys(js), false)

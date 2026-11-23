@@ -275,7 +275,7 @@ func TestAPreflightIsTheSameWithAnyCredentialAnyIdAndAnyServer(t *testing.T) {
 		want := shape(first)
 		credentials := [][]string{
 			nil,
-			{"Authorization", `MediaBrowser Client="c", Device="d", DeviceId="x", Version="1", Token="0123456789abcdef"`},
+			{"Authorization", `MediaBrowser Client="c", Device="d", DeviceId="x", Version="1", Token="0123456789abcdef"`}, // gitleaks:allow
 			{"X-Emby-Token", "no-such-token"}, {"X-MediaBrowser-Token", "no-such-token"}, {"Cookie", "X-Emby-Token=abc; ApiKey=abc"},
 		}
 		for _, credential := range credentials {

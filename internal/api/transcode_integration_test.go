@@ -223,7 +223,7 @@ func TestHLSRoutes(t *testing.T) {
 	}
 
 	// Refusals.
-	if response, _ := e.do(t, 0, "GET", strings.Replace(segmentURL, "ApiKey="+e.token, "ApiKey=wrong", 1), "", nil); response.StatusCode != 401 {
+	if response, _ := e.do(t, 0, "GET", strings.Replace(segmentURL, "ApiKey="+e.token, "ApiKey=wrong", 1), "", nil); response.StatusCode != 401 { // gitleaks:allow
 		t.Errorf("a wrong token got %d", response.StatusCode)
 	}
 	for name, bad := range map[string]string{

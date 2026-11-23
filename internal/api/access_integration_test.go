@@ -497,7 +497,7 @@ func (a *accessSite) matrix(t *testing.T, h accHandler, via accHandler, film acc
 			ask("with no token, path in upper case with a trailing slash, HEAD", "HEAD", upper, "", -1)
 		}
 		if route.Path == "/socket" {
-			handshake := []string{"Connection", "Upgrade", "Upgrade", "websocket", "Sec-WebSocket-Version", "13", "Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ=="}
+			handshake := []string{"Connection", "Upgrade", "Upgrade", "websocket", "Sec-WebSocket-Version", "13", "Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ=="} // gitleaks:allow
 			r := accSend("GET", h.base, path, "", -1, "", handshake...)
 			a.judge(u, route, "as a WebSocket handshake with no token", r, false)
 			if r.status == 101 {

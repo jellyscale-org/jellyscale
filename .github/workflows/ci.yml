@@ -83,6 +83,35 @@ jobs:
           echo "why=$why" >> "$GITHUB_OUTPUT"
           echo "media tiers: $code, plan change: $plan${why:+ ($why)}"
 
+  leaks:
+    # Every change, plan and Markdown included: credentials by gitleaks, and the owner's
+    # private patterns (email, library paths, film titles) from the LEAK_PATTERNS secret.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Credentials
+        run: docker run --rm -v "$PWD:/repo:ro" ghcr.io/gitleaks/gitleaks:v8.28.0 dir /repo --no-banner --redact
+      - name: Private patterns
+        env:
+          LEAK_PATTERNS: ${{ secrets.LEAK_PATTERNS }}
+          EVENT: ${{ github.event_name }}
+          FORK: ${{ github.event.pull_request.head.repo.fork }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          QUEUE_BASE: ${{ github.event.merge_group.base_sha }}
+          QUEUE_HEAD: ${{ github.event.merge_group.head_sha }}
+        run: |
+          case "$EVENT" in
+          pull_request)
+            if [ "$FORK" = "true" ]; then echo "A fork's pull request gets no secrets; the merge queue scans it."; exit 0; fi
+            bash test/leaks.sh "$PR_BASE" "$PR_HEAD" ;;
+          merge_group) bash test/leaks.sh "$QUEUE_BASE" "$QUEUE_HEAD" ;;
+          *) bash test/leaks.sh ;;
+          esac
+
   lint-and-unit:
     # Skipped for a plan change, which reports as passed; run whenever the changes
     # job failed or said nothing, so a broken classifier never skips the tests.
