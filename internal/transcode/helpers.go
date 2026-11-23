@@ -55,7 +55,8 @@ func live(j string) string {
 
 // startHelper starts a helper job for the first chunk ahead of the job that is
 // not made, claimed or about to be, and within the lead. next is the job's
-// next segment. It starts none unless room stays for a new viewer.
+// next segment. It starts none unless a worker has the helper's cost free; no
+// room is kept for a viewer who has not asked (D-046).
 func (w *Worker) startHelper(ctx context.Context, job claimed, next int, layout playback.Layout) error {
 	at, served, _, err := w.furthest(ctx, job, next)
 	if err != nil || !served {
@@ -128,7 +129,7 @@ func (w *Worker) insertHelper(ctx context.Context, job claimed, chunk, start int
 		if !watched {
 			return nil
 		}
-		fits, err := roomForHelper(ctx, tx, orDefault(w.QueueTimeout, queueTimeout), job.Spec.Cost())
+		fits, err := roomForHelper(ctx, tx, orDefault(w.QueueTimeout, queueTimeout), job.Hash, job.Spec.Cost())
 		if err != nil || !fits {
 			return err
 		}
@@ -158,22 +159,34 @@ func (w *Worker) chunkFree(ctx context.Context, job claimed, next int) (bool, er
 	return !taken, fromPool(err)
 }
 
-// roomForHelper says whether a helper of the cost fits on a worker, with the
-// queued jobs counted as placed, and leaves room for a viewer who has not asked
-// yet: a job of the same cost still fits somewhere after it. Under the helpers
+// roomForHelper says whether a helper of the spec and cost fits on a worker that
+// may claim it, with the queued jobs counted as placed. A worker running a job of
+// the spec that is not a helper never claims its helper (D-052), so it is no room
+// for it, nor for the spec's queued helpers. No room is kept for a viewer who has
+// not asked (D-046): the operator and the autoscaler keep it. Under the helpers
 // lock, so that helpers decided at once do not each see the room the others take.
-func roomForHelper(ctx context.Context, tx pgx.Tx, queue time.Duration, cost float64) (bool, error) {
+func roomForHelper(ctx context.Context, tx pgx.Tx, queue time.Duration, spec string, cost float64) (bool, error) {
 	nodes, jobs, err := readCapacity(ctx, tx, capQuery{Filter: "true", Queue: queue})
 	if err != nil {
 		return false, err
 	}
-	all := func(capJob) bool { return true }
-	l := newLedger(nodes, jobs, all)
-	l.placeQueued(jobs, all)
-	helper := capJob{Cost: cost}
-	if _, placed := l.place(helper); !placed {
-		return false, nil
+	barred := map[string]bool{}
+	for _, j := range jobs {
+		if j.Worker != "" && !j.Helper && j.Spec == spec {
+			barred[j.Worker] = true
+		}
 	}
-	_, spare := l.room(helper)
-	return spare, nil
+	l := newLedger(nodes, jobs, func(capJob) bool { return true })
+	for _, j := range jobs {
+		if j.Worker != "" {
+			continue
+		}
+		if j.Helper && j.Spec == spec {
+			l.placeOff(j, barred)
+		} else {
+			l.place(j)
+		}
+	}
+	_, placed := l.placeOff(capJob{Cost: cost}, barred)
+	return placed, nil
 }

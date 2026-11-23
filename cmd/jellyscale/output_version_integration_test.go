@@ -718,16 +718,20 @@ func TestOutputVersionAcrossProcesses(t *testing.T) {
 		c.checkRan()
 	})
 
-	// Slot accounting counts only the version in question. w4 has three slots
-	// and an idle w5 of the other version is beside it: a version 4 viewer's
-	// helper runs on w4, and a second and a third version 4 viewer, each of a
-	// spec of its own, still get a segment, the third by preempting the helper.
-	// Counting w5's idle slots instead leaves no preempt, a job no worker may
-	// take, and a 503 after queueTimeout.
+	// Slot accounting counts only the version in question. Two version 4
+	// workers have three slots between them and an idle w5 of the other version
+	// is beside them: a version 4 viewer's helper runs on the version 4 worker
+	// that does not run its job (D-052), and a second and a third version 4
+	// viewer, each of a spec of its own, still get a segment, the third by
+	// preempting the helper. Counting w5's idle slots instead leaves no preempt,
+	// a job no worker may take, and a 503 after queueTimeout. Two workers rather
+	// than one since D-054: one worker no longer helps its own viewer's job.
 	t.Run("an idle worker of another version does not count as a slot for a viewer: a helper is preempted for the next viewer", func(t *testing.T) {
 		c := newCluster(t, true, "60s")
-		c.slots = 3
-		w4 := c.start(oldVersion, "worker")
+		c.slots = 1
+		w4a := c.start(oldVersion, "worker")
+		c.slots = 2
+		w4b := c.start(oldVersion, "worker")
 		c.slots = 0
 		c.start(newVersion, "worker") // Idle, with its default slots.
 		r4 := c.start(oldVersion, "api,stream")
@@ -735,9 +739,9 @@ func TestOutputVersionAcrossProcesses(t *testing.T) {
 		stop := c.keepPlaying(first)
 		defer stop()
 		var helper row
-		waitUntil(t, "a helper of the first viewer's spec to run on w4", func() bool {
+		waitUntil(t, "a helper of the first viewer's spec to run on a version 4 worker", func() bool {
 			for _, j := range c.rows() {
-				if j.Helper && j.State == "running" && j.Worker == w4.workerID {
+				if j.Helper && j.State == "running" && (j.Worker == w4a.workerID || j.Worker == w4b.workerID) {
 					helper = j
 					return true
 				}
@@ -746,7 +750,7 @@ func TestOutputVersionAcrossProcesses(t *testing.T) {
 		})
 		second := c.startPlaybackAt(r4, r4, 1_500_000)
 		if a := second.segment(0); !a.isSegment() {
-			t.Fatalf("the second viewer, w4's third slot, got %s", a)
+			t.Fatalf("the second viewer, the version 4 workers' third slot, got %s", a)
 		}
 		third := c.startPlaybackAt(r4, r4, 1_000_000)
 		if a := third.segment(0); !a.isSegment() {
@@ -756,6 +760,18 @@ func TestOutputVersionAcrossProcesses(t *testing.T) {
 			if j.ID == helper.ID && (j.State != "cancelled" || j.Error != "a new viewer needed its slot") {
 				t.Errorf("the helper %d is %s (%q), want cancelled with 'a new viewer needed its slot'", j.ID, j.State, j.Error)
 			}
+		}
+		// Stopped when the third viewer asked, not by the rescue of a job that
+		// waited half the queue timeout, which reaches the same end on a build
+		// that counts w5 (D-054). Read from the rows' own times.
+		var waited float64
+		if err := c.pool.QueryRow(context.Background(), `SELECT extract(epoch FROM h.ended_at - j.created_at)::float8
+			FROM transcode_jobs h, transcode_jobs j WHERE h.id = $1 AND j.owner = $2 AND NOT j.helper`,
+			helper.ID, third.psid).Scan(&waited); err != nil {
+			t.Fatal(err)
+		}
+		if waited >= (queueTimeout / 2).Seconds() {
+			t.Errorf("the helper %d ended %.1fs after the third viewer's job was queued, want before half the queue timeout (%s): it was stopped by the rescue of a waiting job, not when the viewer asked", helper.ID, waited, queueTimeout/2)
 		}
 		second.stop()
 		third.stop()
