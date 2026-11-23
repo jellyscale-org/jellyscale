@@ -869,9 +869,14 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 					}
 				} else if _, err := os.Stat(name); err != nil {
 					return false, nil
-				} else if _, more := os.Stat(filepath.Join(dir, strconv.Itoa(next+1)+".m4s")); final && more != nil {
-					if err := checkLast(dir, next, layout); err != nil {
-						return false, err
+				} else if _, more := os.Stat(filepath.Join(dir, strconv.Itoa(next+1)+".m4s")); more != nil {
+					// The newest segment in place: ffmpeg may be writing it out as its input ends.
+					if final {
+						if err := checkLast(dir, next, layout); err != nil {
+							return false, err
+						}
+					} else if !wholeSegment(dir, name, next, layout) {
+						return false, nil // The exit path judges it, if it is the one cut short.
 					}
 				}
 				if err := w.upload(ctx, job, next, name); err != nil {
@@ -1175,6 +1180,31 @@ func lostReason(ctx context.Context, q queryer, job claimed) string {
 		return "the worker was taken for dead: its liveness lock and row are gone"
 	}
 	return "lease lost: the job is " + state
+}
+
+// wholeSegmentSlack is how much shorter than its place a segment may measure and still be whole: a frame
+// or two, since a re-encode cuts on a frame.
+const wholeSegmentSlack = ticksPerSecond / 4
+
+// wholeSegment says whether segment n, which ffmpeg has put in place while it still runs, holds its whole place.
+// Only the segment ffmpeg flushes as its input ends can fall short (invariant 40), and while ffmpeg runs
+// nothing but its length tells that one from a segment that is whole and has no successor yet. One that
+// cannot be measured is kept back: the next segment in place, or the exit, settles it.
+func wholeSegment(dir, name string, n int, layout playback.Layout) bool {
+	init, err := os.ReadFile(filepath.Join(dir, "init.mp4"))
+	if err != nil {
+		return false
+	}
+	body, err := os.ReadFile(name)
+	if err != nil {
+		return false
+	}
+	ticks, err := segmentTicks(init, body)
+	if err != nil {
+		return false
+	}
+	_, place := layout.Segment(n)
+	return ticks >= place-wholeSegmentSlack
 }
 
 // checkLast rejects a final segment that ffmpeg cut short because its input
