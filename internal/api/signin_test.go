@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"os"
-	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -183,6 +182,14 @@ func TestTheUnknownNamesDummyHashCostsWhatAnAccountsHashCosts(t *testing.T) {
 // compat/differences.yaml lists, against a differential request that reaches a refusal, that jellyscale refuses
 // temporarily where Jellyfin has no bound by default, and that a set LoginAttemptsBeforeLockout is not honoured.
 func TestDifferencesYamlListsTheRefusalAndTheLockoutNotHonoured(t *testing.T) {
+	read := func(t *testing.T, path string) string {
+		t.Helper()
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(raw)
+	}
 	var entries []struct {
 		Requests []string `yaml:"requests"`
 		Kind     string   `yaml:"kind"`
@@ -224,67 +231,5 @@ func TestDifferencesYamlListsTheRefusalAndTheLockoutNotHonoured(t *testing.T) {
 	}
 	if !refusal || !lockout {
 		t.Errorf("compat/differences.yaml has, against a request of test/differential/requests.yaml whose route is POST /Users/AuthenticateByName (%d of them), an entry saying jellyscale refuses temporarily per name and per address where Jellyfin has no bound by default: %v; and one saying a set LoginAttemptsBeforeLockout is not honoured: %v", len(signIn), refusal, lockout)
-	}
-}
-
-// docs/access.md states the bounds and what a viewer and an administrator see; docs/running.md says which address counts
-// behind an ingress and names the metrics. The words only: the numbers are held by the process checks.
-func TestAccessDocStatesTheThreeBoundsTheirNumbersAndWhatViewersRead(t *testing.T) {
-	text := read(t, "../../docs/access.md")
-	lower := strings.ToLower(text)
-	for _, word := range []string{"per name", "per known device", "per address", "15 minutes", "30 days", "1,920", "960", "/64", "quick connect",
-		"signed in before", "retry-after", "403", "trustedproxies", "not authorized to access the server at this time", "try again later", "log", "metric"} {
-		if !strings.Contains(lower, word) {
-			t.Errorf("docs/access.md never says %q", word)
-		}
-	}
-	for _, number := range []string{"20 ", "10 "} {
-		if !strings.Contains(text, number) {
-			t.Errorf("docs/access.md never says %q", number)
-		}
-	}
-	// "Unknown names are remembered within a fixed bound stated in docs/access.md": a number of unknown names.
-	if m := regexp.MustCompile(`(?i)\b(\d[\d,]*)\s+unknown\s+names?`).FindStringSubmatch(text); m == nil {
-		t.Error("docs/access.md states no number of unknown names that are remembered (such as `100,000 unknown names`)")
-	} else if n := strings.ReplaceAll(m[1], ",", ""); len(n) < 6 {
-		t.Errorf("docs/access.md remembers %s unknown names, which is less than the 100,000 the criteria hold", m[1])
-	}
-}
-
-func TestRunningDocSaysWhichAddressCountsBehindAnIngressAndNamesTheMetrics(t *testing.T) {
-	lower := strings.ToLower(read(t, "../../docs/running.md"))
-	for _, word := range []string{"trustedproxies", "x-forwarded-for", "ingress", "nearest", "alert", "jellyscale_signin_failures_total", "jellyscale_signin_refusals_total", "jellyscale_signin_address_bound"} {
-		if !strings.Contains(lower, word) {
-			t.Errorf("docs/running.md never says %q", word)
-		}
-	}
-}
-
-// D-022: before declaring `trustedProxies` an operator confirms that the address counted is each client's own (a failed
-// sign-in from two devices shows two addresses in the log), and docs/running.md says what follows if it is not: one guesser
-// or one mistyping viewer refuses everyone behind that address for 15 minutes.
-func TestRunningDocSaysHowToConfirmTheCountedAddressAndWhatFollowsIfItIsShared(t *testing.T) {
-	lower := strings.ToLower(read(t, "../../docs/running.md"))
-	for _, want := range []*regexp.Regexp{
-		regexp.MustCompile(`two (different )?devices`),
-		regexp.MustCompile(`two (different )?addresses`),
-		regexp.MustCompile(`everyone (else )?behind`),
-		regexp.MustCompile(`mistyp`),
-	} {
-		if !want.MatchString(lower) {
-			t.Errorf("docs/running.md never says %q", want)
-		}
-	}
-}
-
-// D-022: docs/access.md, where it states the three bounds, says the per-address bound applies only where the server can
-// attribute a request to one client's address: off with `trustedProxies` absent, and not applied to a request from a
-// declared proxy that carries no usable forwarded entry.
-func TestAccessDocSaysThePerAddressBoundAppliesOnlyWhereARequestHasOneClientsAddress(t *testing.T) {
-	lower := strings.ToLower(read(t, "../../docs/access.md"))
-	for _, want := range []string{"usable", "forwarded", "one client"} {
-		if !strings.Contains(lower, want) {
-			t.Errorf("docs/access.md never says %q", want)
-		}
 	}
 }

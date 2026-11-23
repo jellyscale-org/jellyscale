@@ -314,7 +314,7 @@ func TestTheCountersMoveByTheLineAndCarryNoLabelBeyondMethodAndReason(t *testing
 	}
 }
 
-// The names the kit pins; the whole list is test/reasonsdocs's.
+// The names the kit pins.
 func knownReason(name string) bool {
 	for _, known := range strings.Fields(`ContainerNotSupported VideoCodecNotSupported AudioCodecNotSupported SubtitleCodecNotSupported
 		SecondaryAudioNotSupported VideoProfileNotSupported VideoLevelNotSupported VideoResolutionNotSupported InterlacedVideoNotSupported

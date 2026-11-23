@@ -5,9 +5,7 @@
 # It prints "plan" for a docs-only change with nothing under .claude/: the plan, the
 # backlog and the docs, which CI does not test at all (owner, 2026-11-22). A change to
 # .claude/ stays docs-only, because lint-and-unit parses the workflow scripts.
-# CI skips the media tiers for a change confined to those: nothing a media tier runs
-# may read .claude/ or tasks/ (except tasks/prd.json in a unit test), and the guard
-# test, test/mediaguard, fails when a file no unit test runs names such a path.
+# CI skips the media tiers for a change confined to those: no test reads them.
 # Anything else counts as code, compat/ and .github/ included, and so does a diff that
 # can't be read or is empty: when unsure, run.
 # Renames are not detected, so a file moved between the accepted places and code

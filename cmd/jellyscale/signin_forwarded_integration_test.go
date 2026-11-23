@@ -3,7 +3,6 @@
 package main
 
 import (
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -129,10 +128,9 @@ func TestAClientBehindAnAppendingProxyIsCountedAsItselfWhateverItSends(t *testin
 }
 
 // A sign-in from a declared proxy with no usable forwarded entry is logged once per process as a warning naming
-// `trustedProxies`, and each one, right password or wrong, is counted in a metric with no address or account label, which
-// docs/running.md names for alerting (D-022). The metric's name is not given by the criterion: the check finds the
+// `trustedProxies`, and each one, right password or wrong, is counted in a metric with no address or account label (D-022). The metric's name is not given by the criterion: the check finds the
 // jellyscale_* metric that stood still for sign-ins with a usable entry and then rose by exactly the number of such
-// sign-ins (7, where the failed sign-ins are 5 and all sign-ins 10), and asks docs/running.md to name it. That a right
+// sign-ins (7, where the failed sign-ins are 5 and all sign-ins 10). That a right
 // password with no usable entry is counted too is this check's reading of "each one" (a sign-in, not a failure).
 func TestASignInWithNoUsableForwardedEntryIsWarnedOncePerProcessAndCounted(t *testing.T) {
 	s := newSignInSite(t, 2, map[string]any{"trustedProxies": []string{"127.0.0.1"}})
@@ -198,13 +196,6 @@ func TestASignInWithNoUsableForwardedEntryIsWarnedOncePerProcessAndCounted(t *te
 	}
 	if series, ok := labelled[counted[0]]; ok {
 		t.Errorf("%s has an address or account label: %s", counted[0], series)
-	}
-	doc, err := os.ReadFile("../../docs/running.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(doc), counted[0]) {
-		t.Errorf("docs/running.md does not name %s, the metric that counts sign-ins with no usable forwarded entry", counted[0])
 	}
 }
 

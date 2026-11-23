@@ -51,25 +51,3 @@ func TestTheMarkedPlaybackInfoAnswersAreHeldToPlaybackInfosSchema(t *testing.T) 
 		}
 	}
 }
-
-func TestApiDocsDocumentTheMarkedPlaybackInfoWithItsTwoAddedFields(t *testing.T) {
-	raw, err := os.ReadFile("../docs/api.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := string(raw)
-	at := strings.Index(text, "### POST "+markedRoute)
-	if at < 0 {
-		t.Fatalf("docs/api.md has no section \"### POST %s\"", markedRoute)
-	}
-	section := text[at+4:]
-	if next := strings.Index(section, "\n##"); next >= 0 {
-		section = section[:next]
-	}
-	section = strings.ToLower(section)
-	for _, word := range []string{"hidden", "originallanguage", "every track", "playbackinfo", "401", "404", "400", "ratelimitexceeded"} {
-		if !strings.Contains(section, word) {
-			t.Errorf("the section on the route does not say %q:\n%s", word, section)
-		}
-	}
-}

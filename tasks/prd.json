@@ -574,13 +574,15 @@
         "The example manifests declare trustedProxies for their ingress (D-020)",
         "The procedure in docs/running.md for confirming declared proxies, followed against the example manifests' ingress, says what the operator sees and does when no address is counted (every answer 401, no refusal line), and no sentence there denies a log line the server writes (D-025, BL-221)",
         "Workers are their own Deployment, apart from api and stream, and the manifests' check refuses more than one worker or stream replica on a transcode store or library that not every one of them can reach (a ReadWriteOnce volume), naming the key (D-045)",
-        "docs/running.md says what every worker must reach (Postgres, each library, the transcode store), and the worker's termination grace matches JS-165's (D-045)"
+        "docs/running.md says what every worker must reach (Postgres, each library, the transcode store), and the worker's termination grace matches JS-165's (D-045)",
+        "The example manifests declare no transcodeCores and give workers CPU requests equal to limits in whole cores (D-064)"
       ],
       "priority": 46,
       "status": "todo",
       "passes": false,
       "dependsOn": [
-        "JS-150"
+        "JS-150",
+        "JS-177"
       ],
       "source": "PRODUCT.md phase6-k8s",
       "notes": "JS-020 (2026-11-08): each worker holds one Postgres connection for its liveness lock, outside the pool, so a stock Postgres (max_connections 100) is exhausted at about 90 workers, long before its CPU (one primary carried 1600 streams on two cores' worth). Connections are the first wall when autoscaling. User (2026-11-08): plain manifests for kubectl are wanted beside the chart, not Helm only."
@@ -747,14 +749,16 @@
         "Migrations take a lock timeout and a version that finds a migration newer than it knows refuses to start with a clear message",
         "A worker of the previous version and one of this version serve the same stream, in a real-process test, without a spec hash disagreement breaking playback (or the job is refused by the older one)",
         "One documented rollout order, the same in docs/running.md and ARCHITECTURE.md, and a test or check that each migration in a release is safe for the previous version's code",
-        "With a stream replica of the previous decision version registered and an api replica of the new one, PlaybackInfo offers nothing the old replica would refuse (a real-process test), and docs/running.md no longer requires an order between api and stream"
+        "With a stream replica of the previous decision version registered and an api replica of the new one, PlaybackInfo offers nothing the old replica would refuse (a real-process test), and docs/running.md no longer requires an order between api and stream",
+        "A worker of the previous release is never counted as a partner for a shared play unless it has said it can help: during a rolling upgrade no play is admitted as shared and then left without a helper, in a real-process test (D-061).",
+        "Observed first with real processes under a playing film: a migration that takes exclusive locks on two tables a running worker and a stream replica use is applied while they run. The upgrading replica starts (it applies the migration again after a deadlock or lock timeout) or refuses once with a message naming the lock; it never fails to start silently. No viewer request is answered an error. The record says what a stream replica answers from memory if Postgres stops just after its snapshot read was aborted; a gap there returns to the product owner as a brief and is not built here (D-063)."
       ],
       "priority": 53,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
       "source": "Fable 5.2 state review, 2026-11-10",
-      "notes": "Before JS-054, which adds encoder families to the spec. The version-gated claim moved to JS-082 (2026-11-12). Extended from the Fable 5.2 blind audit, 2026-11-14."
+      "notes": "Before JS-054, which adds encoder families to the spec. The version-gated claim moved to JS-082 (2026-11-12). Extended from the Fable 5.2 blind audit, 2026-11-14. When it starts it is split into migrations (criteria 1, 3, 6) and mixed-version play (2, 4, 5) (D-063)."
     },
     {
       "id": "JS-080",
@@ -1254,27 +1258,6 @@
       "notes": ""
     },
     {
-      "id": "JS-158",
-      "phase": "OPS",
-      "title": "No worker started by a transcode test outlives its test, so the next test's TRUNCATE never deadlocks with it",
-      "description": "Two merge-queue runs on 2026-11-20 failed on a Postgres deadlock: a worker started by an earlier test was still recording a segment when the next test truncated the tables (read from the runs' logs by the lead). Each costs a merge-queue run of about an hour and delays the dogfood's redeploy. The cause as read is the tests'; whether the product can meet the same deadlock is not yet said. BL-178 is the same family (a kit's fresh() truncating under live workers). D-042.",
-      "acceptanceCriteria": [
-        "The record in docs/testing.md names the two queue runs, the two statements that deadlocked, and which test's worker was still alive",
-        "It says whether anything in the product, not only a test, truncates or takes the same locks against a live worker; if so, what a viewer would have seen, and that comes back to the product owner as a brief before a product fix",
-        "A check forces the condition (a worker still recording a segment when the next test's tables are truncated) and fails before the fix, with real processes or real contention",
-        "After the fix, every worker a transcode integration test starts has stopped, and its last write has finished, before that test returns; the fix is at the cause in the test kit, not test by test",
-        "BL-178's fresh() is covered by the same fix, or the record says why it is a different cause and BL-178 stays open",
-        "No retry on deadlock, no skip, no raised timeout, and no product code changed to fit a test",
-        "No viewer-visible change"
-      ],
-      "priority": 19,
-      "status": "todo",
-      "passes": false,
-      "dependsOn": [],
-      "source": "merge queue failures 2026-11-20; D-042; BL-178",
-      "notes": "Split from JS-155 by D-042: its cause is named in the logs, so it needs no reproduction box. Built beside JS-154; its check runs are short and must not run while JS-154 is measuring on the same machine."
-    },
-    {
       "id": "JS-175",
       "phase": "OPS",
       "title": "Each of the 12 merge-queue runs that failed in the last 18 has a verdict from its log, and the causes that recur are fixed at their cause",
@@ -1286,7 +1269,7 @@
         "Reproduction is bounded: 2 hours a sighting and 8 in all, under CI's shape (ffmpeg 6.1, 2 CPUs).",
         "The shard that hit 45 minutes is named with its healthy time over the 18 runs and what it was running when stopped. If its healthy time is within 10 minutes of the timeout, it is split as internal/transcode is split, with no test dropped (closes BL-175); the record gives the time each of JS-172's flood tests adds to it.",
         "TestAHeldWorkerEndsAJobWaitingForItsSubtitleTrackBeforeItsLeaseRunsOut is run 20 times under CI's shape on main after JS-173 merges; a failure is added to the table with its verdict.",
-        "After JS-158 and this task merge, the next 10 queue runs are counted in docs/testing.md with each failure's cause; the count and the causes come to the product owner at that triage.",
+        "After JS-158 and this task merge, the next 10 queue runs are counted in docs/testing.md with each failure's cause; the count and the causes come to the product owner at that triage. The two cut-read recovery cases are counted apart in those 10 runs; one failure of either returns JS-159 to the product owner as a brief. No hook is added to the worker to force the exit-first order (D-061).",
         "No retry, skip, raised timeout or widened bound; no product code changed to fit a test; no viewer-visible change."
       ],
       "priority": 22,
@@ -1295,34 +1278,6 @@
       "dependsOn": [],
       "source": "lead 2026-11-22; D-058",
       "notes": "ux: false, core: false. Reads JS-158's and JS-159's records when they exist; waits for neither. Does not hold any merge (owner, 2026-11-21). Runs beside JS-161; its reproduction runs do not share a machine with JS-174's measurement. If criterion 1 shows one cause behind most of the 12, the lead brings that count back before criteria 3 to 5 are built, and the task is cut to that cause."
-    },
-    {
-      "id": "JS-161",
-      "phase": "P3",
-      "dependsOn": [
-        "JS-167",
-        "JS-168"
-      ],
-      "title": "A play is admitted only when the workers with room keep it at real time, alone or together; one they cannot keep is refused within seconds with its reason",
-      "description": "JS-154: the dogfood's 4-core i5-6500 needs 3.8 to 4.1 CPU-seconds per second of a 4K HDR re-encode priced at 3.2, a figure measured on a machine 1.6 times faster per core; the job is admitted, runs at 0.85x and stalls with no reason. Prices stay one table in cores of a named reference machine; each worker measures its own speed against it at start and advertises its capacity in those units. D-044. D-046: a play that no one worker holds but the workers with room hold together is admitted, and a viewer already watching is never taken under real time by a newcomer.",
-      "acceptanceCriteria": [
-        "Design reviewed before building: what the worker measures at start and for how long, how capacity reaches every replica, a rolling upgrade beside workers of the release before, and whether an image-track extraction counts against capacity. Amended by D-046: the rule for a play no one worker holds but several hold together, stated with its margin from a measurement and not from adding speeds; what a play admitted that way holds (its helpers) against a new viewer; and whether the task is too large for one build. If it is, it splits there into (a) worker speed, single-worker admission and placement and (b) shared admission, in that order, both ahead of JS-166, and (a) alone never refuses a play that two workers with room would hold together. Amended by D-050: the review also says what a queued viewer job that fits no worker holds back, whether paused helpers keep cores a newcomer could use (BL-008), and whether the insert and the claim judging room by different ledgers can admit a play that is never claimed or refuse one that fits; each \"yes\" gets a check or comes back as a brief. Amended by D-051: the review says whether a play admitted as shared gets its helpers at its start and at a seek, from JS-174's figures if they are in; if they are not, the task does not wait, criterion 3's bound stands, and a miss comes back as a brief.",
-        "A worker measures its speed at start without the operator declaring anything; the measurement is bounded, its bound is in docs/running.md, and its result is logged and on /metrics; transcodeCores still overrides it",
-        "With real processes: a worker throttled to the i5-6500's measured speed, alone, refuses a 4K HDR tone mapped re-encode within seconds with the 'cannot be played at this time' dialog in jellyfin-web; the log and the JS-153 decision line give the reason with the job's cost and the worker's capacity; the same play beside a second worker that holds it is made by that worker. Amended by D-046: the same play beside a second worker throttled to the same speed, helpers on, is admitted and plays in jellyfin-web for 10 minutes, a seek to the middle and 10 minutes more within JS-168's bound (speed at or above 1.0 after each part's first 30 seconds, no more than 3 freezes of 0.5 seconds or more per 10 minutes, none over 2 seconds); with transcodeHelpers off, or with the second worker's cores taken, it is refused within seconds with its reason.",
-        "A worker at the reference machine's speed holds exactly the jobs it holds today; every row of the table is admitted by the same rule, not only the 4K one",
-        "A worker given jobs that add up to its measured capacity keeps each at 1.2 times real time or more without a helper",
-        "A default worker is no longer floored to the dearest job; one that cannot hold the dearest row says so once at start, in the log and on /metrics; listed under Changed guarantees citing D-044",
-        "A running re-encode under 1.2 times real time that gets no helper logs once why, and the reason is counted on /metrics (BL-005)",
-        "docs/transcoding.md names the reference machine and gives the i5-6500 figures; docs/status.md's gap line is updated",
-        "With workers of unequal speed, a job is given to a worker that can hold it at real time when one has room: with one free worker that holds the job at 1.2 times real time alone and one free worker that does not, the viewer's job goes to the one that holds it in 10 of 10 plays from the start and 10 of 10 after a seek, with real processes (JS-162: it landed on the small worker in 2 of 2 natural first plays and stalled) (D-045; made exact by D-046)",
-        "the decision line (JS-153) and the log say whether a play was admitted on one worker or shared, with the job's cost and the capacities counted.",
-        "A viewer already watching at real time is never taken under it by another viewer starting (D-046, confirmed by D-050: in JS-168's measurement a newcomer who stopped the helper took the first viewer from 1.00x to 0.68–0.82x with 44 to 54 freezes in 5 minutes, 6 runs of 6, and started no sooner than on an idle cluster). One figure decides it, the 1.2 times real time admission already uses: a helper of a watched job that its own worker does not hold at 1.2 alone is held as that play's own, and a new viewer whose job fits only by stopping such a helper is refused within seconds with its reason, whatever the newcomer's job costs. A helper of a job its worker holds at 1.2 alone is still stopped for a new viewer, as today. A viewer who joins a re-encode already running (same film, same output) starts no new job and is never refused by this rule. No helper is stopped, delayed or left unclaimed for a newcomer who is then not admitted: a refused play, or a queued viewer job no worker can fit, holds back only a helper that would take cores that job could use (takes BL-014 and JS-168's viewer-first-gate finding). The refusal's reason says the cores are held by a film another viewer is watching, apart from \"no free cores\", in the log, the JS-153 decision line and the counted reason JS-164 reads as demand; no label names a job, film, account or device. Locked check, real processes, two throttled workers and a fixture film: with a helper the first job needs running, a second play of the same cost and a 1080p SDR one are each refused within 5 seconds, the helper is not stopped and the first job's speed does not fall below 1.0; when the first viewer stops, the same second play is admitted. Recorded measurement on the build, not a locked check: two real workers and two viewers in jellyfin-web, three runs for each kind of second play; the second viewer sees the \"cannot be played at this time\" dialog, and the first viewer's speed stays at or above 1.0 with no freeze over 2 seconds and no more than 2 freezes of 0.5 seconds or more in the 5 minutes after the second asks. docs/running.md (the transcodeHelpers paragraph, which says a new viewer stops helpers) and DOMAINS.md invariant 58 are amended, and docs/running.md says what this refusal means and that room for one more film, kept by sizing or the autoscaler, avoids it. Listed under Changed guarantees citing D-046 and D-050 (today a new viewer stops any helper)."
-      ],
-      "source": "D-044; D-045; D-046",
-      "notes": "The measured 3.8 to 4.1 straddles the dogfood's 4 cores: the criteria are outcomes, not a raised number. It merges when ready. If the dogfood would then refuse plays it stalls on today, the lead tells the owner before the redeploy that carries it (the owner declined that outcome by config on 2026-11-21; D-045). on a cluster one shared film fills, a second viewer is refused with a reason, even for a cheap film, where today they would start. Today the first viewer stalls in that cluster whether or not a second arrives. Refusal with a reason is the floor D-044 set; a silent stall for someone who was watching is not offered. Data that reopens it: the dogfood's count of refusals made while a helper held the cores, against the first viewers' stalls it prevented, from JS-153's counters and JS-164's gauge. (D-046) D-050 confirmed the default on JS-168's figures. Data that reopens it: the dogfood's count of refusals with the helper-held reason against the first viewers' stalls prevented, or the measurement held in the backlog (a cheap play beside the helper). Before this task's Spec, the second-viewer figures are in docs/transcoding.md on main with machine and command (D-050).",
-      "status": "todo",
-      "passes": false,
-      "priority": 17
     },
     {
       "id": "JS-174",
@@ -1346,32 +1301,6 @@
       "passes": false,
       "priority": 18,
       "core": null
-    },
-    {
-      "id": "JS-159",
-      "phase": "P3",
-      "title": "A segment cut short because its input ended early is never stored, however the worker's upload check and ffmpeg's exit are ordered",
-      "description": "Read from two merge-queue runs on 2026-11-20 (JS-155's record, not reproduced): a job whose source read was cut for good failed, yet its request was answered with a segment and no error. As read, the worker's periodic upload check can store the cut-short segment ffmpeg flushes on the way out before the worker sees ffmpeg exit, and only the exit path applies invariant 40. A viewer would get a freeze or jump of up to about 4 s at that place, as would every viewer of that spec until its segments are swept, and no failure is reported. DOMAINS.md invariant 40; PRODUCT.md: seeking and resuming just work; every failure is reported with its reason. D-043.",
-      "acceptanceCriteria": [
-        "On main as it stands after JS-168 and JS-173, under CI's shape (ffmpeg 6.1, 2 CPUs, a fresh database each run), recovery_integration_test.go's two cut-read cases (the request that waited, and the cause that persists) are each run 20 times and the count of failures recorded. For the waiting-request case the record says what the 24 bytes are and which path answered them, and whether its cause is this task's (a cut-short segment stored before the exit is seen) or another.",
-        "A check with real ffmpeg, under CI's shape (ffmpeg 6.1, 2 CPUs), forces the order: ffmpeg has put its cut-short last segment in place and is held before it exits, and the worker's upload check runs. It fails before the fix. If it cannot be made to fail, nothing is built: the sighting's verdict returns to cause unknown and the product owner is told",
-        "After the fix, in that order and in the opposite one, no segment shorter than its place is stored: at segment 0 and at a later segment, for a re-encode and for a copied stream, for a source read that fails for good and for a file that ends early",
-        "The film's true last segment (the playlist's last, within 1.5 s of its length) is still stored, and whole segments made before the cut are still stored and served",
-        "The request waiting on the job gets the failure with its reason, as invariant 40 says, and the job's end is logged and counted as failed",
-        "Recorded, ids and counts only: how many jobs in the dogfood's logs failed on an early input end or a source read after storing a segment. If any did, the product owner gets a brief on the segments already stored before a purge is built",
-        "No start of play or seek on a healthy film is slower: time to first segment is measured before and after",
-        "No product code changed to fit the check; no retry, skip or raised timeout",
-        "DOMAINS.md invariant 40 says the guarantee holds on every path that stores a segment; docs/status.md is updated if it speaks of it",
-        "No other viewer-visible change",
-        "If the waiting-request case has another cause, nothing is built for it here: it returns to the product owner as a brief with what a viewer would see (a broken segment, a stated failure, or a retry), and JS-159 finishes without it.",
-        "After the fix both cases pass 20 of 20 under CI's shape, with no check amended, retried, skipped or given a longer wait; the waiting request gets the segment from a fresh job, and the persisting cause gets the failure that names its reason after at most three fresh jobs."
-      ],
-      "priority": 16,
-      "status": "todo",
-      "passes": false,
-      "dependsOn": [],
-      "source": "JS-155 record (merge-queue runs of #225 and #230); D-042; D-043",
-      "notes": "core: true. Check runs must not run while JS-154 is measuring on the same machine. Segments already stored short stay until the sweep unless the dogfood count shows any. Moved from 25 to 16 and amended by D-057; builds beside JS-161. Core: true; it and JS-158 may run together, but neither runs its checks on a machine where JS-174 is measuring."
     },
     {
       "id": "JS-160",
@@ -1401,7 +1330,7 @@
       "description": "docs/running.md calls jellyscale_transcode_queue_cores the signal to scale workers on, but a play with no free cores is refused, not queued, and a re-encode running under real time is not queued either, so on the dogfood's stalled plays (2026-11-20) that signal read nothing. This task adds one cluster-wide number for demand beyond what the workers hold, with its reason, pulled forward from JS-021 criterion 5. PRODUCT.md: the cluster can grow and shrink with demand by itself; a heavy film uses the whole cluster's processors. D-045.",
       "acceptanceCriteria": [
         "Observed first with real processes and recorded: what jellyscale_transcode_queue_cores reads while (a) a watched re-encode runs under real time with no helper possible and (b) a play is refused for lack of free cores. If it reads 0 in both, docs/running.md no longer calls it the signal to scale on. Amended by D-048: JS-162 read 0 at one snapshot of each stalling run (case a, once per run); case b is still unobserved.",
-        "A gauge on /metrics gives, in cores and for the whole cluster, the demand the workers do not hold, by reason: jobs queued; helpers wanted by a watched job under 1.2 times real time and not started for lack of room; plays refused for lack of free cores within a stated recent window, and, as its own reason, plays refused because the cores are held by a helper another viewer's film needs (JS-161 criterion 11, D-050). Every worker reports the same number, as queue_cores does",
+        "A gauge on /metrics gives, in cores and for the whole cluster, the demand the workers do not hold, by reason: jobs queued; helpers wanted by a watched job under 1.2 times real time and not started for lack of room; plays refused for lack of free cores within a stated recent window, and, as its own reason, plays refused because the cores are held by a helper another viewer's film needs (JS-161 criterion 11, D-050). Every worker reports the same number, as queue_cores does Whichever replica refuses, a play refused for a held film is logged and counted with the held-film reason, never as cores short or busy (JS-161 minor, D-061).",
         "Each reason is above zero within 15 seconds of its condition starting and back to zero within a stated time of its ending, so an autoscaler both grows and shrinks on it; checked with two real workers for each reason",
         "A second gauge gives, for the whole cluster and in reference cores, the dearest job a new viewer would be admitted for now, by JS-161's rule (one worker or shared). Cores held by a helper of a watched job its own worker does not hold at 1.2 times real time alone are not free; cores held by any other helper are (JS-161 criterion 11). It falls within 15 seconds of a play starting and rises within a stated time of its ending, checked with two real workers, a viewer's job and a helper. An operator or an autoscaler keeps it above the dearest job they want to start without a wait, so no viewer has to be refused or stall to trigger growth. (D-048)",
         "Not counted as demand: a job no viewer watches, a paused job, a copy reading at its own rate, and helpers when transcodeHelpers is off; docs/running.md says which slowness more workers cannot fix",
@@ -1432,7 +1361,7 @@
         "A defect found in jellyscale becomes a brief, not a fix here",
         "docs/running.md gains what running workers apart needed; docs/status.md's known gap is closed or says what is still open; no film title, path or host name anywhere",
         "On the S3 bucket, measured between the nodes before the plays: the time from a worker finishing a segment to `stream` on another node serving it, for 100 segments; recorded. No shared store has been measured between machines (JS-162 used one machine's directory). (D-049)",
-        "Each worker's measured capacity (JS-161) and the speed of each job are recorded; a job slower than its worker's measured speed by more than a fifth is reported with what ran beside it (JS-162 left a 0.6x and a 0.76x run unexplained). (D-049)"
+        "Each worker's declared transcodeCores (from JS-163's figures, brought to the owner as a homelab change) and the speed of each job are recorded; a job slower than real time on a worker whose declared capacity covers it, or slower than expected by more than a fifth, is reported with what ran beside it. (D-049, D-062) Amended by D-064: the declared figures are corrected from this task's own job speeds, and the 12-thread node's worker gets CPU requests equal to limits in whole cores so ffmpeg is not throttled (each a homelab change brought to the owner). Only the parts that missed the bound are played again. A miss in the first 30 seconds after a seek is recorded for JS-174. A burned-in miss that remains returns as a brief. That the cluster holds one 4K play is recorded in docs/status.md, not chased here."
       ],
       "priority": 23,
       "status": "todo",
@@ -1545,6 +1474,31 @@
       "source": "D-047; BL-040",
       "notes": "ux: true. Moves to directly after JS-166 if JS-166 returns without closing the gap on processors, or the dogfood's JS-153 counters show a refusal for lack of cores with every worker running (D-047).",
       "core": true
+    },
+    {
+      "id": "JS-177",
+      "phase": "P3",
+      "title": "A worker learns what it holds from the jobs it runs; the operator declares no capacity, and a film is never admitted to stall on a worker that overstates itself",
+      "description": "JS-166 measured that declared capacity fails operators: the dogfood's i5-6500 worker declares 3, below a 4K job's 3.2, so it can never help (a helper needs the full price); the 12-thread worker declares 3.5 under a CPU limit of 8, was throttled in 93% of periods and ran the job at about 1.0x; and an operator cannot know a CPU's speed against the reference machine. D-062's start-up benchmark failed on a busy host. D-064: a worker learns what it holds from the jobs it runs, price times measured speed, starting from its processors with a container CPU limit counted, lowered when jobs run under the 1.2x admission bound and raised slowly with margin, smoothed over minutes; transcodeCores becomes an optional ceiling. BL-259's bars are criteria 2 to 4.",
+      "acceptanceCriteria": [
+        "Design reviewed from JS-166's figures, recorded in docs/transcoding.md before Spec. The review says: what lowers the figure and what must not (a slow source read, a slow store upload, paused time); what the first viewer on an overstated worker gets, and for how long; whether the figure survives a restart; whether a figure learned on one price row holds for the others; the smoothing window and margin. Each unverified leaf gets a check or returns as a brief. If the task is too large for one build, it splits into (a) criteria 2 to 4, 6 and 7 and (b) criterion 5, both ahead of JS-056.",
+        "Nothing to declare. An undeclared worker registers at once and starts no ffmpeg of its own. It begins from its processors, with a container CPU limit counted. D-062's 9 tests pass unamended.",
+        "No stall admitted twice. A worker throttled to the i5-6500's speed converges, within the stated time, to within a fifth of what it holds. From then on, a play it can't keep at 1.2x is refused within seconds with its reason, or admitted shared and played within JS-168's bound.",
+        "No refusal for a neighbour's busy moment. On 4 test processes and 4 CPUs, a short burst moves the figure by no more than the stated margin and refuses no play the worker holds. A lowered figure rises again within the stated time after the load drops.",
+        "An idle worker helps. A watched re-encode under 1.2x, on a worker whose learned capacity is below the job's price, becomes a shared play. A helper is claimed on a worker with 0.78 of the price free, and the viewer returns to real time.",
+        "transcodeCores is an optional ceiling. A learned figure never exceeds it. Listed under Changed guarantees citing D-064.",
+        "The operator can see it and act. /metrics and the log give the capacity and its source (assumed, learned, ceiling), and the log notes moves of more than a fifth. docs/running.md gains \"Sizing workers\": requests equal to limits in whole cores; the CPUs already measured against the price rows; what to do about cores refusals and slow-job-no-helper counts; a whole node for a 4K-capable worker."
+      ],
+      "priority": 21,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-166",
+        "JS-041"
+      ],
+      "core": true,
+      "source": "D-064; brief-learned-capacity.md; BL-259",
+      "notes": "Order set by D-064: after JS-041, before JS-127. ux: true. After it merges, the dogfood drops its declared figures (a homelab change for the owner). If one build cannot hold it, it splits into (a) criteria 2 to 4, 6 and 7 and (b) criterion 5, both ahead of JS-056."
     }
   ]
 }

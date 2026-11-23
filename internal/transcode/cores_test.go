@@ -9,8 +9,7 @@ import (
 
 // What a worker declares: its cores, else its slots as cores (a worker built by
 // a test, as the release before declared them), else the processors the process
-// may use, and never fewer than the dearest job costs, so a worker that
-// declares nothing still takes a 4K tone mapped re-encode.
+// may use, each at the reference machine's speed, and no floor.
 func TestAWorkersDeclaredCores(t *testing.T) {
 	if got := (&Worker{Cores: 2.5, Slots: 5}).cores(); got != 2.5 {
 		t.Errorf("cores and slots declared: %v, want the cores", got)
@@ -18,11 +17,10 @@ func TestAWorkersDeclaredCores(t *testing.T) {
 	if got := (&Worker{Slots: 3}).cores(); got != 3 {
 		t.Errorf("slots declared: %v, want 3", got)
 	}
-	if got, want := (&Worker{}).cores(), max(float64(runtime.GOMAXPROCS(0)), largestCost); got != want {
-		t.Errorf("nothing declared: %v, want %v", got, want)
-	}
-	if got := (&Worker{}).cores(); got < 3.2 {
-		t.Errorf("a worker that declares nothing has %v cores, too few for a 4K tone mapped re-encode", got)
+	// JS-161 (D-044, D-062): a worker that declares nothing counts each processor at the reference machine's speed, with
+	// no floor and no measurement.
+	if got, want := (&Worker{}).cores(), float64(runtime.GOMAXPROCS(0)); got != want {
+		t.Errorf("nothing declared: %v, want the %v processors", got, want)
 	}
 }
 

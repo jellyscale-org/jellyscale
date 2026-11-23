@@ -117,8 +117,20 @@ func through(dsn, addr string) (*pgx.ConnConfig, error) {
 func (r *rig) workerProcess(t *testing.T, id string, segmentsDir string, env ...string) *exec.Cmd {
 	t.Helper()
 	cmd := exec.Command(os.Args[0])
-	cmd.Env = append(os.Environ(), "JELLYSCALE_TEST_WORKER="+id, "JELLYSCALE_TEST_SEGMENTS="+segmentsDir, "JELLYSCALE_TEST_SCRATCH="+r.scratch)
+	// The process's sessions carry a name the kit knows, to end them when the process is gone: a killed client's
+	// backend goes on with the statement it was running (JS-158). A test that gives the process a database URL of its
+	// own (through a proxy, with a name) has its name used.
+	app := "worker-process-" + id
+	cmd.Env = append(os.Environ(), "JELLYSCALE_TEST_WORKER="+id, "JELLYSCALE_TEST_SEGMENTS="+segmentsDir, "JELLYSCALE_TEST_SCRATCH="+r.scratch,
+		"JELLYSCALE_TEST_DATABASE_URL="+withApplicationName(t, r.dsn, app))
 	cmd.Env = append(cmd.Env, env...)
+	for _, entry := range env {
+		if dsn, ok := strings.CutPrefix(entry, "JELLYSCALE_TEST_DATABASE_URL="); ok {
+			if u, err := url.Parse(dsn); err == nil && u.Query().Get("application_name") != "" {
+				app = u.Query().Get("application_name")
+			}
+		}
+	}
 	cmd.Stderr = os.Stderr
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGKILL}
 	if err := cmd.Start(); err != nil {
@@ -130,6 +142,7 @@ func (r *rig) workerProcess(t *testing.T, id string, segmentsDir string, env ...
 	t.Cleanup(func() {
 		once.Do(func() { cmd.Process.Signal(syscall.SIGCONT); cmd.Process.Kill() }) //nolint:errcheck
 		<-reaped
+		r.pool.Exec(context.Background(), "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE application_name = $1 AND pid <> pg_backend_pid()", app) //nolint:errcheck
 	})
 	waitFor(t, "worker "+id+" to hold its lock and register", 30*time.Second, func() bool { return r.locked(id) })
 	return cmd

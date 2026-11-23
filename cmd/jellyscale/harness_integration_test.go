@@ -19,6 +19,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"jellyscale/internal/testenv"
 )
 
 // JS-114: the one place these tests start a jellyscale process, read its log, ask the kernel for a port and sign in.
@@ -106,6 +108,7 @@ type proc struct {
 // p.exited are those of the start that is running.
 func startProc(t *testing.T, s procSpec) *proc {
 	t.Helper()
+	testenv.NoWorkersLeft(t, s.dsn) // First, so it runs after the process is stopped: its worker is gone then (JS-158).
 	p := &proc{t: t, spec: s, dir: t.TempDir(), user: s.user, password: s.password, term: s.term}
 	p.spec.args = append([]string(nil), s.args...)
 	if s.config != "" {

@@ -368,13 +368,17 @@ func (s *scannedFilm) burnt() {
 	s.hash = s.spec.Hash()
 }
 
-// fresh forgets the jobs, the viewers and the segments of the earlier runs.
+// fresh forgets the jobs, the viewers and the segments of the earlier runs. The test's workers are ended while it does
+// and started again after, with the new segments: forgetting the nodes under a live worker would meet its writes and
+// make it take itself for dead (BL-178).
 func (s *scannedFilm) fresh(t *testing.T) {
 	t.Helper()
-	if _, err := s.pool.Exec(context.Background(), "TRUNCATE transcode_jobs, transcode_viewers, transcode_nodes"); err != nil {
-		t.Fatal(err)
-	}
-	s.segments = store.NewPosix(t.TempDir())
+	s.rig.whileWorkersAreStopped(func() {
+		if _, err := s.pool.Exec(context.Background(), "TRUNCATE transcode_jobs, transcode_viewers, transcode_nodes"); err != nil {
+			t.Fatal(err)
+		}
+		s.segments = store.NewPosix(t.TempDir())
+	})
 }
 
 // worker starts a worker that reads the film through m. It makes no helpers

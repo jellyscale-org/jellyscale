@@ -9,6 +9,7 @@ import (
 	"jellyscale/internal/db"
 	"jellyscale/internal/media"
 	"jellyscale/internal/playback"
+	"jellyscale/internal/transcode"
 )
 
 // The methods of a decision. refused has no series in the decisions counter: a refusal is counted by its reason.
@@ -33,6 +34,8 @@ type outcome struct {
 	// streams are the file's tracks where the row was read, else the DTO's, and video the file's video, nil where not read.
 	streams []media.MediaStream
 	video   *media.MediaStream
+	// admission is how the workers were counted for a transcode: nil where none was asked (a direct play, a live job joined).
+	admission *transcode.Admission
 }
 
 func (p outcome) with(method string, reasons ...string) outcome {
@@ -74,9 +77,34 @@ func decisionOf(r *http.Request, itemID, playSession string, source media.MediaS
 		attrs = append(attrs, "out_codec", out.Codec, "out_height", out.Height, "out_range", out.Range, "src_height", height,
 			"tone_mapped", yesNo(out.ToneMapped), "ceiling_lowered", yesNo(out.CeilingLowered))
 	}
+	attrs = append(attrs, admissionAttrs(p)...)
 	attrs = append(attrs, audioAttrs(source, request, audio, hasAudio)...)
 	attrs = append(attrs, subtitleAttrs(request, subtitle, p.streams)...)
 	return verdict{method: p.method, reasons: p.reasons, attrs: attrs}
+}
+
+// admissionAttrs say how the workers were counted (JS-161): an admitted copy or re-encode says whether one worker held it
+// or two shared it, with the job's cost and the capacity of each worker counted, in reference cores; a refusal gives the
+// cost and the most any worker had.
+func admissionAttrs(p outcome) []any {
+	a := p.admission
+	if a == nil || a.Cost == 0 {
+		return nil
+	}
+	switch {
+	case p.method == methodRefused:
+		if a.Most == 0 {
+			return nil // Refused before any worker was counted (no worker, the stores differ, a remembered failure).
+		}
+		return []any{"cost", a.Cost, "most_capacity", a.Most}
+	case (p.method == methodCopy || p.method == methodReencode) && a.How != "":
+		capacities := make([]string, len(a.Capacities))
+		for i, c := range a.Capacities {
+			capacities[i] = strconv.FormatFloat(c, 'g', -1, 64)
+		}
+		return []any{"admitted", a.How, "cost", a.Cost, "capacities", strings.Join(capacities, ",")}
+	}
+	return nil
 }
 
 // audioAttrs says what the request asked of the audio and the track that plays. The server chose it unless the request named

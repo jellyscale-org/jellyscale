@@ -221,16 +221,26 @@ func (j *Jobs) Unavailable(ctx context.Context, spec playback.Spec, userID, devi
 }
 
 // Refusal is Unavailable with the reason of the refusal beside its words: one of playback.NoWorkerRunning,
-// NoWorkerWithFreeCores, WorkersAtCopyBound, TranscodeStoreMismatch and RememberedFailure, or "" with no words where the
-// transcode can start. The words may name a file (a failure's own text does); the reason never does.
+// NoWorkerWithFreeCores, CoresHeldByWatchedFilm, WorkersAtCopyBound, TranscodeStoreMismatch and RememberedFailure, or ""
+// with no words where the transcode can start. The words may name a file (a failure's own text does); the reason never
+// does.
 func (j *Jobs) Refusal(ctx context.Context, spec playback.Spec, userID, deviceID string) (reason, text string, err error) {
+	a, err := j.Admit(ctx, spec, userID, deviceID)
+	return a.Reason, a.Text, err
+}
+
+// Admit is Refusal with how the play was judged: admitted on one worker or shared by two, and the cost and capacities
+// that were counted, or the most any worker had (Admission). A job that is joined, or that a failure or the stores refuse,
+// carries the cost and nothing more.
+func (j *Jobs) Admit(ctx context.Context, spec playback.Spec, userID, deviceID string) (admission Admission, err error) {
 	// Only workers forget dead workers (lookForTheDead): a replica holds no
 	// liveness lock, so it may have missed an outage altogether, and would
 	// forget live workers still taking their lock again. It counts a worker
 	// only while its lock is held, and writes nothing.
 	queue, hash := orDefault(j.QueueTimeout, queueTimeout), spec.Hash()
+	admission.Cost = spec.Cost()
 	if err := expireStale(ctx, j.Pool, queue); err != nil {
-		return "", "", err
+		return admission, err
 	}
 	// A refusal that rests on a worker whose lock is gone is looked at again for
 	// a grace: it is either taking its lock again, or never will.
@@ -242,11 +252,11 @@ func (j *Jobs) Refusal(ctx context.Context, spec playback.Spec, userID, deviceID
 		// would be seen by the second and not the first, and refuse its own spec for the cores it will take.
 		tx, err := j.Pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
 		if err != nil {
-			return "", "", err
+			return admission, err
 		}
 		if live, err := LiveJob(ctx, tx, hash); err != nil || live {
-			tx.Rollback(ctx)   //nolint:errcheck
-			return "", "", err // A live job is joined, whatever failed before.
+			tx.Rollback(ctx)      //nolint:errcheck
+			return admission, err // A live job is joined, whatever failed before.
 		}
 		// Only the cores of this replica's output version count: a worker of
 		// another version may not take the job. With no worker of the version
@@ -267,38 +277,42 @@ func (j *Jobs) Refusal(ctx context.Context, spec playback.Spec, userID, deviceID
 			hash, liveTiming("counted").Seconds(), failureMemory.Seconds(), playback.OutputVersion, maxRestarts+1).Scan(&workers, &versionWorkers, &failure, &lockless)
 		if err != nil {
 			tx.Rollback(ctx) //nolint:errcheck
-			return "", "", err
+			return admission, err
 		}
-		short, shortReason := "", ""
+		short, judged := "", Admission{}
 		if versionWorkers > 0 {
 			nodes, jobs, err := readCapacity(ctx, tx, capQuery{Filter: "NOT locked OR " + lockHeld("id"), Queue: queue, UserID: userID, DeviceID: deviceID})
 			if err != nil {
 				tx.Rollback(ctx) //nolint:errcheck
-				return "", "", err
+				return admission, err
 			}
-			l := newLedger(nodes, jobs, viewerJobs)
-			l.placeQueued(jobs, viewerJobs)
-			shortReason, short = l.why(capJob{Cost: spec.Cost(), Copy: spec.Copy})
+			judged, _ = judge(nodes, jobs, capOf(spec))
+			short = judged.Text
 		}
 		tx.Rollback(ctx) //nolint:errcheck // Nothing was written.
 		if failure == nil && (workers == 0 || short != "") && lockless > 0 && time.Now().Before(deadline) {
 			select {
 			case <-ctx.Done():
-				return "", "", ctx.Err()
+				return admission, ctx.Err()
 			case <-time.After(liveTiming("refusalPoll")):
 			}
 			continue
 		}
 		if text, err := StoreMismatch(ctx, j.Pool); err != nil || text != "" {
-			return playback.TranscodeStoreMismatch, text, err
+			admission.Reason, admission.Text = playback.TranscodeStoreMismatch, text
+			return admission, err
 		}
 		switch {
 		case failure != nil:
-			return playback.RememberedFailure, "the last attempt failed: " + *failure, nil
+			admission.Reason, admission.Text = playback.RememberedFailure, "the last attempt failed: "+*failure
+			return admission, nil
 		case workers == 0:
-			return playback.NoWorkerRunning, "no transcode worker is running", nil
+			admission.Reason, admission.Text = playback.NoWorkerRunning, "no transcode worker is running"
+			return admission, nil
+		case versionWorkers > 0:
+			return judged, nil
 		}
-		return shortReason, short, nil
+		return admission, nil
 	}
 }
 
@@ -572,17 +586,27 @@ func (j *Jobs) makeRoom(ctx context.Context, job int64) error {
 		if err != nil {
 			return err
 		}
-		var copied bool
-		if err := tx.QueryRow(ctx, "SELECT COALESCE((spec->>'Copy')::boolean, false) FROM transcode_jobs WHERE id = $1", job).Scan(&copied); err != nil {
+		var copied, whole bool
+		var hash string
+		if err := tx.QueryRow(ctx, "SELECT COALESCE((spec->>'Copy')::boolean, false), COALESCE(spec->>'Recode', '') <> '', spec_hash FROM transcode_jobs WHERE id = $1", job).Scan(&copied, &whole, &hash); err != nil {
 			return err
 		}
-		preempted, err = preemptHelpers(ctx, tx, orDefault(j.QueueTimeout, queueTimeout), capJob{Cost: c, Copy: copied}, true)
+		nodes, jobs, err := readCapacity(ctx, tx, capQuery{Filter: "true", Queue: orDefault(j.QueueTimeout, queueTimeout)})
+		if err != nil {
+			return err
+		}
+		preempted, err = preemptHelpers(ctx, tx, nodes, jobs, capJob{Cost: c, Copy: copied, Whole: whole, Spec: hash}, true)
 		return err
 	})
 	if preempted {
 		Notify(ctx, j.Pool, preemptHint)
 	}
 	return err
+}
+
+// capOf is the spec as the ledger counts a job of it.
+func capOf(spec playback.Spec) capJob {
+	return capJob{Cost: spec.Cost(), Copy: spec.Copy, Whole: spec.Recode != "", Spec: spec.Hash()}
 }
 
 func orDefault(d, fallback time.Duration) time.Duration {
@@ -618,7 +642,8 @@ func (j *Jobs) ensure(ctx context.Context, spec playback.Spec, hash, owner strin
 		// Locks the viewer's row, so a Stop that lands now waits and then cancels
 		// what this inserts.
 		var stopped bool
-		err := tx.QueryRow(ctx, "SELECT stopped FROM transcode_viewers WHERE play_session_id = $1 AND spec_hash = $2 FOR SHARE", owner, hash).Scan(&stopped)
+		var userID, deviceID string
+		err := tx.QueryRow(ctx, "SELECT stopped, user_id::text, device_id FROM transcode_viewers WHERE play_session_id = $1 AND spec_hash = $2 FOR SHARE", owner, hash).Scan(&stopped, &userID, &deviceID)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return err
 		}
@@ -669,7 +694,18 @@ func (j *Jobs) ensure(ctx context.Context, spec playback.Spec, hash, owner strin
 			return namesJob(ctx, tx, owner, hash, id)
 		}
 		created = true
-		if preempted, err = preemptHelpers(ctx, tx, orDefault(j.QueueTimeout, queueTimeout), capJob{Cost: spec.Cost(), Copy: spec.Copy}, false); err != nil {
+		nodes, jobs, err := readCapacity(ctx, tx, capQuery{Filter: "true", Queue: orDefault(j.QueueTimeout, queueTimeout), UserID: userID, DeviceID: deviceID, Session: owner})
+		if err != nil {
+			return err
+		}
+		// A newcomer that does not fit is refused, and queues nothing, where a film is held: a queued job would wait for
+		// cores that stay held for as long as that film is watched, and what a refusal does not do is stop a helper for it.
+		// Elsewhere it waits for cores that a job that ends, or a worker that returns, may free.
+		job := capOf(spec)
+		if admission, held := judge(nodes, jobs, job); held && admission.Reason != "" {
+			return ErrBusy
+		}
+		if preempted, err = preemptHelpers(ctx, tx, nodes, jobs, job, false); err != nil {
 			return err
 		}
 		err = tx.QueryRow(ctx, `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, output_version, cost)

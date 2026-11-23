@@ -153,45 +153,6 @@ func TestUnreadableOrNegativeGraceStopsTheStartNamingTheKey(t *testing.T) {
 	}
 }
 
-// docs/running.md says what an operator needs: the keys, and what to do.
-func TestRunningDocNamesTheKeys(t *testing.T) {
-	raw, err := os.ReadFile("../../docs/running.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{"missingGrace", "maxLostShare"} {
-		if !strings.Contains(string(raw), "`"+want+"`") {
-			t.Errorf("docs/running.md does not name `%s`", want)
-		}
-	}
-}
-
-// docs/running.md tells an operator who reads `libraries`, and what a list
-// that differs between workers or is empty does. The wording is the task's:
-// each phrase is one of its sentences, compared without case or line breaks.
-func TestRunningDocSaysWhoReadsLibrariesAndWhatAnEmptyListDoes(t *testing.T) {
-	raw, err := os.ReadFile("../../docs/running.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	doc := strings.ToLower(strings.Join(strings.Fields(string(raw)), " "))
-	for _, want := range []string{
-		"every worker must list the same libraries",
-		"hides it from every viewer",
-		"`libraries` of api and stream replicas are not read",
-		"hides and removes nothing",
-		"emptying the list does not remove the last library",
-		"first worker start without it",
-	} {
-		if !strings.Contains(doc, want) {
-			t.Errorf("docs/running.md does not say %q", want)
-		}
-	}
-	if strings.Contains(doc, "since the first start without it") {
-		t.Error("docs/running.md still counts a library's grace from any start, not the first worker start")
-	}
-}
-
 // JS-031. The drain grace is one config setting, shutdownGrace (the name is the
 // task's choice), and a value that is not a duration or is negative stops the
 // start naming the key. run is the real start: it reads the config before it
@@ -216,28 +177,6 @@ func TestUnreadableOrNegativeShutdownGraceStopsTheStartNamingTheKey(t *testing.T
 		if err == nil || !strings.Contains(err.Error(), "shutdownGrace") || strings.Contains(err.Error(), "unknown field") || strings.Contains(err.Error(), "JELLYSCALE_DATABASE_URL") {
 			t.Errorf("shutdownGrace %s: want a refusal naming the key, got %v", bad, err)
 		}
-	}
-}
-
-// docs/running.md tells the operator what the grace is, its default, that the
-// pod's termination grace period goes above it, and which route is readiness.
-func TestRunningDocSaysHowToSetTheGraceAndWhichRouteIsReadiness(t *testing.T) {
-	raw, err := os.ReadFile("../../docs/running.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	doc := string(raw)
-	for _, want := range []string{"`shutdownGrace`", "/readyz", "/healthz"} {
-		if !strings.Contains(doc, want) {
-			t.Errorf("docs/running.md does not name %s", want)
-		}
-	}
-	if !regexp.MustCompile(`(?is)termination ?grace ?period.{0,200}above|above.{0,200}termination ?grace ?period|terminationGracePeriodSeconds`).MatchString(doc) {
-		t.Error("docs/running.md does not say to set the pod's termination grace period above the grace")
-	}
-	line := regexp.MustCompile("(?m)^.*`shutdownGrace`.*$").FindString(doc)
-	if !regexp.MustCompile(`\b\d+(s|m|ms)\b|\b\d+ (seconds|minutes)\b`).MatchString(line) {
-		t.Errorf("the paragraph that names `shutdownGrace` must state its default as a duration: %q", line)
 	}
 }
 
@@ -266,43 +205,5 @@ func TestShippedIngressPollsReadinessAndRetriesOnAnotherReplica(t *testing.T) {
 		if n := len(regexp.MustCompile(pattern).FindAllString(config, -1)); n != proxies {
 			t.Errorf("deploy/compose/Caddyfile has %d of %s for %d reverse_proxy blocks", n, directive, proxies)
 		}
-	}
-}
-
-func TestRunningDocSaysWhatTheIngressMustDo(t *testing.T) {
-	raw, err := os.ReadFile("../../docs/running.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	doc := string(raw)
-	for what, pattern := range map[string]string{
-		"poll /readyz at an interval":                      `(?is)poll.{0,200}/readyz|/readyz.{0,200}poll`,
-		"stop routing to a replica that answers 503":       `(?is)503.{0,300}(stop|no longer|not) (send|rout)|(stop|no longer|not) (send|rout).{0,300}503`,
-		"stop routing to a refused connection":             `(?is)refused connection|connection (is )?refused|does not answer|no answer`,
-		"retry a GET on another replica before the header": `(?is)retr(y|ies).{0,300}(another|other|next) replica|(another|other|next) replica.{0,300}retr`,
-	} {
-		if !regexp.MustCompile(pattern).MatchString(doc) {
-			t.Errorf("docs/running.md does not say that the ingress must %s", what)
-		}
-	}
-}
-
-// JS-108: docs/running.md names the gauge of the films a scan could not store,
-// and says that they make the library's last scan a failure.
-func TestRunningDocNamesTheFailedFilmsGaugeAndWhatItDoesToSuccess(t *testing.T) {
-	raw, err := os.ReadFile("../../docs/running.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := strings.ToLower(strings.Join(strings.Fields(string(raw)), " "))
-	inTable := false
-	for _, line := range strings.Split(string(raw), "\n") {
-		inTable = inTable || (strings.HasPrefix(line, "|") && strings.Contains(line, "jellyscale_scan_last_failed_films"))
-	}
-	if !inTable {
-		t.Error("the metrics table does not name `jellyscale_scan_last_failed_films`")
-	}
-	if !strings.Contains(text, "jellyscale_scan_last_success") || !strings.Contains(text, "0 when any film could not be stored") {
-		t.Error("docs/running.md does not say jellyscale_scan_last_success is 0 when any film could not be stored")
 	}
 }

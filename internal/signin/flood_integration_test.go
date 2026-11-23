@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -102,21 +101,6 @@ func clear(t *testing.T, pool *pgxpool.Pool) {
 			t.Fatal(err)
 		}
 	}
-}
-
-// statedBound is the number of unknown names docs/access.md says are remembered ("100,000 unknown names").
-func statedBound(t *testing.T) int {
-	t.Helper()
-	raw, err := os.ReadFile("../../docs/access.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	m := regexp.MustCompile(`(?i)\b(\d[\d,]*)\s+unknown\s+names?`).FindStringSubmatch(string(raw))
-	if m == nil {
-		t.Fatal("docs/access.md states no number of unknown names that are remembered (such as `100,000 unknown names`)")
-	}
-	n, _ := strconv.Atoi(strings.ReplaceAll(m[1], ",", ""))
-	return n
 }
 
 // writeNames fails n invented names once each, from the given number of goroutines.
@@ -268,9 +252,9 @@ func tablesHoldTheRule(t *testing.T, pool *pgxpool.Pool, when string, counts []i
 func floodsHoldTheRule(t *testing.T, pool *pgxpool.Pool, processes int) {
 	t.Helper()
 	ctx := context.Background()
-	bound := statedBound(t)
+	bound := signin.UnknownNames
 	if bound < 100_000 || bound > 150_000 {
-		t.Fatalf("docs/access.md remembers %d unknown names: this check floods 20,000 past it, and the bound must hold at least 100,000; ask the lead if the bound is meant to be larger than 150,000", bound)
+		t.Fatalf("signin.UnknownNames is %d: this check floods 20,000 past it, and the bound must hold at least 100,000; ask the lead if the bound is meant to be larger than 150,000", bound)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO signin_device_ended (user_id, device_id, ended_at) VALUES ($1, 'flood-device', clock_timestamp())`, uuid.NewString()); err != nil {
 		t.Fatal(err)
@@ -427,7 +411,7 @@ func TestAnExcessLeftBySignInsInFlightIsForgottenByTheNextOneAlone(t *testing.T)
 	t.Cleanup(pool.Close) // before clear's, which runs first
 	clear(t, pool)
 	t.Cleanup(func() { clear(t, pool) })
-	bound := statedBound(t)
+	bound := signin.UnknownNames
 
 	// Below the bound nothing is forgotten, so the fill leaves exactly bound-1 names, however its writers interleave.
 	if err := writeNames(pool, bound-1, writers); err != nil {

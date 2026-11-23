@@ -226,30 +226,3 @@ func TestStreamServesEveryCopyThePreviousReleaseOffered(t *testing.T) {
 		})
 	}
 }
-
-// An api of this release offers a copy of plain HDR that a stream replica of the
-// previous release refuses (it copies SDR, Dolby Vision and H.264 only), so the
-// order of a rolling update matters, and docs/running.md must give it:
-// stream replicas first, then api replicas.
-func TestRunningDocGivesTheRollOrder(t *testing.T) {
-	raw, err := os.ReadFile("../../docs/running.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var section string
-	for _, part := range strings.Split("\n"+string(raw), "\n## ")[1:] {
-		if heading, _, _ := strings.Cut(part, "\n"); regexp.MustCompile(`(?i)roll|upgrad|update`).MatchString(heading) {
-			section = strings.ToLower(part)
-		}
-	}
-	if section == "" {
-		t.Fatal("docs/running.md has no section on a rolling update")
-	}
-	stream, api := strings.Index(section, "stream"), strings.Index(section, "api")
-	if stream < 0 || api < 0 || stream > api || !regexp.MustCompile(`first|before`).MatchString(section) {
-		t.Errorf("the section does not say stream replicas are replaced before api replicas:\n%s", section)
-	}
-	if !strings.Contains(section, "hdr") {
-		t.Errorf("the section does not say why (the copy of HDR video):\n%s", section)
-	}
-}

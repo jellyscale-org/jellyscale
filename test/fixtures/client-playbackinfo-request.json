@@ -1,0 +1,40 @@
+{
+  "DeviceProfile": {
+    "MaxStreamingBitrate": 120000000,
+    "DirectPlayProfiles": [
+      {
+        "Container": "mp4,m4v,mkv",
+        "Type": "Video",
+        "VideoCodec": "h264",
+        "AudioCodec": "aac"
+      }
+    ],
+    "TranscodingProfiles": [
+      {
+        "Container": "mp4",
+        "Type": "Video",
+        "AudioCodec": "aac",
+        "VideoCodec": "h264",
+        "Context": "Streaming",
+        "Protocol": "hls",
+        "MaxAudioChannels": "2",
+        "MinSegments": "1",
+        "BreakOnNonKeyFrames": false
+      }
+    ],
+    "SubtitleProfiles": [
+      {
+        "Format": "vtt",
+        "Method": "External"
+      },
+      {
+        "Format": "ass",
+        "Method": "External"
+      },
+      {
+        "Format": "ssa",
+        "Method": "External"
+      }
+    ]
+  }
+}

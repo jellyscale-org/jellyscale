@@ -36,22 +36,3 @@ func TestSearchHintsIsAuditedAsDone(t *testing.T) {
 		t.Error("compat/endpoints.yaml does not list GET /Search/Hints as implemented")
 	}
 }
-
-func TestStatusPageNoLongerListsSearchHintsAmongTheRoutesAnswered404(t *testing.T) {
-	status, err := os.ReadFile("../docs/status.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var line string
-	for _, l := range strings.Split(string(status), "\n") {
-		if strings.Contains(l, "answered 404:") {
-			line = l
-		}
-	}
-	if line == "" {
-		t.Fatal("docs/status.md has no line listing routes answered 404")
-	}
-	if strings.Contains(line, "/Search/Hints") {
-		t.Error("docs/status.md still lists /Search/Hints among the routes answered 404")
-	}
-}

@@ -467,8 +467,8 @@ func (w *Worker) keepRow(held context.Context, lose context.CancelCauseFunc, liv
 			// The row carries the cores the worker declared from its first write, and
 			// slots as those cores rounded up for a replica of the release before (JS-087).
 			cores, slots := w.registered()
-			_, err := w.Pool.Exec(ctx, `INSERT INTO transcode_nodes (id, roles, store, slots, cores, locked, output_version, session) VALUES ($1, $2, $3, $4, $5, true, $6, $7)
-				ON CONFLICT (id) DO UPDATE SET seen_at = now(), locked = true, slots = $4, cores = $5, session = $7`, w.ID, roles, storeURI, slots, cores, playback.OutputVersion, sessionOf(held))
+			_, err := w.Pool.Exec(ctx, `INSERT INTO transcode_nodes (id, roles, store, slots, cores, locked, output_version, session, no_helpers) VALUES ($1, $2, $3, $4, $5, true, $6, $7, $8)
+				ON CONFLICT (id) DO UPDATE SET seen_at = now(), locked = true, slots = $4, cores = $5, session = $7, no_helpers = $8`, w.ID, roles, storeURI, slots, cores, playback.OutputVersion, sessionOf(held), w.NoHelpers)
 			cancel()
 			if err == nil {
 				seen = time.Now()
