@@ -2104,6 +2104,104 @@
       "source": "D-046",
       "notes": "ux: true. Merged 30af59c (#246).",
       "core": true
+    },
+    {
+      "id": "JS-168",
+      "phase": "P3",
+      "title": "A film one worker cannot keep at real time is shared with every worker that has room, with no room held back for a viewer who has not asked",
+      "description": "JS-162: with two equal workers no helper ever starts; the server refused one 302 to 304 times per play, every time for the room it keeps for a new viewer, with one viewer and nothing queued, and the film stalled exactly as on one worker. With that rule lifted (measurement build) two workers held 1.00x until the seek and three held it throughout; a small worker's job was carried by a large worker's helper. The room for the next viewer is the operator's and the autoscaler's to keep (docs/transcoding.md's sizing advice, JS-164, JS-057), not a rule that idles a worker beside a stalling film. Takes BL-242. D-046.",
+      "acceptanceCriteria": [
+        "Observed first with real processes and recorded: two equal workers and one viewer of a re-encode each makes under 0.9 times real time: the helpers refused, by rule. The check that follows fails today.",
+        "A helper is queued and claimed whenever a worker has the cores for it; the room kept for a viewer who has not asked is gone at the insert and at the claim. A helper still never takes a worker over its cores, and workers deciding together still never take the same last cores (two real workers, contended).",
+        "Two equal workers each making the job under 0.9 times real time, in jellyfin-web, with and without a burned-in PGS track: 10 minutes from the start, a seek to the middle, 10 minutes more. In each part: speed at or above 1.0 after its first 30 seconds, no more than 3 freezes of 0.5 seconds or more per 10 minutes, none over 2 seconds (JS-162 measured 1.00x and 3 freezes before the seek with the rule lifted; after the seek is this task's to show, with JS-167). Run three times; every run within the bound. If two workers cannot hold it after the seek, the figures come back as a brief and nothing is weakened. These long runs are a recorded measurement on the build, not a locked check; the locked check is the short form: with two throttled workers and a fixture film, a helper starts within 10 seconds of the job being judged slow, and again within 10 seconds of a seek.",
+        "One 2-CPU and one 6-CPU worker with the viewer's job on the 2-CPU one: the same bound, throughout.",
+        "Observed and recorded, not yet changed: a second viewer arrives while helpers hold every worker. Measured in jellyfin-web, three times each for a second play of the same cost and a 1080p SDR one: the second viewer's time to first frame against the same play on an idle cluster, and the first viewer's speed and freezes for 5 minutes after. The figures come to the product owner as a brief before JS-161's Spec: D-046 states who gives way as a default (JS-161 criterion 11), and these figures confirm it or change it.",
+        "With transcodeHelpers off nothing changes. With one worker nothing changes: no helper is queued or claimed, whatever cores the worker has free, and every check that passed on 30af59c passes unamended, but for the 16-core subcase of the helper capacity check, which gains a second worker (D-053), and the setup of the cross-version subtest 'an idle worker of another version does not count as a slot for a viewer', whose helper now runs on a second worker of the version, with its assertions kept and one added: the helper is stopped when the third viewer asks, not by the half-timeout rescue (D-054). A helper is never claimed by a worker that is at that moment running a viewer's, a seek's or a failover's job of its spec. A worker running only helpers of that spec may still take another when it has the cores, after the one-second wait, as before (a dead helper's replacement). Checked with real processes: one worker with cores for three jobs and two viewers of one spec has one job; two workers, the viewers' job on one, has its helper on the other in 10 of 10 (D-052).",
+        "No start of play and no seek is slower for a lone viewer: time to first segment measured before and after.",
+        "docs/transcoding.md, docs/status.md and DOMAINS.md invariant 58 are updated; docs/running.md keeps the advice to run with the dearest film's cores to spare and says the server no longer holds that room itself; listed under Changed guarantees citing D-046."
+      ],
+      "priority": 16,
+      "status": "done",
+      "passes": true,
+      "dependsOn": [
+        "JS-167"
+      ],
+      "source": "D-046; BL-242",
+      "notes": "ux: true. Takes BL-242. Merged 549eaa2 (#247).",
+      "core": true
+    },
+    {
+      "id": "JS-171",
+      "phase": "OPS",
+      "dependsOn": [],
+      "title": "A launched test process never loses its port, and the seek checks finish well inside their bound on CI",
+      "description": "Two test causes cost JS-167 merge-queue runs this week: a launched process losing its port, and two seek checks with no margin under their 180 s bound on CI. JS-161 lands through the same queue.",
+      "acceptanceCriteria": [
+        "docs/testing.md records queue run 44983050791: the test (TestAProcessWithoutTheWorkerRoleWritesNothingToTheLibraries, shard rest, go test process 2 of 4), which of its 18 processes exited and its log line (bind: address already in use, on the address the harness chose), the cause (the harness closes its listener before the process binds), and what took the port only if shown, otherwise marked unverified",
+        "docs/testing.md records queue run 45008394219: the two checks (TestSeveralSeeksInOnePlayOfAFilmWhoseAudioHeadIsLostEachGetTheirSegment, cut at segment 354 of 453; TestASeekPastHalfIntoAFilmReadFromAStoreWithNoPathGetsItsSegment/truehd-6, cut at segment 218 of 229), the cause (a right build's run from the film's start outlasting its 180 s bound), and their times on JS-152's own queue run 44909282472 (197.7 s and 178.9 s against 180 s), saying what each figure times (the whole test and the truehd-6 subtest, both passed)",
+        "A check takes, with a real socket, the address the harness chose for a real jellyscale process before that process binds, through the launch the 18-process test uses; before the fix it fails on that process's exit with bind: address already in use, as run 44983050791 did",
+        "After the fix the launch survives it: with the port taken once, taken several times in a row, taken for several of 18 processes launched at once, and taken by another process the harness launched (in this go test process or one beside it), each launched process itself answers /healthz on the address its test is handed, never the socket that took the port",
+        "What a test reads of a launched process (its log, its exit, what it wrote to its database) is one process's, with nothing of a start that lost its port mixed in",
+        "A process that exits for any other reason (a refused config, an unreachable Postgres) is started once and fails its test at once with its log, as today; if the address is taken at every attempt the fix makes, the test fails within a stated number of attempts naming the address, and never hangs",
+        "Measured and recorded in docs/testing.md with machine and command, not asserted by a test: 50 runs of the 18-process test under CI's shape (2 CPUs, the rest shard as CI runs it: INTEGRATION_PROCS=4 with the other three processes running), all 18 serving at once in each; in 50 of 50 every process binds and the test passes, and the record says how many launches met a taken port",
+        "The port fix is in the test harness and holds for every test that launches a listening process through it, not only the 18-process test. If it needs the app to do anything it does not do for an operator, that is not built and returns as a brief",
+        "Measured and recorded in docs/testing.md with machine and command, not asserted by a test: under CI's shape (ffmpeg 6.1, 2 CPUs, the whole of the checks' shard running as CI runs it), in 10 runs of 10, the step the 180 s bound times in each of the two checks (the whole run from the film's start; in the store check, for each of its rows aac-2, truehd-6 and dtshdma-8) takes at most 18 s on a right build; the check logs that time",
+        "That margin comes from the run from the start making less film, which a check counts in segments and which fails today (453 and 229 segments): the 180 s bound, go test's 45-minute limit and every other wait of these checks are no longer than today, and the run is not split under several bounds",
+        "Each check keeps what it claims: the film whose audio head is lost, one play, and seeks that each start a new job (a short one, one past half the film, one into its last segment); the store with no path, its three audio rows and a seek past half; a burnt image subtitle; every seek's segment compared with a run from the film's start and made by one job begun at that segment. The seek as far in as the dogfood's (1183 s) is kept or its loss is named in the brief below, never dropped silently",
+        "Each of the two checks, as shortened, still fails on the build before JS-152 (the product code of b920b19) for the reason it names, shown by its output: the lost-head check at each of its seeks, the seek getting no segment and its job's recorded reason saying ffmpeg made no packet",
+        "If less film cannot give the 18 s of the measurement above while a check keeps what it claims and still fails on the build before JS-152, that check stays as it is and the measured times, with what would be lost, return as a brief; no bound is raised and no check, row or seek is removed meanwhile",
+        "No retry of a test, no skip, no raised or added timeout; no product code changed to fit a test (nothing outside test files, test scripts, internal/testenv and docs); no other check weakened: the seek matrix (TestASeekGetsItsSegment_*) keeps its film of more than 30 minutes and its seek past half for every row (JS-152 criterion 2); no viewer-visible change"
+      ],
+      "source": "JS-167 merge queue (runs 44983050791, 45008394219); D-050",
+      "notes": "Builds beside JS-161 and never holds it, nor JS-041 or JS-157 (D-050). Merged 730c1ba (#249).",
+      "status": "done",
+      "passes": true,
+      "priority": 19,
+      "core": null
+    },
+    {
+      "id": "JS-172",
+      "phase": "P3",
+      "dependsOn": [],
+      "title": "What is stored for unknown sign-in names has a ceiling no flood raises, and its check fails only on a build that exceeds it",
+      "description": "The sign-in flood check saw the unknown-name store 14 rows past its bound under CI load. The product promises a ceiling no flood raises; whether the build or the check is wrong is observed first.",
+      "acceptanceCriteria": [
+        "Observed first under CI's shape (2 CPUs, -count=20) and recorded in docs/testing.md with queue run 44986442604: rows per signin_* table before and after each of 10 successive floods of 20,000 names past the bound with 16 writers; which table the 116 and the 14 rows were in; whether the excess rises flood over flood",
+        "The rule holds: the count never rises from flood to flood, and during a flood is over the bound by no more than the sign-ins in flight",
+        "If the build meets the rule, the check is amended to assert it, and is shown to fail on a build that leaks one row per flood and on one with no cap. docs/access.md states the bound with its slack. Both cite D-050",
+        "If the build does not meet it, the product is fixed. A fix that would slow a sign-in measurably, or needs a lock across replicas, is briefed first",
+        "JS-145 criterion 8 still holds: no real account's count changes and no unknown name answers differently",
+        "The record gives BL-214's undershoot at the shipped bound, with no fix unless its promotion rule is met; BL-220 stays open",
+        "No retry, skip or raised timeout"
+      ],
+      "source": "JS-167 merge queue (run 44986442604); D-050",
+      "notes": "Builds beside JS-161 and never holds it, nor JS-041 or JS-157 (D-050). Merged c9f1807 (#251).",
+      "status": "done",
+      "passes": true,
+      "priority": 20,
+      "core": null
+    },
+    {
+      "id": "JS-173",
+      "phase": "P2",
+      "dependsOn": [],
+      "title": "A viewer is never refused for the cores of a job that has just been given up",
+      "description": "A CI-shaped run saw PlaybackInfo refuse a spec for cores ('the most any worker has free is 0.0') right after a held worker's job was given up, 1 run of 3.",
+      "acceptanceCriteria": [
+        "A check forces the order (PlaybackInfo asked right after a job is given up by a held worker) with real processes, and fails before any fix",
+        "The record says what a viewer would have seen in production: a retry or failover answered \"cannot be played\" for cores that were free, and for how long",
+        "Verdict is product, test or cause unknown (D-042); not reproducing is never a verdict of test",
+        "If product: the cores a given-up, stopped or failed-over job held are free for admission by the time its viewer can ask again, shown on every give-up path; the fix returns as a brief first if it changes what a lease guarantees",
+        "If test: the test waits for what it claims and still fails on a wrong product",
+        "No retry, skip or raised timeout; no product code changed to fit a test",
+        "JS-161's admission keeps this check passing"
+      ],
+      "source": "JS-167 CI-shaped run (lease_keeper_integration_test.go:313); D-050",
+      "notes": "Builds beside JS-161 and never holds it, nor JS-041 or JS-157 (D-050). Merged 4f0fcd5 (#252).",
+      "status": "done",
+      "passes": true,
+      "priority": 21,
+      "core": null
     }
   ]
 }

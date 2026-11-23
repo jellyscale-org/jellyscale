@@ -20,3 +20,5 @@ Rules:
 - Severity: `blocker` loses data, breaks security or breaks the task's goal. `major` is a real bug users or operators will hit. `minor` is a real but small defect. Needless complexity is `major` when it will mislead a maintainer, otherwise `minor`.
 
 An empty findings list is a valid answer if you tried and couldn't break it.
+
+Never call the advisor tool, even if you have one: only the lead consults it (owner, 2026-11-22).

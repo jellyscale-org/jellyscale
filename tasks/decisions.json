@@ -606,6 +606,50 @@
       "decision": "accept (option A3: the sentence is reworded with the exception and the readers named; the readers' lock-awareness goes to the backlog)",
       "serves": "PRODUCT.md goal 1: 'Playback never surprises a viewer. Starting, seeking, resuming, and recovering from a failure just work, for every film.' 'Failures are invisible.' 'every failure is reported with its reason, never silent'. DOMAINS.md invariant 25: 'Losing the liveness lock is not yet losing the lease'.",
       "entry": "Invariant 25's sentence is reworded: only a locked worker claims and forgets others, and only a locked worker's look refreshes seen_at; the one exception is the write by which a worker ends one of its own jobs, which marks that worker seen whatever its lock, changes its row only if it is still there, and never restores a forgotten worker's row; PlaybackInfo's refusal for cores still does not count a relocking worker; the readers that count a worker by seen_at alone are named, with what they may now do for up to `counted` after a relocking worker ends a job. JS-173 merges with that text. Given up: a viewer whose request (a picked audio track, a burnt-in subtitle, a job left for that worker, a helper not preempted) falls in that window on a worker that never retakes its lock may wait up to the queue timeout (6 s) or the rescue before being answered; before JS-173 the same held only for the 10 s after a lock loss. The fix changes when a worker is marked seen, not what a lease guarantees. Rejected: B (one of JS-173's checks fails 3 of 3 on it for an undiagnosed reason, and it is a fix round in worker liveness to protect readers that were never lock-aware); C (holds a fix for a wrong refusal forced 3 of 3, for a window no one has seen); A2 alone (the readers' gap would be stated and then forgotten). The first condition of this decision's earlier form held (the write never inserts); the second failed by the lead's reading and is answered here. A new backlog item holds making those readers count a worker only with its lock held. Triage with it: the record gains one line saying the first sighting's literal order passes on the unfixed tree and which stricter order forces it; which give-up paths the forced checks show (criterion 4) is asked of the lead, and any path not shown becomes a task beside JS-161 that does not hold this merge. Unverified when decided: how often a worker relocks for more than 10 s and ends a job meanwhile (none seen); the viewer's wait in the worst case (derived, not measured); why B changes the order in the two-jobs check, and whether that says anything about the build that merges (it passes there 3 of 3). Data that reopens it: the dogfood's logs showing a worker relocking for longer than `counted`; a queue timeout or late start within `counted` of a worker losing its lock; a job admitted for cores to a worker that does not hold its lock; JS-161 or JS-164 making one of the named readers decide an admission or a gauge, which promotes the backlog item into that task's design review."
+    },
+    {
+      "id": "D-056",
+      "date": "2026-11-22",
+      "by": "product-owner",
+      "task": "JS-161, JS-166, JS-045, JS-060 and the viewer-facing set",
+      "brief": "The owner asked where the product stands as something viable. docs/status.md: playback is strong; artwork, user management, per-user libraries, Quick Connect, Next Up, the default subtitle and migration are not built; JS-150 to JS-173 went almost entirely to transcode robustness. Options: the order as is; the viewer-facing set after JS-161 and JS-166; the set first; other. (brief-triage-0522.md)",
+      "tradeoff": "Given up: JS-164, JS-169, JS-170, JS-135, JS-136, JS-148, JS-143, JS-165, JS-056 and JS-057 each wait about ten tasks longer, so an operator waits longer for autoscaling's signal, GPU re-encodes and the x264 preset. Kept: the measured 4K HDR stall is still closed first.",
+      "decision": "change",
+      "serves": "PRODUCT.md, The road there: 'each stage usable on its own', stages 3 (People) and 4 (A living library) before 5; goal 1 for JS-161 and JS-166.",
+      "entry": "Option (b), amended. JS-161 and JS-166 stay first on the dogfood's measured stall (JS-154). The viewer-facing set then goes ahead of all remaining measurement, tuning, GPU and autoscaling work, in the road's order: JS-041, JS-127, JS-033, JS-036, JS-037, JS-045, JS-047, JS-060 at 25 to 32, then JS-157 and JS-150; JS-164, JS-169, JS-170 and the rest follow at 35 to 51 with their content unchanged. JS-045 and JS-060 gain two criteria each. The lead's estimate that this set makes a household viable is unverified and is not a milestone. Reopens on: JS-166 leaving the stall open or dogfood refusals after JS-161 (JS-169 and JS-164 return to directly after JS-166); a week's dogfood count of requests answered 404 or by a stub, by route (reorders the set); a second household waiting (JS-060 and JS-150 move ahead of JS-045)."
+    },
+    {
+      "id": "D-057",
+      "date": "2026-11-22",
+      "by": "product-owner",
+      "task": "JS-159",
+      "brief": "Two checks of a cut source read during a re-encode fail on main: the waiting request got a 24-byte non-segment answer in under 200 ms instead of a segment from a fresh job (2 of 3 on main; 3 of 3 passed on the JS-168 tree), and the persisting-cause case got no failure (queue run 45086436037, and #225's run on 2026-11-20). Viewer effect reasoned, unverified. Options: a task now, before or beside JS-161, or backlog. (brief-triage-0522.md)",
+      "tradeoff": "Nothing a viewer has is given up. JS-169's and JS-164's starts wait behind it; docs/status.md says less than it did about JS-088 until JS-159 merges.",
+      "decision": "change",
+      "serves": "PRODUCT.md goal 1; 'Failures are invisible'; 'every failure is reported with its reason, never silent'; DOMAINS.md invariant 40.",
+      "entry": "JS-159 moves from 25 to 16 and builds beside JS-161. The persisting-cause sighting is its own. It gains three criteria: both cut-read cases run 20 times on main under CI's shape first, with what the 24 bytes are and whether the waiting-request case shares its cause; if not, that case returns as a brief and is not built here; after the fix both pass 20 of 20 with no check weakened. docs/status.md lists the gap against JS-088 until it merges. No separate task until the cause is shown to differ."
+    },
+    {
+      "id": "D-058",
+      "date": "2026-11-22",
+      "by": "product-owner",
+      "task": "JS-158, JS-175, JS-160",
+      "brief": "12 of the last 18 merge-queue runs failed, nearly every one on a different test; one shard process hit its 45-minute timeout; JS-158's deadlock was seen in 2 of 3 runs on 2026-11-22. Each failure costs about 45 minutes and a requeue. Options: move JS-158 ahead; a task that triages the recurring flakes into causes; both; leave as is. (brief-triage-0522.md)",
+      "tradeoff": "Given up: about one task's worth of building goes to tests before the viewer-facing set starts, and JS-160 is built ahead of it. No viewer or operator loses anything.",
+      "decision": "change",
+      "serves": "PRODUCT.md quality bar: 'Failure modes are designed, tested and reported. Nothing fails silently'; goal 1, since a product race (JS-159) was found among such failures.",
+      "entry": "Option (c), bounded. JS-158 moves to 19 and starts now. JS-175 enters at 22: a verdict from the log for each of the 12 failed runs, product causes back as briefs with nothing in the product changed, a forcing check and a fix only for a test cause seen twice, reproduction within 8 hours, the timed-out shard split if its healthy time is within 10 minutes of the timeout (takes BL-175), and the next 10 queue runs counted. JS-160 moves to 24. No nightly run, retry or workflow change. Reopens on the 10-run count: 2 or fewer failures sends JS-160 back behind the viewer-facing set."
+    },
+    {
+      "id": "D-059",
+      "date": "2026-11-22",
+      "by": "product-owner",
+      "task": "JS-168, JS-171, JS-172, JS-173",
+      "brief": "Minors left by JS-168, JS-171, JS-172 and JS-173: the cluster-wide viewer-first gate; insert and claim judging room by different ledgers; a lease-keeper check failing 1 of 3 locally; five record and test notes on JS-172; the lead's replacement of JS-172's flat forced race check by a set-up excess; JS-171's CI timings. (brief-triage-0522.md)",
+      "tradeoff": "Given up: a forcing check for the race between writers on the sign-in name ceiling (kept as BL-251). No viewer or operator loses anything.",
+      "decision": "accept",
+      "serves": "PRODUCT.md quality bar: 'Failure modes are designed, tested and reported'; goal 1 through JS-161's existing criteria.",
+      "entry": "Both JS-168 minors are already criteria of JS-161 (D-050) and are dropped as covered. The lease-keeper check and the flood tests' time go to JS-175 (criteria 6 and 5). JS-172's replaced check is accepted as built: it fails on a build that exceeds the ceiling, and the lost race-forcing check is BL-251, promoted on any row count over the bound or the next change to the cap. BL-250 keeps test/integration.sh ignoring a package path. docs/testing.md is corrected in the plan PR: series 1 ran on 4 CPUs with 18 of 20 runs complete, the 116 rows are the same run's first total and not a separate sighting, and JS-171's timings are added. The docs word-presence finding is dropped under BL-020. BL-175 is taken by JS-175."
     }
   ]
 }
