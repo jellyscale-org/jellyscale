@@ -48,9 +48,12 @@ type Worker struct {
 	Scratch string
 	// Cores is what the worker has to give its jobs, in the unit of
 	// playback.Spec.Cost. Slots, if set instead, stands for as many cores; with
-	// neither the worker has the processors it may use (cores).
-	Cores float64
-	Slots int
+	// neither the worker has the processors it may use, each at the reference
+	// machine's speed (cores, speed.go). setID leaves Cores as what is counted
+	// and assumed as whether the worker counted it without a declaration.
+	Cores   float64
+	Slots   int
+	assumed bool
 	// Idle is how long a spec may go without a request before its jobs stop.
 	Idle time.Duration
 	// Lead is how far, in film time, a job may get ahead of the furthest
@@ -64,6 +67,9 @@ type Worker struct {
 	// (default 1.2). See helpers.go.
 	ChunkSegments int
 	HelpBelow     float64
+	// unhelped counts the jobs that said they get no helper, by reason (BL-005).
+	unhelpedMu sync.Mutex
+	unhelped   map[string]int
 	// NoHelpers stops this worker's jobs from asking for helpers. It does not
 	// stop it from running helpers other workers asked for.
 	NoHelpers bool
@@ -318,7 +324,7 @@ func (w *Worker) claimIn(ctx context.Context, session string) (claimed, bool, er
 	// that has the cores, and a later one that fits goes first.
 	sort.SliceStable(jobs, func(i, j int) bool { return !jobs[i].Helper && jobs[j].Helper })
 	for _, queued := range jobs {
-		if queued.Worker != "" || !mine.fits(w.ID, queued) {
+		if queued.Worker != "" || !w.mayClaim(mine, nodes, jobs, queued) {
 			continue
 		}
 		var raw []byte
@@ -328,10 +334,12 @@ func (w *Worker) claimIn(ctx context.Context, session string) (claimed, bool, er
 				AND (NOT helper OR (NOT EXISTS (SELECT 1 FROM transcode_jobs v WHERE v.spec_hash = transcode_jobs.spec_hash AND v.worker = $1 AND v.state = 'running' AND NOT v.helper)
 					AND (created_at < now() - make_interval(secs => 1)
 						OR NOT EXISTS (SELECT 1 FROM transcode_jobs o WHERE o.spec_hash = transcode_jobs.spec_hash AND o.worker = $1 AND o.state = 'running'))))
-				-- A helper waits while a viewer's job is queued: the viewer who has asked goes first, whatever this worker read earlier.
+				-- A helper waits while a viewer's job is queued that this worker could take: the viewer who has asked goes first,
+				-- whatever this worker read earlier. A queued job that this worker is too small for holds nothing back here.
 				AND (NOT helper OR NOT EXISTS (SELECT 1 FROM transcode_jobs q WHERE NOT q.helper AND q.state = 'queued' AND q.output_version = transcode_jobs.output_version
-					AND q.created_at > now() - make_interval(secs => $4)))
-			RETURNING id, spec_hash, spec, start_segment, helper`, w.ID, (w.lease()+startup).Seconds(), queued.ID, queue.Seconds(), session).
+					AND q.created_at > now() - make_interval(secs => $4)
+					AND (q.cost IS NULL OR q.cost <= $6 OR (COALESCE(q.spec->>'Copy', 'false') <> 'true' AND COALESCE(q.spec->>'Recode', '') = '' AND q.cost * $7 <= $6))))
+			RETURNING id, spec_hash, spec, start_segment, helper`, w.ID, (w.lease()+startup).Seconds(), queued.ID, queue.Seconds(), session, mine.cores[w.ID], shareFraction).
 			Scan(&job.ID, &job.Hash, &raw, &job.Start, &job.Helper)
 		if errors.Is(err, pgx.ErrNoRows) {
 			continue // Another worker took it first.
@@ -348,6 +356,39 @@ func (w *Worker) claimIn(ctx context.Context, session string) (claimed, bool, er
 		return job, true, nil
 	}
 	return job, false, nil
+}
+
+// mayClaim says whether this worker takes the queued job. A helper goes where its cost, or its share of it when its play
+// runs on more than one worker, is free. A viewer's job goes to a worker that holds it alone; and only where none has
+// room to, to one that asks for helpers and has its share free beside a second worker with the same for the helpers
+// (JS-161, D-046). A worker that cannot hold a job never takes it from one that can, whichever looks first.
+func (w *Worker) mayClaim(mine *ledger, nodes []capNode, jobs []capJob, queued capJob) bool {
+	if mine.fits(w.ID, queued) {
+		return true
+	}
+	if queued.Helper || !queued.shareable() || w.NoHelpers {
+		return false
+	}
+	share := queued
+	share.Share = true
+	if !mine.fits(w.ID, share) {
+		return false
+	}
+	// The play's own helpers are not another job's cores: a seek's new job has them beside it.
+	others := newLedger(nodes, jobs, func(j capJob) bool { return !(j.Helper && j.Spec == queued.Spec) })
+	partner := false
+	helper := share
+	helper.Helper = true
+	for _, n := range nodes {
+		if n.ID == w.ID {
+			continue
+		}
+		if others.fits(n.ID, queued) {
+			return false // That worker holds the job alone.
+		}
+		partner = partner || others.fits(n.ID, helper)
+	}
+	return partner
 }
 
 // failUndecodable ends the job this worker has just claimed, whose spec it cannot read.
@@ -861,7 +902,8 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		poll := time.NewTicker(100 * time.Millisecond)
 		defer poll.Stop()
 		loggedSlow := false
-		waiting := false // A finished segment is kept for Postgres.
+		unhelped := map[string]bool{} // The reasons this job has said it gets no helper for.
+		waiting := false              // A finished segment is kept for Postgres.
 		progressed, progressAt := next, time.Now()
 		// gate pauses ffmpeg once everything below the limit is made, so what it
 		// reads past the limit is what it reads before the next look, and lets it
@@ -1020,9 +1062,19 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 							log.Warn("transcode is slower than real time, so playback will stall", "speed", speed, "worker", w.ID)
 						}
 						loggedSlow = speed < 1
-						if chunked && !w.NoHelpers && w.needsHelp(job) {
-							if err := w.startHelper(ctx, job, next, layout); err != nil && ctx.Err() == nil {
+						if w.needsHelp(job) {
+							reason, err := w.askForHelp(ctx, job, chunked, next, layout)
+							if err != nil && ctx.Err() == nil {
 								log.Warn("starting a helper job failed", "error", err)
+							}
+							if reason != "" && !unhelped[reason] {
+								unhelped[reason] = true
+								w.countUnhelped(reason)
+								attrs := []any{"reason", reason, "speed", speed, "worker", w.ID, "capacity", w.capacitySource()}
+								if w.assumed {
+									attrs = append(attrs, "note", "capacity is assumed from the processors; set transcodeCores to what the worker holds")
+								}
+								log.Warn("slow job gets no helper", attrs...)
 							}
 						}
 					}
@@ -1454,4 +1506,24 @@ func (w *Worker) restoreFonts(ctx context.Context, job claimed, log *slog.Logger
 	return w.awaitJob(ctx, job, log, func(ctx context.Context) error {
 		return awaitJob(ctx, w.Pool, w.Hub, subtitleJob{Key: subtitles.FontsKey(source.ID, source.ETag), Kind: "fonts", Item: job.Spec.Item, Source: source.ID})
 	})
+}
+
+// countUnhelped counts a job that ran under real time and got no helper, once for each job and reason.
+func (w *Worker) countUnhelped(reason string) {
+	w.unhelpedMu.Lock()
+	defer w.unhelpedMu.Unlock()
+	if w.unhelped == nil {
+		w.unhelped = map[string]int{}
+	}
+	w.unhelped[reason]++
+}
+
+func (w *Worker) unhelpedCounts() map[string]int {
+	w.unhelpedMu.Lock()
+	defer w.unhelpedMu.Unlock()
+	counts := map[string]int{}
+	for reason, n := range w.unhelped {
+		counts[reason] = n
+	}
+	return counts
 }

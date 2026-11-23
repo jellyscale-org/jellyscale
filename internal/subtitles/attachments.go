@@ -116,7 +116,7 @@ func FillFonts(ctx context.Context, src items.Source, media, assets store.Store,
 	}
 	defer closeInput()
 	args = append(args, "-i", input, "-map", "0:v:0", "-frames:v", "0", "-f", "null", "-")
-	res, err := mediatool.Run(ctx, "ffmpeg", args, mediatool.Options{})
+	res, err := mediatool.Run(ctx, "ffmpeg", args, mediatool.Options{Background: true})
 	out := res.Combined
 	kept := map[int]string{}
 	switch {

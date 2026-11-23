@@ -466,6 +466,7 @@ func openTranscoding(ctx context.Context, cfg config, roles []string, pool *pgxp
 		if cfg.liveness != nil { // Each a connection of its own, as pgx makes of a config it is given.
 			w.LivenessConfig, w.KeeperConfig = cfg.liveness.Copy(), cfg.liveness.Copy()
 		}
+		w.SayCapacity()
 	}
 	// A worker proves it is alive with a lock of its own, so that a replica
 	// notices its death in a second; the others need no more than the row.

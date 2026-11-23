@@ -458,7 +458,10 @@ func (s *Server) planPlayback(r *http.Request, itemID, playSession string, reque
 			s.Log.Warn("offering a running transcode though the stores may differ", "item", spec.Item, "reason", mismatch, "error", mismatchErr)
 		}
 	case s.Transcode != nil:
-		kind, reason, err = s.Transcode.Refusal(r.Context(), spec, user.User.ID, user.DeviceID)
+		var admission transcode.Admission
+		admission, err = s.Transcode.Admit(r.Context(), spec, user.User.ID, user.DeviceID)
+		kind, reason = admission.Reason, admission.Text
+		base.admission = &admission
 		if err == nil && reason == "" && *audio != media.DefaultAudio() {
 			// The item lists the track alone where no worker of this output version runs transcodes, so a track other
 			// than the file's default is asked of the same node read (D-029); Unavailable stays as it is for the rest.

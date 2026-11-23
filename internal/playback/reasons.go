@@ -22,6 +22,9 @@ const (
 	NoWorkerOfThisOutputVersion = "NoWorkerOfThisOutputVersion"
 	NoTranscodeStore            = "NoTranscodeStore"
 	NoProbedDuration            = "NoProbedDuration"
+	// CoresHeldByWatchedFilm: the cores the play needs are held by a film another viewer is watching, a play that runs on
+	// helpers (JS-161, D-046): the newcomer would fit only by stopping them, which would take that viewer under real time.
+	CoresHeldByWatchedFilm = "CoresHeldByWatchedFilm"
 )
 
 // Reasons is the whole vocabulary of the decision line, its counters and TranscodeReasons: Jellyfin's names where it has
@@ -33,7 +36,7 @@ func Reasons() []string {
 		"InterlacedVideoNotSupported", "AudioChannelsNotSupported", "ContainerBitrateExceedsLimit", "VideoRangeTypeNotSupported",
 		KeyframeIndexUnusable, BitrateUnknownUnderCap, VideoRangeNotCopyable, VideoRangeUnknown,
 		NoWorkerRunning, NoWorkerWithFreeCores, TranscodeStoreMismatch, RememberedFailure,
-		WorkersAtCopyBound, NoWorkerOfThisOutputVersion, NoTranscodeStore, NoProbedDuration,
+		WorkersAtCopyBound, NoWorkerOfThisOutputVersion, NoTranscodeStore, NoProbedDuration, CoresHeldByWatchedFilm,
 	}
 }
 

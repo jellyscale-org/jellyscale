@@ -87,7 +87,7 @@ func runFFmpeg(ctx context.Context, args []string) error {
 func runFFmpegStalling(ctx context.Context, args []string, stall time.Duration, progress func() int64) error {
 	// A file cut short makes ffmpeg complain and exit 0, with whatever it had
 	// read, so any output at all means the tracks can't be trusted.
-	res, err := mediatool.Run(ctx, "ffmpeg", args, mediatool.Options{Output: mediatool.AnyOutputIsFailure, Stall: stall, Progress: progress})
+	res, err := mediatool.Run(ctx, "ffmpeg", args, mediatool.Options{Output: mediatool.AnyOutputIsFailure, Stall: stall, Progress: progress, Background: true})
 	if err == nil {
 		return nil
 	}

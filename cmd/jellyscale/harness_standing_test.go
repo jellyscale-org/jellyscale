@@ -38,7 +38,7 @@ type harnessReport struct {
 	listenFlags []string // every "--listen" or "--listen=..." string, alone or at the front of a sum
 }
 
-var toolsTheTestsRun = map[string]bool{"bash": true, "go": true, "ffmpeg": true, "ffprobe": true, "docker": true, "fc-list": true}
+var toolsTheTestsRun = map[string]bool{"bash": true, "go": true, "ffmpeg": true, "ffprobe": true, "docker": true, "fc-list": true, "taskset": true}
 
 // A whole string that is an address with a port the test chose, and "--listen=addr" with one.
 var listenFlag = regexp.MustCompile(`^--listen[= ]\S*:[1-9][0-9]*$`)
