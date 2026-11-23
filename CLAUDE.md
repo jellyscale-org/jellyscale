@@ -76,6 +76,7 @@ The workflow's steps:
    - Evidenced findings left after that send the task back to Spec.
    - Minors go to the product owner.
 
+- Run the roles on these models: Refine on Opus 5.5 at high effort; every other workflow role on Sonnet 5.5 at high effort; the product owner on Fable 5.2 at high effort.
 - Keep reviewers blind: they see the task, the checks, the diff and the docs, never the implementer's reasoning or another reviewer's findings.
 - Treat the merge queue as the one full gate.
 - Run locally only what a change touches.
