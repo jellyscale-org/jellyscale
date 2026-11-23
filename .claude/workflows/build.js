@@ -322,12 +322,14 @@ if (open.length) {
 
 const all = history.flatMap((h) => h.findings)
 return {
-  clean: open.length === 0 && result.missing.length === 0,
+  // Acceptance items the implementer left undone (runs, records, counts) are the lead's to finish, never clean (BL-255).
+  clean: open.length === 0 && result.missing.length === 0 && !(built.unfinished ?? []).length,
   // Evidenced blockers after the one fix round mean the checks missed something.
   backToSpec: open.length > 0,
   id, base, specTree, head,
   open,
   unreviewed: result.missing,
+  unfinished: built.unfinished ?? [],
   environment: all.filter((f) => f.kind === 'environment'),
   backlog: all.filter((f) => f.severity === 'minor' && f.kind === 'defect'),
   spec,
