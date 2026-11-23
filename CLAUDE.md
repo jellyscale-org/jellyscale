@@ -1,72 +1,117 @@
 # jellyscale
 
-A horizontally scalable, Jellyfin-compatible video server in Go. Read [PRODUCT.md](PRODUCT.md) for what to build (the experience it exists to give), [docs/status.md](docs/status.md) for what is built, and [DOMAINS.md](DOMAINS.md) for the invariants. Phase 0 evidence is in [spikes/README.md](spikes/README.md).
+A horizontally scalable, Jellyfin-compatible video server in Go.
+
+- Read [PRODUCT.md](PRODUCT.md) for what to build, [docs/status.md](docs/status.md) for what is built, [DOMAINS.md](DOMAINS.md) for the invariants, [ARCHITECTURE.md](ARCHITECTURE.md) for the design, and [spikes/README.md](spikes/README.md) for Phase 0 evidence.
 
 ## Commands
 
 ```sh
-go test ./...                               # Tests that need nothing outside Go
+go test ./...                               # Unit tier
 test/integration.sh                         # Every test, with Postgres, SeaweedFS, Garage and real ffmpeg
-INTEGRATION_SHARD=0/4 test/integration.sh   # A slice of it: i/4 of internal/transcode and internal/api, or rest (CI runs the five side by side, each as INTEGRATION_PROCS processes)
+INTEGRATION_SHARD=0/4 test/integration.sh   # One slice: i/4 of internal/transcode and internal/api, or rest
 test/roles.sh <workdir>                     # Each role as its own process
 test/e2e/run.sh <workdir> <playwright_dir>  # Real jellyfin-web in Chromium
-E2E_GATES=transcode E2E_SHARD=1/3 test/e2e/run.sh ...  # A slice of a gate; E2E_ONLY=regex picks scenarios
-E2E_REPEAT=5 test/e2e/run.sh ...            # Warm reruns on one stack, "passed p of n" per scenario (a flake hunt)
-test/differential/run.sh <workdir>          # A real Jellyfin 12.4 and jellyscale asked the same requests (needs Docker, ffmpeg)
+E2E_GATES=transcode E2E_SHARD=1/3 test/e2e/run.sh ...  # One slice of a gate; E2E_ONLY=regex picks scenarios
+E2E_REPEAT=5 test/e2e/run.sh ...            # Warm reruns on one stack
+test/differential/run.sh <workdir>          # Jellyfin 12.4 and jellyscale asked the same requests
 test/scripts_test.sh                        # Tests of the test scripts
-test/ffmpeg61.sh go test -tags integration ./internal/transcode -run X  # Under Ubuntu 24.04's ffmpeg 6.1, as CI
+test/ffmpeg61.sh go test -tags integration ./internal/transcode -run X  # Under ffmpeg 6.1, as CI
 go run ./cmd/jellyscale --print-routes > compat/endpoints.yaml
-compat/gen-schema.sh                        # compat/schema-12.4.json from the OpenAPI document of the jellyfin/jellyfin:12.4 container
+compat/gen-schema.sh                        # compat/schema-12.4.json from the jellyfin/jellyfin:12.4 container
 ```
 
-The scripts keep their temp files in the workdir you give them (else under `/tmp/jellyscale-test`) and clean up after themselves, and after killed runs, cache the e2e films (`E2E_FIXTURE_CACHE`), and record each whole run in `.results/<tree>/` for QA to reuse (see [docs/testing.md](docs/testing.md)). `test/e2e/run.sh` needs `web-dist` in the checkout it runs from, and says so at once if it is missing.
+- Put tests that need ffmpeg, Postgres, S3 or a font in `*_integration_test.go` files tagged `//go:build integration`.
+- Install for the integration tier: Docker, ffmpeg with libx264, libx265, libsvtav1 and libass, and a font.
+- Give the test scripts a workdir; they clean up after themselves and record each run in `.results/<tree>/`.
+- Copy `web-dist` from the Jellyfin image into the checkout before running `test/e2e/run.sh`. See [docs/testing.md](docs/testing.md).
 
-Tests that need ffmpeg, Postgres, S3 or a font live in `*_integration_test.go` files tagged `//go:build integration`; the integration tier needs Docker, ffmpeg with libx264, libx265, libsvtav1 and libass, and a font. Go tests run through `go tool gotestsum`. `test/e2e` needs `web-dist` copied from the Jellyfin image and a directory with `playwright-core` installed; see [docs/testing.md](docs/testing.md).
-
-## Working rules
+## Rules
 
 - Prefer retrieval-led reasoning over training-led reasoning.
-- Write the simplest code that works. People have to read and maintain this: prefer plain, direct code over clever or general code, and add an abstraction only when something real needs it.
-- Observe a real Jellyfin 12.4 before implementing a protocol. Don't port Jellyfin code.
-- Match the surrounding code. Comments explain why, not what.
-- Tests must be able to fail. When fixing a bug, show the regression test catches it.
-- Concurrency claims need a test with real processes or real contention; a single process proves little.
-- Disposable infrastructure uses Docker-assigned ports. Never connect to a service already running on this machine.
-- Wait for a long run with one command: run it in the foreground with a timeout (up to 10 minutes, then run it again), or start it once in the background and wait for its notification. Never start a polling loop (`until …; do sleep …; done`) each turn: every background command stays a running task in the owner's list until it exits, and one QA agent left 45 of them (2026-11-15).
-- A missing dependency fails a test; it never skips one. A CI failure is never fixed by adding a skip.
+- Write the simplest code that works. Add an abstraction only when something real needs it.
+- Observe a real Jellyfin 12.4 before implementing a protocol.
+- Don't port Jellyfin code.
+- Match the surrounding code. Write comments that explain why, not what.
+- Test only application logic.
+- Never write a test that reads docs, Markdown, `tasks/` or `.claude/`.
+- Write tests that can fail. Show that a bug's regression test catches it.
+- Test concurrency with real processes or real contention.
+- Never change application code to fit a test.
+- Fail a test on a missing dependency; never skip it.
+- Never fix a CI failure with a skip, a retry or a longer timeout.
+- Use Docker-assigned ports for disposable infrastructure.
+- Never connect to a service already running on this machine.
+- Wait for a long run with one command: foreground with a timeout of at most 10 minutes, or one background run and its notification.
+- Never start a polling loop.
 - Don't commit or push unless asked.
 
 ## Delivery
 
-Each task in [tasks/prd.json](tasks/prd.json) goes through the `build` workflow in `.claude/workflows/build.js`, highest priority first. Its shape follows the evidence that agents converge when they loop against checks that can fail, and that reviewer comments are mostly noise unless they come with evidence:
+- Build each task in [tasks/prd.json](tasks/prd.json) with the `build` workflow (`.claude/workflows/build.js`), highest priority first.
+- Build independent tasks side by side, each in its own worktree under `~/.cache/jellyscale/` (`args.root`).
+- Keep each task to one capability, its checks and its docs.
 
-0. **Refine.** A strong model (Opus 5.5 at high effort) sharpens the task's acceptance criteria against the code before any check is written: counts and bounds, failures that are the file's and failures that are not, several of a thing as well as one. It may make a criterion more exact, never weaker; the lead records the refined criteria in `tasks/prd.json`.
-1. **Spec.** A spec writer turns the acceptance criteria into executable checks (tests, e2e scenarios, capture-based tests) and shows each fails today. Protocol behaviour is observed on a real Jellyfin 12.4 first.
-2. **Check.** An architecture reviewer reviews the design and whether the checks would catch a wrong build. A blocker or major sends it back to Spec once: the spec writer adds checks for each finding or answers why not, with evidence, and the reviewer sees the answers. Majors left after that bind the implementer, who builds what each asks or answers why not with evidence; the lead reads those answers, the Verify reviewers never do. A blocker left after that stops the run; when no check can answer it (two locked requirements that contradict each other), the lead corrects a check and resumes with `resolved.settled` naming the blocker, and the implementer is told how it was settled.
-3. **Build.** One implementer works until the checks and the tests of the packages it changed pass. The checks are locked: changing one, or disputing it, stops the run. The lead settles a dispute from evidence and, if the check was wrong, corrects it and resumes the run with `resolved` (the files and why), which every later reviewer and fixer is told. An implementer that stopped on its dispute then finishes the build on the corrected checks. `resolved.unlock` names files that are on the locked list by accident (in the spec's tree, but holding no check), which the implementer may then change. If every reviewer has already seen the build and the correction leaves its design as it was, `resolved.light` has only QA and the adversarial reviewer look again.
-4. **Verify.** QA runs the checks and the touched packages' tests once; one blind adversarial reviewer tries to break it where the checks don't look; architecture reviews it again only for changes to the scan, a store or job semantics (`core: true`); UX when viewers or operators would notice (`ux: true`). A blocker or major needs executable evidence (a failing test, a command and its output, a capture diff), or it counts as minor. Environment failures are reported apart.
-5. **Fix.** One round for evidenced findings, fixing the cause that let each through rather than only the case reported; then the reviewers whose findings were fixed look again, and no one else. Evidenced findings left after that send the task back to Spec: the checks missed something. Minors never start a fix round; they are kept for the product owner to triage.
+The workflow's steps:
 
-The merge queue is the one full gate: it runs every tier on CI's runners. A plan change (only `tasks/` and Markdown) is not tested in CI; run `go test ./compat/` before pushing one (owner, 2026-11-22). Locally, run only what a change touches; push, and when the queue fails, fix it on a new commit and queue again rather than rehearsing CI first (owner, 2026-11-13).
+0. **Refine.** Opus 5.5 at high effort sharpens the acceptance criteria against the code. It may make a criterion more exact, never weaker. The lead records the refined criteria in `tasks/prd.json`.
+1. **Spec.** A spec writer turns the criteria into checks (tests, e2e scenarios, capture-based tests) and shows each fails today.
+2. **Check.** An architecture reviewer reviews the design and the checks.
+   - A blocker or major sends the run back to Spec once.
+   - Majors left after that bind the implementer.
+   - A blocker left after that stops the run. When two locked requirements contradict each other, the lead corrects a check and resumes with `resolved.settled`.
+3. **Build.** One implementer works until the checks and its changed packages' tests pass.
+   - The checks are locked: changing or disputing one stops the run.
+   - The lead settles a dispute from evidence, corrects a wrong check, and resumes with `resolved` (files and why).
+   - `resolved.unlock` names files locked by accident that hold no check.
+   - `resolved.light` has only QA and the adversarial reviewer look again.
+4. **Verify.**
+   - QA runs the checks and the touched packages' tests once.
+   - One blind adversarial reviewer tries to break the build.
+   - Architecture reviews again for `core: true`.
+   - UX reviews for `ux: true`.
+   - A blocker or major without executable evidence counts as minor.
+5. **Fix.** One round for evidenced findings, at their cause.
+   - Only the reviewers whose findings were fixed look again.
+   - Evidenced findings left after that send the task back to Spec.
+   - Minors go to the product owner.
 
-Independent tasks build side by side, each in its own worktree under `~/.cache/jellyscale/` (`args.root`), so no task waits on another.
+- Keep reviewers blind: they see the task, the checks, the diff and the docs, never the implementer's reasoning or another reviewer's findings.
+- Treat the merge queue as the one full gate.
+- Run locally only what a change touches.
+- Fix a queue failure on a new commit and queue again.
+- Before landing, read the run's `unfinished` list and finish every item.
+- Before landing, delete any test that reads docs, Markdown, `tasks/` or `.claude/`.
 
-Blind means a reviewer sees the task, the checks, the diff and these docs, never the implementer's reasoning or another reviewer's findings. Keep it that way when changing the workflow. Role definitions are in `.claude/agents/`, and the intended design is in [ARCHITECTURE.md](ARCHITECTURE.md).
+## After each task
 
-After each task, record what the run found in `.results/tasks.jsonl` (gitignored), one JSON object per line in one of two shapes, so the reviewers' yield can be counted across tasks and each one's place decided from it:
+- Append one line per task, and one per escape, to `.results/tasks.jsonl`:
 
 ```json
-{"type": "task", "task": "JS-024", "date": "2026-11-08", "attempts": 1, "lead_corrections": 2, "minutes": {"spec": 31, "check": 4, "build": 160, "verify": 40, "fix": 20}, "tokens": {"spec": 186143, "build": 400000, "verify": 300000, "fix": 60000}, "findings": [{"reviewer": "architecture", "round": 1, "severity": "major", "evidence": "reading", "real": true, "fixed": true, "title": "..."}]}
+{"type": "task", "task": "JS-024", "date": "2026-11-08", "attempts": 1, "lead_corrections": 2, "minutes": {"spec": 31, "build": 160}, "tokens": {"spec": 186143, "build": 400000}, "findings": [{"reviewer": "architecture", "round": 1, "severity": "major", "evidence": "reading", "real": true, "fixed": true, "title": "..."}]}
 {"type": "escape", "task": "JS-023", "date": "2026-11-08", "caught_by": "merge-queue", "defect": "...", "why_missed": "..."}
 ```
 
-`reviewer` is `check`, `qa`, `adversarial`, `architecture`, `ux` or `lead`; `evidence` is `test`, `command`, `capture` or `reading`; `caught_by` is `merge-queue`, `ci`, `dogfood` or `user`. Then mark the task done and move it from `tasks/prd.json` to `tasks/done.json`, which holds finished and dropped tasks so the plan holds only open work, and bring the product owner what the run found and left unfixed and what the whole application now seems to need; amend `tasks/prd.json` by pull request as it decides, with the reason.
+  - `reviewer`: `check`, `qa`, `adversarial`, `architecture`, `ux` or `lead`.
+  - `evidence`: `test`, `command`, `capture` or `reading`.
+  - `caught_by`: `merge-queue`, `ci`, `dogfood` or `user`.
+- Move the finished task from `tasks/prd.json` to `tasks/done.json`.
+- Bring the product owner the run's unfixed findings and what the application now needs.
+- Amend `tasks/prd.json` by pull request as the product owner decides.
 
-Keep a task small enough to converge in one build and one fix round: one capability, its checks and docs.
+## Product owner
 
-**Product direction.** A fresh `product-owner` agent (`.claude/agents/product-owner.md`) keeps jellyscale the product PRODUCT.md describes. It reads PRODUCT.md, DOMAINS.md, the docs, the spikes, `tasks/prd.json` and `tasks/decisions.json`, never the code, because every agent that has seen the code drifts toward what was built. It is asked for these:
-- **A trade-off.** When a build would give up something a viewer or operator has, the lead writes a brief: what they have today and after, who is affected and how often, the measured evidence (with unverified claims marked), and every option, keeping the guarantee among them, with its cost, and no recommendation. The agent answers accept, keep, evidence or escalate.
-- **The plan.** It decides what enters `tasks/prd.json` and what is kept for later: every amendment (new tasks, order, drops) and every finding a run left unfixed goes to it, and the lead writes what it decides.
-- **A direction review.** After each phase, or when asked, it says where the product is drifting from PRODUCT.md and what it would put next.
-
-Each brief and decision goes into `tasks/decisions.json`. Every Changed guarantees entry, amended check, or weakened DOMAINS.md or docs statement cites a decision id. Its decisions stand: when it takes issue with a trade-off, the work pivots, goes to the backlog, or waits, as it says (owner, 2026-11-19). The owner decides only changes to PRODUCT.md or to what the product is for.
+- Ask a fresh `product-owner` agent (`.claude/agents/product-owner.md`) for trade-offs, the plan and direction reviews.
+- Never give it the code.
+- **Trade-off.** When a build would give up something a viewer or operator has, write a brief with:
+  - what they have today and after;
+  - who is affected and how often;
+  - the evidence, with unverified claims marked;
+  - every option, with its cost, the guarantee kept among them;
+  - no recommendation.
+- **Plan.** Send it every plan amendment and every finding a run left unfixed.
+- **Direction.** Ask for a direction review after each phase.
+- Record each brief and decision in `tasks/decisions.json`.
+- Cite a decision id in every Changed guarantees entry, amended check, and weakened DOMAINS.md or docs statement.
+- Follow its decisions.
+- Leave changes to PRODUCT.md, and to what the product is for, to the owner.
