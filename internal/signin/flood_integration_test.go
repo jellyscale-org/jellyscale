@@ -412,11 +412,13 @@ func TestAFloodFromTwoProcessesHoldsTheSameCeilingAndCarriesNothingOver(t *testi
 	floodsHoldTheRule(t, pool, 2)
 }
 
-// The rule's worst case, forced rather than waited for: with the store one short of the bound, 16 sign-ins of invented
-// names are held at their first write and let go together, so each can count without the others' commits and the store
-// comes to rest over the bound. The next invented name to fail alone must bring it back to the bound. A flood leaves an
-// excess only when the race happens to, so the floods above may never judge the carry-over; this does every run (D-050).
-func TestSixteenSignInsLetGoTogetherLeaveAnExcessTheNextOneAloneForgets(t *testing.T) {
+// The rule's worst case, set up rather than waited for: the store as 16 sign-ins in flight at once can leave it, each
+// having counted without the others' commits, 15 names over the bound (16 entered, 1 forgotten). The next invented name
+// to fail alone must bring it back to the bound. A flood leaves an excess only when the race happens to, so the floods
+// above may never judge the carry-over; this does every run (D-050). The excess is written directly, as the race
+// leaves it (a name, its one failure and its count each), because a race forced through a lock does not leave one every
+// run on CI's runners (queue run 45086436037: 99,967 after 16 released together).
+func TestAnExcessLeftBySignInsInFlightIsForgottenByTheNextOneAlone(t *testing.T) {
 	ctx := context.Background()
 	pool, err := db.Open(ctx, testenv.DatabaseURL(t))
 	if err != nil {
@@ -425,11 +427,6 @@ func TestSixteenSignInsLetGoTogetherLeaveAnExcessTheNextOneAloneForgets(t *testi
 	t.Cleanup(pool.Close) // before clear's, which runs first
 	clear(t, pool)
 	t.Cleanup(func() { clear(t, pool) })
-	holder, err := pgxpool.New(ctx, testenv.DatabaseURL(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer holder.Close()
 	bound := statedBound(t)
 
 	// Below the bound nothing is forgotten, so the fill leaves exactly bound-1 names, however its writers interleave.
@@ -439,53 +436,25 @@ func TestSixteenSignInsLetGoTogetherLeaveAnExcessTheNextOneAloneForgets(t *testi
 	if n := tables(t, pool)["signin_unknown"]; n != bound-1 {
 		t.Fatalf("the fill left signin_unknown at %d, want %d", n, bound-1)
 	}
-
-	tx, err := holder.Begin(ctx)
-	if err != nil {
+	excess := writers - 1
+	if _, err := pool.Exec(ctx, `WITH names AS (
+			SELECT encode(sha256(convert_to('in-flight-' || g, 'UTF8')), 'hex') AS key FROM generate_series(1, $1::int) g),
+		entered AS (INSERT INTO signin_unknown (key, failures, last_at) SELECT key, 1, clock_timestamp() FROM names RETURNING key),
+		failed AS (INSERT INTO signin_failures (kind, key) SELECT $2, key FROM entered)
+		UPDATE signin_unknown_count SET n = n + $1 WHERE stripe = (SELECT min(stripe) FROM signin_unknown_count)`,
+		excess+1, signin.BoundName); err != nil {
 		t.Fatal(err)
 	}
-	defer tx.Rollback(ctx)
-	if _, err := tx.Exec(ctx, `LOCK TABLE signin_unknown IN SHARE ROW EXCLUSIVE MODE`); err != nil {
-		t.Fatal(err)
-	}
-	done := make(chan error, 1)
-	go func() { done <- writeNames(pool, writers, writers) }()
-	deadline := time.Now().Add(time.Minute)
-	for {
-		var waiting int
-		if err := holder.QueryRow(ctx, `SELECT count(*)::int FROM pg_stat_activity
-			WHERE datname = current_database() AND wait_event_type = 'Lock' AND query LIKE '%signin_unknown%'`).Scan(&waiting); err != nil {
-			t.Fatal(err)
-		}
-		if waiting == writers {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("harness: %d of %d sign-ins reached the held write within a minute", waiting, writers)
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	if err := tx.Commit(ctx); err != nil {
-		t.Fatal(err)
-	}
-	if err := <-done; err != nil {
-		t.Fatal(err)
-	}
-
 	got := tables(t, pool)
-	t.Logf("OBSERVED %d sign-ins let go together from %d: signin_unknown %d, signin_unknown_count sums to %d", writers, bound-1, got["signin_unknown"], counted(t, pool))
-	if got["signin_unknown"] > bound+writers {
-		t.Errorf("after %d sign-ins let go together, signin_unknown holds %d rows, the ceiling is %d", writers, got["signin_unknown"], bound+writers)
-	}
-	if got["signin_unknown"] <= bound {
-		t.Fatalf("harness: the %d sign-ins let go together left signin_unknown at %d, not over the bound %d, so nothing here judges the carry-over", writers, got["signin_unknown"], bound)
+	if got["signin_unknown"] != bound+excess || counted(t, pool) != bound+excess {
+		t.Fatalf("harness: the store holds %d names counted as %d, want %d for both", got["signin_unknown"], counted(t, pool), bound+excess)
 	}
 
 	if err := signin.FailName(ctx, pool, "alone-"+uuid.NewString()[:8]); err != nil {
 		t.Fatal(err)
 	}
 	got = tables(t, pool)
-	t.Logf("OBSERVED after one name failed alone: signin_unknown %d, signin_unknown_count sums to %d", got["signin_unknown"], counted(t, pool))
+	t.Logf("OBSERVED from %d names, after one name failed alone: signin_unknown %d, signin_unknown_count sums to %d", bound+excess, got["signin_unknown"], counted(t, pool))
 	if got["signin_unknown"] > bound {
 		t.Errorf("after one more invented name failed alone, signin_unknown holds %d rows, want at most the bound %d: the excess is carried over", got["signin_unknown"], bound)
 	}
