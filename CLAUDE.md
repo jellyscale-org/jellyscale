@@ -81,6 +81,7 @@ The workflow's steps:
 - Run locally only what a change touches.
 - Fix a queue failure on a new commit and queue again.
 - Before landing, read the run's `unfinished` list and finish every item.
+- Before landing, delete any test that reads docs, Markdown, `tasks/` or `.claude/`.
 
 ## After each task
 
