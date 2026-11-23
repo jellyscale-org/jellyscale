@@ -42,6 +42,9 @@ type DBProxy struct {
 
 	stmt *statementHook // Armed by OnStatement.
 
+	gate      func(sent []byte) bool // Armed by HoldStatement: the statement it keeps from Postgres.
+	gateUntil chan struct{}
+
 	servers map[net.Conn]struct{} // Our side of each connection to Postgres.
 	quiet   bool                  // CutServers was called: a closed server side no longer closes the client's.
 
@@ -246,6 +249,32 @@ func (p *DBProxy) OnStatement(match func(sent []byte) bool, before, after func()
 	return p.stmt.done
 }
 
+// HoldStatement keeps the first statement for which match is true from reaching Postgres, on its connection only,
+// until the returned release is called (once or more). It is armed beside OnStatement's hook, which it does not
+// replace, so a test holds one statement of a client while the answer to another is what it waits for. A client
+// that sent the statement before the call is not held.
+func (p *DBProxy) HoldStatement(match func(sent []byte) bool) (release func()) {
+	until := make(chan struct{})
+	p.mu.Lock()
+	p.gate, p.gateUntil = match, until
+	p.mu.Unlock()
+	var once sync.Once
+	return func() { once.Do(func() { close(until) }) }
+}
+
+// holdGate waits where HoldStatement says, if sent is the statement it keeps.
+func (p *DBProxy) holdGate(sent []byte) {
+	p.mu.Lock()
+	match, until := p.gate, p.gateUntil
+	if match == nil || !match(sent) {
+		p.mu.Unlock()
+		return
+	}
+	p.gate = nil
+	p.mu.Unlock()
+	<-until
+}
+
 // Accepted counts the connections the proxy let through, for a test that must
 // know whether a process tried again.
 func (p *DBProxy) Accepted() int {
@@ -308,6 +337,7 @@ func (p *DBProxy) pipe(dst, src net.Conn, fromClient bool) {
 		}
 		if n > 0 && fromClient {
 			p.beforeStatement(dst, buf[:n])
+			p.holdGate(buf[:n])
 		}
 		if n > 0 && !fromClient {
 			p.afterStatement(src)

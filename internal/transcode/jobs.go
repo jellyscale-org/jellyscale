@@ -123,7 +123,9 @@ func StoreMismatch(ctx context.Context, pool *pgxpool.Pool) (string, error) {
 
 // LiveJob reports whether a job of the spec is running, or queued and not yet
 // past queueTimeout.
-func LiveJob(ctx context.Context, pool *pgxpool.Pool, hash string) (live bool, err error) {
+func LiveJob(ctx context.Context, pool interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, hash string) (live bool, err error) {
 	err = pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM transcode_jobs WHERE spec_hash = $1
 		AND ((state = 'queued' AND created_at > now() - make_interval(secs => $2))
 			OR (state = 'running' AND lease_expires_at > now())))`, hash, queueTimeout.Seconds()).Scan(&live)
@@ -230,19 +232,26 @@ func (j *Jobs) Refusal(ctx context.Context, spec playback.Spec, userID, deviceID
 	if err := expireStale(ctx, j.Pool, queue); err != nil {
 		return "", "", err
 	}
-	if live, err := LiveJob(ctx, j.Pool, hash); err != nil || live {
-		return "", "", err // A live job is joined, whatever failed before.
-	}
 	// A refusal that rests on a worker whose lock is gone is looked at again for
 	// a grace: it is either taking its lock again, or never will.
 	deadline := time.Now().Add(liveTiming("grace"))
 	for {
 		var workers, versionWorkers, lockless int
 		var failure *string
+		// One snapshot for the live-job check and the count of cores: a replacement queued between two reads
+		// would be seen by the second and not the first, and refuse its own spec for the cores it will take.
+		tx, err := j.Pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
+		if err != nil {
+			return "", "", err
+		}
+		if live, err := LiveJob(ctx, tx, hash); err != nil || live {
+			tx.Rollback(ctx)   //nolint:errcheck
+			return "", "", err // A live job is joined, whatever failed before.
+		}
 		// Only the cores of this replica's output version count: a worker of
 		// another version may not take the job. With no worker of the version
 		// at all the job is offered, and waits queueTimeout for one to start.
-		err = j.Pool.QueryRow(ctx, `WITH counted AS (
+		err = tx.QueryRow(ctx, `WITH counted AS (
 				SELECT id, output_version FROM transcode_nodes WHERE seen_at > now() - make_interval(secs => $2)
 					AND (slots > 0 OR cores > 0) AND (NOT locked OR `+lockHeld("id")+`))
 			SELECT
@@ -257,18 +266,21 @@ func (j *Jobs) Refusal(ctx context.Context, spec playback.Spec, userID, deviceID
 					AND locked AND NOT `+lockHeld("transcode_nodes.id")+`)`,
 			hash, liveTiming("counted").Seconds(), failureMemory.Seconds(), playback.OutputVersion, maxRestarts+1).Scan(&workers, &versionWorkers, &failure, &lockless)
 		if err != nil {
+			tx.Rollback(ctx) //nolint:errcheck
 			return "", "", err
 		}
 		short, shortReason := "", ""
 		if versionWorkers > 0 {
-			nodes, jobs, err := readCapacity(ctx, j.Pool, capQuery{Filter: "NOT locked OR " + lockHeld("id"), Queue: queue, UserID: userID, DeviceID: deviceID})
+			nodes, jobs, err := readCapacity(ctx, tx, capQuery{Filter: "NOT locked OR " + lockHeld("id"), Queue: queue, UserID: userID, DeviceID: deviceID})
 			if err != nil {
+				tx.Rollback(ctx) //nolint:errcheck
 				return "", "", err
 			}
 			l := newLedger(nodes, jobs, viewerJobs)
 			l.placeQueued(jobs, viewerJobs)
 			shortReason, short = l.why(capJob{Cost: spec.Cost(), Copy: spec.Copy})
 		}
+		tx.Rollback(ctx) //nolint:errcheck // Nothing was written.
 		if failure == nil && (workers == 0 || short != "") && lockless > 0 && time.Now().Before(deadline) {
 			select {
 			case <-ctx.Done():
