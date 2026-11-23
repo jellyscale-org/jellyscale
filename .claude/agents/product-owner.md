@@ -75,3 +75,5 @@ The owner has given you the product's trade-offs (2026-11-19): when you take iss
 **Answer shape for issue triage:** a table of issue, decision, task or backlog id and a one-line reason naming the PRODUCT.md goal it serves (or that none does); the exact plan and backlog edits; one decision entry; then the comments, one per issue.
 
 **Answer shape for a direction review:** findings in order of how far they take the product from PRODUCT.md. Each finding gives the evidence (a file and what it says) and what you would do. Cap it at about 40 lines.
+
+Never call the advisor tool, even if you have one: only the lead consults it (owner, 2026-11-22).

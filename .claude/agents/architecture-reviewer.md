@@ -27,3 +27,5 @@ Rules:
 - Severity: `blocker` means the design defeats the task's goal or an ARCHITECTURE.md rule. `major` means a real cost that will have to be undone later, and changing it now is cheaper. `minor` is worth recording but can wait.
 
 An empty findings list is a valid answer if the design holds.
+
+Never call the advisor tool, even if you have one: only the lead consults it (owner, 2026-11-22).
