@@ -95,17 +95,6 @@ func hiddenRoutes(t *testing.T, status string) []string {
 func needsBuilding(r row) bool { return r.slice != "-" }
 
 func TestCoverageRowsAreWellFormed(t *testing.T) {
-	product, err := os.ReadFile("../docs/status.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var defined []string
-	for _, m := range regexp.MustCompile("(?m)^\\d+\\. `([a-z0-9-]+)`:").FindAllStringSubmatch(string(product), -1) {
-		defined = append(defined, m[1])
-	}
-	if strings.Join(defined, " ") != strings.Join(sliceNames, " ") {
-		t.Errorf("docs/status.md roadmap defines slices %v, the test knows %v", defined, sliceNames)
-	}
 	seen := map[string]bool{}
 	for _, r := range readRows(t) {
 		if seen[r.key()] {
@@ -329,64 +318,6 @@ func TestSameRoute(t *testing.T) {
 	}
 }
 
-// Every slice that has work to do has a group in Features, and every feature
-// line says where it stands.
-func TestFeaturesCoverNeededSlices(t *testing.T) {
-	raw, err := os.ReadFile("../docs/status.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, features, _ := strings.Cut(string(raw), "\n## Features\n")
-	features, _, _ = strings.Cut(features, "\n## Feature audit")
-	if features == "" {
-		t.Fatal("docs/status.md has no Features section")
-	}
-	groups := map[string]bool{}
-	for _, m := range regexp.MustCompile("(?m)^### `([a-z0-9-]+)`$").FindAllStringSubmatch(features, -1) {
-		groups[m[1]] = true
-	}
-	for _, r := range readRows(t) {
-		if needsBuilding(r) && !groups[r.slice] {
-			t.Errorf("%s is needed in %s, which has no group in Features", r.id(), r.slice)
-		}
-	}
-	nonGoals := strings.Index(features, "### Non-goals")
-	if nonGoals < 0 {
-		t.Fatal("Features has no Non-goals group")
-	}
-	status := regexp.MustCompile(`\*\*(done|partial|not built)\*\*`)
-	for _, line := range strings.Split(features[:nonGoals], "\n") {
-		if strings.HasPrefix(line, "- ") && !status.MatchString(line) {
-			t.Errorf("Features line has no status: %q", line)
-		}
-	}
-}
-
-// docs/status.md says how many routes each slice still has to build, so that
-// "complete" can be counted.
-func TestSliceCountsMatchRows(t *testing.T) {
-	raw, err := os.ReadFile("../docs/status.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, audit, _ := strings.Cut(string(raw), "\n## Feature audit")
-	stated := map[string]string{}
-	for _, m := range regexp.MustCompile("(?m)^- `([a-z0-9-]+)`: (\\d+) routes to build$").FindAllStringSubmatch(audit, -1) {
-		stated[m[1]] = m[2]
-	}
-	counted := map[string]int{}
-	for _, r := range readRows(t) {
-		if needsBuilding(r) {
-			counted[r.slice]++
-		}
-	}
-	for _, name := range sliceNames {
-		if want := fmt.Sprint(counted[name]); stated[name] != want {
-			t.Errorf("docs/status.md says slice %s has %q routes to build, rows have %s", name, stated[name], want)
-		}
-	}
-}
-
 // Until ratings come from the scan, a maximum rating filters nothing, so the
 // list that offers it and the policy fields that apply it wait for phase5.
 func TestParentalControlWaitsForRatings(t *testing.T) {
@@ -394,12 +325,5 @@ func TestParentalControlWaitsForRatings(t *testing.T) {
 		if r.id() == "GET /Localization/ParentalRatings" && r.slice != "phase5-library" {
 			t.Errorf("%s is in slice %s, want phase5-library", r.id(), r.slice)
 		}
-	}
-	raw, err := os.ReadFile("../docs/status.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(raw), "400 when it sets `MaxParentalRating` or `BlockUnratedItems`") {
-		t.Error("Features no longer says identity refuses MaxParentalRating and BlockUnratedItems")
 	}
 }

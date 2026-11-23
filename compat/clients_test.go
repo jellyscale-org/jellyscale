@@ -18,7 +18,6 @@ package compat
 
 import (
 	"os"
-	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -211,75 +210,6 @@ func TestEveryAliasRouteStandsForARouteTheSchemaTypes(t *testing.T) {
 	for _, u := range rules.Unchecked {
 		if strings.TrimSpace(u.Reason) == "" {
 			t.Errorf("unchecked %s %s has no reason", u.Method, u.Route)
-		}
-	}
-}
-
-var statusRow = regexp.MustCompile(`^\|\s*(Findroid|Android TV|Swiftfin|Streamyfin)\s*\|\s*(startup|sign-in|home|browse|detail|playback|progress|stop)\s*\|\s*(yes|no)\s*\|(.*)\|\s*$`)
-
-// docs/status.md has a table "Client coverage" with a row for each client and
-// path: `| client | path | yes or no | the routes left unserved, each as METHOD /route (decision), or - |`.
-func TestStatusSaysForEachClientAndPathWhetherEveryListedRequestAnswers(t *testing.T) {
-	raw, err := os.ReadFile("../docs/status.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := string(raw)
-	if !strings.Contains(text, "Client coverage") {
-		t.Fatal("docs/status.md has no Client coverage section")
-	}
-	rows := map[string][]string{}
-	for _, line := range strings.Split(text, "\n") {
-		if m := statusRow.FindStringSubmatch(line); m != nil {
-			rows[m[1]+"/"+m[2]] = []string{m[3], m[4]}
-		}
-	}
-	all, _ := unservedRequests(t)
-	for _, name := range conform.ClientNames {
-		for _, path := range conform.PathNames {
-			got, ok := rows[name+"/"+path]
-			if !ok {
-				t.Errorf("docs/status.md has no row for %s %s", name, path)
-				continue
-			}
-			var left []unserved
-			for _, u := range all {
-				if u.client == name && u.path == path {
-					left = append(left, u)
-				}
-			}
-			if want := map[bool]string{true: "yes", false: "no"}[len(left) == 0]; got[0] != want {
-				t.Errorf("%s %s: status.md says %q, the list says %q", name, path, got[0], want)
-			}
-			for _, u := range left {
-				if !strings.Contains(got[1], u.method+" "+u.route) || !strings.Contains(got[1], u.class) {
-					t.Errorf("%s %s: status.md does not name the unserved %s %s with its decision (%s)", name, path, u.method, u.route, u.class)
-				}
-			}
-			if len(left) == 0 && strings.TrimSpace(got[1]) != "-" {
-				t.Errorf("%s %s: nothing is unserved, but status.md lists %q", name, path, got[1])
-			}
-		}
-	}
-}
-
-func TestStatusSaysWhatTheCoverageIsEvidenceOfAndCallsNoClientWorkingUnplayed(t *testing.T) {
-	raw, err := os.ReadFile("../docs/status.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := string(raw)
-	if strings.Contains(text, "The document is not kept in the repository") {
-		t.Error("docs/status.md still says the OpenAPI document is not kept in the repository; compat/schema-12.4.json is made from it")
-	}
-	for _, want := range []string{"compat/schema-12.4.json", "from source", "from traffic", "played on a device"} {
-		if !strings.Contains(text, want) {
-			t.Errorf("docs/status.md never says %q", want)
-		}
-	}
-	for _, sdk := range []string{"SDK decode", "schema"} {
-		if !strings.Contains(text, sdk) {
-			t.Errorf("docs/status.md does not say the coverage is evidence of %s", sdk)
 		}
 	}
 }

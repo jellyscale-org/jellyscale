@@ -14,7 +14,7 @@
 set -uo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 expect=$repo/test/image-expect.tsv
-page=$repo/docs/client-testing.md
+request=$repo/test/fixtures/client-playbackinfo-request.json
 pulled=${1:-}
 
 need() { command -v "$1" >/dev/null || { echo "test/image.sh needs $1 on PATH: $2" >&2; exit 1; }; }
@@ -187,10 +187,9 @@ done < <(tsv episode)
 views=$(api "$base/UserViews?userId=$userid" | jq -r '.Items[] | "\(.Name)\t\(.CollectionType)"' | LC_ALL=C sort)
 [[ $views == "$(awk -F'\t' '$1 == "library" {print $2 "\t" $3}' "$expect" | LC_ALL=C sort)" ]] || fail "the libraries are $(tr '\n\t' ';,' <<<"$views"), not the documented ones"
 
-# --- PlaybackInfo, for the request the page gives (its first json block), of every film.
-awk '/^```json$/ {f = 1; next} f && /^```$/ {exit} f' "$page" >"$work/request.json"
-jq -e .DeviceProfile "$work/request.json" >/dev/null || die "$page has no json block with a DeviceProfile"
-playback() { api -H 'Content-Type: application/json' -d @"$work/request.json" "$base/Items/$1/PlaybackInfo?UserId=$userid&StartTimeTicks=0&IsPlayback=false&AutoOpenLiveStream=false"; }
+# --- PlaybackInfo, for the request of test/fixtures/client-playbackinfo-request.json, of every film.
+jq -e .DeviceProfile "$request" >/dev/null || die "$request has no DeviceProfile"
+playback() { api -H 'Content-Type: application/json' -d @"$request" "$base/Items/$1/PlaybackInfo?UserId=$userid&StartTimeTicks=0&IsPlayback=false&AutoOpenLiveStream=false"; }
 declare -A film_id source_id transcode_url
 while IFS= read -r name; do
   id=$(awk -F'\t' -v n="$name" '$1 == n {print $2}' <<<"$movies")

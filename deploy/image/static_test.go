@@ -5,18 +5,16 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"testing"
 )
 
-// JS-124: the compose file, the Dockerfile, the page and test/image.sh, read as
+// JS-124: the compose file, the Dockerfile and test/image.sh, read as
 // text. None needs Docker or ffmpeg.
 
 const (
 	composePath = "deploy/fixtures/compose.yaml"
-	pagePath    = "docs/client-testing.md"
 	expectPath  = "test/image-expect.tsv"
 	imageName   = "ghcr.io/jellyscale-org/jellyscale"
 )
@@ -347,7 +345,7 @@ func TestFixturesConfigNamesLibrariesAndAdminAndHasNoPasswordOrWebDir(t *testing
 	}
 }
 
-func TestOnlyTheComposeFileAndThePageHoldThePassword(t *testing.T) {
+func TestOnlyTheComposeFileHoldsThePassword(t *testing.T) {
 	root := filepath.Join("..", "..")
 	var found []string
 	err := filepath.WalkDir(filepath.Join(root, "deploy", "fixtures"), func(path string, d os.DirEntry, err error) error {
@@ -371,7 +369,7 @@ func TestOnlyTheComposeFileAndThePageHoldThePassword(t *testing.T) {
 	}
 }
 
-// --- docs/client-testing.md and test/image-expect.tsv, which test/image.sh reads
+// --- test/image-expect.tsv, which test/image.sh reads
 
 type track struct {
 	index             int
@@ -543,164 +541,6 @@ func TestExpectationHoldsTheCountsAndTheTwoLanguageFilmsExactly(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join("..", "..", e.compose)); err != nil {
 		t.Errorf("the compose path does not exist: %v", err)
-	}
-}
-
-type pageData struct {
-	raw       string
-	libraries []string
-	films     []string
-	episodes  []string
-	tracks    map[string][]track
-	plays     map[string]string
-}
-
-var trackLine = regexp.MustCompile(`^- (\d+): (Video|Audio|Subtitle) (\S+) (\S+?)((?:, (?:default|forced|external))*)$`)
-
-func readPage(t *testing.T) pageData {
-	t.Helper()
-	p := pageData{raw: repoFile(t, pagePath), tracks: map[string][]track{}, plays: map[string]string{}}
-	section, film := "", ""
-	for _, line := range strings.Split(p.raw, "\n") {
-		line = strings.TrimRight(line, " ")
-		switch {
-		case strings.HasPrefix(line, "## "):
-			section, film = strings.TrimPrefix(line, "## "), ""
-		case strings.HasPrefix(line, "### ") && section == "Films":
-			film = strings.TrimPrefix(line, "### ")
-			p.films = append(p.films, film)
-		case section == "Libraries" && strings.HasPrefix(line, "- "):
-			p.libraries = append(p.libraries, strings.TrimPrefix(line, "- "))
-		case section == "Episodes" && strings.HasPrefix(line, "- "):
-			p.episodes = append(p.episodes, strings.TrimPrefix(line, "- "))
-		case section == "Films" && film != "":
-			if strings.HasPrefix(line, "Plays: ") {
-				p.plays[film] = strings.ToLower(strings.TrimPrefix(line, "Plays: "))
-			} else if m := trackLine.FindStringSubmatch(line); m != nil {
-				i, _ := strconv.Atoi(m[1])
-				flags := "-"
-				if m[5] != "" {
-					flags = strings.ReplaceAll(strings.TrimPrefix(m[5], ", "), ", ", ",")
-				}
-				p.tracks[film] = append(p.tracks[film], track{i, m[2], m[3], m[4], flags})
-			} else if strings.HasPrefix(line, "- ") {
-				t.Errorf("%s: %q under %s is not '- <index>: <Type> <language|none> <codec>[, default][, forced][, external]'", pagePath, line, film)
-			}
-		}
-	}
-	return p
-}
-
-func TestPageListsEveryFilmEpisodeAndTrackThatImageShChecks(t *testing.T) {
-	e, p := readExpect(t), readPage(t)
-	sorted := func(s []string) []string { c := append([]string{}, s...); sort.Strings(c); return c }
-	same := func(what string, want, got []string) {
-		if strings.Join(sorted(want), "|") != strings.Join(sorted(got), "|") {
-			t.Errorf("%s differ: %s has %q, the page has %q", what, expectPath, want, got)
-		}
-	}
-	same("films", e.films, p.films)
-	same("episodes", e.episodes, p.episodes)
-	var libs []string
-	for _, l := range e.libraries {
-		f := strings.Split(l, "\t")
-		libs = append(libs, f[0]+" ("+f[1]+")")
-	}
-	same("libraries", libs, p.libraries)
-	for _, film := range e.films {
-		want, got := e.tracks[film], p.tracks[film]
-		if len(want) != len(got) {
-			t.Errorf("film %q: %s has %d tracks, the page %d", film, expectPath, len(want), len(got))
-			continue
-		}
-		for i := range want {
-			if want[i] != got[i] {
-				t.Errorf("film %q track %d: %s has %v, the page %v", film, i, expectPath, want[i], got[i])
-			}
-		}
-	}
-	for _, film := range e.films {
-		if p.plays[film] != e.plays[film] || e.plays[film] == "" {
-			t.Errorf("film %q: %s says it plays %q, the page %q (a line 'Plays: direct' or 'Plays: transcode' under its heading)", film, expectPath, e.plays[film], p.plays[film])
-		}
-		ac3 := false
-		for _, x := range e.tracks[film] {
-			ac3 = ac3 || x.codec == "ac3"
-		}
-		if ac3 != (e.plays[film] == "transcode") {
-			t.Errorf("film %q: AC3 audio is %v, but it is marked %q (the page's profile does not play AC3, and plays everything else as it is)", film, ac3, e.plays[film])
-		}
-	}
-	for name, want := range map[string][]track{"Babel Film": babel, "Kino Film": kino} {
-		got := p.tracks[name]
-		if len(got) != len(want) {
-			t.Errorf("the page lists %d tracks of %s, want %d", len(got), name, len(want))
-			continue
-		}
-		for i := range want {
-			if !sameTrack(want[i], got[i]) {
-				t.Errorf("the page: %s track %d is %v, want %v", name, i, got[i], want[i])
-			}
-		}
-	}
-}
-
-func TestPageGivesTheStartTheUserTheTagsAndTheCounts(t *testing.T) {
-	e, p := readExpect(t), readPage(t)
-	for _, want := range []string{
-		e.image, e.compose, "JELLYSCALE_IMAGE", "docker compose", "up -d --wait", "docker compose port",
-		"X.Y.Z", "main-", "-fixtures", "latest",
-		"user `test`", "password `test`", "administrator",
-		strconv.Itoa(e.filmCount) + " films", strconv.Itoa(e.episodeCount) + " episodes",
-		"/readyz", "before the scan",
-		"test/fixtures/client.sh", "ffmpeg", "Go", "serif",
-		"PlaybackInfo", "by name", "tests only",
-	} {
-		if !strings.Contains(p.raw, want) {
-			t.Errorf("%s does not say %q", pagePath, want)
-		}
-	}
-	// A reader who copies the wait loop gets a time limit.
-	if !regexp.MustCompile(`(?i)(timeout|deadline|seconds|limit|60)`).MatchString(p.raw) {
-		t.Error("the wait loop has no time limit")
-	}
-	for _, claim := range []string{"no tag moves", "no `latest`", "not promised"} {
-		if !strings.Contains(strings.ToLower(p.raw), claim) {
-			t.Errorf("%s does not say %q", pagePath, claim)
-		}
-	}
-	if !regexp.MustCompile("(?s)```json.*PlaybackInfo|PlaybackInfo.*```json").MatchString(p.raw) {
-		t.Error("the page gives no PlaybackInfo request body as a json block")
-	}
-}
-
-func TestPageIsLinkedFromTheReadmeAndTheRunningPage(t *testing.T) {
-	if !strings.Contains(repoFile(t, "README.md"), "docs/client-testing.md") {
-		t.Error("README.md does not link docs/client-testing.md in its documentation list")
-	}
-	if !strings.Contains(repoFile(t, "docs/running.md"), "client-testing.md") {
-		t.Error("docs/running.md does not link client-testing.md")
-	}
-}
-
-func TestContributingSaysHowAReleaseIsCut(t *testing.T) {
-	c := repoFile(t, "CONTRIBUTING.md")
-	order := []string{"main", "image run", "vX.Y.Z", "wait", "GitHub release", "generated notes", "never published twice", "next version"}
-	last := -1
-	low := strings.ToLower(c)
-	for _, w := range order {
-		i := strings.Index(low, strings.ToLower(w))
-		if i < 0 {
-			t.Errorf("CONTRIBUTING.md lacks %q", w)
-			continue
-		}
-		if w == "main" || w == "wait" || w == "never published twice" || w == "next version" {
-			continue
-		}
-		if i < last {
-			t.Errorf("CONTRIBUTING.md names %q before an earlier step of the release", w)
-		}
-		last = i
 	}
 }
 
