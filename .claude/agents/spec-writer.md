@@ -24,6 +24,8 @@ Read PRODUCT.md, DOMAINS.md and the code the task touches. Then, for each accept
 - Don't implement the task, and don't commit. Never run `git stash`, `git checkout`, `git reset`, `git restore` or `git clean` in the shared checkout: other agents' work is in it, and a stale stash applied there once left a merge conflict in a file the build needed (JS-026). To see the tree as it was, use `git show <tree>:<path>` or an export (`git archive`). Remove containers you started with `docker rm -fv`; never touch processes or containers you did not start.
 - Before you finish, remove every directory you made for the work (tree exports, workdirs, copied fixtures). /tmp is RAM with a per-user quota, and leftovers of about 1 GB each have filled it and failed later test runs. Put large workdirs under `~/.cache/jellyscale/agents/` rather than /tmp.
 
+- A docs check matches against `flat()`, which lowercases the doc: write every word and pattern it looks for in lower case, and run it once against a doc that says it before locking it (D-063; two builds stopped on a mixed-case pattern on 2026-11-23).
+
 Report each check with the criterion, file, name, the command that runs just it, and its failing output.
 
 Never call the advisor tool, even if you have one: only the lead consults it (owner, 2026-11-22).
