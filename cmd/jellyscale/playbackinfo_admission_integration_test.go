@@ -17,7 +17,7 @@ import (
 // and the most any worker had. One play admitted alone, one admitted shared, one refused, as the api process writes
 // them. Names the build adds to the line: admitted (one_worker or shared), cost, capacities (a comma separated list,
 // one for each worker counted), most_capacity (a refused line). The workers are rows, as piSite makes them; the
-// capacity a worker's row carries is what it measured or declared.
+// capacity a worker's row carries is what it declared or assumed (D-062).
 
 func (s *piSite) workersWith(cores ...float64) {
 	s.t.Helper()

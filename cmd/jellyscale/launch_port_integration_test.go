@@ -230,11 +230,7 @@ func ownsItsPort(t *testing.T, c *libCluster, name string, p *proc, dir string, 
 	// What it wrote to the database is the serving process's alone: the row of a start that lost its port is not left beside it. A
 	// moment passes first, for a write that was in flight when that start was killed.
 	time.Sleep(time.Second)
-	// The serving process writes its row once it has measured its speed (JS-161), a few seconds after it listens.
 	ids := nodeIDs(t, c)
-	for end := time.Now().Add(30 * time.Second); hasPrefixPID(ids, last.pid) == 0 && time.Now().Before(end); ids = nodeIDs(t, c) {
-		time.Sleep(100 * time.Millisecond)
-	}
 	if n := hasPrefixPID(ids, last.pid); n != 1 {
 		t.Errorf("%s: transcode_nodes holds %d rows of the serving process %d, want 1: %v", name, n, last.pid, ids)
 	}

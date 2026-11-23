@@ -48,16 +48,12 @@ type Worker struct {
 	Scratch string
 	// Cores is what the worker has to give its jobs, in the unit of
 	// playback.Spec.Cost. Slots, if set instead, stands for as many cores; with
-	// neither the worker has the processors it may use at the speed it measured
-	// (cores, speed.go).
-	Cores float64
-	Slots int
-	// Speed is the speed of one processor as a multiple of the reference machine's,
-	// set by MeasureSpeed; 0 is not measured.
-	Speed         float64
-	speedMu       sync.Mutex
-	speedFailures map[string]int
-	belowDearest  bool
+	// neither the worker has the processors it may use, each at the reference
+	// machine's speed (cores, speed.go). setID leaves Cores as what is counted
+	// and assumed as whether the worker counted it without a declaration.
+	Cores   float64
+	Slots   int
+	assumed bool
 	// Idle is how long a spec may go without a request before its jobs stop.
 	Idle time.Duration
 	// Lead is how far, in film time, a job may get ahead of the furthest
@@ -1074,7 +1070,11 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 							if reason != "" && !unhelped[reason] {
 								unhelped[reason] = true
 								w.countUnhelped(reason)
-								log.Warn("slow job gets no helper", "reason", reason, "speed", speed, "worker", w.ID)
+								attrs := []any{"reason", reason, "speed", speed, "worker", w.ID, "capacity", w.capacitySource()}
+								if w.assumed {
+									attrs = append(attrs, "note", "capacity is assumed from the processors; set transcodeCores to what the worker holds")
+								}
+								log.Warn("slow job gets no helper", attrs...)
 							}
 						}
 					}

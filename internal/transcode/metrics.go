@@ -147,18 +147,17 @@ func (w *Worker) untrack(id int64) {
 }
 
 var (
-	jobsRunningDesc   = prometheus.NewDesc("jellyscale_transcode_jobs_running", "Transcode jobs this worker runs, paused ones included, by kind (reencode, copy).", []string{"kind"}, nil)
-	speedDesc         = prometheus.NewDesc("jellyscale_transcode_job_speed_ratio", "Seconds of film a running job encodes per second of its own running time, over its last 10 seconds. Time paused at the lead limit does not count. Absent until the job has run for a second.", []string{"job", "kind"}, nil)
-	pausedDesc        = prometheus.NewDesc("jellyscale_transcode_job_paused", "1 while a job's ffmpeg is paused at its lead limit.", []string{"job"}, nil)
-	coresDesc         = prometheus.NewDesc("jellyscale_transcode_cores", "This worker's capacity, in the reference machine's cores the jobs' prices are in: what it declared (transcodeCores), else what it measured at its start.", nil, nil)
-	speedMeasuredDesc = prometheus.NewDesc("jellyscale_transcode_worker_speed", "The speed of one of this worker's processors as a multiple of the reference machine's, measured at its start. Absent until measured, and where the measurement failed.", nil, nil)
-	failuresDesc      = prometheus.NewDesc("jellyscale_transcode_speed_measurement_failures_total", "Speed measurements that failed or overran their bound, by reason (no_ffmpeg, killed, timeout or failed); the worker then counts each processor at the reference speed.", []string{"reason"}, nil)
-	belowDearestDesc  = prometheus.NewDesc("jellyscale_transcode_capacity_below_dearest_row", "1 when this worker's capacity is below the dearest row of the price table (4.2 cores), 0 when not.", nil, nil)
-	unhelpedDesc      = prometheus.NewDesc("jellyscale_transcode_unhelped_jobs_total", "Re-encodes of this worker that ran under 1.2 times real time and got no helper, counted once for each job and reason: lone_worker, helpers_off, no_room (no worker has the helper's cost free) or not_chunked (an HEVC or AV1 fallback, which is not cut into chunks).", []string{"reason"}, nil)
-	busyDesc          = prometheus.NewDesc("jellyscale_transcode_cores_busy", "Cores the jobs this worker runs cost, paused jobs included (docs/transcoding.md has the costs).", nil, nil)
-	queueCoresDesc    = prometheus.NewDesc("jellyscale_transcode_queue_cores", "Cores the queued jobs cost, in the whole cluster: every worker reports the same number, so take one, not a sum. The signal to scale workers on.", nil, nil)
-	storeBytesDesc    = prometheus.NewDesc("jellyscale_transcode_store_bytes", "Bytes the transcode store held when a worker's sweep last listed it, in the whole cluster: every worker reports the same number, so take one, not a sum. Absent until a sweep has listed it; a listing that fails leaves the last number.", nil, nil)
-	queueDesc         = prometheus.NewDesc("jellyscale_transcode_queue_depth", "Transcode jobs waiting for a worker, in the whole cluster: every worker reports the same number, so take one, not a sum. Copies held back by their bound show here and hardly in queue_cores.", nil, nil)
+	jobsRunningDesc  = prometheus.NewDesc("jellyscale_transcode_jobs_running", "Transcode jobs this worker runs, paused ones included, by kind (reencode, copy).", []string{"kind"}, nil)
+	speedDesc        = prometheus.NewDesc("jellyscale_transcode_job_speed_ratio", "Seconds of film a running job encodes per second of its own running time, over its last 10 seconds. Time paused at the lead limit does not count. Absent until the job has run for a second.", []string{"job", "kind"}, nil)
+	pausedDesc       = prometheus.NewDesc("jellyscale_transcode_job_paused", "1 while a job's ffmpeg is paused at its lead limit.", []string{"job"}, nil)
+	coresDesc        = prometheus.NewDesc("jellyscale_transcode_cores", "This worker's capacity, in the reference machine's cores the jobs' prices are in, as admission counts it: what it declared (transcodeCores, or transcodeSlots), else each processor it may use at the reference speed.", nil, nil)
+	assumedDesc      = prometheus.NewDesc("jellyscale_transcode_capacity_assumed", "1 when this worker declared no capacity and counts each processor at the reference speed (which overstates a slower CPU or SMT threads), 0 when it declared transcodeCores or transcodeSlots.", nil, nil)
+	belowDearestDesc = prometheus.NewDesc("jellyscale_transcode_capacity_below_dearest_row", "1 when this worker's capacity is below the dearest row of the price table (4.2 cores), 0 when not.", nil, nil)
+	unhelpedDesc     = prometheus.NewDesc("jellyscale_transcode_unhelped_jobs_total", "Re-encodes of this worker that ran under 1.2 times real time and got no helper, counted once for each job and reason: lone_worker, helpers_off, no_room (no worker has the helper's cost free) or not_chunked (an HEVC or AV1 fallback, which is not cut into chunks). The capacity label says whether the worker declared its capacity or assumed it.", []string{"reason", "capacity"}, nil)
+	busyDesc         = prometheus.NewDesc("jellyscale_transcode_cores_busy", "Cores the jobs this worker runs cost, paused jobs included (docs/transcoding.md has the costs).", nil, nil)
+	queueCoresDesc   = prometheus.NewDesc("jellyscale_transcode_queue_cores", "Cores the queued jobs cost, in the whole cluster: every worker reports the same number, so take one, not a sum. The signal to scale workers on.", nil, nil)
+	storeBytesDesc   = prometheus.NewDesc("jellyscale_transcode_store_bytes", "Bytes the transcode store held when a worker's sweep last listed it, in the whole cluster: every worker reports the same number, so take one, not a sum. Absent until a sweep has listed it; a listing that fails leaves the last number.", nil, nil)
+	queueDesc        = prometheus.NewDesc("jellyscale_transcode_queue_depth", "Transcode jobs waiting for a worker, in the whole cluster: every worker reports the same number, so take one, not a sum. Copies held back by their bound show here and hardly in queue_cores.", nil, nil)
 )
 
 func (w *Worker) Describe(chan<- *prometheus.Desc) {}
@@ -181,18 +180,13 @@ func (w *Worker) Collect(ch chan<- prometheus.Metric) {
 	for kind, n := range byKind {
 		ch <- prometheus.MustNewConstMetric(jobsRunningDesc, prometheus.GaugeValue, float64(n), kind)
 	}
+	w.setID() // Whether the capacity is declared is read there.
 	cores, _ := w.registered()
 	ch <- prometheus.MustNewConstMetric(coresDesc, prometheus.GaugeValue, cores)
-	failures, below := w.speedState()
-	if speed := w.speedOf(); speed > 0 {
-		ch <- prometheus.MustNewConstMetric(speedMeasuredDesc, prometheus.GaugeValue, speed)
-	}
-	for reason, n := range failures {
-		ch <- prometheus.MustNewConstMetric(failuresDesc, prometheus.CounterValue, float64(n), reason)
-	}
-	ch <- prometheus.MustNewConstMetric(belowDearestDesc, prometheus.GaugeValue, map[bool]float64{false: 0, true: 1}[below])
+	ch <- prometheus.MustNewConstMetric(assumedDesc, prometheus.GaugeValue, map[bool]float64{false: 0, true: 1}[w.assumed])
+	ch <- prometheus.MustNewConstMetric(belowDearestDesc, prometheus.GaugeValue, map[bool]float64{false: 0, true: 1}[w.belowDearest()])
 	for reason, n := range w.unhelpedCounts() {
-		ch <- prometheus.MustNewConstMetric(unhelpedDesc, prometheus.CounterValue, float64(n), reason)
+		ch <- prometheus.MustNewConstMetric(unhelpedDesc, prometheus.CounterValue, float64(n), reason, w.capacitySource())
 	}
 	ch <- prometheus.MustNewConstMetric(busyDesc, prometheus.GaugeValue, float64(busy))
 

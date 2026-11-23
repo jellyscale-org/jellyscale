@@ -1,7 +1,6 @@
 package transcode
 
 import (
-	"math"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -9,12 +8,10 @@ import (
 	"testing"
 )
 
-// JS-161 (D-044): prices stay one table in cores of a named reference machine, and each worker measures its own speed
-// against it. These checks use one name the task implies and the build must add: Worker.Speed, the worker's speed per
-// processor as a multiple of the reference machine's (1 is the reference; 0 is not measured), set by the measurement at
-// the worker's start. A worker's capacity, which cores() returns and the row of transcode_nodes carries, is its
-// processors times that speed, unless it declares cores (or slots), which win whatever was measured. They do not
-// compile until the build adds the field.
+// JS-161 (D-044, D-062): prices stay one table in cores of a named reference machine (docs/transcoding.md), and each
+// worker advertises its capacity in those units: what it declares (transcodeCores, or transcodeSlots as that many
+// cores), else its processors each at the reference speed, with no floor and no measurement. A worker's capacity is
+// what cores() returns and the row of transcode_nodes carries.
 
 // priceRows are the 13 rows of docs/transcoding.md's table of what a job costs, in cores.
 func priceRows(t *testing.T) []float64 {
@@ -36,61 +33,52 @@ func priceRows(t *testing.T) []float64 {
 	return rows
 }
 
-// A worker that declares nothing counts what it measured: its processors times its speed, with no floor. Today it is
-// floored to 3.2 cores, whatever its speed.
-func TestAnUndeclaredWorkerCountsWhatItMeasuredWithNoFloor(t *testing.T) {
-	procs := float64(runtime.GOMAXPROCS(0))
-	for _, speed := range []float64{0.25 / procs, 1 / procs, 0.625, 1, 1.6} {
-		want := procs * speed
-		if got := (&Worker{Speed: speed}).cores(); math.Abs(got-want) > 1e-9 {
-			t.Errorf("measured %v of the reference per core on %v processors: %v cores, want %v", speed, procs, got, want)
+// A worker that declares nothing counts each of its processors at the reference machine's speed, with no floor, whatever
+// the number of processors: the processors the process may use, 1 or 3 or 16, and never the dearest job's 3.2.
+func TestAnUndeclaredWorkerCountsItsProcessorsAtTheReferenceSpeedWithNoFloor(t *testing.T) {
+	for _, procs := range []int{1, 2, 3, 16} {
+		prev := runtime.GOMAXPROCS(procs)
+		got := (&Worker{}).cores()
+		runtime.GOMAXPROCS(prev)
+		if got != float64(procs) {
+			t.Errorf("%d processors, nothing declared: %v cores, want %d", procs, got, procs)
 		}
 	}
 }
 
-// A worker measured at the reference machine's speed per core counts its processors, the cores today's default gives
-// it above the 3.2 floor.
-func TestAWorkerAtTheReferenceSpeedCountsItsProcessors(t *testing.T) {
-	if got, want := (&Worker{Speed: 1}).cores(), float64(runtime.GOMAXPROCS(0)); math.Abs(got-want) > 1e-9 {
-		t.Errorf("a worker at the reference speed counts %v cores on %v processors", got, want)
-	}
-}
-
-// transcodeCores, when declared, is the capacity whatever the measurement says, above or below it; transcodeSlots when
+// transcodeCores, when declared, is the capacity whatever the processors, above or below them; transcodeSlots when
 // transcodeCores is not declared.
-func TestDeclaredCoresAndSlotsAreTheCapacityWhateverWasMeasured(t *testing.T) {
-	for _, speed := range []float64{0.1, 1, 8} {
-		if got := (&Worker{Cores: 6, Speed: speed}).cores(); got != 6 {
-			t.Errorf("transcodeCores 6, measured speed %v: %v cores", speed, got)
+func TestDeclaredCoresAndSlotsAreTheCapacityWhateverTheProcessors(t *testing.T) {
+	for _, procs := range []int{1, 4, 16} {
+		prev := runtime.GOMAXPROCS(procs)
+		for what, got := range map[string]float64{
+			"cores 6":           (&Worker{Cores: 6}).cores(),
+			"cores 0.5":         (&Worker{Cores: 0.5}).cores(),
+			"slots 3":           (&Worker{Slots: 3}).cores(),
+			"cores 2.5 slots 3": (&Worker{Cores: 2.5, Slots: 3}).cores(),
+		} {
+			want := map[string]float64{"cores 6": 6, "cores 0.5": 0.5, "slots 3": 3, "cores 2.5 slots 3": 2.5}[what]
+			if got != want {
+				t.Errorf("%d processors, %s: %v cores, want %v", procs, what, got, want)
+			}
 		}
-		if got := (&Worker{Cores: 0.5, Speed: speed}).cores(); got != 0.5 {
-			t.Errorf("transcodeCores 0.5, measured speed %v: %v cores", speed, got)
-		}
-		if got := (&Worker{Slots: 3, Speed: speed}).cores(); got != 3 {
-			t.Errorf("transcodeSlots 3, measured speed %v: %v cores", speed, got)
-		}
-		if got := (&Worker{Cores: 2.5, Slots: 3, Speed: speed}).cores(); got != 2.5 {
-			t.Errorf("transcodeCores 2.5 and slots 3, measured speed %v: %v cores", speed, got)
-		}
+		runtime.GOMAXPROCS(prev)
 	}
 }
 
 // Every row of the price table is admitted by the one rule: a worker whose capacity is at least the row's cost admits
-// it, and one just under it refuses it. The capacity is made by the measured speed, which is below the reference's
-// for the rows that cost more than the host's processors and above it for the rest, so both a throttled and an
-// unthrottled worker are met on one host.
+// it, and one just under it refuses it, whether the capacity is declared small or counted from many processors.
 func TestEveryRowOfThePriceTableIsAdmittedByTheOneRule(t *testing.T) {
-	procs := float64(runtime.GOMAXPROCS(0))
 	for _, cost := range priceRows(t) {
 		for _, side := range []struct {
 			name   string
 			cores  float64
 			admits bool
 		}{{"at its cost", cost, true}, {"over its cost", cost + 0.3, true}, {"just under its cost", cost - 0.01, false}} {
-			w := &Worker{Speed: side.cores / procs}
+			w := &Worker{Cores: side.cores}
 			l := newLedger([]capNode{{ID: "w", Cores: w.cores()}}, nil, func(capJob) bool { return true })
 			if _, ok := l.room(capJob{Cost: cost}); ok != side.admits {
-				t.Errorf("a %.2f core row, a worker measured at %.3f of the reference with %.3f cores (%s): admitted %v, want %v", cost, w.Speed, w.cores(), side.name, ok, side.admits)
+				t.Errorf("a %.2f core row, a worker with %.3f cores (%s): admitted %v, want %v", cost, w.cores(), side.name, ok, side.admits)
 			}
 		}
 	}

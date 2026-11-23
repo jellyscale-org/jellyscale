@@ -1,7 +1,6 @@
 package transcode
 
 import (
-	"math"
 	"runtime"
 	"testing"
 
@@ -10,7 +9,7 @@ import (
 
 // What a worker declares: its cores, else its slots as cores (a worker built by
 // a test, as the release before declared them), else the processors the process
-// may use at the speed it measured against the reference machine, with no floor.
+// may use, each at the reference machine's speed, and no floor.
 func TestAWorkersDeclaredCores(t *testing.T) {
 	if got := (&Worker{Cores: 2.5, Slots: 5}).cores(); got != 2.5 {
 		t.Errorf("cores and slots declared: %v, want the cores", got)
@@ -18,11 +17,10 @@ func TestAWorkersDeclaredCores(t *testing.T) {
 	if got := (&Worker{Slots: 3}).cores(); got != 3 {
 		t.Errorf("slots declared: %v, want 3", got)
 	}
-	// JS-161 (D-044): a worker that declares nothing has what it measured (speed.go), and is no longer floored to
-	// the dearest job's 3.2 cores: its processors times its speed against the reference machine.
-	procs := float64(runtime.GOMAXPROCS(0))
-	if got := (&Worker{Speed: 1 / procs}).cores(); math.Abs(got-1) > 1e-9 {
-		t.Errorf("nothing declared, measured %v of the reference per core on %v processors: %v cores, want 1", 1/procs, procs, got)
+	// JS-161 (D-044, D-062): a worker that declares nothing counts each processor at the reference machine's speed, with
+	// no floor and no measurement.
+	if got, want := (&Worker{}).cores(), float64(runtime.GOMAXPROCS(0)); got != want {
+		t.Errorf("nothing declared: %v, want the %v processors", got, want)
 	}
 }
 

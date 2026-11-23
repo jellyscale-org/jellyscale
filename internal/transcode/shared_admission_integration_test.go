@@ -13,8 +13,7 @@ import (
 
 // JS-161 (D-044, D-046, D-050): admission by what the workers with room keep at real time, alone or together, and the
 // rule that a viewer already watching at real time is never taken under it by a newcomer. Rows stand for workers as
-// the cluster sees them: transcode_nodes.cores is the worker's capacity in reference cores (what the worker measured,
-// or declared), and a new column, transcode_nodes.no_helpers, says the worker's jobs ask for no helpers
+// the cluster sees them: transcode_nodes.cores is the worker's capacity in reference cores (what the worker declared or assumed), and a new column, transcode_nodes.no_helpers, says the worker's jobs ask for no helpers
 // (transcodeHelpers false), which a replica must read to know whether a play can be shared. The names the build adds:
 // that column, playback.CoresHeldByWatchedFilm, and a refusal's words that carry the cost and the most any worker has.
 //

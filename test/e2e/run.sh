@@ -237,7 +237,7 @@ s3="endpoint=http://127.0.0.1:$seaweed_port&region=us-east-1"
 # them on S3, so the transcode store is exercised on both.
 cat >"$work/config-s3.json" <<E2
 {"name": "e2e", "adminUser": "admin", "webDir": "$repo/web-dist", "scanInterval": "1h",
- "transcodeStore": "s3://e2e/segments?$s3", "transcodeScratch": "$work/scratch", "transcodeIdle": "10s", "transcodeLead": "20s", "transcodeCores": 4, "libraries": [
+ "transcodeStore": "s3://e2e/segments?$s3", "transcodeScratch": "$work/scratch", "transcodeIdle": "10s", "transcodeLead": "20s", "libraries": [
   {"name": "Movies", "kind": "movies", "media": "file://$work/media/movies", "assets": "file://$work/assets/movies"},
   {"name": "Shows", "kind": "tvshows", "media": "file://$work/media/shows", "assets": "file://$work/assets/shows"},
   {"name": "Transcode", "kind": "movies", "media": "file://$work/media/transcode", "assets": "file://$work/assets/transcode"},

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"runtime"
 	"slices"
 	"time"
 
@@ -40,10 +39,8 @@ const (
 const nodeCores = `(CASE WHEN cores > 0 THEN cores ELSE slots END)::float8`
 
 // cores is the worker's capacity, in the cores of the reference machine the price table is in: what it declares
-// (cores, else its slots, set by tests and by no config), else the processors the process may use times the speed it
-// measured at its start (speed.go). A worker that has not measured, or could not, counts each processor at the
-// reference speed. There is no floor: a worker that is slower than the jobs' prices says so and refuses what it cannot
-// hold.
+// (cores, else its slots), else each processor the process may use at the reference speed. There is no floor: a worker
+// with fewer processors than a job's price says so and refuses what it cannot hold.
 func (w *Worker) cores() float64 {
 	if w.Cores > 0 {
 		return w.Cores
@@ -51,11 +48,7 @@ func (w *Worker) cores() float64 {
 	if w.Slots > 0 {
 		return float64(w.Slots)
 	}
-	speed := w.speedOf()
-	if speed <= 0 {
-		speed = 1
-	}
-	return float64(runtime.GOMAXPROCS(0)) * speed
+	return float64(processors())
 }
 
 // registered is the cores and slots a worker row carries. A worker without a
