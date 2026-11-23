@@ -2097,7 +2097,7 @@
     {
       "id": "BL-234",
       "title": "A client that turns on an image subtitle by default starts a whole-film read on the first play of each such film",
-      "notes": "Dogfood report 2026-11-20 (D-038): one sighting, 46.7 GB read for one film when Moonfin's default subtitle mode chose an image track. D-003 accepts the read; JS-141 and JS-143 cover it. Promote JS-141 ahead of JS-135 if JS-143's count shows more than a few such reads a week, or most of those plays abandoned early. JS-154: job 82 ran at 0.6x beside this extraction on the same 4 cores, against 0.85x alone; the dogfood's log shows the extraction starting beside jobs 82 and 85, and job 83 within its run. JS-161's design review decides whether an extraction counts against capacity (D-044).",
+      "notes": "Dogfood report 2026-11-20 (D-038): one sighting, 46.7 GB read for one film when Moonfin's default subtitle mode chose an image track. D-003 accepts the read; JS-141 and JS-143 cover it. Promote JS-141 ahead of JS-135 if JS-143's count shows more than a few such reads a week, or most of those plays abandoned early. JS-154: job 82 ran at 0.6x beside this extraction on the same 4 cores, against 0.85x alone; the dogfood's log shows the extraction starting beside jobs 82 and 85, and job 83 within its run. JS-161's design review decides whether an extraction counts against capacity (D-044). JS-177's pre-Spec spike measures a 4K job beside an image-track extraction after JS-161 (D-066).",
       "source": "dogfood report 2026-11-20",
       "status": "open",
       "severity": "minor",
@@ -2298,7 +2298,7 @@
       "severity": "minor",
       "reviewer": "lead",
       "source": "JS-159/JS-161 triage; D-061",
-      "title": "A queued job placed as shared is counted at 0.78 of its cost on one worker with no partner check; a stale one holds cores until it expires",
+      "title": "A queued job placed as shared is counted at its share (0.65, D-066) of its cost on one worker with no partner check; a stale one holds cores until it expires",
       "notes": "A newcomer is refused for cores a job nobody is making holds, until it expires. Promote on: a dogfood refusal whose decision line shows cores held by a queued job no worker claimed. Kin to BL-124; triage together."
     },
     {
@@ -2344,7 +2344,16 @@
       "reviewer": "lead",
       "source": "JS-166 close; D-065",
       "title": "After the dogfood's sizing correction, the seek and the second burned-in start of a 4K HDR re-encode were not re-measured, and the worker's CPU request (6) is below its limit (12), so its speed under its neighbours' load is unknown",
-      "notes": "Promote on any of: a 4K re-encode job on the dogfood with encode speed under 1.0x past its first 30 seconds; a slow-job reason counted there; a household report of a stall. It closes when JS-177 merges and the declared figures are dropped."
+      "notes": "Promote on any of: a 4K re-encode job on the dogfood with encode speed under 1.0x past its first 30 seconds; a slow-job reason counted there; a household report of a stall. It closes when the dogfood's declared figures are dropped, not when JS-177 merges."
+    },
+    {
+      "id": "BL-262",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "D-066, option B; JS-177 design review",
+      "title": "A worker's own extraction beside a transcode is not counted apart from slow hardware",
+      "notes": "Promote on: the spike row or the dogfood showing a figure moved by more than a fifth during an own extraction, and a play the worker holds refused past criterion 4's recovery time after it ended (D-066, option B)."
     }
   ]
 }
