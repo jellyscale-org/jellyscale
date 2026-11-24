@@ -229,8 +229,7 @@ func (f SubtitleFilm) Rows() (streams []media.MediaStream, indexOf map[int]int) 
 	return streams, indexOf
 }
 
-// JellyfinSubtitleDefault is the rule of compat/captures/subtitles-default-12.4.md, as code (compat/subtitles_default_capture_test.go
-// holds it to every captured cell), over a film's subtitles in Jellyfin's order:
+// JellyfinSubtitleDefault is the rule of compat/captures/subtitles-default-12.4.md, as code, over a film's subtitles in Jellyfin's order:
 // the index chosen and whether there is one. audio is the language of the audio track that plays.
 func JellyfinSubtitleDefault(tracks []SubtitleTrack, mode, saved, audio string) (int, bool) {
 	language := func(s SubtitleTrack) string {

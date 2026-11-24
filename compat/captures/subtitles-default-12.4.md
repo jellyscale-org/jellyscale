@@ -18,7 +18,7 @@ Jellyfin numbers the subtitle files first (in file name order, case ignored: `Fi
 
 ## The rule that fits
 
-**Every one of the 606 cells (the 525 of `films` and the 81 of `smart`) is given by the rules below; none is an exception.** They are held as code by `TestTheSubtitleDefaultCaptureFitsTheRuleWrittenDown` (`compat/subtitles_default_capture_test.go`); that test is the proof, the prose its reading. Let *L* be the saved `SubtitleLanguagePreference`; a track is *in L* when its language is L (`ger` read as `deu`); with L empty every track is in L. *Audio* is the language of the audio track that plays (`DefaultAudioStreamIndex`).
+**Every one of the 606 cells (the 525 of `films` and the 81 of `smart`) is given by the rules below; none is an exception.** The rules are read into `testenv.JellyfinSubtitleDefault` and replayed against the cells by the checks that hold jellyscale to the capture (`internal/playback`, `internal/api`), which fail on any cell whose answer the rules do not give. Let *L* be the saved `SubtitleLanguagePreference`; a track is *in L* when its language is L (`ger` read as `deu`); with L empty every track is in L. *Audio* is the language of the audio track that plays (`DefaultAudioStreamIndex`).
 
 *The order* of tracks, first to last: files before the film's own tracks; then those flagged default; then those in L (only when L is saved); then not forced before forced; then by number. One clause: with L saved and **no track of the film in L**, forced comes before not forced among files (A4 with `eng`, X3 with `eng` and with `deu`: a forced and a plain file in a language that was not saved), where in every other cell not forced is first. Only files can show it, since in Default a plain track inside the film is not eligible.
 
