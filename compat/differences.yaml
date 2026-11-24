@@ -1183,3 +1183,28 @@
   reason: "Policy.InvalidLoginAttemptCount stays 0: jellyscale counts failed sign-ins per name, per known device and per address for 15 minutes (D-020), not on the user, where Jellyfin counts them on the user until a success (here the earlier request \"a sign-in with a wrong password\" made it 1)"
   paths:
     - "Policy.InvalidLoginAttemptCount"
+
+# JS-041: where jellyscale's default subtitle differs from compat/captures/subtitles-default-12.4.json. These are replayed by
+# internal/api/subtitles_default_integration_test.go, not asked of two servers by the differential tier, so none of the names
+# is a request of requests.yaml. A cell of the capture where jellyscale answers another track is listed here by its own name,
+# "subtitle default: <film> | <mode> | <language>", and a cell it answers as captured must not be.
+- requests:
+    - "subtitle default: named 99"
+  kind: improvement
+  reason: "a SubtitleStreamIndex that names no stream is answered -1 here; Jellyfin 12.4 answers the number it was sent, which jellyfin-web then reads as a position past the end of MediaStreams and draws no subtitle for (compat/captures/subtitles-default-12.4.md)"
+  paths:
+    - "MediaSources[].DefaultSubtitleStreamIndex"
+
+- requests:
+    - "subtitle default: named with no profile"
+  kind: improvement
+  reason: "a request with no DeviceProfile that names a subtitle track is answered that track here, whatever the viewer's mode; Jellyfin 12.4 ignores the track named when the request has no profile and answers the mode's default (compat/captures/subtitles-default-12.4.md)"
+  paths:
+    - "MediaSources[].DefaultSubtitleStreamIndex"
+
+- requests:
+    - "subtitle default: a viewer who never saved a Configuration"
+  kind: improvement
+  reason: "a viewer who has never posted a Configuration is answered no default subtitle here, so no viewer is started on a subtitle they never chose; Jellyfin 12.4's new user is SubtitleMode Default with no language and is answered that mode's default without saving anything. A viewer who saves Default and no language is answered as Jellyfin answers (compat/captures/subtitles-default-12.4.md)"
+  paths:
+    - "MediaSources[].DefaultSubtitleStreamIndex"

@@ -211,10 +211,24 @@ func defaultsOf(t *testing.T, e *env, film string) []any {
 	return out
 }
 
-// Saving a setting that leaves the film's own tracks the choice changes no track choice (JS-041 makes the subtitle
-// settings act; JS-121 made the audio ones act, and audio_default_integration_test.go holds what they change):
-// PlaybackInfo's defaults for every source of three films are as they were, for each SubtitleMode with a language the
-// film has, for the language of the default audio track, for OriginalLanguage, and for PlayDefaultAudioTrack off.
+// The audio defaults alone, which a viewer's subtitle settings must not move (JS-041).
+func audioDefaultsOf(t *testing.T, e *env, film string) []any {
+	t.Helper()
+	var out []any
+	for _, extra := range []map[string]any{{}, {"SubtitleStreamIndex": 2}, {"AudioStreamIndex": 2, "SubtitleStreamIndex": -1}} {
+		for _, source := range e.playbackInfo(t, 0, film, extra)["MediaSources"].([]any) {
+			s := source.(map[string]any)
+			out = append(out, s["Id"], s["DefaultAudioStreamIndex"])
+		}
+	}
+	return out
+}
+
+// Saving an audio setting, or one that leaves the film's own tracks the choice, changes no track choice (JS-121 made the
+// audio settings act, and audio_default_integration_test.go holds what they change). A subtitle mode and language now
+// choose the subtitle default (JS-041, D-025), so those two settings are held to what they must not move instead: the
+// audio defaults. Three films' every source is asked, for each SubtitleMode with a language the film has, for the
+// language of the default audio track, for OriginalLanguage, and for PlayDefaultAudioTrack off.
 func TestSavingASettingChangesNoDefaultTrack(t *testing.T) {
 	e := newEnv(t)
 	films := settingsFilms(t, e)
@@ -223,6 +237,7 @@ func TestSavingASettingChangesNoDefaultTrack(t *testing.T) {
 	}
 	for name, film := range films {
 		before := defaultsOf(t, e, film)
+		audioBefore := audioDefaultsOf(t, e, film)
 		if len(before) == 0 {
 			t.Fatalf("%s: PlaybackInfo lists no source", name)
 		}
@@ -240,6 +255,17 @@ func TestSavingASettingChangesNoDefaultTrack(t *testing.T) {
 				if got := e.me(t, 1, e.token)[k]; !reflect.DeepEqual(got, v) {
 					t.Fatalf("%s: %s was saved as %v and reads back %v", name, k, v, got)
 				}
+			}
+			_, isMode := change["SubtitleMode"]
+			_, isLanguage := change["SubtitleLanguagePreference"]
+			if isMode || isLanguage {
+				// JS-041, D-025: the mode and language choose the subtitle default, and must leave the audio alone. The next
+				// setting is held to what this one leaves, so a subtitle the mode chose is not read as an audio setting's doing.
+				if after := audioDefaultsOf(t, e, film); !reflect.DeepEqual(after, audioBefore) {
+					t.Errorf("%s: after saving %v the audio defaults are %v, were %v", name, change, after, audioBefore)
+				}
+				before, audioBefore = defaultsOf(t, e, film), audioDefaultsOf(t, e, film)
+				return
 			}
 			if after := defaultsOf(t, e, film); !reflect.DeepEqual(after, before) {
 				t.Errorf("%s: after saving %v the defaults are %v, were %v", name, change, after, before)
