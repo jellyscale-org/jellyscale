@@ -549,7 +549,18 @@ func TestAViewerWhoseJobCostsTwoGivenUpJobsTogetherIsNotRefused(t *testing.T) {
 	var reason, text string
 	var err error
 	var running int
-	ended := w.db.OnStatement(isTheJobEndNth(2), nil, func() {
+	// The two ends go out on connections of their own, so the second to arrive can be answered before the first has
+	// committed; it is kept from Postgres until the first has, so that the second is the write that leaves no job running.
+	firstEnded := func() {
+		for end := time.Now().Add(keeperHang); time.Now().Before(end); time.Sleep(10 * time.Millisecond) {
+			var left int
+			r.pool.QueryRow(context.Background(), "SELECT count(*) FROM transcode_jobs WHERE state = 'running'").Scan(&left) //nolint:errcheck
+			if left <= 1 {
+				return
+			}
+		}
+	}
+	ended := w.db.OnStatement(isTheJobEndNth(2), firstEnded, func() {
 		ask.Do(func() {
 			r.pool.QueryRow(context.Background(), "SELECT count(*) FROM transcode_jobs WHERE state = 'running'").Scan(&running) //nolint:errcheck
 			reason, text, err = asker.Refusal(context.Background(), big, uuid.NewString(), "a device")
