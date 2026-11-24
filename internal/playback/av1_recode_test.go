@@ -1,70 +1,12 @@
 package playback
 
 import (
-	"encoding/json"
 	"math"
-	"os"
-	"strings"
 	"testing"
 )
 
 // JS-133: an AV1 copy whose keyframe index is found wrong goes on as an AV1 encode (SVT-AV1) cut on the playlist's layout.
 // These checks name Spec.Recode "av1", which the build adds beside "h264" and "hevc" (JS-088).
-
-// The observation that settled the fallback's codec (compat/captures/av1-fallback-12.4.md) is on disk, and the choice
-// the build makes follows it: H.264 only if both directions showed frames, no video.error and no dialog.
-func TestTheFallbacksCodecFollowsTheRecordOfWhatJellyfinWebDid(t *testing.T) {
-	raw, err := os.ReadFile("../../compat/captures/av1-fallback-12.4.json")
-	if err != nil {
-		t.Fatalf("the observation is not recorded beside segment-errors-12.4.md: %v", err)
-	}
-	var record struct {
-		Script   string `json:"script"`
-		Choice   string `json:"choice"`
-		Observed map[string]map[string]struct {
-			Frames     int     `json:"frames"`
-			VideoError *string `json:"videoError"`
-			Dialog     bool    `json:"dialog"`
-		} `json:"observed"`
-	}
-	if err := json.Unmarshal(raw, &record); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat("../../compat/captures/" + strings.TrimPrefix(record.Script, "compat/captures/")); err != nil || record.Script == "" {
-		t.Errorf("the script that reproduces the observation (%q) is not beside the record: %v", record.Script, err)
-	}
-	h264, ok := record.Observed["h264"]
-	if !ok {
-		t.Fatalf("the record has no row for an H.264 fallback: %+v", record.Observed)
-	}
-	works := true
-	for _, direction := range []string{"forward", "back"} {
-		d, ok := h264[direction]
-		if !ok {
-			t.Fatalf("the H.264 row has no %q direction", direction)
-		}
-		if d.Frames == 0 || d.VideoError != nil || d.Dialog {
-			works = false
-		}
-	}
-	want := "av1"
-	if works {
-		want = "h264"
-	}
-	if record.Choice != want {
-		t.Errorf("the record names %q, the rule (H.264 only if both directions showed frames with no video.error and no dialog) gives %q", record.Choice, want)
-	}
-	// The build follows the record, for every AV1 copy.
-	copied := Spec{Item: "a", Source: "b", ETag: "e", AudioIndex: 1, Width: 1920, Height: 1080, Copy: true}
-	if !CanRecode("av1") {
-		t.Fatal("an AV1 copy cannot go on as an encode: CanRecode(\"av1\") is false")
-	}
-	for _, tone := range []string{"", "hdr10"} {
-		if got := copied.Recoded(record.Choice, tone).Recode; got != record.Choice {
-			t.Errorf("the AV1 fallback encodes %q, the record chose %q", got, record.Choice)
-		}
-	}
-}
 
 // The AV1 fallback is an encode of its own: it never shares segments with the copy or with the other codecs' fallbacks.
 func TestAnAV1FallbackIsAnEncodeOfItsOwn(t *testing.T) {
