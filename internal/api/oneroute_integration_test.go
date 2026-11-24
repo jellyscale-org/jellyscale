@@ -40,7 +40,7 @@ import (
 //
 // Postgres is put away for real (testenv.DBProxy), as JS-085's and JS-103's are. A wait is not a duration measured
 // here: a request "waits" when it has no answer until the test says Postgres is back, and the few seconds it is held
-// for only bound a hang (test/timing-bounds.txt).
+// for only bound a hang.
 //
 // The reference of an answer is the answer of the same route, with Postgres up, on stream replica 0, before the
 // outage. Replica 1 serves nothing before it, so it answers from a snapshot it made alone.

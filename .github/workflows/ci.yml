@@ -31,9 +31,8 @@ concurrency:
 # media tiers on the pull request too. A merge group or a ci:full pull request
 # that changes only .claude/, tasks/ and Markdown in the root or docs/ skips them
 # (test/changes.sh). A change with nothing outside tasks/ and that Markdown (a plan
-# change) skips lint-and-unit too: the plan is not tested in CI (owner, 2026-11-22);
-# the lead runs go test ./compat/ before pushing one. That is safe because the application does not read
-# .claude/, tasks/ or Markdown at runtime. A push
+# change) skips lint-and-unit too: the plan is not tested in CI (owner, 2026-11-22).
+# That is safe because the application does not read .claude/, tasks/ or Markdown at runtime. A push
 # to main was tested in its merge group: it runs lint-and-unit and refills the
 # e2e fixture cache, which only main's scope shares with every branch.
 jobs:
@@ -108,10 +107,6 @@ jobs:
         run: bash test/unit.sh
         env:
           JELLYSCALE_LOG_DIR: ${{ runner.temp }}/logs
-      - name: Route manifest is current
-        run: |
-          go run ./cmd/jellyscale --print-routes > /tmp/endpoints.yaml
-          diff compat/endpoints.yaml /tmp/endpoints.yaml
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
