@@ -1242,13 +1242,13 @@
     {
       "id": "JS-157",
       "phase": "P4",
-      "title": "A viewer's audio pick for a film is still chosen when they return, as Jellyfin 12.4 keeps it",
+      "title": "A viewer's audio and subtitle pick for a film is still chosen when they return, as Jellyfin 12.4 keeps it",
       "description": "Jellyfin 12.4 remembers a viewer's audio pick per film across reloads and sign-ins (compat/captures/audio-menu-12.4.md, 'On return'); jellyscale does not (JS-147). BL-223's promote rule is met for audio by that capture. D-039.",
       "acceptanceCriteria": [
         "Observed first on Jellyfin 12.4 with RememberAudioSelections on and off: across a reload, a new sign-in and a second device, recorded in compat/captures",
         "Where the setting is on, jellyscale starts the film with the viewer's last pick as Jellyfin does, and where it is off, as today; nothing beyond what Jellyfin keeps",
-        "The subtitle twin joins if JS-041's capture shows Jellyfin keeps a subtitle pick the same way",
-        "Played in jellyfin-web (e2e): a pick, a reload, a new sign-in, and the film starts with the pick"
+        "With RememberSubtitleSelections on, the viewer's subtitle pick for a film, Off included, is kept on return as JS-041's capture records: a film on which they turned subtitles off does not start on the mode's default again. With it off, JS-041's default. Nothing beyond what the capture shows Jellyfin keeps (no carry to another film or episode unless it does).",
+        "Played in jellyfin-web (e2e): a pick, a reload, a new sign-in, and the film starts with the pick, and, under mode Always, subtitles turned off on a film stay off after a reload"
       ],
       "priority": 33,
       "status": "todo",
@@ -1257,7 +1257,7 @@
         "JS-041"
       ],
       "source": "BL-223; D-039",
-      "notes": ""
+      "notes": "Subtitle twin made firm by JS-041's capture (D-068). If one build cannot carry both halves it splits, subtitle half first: JS-041 now starts a subtitle the viewer turned off."
     },
     {
       "id": "JS-175",
