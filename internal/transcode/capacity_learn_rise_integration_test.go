@@ -19,7 +19,7 @@ import (
 // converge plays the 4K HDR spec as viewer n until the worker's figure has fallen, and returns the moment it was seen to.
 func (r *rig) converge(t *testing.T, w *Worker, n int) (stop func(), at time.Time) {
 	t.Helper()
-	stop = r.playAs(t, r.costSpec(t, "hdr4k"), n)
+	stop = r.playAs(t, cheapOutput(t, r.costSpec(t, "hdr4k")), n)
 	waitFor(t, "the worker's figure to fall", learnHang, func() bool { return r.rowCores(t, w.ID) < 3.6 })
 	return stop, time.Now()
 }
@@ -165,7 +165,7 @@ func TestAFigureNotYetLearnedIsLoweredBesideAnExtraction(t *testing.T) {
 	r := newRig(t, nil)
 	w, _ := r.learner(t, starvedKernel(), nil)
 	startExtraction(t, 90*time.Second)
-	defer r.playAs(t, r.costSpec(t, "hdr4k"), 0)()
+	defer r.playAs(t, cheapOutput(t, r.costSpec(t, "hdr4k")), 0)()
 	waitFor(t, "the figure to fall beside the extraction", learnHang, func() bool { return r.rowCores(t, w.ID) < 3.6 })
 }
 
@@ -218,7 +218,7 @@ func TestAMoveNeverRestoresARowTheReaperDeleted(t *testing.T) {
 	r := newRig(t, nil)
 	kernel := idleKernel()
 	w, _ := r.learner(t, kernel, nil)
-	stop := r.playAs(t, r.costSpec(t, "hdr4k"), 0)
+	stop := r.playAs(t, cheapOutput(t, r.costSpec(t, "hdr4k")), 0)
 	defer stop()
 	_, _, old, found := r.nodeRow(t, w.ID)
 	if !found || old == "" {
@@ -285,7 +285,7 @@ func TestAMoveWithinAFifthOfTheFigureLastLoggedIsNotLogged(t *testing.T) {
 	r := newRig(t, nil)
 	kernel := &fakeKernel{cpus: 3.2, demand: 6}
 	w, logs := r.learner(t, kernel, nil)
-	defer r.playAs(t, r.costSpec(t, "hdr4k"), 0)()
+	defer r.playAs(t, cheapOutput(t, r.costSpec(t, "hdr4k")), 0)()
 	waitFor(t, "the figure to fall by a sixth", learnHang, func() bool { return r.rowCores(t, w.ID) < 3.0 })
 	if first := r.rowCores(t, w.ID); first < 0.8*3.2 {
 		t.Fatalf("the first move took the figure to %v, more than a fifth under 3.2: the check wants a smaller one", first)

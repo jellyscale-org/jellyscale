@@ -12,8 +12,11 @@ import (
 	"jellyscale/internal/playback"
 )
 
-// JS-177 (D-064, D-066), criteria 8 and 9: each worker's figure is its own, and the share is 0.65 of the price free. The
-// kit and the names the build adds are in capacity_learn_integration_test.go.
+// JS-177 (D-064, D-066), criteria 8 and 9: each worker's figure is its own, and the share is 0.65 of the price free. Every
+// 3.2 core job here has a small output (cheapOutput): two real 4K tone mapped encodes at once, one for each worker, compete for
+// the CPUs of a 2-CPU runner and each made about 0.55x, not the 0.88x the pacing sets, so each worker learned 1.46 and not 2.3
+// (the merge queue). With the small output the speed is the pacing's on any host. The kit and the names the build adds are in
+// capacity_learn_integration_test.go.
 
 // An unthrottled worker beside a throttled one keeps its start figure, and a move writes only the worker's own row: two
 // workers each run one 4K HDR job at 0.88x; the one whose CPU is starved learns 2.3, the one whose CPU is not wanted learns
@@ -26,7 +29,7 @@ func TestEachWorkersFigureIsItsOwnAndAMoveWritesOnlyItsOwnRow(t *testing.T) {
 	throttled, _ := r.learner(t, starvedKernel(), noHelpers)
 	roomy, _ := r.learner(t, idleKernel(), noHelpers)
 	for n := range 2 {
-		stop := r.playAs(t, r.costSpec(t, "hdr4k"), n)
+		stop := r.playAs(t, cheapOutput(t, r.costSpec(t, "hdr4k")), n)
 		defer stop()
 	}
 	for _, w := range []*Worker{throttled, roomy} {
@@ -55,7 +58,7 @@ func TestTwoWorkersThrottledToTheI5AreAdmittedTheFourKPlaySharedOnceConvergedAnd
 	a, _ := r.learner(t, starvedKernel(), nil)
 	b, _ := r.learner(t, starvedKernel(), nil)
 	j := r.jobs(t)
-	specs := []playback.Spec{r.costSpec(t, "hdr4k"), r.costSpec(t, "hdr4k")}
+	specs := []playback.Spec{cheapOutput(t, r.costSpec(t, "hdr4k")), cheapOutput(t, r.costSpec(t, "hdr4k"))}
 	stops, errs := make([]func(), 2), make([]error, 2)
 	var started sync.WaitGroup
 	for n := range specs {
@@ -76,6 +79,7 @@ func TestTwoWorkersThrottledToTheI5AreAdmittedTheFourKPlaySharedOnceConvergedAnd
 		waitFor(t, "worker "+w.ID+" to learn its figure", learnHang, func() bool { return r.rowCores(t, w.ID) < 3.6 })
 	}
 	figures := []float64{r.rowCores(t, a.ID), r.rowCores(t, b.ID)}
+	t.Logf("the two workers learned %.3f and %.3f (a 3.2 core job at 0.88x holds 2.347)", figures[0], figures[1])
 	for _, f := range figures {
 		if f < 2.08 || f > 2.7 {
 			t.Fatalf("figures %v: each worker holds about 2.3 of the 3.2 price at 0.88x, between the share (2.08) and 2.7", figures)
@@ -87,7 +91,7 @@ func TestTwoWorkersThrottledToTheI5AreAdmittedTheFourKPlaySharedOnceConvergedAnd
 	waitFor(t, "both jobs to end", learnHang, func() bool {
 		return r.count(t, "SELECT count(*) FROM transcode_jobs WHERE state IN ('queued', 'running')") == 0
 	})
-	shared := r.costSpec(t, "hdr4k")
+	shared := cheapOutput(t, r.costSpec(t, "hdr4k"))
 	admission, err := r.jobs(t).Admit(context.Background(), shared, r.user, deviceOf(2))
 	if err != nil {
 		t.Fatal(err)

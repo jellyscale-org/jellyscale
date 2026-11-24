@@ -240,7 +240,7 @@ func watchFigure(t *testing.T, r *rig, w *Worker, want float64, d time.Duration)
 func TestALoneWorkerThrottledToTheI5LearnsItsFigureAndIsRefusedWhatItCannotHold(t *testing.T) {
 	_, runs := paced(t, i5Speed)
 	r := newRig(t, nil)
-	four := r.costSpec(t, "hdr4k")
+	four := cheapOutput(t, r.costSpec(t, "hdr4k"))
 	w, logs := r.learner(t, starvedKernel(), nil)
 	if cores, slots, _, _ := r.nodeRow(t, w.ID); cores != 4 || slots != 4 {
 		t.Fatalf("the row of an undeclared worker on 4 CPUs has %v cores and %d slots, want its start of 4 and 4", cores, slots)
@@ -460,7 +460,7 @@ func TestAJobWhoseUploadsAreSlowLeavesTheFigureAlone(t *testing.T) {
 	r := newRig(t, slowPuts{Store: newPosixSegments(t), delay: 5 * time.Second})
 	w, _ := r.learner(t, starvedKernel(), func(worker *Worker) { worker.Lease = 12 * time.Second })
 	start := r.rowCores(t, w.ID)
-	stop := r.playAs(t, r.costSpec(t, "sdr1080"), 0)
+	stop := r.playAs(t, cheapOutput(t, r.costSpec(t, "sdr1080")), 0)
 	defer stop()
 	// The first segment came after one 5 s upload; a worker whose figure followed the stored rate would have lowered it 17 s
 	// after the job's first output, at 0.8x with the CPU starved.
