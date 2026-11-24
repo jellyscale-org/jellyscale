@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"jellyscale/internal/playback"
 )
 
 // JS-177 (D-064, D-066, D-070): a lowered figure rises from evidence and by time, its backoff and its failures are said, a
@@ -22,22 +24,40 @@ func (r *rig) converge(t *testing.T, w *Worker, n int) (stop func(), at time.Tim
 	return stop, time.Now()
 }
 
+// cheapOutput is the spec with a small output picture. Its price row (the tone map and the source's height, which Cost reads)
+// is the spec's, unchanged, and the work ffmpeg does is a small part of it, so that the job makes the speed the test paces it
+// to on any host: a 1080p tone mapped encode on a 2-CPU runner with ffmpeg 6.1 does not reach 1.6x (the merge queue's
+// TestALoweredFigureRisesFromAJobThatShowsMoreWithNoTimedWait waited out its bound), and a check whose job must reach a speed
+// the machine caps is a bar under docs/testing.md.
+func cheapOutput(t *testing.T, spec playback.Spec) playback.Spec {
+	t.Helper()
+	price := spec.Cost()
+	spec.Width, spec.Height = 320, 180
+	if got := spec.Cost(); got != price {
+		t.Fatalf("a small output changed the price from %v to %v", price, got)
+	}
+	return spec
+}
+
 // Criterion 11: a lowered figure rises from evidence, with no wait. The lease is 30 s, so the timed rise's first gap is 15
 // minutes, which no wait here reaches: only a job that shows the worker holds more can raise it. The worker is lowered by a
-// 4K HDR job at 0.88x; a 2.0 core job (a 1080p HDR re-encode, which it holds) then runs at 3x, with the CPU starved: E is
-// 5, above 1.1 of 2.3, and three such samples raise the figure to its start. A build that rises only by time never does. The
-// time the rise takes after a load drops (16 s, 30 s) is the unit test's, at the production cadence with explicit times; the
+// 4K HDR job (price 3.2) at 0.88x; a 2.0 core job (the 1080p HDR row, which it holds) then runs at 3x, with the CPU starved: E
+// is 5, above 1.1 of 2.3, and three such samples raise the figure to its start. A build that rises only by time never does.
+// Both jobs have the price of their row and a small output (cheapOutput), so their speeds are the pacing's on any host. The time
+// the rise takes after a load drops (16 s, 30 s) is the unit test's, at the production cadence with explicit times; the
 // worker's cadence is TestTheSamplerTakesOneSampleEveryHeartbeat's.
 func TestALoweredFigureRisesFromAJobThatShowsMoreWithNoTimedWait(t *testing.T) {
 	set, _ := paced(t, i5Speed)
 	r := newRig(t, nil)
 	w, _ := r.learner(t, starvedKernel(), func(worker *Worker) { worker.Lease = 30 * time.Second })
-	stop, _ := r.converge(t, w, 0)
+	stop := r.playAs(t, cheapOutput(t, r.costSpec(t, "hdr4k")), 0)
+	waitFor(t, "the worker's figure to fall", learnHang, func() bool { return r.rowCores(t, w.ID) < 3.6 })
 	lowered := r.rowCores(t, w.ID)
 	stop()
 	set(3)
-	defer r.playAs(t, r.costSpec(t, "hdr1080"), 1)()
+	defer r.playAs(t, cheapOutput(t, r.costSpec(t, "hdr1080")), 1)()
 	waitFor(t, "the figure to rise on the evidence of a job that holds more", learnHang, func() bool { return r.rowCores(t, w.ID) > lowered*1.1 })
+	t.Logf("lowered to %.2f; the job that shows more made %.2fx and the figure rose to %.2f", lowered, jobSpeed(t, w), r.rowCores(t, w.ID))
 	if got := r.rowCores(t, w.ID); got > 4 {
 		t.Errorf("the figure rose to %v, above its start of 4", got)
 	}

@@ -21,6 +21,7 @@ import (
 
 	"jellyscale/internal/db"
 	"jellyscale/internal/items"
+	"jellyscale/internal/mediatool"
 	"jellyscale/internal/playback"
 	"jellyscale/internal/store"
 
@@ -154,6 +155,14 @@ func sharedState(t *testing.T, pool *pgxpool.Pool) map[string]bool {
 func newRig(t *testing.T, segments store.Store) *rig {
 	t.Helper()
 	testenv.FFmpeg(t)
+	// JS-177 (D-070): whether a worker's job runs beside an extraction of its own is read from a count that is process-wide
+	// (mediatool.Extracting: a tool that runs, or ended within the speed window), and a CI process runs about a hundred tests in
+	// sequence, so a tool an earlier test left running or ended just now would make this test's job count as beside one
+	// (a lone worker's job is then also counted as own_extraction). Every rig starts from a quiet process: at most the window
+	// of the last tool's end. The wait bounds a hang.
+	waitFor(t, "the tools of earlier tests in this process to have ended and the speed window to have passed", time.Minute, func() bool {
+		return !mediatool.Extracting(speedWindow * time.Second)
+	})
 	dsn := testenv.DatabaseURL(t)
 	testenv.NoStrays(t, dsn) // First, so it runs after every cleanup of the rig's workers and of the test.
 	dir := film(t)
