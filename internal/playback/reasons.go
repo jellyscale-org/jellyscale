@@ -28,7 +28,7 @@ const (
 )
 
 // Reasons is the whole vocabulary of the decision line, its counters and TranscodeReasons: Jellyfin's names where it has
-// one, and jellyscale's own. docs/running.md lists each, and a test holds the list to the code.
+// one, and jellyscale's own. docs/running.md lists each.
 func Reasons() []string {
 	return []string{
 		"ContainerNotSupported", "VideoCodecNotSupported", "AudioCodecNotSupported", "SubtitleCodecNotSupported",

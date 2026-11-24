@@ -15,7 +15,6 @@ test/e2e/run.sh <workdir> <playwright_dir>  # Real jellyfin-web in Chromium
 E2E_GATES=transcode E2E_SHARD=1/3 test/e2e/run.sh ...  # One slice of a gate; E2E_ONLY=regex picks scenarios
 E2E_REPEAT=5 test/e2e/run.sh ...            # Warm reruns on one stack
 test/differential/run.sh <workdir>          # Jellyfin 12.4 and jellyscale asked the same requests
-test/scripts_test.sh                        # Tests of the test scripts
 test/ffmpeg61.sh go test -tags integration ./internal/transcode -run X  # Under ffmpeg 6.1, as CI
 go run ./cmd/jellyscale --print-routes > compat/endpoints.yaml
 compat/gen-schema.sh                        # compat/schema-12.4.json from the jellyfin/jellyfin:12.4 container
@@ -33,8 +32,7 @@ compat/gen-schema.sh                        # compat/schema-12.4.json from the j
 - Observe a real Jellyfin 12.4 before implementing a protocol.
 - Don't port Jellyfin code.
 - Match the surrounding code. Write comments that explain why, not what.
-- Test only application logic.
-- Never write a test that reads docs, Markdown, `tasks/` or `.claude/`.
+- Test only application behaviour: what the server does for a viewer or operator. Never write a test for documentation, Markdown, static content, CI or workflow YAML, source shape, fixture inventories, or the test harness; test tools prove themselves by running. Record historical test failures in [docs/testing.md](docs/testing.md).
 - Write tests that can fail. Show that a bug's regression test catches it.
 - Test concurrency with real processes or real contention.
 - Never change application code to fit a test.
@@ -82,7 +80,7 @@ The workflow's steps:
 - Run locally only what a change touches.
 - Fix a queue failure on a new commit and queue again.
 - Before landing, read the run's `unfinished` list and finish every item.
-- Before landing, delete any test that reads docs, Markdown, `tasks/` or `.claude/`.
+- Before landing, delete any test whose subject is not application behaviour.
 
 ## After each task
 

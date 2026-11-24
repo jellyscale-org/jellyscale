@@ -165,10 +165,6 @@ else
   fi
   run_unit "$results" "${urls[0]}" "$tmp_dir" "$work/args.0" || status=1
 fi
-# The harness's log check can only fail under the race detector, which the tier above does not run.
-if [[ $# -eq 0 && -z $proc && (" ${packages[*]} " == *" ./... "* || " ${packages[*]} " == *" jellyscale/cmd/jellyscale "*) ]]; then
-  go test -tags integration -race -count=1 -run TestHarness ./cmd/jellyscale || status=1
-fi
 [[ $# -gt 0 ]] && tier=
 bash test/report.sh go "$results/tests.json" "go test (integration tier${shard:+, shard $shard}${proc:+, process $proc/$procs})" "$tier" | tee "$work/report.out"
 [[ ${PIPESTATUS[0]} -eq 0 ]] || status=1

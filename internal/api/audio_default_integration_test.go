@@ -15,7 +15,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"gopkg.in/yaml.v3"
 
 	"jellyscale/internal/db"
 	"jellyscale/internal/media"
@@ -263,42 +262,6 @@ func cellName(film, saved string, play bool) string {
 	return fmt.Sprintf("audio default: %s | %s | PlayDefaultAudioTrack %v", film, saved, play)
 }
 
-// listedDifferences reads the cells compat/differences.yaml lists, with their kinds and reasons.
-func listedDifferences(t *testing.T) map[string]bool {
-	t.Helper()
-	raw, err := os.ReadFile("../../compat/differences.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var entries []struct {
-		Requests []string `yaml:"requests"`
-		Path     string   `yaml:"path"`
-		Paths    []string `yaml:"paths"`
-		Kind     string   `yaml:"kind"`
-		Reason   string   `yaml:"reason"`
-	}
-	if err := yaml.Unmarshal(raw, &entries); err != nil {
-		t.Fatal(err)
-	}
-	listed := map[string]bool{}
-	for _, entry := range entries {
-		for _, name := range entry.Requests {
-			if !strings.HasPrefix(name, "audio default: ") {
-				continue
-			}
-			paths := append([]string{entry.Path}, entry.Paths...)
-			if !slices.Contains(paths, "MediaSources[].DefaultAudioStreamIndex") {
-				t.Errorf("%s: the path is %v, want MediaSources[].DefaultAudioStreamIndex", name, paths)
-			}
-			if entry.Kind != "improvement" || len(strings.Fields(entry.Reason)) < 4 {
-				t.Errorf("%s: kind %q and reason %q: a cell Jellyfin answers otherwise is an improvement, with its reason", name, entry.Kind, entry.Reason)
-			}
-			listed[name] = true
-		}
-	}
-	return listed
-}
-
 // A captured film as rows: the tags as the file wrote them (ffprobe's, which is what jellyscale stores).
 func captureTracks(audio []audioRow) []track {
 	var out []track
@@ -386,30 +349,12 @@ func wantIndex(captured any) int {
 }
 
 // Every captured cell, on GET and on POST with jellyfin-web's body (the profile of transcode-12.4.json), is answered as
-// Jellyfin 12.4 answered it, except the cells compat/differences.yaml lists with a reason, and those are answered as
-// audioDefaultDifferences says and no other cell is listed. A request with no profile is held to Jellyfin's answer
+// Jellyfin 12.4 answered it, except the cells audioDefaultDifferences names, which jellyscale answers otherwise on
+// purpose. A request with no profile is held to Jellyfin's answer
 // with no profile, except the cells noProfileDifferences lists, where it is answered as one with a profile.
 func TestPlaybackInfoNamesTheDefaultAudioJellyfinNamesInEveryCapturedCell(t *testing.T) {
 	f := audioEnv(t)
 	capture := loadAudioCapture(t)
-	listed := listedDifferences(t)
-	for name := range audioDefaultDifferences {
-		if !listed[name] {
-			t.Errorf("compat/differences.yaml does not list the cell %q, where jellyscale answers %d and Jellyfin 12.4 another index", name, audioDefaultDifferences[name])
-		}
-	}
-	for name := range noProfileDifferences {
-		if !listed[name] {
-			t.Errorf("compat/differences.yaml does not list the cell %q, where jellyscale answers %d with no profile and Jellyfin 12.4 another index", name, noProfileDifferences[name])
-		}
-	}
-	for name := range listed {
-		_, ok := audioDefaultDifferences[name]
-		_, noProfile := noProfileDifferences[name]
-		if !ok && !noProfile {
-			t.Errorf("compat/differences.yaml lists %q, which is not one of the %d cells this check knows jellyscale answers otherwise; a new difference is the lead's to settle", name, len(audioDefaultDifferences)+len(noProfileDifferences))
-		}
-	}
 	viewers := map[string]viewer{}
 	var wrong []string
 	cells := 0

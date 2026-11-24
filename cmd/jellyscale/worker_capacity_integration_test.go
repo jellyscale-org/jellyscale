@@ -22,7 +22,7 @@ import (
 // it is assumed; transcodeCores and transcodeSlots, when declared, are the capacity and are said to be declared; a
 // capacity below the dearest row of the price table is said once per start. Real processes, as an operator runs them.
 //
-// Names the build adds (docs/running.md's metric table has them, and a docs check holds the table to these):
+// Names the build adds (docs/running.md's metric table has them):
 //   log "transcode capacity" at the worker's start, attributes cores (what admission counts) and source (assumed or declared)
 //   log "transcode capacity below the dearest row": attributes cost (4.2) and cores (as before JS-161's second round)
 //   jellyscale_transcode_cores (the capacity), jellyscale_transcode_capacity_assumed (1 assumed, 0 declared),
