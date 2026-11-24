@@ -30,6 +30,30 @@ const browser = await chromium.launch({
 const failures = [];
 configure({ name: "subtitles", base, user, password, browser, failures, ffmpegWait: 90000, reasonLines: 3 });
 
+// Scenarios that do not test the subtitle mode start with none, whatever an
+// earlier gate left saved. A mode is saved, not reset: POSTing {} changes nothing.
+async function startWithNoSubtitleMode() {
+  const auth = 'MediaBrowser Client="e2e", Device="subtitles", DeviceId="subtitles-gate", Version="1.0"';
+  const signedIn = await fetch(`${base}/Users/AuthenticateByName`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: auth },
+    body: JSON.stringify({ Username: user, Pw: password }),
+  });
+  if (!signedIn.ok) throw new Error(`signing in for the gate's settings: ${signedIn.status} ${await signedIn.text()}`);
+  const session = await signedIn.json();
+  const headers = { Authorization: `MediaBrowser Token="${session.AccessToken}"` };
+  const me = await fetch(`${base}/Users/Me`, { headers });
+  if (!me.ok) throw new Error(`reading the gate's configuration: ${me.status} ${await me.text()}`);
+  const configuration = (await me.json()).Configuration;
+  const saved = await fetch(`${base}/Users/${session.User.Id}/Configuration`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({ ...configuration, SubtitleMode: "None" }),
+  });
+  if (!saved.ok) throw new Error(`saving the gate's configuration: ${saved.status} ${await saved.text()}`);
+}
+await startWithNoSubtitleMode();
+
 const exec_ = async (cmd, args) => (await promisify(execFile)(cmd, args)).stdout;
 // Specs with a job, not jobs: a seek past what the job has made (transcodeLead)
 // starts another job of the same spec, whereas picking a track that is drawn into
@@ -702,6 +726,19 @@ const apiCall = (page, method, path, body) => page.evaluate(async ([method, path
   return { status: response.status, text: await response.text() };
 }, [method, path, body ?? null]);
 
+// The whole saved configuration, to put back exactly: POSTing {} changes nothing.
+async function savedConfiguration(page) {
+  const answer = await apiCall(page, "GET", "/Users/Me");
+  if (answer.status !== 200) throw new Error(`reading the configuration: ${answer.status} ${answer.text}`);
+  return JSON.parse(answer.text).Configuration;
+}
+
+async function restoreConfiguration(page, configuration) {
+  const userId = await page.evaluate(() => window.ApiClient.getCurrentUserId());
+  const answer = await apiCall(page, "POST", `/Users/${userId}/Configuration`, JSON.stringify(configuration));
+  if (answer.status !== 204) throw new Error(`restoring the configuration: ${answer.status} ${answer.text}`);
+}
+
 // The entries of the player's audio or subtitle menu: the data-id of each, but not Off or the secondary subtitles item.
 async function menuIds(page, button, seen) {
   await waitFor(`the ${button} menu`, async () => {
@@ -746,6 +783,7 @@ await scenario("a viewer who hides the tracks outside their languages sees only 
     return { audio: await menuIds(page, ".btnAudio", seen), subtitles: await menuIds(page, ".btnSubtitles", seen) };
   };
   const same = (got, want, what) => { if (got.join() !== want.join()) throw new Error(`${what}: ${got.join()}, want ${want.join()}`); };
+  const previous = await savedConfiguration(page);
   try {
     await ok("POST", `/Users/${userId}/Configuration`, JSON.stringify({ AudioLanguagePreference: "eng", SubtitleLanguagePreference: "eng" }), 204);
     await ok("PATCH", "/jellyscale/v1/track-preferences", JSON.stringify({ HideOtherAudio: true, HideOtherSubtitles: true, ShowAllTracks: false }), 200);
@@ -773,7 +811,7 @@ await scenario("a viewer who hides the tracks outside their languages sees only 
     await leave(page);
   } finally {
     await apiCall(page, "PATCH", "/jellyscale/v1/track-preferences", JSON.stringify({ HideOtherAudio: false, HideOtherSubtitles: false, ShowAllTracks: false }));
-    await apiCall(page, "POST", `/Users/${userId}/Configuration`, "{}");
+    await restoreConfiguration(page, previous);
   }
 });
 
@@ -820,12 +858,13 @@ async function startFromCard(page, title) {
 async function withGermanViewer(page, run) {
   const userId = await page.evaluate(() => window.ApiClient.getCurrentUserId());
   const post = (body) => apiCall(page, "POST", `/Users/${userId}/Configuration`, JSON.stringify(body));
-  const saved = await post({ AudioLanguagePreference: "deu", PlayDefaultAudioTrack: false });
+  const previous = await savedConfiguration(page);
+  const saved = await post({ ...previous, AudioLanguagePreference: "deu", PlayDefaultAudioTrack: false });
   if (saved.status !== 204) throw new Error(`saving the settings: ${saved.status} ${saved.text}`);
   try {
     await run();
   } finally {
-    await post({});
+    await restoreConfiguration(page, previous);
   }
 }
 
@@ -965,12 +1004,13 @@ await scenario("from the details page a German viewer plays a film whose default
 async function withSubtitleMode(page, settings, run) {
   const userId = await page.evaluate(() => window.ApiClient.getCurrentUserId());
   const post = (body) => apiCall(page, "POST", `/Users/${userId}/Configuration`, JSON.stringify(body));
-  const saved = await post(settings);
+  const previous = await savedConfiguration(page);
+  const saved = await post({ ...previous, ...settings });
   if (saved.status !== 204) throw new Error(`saving the settings: ${saved.status} ${saved.text}`);
   try {
     await run();
   } finally {
-    await post({});
+    await restoreConfiguration(page, previous);
   }
 }
 
@@ -1068,6 +1108,7 @@ await scenario("the details page's Audio menu lists every audio track the viewer
     if (![200, 204].includes(answer.status)) throw new Error(`${method} ${path}: ${answer.status} ${answer.text}`);
   };
   const babel = capturedMenu("Menu Babel", "").options; // The same tracks as Babel Film's, so the same labels (test/fixtures/babel.sh).
+  const previous = await savedConfiguration(page);
   try {
     await openDetails(page, "Babel Film");
     const none = await audioMenu(page);
@@ -1097,7 +1138,7 @@ await scenario("the details page's Audio menu lists every audio track the viewer
     if (mono.options.map((o) => o.value).join() !== "1" || !mono.shown || mono.enabled) throw new Error(`Mono Film's menu: ${JSON.stringify(mono)}, want its one entry, 1`);
   } finally {
     await apiCall(page, "PATCH", "/jellyscale/v1/track-preferences", JSON.stringify({ HideOtherAudio: false, HideOtherSubtitles: false, ShowAllTracks: false }));
-    await apiCall(page, "POST", `/Users/${userId}/Configuration`, "{}");
+    await restoreConfiguration(page, previous);
   }
 });
 
