@@ -384,11 +384,10 @@ for p in $api1 $api2 $stream; do
   for _ in $(seq 1 60); do curl -fs -o /dev/null "http://127.0.0.1:$p/healthz" && break; sleep 0.25; done
 done
 # Every library, not a count of five: the config has seven, and the first gate's
-# library (Languages) would otherwise be empty when a scenario opens it. A cold scan
-# of the film fixtures takes minutes, so the bound is generous; it ends as soon as
-# the last scan is done.
+# library (Languages) would otherwise be empty when a scenario opens it. The bound
+# is unchanged; the wait ends as soon as the last scan is done.
 libraries=$(grep -c '"kind":' "$work/config-s3.json")
-for _ in $(seq 1 600); do [[ $(grep -c 'scan finished' "$logs/server.log") -ge $libraries ]] && break; sleep 0.5; done
+for _ in $(seq 1 120); do [[ $(grep -c 'scan finished' "$logs/server.log") -ge $libraries ]] && break; sleep 0.5; done
 
 base="http://127.0.0.1:$router"
 cp "$repo/test/e2e/conform.mjs" "$repo/test/e2e/shard.mjs" "$repo/test/e2e/player.mjs" "$repo/test/e2e/recovery.mjs" "$repo/test/e2e/browse.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/cors.mjs" "$repo/test/e2e/transcode.mjs" "$repo/test/e2e/subtitles.mjs" "$repo/test/e2e/failover.mjs" "$repo/test/e2e/away.mjs" "$playwright/"
