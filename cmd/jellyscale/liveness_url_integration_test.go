@@ -403,10 +403,25 @@ func TestALivenessURLThatRefusesEveryWorkerForLessThanALeaseLeavesEveryJobAndFor
 // One longer than a lease ends each job cancelled, never failed, claims none
 // meanwhile, and the next request starts each again at the first segment not stored.
 func TestALivenessURLThatRefusesEveryWorkerForLongerThanALeaseCancelsEveryJobAndTheNextRequestRestartsIt(t *testing.T) {
-	o := newOutageCluster(t)
+	newOutageCluster(t).restartsAfterAnOutageLongerThanALease(t)
+}
+
+// restartsAfterAnOutageLongerThanALease is the check above, on a cluster that holds a job for each viewer.
+func (o *outageCluster) restartsAfterAnOutageLongerThanALease(t *testing.T) {
 	c := o.c
-	old := c.rows()
-	last := old[len(old)-1].ID
+	// Each viewer's own job, by its play session. A helper's row of another viewer's spec can lie between them in id
+	// order, and pairing by position would then restart a viewer past its own first missing segment (a queue run:
+	// "job 7 restarted its spec at segment 3, past the first one not stored").
+	var old []row
+	for _, p := range o.plays {
+		j, ok := c.rowOf(p)
+		if !ok {
+			t.Fatalf("viewer %s has no job of its own", p.psid)
+		}
+		old = append(old, j)
+	}
+	rows := c.rows()
+	last := rows[len(rows)-1].ID
 	o.setAway(true)
 	time.Sleep(14 * time.Second) // Longer than the lease (10 s).
 	for _, j := range c.rows() {
