@@ -2178,7 +2178,7 @@
     {
       "id": "BL-243",
       "title": "A viewer refused for lack of cores while a new worker is starting could be held for it instead of refused",
-      "notes": "Promote when JS-057 measures demand-to-ready under about 10 seconds and its 14-day count shows refusals followed by a successful retry (D-045).",
+      "notes": "Promote when JS-057 measures demand-to-ready under about 10 seconds and its 14-day count shows refusals followed by a successful retry (D-045). JS-166: pod creation to first claim 1.7 and 5.5 s on one node, 7.7, 37 and 58 s on another (unexplained).",
       "source": "owner direction 2026-11-21",
       "status": "open",
       "severity": "minor",
@@ -2196,7 +2196,7 @@
     {
       "id": "BL-245",
       "title": "Two JS-162 runs made the job slower than the rest (0.6x and 0.76x) with no cause found",
-      "notes": "Promote when JS-166's record shows a job more than a fifth under its worker's measured speed with nothing beside it (D-046).",
+      "notes": "JS-166 did not show it: its slow jobs ran under a CPU limit of 8, reached 1.285 and 1.36 at 12, and what ran beside them was not recorded. Promote when a worker's learned figure (JS-177's logged moves of more than a fifth) falls with no job, extraction or CPU limit to explain it, on any deployment (D-067).",
       "source": "JS-162",
       "status": "open",
       "severity": "minor",
@@ -2227,7 +2227,7 @@
       "reviewer": "product-owner",
       "source": "JS-168 merge-queue regression; D-052",
       "title": "A slow job on a worker with idle cores gets no helper on that worker",
-      "notes": "D-052 keeps helpers off the worker running the viewers' own job. Promote when a measurement shows a same-worker helper brings such a job to 1.0x or above, or when the dogfood (JS-166, the 12-thread node) shows a job under 1.2x on a worker with at least the job's cost free and no other worker to help."
+      "notes": "D-052 keeps helpers off the worker running the viewers' own job. Promote when a measurement shows a same-worker helper brings such a job to 1.0x or above, or when the dogfood (JS-166, the 12-thread node) shows a job under 1.2x on a worker with at least the job's cost free and no other worker to help. JS-166 did not fire it: the jobs under 1.2x had 0.3 declared cores free and were throttled at a CPU limit of 8; at 12 they ran at 1.285 and 1.36 (D-067). The dogfood clause stands for any later sighting."
     },
     {
       "id": "BL-249",
@@ -2272,7 +2272,7 @@
       "reviewer": "lead",
       "source": "JS-159/JS-161 triage; D-061",
       "title": "While a segment waits for its successor it is re-read whole every 100 ms",
-      "notes": "A worker making large segments (a 4K copy) spends about a tenth of a core per job re-reading (QA's figure on a file, not inside the worker). Promote on: JS-166 criterion 9 reporting a job slower than expected by more than a fifth with nothing running beside it. Kin to BL-245."
+      "notes": "Promote on BL-245's trigger (D-067). Kin to BL-245."
     },
     {
       "id": "BL-254",
@@ -2281,7 +2281,7 @@
       "reviewer": "lead",
       "source": "JS-159/JS-161 triage; D-061",
       "title": "A segment that cannot be measured is held until its successor appears or ffmpeg exits, and nothing says so",
-      "notes": "A viewer would get a start or seek later by the time one more segment takes; an operator finds no cause in the log. Promote on: a start or seek over 5 s in JS-166 criterion 3 or JS-174's time to first frame with no other cause in the log; first criterion then the log line and counted reason. Which films or segments cannot be measured is not yet known."
+      "notes": "Promote on: a start or seek over 5 s in JS-174's time to first frame, or on the dogfood, with no other cause in the log; first criterion then the log line and counted reason. JS-166 recorded none (D-067)."
     },
     {
       "id": "BL-255",
@@ -2343,8 +2343,8 @@
       "severity": "minor",
       "reviewer": "lead",
       "source": "JS-166 close; D-065",
-      "title": "After the dogfood's sizing correction, the seek and the second burned-in start of a 4K HDR re-encode were not re-measured, and the worker's CPU request (6) is below its limit (12), so its speed under its neighbours' load is unknown",
-      "notes": "Promote on any of: a 4K re-encode job on the dogfood with encode speed under 1.0x past its first 30 seconds; a slow-job reason counted there; a household report of a stall. It closes when the dogfood's declared figures are dropped, not when JS-177 merges."
+      "title": "After the dogfood's sizing correction, a 4K HDR re-encode's seek, second burned-in start, three plays of each part, a play beside a subtitle extraction and the refusal of a second 4K play were not re-measured, and the worker's CPU request (6) is below its limit (12), so its speed under its neighbours' load is unknown",
+      "notes": "Promote on any of: a 4K re-encode job on the dogfood with encode speed under 1.0x past its first 30 seconds; a slow-job reason counted there; a household report of a stall. It closes when the dogfood's declared figures are dropped, not when JS-177 merges. The play beside an extraction is measured off the dogfood by JS-177 criterion 1's spike row (D-066). The refusal rests on JS-161's checks and a declared figure the limit did not change (reasoned). The evidence is one film, one cluster, one worker with no helper; nothing says what a shared play does on the dogfood before JS-178 criterion 8. (D-067)"
     },
     {
       "id": "BL-262",
@@ -2354,6 +2354,15 @@
       "source": "D-066, option B; JS-177 design review",
       "title": "A worker's own extraction beside a transcode is not counted apart from slow hardware",
       "notes": "Promote on: the spike row or the dogfood showing a figure moved by more than a fifth during an own extraction, and a play the worker holds refused past criterion 4's recovery time after it ended (D-066, option B)."
+    },
+    {
+      "id": "BL-263",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-166 close; D-067",
+      "title": "On a transcode store shared between machines, the time from a worker finishing a segment to a stream replica on another node serving it is unmeasured",
+      "notes": "JS-166 criterion 8, not taken. A viewer would feel it as wait added to every start and seek, and as a stall when the store lags a worker that keeps real time. Bounded today by two 600 s plays through S3 across nodes at 1.000 with no segment request over 5 s (one cluster). An unkept reading (p50 14 ms, max 57 ms, at most 40 stored segments, another interval) is never cited. Promote on: a segment request over 5 s or a freeze past the first 30 s while the job's encode speed is at or above 1.0 and worker and stream are on different nodes, on any deployment; an operator report of a slower S3 service; or JS-062 starting, where it becomes a criterion (100 segments, output kept)."
     }
   ]
 }

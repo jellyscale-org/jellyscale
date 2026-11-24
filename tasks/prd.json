@@ -586,7 +586,7 @@
         "JS-178"
       ],
       "source": "PRODUCT.md phase6-k8s",
-      "notes": "JS-020 (2026-11-08): each worker holds one Postgres connection for its liveness lock, outside the pool, so a stock Postgres (max_connections 100) is exhausted at about 90 workers, long before its CPU (one primary carried 1600 streams on two cores' worth). Connections are the first wall when autoscaling. User (2026-11-08): plain manifests for kubectl are wanted beside the chart, not Helm only."
+      "notes": "JS-020 (2026-11-08): each worker holds one Postgres connection for its liveness lock, outside the pool, so a stock Postgres (max_connections 100) is exhausted at about 90 workers, long before its CPU (one primary carried 1600 streams on two cores' worth). Connections are the first wall when autoscaling. User (2026-11-08): plain manifests for kubectl are wanted beside the chart, not Helm only. JS-166 (D-067): its docs/running.md part was not written and is carried by criteria 10 and 11 here and JS-177's 'Sizing workers'. From its record, criterion 11's text covers: every role given the same transcodeStore and its S3 credentials; and that a request equal to the limit may not schedule beside a node's other workloads (the dogfood's worker requests 6 under a limit of 12), which is why a 4K-capable worker wants a whole node."
     },
     {
       "id": "JS-058",
@@ -1394,7 +1394,7 @@
         "JS-165"
       ],
       "source": "project plan; owner direction 2026-11-21; D-045; D-048",
-      "notes": "JS-020 (2026-11-08): a stock Postgres (max_connections 100) is exhausted at about 90 workers; connections are the first wall when autoscaling. ux: true."
+      "notes": "JS-020 (2026-11-08): a stock Postgres (max_connections 100) is exhausted at about 90 workers; connections are the first wall when autoscaling. ux: true. JS-166 recorded pod creation to first claimed job: 1.7 and 5.5 s (12-thread node); 7.7, 37 and 58 s (4-core node, unexplained, and whether a job was waiting is not recorded). Criterion 2's measurement records the start in its parts (pod created, container ready, worker registered, first claim) so a slow one has a cause; a registered-to-ready time over 10 s returns as a brief (D-067)."
     },
     {
       "id": "JS-169",
@@ -1472,7 +1472,7 @@
       ],
       "core": true,
       "source": "D-064; brief-learned-capacity.md; BL-259",
-      "notes": "Order set by D-064: after JS-041, before JS-127. ux: true. The dogfood's declared figures stay as ceilings until JS-178 merges. After JS-177 merges the lead offers the owner dropping them sooner, with the cost stated: the first heavy play after each worker start is the learning one. D-065: the dogfood's declared 3.2 is known to be conservative (about 3.4 to 3.6 by two runs, unverified). The design review takes JS-166's before and after figures as they are and asks for no new dogfood runs."
+      "notes": "Order set by D-064: after JS-041, before JS-127. ux: true. The dogfood's declared figures stay as ceilings until JS-178 merges. After JS-177 merges the lead offers the owner dropping them sooner, with the cost stated: the first heavy play after each worker start is the learning one. D-065: the dogfood's declared 3.2 is known to be conservative (about 3.4 to 3.6 by two runs, unverified). The design review takes JS-166's before and after figures as they are and asks for no new dogfood runs. The 93% throttling figure is a reading whose output was not kept. The design review rests on the kept job speeds (median 0.97 at limit 8; 1.285 and 1.36 at 12), and 'Sizing workers' does not quote it (D-067)."
     },
     {
       "id": "JS-178",
