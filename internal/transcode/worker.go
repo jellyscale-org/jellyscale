@@ -46,14 +46,14 @@ type Worker struct {
 
 	// Scratch holds ffmpeg's output until it is uploaded.
 	Scratch string
-	// Cores is what the worker has to give its jobs, in the unit of
-	// playback.Spec.Cost. Slots, if set instead, stands for as many cores; with
-	// neither the worker has the processors it may use, each at the reference
-	// machine's speed (cores, speed.go). setID leaves Cores as what is counted
-	// and assumed as whether the worker counted it without a declaration.
-	Cores   float64
-	Slots   int
-	assumed bool
+	// Cores is an optional ceiling on what the worker has to give its jobs, in the unit of
+	// playback.Spec.Cost: the worker starts from the CPUs it may use, or Cores if that is
+	// fewer, and learns what it holds from the jobs it runs (speed.go, capacity_sampler.go).
+	// Slots, if set instead, stands for as many cores.
+	Cores float64
+	Slots int
+	// Kernel is what the worker reads of the machine's CPU; nil is the kernel's own.
+	Kernel Kernel
 	// Idle is how long a spec may go without a request before its jobs stop.
 	Idle time.Duration
 	// Lead is how far, in film time, a job may get ahead of the furthest
@@ -67,9 +67,10 @@ type Worker struct {
 	// (default 1.2). See helpers.go.
 	ChunkSegments int
 	HelpBelow     float64
-	// unhelped counts the jobs that said they get no helper, by reason (BL-005).
+	// unhelped counts the jobs that said they get no helper, by reason (BL-005) and by the source of the
+	// worker's capacity when the job was counted, which a later move of the figure does not change.
 	unhelpedMu sync.Mutex
-	unhelped   map[string]int
+	unhelped   map[unhelpedKey]int
 	// NoHelpers stops this worker's jobs from asking for helpers. It does not
 	// stop it from running helpers other workers asked for.
 	NoHelpers bool
@@ -102,9 +103,12 @@ type Worker struct {
 	// liveness lock's connection. It defaults to the pool's own.
 	KeeperConfig *pgx.ConnConfig
 
-	// live is what the worker runs now, for /metrics.
-	liveMu sync.Mutex
-	live   map[int64]liveJob
+	// live is what the worker runs now, for /metrics and the capacity sampler; endedAt is when a job last ended.
+	liveMu  sync.Mutex
+	live    map[int64]liveJob
+	endedAt time.Time
+	// capacity is what the worker has learned of its own (capacity_sampler.go).
+	capacity capacityLearning
 	// freed wakes Run when a job ends, which frees cores for the next claim.
 	freed chan struct{}
 
@@ -140,6 +144,11 @@ func (w *Worker) Run(ctx context.Context) {
 	var running sync.WaitGroup
 	defer running.Wait()
 	go w.sweepLoop(ctx)
+	running.Add(1)
+	go func() {
+		defer running.Done()
+		w.learnCapacity(ctx)
+	}()
 
 	wake, unsubscribe := w.Hub.Subscribe(jobHint)
 	defer unsubscribe()
@@ -809,13 +818,18 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 		if err := mediatool.Start(cmd); err != nil {
 			return err
 		}
+		job.progress.setPID(cmd.Process.Pid)
 		// A stored track that can't be read ends the run, whatever ffmpeg made meanwhile.
 		var trackFailed <-chan struct{}
 		if feed != nil {
 			trackFailed = feed.failed
 		}
 		exited := make(chan error, 1)
-		go func() { exited <- cmd.Wait() }()
+		go func() {
+			err := cmd.Wait()
+			job.progress.setPID(0)
+			exited <- err
+		}()
 
 		// paused says whether ffmpeg is stopped at the limit.
 		paused := false
@@ -1062,6 +1076,12 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 							log.Warn("transcode is slower than real time, so playback will stall", "speed", speed, "worker", w.ID)
 						}
 						loggedSlow = speed < 1
+						if speed < 1 && mediatool.Extracting(speedWindow*time.Second) && !unhelped[reasonOwnExtraction] {
+							// D-070: a sample beside an extraction teaches the worker nothing, so say what slowed the job.
+							unhelped[reasonOwnExtraction] = true
+							source := w.countUnhelped(reasonOwnExtraction)
+							log.Warn("slow job beside its worker's own extraction", "reason", reasonOwnExtraction, "speed", speed, "worker", w.ID, "capacity", source)
+						}
 						if w.needsHelp(job) {
 							reason, err := w.askForHelp(ctx, job, chunked, next, layout)
 							if err != nil && ctx.Err() == nil {
@@ -1069,9 +1089,9 @@ func (w *Worker) encode(ctx context.Context, job claimed, log *slog.Logger) erro
 							}
 							if reason != "" && !unhelped[reason] {
 								unhelped[reason] = true
-								w.countUnhelped(reason)
-								attrs := []any{"reason", reason, "speed", speed, "worker", w.ID, "capacity", w.capacitySource()}
-								if w.assumed {
+								source := w.countUnhelped(reason)
+								attrs := []any{"reason", reason, "speed", speed, "worker", w.ID, "capacity", source}
+								if source == sourceAssumed {
 									attrs = append(attrs, "note", "capacity is assumed from the processors; set transcodeCores to what the worker holds")
 								}
 								log.Warn("slow job gets no helper", attrs...)
@@ -1508,22 +1528,29 @@ func (w *Worker) restoreFonts(ctx context.Context, job claimed, log *slog.Logger
 	})
 }
 
-// countUnhelped counts a job that ran under real time and got no helper, once for each job and reason.
-func (w *Worker) countUnhelped(reason string) {
+// unhelpedKey is what a slow job was counted under: why it got no helper, and where the worker's capacity came from then.
+type unhelpedKey struct{ reason, source string }
+
+// countUnhelped counts a job that ran under real time and got no helper, once for each job and reason, under the source
+// of the worker's capacity now, and returns that source. A job counted while the capacity was assumed stays under assumed
+// when the worker learns it later: the series that tells the operator to set transcodeCores must not vanish.
+func (w *Worker) countUnhelped(reason string) (source string) {
+	source = w.capacitySource()
 	w.unhelpedMu.Lock()
 	defer w.unhelpedMu.Unlock()
 	if w.unhelped == nil {
-		w.unhelped = map[string]int{}
+		w.unhelped = map[unhelpedKey]int{}
 	}
-	w.unhelped[reason]++
+	w.unhelped[unhelpedKey{reason, source}]++
+	return source
 }
 
-func (w *Worker) unhelpedCounts() map[string]int {
+func (w *Worker) unhelpedCounts() map[unhelpedKey]int {
 	w.unhelpedMu.Lock()
 	defer w.unhelpedMu.Unlock()
-	counts := map[string]int{}
-	for reason, n := range w.unhelped {
-		counts[reason] = n
+	counts := map[unhelpedKey]int{}
+	for key, n := range w.unhelped {
+		counts[key] = n
 	}
 	return counts
 }

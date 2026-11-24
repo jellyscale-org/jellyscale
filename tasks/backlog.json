@@ -2435,6 +2435,33 @@
       "source": "JS-177 design review",
       "title": "A worker on a faster-than-reference CPU is counted at the reference speed, so a pair of workers at a 2-CPU limit is refused the 4K HDR job each makes alone",
       "notes": "The learned figure never rises above its start (the lesser of the processors and transcodeCores), so a worker at a CPU limit of 2 on a fast CPU holds 2.0 where its jobs show 2.35 (17% given up), and two such workers fall under the share's 2.08. Measured once on a synthetic film (JS-177's pre-Spec record), not on a real faster CPU. The operator's remedy is a limit of 3 or more (docs/running.md 'Sizing workers'). Promote as a brief on an operator's report of a worker on a fast CPU refusing or declining to share a play it holds."
+    },
+    {
+      "id": "BL-272",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "adversarial",
+      "source": "JS-177 verify",
+      "title": "The estimator's unit tests leave 28 one-line mutants alive: raise-side state (raise setting settled, lower setting pendingRise, a timed rise firing at figure == start), the streak resets and the copy-only void, and the gap reset that appears in both lower and confirmRise",
+      "notes": "Found by 145 one-line mutants of capacity_learn.go and the start-note lines against go test ./internal/transcode (lines named in the finding). The behaviours are pinned by reading and by the integration checks, not by a unit test that fails on the mutant. Promote when the estimator changes again (JS-178 persists the figure), as a spec-writer step for that task."
+    },
+    {
+      "id": "BL-273",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "lead",
+      "source": "JS-177 build",
+      "title": "A queued shared job counts at its full price on a lone worker for up to the 6 s queue window",
+      "notes": "At the 0.65 share (D-066) a learned figure of 2.3 can host a shared play, so the ledger's placeQueued counts a queued 3.2 job on a worker that has no partner, and a 0.8 play asked meanwhile is refused 'no worker had the cores'. Seen in the lone-worker check, whose stale queued job is its own artefact (a play admitted before convergence and never claimed); a job is normally claimed at once. Promote on a dogfood refusal within seconds of a refused or queued shared play on a lone worker."
+    },
+    {
+      "id": "BL-274",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "ux",
+      "source": "JS-177 verify",
+      "title": "A legacy transcodeSlots above the CPUs is counted as that many cores, so learning starts there and its floor is a quarter of it",
+      "notes": "The task leaves transcodeSlots untouched; the start line now says so (slotsNote) and docs/running.md advises transcodeCores instead. Promote with JS-178 or on an operator running a large transcodeSlots on a small worker, which would make the worker admit plays it cannot hold until it learns."
     }
   ]
 }

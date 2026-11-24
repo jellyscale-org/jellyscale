@@ -110,6 +110,7 @@ func observeSegment(began time.Time, copied bool, source string, err error) {
 // liveJob is what a worker knows of a job it is running, for /metrics.
 type liveJob struct {
 	copied   bool
+	fallback bool // An HEVC or AV1 fallback of a copy (Spec.Recode): its speed is never a sample of the capacity.
 	cost     float64
 	progress *progress
 }
@@ -123,7 +124,7 @@ func (w *Worker) track(job claimed) *progress {
 		w.live = map[int64]liveJob{}
 	}
 	p := &progress{now: time.Now, began: time.Now()}
-	w.live[job.ID] = liveJob{copied: job.Spec.Copy, cost: job.Spec.Cost(), progress: p}
+	w.live[job.ID] = liveJob{copied: job.Spec.Copy, fallback: job.Spec.Recode != "", cost: job.Spec.Cost(), progress: p}
 	return p
 }
 
@@ -143,6 +144,7 @@ func (w *Worker) holding() (cores float64, copies int) {
 func (w *Worker) untrack(id int64) {
 	w.liveMu.Lock()
 	delete(w.live, id)
+	w.endedAt = time.Now()
 	w.liveMu.Unlock()
 }
 
@@ -150,10 +152,12 @@ var (
 	jobsRunningDesc  = prometheus.NewDesc("jellyscale_transcode_jobs_running", "Transcode jobs this worker runs, paused ones included, by kind (reencode, copy).", []string{"kind"}, nil)
 	speedDesc        = prometheus.NewDesc("jellyscale_transcode_job_speed_ratio", "Seconds of film a running job encodes per second of its own running time, over its last 10 seconds. Time paused at the lead limit does not count. Absent until the job has run for a second.", []string{"job", "kind"}, nil)
 	pausedDesc       = prometheus.NewDesc("jellyscale_transcode_job_paused", "1 while a job's ffmpeg is paused at its lead limit.", []string{"job"}, nil)
-	coresDesc        = prometheus.NewDesc("jellyscale_transcode_cores", "This worker's capacity, in the reference machine's cores the jobs' prices are in, as admission counts it: what it declared (transcodeCores, or transcodeSlots), else each processor it may use at the reference speed.", nil, nil)
-	assumedDesc      = prometheus.NewDesc("jellyscale_transcode_capacity_assumed", "1 when this worker declared no capacity and counts each processor at the reference speed (which overstates a slower CPU or SMT threads), 0 when it declared transcodeCores or transcodeSlots.", nil, nil)
+	coresDesc        = prometheus.NewDesc("jellyscale_transcode_cores", "This worker's capacity, in the reference machine's cores the jobs' prices are in, exactly as admission counts it (the figure its row holds): what it learned from its jobs, starting from the processors it may use or transcodeCores, whichever is less.", nil, nil)
+	assumedDesc      = prometheus.NewDesc("jellyscale_transcode_capacity_assumed", "1 while this worker's capacity is its processors, each at the reference speed (which overstates a slower CPU or SMT threads) and nothing has moved it, 0 when it is held by transcodeCores or learned.", nil, nil)
+	sourceDesc       = prometheus.NewDesc("jellyscale_transcode_capacity_source", "1 for where this worker's capacity comes from, 0 for the others: assumed (its processors), ceiling (transcodeCores holds it below them, or transcodeSlots is set: those count as that many cores even above them) or learned (moved by what its jobs showed).", []string{"source"}, nil)
+	unreadableDesc   = prometheus.NewDesc("jellyscale_transcode_capacity_unreadable", "1 when this worker cannot read the kernel's scheduler figures and so learns nothing: its capacity stays what it started as.", nil, nil)
 	belowDearestDesc = prometheus.NewDesc("jellyscale_transcode_capacity_below_dearest_row", "1 when this worker's capacity is below the dearest row of the price table (4.2 cores), 0 when not.", nil, nil)
-	unhelpedDesc     = prometheus.NewDesc("jellyscale_transcode_unhelped_jobs_total", "Re-encodes of this worker that ran under 1.2 times real time and got no helper, counted once for each job and reason: lone_worker, helpers_off, no_room (no worker has the helper's cost free) or not_chunked (an HEVC or AV1 fallback, which is not cut into chunks). The capacity label says whether the worker declared its capacity or assumed it.", []string{"reason", "capacity"}, nil)
+	unhelpedDesc     = prometheus.NewDesc("jellyscale_transcode_unhelped_jobs_total", "Re-encodes of this worker that ran under 1.2 times real time and got no helper, counted once for each job and reason: lone_worker, helpers_off, no_room (no worker has the helper's cost free) or not_chunked (an HEVC or AV1 fallback, which is not cut into chunks); own_extraction counts a re-encode under real time beside the worker's own extraction, whether or not it got a helper. The capacity label is the source of the worker's capacity: assumed, ceiling or learned.", []string{"reason", "capacity"}, nil)
 	busyDesc         = prometheus.NewDesc("jellyscale_transcode_cores_busy", "Cores the jobs this worker runs cost, paused jobs included (docs/transcoding.md has the costs).", nil, nil)
 	queueCoresDesc   = prometheus.NewDesc("jellyscale_transcode_queue_cores", "Cores the queued jobs cost, in the whole cluster: every worker reports the same number, so take one, not a sum. The signal to scale workers on.", nil, nil)
 	storeBytesDesc   = prometheus.NewDesc("jellyscale_transcode_store_bytes", "Bytes the transcode store held when a worker's sweep last listed it, in the whole cluster: every worker reports the same number, so take one, not a sum. Absent until a sweep has listed it; a listing that fails leaves the last number.", nil, nil)
@@ -161,6 +165,23 @@ var (
 )
 
 func (w *Worker) Describe(chan<- *prometheus.Desc) {}
+
+// collectCapacity reports the worker's capacity as admission counts it, where it comes from, and the slow jobs counted under
+// the source the capacity had when each was counted.
+func (w *Worker) collectCapacity(ch chan<- prometheus.Metric) {
+	cores, _ := w.registered()
+	source := w.capacitySource()
+	ch <- prometheus.MustNewConstMetric(coresDesc, prometheus.GaugeValue, cores)
+	ch <- prometheus.MustNewConstMetric(assumedDesc, prometheus.GaugeValue, map[bool]float64{false: 0, true: 1}[source == sourceAssumed])
+	for _, name := range []string{sourceAssumed, sourceCeiling, sourceLearned} {
+		ch <- prometheus.MustNewConstMetric(sourceDesc, prometheus.GaugeValue, map[bool]float64{false: 0, true: 1}[source == name], name)
+	}
+	ch <- prometheus.MustNewConstMetric(unreadableDesc, prometheus.GaugeValue, map[bool]float64{false: 0, true: 1}[w.cannotLearn()])
+	ch <- prometheus.MustNewConstMetric(belowDearestDesc, prometheus.GaugeValue, map[bool]float64{false: 0, true: 1}[w.belowDearest()])
+	for key, n := range w.unhelpedCounts() {
+		ch <- prometheus.MustNewConstMetric(unhelpedDesc, prometheus.CounterValue, float64(n), key.reason, key.source)
+	}
+}
 
 // Collect reports the worker's jobs and cores, and the cluster's queue.
 func (w *Worker) Collect(ch chan<- prometheus.Metric) {
@@ -180,14 +201,7 @@ func (w *Worker) Collect(ch chan<- prometheus.Metric) {
 	for kind, n := range byKind {
 		ch <- prometheus.MustNewConstMetric(jobsRunningDesc, prometheus.GaugeValue, float64(n), kind)
 	}
-	w.setID() // Whether the capacity is declared is read there.
-	cores, _ := w.registered()
-	ch <- prometheus.MustNewConstMetric(coresDesc, prometheus.GaugeValue, cores)
-	ch <- prometheus.MustNewConstMetric(assumedDesc, prometheus.GaugeValue, map[bool]float64{false: 0, true: 1}[w.assumed])
-	ch <- prometheus.MustNewConstMetric(belowDearestDesc, prometheus.GaugeValue, map[bool]float64{false: 0, true: 1}[w.belowDearest()])
-	for reason, n := range w.unhelpedCounts() {
-		ch <- prometheus.MustNewConstMetric(unhelpedDesc, prometheus.CounterValue, float64(n), reason, w.capacitySource())
-	}
+	w.collectCapacity(ch)
 	ch <- prometheus.MustNewConstMetric(busyDesc, prometheus.GaugeValue, float64(busy))
 
 	// Queue depth is cluster state in Postgres, so it is asked for here and not
@@ -237,6 +251,10 @@ type progress struct {
 	pausedFor time.Duration
 	pending   []byte
 	samples   []sample
+	// firstAt is when ffmpeg first wrote its progress, lastPause when it was last stopped or let go on, and ffmpegPID the
+	// process it runs now, or 0: what the worker's capacity sampler reads (JS-177).
+	firstAt, lastPause time.Time
+	ffmpegPID          int
 }
 
 // sample is how much film ffmpeg had written after active seconds of running.
@@ -274,6 +292,9 @@ func (p *progress) activeLocked(now time.Time) float64 {
 }
 
 func (p *progress) add(film float64) {
+	if p.firstAt.IsZero() {
+		p.firstAt = p.now()
+	}
 	p.samples = append(p.samples, sample{film, p.activeLocked(p.now())})
 	last := p.samples[len(p.samples)-1]
 	// Keep the newest sample that is at least a window old, and all after it.
@@ -295,6 +316,7 @@ func (p *progress) pause(on bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	now := p.now()
+	p.lastPause = now
 	switch {
 	case on && p.pausedAt.IsZero():
 		p.pausedAt = now
@@ -334,4 +356,27 @@ func (p *progress) speedOver(span float64) (float64, bool) {
 		return 0, false
 	}
 	return (last.film - first.film) / (active - first.active), true
+}
+
+// setPID says which process is the job's ffmpeg now, and 0 when none is.
+func (p *progress) setPID(pid int) {
+	if p == nil {
+		return
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.ffmpegPID = pid
+}
+
+// forLearning is what the job shows a sample of the worker's capacity: its speed, how long since its first output, whether
+// it was paused at any moment of the speed's window, and the process it runs. A job with no speed yet is as young as it is.
+func (p *progress) forLearning(now time.Time) (speed float64, age time.Duration, paused bool, pid int) {
+	speed, _ = p.speed()
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if !p.firstAt.IsZero() && speed > 0 {
+		age = now.Sub(p.firstAt)
+	}
+	paused = !p.pausedAt.IsZero() || now.Sub(p.lastPause) < speedWindow*time.Second
+	return speed, age, paused, p.ffmpegPID
 }

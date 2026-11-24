@@ -239,7 +239,11 @@ func (r *rig) startWorker(t *testing.T, change func(*Worker)) (stop func()) {
 	w := &Worker{ID: id, Pool: pool, Items: &items.Repo{Pool: pool, ServerID: "srv"}, Segments: r.segments, Log: r.log, Media: media.Open,
 		Scratch: r.scratch, Slots: 2, Idle: 60 * time.Second, Lease: 3 * time.Second, Heartbeat: 200 * time.Millisecond,
 		// A whole film's lead, so a job runs to the end unless a test bounds it.
-		Lead: time.Hour}
+		Lead: time.Hour,
+		// JS-177 (D-064): what a worker counts is the lesser of the CPUs it may use and its ceiling, and it learns from its
+		// jobs. The rig's workers have a kernel of their own that shows 64 idle CPUs, so that a test's declared figure is the
+		// figure on any host and no sample moves it; the checks of learning set theirs.
+		Kernel: &fakeKernel{cpus: 64}}
 	// A job costing more cores than the two (a 4K AV1 fallback costs 2.4) is refused by a worker that declares fewer.
 	if r.spec.Item != "" {
 		if cost := r.spec.Cost(); cost > float64(w.Slots) {

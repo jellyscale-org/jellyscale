@@ -2,3 +2,4 @@
 # (INTEGRATION_PROCS, test/integration.sh), with no other test process running.
 # Lines are "<package> <test> <reason>"; the reason says why the test cannot share the machine.
 internal/transcode TestTheScanReadsNoMoreOfAFilmForItsImageTrackAndNothingThatGrowsWithTheFilm measures how much of the film the scan reads, which went over its bound when three processes shared four CPUs; it runs on an idle machine
+cmd/jellyscale TestAWorkerStarvedByCompetingProcessesLowersItsFigureAndEndsNoJob pins busy loops (twelve of them, three to each of up to four CPUs) to the CPUs other tests of its job use, and asserts when a learned figure moves at the production heartbeat, which the loops it makes and the loops of other tests would move; it runs on an idle machine

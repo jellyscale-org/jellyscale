@@ -15,8 +15,8 @@ import (
 
 // JS-161 (BL-005): a running re-encode under 1.2 times real time that gets no helper says why once per job and reason,
 // never once per heartbeat (JS-162 saw 141 to 304 refusals per play), logs it and counts it on /metrics once, with the
-// reason and the capacity's source as its only labels (D-062: capacity="declared" or "assumed", and a worker that
-// declared nothing says in the line that its capacity is assumed and names transcodeCores). A job at 1.2 times real time or more logs and counts nothing. Names the build adds: the log
+// reason and the capacity's source as its only labels (D-062, D-064: capacity="assumed", "learned" or "ceiling", and a
+// worker that counts its processors says in the line that its capacity is assumed and names transcodeCores). A job at 1.2 times real time or more logs and counts nothing. Names the build adds: the log
 // message "slow job gets no helper" with the attribute reason, and jellyscale_transcode_unhelped_jobs_total{reason}
 // with the reasons lone_worker, helpers_off and no_room (a job that is not cut into chunks, an HEVC or AV1 fallback,
 // is the fourth, not_chunked: the process-level check of docs/transcoding.md's measurements covers it).
@@ -46,19 +46,19 @@ func TestASlowJobThatGetsNoHelperSaysWhyOncePerJobAndReason(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		reason string // "" says nothing is logged or counted.
-		source string // "declared" unless the worker declares nothing.
+		source string // "ceiling" (transcodeCores holds it below its processors) unless the worker declares nothing.
 		setup  func(r *rig, w *Worker)
 	}{
-		{"a lone worker", "lone_worker", "declared", func(r *rig, w *Worker) {}},
-		{"transcodeHelpers off", "helpers_off", "declared", func(r *rig, w *Worker) { w.NoHelpers = true }},
-		{"no worker with the helper's cost free", "no_room", "declared", func(r *rig, w *Worker) {
+		{"a lone worker", "lone_worker", "ceiling", func(r *rig, w *Worker) {}},
+		{"transcodeHelpers off", "helpers_off", "ceiling", func(r *rig, w *Worker) { w.NoHelpers = true }},
+		{"no worker with the helper's cost free", "no_room", "ceiling", func(r *rig, w *Worker) {
 			r.addNode(t, "other", 0.1, playback.OutputVersion) // A live worker that has not the 0.8 a helper costs.
 		}},
 		// Nothing declared, neither cores nor slots (the rig gives every worker Slots: 2, which is a declaration): the processors
 		// at the reference speed are its capacity, and the line says it is assumed.
 		{"a lone worker that declared nothing", "lone_worker", "assumed", func(r *rig, w *Worker) { w.Cores, w.Slots = 0, 0 }},
 		{"transcodeHelpers off on a worker that declared nothing", "helpers_off", "assumed", func(r *rig, w *Worker) { w.Cores, w.Slots, w.NoHelpers = 0, 0, true }},
-		{"a job at 1.2 times real time or more", "", "declared", func(r *rig, w *Worker) { w.HelpBelow = 0.05 }},
+		{"a job at 1.2 times real time or more", "", "ceiling", func(r *rig, w *Worker) { w.HelpBelow = 0.05 }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			slow(t) // Real time: the job is under 1.2x.
@@ -108,14 +108,14 @@ func TestASlowJobThatGetsNoHelperSaysWhyOncePerJobAndReason(t *testing.T) {
 			if got := value(text, `jellyscale_transcode_unhelped_jobs_total{capacity="`+tc.source+`",reason="`+tc.reason+`"}`); got != 1 {
 				t.Errorf("the counter for %s, %s, is %v, want 1", tc.reason, tc.source, got)
 			}
-			// What an operator reads: a worker that declared nothing says its capacity is assumed and which setting to use;
-			// one that declared it does not say it is assumed.
+			// What an operator reads: a worker that counts its processors says its capacity is assumed and which setting to use;
+			// one held by a ceiling does not say it is assumed.
 			assumed := strings.Contains(lines[0], "assumed") && strings.Contains(lines[0], "transcodeCores")
 			if tc.source == "assumed" && !assumed {
 				t.Errorf("the line of a worker that declared nothing does not say its capacity is assumed and name transcodeCores: %s", lines[0])
 			}
-			if tc.source == "declared" && strings.Contains(lines[0], "assumed") {
-				t.Errorf("the line of a worker that declared its capacity says it is assumed: %s", lines[0])
+			if tc.source == "ceiling" && strings.Contains(lines[0], "assumed") {
+				t.Errorf("the line of a worker held by its ceiling says it is assumed: %s", lines[0])
 			}
 		})
 	}

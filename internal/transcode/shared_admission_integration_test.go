@@ -296,11 +296,13 @@ func TestTheFirstViewersOwnSeekIsNotRefusedForItsOwnHelpers(t *testing.T) {
 	}
 }
 
-// Shared admission takes its margin from the measured pairs (JS-162, JS-168: two workers at 0.79 to 0.91 times real
-// time alone held the play at 1.0 together) and not from adding free capacities: playback caps its reading at 1.0, so
-// the runs show no headroom to extrapolate. Each worker that counts must hold the job at the slowest measured speed,
-// about 2.5 of the 3.2 reference cores; workers below it do not count, whatever they sum to. Mutant: "sum of free
-// capacities of helper-on workers >= cost" admits every refused row here.
+// Shared admission takes its margin from the measured pairs (JS-162, JS-168: two workers at 0.79 to 0.91 times real time
+// alone held the play at 1.0 together) and not from adding free capacities: playback caps its reading at 1.0, so the runs
+// show no headroom to extrapolate. Each worker that counts must have 0.65 of the job's price free, 2.08 of the 3.2: capacity
+// is the price a worker keeps at 1.2 times real time, so 0.65 is the 0.78 of real time that each of two workers made the job
+// at alone (D-066, JS-177; JS-161 read this as 0.78 of the price, 2.5 here, and refused a pair that holds the play); workers
+// below it do not count, whatever they sum to. Mutant: "sum of free capacities of helper-on workers >= cost" admits every
+// refused row here.
 func TestSharedAdmissionNeedsEachWorkerAtTheSlowestMeasuredSpeed(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -308,8 +310,9 @@ func TestSharedAdmissionNeedsEachWorkerAtTheSlowestMeasuredSpeed(t *testing.T) {
 		admit bool
 	}{
 		{"the measured pair", []float64{2.72, 2.72}, true},
-		{"two workers just above the slowest measured", []float64{2.6, 2.6}, true},
-		{"two workers just below it, though they sum to 4.8", []float64{2.4, 2.4}, false},
+		{"two workers just above 0.65 of the price", []float64{2.1, 2.1}, true},
+		{"two workers at 0.75 of the price, which a literal 0.78 refused", []float64{2.4, 2.4}, true},
+		{"two workers just below 0.65 of the price, though they sum to 4.1", []float64{2.05, 2.05}, false},
 		{"two workers at half the cost, summing to 3.2", []float64{1.6, 1.6}, false},
 		{"three workers at a third, summing to 3.3", []float64{1.1, 1.1, 1.1}, false},
 		{"a worker below it beside two above", []float64{1.6, 2.72, 2.72}, true},

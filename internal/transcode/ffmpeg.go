@@ -240,7 +240,7 @@ func Command(ctx context.Context, input string, spec playback.Spec, start int, d
 // starts a little early.
 func audioGrid(ctx context.Context, input string, spec playback.Spec) (int64, error) {
 	res, err := mediatool.Run(ctx, "ffmpeg", []string{"-nostdin", "-v", "error", "-copyts", "-ss", seconds(0), "-i", input, "-map", "0:" + strconv.Itoa(spec.AudioIndex),
-		"-frames:a", "2", "-c:a", "aac", "-b:a", strconv.FormatInt(spec.AudioBitrate, 10), "-ac", "2", "-ar", strconv.Itoa(audioRate), "-f", "framecrc", "-"}, mediatool.Options{})
+		"-frames:a", "2", "-c:a", "aac", "-b:a", strconv.FormatInt(spec.AudioBitrate, 10), "-ac", "2", "-ar", strconv.Itoa(audioRate), "-f", "framecrc", "-"}, mediatool.Options{OfTranscode: true})
 	if err != nil {
 		var failed *mediatool.Error
 		if errors.As(err, &failed) && failed.Output != "" {
@@ -671,7 +671,7 @@ func ffprobe(ctx context.Context, args ...string) ([]byte, error) {
 
 // ffprobeFrom runs ffprobe with stdin as its input, if there is one.
 func ffprobeFrom(ctx context.Context, stdin io.Reader, args ...string) ([]byte, error) {
-	res, err := mediatool.Run(ctx, "ffprobe", append([]string{"-v", "error"}, args...), mediatool.Options{Stdin: stdin})
+	res, err := mediatool.Run(ctx, "ffprobe", append([]string{"-v", "error"}, args...), mediatool.Options{Stdin: stdin, OfTranscode: true})
 	if err != nil {
 		return nil, fmt.Errorf("ffprobe: %w: %s", err, strings.TrimSpace(string(res.Stderr)))
 	}
