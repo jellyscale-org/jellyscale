@@ -24,7 +24,6 @@ import (
 )
 
 // JS-114: the one place these tests start a jellyscale process, read its log, ask the kernel for a port and sign in.
-// harness_standing_test.go keeps it the only one.
 
 // logSink is a log that a process (on stdout and stderr at once) and the test share.
 type logSink struct {

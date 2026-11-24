@@ -144,7 +144,7 @@ check "invalid token is refused" 401 "$(code -H 'X-Emby-Token: nope' "127.0.0.1:
 # A sign-out is seen by every process at once (JS-125). A device of its own signs in through api 1; its token is
 # accepted by api 2 and by stream; api 1 signs it out; the very next request of the token to api 2 and to stream, each
 # sent once with no wait and no retry, is refused, while the same user's other token, the run's own, still works. A
-# process that remembers tokens (test/mutant.sh token-memory: for 5 seconds) answers 200 and 206 here on every run.
+# process that remembers tokens (for 5 seconds) answers 200 and 206 here on every run.
 signin() { curl -s -X POST "127.0.0.1:$1/Users/AuthenticateByName" -H 'Content-Type: application/json' \
   -H "Authorization: MediaBrowser Client=\"c\", Device=\"d\", DeviceId=\"$2\", Version=\"1\"" -d '{"Username":"admin","Pw":"r-pass"}' |
   python3 -I -c 'import json,sys;print(json.load(sys.stdin)["AccessToken"])'; }

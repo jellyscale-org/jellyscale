@@ -20,7 +20,7 @@ import (
 // play, the segments in the transcode store, and the subtitle tracks and fonts in
 // the asset store to a token that was seen within snapshotWindow, from a snapshot
 // it refreshes every snapshotEvery and adds to when an api replica reports a
-// start (startChannel). The numbers are in DOMAINS.md, which the tests read.
+// start (startChannel). The numbers are in DOMAINS.md.
 const (
 	snapshotWindow = 10 * time.Minute
 	snapshotEvery  = 5 * time.Second

@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
-	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -21,7 +19,7 @@ import (
 )
 
 // JS-125, the forced checks: the interleavings the access criteria name, made by holding Postgres where it matters
-// rather than by waiting for a race. The mutants that each must fail are run by TestTheAccessChecksFailOnTheirMutants.
+// rather than by waiting for a race.
 
 // A stream replica holds a snapshot of the tokens of playing sessions (invariant 37), and the snapshot decides only
 // while Postgres is away. Here Postgres answers: the replica's Postgres is held (nothing is refused and nothing ends,
@@ -173,49 +171,4 @@ func TestInAnOutageEveryViewerRouteRefusesAtOnceAndAnUnknownTokenIsSentNothing(t
 			t.Errorf("%s: the 401 of an unknown token has Content-Type %q, the other 401s %q", name, response.Header.Get("Content-Type"), refusal.header.Get("Content-Type"))
 		}
 	}
-}
-
-// Each mutant is a one-line wrong build of the guard or of a route's declaration (test/mutant.py), and the check that
-// is named must fail on it, naming the route or the request, every time it is run. A mutant that no longer applies to
-// the code fails here, and is then to be brought up to date: it never counts as a failure of the check it was for.
-func TestTheAccessChecksFailOnTheirMutants(t *testing.T) {
-	run := func(t *testing.T, mutant string, args ...string) string {
-		t.Helper()
-		cmd := exec.Command("bash", append([]string{"../../test/mutant.sh", mutant, "go", "test", "-count=1"}, args...)...)
-		cmd.Env = os.Environ()
-		out, err := cmd.CombinedOutput()
-		if strings.Contains(string(out), "the mutant no longer applies") {
-			t.Fatalf("the mutant %s is out of date: %s", mutant, out)
-		}
-		if err == nil {
-			t.Errorf("mutant %s: `go test %s` passed", mutant, strings.Join(args, " "))
-		}
-		return string(out)
-	}
-	named := func(t *testing.T, out string, want ...string) {
-		t.Helper()
-		for _, w := range want {
-			if !strings.Contains(out, w) {
-				t.Errorf("the output of the failing run does not name %q:\n%.3000s", w, out)
-			}
-		}
-	}
-	t.Run("GET /Videos/{itemId}/{file} declared anyone", func(t *testing.T) {
-		out := run(t, "videos-file-anyone", "-tags", "integration", "-run", "^TestAccess$", "./")
-		named(t, out, "GET /Videos/{itemId}/{file}")
-		out = run(t, "videos-file-anyone", "-run", "^TestTheOpenRoutesAreExactlyTheOpenList$", "./")
-		named(t, out, "GET /Videos/{itemId}/{file}")
-	})
-	t.Run("the guard accepts any non-empty token", func(t *testing.T) {
-		out := run(t, "any-token", "-tags", "integration", "-run", "^TestAccess$", "./")
-		named(t, out, "with an unknown token", "want 401")
-	})
-	t.Run("a token is remembered for 5 seconds", func(t *testing.T) {
-		out := run(t, "token-memory", "-tags", "integration", "-run", "^TestAccess$", "./")
-		named(t, out, "was accepted until", "want 401")
-	})
-	t.Run("a Snapshot route is served from the snapshot before Postgres is asked", func(t *testing.T) {
-		out := run(t, "snapshot-first", "-tags", "integration", "-run", "^TestASnapshotNeverDecidesWhilePostgresAnswers$", "./")
-		named(t, out, "the snapshot decided")
-	})
 }

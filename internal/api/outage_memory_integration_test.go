@@ -36,7 +36,7 @@ import (
 //
 // A request "answered within 5 seconds" is one given a 5 second deadline. It is
 // the criterion's own bound, over ten times what a replica takes (milliseconds),
-// so it only stops a hang (test/timing-bounds.txt).
+// so it only stops a hang.
 
 const answerDeadline = 5 * time.Second
 

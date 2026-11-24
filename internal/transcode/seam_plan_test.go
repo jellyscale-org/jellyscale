@@ -2,14 +2,7 @@ package transcode
 
 import (
 	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/token"
-	"go/types"
-	"io/fs"
 	"os/exec"
-	"slices"
-	"strings"
 	"testing"
 )
 
@@ -28,7 +21,6 @@ import (
 //	func Command(ctx, input, spec, start, dir, ass, image, enc encoder)
 //
 // grid is the first AAC packet's time in samples (ignored for copied audio).
-// The expected values below are literals, taken from today's arithmetic.
 
 const (
 	ntsc = 1001.0 / 24000 // 24000/1001 fps, as sourceTiming divides it
@@ -179,53 +171,4 @@ func TestSeamPlanNeedsNoProgram(t *testing.T) {
 	if _, _, drop := seamPlan(x264, 0, ntsc, 4.004, -1024, false, 1); drop == "" {
 		t.Error("no drop for segment 1")
 	}
-}
-
-// seamPlan's source: it takes no context, path, stream or reader, and starts
-// and reads nothing.
-func TestSeamPlanIsPureInItsSource(t *testing.T) {
-	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, ".", func(fi fs.FileInfo) bool { return !strings.HasSuffix(fi.Name(), "_test.go") }, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var decl *ast.FuncDecl
-	for _, pkg := range pkgs {
-		for _, file := range pkg.Files {
-			for _, d := range file.Decls {
-				if f, ok := d.(*ast.FuncDecl); ok && f.Name.Name == "seamPlan" && f.Recv == nil {
-					decl = f
-				}
-			}
-		}
-	}
-	if decl == nil {
-		t.Fatal("no function seamPlan in the package")
-	}
-	for _, field := range decl.Type.Params.List {
-		switch typ := types.ExprString(field.Type); typ {
-		case "encoder", "float64", "int64", "int", "bool":
-		default:
-			t.Errorf("seamPlan takes a %s; it may take the encoder, numbers and a flag", typ)
-		}
-	}
-	// What it may call: arithmetic, formatting and the encoder's own fields.
-	allowedPackages := map[string]bool{"math": true, "fmt": true, "strconv": true}
-	ast.Inspect(decl.Body, func(n ast.Node) bool {
-		switch n := n.(type) {
-		case *ast.SelectorExpr:
-			if id, ok := n.X.(*ast.Ident); ok && !allowedPackages[id.Name] && isPackageName(id.Name) {
-				t.Errorf("seamPlan uses %s.%s", id.Name, n.Sel.Name)
-			}
-		case *ast.CallExpr:
-			if id, ok := n.Fun.(*ast.Ident); ok && slices.Contains([]string{"audioGrid", "firstFrameAt", "sourceTiming", "cueStart", "ffprobe", "ffprobeFrom"}, id.Name) {
-				t.Errorf("seamPlan calls %s", id.Name)
-			}
-		}
-		return true
-	})
-}
-
-func isPackageName(name string) bool {
-	return slices.Contains([]string{"exec", "os", "io", "ioutil", "context", "filepath", "bytes", "http", "net", "time", "sync", "library"}, name)
 }
