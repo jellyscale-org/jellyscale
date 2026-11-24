@@ -1,5 +1,5 @@
 # JS-081. Lines of test files that compare a time or speed with a bound and may stay, with why. path, line, reason, separated by tabs.
-# A bar has no entry: cmd/testreport/timing_test.go fails on it. docs/testing.md has the rule.
+# A bar has no entry. docs/testing.md has the rule; this file records the exceptions for review, not for a test to check.
 cmd/jellyscale/main_test.go	if library.DefaultGrace < 48*time.Hour {	a constant compared with a constant (the default grace is at least two days), not a measured time
 internal/api/external_subtitles_integration_test.go	if time.Since(began) > 30*time.Second {	a wait for film.mkv to be stored, polled every 50 ms: it ends the wait when the scan never stores it (a hang)
 internal/api/playback_integration_test.go	if row.position == 0 || row.progressAt == nil || time.Since(*row.progressAt) > 10*time.Second {	the age of a row this test wrote moments before: a stale value is one the build never wrote; the bound is a thousand times the few ms between the post and the read (unverified)
@@ -43,7 +43,6 @@ cmd/jellyscale/failover_integration_test.go	if time.Since(killedAt) > 70*time.Se
 internal/library/probe_version_integration_test.go	if time.Since(began) > 30*time.Second {	a hang bound: the wait ends when the film is stored, which takes a moment; this only stops a scan that never stores it
 cmd/jellyscale/scanfailed_integration_test.go	if d, ok := gaugeOf(t, scanDuration, e.lib.ID); !ok || d <= 0 {	the duration gauge was written at all: any scan takes more than 0 s, so a slow or fast machine cannot fail it; it is not a bound on how long the scan took
 internal/transcode/lease_keeper_integration_test.go	if state == "done" && lasted < twoLeases {	a lower bound: a slower machine takes longer and cannot fail it; it is a guard that the job outlasted two leases under 1 s round trips, so the test proves something (a harness error, not a product failure)
-deploy/image/client_integration_test.go	if total >= 300_000_000 {	a byte count of the films, not a time
 test/image.sh	if ((SECONDS >= deadline)); then die "60 seconds after up --wait: $n_films films and $n_episodes episodes, want $want_films and $want_episodes"; fi	a bound on a wait for an event (the scan reaching the documented counts), as the criteria set it: a wrong build never reaches them; a right one does within seconds (unverified on a slow runner)
 test/image.sh	((SECONDS >= until)) && { echo "GET $1 answered $code" >&2; return 1; }	a hang bound on a wait for the worker to make a segment: a wrong build never makes it; the right one takes seconds (unverified)
 internal/library/tools_test.go	if took > 60*time.Second {	a hang bound: the call takes the 2 s timeout and the 5 s wait delay, about 6 s; only a build that waits for the holder, which sleeps 10 minutes, passes the bound (tenfold margin)

@@ -163,7 +163,7 @@ def track_preferences_unlocked(repo):
 
 
 # The mutants of the burn-in kit, the slow-database tests, the libraries test and the stall test: each is one small, wrong
-# change to the product that the tests named in its comment must fail on every run (test/mutants.sh runs them).
+# change to the product that the tests named in its comment must fail on every run.
 def cue_begins_after_the_cue(repo):
     # A run that begins mid-film opens at its cut, after the packet of a cue that began earlier and is still showing.
     # Fails: every test that looks at a picture of a run inside a cue.
