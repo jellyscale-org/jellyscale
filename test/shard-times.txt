@@ -1,6 +1,7 @@
 # Mean seconds of each top-level test, by package, for test/shard.sh to deal internal/transcode and internal/api by.
 # Made by test/shard-times.sh from the tests.json files of CI runs 43968330587 43963419782 43961381516 (passed tests only), on CI's runners.
 # It only decides which shard a test is dealt to, never whether it passes.
+# Rows for tests since removed were dropped on 2026-11-23.
 cmd/jellyscale TestABadScanIntervalTouchesNothingInPostgres 0.0
 cmd/jellyscale TestABodyThatIsTooLongOrNotAnObjectIsRefusedAndStoresNothing 0.5
 cmd/jellyscale TestAClearedLanguageLeavesTheStoredDocumentAsItWas 1.8
