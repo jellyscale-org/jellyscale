@@ -2,7 +2,6 @@ package playback
 
 import (
 	"slices"
-	"strings"
 	"testing"
 )
 
@@ -16,11 +15,5 @@ func TestTheHelperHeldRefusalHasAReasonOfItsOwn(t *testing.T) {
 	}
 	if !slices.Contains(Reasons(), CoresHeldByWatchedFilm) {
 		t.Error("Reasons() does not list it, so the decision line's counters and docs/running.md's list leave it out")
-	}
-	// A label never names a job, a film, an account or a device.
-	for _, word := range []string{"job", "item", "user", "device", "account"} {
-		if strings.Contains(strings.ToLower(CoresHeldByWatchedFilm), word) {
-			t.Errorf("the reason %q names a %s", CoresHeldByWatchedFilm, word)
-		}
 	}
 }

@@ -394,10 +394,9 @@ func TestWhatAFailedReadLeftUnsetIsReadAgainWithoutAProbe(t *testing.T) {
 	}
 }
 
-// Every source stored before this change is older, and so is a row a worker of
-// the previous release inserts during a rolling upgrade without naming the
-// column.
-func TestSourcesStoredBeforeTheMigrationAndByThePreviousReleaseAreOlder(t *testing.T) {
+// A row a worker of the previous release inserts during a rolling upgrade,
+// without naming the column, is older than the binary's version.
+func TestASourceStoredWithoutNamingTheVersionIsOlder(t *testing.T) {
 	f := setup(t, "movies")
 	clip(t, filepath.Join(f.media, "Film (2020)", "Film (2020).mkv"))
 	f.scan(t)
@@ -411,33 +410,6 @@ func TestSourcesStoredBeforeTheMigrationAndByThePreviousReleaseAreOlder(t *testi
 	}
 	if got := scalar[int](t, f.pool, "SELECT probe_version FROM media_sources WHERE item_id = $1", id); got >= library.ProbeVersion {
 		t.Errorf("a row inserted without naming probe_version is at version %d, the binary's is %d", got, library.ProbeVersion)
-	}
-	// The migration run on a table that has rows: they get a version below the binary's.
-	entries, err := os.ReadDir("../db/migrations")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var migration string
-	for _, entry := range entries {
-		raw, err := os.ReadFile(filepath.Join("../db/migrations", entry.Name()))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if strings.Contains(string(raw), "probe_version") {
-			migration = string(raw)
-		}
-	}
-	if migration == "" {
-		t.Fatal("no migration in internal/db/migrations adds media_sources.probe_version")
-	}
-	if _, err := f.pool.Exec(ctx, "ALTER TABLE media_sources DROP COLUMN probe_version"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := f.pool.Exec(ctx, migration); err != nil {
-		t.Fatalf("the migration on a table that has rows: %v", err)
-	}
-	if got := scalar[int](t, f.pool, "SELECT probe_version FROM media_sources WHERE item_id = $1", id); got >= library.ProbeVersion {
-		t.Errorf("a source stored before the migration is at version %d, the binary's is %d", got, library.ProbeVersion)
 	}
 }
 

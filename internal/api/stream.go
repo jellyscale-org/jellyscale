@@ -298,6 +298,14 @@ func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, mark
 		if hasAudio {
 			planned.AudioStreamIndex = media.Ptr(playback.Number(audio))
 		}
+		// The subtitle the viewer starts with is the one the request names, else the one their mode and language choose. The
+		// plan sees it as a named track: an image track the client does not draw is burnt in, and where nothing can start that
+		// burn-in the plan drops it (and deliverSubtitles with it), so the reply names no default then.
+		if request.SubtitleStreamIndex == nil {
+			if index, ok := subtitleChoice(sessionOf(r).User, source.MediaStreams, languageOfAudio(source, audio)); ok {
+				planned.SubtitleStreamIndex = media.Ptr(playback.Number(index))
+			}
+		}
 		// A pick is a track the viewer named that is neither the file's default nor the one their saved language chooses: the
 		// plan plays it or refuses, never plays another (D-029). The saved language falls back to the default.
 		dflt, _ := fileDefaultAudio(source)
@@ -308,7 +316,7 @@ func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, mark
 			s.fail(w, r, err)
 			return
 		}
-		decision := decisionOf(r, id, playSession, source, request, audio, hasAudio, plan)
+		decision := decisionOf(r, id, playSession, source, request, planned.SubtitleStreamIndex, audio, hasAudio, plan)
 		if plan.method == methodRefused {
 			// jellyfin-web shows a dialog for this; offering a transcode that
 			// can't start instead makes it retry without end. Its "rate limits"
@@ -329,7 +337,10 @@ func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, mark
 		if hasAudio {
 			source.DefaultAudioStreamIndex = media.Ptr(audio)
 		}
-		if index, ok := chosenSubtitle(source, request.SubtitleStreamIndex); ok {
+		if request.SubtitleStreamIndex == nil && planned.SubtitleStreamIndex != nil {
+			fillRemoved(&source, storedStreams(stored)) // The mode's choice must sit at its Index, whatever was removed before it.
+		}
+		if index, ok := chosenSubtitle(source, planned.SubtitleStreamIndex); ok {
 			source.DefaultSubtitleStreamIndex = media.Ptr(index)
 		}
 		original := markOriginal(&source)

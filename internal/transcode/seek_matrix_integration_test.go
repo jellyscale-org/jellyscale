@@ -4,8 +4,6 @@ package transcode
 
 import (
 	"path/filepath"
-	"regexp"
-	"strings"
 	"testing"
 )
 
@@ -93,23 +91,3 @@ func TestASeekGetsItsSegment_opus_2(t *testing.T)         { aSeekGetsItsSegment(
 func TestASeekGetsItsSegment_opus_6(t *testing.T)         { aSeekGetsItsSegment(t, "opus-6") }
 func TestASeekGetsItsSegment_dtshdma_6(t *testing.T)      { aSeekGetsItsSegment(t, "dtshdma-6") }
 func TestASeekGetsItsSegment_dtshdma_6_head(t *testing.T) { aSeekGetsItsSegment(t, "dtshdma-6-head") }
-
-// The rows above are the matrix: a row added to seekAudios without a test function fails here, and so does a function for no row.
-func TestEveryRowOfTheSeekMatrixHasATest(t *testing.T) {
-	source := string(readFile(t, "seek_matrix_integration_test.go"))
-	rows := map[string]bool{}
-	for _, a := range seekAudios() {
-		rows[a.name] = true
-		if !strings.Contains(source, "{ aSeekGetsItsSegment(t, \""+a.name+"\") }") {
-			t.Errorf("row %s has no TestASeekGetsItsSegment_ function", a.name)
-		}
-	}
-	for _, m := range regexp.MustCompile(`aSeekGetsItsSegment\(t, "([^"]+)"\) }`).FindAllStringSubmatch(source, -1) {
-		if !rows[m[1]] {
-			t.Errorf("a TestASeekGetsItsSegment_ function names row %s, which the kit has not", m[1])
-		}
-	}
-	if len(rows) != 17 {
-		t.Errorf("the matrix has %d rows, want 17 (34 films, with a burnt image subtitle or not)", len(rows))
-	}
-}

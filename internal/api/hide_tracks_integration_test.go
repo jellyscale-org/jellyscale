@@ -381,7 +381,8 @@ func checkAs(t *testing.T, label string, got, baseline doc, data []int, tokens, 
 			t.Errorf("%s: TranscodingUrl %s, a viewer with no settings gets %s", label, a, b)
 		}
 	}
-	rest := []string{"MediaStreams", "TranscodingUrl"}
+	// The default subtitle is the viewer's own choice by their language and mode (JS-041); checkDefaults above holds it to a listed one.
+	rest := []string{"MediaStreams", "TranscodingUrl", "DefaultSubtitleStreamIndex"}
 	if canon(without(got, rest...), tokens...) != canon(without(baseline, rest...), baseTokens...) {
 		t.Errorf("%s: the source differs beyond its streams:\n%s\nwant\n%s", label, canon(without(got, rest...), tokens...), canon(without(baseline, rest...), baseTokens...))
 	}

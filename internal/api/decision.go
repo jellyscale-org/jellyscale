@@ -51,7 +51,7 @@ type verdict struct {
 }
 
 // decisionOf is the line and counts of one source. audio is the track that plays, if the file has one.
-func decisionOf(r *http.Request, itemID, playSession string, source media.MediaSource, request playback.Request, audio int, hasAudio bool, p outcome) verdict {
+func decisionOf(r *http.Request, itemID, playSession string, source media.MediaSource, request playback.Request, subtitle *playback.Number, audio int, hasAudio bool, p outcome) verdict {
 	user := sessionOf(r)
 	attrs := []any{"method", p.method}
 	if len(p.reasons) > 0 {
@@ -79,7 +79,7 @@ func decisionOf(r *http.Request, itemID, playSession string, source media.MediaS
 	}
 	attrs = append(attrs, admissionAttrs(p)...)
 	attrs = append(attrs, audioAttrs(source, request, audio, hasAudio)...)
-	attrs = append(attrs, subtitleAttrs(request, p.streams)...)
+	attrs = append(attrs, subtitleAttrs(request, subtitle, p.streams)...)
 	return verdict{method: p.method, reasons: p.reasons, attrs: attrs}
 }
 
@@ -136,22 +136,26 @@ func audioAttrs(source media.MediaSource, request playback.Request, audio int, h
 	return attrs
 }
 
-// subtitleAttrs says what the request asked of the subtitles and the track that is. The server picks none, so none is marked
-// as its choice.
-func subtitleAttrs(request playback.Request, streams []media.MediaStream) []any {
-	if request.SubtitleStreamIndex == nil {
+// subtitleAttrs says what the request asked of the subtitles and the track that plays: the one it named, else the one the
+// viewer's mode and language chose (subtitle), if any.
+func subtitleAttrs(request playback.Request, subtitle *playback.Number, streams []media.MediaStream) []any {
+	asked := "none"
+	if request.SubtitleStreamIndex != nil {
+		asked = strconv.FormatInt(int64(*request.SubtitleStreamIndex), 10)
+	}
+	if subtitle == nil {
 		return []any{"subtitle_asked", "none", "subtitle_index", "none"}
 	}
-	index := int(*request.SubtitleStreamIndex)
+	index := int(*subtitle)
 	at := slices.IndexFunc(streams, func(stream media.MediaStream) bool { return stream.Type == "Subtitle" && stream.Index == index })
 	if at < 0 {
-		return []any{"subtitle_asked", strconv.Itoa(index), "subtitle_index", "none"}
+		return []any{"subtitle_asked", asked, "subtitle_index", "none"}
 	}
 	stream, kind := streams[at], "text"
 	if stream.IsImage() {
 		kind = "image"
 	}
-	attrs := []any{"subtitle_asked", strconv.Itoa(index), "subtitle_index", index, "subtitle_codec", stream.Codec, "subtitle_kind", kind}
+	attrs := []any{"subtitle_asked", asked, "subtitle_index", index, "subtitle_codec", stream.Codec, "subtitle_kind", kind}
 	if stream.Language != "" {
 		attrs = append(attrs, "subtitle_language", stream.Language)
 	}

@@ -5,8 +5,7 @@
 //
 // A skipped test fails the run, and so does a count of tests that differs from
 // -want (the tests `go test -list` finds for the tier): a run that stopped
-// partway must not leave CI green. The list can't see a test its tags hide;
-// TestBuildTags checks those.
+// partway must not leave CI green.
 // test/report.sh runs it; it exits 1 if the run has any problem.
 package main
 

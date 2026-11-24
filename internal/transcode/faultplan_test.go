@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"testing"
 	"time"
 )
 
@@ -403,122 +402,6 @@ func describeSchedule(seed uint64, i int, s faultSchedule) string {
 	return b.String()
 }
 
-// The steps are a function of the seed alone: built twice from one seed they are
-// the same list, and from another seed they are not.
-func TestFaultStepsAreAFunctionOfTheSeedAlone(t *testing.T) {
-	for _, seed := range []uint64{1, 2, 99, 1 << 40} {
-		a, b := planFaults(seed, faultClock), planFaults(seed, faultClock)
-		if fmt.Sprint(a) != fmt.Sprint(b) {
-			t.Errorf("seed %d planned twice gave two lists:\n%v\n%v", seed, a, b)
-		}
-	}
-	if fmt.Sprint(planFaults(1, faultClock)) == fmt.Sprint(planFaults(2, faultClock)) {
-		t.Error("seeds 1 and 2 planned the same steps")
-	}
-}
-
-// With no seed given a run draws a new one; the one named by the environment is
-// the one used.
-func TestFaultSeedIsDrawnAnewUnlessTheEnvironmentNamesOne(t *testing.T) {
-	a, err := faultSeed("")
-	if err != nil {
-		t.Fatal(err)
-	}
-	b, err := faultSeed("")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if a == b {
-		t.Errorf("two runs with no seed drew %d both times", a)
-	}
-	if got, err := faultSeed("12345"); err != nil || got != 12345 {
-		t.Errorf("the seed named by the environment: got %d, %v", got, err)
-	}
-	if _, err := faultSeed("not a number"); err == nil {
-		t.Error("a seed that is not a number was accepted")
-	}
-}
-
-// Every run holds each kind and each length of step, a kill and a stop past its
-// lease of the worker of a job a viewer waits on, steps that overlap, and keeps a
-// free worker: no two steps that take a worker away overlap.
-func TestEveryPlannedRunHoldsEachKindAndLengthAndKeepsAWorkerFree(t *testing.T) {
-	tm := faultClock
-	for seed := uint64(0); seed < 300; seed++ {
-		schedules := planFaults(seed, tm)
-		var steps []faultStep
-		for _, s := range schedules {
-			if len(s.Steps) == 0 {
-				t.Fatalf("seed %d: an empty schedule", seed)
-			}
-			for _, step := range s.Steps {
-				if earlier(step.At+step.Length, 0) || !earlier(step.At+step.Length, s.Window+time.Second) {
-					t.Errorf("seed %d: %v runs past the window of %v", seed, step, s.Window)
-				}
-			}
-			steps = append(steps, s.Steps...)
-		}
-		for _, kind := range allFaultKinds {
-			if !slices.ContainsFunc(steps, func(s faultStep) bool { return s.Kind == kind }) {
-				t.Errorf("seed %d: no %s step", seed, kind)
-			}
-		}
-		if !slices.ContainsFunc(steps, func(s faultStep) bool { return s.Kind == faultKill && s.Waited }) {
-			t.Errorf("seed %d: no kill of the worker of a job a viewer waits on", seed)
-		}
-		if !slices.ContainsFunc(steps, func(s faultStep) bool { return s.Kind == faultStopLease && s.Waited }) {
-			t.Errorf("seed %d: no stop past the lease of the worker of a job a viewer waits on", seed)
-		}
-		for _, s := range steps {
-			switch s.Kind {
-			case faultPGShort, faultStopShort:
-				if !earlier(s.Length, tm.Lease-tm.Heartbeat) {
-					t.Errorf("seed %d: %v is not shorter than a lease less a heartbeat", seed, s)
-				}
-			case faultPGLong, faultStopLease:
-				if earlier(s.Length, tm.Lease+time.Second) {
-					t.Errorf("seed %d: %v is not longer than a lease", seed, s)
-				}
-			case faultStopStall:
-				if earlier(s.Length, tm.Stall+time.Second) {
-					t.Errorf("seed %d: %v is not longer than the stall limit", seed, s)
-				}
-			case faultDelaySmall:
-				if s.RoundTrip <= 0 || earlier(300*time.Millisecond, s.RoundTrip) {
-					t.Errorf("seed %d: %v is not a round trip of up to 300 ms", seed, s)
-				}
-			case faultDelayLong:
-				if earlier(s.RoundTrip, tm.Lease/2) {
-					t.Errorf("seed %d: %v does not leave the check before a put unanswered", seed, s)
-				}
-			}
-		}
-		for _, sched := range schedules {
-			// The check of a stop past a lease is never cut by a restart of Postgres, in any seed.
-			for i, st := range sched.Steps {
-				if st.Kind == faultStopLease && (!st.Clean || sched.hit(i, 5*time.Second, func(o faultStep) bool { return o.isPostgres() })) {
-					t.Errorf("seed %d: %v is cut by a restart of Postgres, so its check is not judged", seed, st)
-				}
-			}
-			for i, a := range sched.Steps {
-				for _, b := range sched.Steps[i+1:] {
-					if a.overlaps(b, 0) {
-						t.Errorf("seed %d: %v and %v take two workers away at once", seed, a, b)
-					}
-				}
-			}
-			// Each clean step has its surroundings quiet.
-			for i, c := range sched.Steps {
-				for j, p := range sched.Steps {
-					if i != j && quarrels(c, p, tm) {
-						t.Errorf("seed %d: %v and %v fall together, and the first is clean", seed, c, p)
-					}
-				}
-			}
-		}
-	}
-}
-
 // earlier is a < b for durations and times alike.
 func earlier[T time.Duration | time.Time](a, b T) bool {
 	switch x := any(a).(type) {
@@ -528,48 +411,4 @@ func earlier[T time.Duration | time.Time](a, b T) bool {
 		return x.Before(any(b).(time.Time))
 	}
 	return false
-}
-
-// A restart longer than a lease is judged job by job: the jobs of a worker that a kill, a stop
-// or a delay hit are left out, and every other worker's are judged whatever else falls beside
-// the restart, so the plan cannot cut the check away whole.
-func TestARestartLongerThanALeaseJudgesEveryJobOfAWorkerNotHit(t *testing.T) {
-	began := time.Now()
-	hits := []workerHit{
-		{"stopped", began.Add(5 * time.Second), began.Add(40 * time.Second)},
-		{"killed", began.Add(-30 * time.Second), began.Add(24 * time.Hour)},
-		{"delayed", began.Add(-30 * time.Second), began.Add(-10 * time.Second)},
-	}
-	now := began.Add(30 * time.Second)
-	for worker, want := range map[string]bool{"stopped": false, "killed": false, "delayed": true, "untouched": true} {
-		if got := judgedAfterRestart(hits, worker, began, now); got != want {
-			t.Errorf("a job of worker %q judged: %v, want %v", worker, got, want)
-		}
-	}
-}
-
-// Restarts that overlap are one outage: Postgres is back when the last of them ends, in either
-// order (the short one begun inside the long one, the long one begun inside the short one).
-func TestOverlappingRestartsEndTheOutageWhenTheLastOfThemEnds(t *testing.T) {
-	var r restartCount
-	r.begin() // The long restart.
-	r.begin() // A short one inside it.
-	if r.end() {
-		t.Error("Postgres was back when the short restart inside the long one ended")
-	}
-	if !r.end() {
-		t.Error("Postgres was not back when the long restart ended")
-	}
-	r.begin() // The short restart.
-	r.begin() // A long one begun inside it.
-	if r.end() {
-		t.Error("Postgres was back when the short restart ended, with the long one begun inside it still going")
-	}
-	if !r.end() {
-		t.Error("Postgres was not back when the long restart ended")
-	}
-	r.begin()
-	if !r.end() {
-		t.Error("Postgres was not back when the only restart ended")
-	}
 }

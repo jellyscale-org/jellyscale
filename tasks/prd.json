@@ -112,10 +112,10 @@
       "description": "Consistent, structured logs per role with request and job ids, so an operator can follow one playback.",
       "acceptanceCriteria": [
         "Each request and job log line carries ids that link them",
-        "Levels and noise reviewed against the dogfood",
+        "An ERROR line means a failure an operator may need to act on. Levels and noise are reviewed against the dogfood, and three cases are settled: a library asset store that nothing has yet been written to is swept as empty and logs no ERROR or WARN (D-069; the media scan's rule for a missing root, invariant 56, is unchanged; whether an asset root lost after assets were stored can still be told and reported is recorded and returns as a brief, not built); a Postgres switchover the worker survives logs no ERROR (BL-067); a failed job that a fresh job replaced is not logged as an unrecovered failure, and docs/running.md says how it is counted (BL-167). The e2e and roles tiers then fail on a level=ERROR line in a scenario that causes no fault; a scenario that causes one names the lines it expects by their reason, not their text.",
         "Each line of a playback carries its play session id and trace id (JS-021), and a helper's start, end and failure say they are a helper's and whose",
         "Metrics beyond the transcode path: HTTP requests by role, route and status with latency, store operations and bytes by store, scan durations and errors",
-        "Every figure the docs tell an operator to watch is a series on /metrics, and docs/running.md's table lists every series the endpoint serves, by a check (owner, 2026-11-20; D-038)"
+        "Every figure the docs tell an operator to watch is a series on /metrics, and docs/running.md's table lists every series the endpoint serves, compared once by hand with a live /metrics answer when the task closes, the comparison recorded; no test reads the doc (D-069, superseding D-038's 'by a check')."
       ],
       "priority": 82,
       "status": "todo",
@@ -169,7 +169,7 @@
         "JS-127"
       ],
       "source": "PRODUCT.md identity",
-      "notes": "/Configuration moved to JS-116 (2026-11-15). Access criteria from the access model (2026-11-16). Refine with care: a throttle per client address needs a trusted-proxy setting first (behind an ingress every request has its address), and a lockout by user name lets anyone lock a known account out. State what start-up does when the configured administrator was deleted or demoted through the API."
+      "notes": "/Configuration moved to JS-116 (2026-11-15). Access criteria from the access model (2026-11-16). Refine with care: a throttle per client address needs a trusted-proxy setting first (behind an ingress every request has its address), and a lockout by user name lets anyone lock a known account out. State what start-up does when the configured administrator was deleted or demoted through the API. D-069: named mutants are shown failing once by hand in the Spec step and recorded in the task's record; no mutant table or script is committed."
     },
     {
       "id": "JS-034",
@@ -586,7 +586,7 @@
         "JS-178"
       ],
       "source": "PRODUCT.md phase6-k8s",
-      "notes": "JS-020 (2026-11-08): each worker holds one Postgres connection for its liveness lock, outside the pool, so a stock Postgres (max_connections 100) is exhausted at about 90 workers, long before its CPU (one primary carried 1600 streams on two cores' worth). Connections are the first wall when autoscaling. User (2026-11-08): plain manifests for kubectl are wanted beside the chart, not Helm only. JS-166 (D-067): its docs/running.md part was not written and is carried by criteria 10 and 11 here and JS-177's 'Sizing workers'. From its record, criterion 11's text covers: every role given the same transcodeStore and its S3 credentials; and that a request equal to the limit may not schedule beside a node's other workloads (the dogfood's worker requests 6 under a limit of 12), which is why a 4K-capable worker wants a whole node."
+      "notes": "JS-020 (2026-11-08): each worker holds one Postgres connection for its liveness lock, outside the pool, so a stock Postgres (max_connections 100) is exhausted at about 90 workers, long before its CPU (one primary carried 1600 streams on two cores' worth). Connections are the first wall when autoscaling. User (2026-11-08): plain manifests for kubectl are wanted beside the chart, not Helm only. JS-166 (D-067): its docs/running.md part was not written and is carried by criteria 10 and 11 here and JS-177's 'Sizing workers'. From its record, criterion 11's text covers: every role given the same transcodeStore and its S3 credentials; and that a request equal to the limit may not schedule beside a node's other workloads (the dogfood's worker requests 6 under a limit of 12), which is why a 4K-capable worker wants a whole node. D-069: each 'by a check' in criteria 3, 6 and 10 is met by the application refusing or warning at start with the key named, or by the shipped manifests applied to a real cluster in this task's own run; no test reads the manifest files. A criterion that cannot be met that way returns as a brief when the task starts."
     },
     {
       "id": "JS-058",
@@ -826,7 +826,7 @@
         "Nothing is lost: a check finds each old invariant's full text under its number in its domain file, and a check lists every old invariant's tests against the new files and fails when one is missing",
         "No guarantee is weakened: a short rule contradicts nothing in its section, and any statement that says less than today's cites a decision id from tasks/decisions.json",
         "Every existing citation still resolves, by a check that fails on a number with no rule: in code, docs/, ARCHITECTURE.md, tasks/prd.json and tasks/decisions.json",
-        "The regex-over-prose tests are removed or replaced by tests that compare a constant with the number the doc states; a check that reads a number or table from DOMAINS.md today (the lease table of 25, the window of 37) reads it from where it now lives and still fails when doc and code differ",
+        "Every existing citation still resolves: shown by one search run when the task closes, its output recorded; no committed check reads code, docs/, ARCHITECTURE.md or tasks/ (D-069).",
         "The pointers change in the same change: CLAUDE.md, the role files in .claude/agents/ (the product owner's read list included) and the build workflow's instructions say every agent reads DOMAINS.md, and a task's agents also read the domain file of each domain the task touches"
       ],
       "priority": 49,
@@ -878,7 +878,8 @@
       "description": "Runner image, browser and mirror drift show up today only in a change's merge-queue run. A scheduled run of the same jobs on main catches them off the merge path, once a day, and supplies timing and flake data.",
       "acceptanceCriteria": [
         "A schedule trigger runs every CI job on main once a day, and test/changes.sh treats it as a full run",
-        "A failing nightly run opens or updates one issue naming the failed tests"
+        "A failing nightly run opens or updates one issue naming the failed tests",
+        "The nightly run also runs, under the ffmpeg of the published image at its pinned version, the existing transcode integration checks whose result depends on ffmpeg: a restart's splice for a re-encode and for a copy, the tone map, a text and an image burn-in, and the read-ahead pause. No new check is written for it and it is never a required check of the merge queue: what an operator's viewers get is made by that ffmpeg, which the queue (6.1) does not run (D-069)."
       ],
       "priority": 90,
       "status": "todo",
@@ -902,7 +903,7 @@
       "passes": false,
       "dependsOn": [],
       "source": "Fable 5.2 CI review, 2026-11-12 (.results/ci-review-2026-11-12.md); owner approved A, B, C, D and the later items",
-      "notes": ""
+      "notes": " D-069: BL-269 comes to triage before criterion 1 is built."
     },
     {
       "id": "JS-098",
@@ -985,7 +986,7 @@
       "dependsOn": [
         "JS-125"
       ],
-      "notes": "Changed answers, to list in the pull request: a request naming another user's id got 200 with the caller's data and now gets 403; the Configuration 404 above. Neither is visible to a viewer using a client, which always sends its own id.Tests make their second user by SQL, as user_configuration_integration_test.go does; no seeding route is added. Jellyfin's rule is RequestHelpers.GetUserId (Jellyfin.Api/Helpers/RequestHelpers.cs:67-81 at v12.4). Owner's decisions (2026-11-16, on Fable 5.2's access model, .results/access-model-fable-2026-11-16.md): pictures by id open to whoever holds the id, by name need a token; per-library access right after JS-033; a revoked or disabled user's running stream stops within 15 s; a viewer sees no other viewer's name; an administrator manages accounts but never browses, plays or reports as another user; a Policy field jellyscale does not enforce is refused when changed (400); 'may download' is honoured; operator keys are never users; no issue is filed on Findroid for now.",
+      "notes": "Changed answers, to list in the pull request: a request naming another user's id got 200 with the caller's data and now gets 403; the Configuration 404 above. Neither is visible to a viewer using a client, which always sends its own id.Tests make their second user by SQL, as user_configuration_integration_test.go does; no seeding route is added. Jellyfin's rule is RequestHelpers.GetUserId (Jellyfin.Api/Helpers/RequestHelpers.cs:67-81 at v12.4). Owner's decisions (2026-11-16, on Fable 5.2's access model, .results/access-model-fable-2026-11-16.md): pictures by id open to whoever holds the id, by name need a token; per-library access right after JS-033; a revoked or disabled user's running stream stops within 15 s; a viewer sees no other viewer's name; an administrator manages accounts but never browses, plays or reports as another user; a Policy field jellyscale does not enforce is refused when changed (400); 'may download' is honoured; operator keys are never users; no issue is filed on Findroid for now. D-069: named mutants are shown failing once by hand in the Spec step and recorded in the task's record; no mutant table or script is committed.",
       "passes": false,
       "priority": 26,
       "source": "access model",
@@ -1266,9 +1267,9 @@
       "acceptanceCriteria": [
         "docs/testing.md gains a table of the 12 runs: run id, the test that failed, its message, and a verdict from the log: a cause already owned (JS-158's deadlock, JS-159, one of JS-160's three, JS-171's port, JS-173's refusal), a new named cause, or unknown with what the log lacks. The table gives the count per cause, so it says whether the 12 are one cause or many.",
         "For every verdict that is the product's, what a viewer or operator would have seen in production is written beside it, and it returns to the product owner as a brief before any product fix. Nothing in the product is changed by this task.",
-        "A new test cause seen in two or more runs gets a check that forces its condition and fails before the fix, with real processes or real contention, and is fixed at its cause in the test kit. A cause seen once, or one whose forcing check cannot fail, is recorded as unknown and left.",
+        "A new test cause seen in two or more runs is fixed at its cause in the test kit. Before the fix its condition is forced once, with real processes or real contention, and the test is seen to fail as the queue's log shows; after the fix the same forcing passes. The procedure and both results are recorded in docs/testing.md; no test of the kit is committed (D-069). A cause seen once, or one whose condition cannot be forced, is recorded as unknown and left.",
         "Reproduction is bounded: 2 hours a sighting and 8 in all, under CI's shape (ffmpeg 6.1, 2 CPUs).",
-        "The shard that hit 45 minutes is named with its healthy time over the 18 runs and what it was running when stopped. If its healthy time is within 10 minutes of the timeout, it is split as internal/transcode is split, with no test dropped (closes BL-175); the record gives the time each of JS-172's flood tests adds to it.",
+        "The shard that hit 45 minutes is named with its healthy time over the 18 runs and what it was running when stopped. After the behaviour-only cleanup merges, test/shard-times.txt is regenerated from three successful merge-queue runs, so every dealt test has a measured time, and the four shards' healthy times are recorded. If a shard's healthy time is then still within 10 minutes of the timeout, it is split as internal/transcode is split, with no test dropped (closes BL-175); eight shards are not adopted otherwise. The record gives the time each of JS-172's flood tests adds to it. (D-069)",
         "TestAHeldWorkerEndsAJobWaitingForItsSubtitleTrackBeforeItsLeaseRunsOut is run 20 times under CI's shape on main after JS-173 merges; a failure is added to the table with its verdict.",
         "After JS-158 and this task merge, the next 10 queue runs are counted in docs/testing.md with each failure's cause; the count and the causes come to the product owner at that triage. The two cut-read recovery cases are counted apart in those 10 runs; one failure of either returns JS-159 to the product owner as a brief. No hook is added to the worker to force the exit-first order (D-061).",
         "No retry, skip, raised timeout or widened bound; no product code changed to fit a test; no viewer-visible change."
@@ -1278,7 +1279,7 @@
       "passes": false,
       "dependsOn": [],
       "source": "lead 2026-11-22; D-058",
-      "notes": "ux: false, core: false. Reads JS-158's and JS-159's records when they exist; waits for neither. Does not hold any merge (owner, 2026-11-21). Runs beside JS-161; its reproduction runs do not share a machine with JS-174's measurement. If criterion 1 shows one cause behind most of the 12, the lead brings that count back before criteria 3 to 5 are built, and the task is cut to that cause."
+      "notes": "ux: false, core: false. Reads JS-158's and JS-159's records when they exist; waits for neither. Does not hold any merge (owner, 2026-11-21). Runs beside JS-161; its reproduction runs do not share a machine with JS-174's measurement. If criterion 1 shows one cause behind most of the 12, the lead brings that count back before criteria 3 to 5 are built, and the task is cut to that cause. D-069: the table and the 10-run count also say, for each failure, whether it was a defect of the change itself that the integration shards on the pull request (ci:full) would have shown, and whether it was the fault-schedule test on a random seed. Columns of the table, not new work. Three or more of the first in the 10 runs brings integration shards on every code pull request to the product owner as a criterion of JS-097; one of the second on a build later shown right brings the fixed-seed list back as a brief."
     },
     {
       "id": "JS-174",
@@ -1309,10 +1310,10 @@
       "title": "Three transcode tests fail only for the product, not for their own waits, and the two unexplained failures leave a log that can name their cause",
       "description": "JS-155's record names three test causes from the queue logs: a hold that catches the lease keeper's first renewal and then swallows its reconnect; a count-based wait that the asset sweep defeats by removing the old track first; a job inserted with no viewer row, which the keeper's cancel can beat to its end (named as likely). Each costs a merge-queue run of about an hour and delays the dogfood's redeploy. Two sightings have no cause because their logs cannot tell. D-043.",
       "acceptanceCriteria": [
-        "For each of the three causes a check forces the named condition (the hold landing on the first renewal; a sweep between the replace and the wait; the keeper's renewal before the job's end) and fails before the fix. A cause whose forcing check cannot fail goes back to cause unknown and to the product owner",
+        "For each of the three causes the named condition (the hold landing on the first renewal; a sweep between the replace and the wait; the keeper's renewal before the job's end) is forced once by hand and the test is seen to fail for its own wait before the fix and pass after; procedure and results are recorded in docs/testing.md, and no test of the kit is committed (D-069). A cause that cannot be forced goes back to cause unknown and to the product owner.",
         "After the fix each test waits for what it claims (a renewal held, the new file's track stored, the job ended done with a viewer watching as production always has) and still fails on a wrong product",
         "The seek-read test's failure message gives each read's offset and length, so a part of the film read twice shows where it starts",
-        "The e2e harness prints a failed request's requestfailed text and the test router's answer for it when a scenario fails",
+        "When an e2e scenario fails, the run keeps as an artifact named by gate and scenario: the viewer's record (requests, answers, sockets and the timeline), the browser's whole console and a screenshot; a later failure overwrites none. The log still prints the failed request's requestfailed text and the test router's answer for it. A passing run keeps nothing and takes no longer (D-069).",
         "No retry, skip or raised timeout; no product code changed to fit a test; the rig's lease is not lengthened",
         "docs/testing.md's JS-155 table names this task against the three sightings",
         "No viewer-visible change"

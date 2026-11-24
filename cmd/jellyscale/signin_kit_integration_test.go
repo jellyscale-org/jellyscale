@@ -69,50 +69,21 @@ func (s *signInSite) startReplica() *proc {
 	if s.via != "" {
 		dsn = s.via
 	}
-	config := map[string]any{}
+	config := map[string]any{"name": "failover", "adminUser": adminUser}
 	for k, v := range s.extra {
 		config[k] = v
 	}
 	listen := freeAddr(s.t)
 	config["metricsListen"] = listen
-	p := s.startOnce(dsn, config)
-	if p == nil {
-		// A build that does not know trustedProxies yet exits on the key. TestTrustedProxiesTakesAddressesAndPrefixes
-		// fails for that; here the replica starts without the key, so that each check fails at what it asserts (the
-		// bound that is missing) and not in its set-up. A build that knows the key never gets here.
-		s.t.Logf("this build does not know trustedProxies: the replica starts without it")
-		delete(config, "trustedProxies")
-		p = s.startOnce(dsn, config)
-		if p == nil {
-			s.t.Fatal("the replica did not start")
-		}
+	raw, err := json.Marshal(config)
+	if err != nil {
+		s.t.Fatal(err)
 	}
-	s.metrics[p] = listen
-	return p
-}
-
-// startOnce is start (failover_integration_test.go) that gives nil, rather than failing the test, when the process
-// exits on an unknown trustedProxies key.
-func (s *signInSite) startOnce(dsn string, extra map[string]any) *proc {
-	config := map[string]any{"name": "failover", "adminUser": adminUser}
-	for k, v := range extra {
-		config[k] = v
-	}
-	raw, _ := json.Marshal(config)
 	p := startProc(s.t, procSpec{bin: binary(s.t), dsn: dsn, args: []string{"--roles=api"}, config: string(raw), listen: true, user: adminUser, password: adminPassword})
-	deadline := time.Now().Add(60 * time.Second)
-	for !p.status2xx("/healthz") {
-		if !p.alive() {
-			if strings.Contains(p.log.String(), "unknown field") && strings.Contains(p.log.String(), "trustedProxies") {
-				return nil
-			}
-			s.t.Fatalf("the api replica exited (%v):\n%s", p.status, p.log)
-		}
-		if time.Now().After(deadline) {
-			s.t.Fatalf("timed out waiting for the api replica:\n%s", p.log)
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
+	// until starts the replica again on a new address when its own was taken, which includes the metrics address chosen
+	// just before it: freeAddr gives no guarantee that two calls differ.
+	p.until(60*time.Second, "the api replica to answer /healthz", func() bool { return p.status2xx("/healthz") })
+	s.metrics[p] = listen
 	return p
 }
 
