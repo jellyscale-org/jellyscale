@@ -606,8 +606,8 @@
       "reviewer": "ux",
       "severity": "minor",
       "title": "Worker logs an ERROR for a Postgres switchover it survives",
-      "status": "open",
-      "notes": "Any Postgres switchover or restart ends the worker's liveness connection. The worker logs at Error level 'the worker's liveness connection ended; its jobs go on, and it claims none until it holds the lock again and its row is there' (line 285), then at Info 'holds its liveness lock again ... its jobs went on'. Operators see ERROR lines for an event the build survives. Reading only."
+      "status": "promoted",
+      "notes": "JS-022 criterion 2 (D-069)."
     },
     {
       "id": "BL-068",
@@ -894,8 +894,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "scripts_test.sh checks the JS-099 record in docs/testing.md only for substrings",
-      "status": "open",
-      "notes": "'passed 20 of 20' is matched inside the sentence saying the run was not made; the evidence lines can't fail."
+      "status": "wontfix",
+      "notes": "subject removed by the behaviour-only cleanup (D-069)"
     },
     {
       "id": "BL-100",
@@ -1011,8 +1011,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "The #94/#95 acceptance mutants rename a tag on the whole type, so they no longer exercise a field missing on later streams only",
-      "status": "open",
-      "notes": "With one typed MediaStream such a per-element loss cannot be built, so the mutant is harmless but no longer tests what it is named for. Rename or retire it."
+      "status": "wontfix",
+      "notes": "subject removed by the behaviour-only cleanup (D-069)"
     },
     {
       "id": "BL-113",
@@ -1074,8 +1074,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "TestNoReplicaCodePathForgetsAWorker only catches reap called with a literal \"\" or from an exported function",
-      "status": "open",
-      "notes": "An unexported helper calling reap(ctx, pool, someVar) from a process without a lock would pass it. The removed forgot() assertion in the outage test was the behavioural guard."
+      "status": "wontfix",
+      "notes": "subject removed by the behaviour-only cleanup (D-069)"
     },
     {
       "id": "BL-120",
@@ -1102,7 +1102,7 @@
       "severity": "minor",
       "title": "No check that every stream-role route is routed to stream by the shipped Caddyfile, test/e2e/router.mjs and docs/running.md",
       "status": "open",
-      "notes": "JS-103 moved /System/Configuration/encoding to stream and updated the Caddyfile and router but not the docs; a test comparing the stream routes with the three rules would catch the next one."
+      "notes": "No static comparison is written (D-069). Promote on a stream route answered by the wrong role on the shipped compose stack or on any deployment."
     },
     {
       "id": "BL-123",
@@ -1335,8 +1335,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "e2e single-definition check misses a second definition that is not at the start of a line",
-      "status": "open",
-      "notes": "Append `const a = 1; const sql = (t) => t;` and `const waitFor2 = 1, login = 3;` to test/e2e/browse.mjs, so sql and login are defined a second time. test/scripts_test.sh still prints 'ok login, viewer, scenario, sql, ffmpegRuns, waitFor and time are each defined once, all in one shared module of test/e2e'. The grep in e2e_defs only matches a definition at the start of a line, so a second definition after a semicolon or in a comma list gets through, though the criterion says the check counts every form."
+      "status": "wontfix",
+      "notes": "subject removed by the behaviour-only cleanup (D-069)"
     },
     {
       "id": "BL-149",
@@ -1407,8 +1407,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "harness standing test allows bash to be started as a tool the tests run",
-      "status": "open",
-      "notes": "cmd/jellyscale/harness_standing_test.go adds \"bash\" to toolsTheTestsRun, so a hidden process started with exec.Command(\"bash\", ...) is no longer counted by the harness check. The change was made so client_films_integration_test.go can run client.sh; it weakens the standing check's detection rather than leaving it strict."
+      "status": "wontfix",
+      "notes": "subject removed by the behaviour-only cleanup (D-069)"
     },
     {
       "id": "BL-157",
@@ -1479,8 +1479,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "test/mutants.sh's table is undocumented and scripts_test.sh scrapes mutant.py's usage line",
-      "status": "open",
-      "notes": "Add a --list flag to test/mutant.py and one line in docs/testing.md."
+      "status": "wontfix",
+      "notes": "subject removed by the behaviour-only cleanup (D-069)"
     },
     {
       "id": "BL-165",
@@ -1506,8 +1506,8 @@
       "reviewer": "ux",
       "severity": "minor",
       "title": "A recovered failure is logged at ERROR with an undocumented 'again' field and counted failed",
-      "status": "open",
-      "notes": "docs/running.md does not say that a failed job a fresh job replaced is counted too, or what again=true means."
+      "status": "promoted",
+      "notes": "JS-022 criterion 2 (D-069)."
     },
     {
       "id": "BL-168",
@@ -1587,8 +1587,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "The mutants meta-test adds about 2m18s to the integration tier's internal/api run",
-      "status": "open",
-      "notes": "Queue time, with the flakes item"
+      "status": "wontfix",
+      "notes": "subject removed by the behaviour-only cleanup (D-069)"
     },
     {
       "id": "BL-177",
@@ -1614,8 +1614,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "Core race run hit its 45 min timeout in an existing sweep test; passes alone and in the rest of the set",
-      "status": "open",
-      "notes": "Same trigger as queue time"
+      "status": "closed",
+      "notes": "merged into BL-268."
     },
     {
       "id": "BL-180",
@@ -1686,8 +1686,8 @@
       "reviewer": "",
       "severity": "minor",
       "title": "A killed test/scripts_test.sh run leaks its JS-130 stand-in listener processes and its /tmp/tmp.* directory",
-      "status": "open",
-      "notes": "Test-rig leak"
+      "status": "wontfix",
+      "notes": "subject removed by the behaviour-only cleanup (D-069)"
     },
     {
       "id": "BL-188",
@@ -1695,8 +1695,8 @@
       "reviewer": "",
       "severity": "minor",
       "title": "The two access mutants that make Server.Handler() panic stop their integration shard partway instead of failing their named declaration tests",
-      "status": "open",
-      "notes": "Test-rig mutant"
+      "status": "wontfix",
+      "notes": "subject removed by the behaviour-only cleanup (D-069)"
     },
     {
       "id": "BL-189",
@@ -2363,6 +2363,42 @@
       "source": "JS-166 close; D-067",
       "title": "On a transcode store shared between machines, the time from a worker finishing a segment to a stream replica on another node serving it is unmeasured",
       "notes": "JS-166 criterion 8, not taken. A viewer would feel it as wait added to every start and seek, and as a stall when the store lags a worker that keeps real time. Bounded today by two 600 s plays through S3 across nodes at 1.000 with no segment request over 5 s (one cluster). An unkept reading (p50 14 ms, max 57 ms, at most 40 stored segments, another interval) is never cited. Promote on: a segment request over 5 s or a freeze past the first 30 s while the job's encode speed is at or above 1.0 and worker and stream are on different nodes, on any deployment; an operator report of a slower S3 service; or JS-062 starting, where it becomes a criterion (100 segments, output kept)."
+    },
+    {
+      "id": "BL-267",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "D-069; test and CI strategy review",
+      "title": "api and transcode tests share one database reset by TRUNCATE; a test's own database from a migrated template would remove the class",
+      "notes": "Three queue runs deadlocked on it; JS-158 fixed those causes in the kits. Per-test creation cost unmeasured. No viewer or operator effect. Promote on: a 40P01, or a test failing on another test's rows, in JS-175's 10 counted runs or any queue run after JS-158; then a task cut to the kit that failed."
+    },
+    {
+      "id": "BL-268",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "D-069; test and CI strategy review",
+      "title": "No race detector runs on product code",
+      "notes": "A viewer would feel a race as a replica restart, which is survived by design, or as wrong state. None seen on any deployment. Cost unmeasured; a core race run once hit 45 min in a sweep test (BL-179, merged here). Promote on: a concurrent-access fatal, a race panic or an unexplained restart of a jellyscale process in any deployment's log; BL-093 seen in a run. When JS-096 starts, one unit-tier run under the detector is timed and brought to triage as a nightly criterion. Never a required check."
+    },
+    {
+      "id": "BL-269",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "D-069; test and CI strategy review",
+      "title": "test/roles.sh is a third process harness beside cmd/jellyscale's integration tests and e2e",
+      "notes": "One task's roles-only defect reached the queue because roles.sh was not run locally. Portability of each check and CI minutes saved unverified. Promote on: a second such defect; or JS-097 starting, before its criterion 1 is built."
+    },
+    {
+      "id": "BL-270",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "D-069; test and CI strategy review",
+      "title": "Each e2e shard spends about 165 s before its first scenario; four film recipes are outside the fixture cache",
+      "notes": "Split between ffmpeg and Go compile unmeasured. Promote on: existing queue-log timestamps showing film-making is at least 2 minutes of it and e2e is the queue's longest job; close if compile dominates."
     }
   ]
 }

@@ -32,7 +32,7 @@ compat/gen-schema.sh                        # compat/schema-12.4.json from the j
 - Observe a real Jellyfin 12.4 before implementing a protocol.
 - Don't port Jellyfin code.
 - Match the surrounding code. Write comments that explain why, not what.
-- Test only application behaviour: what the server does for a viewer or operator. Never write a test for documentation, Markdown, static content, CI or workflow YAML, source shape, fixture inventories, or the test harness; test tools prove themselves by running. Record historical test failures in [docs/testing.md](docs/testing.md).
+- Test only application behaviour: prove what the server does for a viewer or operator. Never write a test for documentation, prose, static content, generated manifests, CI or workflow YAML, source or AST shape, fixture inventories, capture-evidence completeness, coverage tables, or the test harness and test scripts themselves. Test tools prove themselves by running. Record historical test failures in [docs/testing.md](docs/testing.md).
 - Write tests that can fail. Show that a bug's regression test catches it.
 - Test concurrency with real processes or real contention.
 - Never change application code to fit a test.
