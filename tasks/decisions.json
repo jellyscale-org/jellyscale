@@ -738,6 +738,17 @@
       "decision": "accept",
       "entry": "No new task, no priority moved, no dogfood run. Criterion 7's docs part is carried by JS-056 criteria 10 and 11 and JS-177's 'Sizing workers' (note on JS-056). Criterion 8 is BL-263, promoted on a segment wait over 5 s with the encode at or above 1.0x across nodes, an operator report of a slower store, or JS-062 starting. The unmeasured parts are one item, BL-261, its triggers unchanged. The slow worker starts are a note on JS-057 criterion 2, which records a start in its parts. The 93% reading is marked not kept on JS-177 and decides nothing. BL-245 and BL-253 are re-pointed from JS-166 criterion 9 to JS-177's logged moves; BL-254 loses its JS-166 clause; BL-248 and BL-243 gain JS-166's figures and stay. Reopens on: BL-261's or BL-263's triggers; an operator report of separate-machine roles failing on the store (the docs paragraph then moves ahead, docs only); a viewer refused or timed out in the queue more than 10 s after a worker pod is ready.",
       "serves": "Owner, 2026-11-22: 'Work that makes an existing capability more certain does not keep going ahead of a missing capability viewers would feel more, unless measured data shows that capability failing viewers now.' PRODUCT.md: 'Installing is boring'; 'Growing is adding machines'; 'Where a capability can't yet serve every film, the gap is written down and planned, not left as a quirk.' D-065."
+    },
+    {
+      "id": "D-068",
+      "date": "2026-11-23",
+      "by": "product-owner",
+      "task": "JS-041, JS-157; BL-151, BL-223, BL-234, BL-264, BL-265, BL-266",
+      "brief": "Backlog triage after JS-041: a dropped subtitle can remain in the decision line; RememberSubtitleSelections is saved but not acting; two test-only limits; German spelling comparison; and a mode-picked text subtitle burns on a client with no SubtitleProfiles.",
+      "tradeoff": "Given up, by a viewer on a client with no SubtitleProfiles who saved a mode other than None: a film that direct played with no subtitle is now re-encoded with the mode's text track burnt in (at most 1080 lines, SDR, a worker's cores, and it can be refused at capacity). Which supported clients send that profile is unverified.",
+      "decision": "accept",
+      "entry": "A subtitle the saved mode picks follows the same burn-in rule as one the viewer picks by hand (invariant 44); ignoring the mode for those clients was rejected as a saved setting that does nothing. Saved languages compare by language, not spelling (invariant 60), as jellyscale's own choice; Jellyfin's handling of ger/de/DEU stays unobserved. JS-157 criterion 3 is firm and its priority unchanged. BL-151 closes when JS-041 merges; BL-264 to BL-266 are added. Conditions met in JS-041's PR: its Changed guarantees entry cites D-068; docs/status.md names the text case beside the image one and RememberSubtitleSelections as JS-157; docs/subtitles.md gives mode None and Off as the way out; docs/running.md no longer says the server picks no subtitle. JS-157 moves directly after JS-041 on a viewer report of subtitles returning after being turned off, or JS-075 showing supported apps do not send their remembered index.",
+      "serves": "PRODUCT.md: 'with the audio and subtitles they chose'; 'Their languages come first ... every film starts that way where it can'; DOMAINS.md invariants 44 and 60."
     }
   ]
 }

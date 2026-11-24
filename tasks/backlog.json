@@ -1362,8 +1362,8 @@
       "reviewer": "ux",
       "severity": "minor",
       "title": "Saved settings say 'Settings saved' but change no playback yet",
-      "status": "open",
-      "notes": "A viewer opens Subtitles, picks German and Always, and gets 'Settings saved' and a reload that shows both. Playing a film with German subtitles shows none, because SubtitleMode and SubtitleLanguagePreference wait for JS-041 and AudioLanguagePreference and PlayDefaultAudioTrack wait for JS-121. The page makes no claim that the setting applies yet, and before this change the save failed outright, so this is an improvement. Flagged so the lead can confirm the intermediate state is acceptable for the sequence. Keep until JS-041, then close."
+      "status": "closed",
+      "notes": "A viewer opens Subtitles, picks German and Always, and gets 'Settings saved' and a reload that shows both. Playing a film with German subtitles shows none, because SubtitleMode and SubtitleLanguagePreference wait for JS-041 and AudioLanguagePreference and PlayDefaultAudioTrack wait for JS-121. The page makes no claim that the setting applies yet, and before this change the save failed outright, so this is an improvement. Flagged so the lead can confirm the intermediate state is acceptable for the sequence. Keep until JS-041, then close. Closed by D-068 after JS-041 merged."
     },
     {
       "id": "BL-152",
@@ -2007,7 +2007,7 @@
     {
       "id": "BL-223",
       "title": "The two saved Remember settings (audio, subtitle selections) may do nothing; a per-series memory across devices is beyond Jellyfin",
-      "notes": "Issue #117. JS-041's capture records whether a progress report naming a subtitle track changes the next default with RememberSubtitleSelections on; nothing records the audio twin. Promote: if Jellyfin 12.4 carries a choice to the next episode and jellyscale does not, a saved setting does nothing (as BL-151, D-025): plan it after JS-041, with the audio twin observed the same way. A memory beyond what Jellyfin applies waits for data that viewers re-pick tracks episode after episode. Jellyfin 12.4 remembers a viewer's audio pick per film across reloads and sign-ins (compat/captures/audio-menu-12.4.md, 'On return'); jellyscale does not (JS-147, D-029). Audio half planned as JS-157 (D-039); this item stays open for memory beyond Jellyfin.",
+      "notes": "Issue #117. Audio half planned in JS-157 (D-039); subtitle half planned in JS-157 criterion 3 (D-068). Stays open only for memory beyond Jellyfin, which waits for data that viewers re-pick tracks episode after episode.",
       "status": "open",
       "severity": "minor",
       "reviewer": "product-owner",
@@ -2097,7 +2097,7 @@
     {
       "id": "BL-234",
       "title": "A client that turns on an image subtitle by default starts a whole-film read on the first play of each such film",
-      "notes": "Dogfood report 2026-11-20 (D-038): one sighting, 46.7 GB read for one film when Moonfin's default subtitle mode chose an image track. D-003 accepts the read; JS-141 and JS-143 cover it. Promote JS-141 ahead of JS-135 if JS-143's count shows more than a few such reads a week, or most of those plays abandoned early. JS-154: job 82 ran at 0.6x beside this extraction on the same 4 cores, against 0.85x alone; the dogfood's log shows the extraction starting beside jobs 82 and 85, and job 83 within its run. JS-161's design review decides whether an extraction counts against capacity (D-044). JS-177's pre-Spec spike measures a 4K job beside an image-track extraction after JS-161 (D-066).",
+      "notes": "Dogfood report 2026-11-20 (D-038): one sighting, 46.7 GB read for one film when Moonfin's default subtitle mode chose an image track. D-003 accepts the read; JS-141 and JS-143 cover it. Promote JS-141 ahead of JS-135 if JS-143's count shows more than a few such reads a week, or most of those plays abandoned early. JS-154: job 82 ran at 0.6x beside this extraction on the same 4 cores, against 0.85x alone; the dogfood's log shows the extraction starting beside jobs 82 and 85, and job 83 within its run. JS-161's design review decides whether an extraction counts against capacity (D-044). JS-177's pre-Spec spike measures a 4K job beside an image-track extraction after JS-161 (D-066). JS-041 widens who triggers this: any viewer whose mode picks an image track, on jellyfin-web too. JS-143's count is taken after JS-041 lands. Bring a brief at once if the dogfood shows a mode-picked image subtitle (subtitle_asked=none, subtitle_kind=image) refused, or more than a few re-encoded a week. (D-068)",
       "source": "dogfood report 2026-11-20",
       "status": "open",
       "severity": "minor",
@@ -2363,6 +2363,33 @@
       "source": "JS-166 close; D-067",
       "title": "On a transcode store shared between machines, the time from a worker finishing a segment to a stream replica on another node serving it is unmeasured",
       "notes": "JS-166 criterion 8, not taken. A viewer would feel it as wait added to every start and seek, and as a stall when the store lags a worker that keeps real time. Bounded today by two 600 s plays through S3 across nodes at 1.000 with no segment request over 5 s (one cluster). An unkept reading (p50 14 ms, max 57 ms, at most 40 stored segments, another interval) is never cited. Promote on: a segment request over 5 s or a freeze past the first 30 s while the job's encode speed is at or above 1.0 and worker and stream are on different nodes, on any deployment; an operator report of a slower S3 service; or JS-062 starting, where it becomes a criterion (100 segments, output kept)."
+    },
+    {
+      "id": "BL-264",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-041 triage; D-068",
+      "title": "A playback decision line names the mode's subtitle though it was dropped and the film direct played with none",
+      "notes": "Operator only: the line can show method=direct_play and subtitle_asked=none beside the planned subtitle's index, codec and language when no worker can burn it; the reply has no subtitle. Promote on one dogfood playback decision line with method=direct_play and a subtitle_index, or a deployment with no transcodeStore in use. Otherwise it joins JS-022 as one criterion when that task starts."
+    },
+    {
+      "id": "BL-265",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-041 design review; D-068",
+      "title": "e2e scenarios share an admin that cannot return to a never-saved configuration, so their initial subtitle mode depends on gate order",
+      "notes": "Test-only; no failure seen. Restoring {} creates mode Default rather than the never-saved state. Promote on a queue failure, or a JS-175 verdict, traced to gate order. It closes when JS-033 gives the harness fresh users."
+    },
+    {
+      "id": "BL-266",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-041 triage; D-068",
+      "title": "A client with no SubtitleProfiles has a mode-picked text subtitle burnt in, so its film re-encodes",
+      "notes": "Accepted by D-068 because the alternative ignores the viewer's saved mode. Promote to a brief with the design-arounds if dogfood decision lines show SubtitleCodecNotSupported with subtitle_asked=none and method=reencode or refused from a supported client other than jellyfin-web under burn-all. Drop if JS-075's clients all send SubtitleProfiles."
     }
   ]
 }
