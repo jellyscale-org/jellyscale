@@ -347,9 +347,8 @@ var hdrCases = []hdrCase{
 // the Dolby Vision kinds whose base layer is HDR10 or HLG) is 10 bits in the profile the master playlist's CODECS names
 // (HEVC Main 10, AV1 profile 0 at 10 bits) with the copy's own primaries, transfer, matrix and range for the init segment
 // alone and for the frames of every fallback segment as it is answered (its init in front); anything else (SDR at 8 or 10
-// bits, a Dolby Vision 8.2) is the 8-bit picture it was, with the ffmpeg arguments it had. (A Dolby Vision kind the build
-// leaves out must be named in docs/transcoding.md with what the viewer gets instead, and then this check and the docs
-// check are for the owner to settle: see the unchecked list of the task.)
+// bits, a Dolby Vision 8.2) is the 8-bit picture it was, with the ffmpeg arguments it had. A Dolby Vision kind the build
+// leaves out is named in docs/transcoding.md with what the viewer gets instead.
 func TestTheFallbackOfACopyIsTheCopysOwnPictureAtTenBitsForHDRAndAsItWasOtherwise(t *testing.T) {
 	ignoreForcedKeyFrames(t)
 	for _, c := range hdrCases {

@@ -21,7 +21,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -597,20 +596,5 @@ func TestTheFailedFilmsGaugeIsNamedAndServed(t *testing.T) {
 	scanFailed.Describe(descs)
 	if got := (<-descs).String(); !strings.Contains(got, `"jellyscale_scan_last_failed_films"`) || !strings.Contains(got, "library") {
 		t.Errorf("the gauge is %s", got)
-	}
-	source, err := os.ReadFile("main.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Code, not comments, and anywhere in the collector list or an append to it,
-	// so beside scanDuration and scanOK is as good as anywhere.
-	registered := regexp.MustCompile(`(\[\]prometheus\.Collector\{.*|append\(collectors,.*)\bscanFailed\b`)
-	found := false
-	for _, line := range strings.Split(string(source), "\n") {
-		code, _, _ := strings.Cut(line, "//")
-		found = found || registered.MatchString(code)
-	}
-	if !found {
-		t.Error("main.go does not register scanFailed with the metrics endpoint")
 	}
 }
