@@ -287,7 +287,7 @@ done
 
 free() { python3 -I -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])'; }
 export JELLYSCALE_DATABASE_URL="postgres://postgres:e2e@127.0.0.1:$port/postgres" JELLYSCALE_ADMIN_PASSWORD=e2e-pass
-api1=$(free) api2=$(free) stream=$(free) router=$(free)
+router=$(free)
 : >"$logs/server.log"
 : >"$logs/ffmpeg.log"
 # api and stream run with no ffmpeg on their PATH (an empty directory): only
@@ -348,9 +348,33 @@ start_worker() {
   export E2E_WORKER_PID=$!
 }
 start_worker
-start api --roles=api --listen "127.0.0.1:$api1"
-start api --roles=api --listen "127.0.0.1:$api2"
-start stream --roles=stream --listen "127.0.0.1:$stream"
+# free chooses a port and closes it before the process binds, so another socket can take it in between: a start that
+# exits with "address already in use" (its listen address or its metrics address) is made again on new ports, and one
+# that exits for another reason, or never answers, fails the run with its log.
+start_listening() { # variable-name process-name role
+  local var=$1 name=$2 role=$3 try before pid
+  for try in 1 2 3 4 5 6; do
+    printf -v "$var" %s "$(free)"
+    before=$(wc -c <"$logs/server.log")
+    start "$name" --roles="$role" --listen "127.0.0.1:${!var}"
+    pid=${pids[-1]}
+    for _ in $(seq 1 120); do
+      kill -0 "$pid" 2>/dev/null || break
+      curl -fs -m 2 -o /dev/null "http://127.0.0.1:${!var}/healthz" && kill -0 "$pid" 2>/dev/null && return 0
+      sleep 0.25
+    done
+    if kill -0 "$pid" 2>/dev/null; then echo "the $role process on ${!var} did not answer /healthz in 30 s" >&2; tail -n 20 "$logs/server.log" >&2; exit 1; fi
+    if ! tail -c "+$((before + 1))" "$logs/server.log" | grep -q 'address already in use'; then
+      echo "the $role process exited at start:" >&2; tail -n 20 "$logs/server.log" >&2; exit 1
+    fi
+    echo "a start lost its port: $role on ${!var} was taken; starting again" >&2
+    unset 'metrics_ports[-1]' 'pids[-1]'
+  done
+  echo "the $role process lost its port at each of 6 starts" >&2; exit 1
+}
+start_listening api1 api api
+start_listening api2 api api
+start_listening stream stream stream
 node "$repo/test/e2e/router.mjs" "$router" "$stream" "$api1,$api2" >>"$logs/server.log" 2>&1 &
 pids+=($!)
 # A second stream replica set up wrongly, with no transcodeStore, behind its own
@@ -380,9 +404,6 @@ for role in api stream; do
   chmod +x "$work/bin/$role-replica"
 done
 export E2E_API_REPLICA="$work/bin/api-replica" E2E_STREAM_REPLICA="$work/bin/stream-replica"
-for p in $api1 $api2 $stream; do
-  for _ in $(seq 1 60); do curl -fs -o /dev/null "http://127.0.0.1:$p/healthz" && break; sleep 0.25; done
-done
 # Every library, not a count of five: the config has seven, and the first gate's
 # library (Languages) would otherwise be empty when a scenario opens it. The bound
 # is unchanged; the wait ends as soon as the last scan is done.
