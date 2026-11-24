@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
 	"slices"
 	"time"
 
@@ -14,8 +13,8 @@ import (
 	"jellyscale/internal/playback"
 )
 
-// Capacity is counted in cores. A worker declares how many it has
-// (transcode_nodes.cores), a job costs what playback.Spec.Cost says, and a job
+// Capacity is counted in cores. A worker's row says how many it has
+// (transcode_nodes.cores: what it learned, JS-177), a job costs what playback.Spec.Cost says, and a job
 // fits a worker when the jobs it already holds leave that many free. The count
 // is made in Go over the few rows involved: the live workers, and the jobs
 // queued or running on them. A queued job, which no worker has claimed yet,
@@ -28,40 +27,16 @@ const (
 	// coresSlack makes 5 x 0.8 fit in 4.0, which floats do not add up to.
 	coresSlack = 1e-9
 	// shareFraction is how much of a job's cost a worker must have free to take part of it in a play that two workers
-	// hold together (D-046). Two workers that each made the 3.2 core job at 0.79 to 0.83 times real time alone held it at
-	// 1.0 together (docs/transcoding.md, JS-162 and JS-168), so the slowest measured, 0.79, less a little, is the share:
-	// a worker below it is too slow to help whatever the sum of the workers is.
-	shareFraction = 0.78
+	// hold together (D-046, D-066). Two workers that each made the 3.2 core job at 0.79 to 0.83 times real time alone held it
+	// at 1.0 together (docs/transcoding.md, JS-162 and JS-168), so the slowest measured, 0.78 of real time, less a little, is
+	// the share. Capacity is the price a worker keeps at 1.2 times real time, so 0.78 of real time is 0.78 / 1.2 = 0.65 of
+	// the price: a worker below it is too slow to help whatever the sum of the workers is.
+	shareFraction = 0.65
 )
 
 // nodeCores is SQL for the cores of a worker row: those it declares, or its
 // slots if it is a row of the release before.
 const nodeCores = `(CASE WHEN cores > 0 THEN cores ELSE slots END)::float8`
-
-// cores is the worker's capacity, in the cores of the reference machine the price table is in: what it declares
-// (cores, else its slots), else each processor the process may use at the reference speed. There is no floor: a worker
-// with fewer processors than a job's price says so and refuses what it cannot hold.
-func (w *Worker) cores() float64 {
-	if w.Cores > 0 {
-		return w.Cores
-	}
-	if w.Slots > 0 {
-		return float64(w.Slots)
-	}
-	return float64(processors())
-}
-
-// registered is the cores and slots a worker row carries. A worker without a
-// transcode store runs no transcode, and declares none. Slots are the cores
-// rounded up, so that a replica of the release before, which counts a worker by
-// slots > 0, counts this one.
-func (w *Worker) registered() (cores float64, slots int) {
-	if w.Segments == nil {
-		return 0, 0
-	}
-	cores = w.cores()
-	return cores, int(math.Ceil(cores))
-}
 
 type capNode struct {
 	ID    string

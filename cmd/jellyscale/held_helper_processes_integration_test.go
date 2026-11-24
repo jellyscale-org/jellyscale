@@ -20,7 +20,7 @@ import (
 // checks of internal/transcode judge the ledger on rows; these run the workers, so a build that stops the helper in
 // ensure before judging the room, leaves a job behind for a refused play, or starves the helper of the first viewer
 // fails here. The film's re-encode costs 0.8 cores. Each worker declares 0.7: too little to hold that job alone (0.7 < 0.8, and
-// so under real time at 1.2 as well) and enough to take a share of it (above the 0.78 of its cost the design takes), so the
+// so under real time at 1.2 as well) and enough to take a share of it (above the 0.65 of its cost the design takes, D-066), so the
 // play is admitted as shared: the viewer's job on one worker, its helper on the other. A newcomer who needs 0.05 cores, a
 // copy of another film, fits on neither worker without stopping that helper, whatever the newcomer costs; a second
 // re-encode of the same cost fits nowhere even then, which is plain shortage (a refusal with no helper stopped either).

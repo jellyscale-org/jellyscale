@@ -166,41 +166,53 @@ func TestAnUndeclaredWorkerCountsEachProcessorAtTheReferenceSpeedAndSaysItIsAssu
 	}
 }
 
-// transcodeCores, and transcodeSlots when cores are not declared, are the capacity whatever the processors; the log and
-// /metrics say it was declared, and /metrics shows as capacity what the row carries and admission counts.
-func TestDeclaredCoresAndSlotsAreTheRowsCapacityAndSaidToBeDeclared(t *testing.T) {
+// transcodeCores is an optional ceiling (D-064, JS-177): the start is the lesser of the processors the worker may use and the
+// ceiling, so a ceiling below the processors is the capacity, said to be a ceiling, and one above them is not counted as written:
+// the worker starts at its processors, assumed, and its line names transcodeCores as it does for any assumed worker. The
+// row, /metrics and the log say the same. transcodeSlots is untouched by JS-177 and is checked for its figure only.
+func TestTranscodeCoresIsACeilingThatOnlyLowersTheStartAndTheSourceIsSaid(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		extra  string
 		wanted float64
+		source string // "" is not asserted.
 	}{
-		{"cores far above the processors", `"transcodeCores": 64,`, 64},
-		{"cores far below the processors", `"transcodeCores": 0.5,`, 0.5},
-		{"slots with no cores", `"transcodeSlots": 3,`, 3},
-		{"cores win over slots", `"transcodeSlots": 5, "transcodeCores": 2.5,`, 2.5},
+		{"a ceiling far above the processors is not counted as written", `"transcodeCores": 64,`, 4, "assumed"},
+		{"a ceiling far below the processors", `"transcodeCores": 0.5,`, 0.5, "ceiling"},
+		{"a fractional ceiling below the processors", `"transcodeCores": 2.5,`, 2.5, "ceiling"},
+		{"slots with no cores", `"transcodeSlots": 3,`, 3, ""},
+		{"cores win over slots", `"transcodeSlots": 5, "transcodeCores": 2.5,`, 2.5, "ceiling"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			c, p, addr := workerWith(t, map[string]string{"GOMAXPROCS": "4"}, tc.extra, os.Getenv("PATH"))
 			line := capacityLine(t, p)
-			if src, _ := field(line, "source"); src != "declared" {
-				t.Errorf("source=%q, want declared: %s", src, line)
+			src, _ := field(line, "source")
+			if tc.source != "" && src != tc.source {
+				t.Errorf("source=%q, want %s: %s", src, tc.source, line)
 			}
 			if cores := num(line, "cores"); cores != tc.wanted {
 				t.Errorf("the line says %v cores, want %v: %s", cores, tc.wanted, line)
 			}
-			// A declared capacity is the operator's own: the line gives no processors and tells nothing to change.
-			if _, has := field(line, "processors"); has || strings.Contains(line, "transcodeCores") {
-				t.Errorf("a declared line gives the processors or names transcodeCores: %s", line)
+			// A ceiling that binds is the operator's own: the line gives no processors and tells nothing to change. A start
+			// from the processors says how many it counted and names the setting that corrects it.
+			_, hasProcessors := field(line, "processors")
+			if src == "ceiling" && (hasProcessors || strings.Contains(line, "transcodeCores")) {
+				t.Errorf("a ceiling line gives the processors or names transcodeCores: %s", line)
+			}
+			if src == "assumed" && (!hasProcessors || !strings.Contains(line, "transcodeCores")) {
+				t.Errorf("an assumed line gives no processors or does not name transcodeCores: %s", line)
 			}
 			if got := rowCores(c, p); got != tc.wanted {
-				t.Errorf("the row has %v cores, want the declared %v\n%s", got, tc.wanted, p.log)
+				t.Errorf("the row has %v cores, want %v\n%s", got, tc.wanted, p.log)
 			}
 			text := metricsText(t, addr)
 			if got := series(text, "jellyscale_transcode_cores"); got != tc.wanted {
 				t.Errorf("jellyscale_transcode_cores = %v, want %v", got, tc.wanted)
 			}
-			if got := series(text, "jellyscale_transcode_capacity_assumed"); got != 0 {
-				t.Errorf("jellyscale_transcode_capacity_assumed = %v, want 0 for a declared capacity", got)
+			if tc.source != "" {
+				if got := series(text, `jellyscale_transcode_capacity_source{source="`+tc.source+`"}`); got != 1 {
+					t.Errorf("jellyscale_transcode_capacity_source{source=%q} = %v, want 1", tc.source, got)
+				}
 			}
 		})
 	}
@@ -254,7 +266,7 @@ func TestACapacityBelowTheDearestRowIsSaidOncePerStart(t *testing.T) {
 	}{
 		{"declared 3", `"transcodeCores": 3,`, "8", 3, true},
 		{"declared 4.2", `"transcodeCores": 4.2,`, "8", 4.2, false},
-		{"declared 16", `"transcodeCores": 16,`, "2", 16, false},
+		{"a ceiling of 16 on 2 processors is not counted as written", `"transcodeCores": 16,`, "2", 2, true},
 		{"assumed from 3 processors", "", "3", 3, true},
 		{"assumed from 8 processors", "", "8", 8, false},
 	} {
@@ -360,16 +372,17 @@ func TestFractionalTranscodeCoresAreCountedAsWritten(t *testing.T) {
 	}
 }
 
-// A worker restarted with another declaration, or with none, shows the new figure in its row and on /metrics, and the
-// gauge that says assumed follows (D-062): the restart of a worker is the operator's way to change its capacity.
+// A worker restarted with another ceiling, or with none, shows the new figure in its row and on /metrics, with its source
+// (D-062, D-064): the restart of a worker is the operator's way to change its ceiling. On 3 processors a ceiling of 2 is
+// the figure, a ceiling of 5.5 is not (the processors are), and none starts at the processors.
 func TestARestartedWorkerShowsTheNewCapacityOnItsRowAndOnMetrics(t *testing.T) {
 	t.Setenv("GOMAXPROCS", "3")
 	c := newCluster(t, false, "60s")
 	for _, step := range []struct {
-		extra   string
-		cores   float64
-		assumed float64
-	}{{`"transcodeCores": 2,`, 2, 0}, {`"transcodeCores": 5.5,`, 5.5, 0}, {"", 3, 1}, {`"transcodeSlots": 4,`, 4, 0}} {
+		extra  string
+		cores  float64
+		source string
+	}{{`"transcodeCores": 2,`, 2, "ceiling"}, {`"transcodeCores": 5.5,`, 3, "assumed"}, {"", 3, "assumed"}, {`"transcodeCores": 1.5,`, 1.5, "ceiling"}} {
 		p, addr := startWorkerOn(t, c, builds[newVersion], step.extra, os.Getenv("PATH"))
 		capacityLine(t, p)
 		if got := rowCores(c, p); got != step.cores {
@@ -379,8 +392,8 @@ func TestARestartedWorkerShowsTheNewCapacityOnItsRowAndOnMetrics(t *testing.T) {
 		if got := series(text, "jellyscale_transcode_cores"); got != step.cores {
 			t.Errorf("%q: jellyscale_transcode_cores = %v, want %v", step.extra, got, step.cores)
 		}
-		if got := series(text, "jellyscale_transcode_capacity_assumed"); got != step.assumed {
-			t.Errorf("%q: jellyscale_transcode_capacity_assumed = %v, want %v", step.extra, got, step.assumed)
+		if got := series(text, `jellyscale_transcode_capacity_source{source="`+step.source+`"}`); got != 1 {
+			t.Errorf("%q: jellyscale_transcode_capacity_source{source=%q} = %v, want 1", step.extra, step.source, got)
 		}
 		p.stop()
 	}

@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -48,6 +49,22 @@ type Options struct {
 	// Background runs the tool at the lowest priority (nice 19), so that it takes only the cores the jobs beside it
 	// leave: a worker's extraction holds no cores in any ledger. A transcode is never started this way.
 	Background bool
+	// OfTranscode says the tool is a step of a transcode job (the audio grid, a probe of a segment), not an extraction
+	// the worker makes beside its jobs, so that Extracting does not count it.
+	OfTranscode bool
+}
+
+// extractions counts the runs of tools that are the worker's own work beside its transcodes (a subtitle, a chapter
+// picture, a probe), and endedAt is when the last of them ended, in Unix nanoseconds.
+var (
+	extractions atomic.Int64
+	endedAt     atomic.Int64
+)
+
+// Extracting says whether a tool that is not a transcode's ran at any moment of the last window: one that runs now, or
+// one that ended within it. It is process-wide, because a transcode shares the machine with every tool this process runs.
+func Extracting(window time.Duration) bool {
+	return extractions.Load() > 0 || time.Since(time.Unix(0, endedAt.Load())) < window
 }
 
 // ErrStalled is the cause of a run ended because the tool made no progress for
@@ -136,6 +153,13 @@ func Start(cmd *exec.Cmd) error {
 func Run(ctx context.Context, tool string, args []string, o Options) (Result, error) {
 	ctx, cancel := context.WithCancelCause(ctx)
 	defer cancel(nil)
+	if !o.OfTranscode {
+		extractions.Add(1)
+		defer func() {
+			endedAt.Store(time.Now().UnixNano())
+			extractions.Add(-1)
+		}()
+	}
 	if _, err := exec.LookPath("nice"); o.Background && err == nil {
 		tool, args = "nice", append([]string{"-n", "19", tool}, args...)
 	}

@@ -10,7 +10,8 @@ import (
 // JS-087: what a worker registers is the cores it declared, and a worker that
 // declares none, or that still has transcodeSlots in its config, registers
 // enough to take a re-encode (a 1080p SDR one costs 0.8). Real processes, as an
-// operator runs them.
+// operator runs them. Since JS-177 (D-064) transcodeCores is a ceiling on the
+// processors the worker may use, so these run on 8 of them.
 func TestAWorkersRegisteredCoresFollowItsConfig(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -25,6 +26,7 @@ func TestAWorkersRegisteredCoresFollowItsConfig(t *testing.T) {
 		{"cores win over slots", 5, `"transcodeCores": 2.5,`, func(c float64) bool { return c == 2.5 }, "2.5"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("GOMAXPROCS", "8") // A ceiling above the processors is not counted as written (D-064): the host's must not decide.
 			c := newCluster(t, false, "60s")
 			c.slots, c.extra = tc.slots, tc.extra
 			w := c.start(newVersion, "worker")

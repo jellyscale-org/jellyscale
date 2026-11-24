@@ -63,9 +63,10 @@ type config struct {
 	TranscodeStore string `json:"transcodeStore"`
 	// TranscodeScratch is where a worker's ffmpeg writes before uploading.
 	TranscodeScratch string `json:"transcodeScratch"`
-	// TranscodeCores is how many cores a worker gives its transcode jobs; each
-	// job costs some of them (docs/transcoding.md). Without it a worker has the
-	// processors it may use, and never fewer than one 4K tone mapped job needs.
+	// TranscodeCores is an optional ceiling on how many cores a worker gives its
+	// transcode jobs; each job costs some of them (docs/transcoding.md). A worker
+	// starts from the processors it may use, or this if that is fewer, and learns
+	// what it holds from its jobs; what it learns never goes above its start.
 	TranscodeCores float64 `json:"transcodeCores"`
 	// TranscodeSlots is what TranscodeCores replaced. An old config that sets it
 	// and not TranscodeCores gives that many cores, one for each slot.

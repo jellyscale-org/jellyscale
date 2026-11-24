@@ -381,9 +381,7 @@ func (w *Worker) setID() {
 		if w.ID == "" {
 			w.ID = fmt.Sprintf("%d-%d", os.Getpid(), time.Now().UnixNano())
 		}
-		// Whether the capacity is declared is read here, before registered() fills in what an undeclared worker counts.
-		w.assumed = w.Cores <= 0 && w.Slots <= 0
-		w.Cores, w.Slots = w.registered()
+		w.initCapacity()
 	})
 }
 
