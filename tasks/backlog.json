@@ -2434,16 +2434,16 @@
       "reviewer": "lead",
       "source": "JS-177 design review",
       "title": "A worker on a faster-than-reference CPU is counted at the reference speed, so a pair of workers at a 2-CPU limit is refused the 4K HDR job each makes alone",
-      "notes": "The learned figure never rises above its start (the lesser of the processors and transcodeCores), so a worker at a CPU limit of 2 on a fast CPU holds 2.0 where its jobs show 2.35 (17% given up), and two such workers fall under the share's 2.08. Measured once on a synthetic film (JS-177's pre-Spec record), not on a real faster CPU. The operator's remedy is a limit of 3 or more (docs/running.md 'Sizing workers'). Promote as a brief on an operator's report of a worker on a fast CPU refusing or declining to share a play it holds."
+      "notes": "The learned figure never rises above its start (the lesser of the processors and transcodeCores), so a worker at a CPU limit of 2 on a fast CPU holds 2.0 where its jobs show 2.35 (17% given up), and two such workers fall under the share's 2.08. Measured once on a synthetic film (JS-177's pre-Spec record), not on a real faster CPU. The operator's remedy is a limit of 3 or more (docs/running.md 'Sizing workers'). Promote as a brief on an operator's report of a worker on a fast CPU refusing or declining to share a play it holds. (D-071) Its docs half is due now. Promote also at JS-056's Refine."
     },
     {
       "id": "BL-272",
-      "status": "open",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "adversarial",
       "source": "JS-177 verify",
       "title": "The estimator's unit tests leave 28 one-line mutants alive: raise-side state (raise setting settled, lower setting pendingRise, a timed rise firing at figure == start), the streak resets and the copy-only void, and the gap reset that appears in both lower and confirmRise",
-      "notes": "Found by 145 one-line mutants of capacity_learn.go and the start-note lines against go test ./internal/transcode (lines named in the finding). The behaviours are pinned by reading and by the integration checks, not by a unit test that fails on the mutant. Promote when the estimator changes again (JS-178 persists the figure), as a spec-writer step for that task."
+      "notes": "Found by 145 one-line mutants of capacity_learn.go and the start-note lines against go test ./internal/transcode (lines named in the finding). The behaviours are pinned by reading and by the integration checks, not by a unit test that fails on the mutant. Promote when the estimator changes again (JS-178 persists the figure), as a spec-writer step for that task. (D-071) no viewer or operator outcome; JS-178's Spec writes checks for what it changes, as any task does."
     },
     {
       "id": "BL-273",
@@ -2452,7 +2452,7 @@
       "reviewer": "lead",
       "source": "JS-177 build",
       "title": "A queued shared job counts at its full price on a lone worker for up to the 6 s queue window",
-      "notes": "At the 0.65 share (D-066) a learned figure of 2.3 can host a shared play, so the ledger's placeQueued counts a queued 3.2 job on a worker that has no partner, and a 0.8 play asked meanwhile is refused 'no worker had the cores'. Seen in the lone-worker check, whose stale queued job is its own artefact (a play admitted before convergence and never claimed); a job is normally claimed at once. Promote on a dogfood refusal within seconds of a refused or queued shared play on a lone worker."
+      "notes": "At the 0.65 share (D-066) a learned figure of 2.3 can host a shared play, so the ledger's placeQueued counts a queued 3.2 job on a worker that has no partner, and a 0.8 play asked meanwhile is refused 'no worker had the cores'. Seen in the lone-worker check, whose stale queued job is its own artefact (a play admitted before convergence and never claimed); a job is normally claimed at once. Promote on a refusal on any deployment (a cores-short refusal within 10 s of another play's refusal or queue timeout on a lone worker) within seconds of a refused or queued shared play on a lone worker."
     },
     {
       "id": "BL-274",
@@ -2461,7 +2461,25 @@
       "reviewer": "ux",
       "source": "JS-177 verify",
       "title": "A legacy transcodeSlots above the CPUs is counted as that many cores, so learning starts there and its floor is a quarter of it",
-      "notes": "The task leaves transcodeSlots untouched; the start line now says so (slotsNote) and docs/running.md advises transcodeCores instead. Promote with JS-178 or on an operator running a large transcodeSlots on a small worker, which would make the worker admit plays it cannot hold until it learns."
+      "notes": "The task leaves transcodeSlots untouched; the start line now says so (slotsNote) and docs/running.md advises transcodeCores instead. Returns as a brief at JS-056's Refine (remove the key or cap it at the CPUs), or on an operator running a large transcodeSlots on a small worker, which would make the worker admit plays it cannot hold until it learns. (D-071)"
+    },
+    {
+      "id": "BL-275",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-174; D-051, D-073",
+      "title": "A shared re-encode froze over 2 s in its first 21 s in 9 of 18 parts on a loaded machine; whether it does on a quiet one, and whether helpers asked at the start shorten it, is unmeasured",
+      "notes": "JS-174's criteria 1 to 7, kept here: on a quiet machine (load average under 1, the harness stopped before each run) two workers as in JS-168, in jellyfin-web, without a subtitle and with the PGS track burned in, play 60 s, seek to the middle, play 60 s, 10 trials of each; per part the time to first frame, each freeze's start and length, the longest freeze, the player's buffered lead at each freeze and when the first helper's first segment was stored; the same 10 trials with a helper asked at the job's start and at the seek (the rule lifted for the measurement only, nothing merged); the same two rows on a 2-CPU and a 6-CPU worker, 5 trials each; recorded in docs/transcoding.md; the figures come to the product owner as a brief with keeping the 2 s bound among the options. What each result decides (D-051): as built, no freeze over 2 s in 20 of 20 parts closes docs/status.md's gap line; a miss with helpers at the start meeting it in 20 of 20 gives JS-161 part (b) a criterion; a miss both ways returns as a brief. The rig needs workers of 3 CPUs or more since JS-177 (a 2-CPU limit counts 2.0, under the 4K HDR job's 2.08 share). Promote when the dogfood claims helpers more than twice in a week, when JS-056's example sizes would share a 4K film, or on a household report."
+    },
+    {
+      "id": "BL-276",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "D-072",
+      "title": "On a worker that overstates itself and holds more than one job, a play admitted above what it holds may take the viewer already watching under real time (D-050's guarantee)",
+      "notes": "Unverified; a reading of docs/transcoding.md ('an overstated figure admits no more than floor(start / price) plays of a row'). Promote before any ceiling is dropped on a worker that can hold two heavy jobs by its start figure, at JS-056's Refine, or on a dogfood sighting of a play at 1.0x or more falling under it within a minute of another's admission."
     }
   ]
 }

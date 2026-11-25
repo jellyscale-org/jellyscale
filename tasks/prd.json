@@ -552,7 +552,7 @@
         "docs/running.md says what every worker must reach (Postgres, each library, the transcode store), and the worker's termination grace matches JS-165's (D-045)",
         "The example manifests declare no transcodeCores and give workers CPU requests equal to limits in whole cores (D-064)"
       ],
-      "priority": 47,
+      "priority": 36,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -561,7 +561,7 @@
         "JS-178"
       ],
       "source": "PRODUCT.md phase6-k8s",
-      "notes": "JS-020 (2026-11-08): each worker holds one Postgres connection for its liveness lock, outside the pool, so a stock Postgres (max_connections 100) is exhausted at about 90 workers, long before its CPU (one primary carried 1600 streams on two cores' worth). Connections are the first wall when autoscaling. User (2026-11-08): plain manifests for kubectl are wanted beside the chart, not Helm only. JS-166 (D-067): its docs/running.md part was not written and is carried by criteria 10 and 11 here and JS-177's 'Sizing workers'. From its record, criterion 11's text covers: every role given the same transcodeStore and its S3 credentials; and that a request equal to the limit may not schedule beside a node's other workloads (the dogfood's worker requests 6 under a limit of 12), which is why a 4K-capable worker wants a whole node. D-069: each 'by a check' in criteria 3, 6 and 10 is met by the application refusing or warning at start with the key named, or by the shipped manifests applied to a real cluster in this task's own run; no test reads the manifest files. A criterion that cannot be met that way returns as a brief when the task starts."
+      "notes": "JS-020 (2026-11-08): each worker holds one Postgres connection for its liveness lock, outside the pool, so a stock Postgres (max_connections 100) is exhausted at about 90 workers, long before its CPU (one primary carried 1600 streams on two cores' worth). Connections are the first wall when autoscaling. User (2026-11-08): plain manifests for kubectl are wanted beside the chart, not Helm only. JS-166 (D-067): its docs/running.md part was not written and is carried by criteria 10 and 11 here and JS-177's 'Sizing workers'. From its record, criterion 11's text covers: every role given the same transcodeStore and its S3 credentials; and that a request equal to the limit may not schedule beside a node's other workloads (the dogfood's worker requests 6 under a limit of 12), which is why a 4K-capable worker wants a whole node. D-069: each 'by a check' in criteria 3, 6 and 10 is met by the application refusing or warning at start with the key named, or by the shipped manifests applied to a real cluster in this task's own run; no test reads the manifest files. A criterion that cannot be met that way returns as a brief when the task starts. D-071: the example worker's CPU limit is one the docs' rules hold for (a 2-CPU limit counts 2.0, under the 4K HDR job's 2.08 share). The example configuration names no `transcodeSlots`; whether that key is removed or capped at the CPUs returns as a brief at Refine."
     },
     {
       "id": "JS-058",
@@ -707,14 +707,14 @@
         "For each app played: whether it asked for a Trickplay route, and whether its sign-in screen offered a code (Quick Connect), with what the server answered and what the viewer saw (nothing, a missing preview, an error); an error a viewer sees is brought to the product owner (BL-222), and no route is built in this task",
         "Moonfin on an Android TV device signs in and plays one direct play and one film that transcodes, recorded like the others with the engine that played; if it is not run, docs/status.md says no Android TV app has played; on a film with several subtitle tracks, the subtitle index Moonfin asked for and the track it resolved to are recorded, with its subtitle mode (finding 5, D-038)"
       ],
-      "priority": 40,
+      "priority": 25,
       "status": "todo",
       "passes": false,
       "dependsOn": [
         "JS-145"
       ],
       "source": "Fable 5.2 state review, 2026-11-10",
-      "notes": "Needs the owner's devices and about an hour; the lead prepares the test list and reads the logs. Widened by the product owner's direction review (2026-11-19): goals 1 and 3 are claimed for every client and proven for one. Findroid and Android TV are not targets (owner, 2026-11-20, D-026); The ExoPlayer client is Jellyfin for Android's built-in player and the AVPlayer client is Swiftfin's native player, both read from source as sending their token (product owner, 2026-11-20, D-030); a device still has to show it. No Fluster run is part of this task (owner, 2026-11-20, D-027)."
+      "notes": "Needs the owner's devices and about an hour; the lead prepares the test list and reads the logs. Widened by the product owner's direction review (2026-11-19): goals 1 and 3 are claimed for every client and proven for one. Findroid and Android TV are not targets (owner, 2026-11-20, D-026); The ExoPlayer client is Jellyfin for Android's built-in player and the AVPlayer client is Swiftfin's native player, both read from source as sending their token (product owner, 2026-11-20, D-030); a device still has to show it. No Fluster run is part of this task (owner, 2026-11-20, D-027). D-073: moved up; needs the owner's hour and no build slot. First slice: criteria 1 to 5 and 10. Criteria 6 to 9, 11 and 12 are recorded where the same hour shows them, and otherwise left open in docs/status.md, not chased."
     },
     {
       "id": "JS-079",
@@ -937,7 +937,7 @@
       ],
       "notes": "Owner, 2026-11-15: a page, after the track-language batch. Moved up (D-028): the settings are built and no browser viewer can reach them. 2026-11-17 (JS-121's UX review): PlayDefaultAudioTrack defaults to true, so a viewer who only saves a language keeps hearing a film's flagged track, usually its original; the page says so and offers the switch.",
       "passes": false,
-      "priority": 39,
+      "priority": 41,
       "source": "owner 2026-11-15",
       "status": "todo"
     },
@@ -983,7 +983,7 @@
         "With real processes: a worker given jobs whose costs add up to its measured capacity (JS-161), at faster and at medium, keeps each at 1.2 times real time or more without a helper",
         "No viewer-visible change while every spec is veryfast: the transcode, seek and helper e2e scenarios pass as before"
       ],
-      "priority": 42,
+      "priority": 43,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1006,7 +1006,7 @@
         "The default change is listed under Changed guarantees: more CPU per viewer (fewer viewers per worker), up to about a second on a start on a full worker, a better picture",
         "A 4K HDR tone mapped re-encode, with and without a burned subtitle, holds real time at the default preset on any worker whose measured capacity admits it (JS-161), or the default does not apply to it; the pull request says, from JS-154's figures, which machines hold it at veryfast and no longer at faster (D-038, D-044)"
       ],
-      "priority": 43,
+      "priority": 44,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1088,7 +1088,7 @@
         "JS-089"
       ],
       "source": "decision D-002; product-owner plan review 2026-11-19",
-      "priority": 41
+      "priority": 42
     },
     {
       "id": "JS-146",
@@ -1144,7 +1144,7 @@
         "The figures go to the product owner as a brief with keeping the source's height and range priced per viewer, on CPU and on a GPU family; its decision names the task that closes the gap or accepts it, and docs/status.md's line is updated; its GPU figure is JS-163's (the HD 530 neither decodes Main 10 nor tone maps, JS-154), or is stated unmeasured if JS-163 has not run, and today's 2160-to-1080 burn-in path is measured there, not here (D-038)",
         "No viewer-visible change"
       ],
-      "priority": 44,
+      "priority": 45,
       "source": "product owner, D-021 (2026-11-19)",
       "status": "todo",
       "passes": false,
@@ -1208,7 +1208,7 @@
         "POST PlaybackInfo with a MediaSourceId in upper-case compact form, in dashed form and as an id of no source are added to test/differential/requests.yaml, as observed on Jellyfin 12.4 during JS-153: the upper-case compact id answers the same on both and is no listed difference; the dashed id (refused by Jellyfin, accepted here) and the unknown id (NoCompatibleStream on Jellyfin, an empty list here) are listed in compat/differences.yaml, each with a verdict and its reason. No answer changes unless a capture shows an app docs/status.md lists as supported sending that form (D-041)",
         "No viewer-visible change"
       ],
-      "priority": 37,
+      "priority": 39,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1241,13 +1241,13 @@
       "title": "Each of the 12 merge-queue runs that failed in the last 18 has a verdict from its log, and the causes that recur are fixed at their cause",
       "description": "12 of the last 18 merge-queue runs failed (lead, 2026-11-22), nearly every one on a different test; one shard process hit its 45-minute timeout. Each costs about 45 minutes and a requeue, and delays the dogfood's redeploy. Whether any is a product race is unverified. Same shape as JS-155 (D-042). D-058.",
       "acceptanceCriteria": [
-        "docs/testing.md gains a JS-175 table of exactly these 12 failed merge_group runs of CI, the full runs (integration tier run, not a plan-only run) of the 18 that ended before the brief of 2026-11-22 19:29 CST: 44983050791, 44986442604, 44989897226, 44994615953, 44997492843, 45008394219 (PR 246 at 45fa298), 45017053835 (PR 247 at 30af59c), 45041377896, 45045804305 (PR 249), 45049599358 (PR 250), 45076662687 (PR 247 at 39bede1), 45086436037 (PR 251). One row per failing test or subtest that the run's gotestsum summary lists as FAIL, a test stopped by the 45-minute timeout included (30 rows: 13 of them in 45017053835, 2 each in 44997492843, 45008394219, 45041377896, 45049599358, 45076662687 and 45086436037, 1 in each other run), each with the run id, the PR and the commit queued, the job (`integration shard (i of 4)` or `(rest)`) and, where the log says it, the go test process (`process k/n`), the test's full name, its first error line as file:line and message, and one verdict. A verdict is one of: (a) a cause owned by a task, naming it and the record or decision that states it: JS-158 (the kit's TRUNCATE deadlock), JS-159 (a cut-short segment stored), one of JS-160's three, JS-171 (the port taken between pick and bind, or the seek checks' 180 s margin), JS-172 (the flood check's at-rest comparison, or the lead's forced carry-over precondition), JS-173 (the refusal after a give-up); (b) the queued PR's own defect, fixed before that PR merged: the row names the escape line in .results/tasks.jsonl and the commit or run after which the test passed; such a row is not a failure of main and counts toward no test cause of criterion 3; (c) a new named cause, with the log line or forced run it rests on; (d) cause unknown, saying what the log lacks. A sighting whose cause is not in its log and is not reproduced is (d), never a test verdict (D-042). The table also carries, in the same form, the failed or cancelled queue runs from the brief to the first run counted by criterion 7 (as of 2026-11-23 23:00Z: 45132952457 cancelled, 45135324010, 45177074145, 45186563932), so no failure falls between the two windows. Beneath it, counts per cause, by row and by run (a run counted once under each cause any of its rows has), and how many of the 12 runs had a row in neither (a) nor (b), so the table says whether the 12 are one cause or many. The record is not read by any test.",
+        "docs/testing.md gains a JS-175 table of exactly these 12 failed merge_group runs of CI, the full runs (integration tier run, not a plan-only run) of the 18 that ended before the brief of 2026-11-22 19:29 CST: 44983050791, 44986442604, 44989897226, 44994615953, 44997492843, 45008394219 (PR 246 at 45fa298), 45017053835 (PR 247 at 30af59c), 45041377896, 45045804305 (PR 249), 45049599358 (PR 250), 45076662687 (PR 247 at 39bede1), 45086436037 (PR 251). One row per failing test or subtest that the run's gotestsum summary lists as FAIL, a test stopped by the 45-minute timeout included (30 rows: 13 of them in 45017053835, 2 each in 44997492843, 45008394219, 45041377896, 45049599358, 45076662687 and 45086436037, 1 in each other run), each with the run id, the PR and the commit queued, the job (`integration shard (i of 4)` or `(rest)`) and, where the log says it, the go test process (`process k/n`), the test's full name, its first error line as file:line and message, and one verdict. A verdict is one of: (a) a cause owned by a task, naming it and the record or decision that states it: JS-158 (the kit's TRUNCATE deadlock), JS-159 (a cut-short segment stored), one of JS-160's three, JS-171 (the port taken between pick and bind, or the seek checks' 180 s margin), JS-172 (the flood check's at-rest comparison, or the lead's forced carry-over precondition), JS-173 (the refusal after a give-up); (b) the queued PR's own defect, fixed before that PR merged: the row names the escape line in .results/tasks.jsonl and the commit or run after which the test passed; such a row is not a failure of main and counts toward no test cause of criterion 3; (c) a new named cause, with the log line or forced run it rests on; (d) cause unknown, saying what the log lacks. A sighting whose cause is not in its log and is not reproduced is (d), never a test verdict (D-042). The table also carries, in the same form, the failed or cancelled queue runs from the brief to the first run counted by criterion 7 (as of 2026-11-23 23:00Z: 45132952457 cancelled, 45135324010, 45177074145, 45186563932), so no failure falls between the two windows. Beneath it, counts per cause, by row and by run (a run counted once under each cause any of its rows has), and how many of the 12 runs had a row in neither (a) nor (b), so the table says whether the 12 are one cause or many. The record is not read by any test. (D-074) For the 12 runs, a row whose cause a merged task owns, or that was the queued PR's own defect, carries only the run id, the test's name and the verdict. A row not read is marked so and is read in full if its test fails a counted run.",
         "For every verdict that is the product's, the row says what a viewer and what an operator would have seen in production (a freeze, a refusal and its dialog, a stall and for how long, extra reads, a log line or nothing), from the log or the code it cites, marking what is unverified. JS-159's two rows and JS-173's one carry the viewer effect their records give and need no new brief. Each other product verdict returns to the product owner as a brief before any product fix, and nothing in the product (any non-test file outside docs/ and tasks/) is changed by this task. Among them the record gives a verdict, with its evidence, for at least: the copied job in 45041377896 (`TestEveryJobOfEveryWorkerGoesOnThroughAnOutage/switchover`) whose ffmpeg reached the film's end while the worker's loop waited at the fence for an unanswered renewal and logged `ffmpeg cannot be paused here, so this job runs without a lead limit` (whether invariant 57's lead holds while the fence waits); the restart past the first segment not stored in 45135324010 and 45186563932 (`TestALivenessURLThatRefusesEveryWorkerForLongerThanALeaseCancelsEveryJobAndTheNextRequestRestartsIt`, liveness_url_integration_test.go:454, `job 7 restarted its spec at segment 5` and `at segment 3`; the second run carried no JS-161 code); and the viewer answered 503 after 15.5 s behind the transaction-mode pooler in 45017053835 (`TestALivenessURLBehindATransactionModePoolerEitherNamesTheFlagOrLeavesTheKilledWorkersJobToItsLease`, liveness_url_pooler_integration_test.go:266 and :278), which may be JS-168's first build's own defect.",
         "A new test cause seen in two or more runs is fixed at its cause in the test kit. Before the fix its condition is forced once, with real processes or real contention, and the test is seen to fail as the queue's log shows; after the fix the same forcing passes. The procedure and both results are recorded in docs/testing.md; no test of the kit is committed (D-069). A cause seen once, or one whose condition cannot be forced, is recorded as unknown and left.",
-        "Reproduction is bounded: at most 2 hours of wall-clock runs for each sighting (a test and its suspected cause) and 8 hours in all, under CI's shape (`test/ffmpeg61.sh`, ffmpeg 6.1, 2 CPUs pinned with `JELLYSCALE_TEST_CPUS` that no other run uses, a fresh Postgres each run), never on a machine where JS-174 is measuring. Rows whose verdict is (a) or (b) need no reproduction. The record gives, for each sighting tried, the command, the runs made, the failures and their messages, and the hours spent, and the total; a sighting left when its box ran out keeps verdict (d).",
-        "The shard that hit 45 minutes is named with its healthy time over the 18 runs and what it was running when stopped. After the behaviour-only cleanup merges, test/shard-times.txt is regenerated from three successful merge-queue runs, so every dealt test has a measured time, and the four shards' healthy times are recorded. If a shard's healthy time is then still within 10 minutes of the timeout, it is split as internal/transcode is split, with no test dropped (closes BL-175); eight shards are not adopted otherwise. The record gives the time each of JS-172's flood tests adds to it. (D-069)",
-        "TestAHeldWorkerEndsAJobWaitingForItsSubtitleTrackBeforeItsLeaseRunsOut (internal/transcode/lease_keeper_integration_test.go) is run 20 times on origin/main at or after JS-173's merge (4f0fcd5), as 20 go test runs each with `-count=1` and a fresh Postgres, under CI's shape (`test/ffmpeg61.sh`, `JELLYSCALE_TEST_CPUS` pinned to 2 CPUs no other run uses). The record gives the commit, the command, and passed p of 20; each failure is added to the table with its message and a verdict. A failure that is the refusal JS-173 removed (`cores are short ... most any worker has free is 0.0` right after a give-up) returns JS-173 to the product owner as a brief.",
-        "After JS-158 (merged, cb1a65c) and this task merge, the next 10 merge_group runs of CI that run the integration tier (a plan-only run that skips it is not counted), starting with the first queued after this task's PR merges, are counted in docs/testing.md: each run's id, PR and conclusion, and for each failed run every failed job and test with its first error line and a verdict as in criterion 1. The count of failed runs of 10 and the causes come to the product owner at that triage, with whether more than 2 failed (D-058, D-063: JS-160's place). The two cut-read recovery cases are counted apart in those 10 runs, each as ran and failed: the waiting-request case (the three `TestAFailureThatIsNotTheFilesIsMadeAgainForTheRequestThatWaited/<a re-encode | a copy | a job that burns in a subtitle>, the source store cuts a read` subtests) and the persisting-cause case (`TestACauseThatPersistsStartsAtMostThreeFreshJobsAndThenFails/the source store cuts a read`); one failure of either returns JS-159 to the product owner as a brief. Each counted run's log, and for a failed job its tests.json and failures.log, is searched for `40P01`: one outside the tests that provoke it on purpose (TestADeadlockOrSerializationFailureOnAWorkersWriteNeverFailsTheJob, TestASegmentCommitThatPostgresAbortsForADeadlockNeverFailsTheJob) is listed, and one on a job end (`recording the end of a transcode job failed`) promotes BL-260 (D-063). The record says that a passing test's output is not printed, so a `40P01` inside one is not seen. No hook is added to the worker to force the exit-first order (D-061).",
+        "Reproduction is bounded: only for a sighting whose verdict may be the product's (criterion 2): at most 2 hours of wall-clock runs each and 4 hours in all (D-074), under CI's shape (`test/ffmpeg61.sh`, ffmpeg 6.1, 2 CPUs pinned with `JELLYSCALE_TEST_CPUS` that no other run uses, a fresh Postgres each run). Rows whose verdict is (a) or (b) need no reproduction. The record gives, for each sighting tried, the command, the runs made, the failures and their messages, and the hours spent, and the total; a sighting left when its box ran out keeps verdict (d).",
+        "The shard that hit 45 minutes is named with its healthy time over the 18 runs and what it was running when stopped. After the behaviour-only cleanup merges, test/shard-times.txt is regenerated from three successful merge-queue runs, so every dealt test has a measured time, and the four shards' healthy times are recorded. If a shard's healthy time is then still within 10 minutes of the timeout, it is split as internal/transcode is split, with no test dropped (closes BL-175); eight shards are not adopted otherwise. The record gives the time each of JS-172's flood tests adds to it. (D-069) The 10-minute rule is applied to the measured healthy time of the next three successful queue runs (35.1 minutes predicted on 2026-11-24): at 35 minutes or more that process is split (D-074).",
+        "TestAHeldWorkerEndsAJobWaitingForItsSubtitleTrackBeforeItsLeaseRunsOut is counted apart in criterion 7's 10 runs, as ran and failed; a failure that is the refusal JS-173 removed (`cores are short ... most any worker has free is 0.0` right after a give-up) returns JS-173 to the product owner as a brief (D-074).",
+        "After JS-158 (merged, cb1a65c) and this task merge, the next 10 merge_group runs of CI that run the integration tier (a plan-only run that skips it is not counted), starting with the first queued after d7dbeeb (PR 279), are counted in docs/testing.md: each run's id, PR and conclusion, and for each failed run every failed job and test with its first error line and a verdict as in criterion 1. The count of failed runs of 10 and the causes come to the product owner at that triage, with whether more than 2 failed (D-058, D-063: JS-160's place). The two cut-read recovery cases are counted apart in those 10 runs, each as ran and failed: the waiting-request case (the three `TestAFailureThatIsNotTheFilesIsMadeAgainForTheRequestThatWaited/<a re-encode | a copy | a job that burns in a subtitle>, the source store cuts a read` subtests) and the persisting-cause case (`TestACauseThatPersistsStartsAtMostThreeFreshJobsAndThenFails/the source store cuts a read`); one failure of either returns JS-159 to the product owner as a brief. Each counted run's log, and for a failed job its tests.json and failures.log, is searched for `40P01`: one outside the tests that provoke it on purpose (TestADeadlockOrSerializationFailureOnAWorkersWriteNeverFailsTheJob, TestASegmentCommitThatPostgresAbortsForADeadlockNeverFailsTheJob) is listed, and one on a job end (`recording the end of a transcode job failed`) promotes BL-260 (D-063). The record says that a passing test's output is not printed, so a `40P01` inside one is not seen. No hook is added to the worker to force the exit-first order (D-061). Each failure also says whether it is load: Postgres or a store that did not answer within the test's bound on the runner, the test passing alone under CI's shape. Two or more bring one test process per shard job to the product owner as a priced brief. The runs of PRs 270, 277 and 279 on 2026-11-24 are reported apart (D-074).",
         "No retry, no skip, no raised timeout (go test's 45m in test/integration.sh, the seek checks' 180 s, any wait of a test or the kit) and no widened bound: no test's bound is raised, the rig's lease is not lengthened, and no check is amended to pass. No product code is changed to fit a test, and none is changed at all by this task (criterion 1's verdicts are written, not built). No viewer-visible change. Regenerating test/shard-times.txt decides only the deal of tests to shards and is not a bound (D-069)."
       ],
       "priority": 22,
@@ -1255,30 +1255,7 @@
       "passes": false,
       "dependsOn": [],
       "source": "lead 2026-11-22; D-058",
-      "notes": "ux: false, core: false. Reads JS-158's and JS-159's records when they exist; waits for neither. Does not hold any merge (owner, 2026-11-21). Runs beside JS-161; its reproduction runs do not share a machine with JS-174's measurement. If criterion 1 shows one cause behind most of the 12, the lead brings that count back before criteria 3 to 5 are built, and the task is cut to that cause. D-069: the table and the 10-run count also say, for each failure, whether it was a defect of the change itself that the integration shards on the pull request (ci:full) would have shown, and whether it was the fault-schedule test on a random seed. Columns of the table, not new work. Three or more of the first in the 10 runs brings integration shards on every code pull request to the product owner as a criterion of JS-097; one of the second on a build later shown right brings the fixed-seed list back as a brief."
-    },
-    {
-      "id": "JS-174",
-      "phase": "P3",
-      "dependsOn": [],
-      "title": "Measure the first 30 seconds after a start and a seek of a shared re-encode, on a quiet machine, with helpers started late and at once",
-      "description": "JS-168's two workers held a shared 4K HDR re-encode at 1.00x, but a freeze over 2 s came in 9 of 18 parts, all within the first 21 s after a first frame, on a machine at load average 5 to 33. Whether that is the machine or the product, and whether asking for helpers at the start and the seek shortens it, is measured here; nothing is weakened meanwhile (D-051).",
-      "acceptanceCriteria": [
-        "On a quiet machine: load average under 1 with the harness stopped before each run, and no more than 1 above the harness's own during it. A run outside that is discarded and repeated, and every run's load is recorded. If the developer machine cannot be made quiet, it returns to the product owner as a brief (D-065)",
-        "Two 2-CPU workers as in JS-168, in jellyfin-web, without a subtitle and with the PGS track burned in: play 60 seconds, seek to the middle, play 60 seconds; 10 trials of each",
-        "For each part: time to first frame, each freeze's start and length, the longest freeze, the player's buffered lead at each freeze, and when the first helper's first segment was stored, counted from the first frame",
-        "The same 10 trials with a helper asked for at the job's start and at the seek, not after the job is judged slow. The rule is lifted for the measurement only and nothing is merged",
-        "The same two rows on a 2-CPU and a 6-CPU worker, 5 trials each",
-        "Recorded in docs/transcoding.md with machine and command; no film title, path or host name",
-        "The figures come to the product owner as a brief, with keeping the 2 s bound among the options and each option priced",
-        "No viewer-visible change"
-      ],
-      "source": "JS-168 measurement; D-051",
-      "notes": "What each result decides (D-051): as built, no freeze over 2 s in 20 of 20 parts on the quiet machine: the bound is met, the record says so and docs/status.md's gap line closes citing D-051. As built it misses and with helpers at the start it is met in 20 of 20: JS-161 part (b) gains \"A play admitted as shared has its helpers asked for at its start and at each seek, not after it is judged slow; on two throttled workers no freeze over 2 seconds in the first 30 seconds of a start or a seek, 10 of 10 (D-051).\" It misses both ways: back to the product owner as a brief, with holding the first frame priced from a measurement of how far the server can steer jellyfin-web's buffering. Built beside JS-161 and never holds its merge. JS-166's record (tasks/done.json) holds the first-30-seconds figures of its eight seeks at a CPU limit of 8, for this task (D-064, D-065).",
-      "status": "todo",
-      "passes": false,
-      "priority": 18,
-      "core": null
+      "notes": "ux: false, core: false. Reads JS-158's and JS-159's records when they exist; waits for neither. Does not hold any merge (owner, 2026-11-21). Runs beside JS-161; its reproduction runs do not share a machine with JS-174's measurement. If criterion 1 shows one cause behind most of the 12, the lead brings that count back before criteria 3 to 5 are built, and the task is cut to that cause. D-069: the table and the 10-run count also say, for each failure, whether it was a defect of the change itself that the integration shards on the pull request (ci:full) would have shown, and whether it was the fault-schedule test on a random seed. Columns of the table, not new work. Three or more of the first in the 10 runs brings integration shards on every code pull request to the product owner as a criterion of JS-097; one of the second on a build later shown right brings the fixed-seed list back as a brief. D-074: merges in parts, as PR 277 did; closes when the 10 runs are counted. A pull request that adds or changes integration tests runs ci:full once before it is queued."
     },
     {
       "id": "JS-160",
@@ -1299,7 +1276,7 @@
       "passes": false,
       "dependsOn": [],
       "source": "JS-155 record; D-042; D-043",
-      "notes": "If the past-the-end check shows the product can end a watched job as cancelled, that is a brief, not a test fix."
+      "notes": "If the past-the-end check shows the product can end a watched job as cancelled, that is a brief, not a test fix. D-073: starts now beside JS-127, first if the machine holds one. D-058's condition is met: 8 of 8 counted queue runs of PR 270 failed outside the change. The lead confirms whether the asset-sweep and past-the-end sightings of 2026-11-24 are this task's causes."
     },
     {
       "id": "JS-164",
@@ -1316,7 +1293,7 @@
         "docs/running.md's metric table and docs/transcoding.md describe both gauges with an example alert and an example scaling query; BL-005's missing reason is readable here. Amended by D-048: the example scaling query is on the room gauge, the example alert on the demand gauge; docs/running.md no longer calls `jellyscale_transcode_queue_cores` the signal to scale on, and says why.",
         "No viewer-visible change"
       ],
-      "priority": 35,
+      "priority": 37,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1340,7 +1317,7 @@
         "docs/running.md gives the worker's termination grace and what it bounds",
         "No start of play or seek is slower: time to first segment measured before and after"
       ],
-      "priority": 45,
+      "priority": 46,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1390,7 +1367,7 @@
         "Recorded in docs/transcoding.md with machine and command, no film title, path or host name; the figures come to the product owner as a brief, every option priced, keeping today's picture among them.",
         "No viewer-visible change, and nothing in the media namespace touched."
       ],
-      "priority": 36,
+      "priority": 38,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1414,7 +1391,7 @@
         "On the dogfood, each homelab change approved by the owner first (the GPU through the device plugin, no privileged container): a 4K HDR re-encode with and without a burned-in image subtitle plays 10 minutes with a seek at speed 1.0 or above after the first 30 seconds; as many at once on one GPU as JS-169 measured to hold 1.2 times real time each do so; recorded with ids and counts only.",
         "docs/running.md (an optional GPU worker pool and its request), docs/transcoding.md and docs/status.md are updated; DOMAINS.md invariants 23 and 53 are amended citing D-047 where the tone map's filter or the family rule changes."
       ],
-      "priority": 38,
+      "priority": 40,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1435,13 +1412,13 @@
         "An idle worker helps. A watched re-encode under 1.2x, on a worker whose learned capacity is below the job's price, becomes a shared play. A helper is claimed on a worker with 0.65 of the price free, and the viewer returns to real time within JS-168's bound. Checked with two newly started, undeclared workers throttled to the i5-6500's speed.",
         "The learned figure is kept in Postgres by hardware class (CPU model and the processors the process may use), naming no host, pod, film or viewer. A worker that finds one registers at once with it, and D-062's 9 tests pass unamended. Its source reads `remembered` in the log and on `/metrics`.",
         "With real processes: a converged throttled worker is stopped and started. The first 4K HDR play after is refused within seconds with its reason, or admitted shared, as before the stop.",
-        "The kept figure is a start only. The worker's own jobs move it by JS-177's rules, both ways and within JS-177's stated times, and it never exceeds `transcodeCores`.",
+        "The kept figure is a start only. The worker's own jobs move it by JS-177's rules, both ways and within JS-177's stated times, and it never exceeds `transcodeCores`. The record also states what a timed rise returns the figure to once one is kept, and what the viewer of a play admitted then gets; a kept figure that still admits a play above it by time alone returns as a brief before Spec (D-072).",
         "It is kept while a worker of its class has run in the last 30 days. Every worker starting at once is safe (invariant 2), and a worker of the release before is unharmed.",
         "With nothing kept, the worker starts from its processors. `docs/running.md` says what the first heavy play then gets, for how long, and that an optional ceiling avoids it.",
         "Docs and DOMAINS.md are updated, with the cost stated: one row per class, written at most once a minute on a move of 5% or more.",
-        "After it merges, the dogfood drops its declared figures (a homelab change for the owner)."
+        "After it merges, the lead offers the owner dropping the 4-core worker's declared figure, with the dogfood's counters since JS-177 was deployed. The 12-thread worker keeps its ceiling while its CPU request is below its limit, as 'Sizing workers' advises for a shared host (D-072)."
       ],
-      "priority": 46,
+      "priority": 35,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1449,7 +1426,7 @@
       ],
       "core": true,
       "source": "D-066; brief-js177-design.md",
-      "notes": "ux: true. Moves to directly after JS-177 on: the dogfood, undeclared, showing a heavy play under 1.0x within 5 minutes of a worker start; or the no_room slow-job reason counted while another worker had 0.65 of the price free."
+      "notes": "ux: true. Moves to directly after JS-177 on: the dogfood, undeclared, showing a heavy play under 1.0x within 5 minutes of a worker start; or the no_room slow-job reason counted while another worker had 0.65 of the price free. D-073: directly before JS-056. Refine says whether criterion 1 is already what JS-177 built (docs/transcoding.md, 'The first viewer, and a restart', third row); if so it stays a check and adds no build. If the unhelped trigger fires first, criterion 1 alone is split out and built at once. The first trigger can fire only if the owner drops a figure."
     }
   ]
 }
