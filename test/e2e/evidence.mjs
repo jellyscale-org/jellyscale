@@ -9,8 +9,10 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 
 const recorders = new Set();
-const secret = /([?&;](?:api_?key|token)=)[^&\s"]*/gi;
-const redact = (text) => String(text).replace(secret, "$1…");
+// A token wherever it is written: a query value (ApiKey=, api_key=, token=), a header or a JSON key (X-Emby-Token: ...,
+// "AccessToken": "..."), the Token="..." of an Authorization value.
+const secret = /(api_?key|access_?token|x-emby-token|x-mediabrowser-token|token)(["']?\s*[=:]\s*["']?)[^&\s"',;}]+/gi;
+const redact = (text) => String(text).replace(secret, "$1$2…");
 
 // Starts recording what the context's pages do, for the requests to base: call it once for each context a gate opens.
 // A page the scenario opens later is recorded too.
@@ -18,7 +20,7 @@ export function watch(context, base) {
   const recorder = { base, began: Date.now(), events: [], requests: [], answers: [], failed: [], sockets: [], console: [], errors: [], context, late: [], closed: false };
   recorders.add(recorder);
   const since = () => Date.now() - recorder.began;
-  const note = (what) => recorder.events.push({ at: since(), what });
+  const note = (what) => recorder.events.push({ at: since(), what: redact(what) });
   const ours = (url) => url.startsWith(base);
   const attach = (page) => {
     page.on("console", (message) => {
@@ -28,7 +30,7 @@ export function watch(context, base) {
       note(`console ${line.slice(0, 300)}`);
     });
     page.on("pageerror", (error) => {
-      recorder.errors.push({ at: since(), line: error.stack ?? error.message });
+      recorder.errors.push({ at: since(), line: redact(error.stack ?? error.message) });
       note(`page error ${error.message}`);
     });
     page.on("crash", () => note("the page crashed"));
@@ -57,8 +59,8 @@ export function watch(context, base) {
       const socket = { url: redact(ws.url()), openedAt: since(), closedAt: null, received: [], sent: [] };
       recorder.sockets.push(socket);
       note(`socket opened ${socket.url}`);
-      ws.on("framereceived", ({ payload }) => { socket.received.push({ at: since(), payload: String(payload).slice(0, 300) }); note(`socket ${socket.url.split("?")[0]} received ${String(payload).slice(0, 120)}`); });
-      ws.on("framesent", ({ payload }) => { socket.sent.push({ at: since(), payload: String(payload).slice(0, 300) }); note(`socket ${socket.url.split("?")[0]} sent ${String(payload).slice(0, 120)}`); });
+      ws.on("framereceived", ({ payload }) => { socket.received.push({ at: since(), payload: redact(String(payload).slice(0, 300)) }); note(`socket ${socket.url.split("?")[0]} received ${String(payload).slice(0, 120)}`); });
+      ws.on("framesent", ({ payload }) => { socket.sent.push({ at: since(), payload: redact(String(payload).slice(0, 300)) }); note(`socket ${socket.url.split("?")[0]} sent ${String(payload).slice(0, 120)}`); });
       ws.on("close", () => { socket.closedAt = since(); note(`socket closed ${socket.url.split("?")[0]}`); });
     });
   };
@@ -83,8 +85,9 @@ export async function rescue(page) {
 const slug = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 70).replace(/^-|-$/g, "");
 
 // The files' common name: the gate, the iteration under E2E_REPEAT, the scenario, and a hash of its whole name so that
-// two names alike in their first words keep their own files. A second failure of the same scenario in one run, which
-// only a step run twice can make, gets its own number.
+// two names alike in their first words keep their own files. A second failure with the same name in one run gets
+// ".again<n>" after the stem, and the pictures of a failure are "<stem>.png", "<stem>-2.png" and so on, so no name
+// of one failure is another's.
 function stemFor(name) {
   const gate = process.env.E2E_GATE ?? "gate";
   const repeat = Number(process.env.E2E_REPEAT ?? 1) > 1 ? `-iteration${process.env.E2E_ITERATION ?? 1}` : "";
@@ -92,8 +95,8 @@ function stemFor(name) {
   mkdirSync(dir, { recursive: true });
   const stem = `${dir}/${gate}${repeat}-${slug(name)}-${createHash("sha1").update(name).digest("hex").slice(0, 8)}`;
   for (let n = 1; ; n++) {
-    const candidate = n === 1 ? stem : `${stem}-${n}`;
-    if (!existsSync(`${candidate}.record.json`)) return candidate;
+    const candidate = n === 1 ? stem : `${stem}.again${n}`;
+    if (!existsSync(`${candidate}.console.txt`)) return candidate;
   }
 }
 
@@ -113,10 +116,9 @@ function describeAnswer(failed, entry) {
   return `the router answered ${entry.status} from ${entry.routed} (backend port ${entry.backend ?? "none"})${ending}`;
 }
 
-// Prints the line of each request the browser reported failed, with the router's answer. A router entry answers one
+// Prints the line of each request the browser reported failed in the failing step or scenario, with the router's answer. A router entry answers one
 // request only.
-async function printFailedRequests(live) {
-  const failures = live.flatMap((recorder) => recorder.failed);
+async function printFailedRequests(failures) {
   if (!failures.length) return;
   const logs = await routerAnswers(new Set(failures.map((failed) => failed.origin)));
   const used = new Set();
@@ -133,6 +135,9 @@ async function printFailedRequests(live) {
 // Keeps the evidence of a failure of the named scenario or step, which began at startedAt, for every context that is
 // open or was opened since (a scenario's second viewer, or a viewer the scenario closed), and prints where it is and
 // the failed requests. The pictures come from the pages open now and from rescue.
+// A gate whose steps share one page (browse, play, cors) has the earlier steps' events in the same recorder: the
+// failed requests printed and kept as "failed" are those since startedAt, and the console and the timeline, kept
+// whole, say where the step began; the failed requests before it are apart, as "failedEarlier".
 export async function keepFailure(name, startedAt = 0) {
   const live = [...recorders].filter((recorder) => !recorder.closed || recorder.began >= startedAt);
   if (!live.length) return;
@@ -141,17 +146,28 @@ export async function keepFailure(name, startedAt = 0) {
   const write = (suffix, content) => { writeFileSync(`${stem}${suffix}`, content); files.push(suffix); };
   const consoleLines = [];
   const record = [];
+  const inStep = [];
   for (const [index, recorder] of live.entries()) {
     const label = live.length > 1 ? `viewer ${index + 1}: ` : "";
-    consoleLines.push(...recorder.console.map(({ at, line }) => `${label}+${at} ms ${line}`), ...recorder.errors.map(({ at, line }) => `${label}+${at} ms page error: ${line}`));
+    const stepAt = Math.max(0, startedAt - recorder.began);
+    const marker = (at) => `--- ${label}the failing step began here, ${at} ms after the page was first watched ---`;
+    const lines = [...recorder.console.map(({ at, line }) => ({ at, text: `${label}+${at} ms ${line}` })), ...recorder.errors.map(({ at, line }) => ({ at, text: `${label}+${at} ms page error: ${line}` }))].sort((a, b) => a.at - b.at);
+    if (stepAt > 0) lines.push({ at: stepAt, text: marker(stepAt) });
+    consoleLines.push(...lines.sort((a, b) => a.at - b.at).map(({ text }) => text));
+    const timeline = recorder.events.map(({ at, what }) => ({ at, text: `${at} ms ${what}` }));
+    if (stepAt > 0) timeline.push({ at: stepAt, text: marker(stepAt) });
+    timeline.sort((a, b) => a.at - b.at);
+    inStep.push(...recorder.failed.filter((failed) => failed.failedAt >= startedAt));
     record.push({
       viewer: index + 1,
       began: new Date(recorder.began).toISOString(),
+      stepBeganAt: stepAt,
       requests: recorder.requests.map(({ at, method, url, range }) => ({ at, method, url, range })),
       answers: recorder.answers,
-      failed: recorder.failed.map(({ at, method, target, error }) => ({ at, method, url: redact(target), error })),
+      failed: recorder.failed.filter((failed) => failed.failedAt >= startedAt).map(({ at, method, target, error }) => ({ at, method, url: redact(target), error })),
+      failedEarlier: recorder.failed.filter((failed) => failed.failedAt < startedAt).map(({ at, method, target, error }) => ({ at, method, url: redact(target), error })),
       sockets: recorder.sockets,
-      timeline: recorder.events.map(({ at, what }) => `${at} ms ${what}`),
+      timeline: timeline.map(({ text }) => text),
     });
     const pages = recorder.closed ? [] : recorder.context.pages();
     const shots = await Promise.all(pages.map((page) => page.screenshot().catch(() => null)));
@@ -163,5 +179,5 @@ export async function keepFailure(name, startedAt = 0) {
   write(".console.txt", consoleLines.length ? `${consoleLines.join("\n")}\n` : "the console and the page errors were empty\n");
   write(".record.json", JSON.stringify(record, null, 2));
   console.log(`      evidence: ${stem}{${files.join(",")}}`);
-  await printFailedRequests(live);
+  await printFailedRequests(inStep);
 }

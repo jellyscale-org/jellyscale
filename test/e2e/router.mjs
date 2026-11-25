@@ -177,8 +177,10 @@ function forward(req, res, body, tried, entry) {
         response.pipe(res);
       }
       // A replica that dies under a response ends it for the client too, as a dropped connection does.
-      response.on("aborted", () => { entry.ended = "upstream failed"; res.destroy(); });
-      response.on("error", () => { entry.ended = "upstream failed"; res.destroy(); });
+      // The router destroys the response itself when the client goes away, which also fires these: the client's end,
+      // noted first by the res close handler, stands.
+      response.on("aborted", () => { entry.ended ??= "upstream failed"; res.destroy(); });
+      response.on("error", () => { entry.ended ??= "upstream failed"; res.destroy(); });
       // A client that goes away must cancel the upstream read.
       res.on("close", () => response.destroy());
     });
@@ -189,7 +191,7 @@ function forward(req, res, body, tried, entry) {
   let clientGone = false;
   upstream.on("error", (error) => {
     if (clientGone) return;
-    if (res.headersSent) { entry.ended = "upstream failed"; return res.destroy(); }
+    if (res.headersSent) { entry.ended ??= "upstream failed"; return res.destroy(); }
     backend.up = false;
     // A replica that refused the connection got nothing; a GET or HEAD is safe to ask another replica for.
     if (error.code === "ECONNREFUSED" || req.method === "GET" || req.method === "HEAD") return forward(req, res, body, [...tried, backend], entry);

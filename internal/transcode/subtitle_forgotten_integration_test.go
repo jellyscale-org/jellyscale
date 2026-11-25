@@ -360,7 +360,9 @@ func TestAWorkerForgottenWhileItLivesEndsItsExtractionAndItsLateRenewalMovesNoCu
 	// The proxy asks the matcher as the statement arrives, under its own lock, so the
 	// close below is the moment this statement, and no other, is held.
 	var key string
-	r.pool.QueryRow(context.Background(), "SELECT key FROM subtitle_jobs WHERE state = 'running' AND kind = 'track'").Scan(&key) //nolint:errcheck
+	if err := r.pool.QueryRow(context.Background(), "SELECT key FROM subtitle_jobs WHERE state = 'running' AND kind = 'track'").Scan(&key); err != nil || key == "" {
+		t.Fatalf("the running extraction's row has no key to match its renewal by: %q, %v", key, err)
+	}
 	held := make(chan struct{})
 	releaseRenewal := victim.keep.HoldStatement(func(sent []byte) bool {
 		if !bytes.Contains(sent, []byte("UPDATE subtitle_jobs s SET lease_expires_at")) || !bytes.Contains(sent, []byte(key)) {

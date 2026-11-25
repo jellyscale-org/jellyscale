@@ -59,8 +59,9 @@ func (s *scannedFilm) holdsAnObjectNotIn(before map[string]int64) bool {
 }
 
 // takeTheAssetSweepsTurn is the test taking the turn to sweep the asset stores (sweeps, claimSweep) for the next nine
-// minutes, so that no worker of the test sweeps them on its own: the turn is a row that outlives the test's rows and is
-// free again nine minutes after the last worker of any earlier test took it, which can be when this test's worker starts,
+// minutes (0.9 of the ten sweep periods of a minute that assetSweepEvery makes), so that no worker of the test sweeps
+// them on its own: the turn is a row that outlives the test's rows and is free again nine minutes after the last worker
+// of any earlier test took it, which can be when this test's worker starts,
 // and that sweep removes the replaced file's track before the test's own sweep or its wait is ready for it. The
 // test's own Sweep takes no turn.
 func (s *scannedFilm) takeTheAssetSweepsTurn(t *testing.T) {
