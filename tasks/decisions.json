@@ -824,7 +824,7 @@
       "brief": "none: applies the owner's access decisions of 2026-11-16 (.results/access-model-fable-2026-11-16.md): an administrator manages accounts but never browses, plays or reports as another user; a viewer sees no other viewer's name.",
       "tradeoff": "A non-administrator naming an id that is no user on the Configuration routes got 404 as on Jellyfin and now gets 403, so the answer does not say whether the id is a user. No client sends it.",
       "decision": "accept",
-      "entry": "JS-127 criterion 27 amends one case of the JS-116 replay (expectedOf) for this; every other case unchanged.",
+      "entry": "JS-127 criterion 26 amends one case of the JS-116 replay (expectedOf) for this; every other case unchanged.",
       "serves": "Owner, 2026-11-16: access model. PRODUCT.md: 'Nothing but static artwork is reached without authorization.'"
     }
   ]
