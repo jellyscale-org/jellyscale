@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 import { wholeLine } from "./shard.mjs";
 import { recordResponses } from "./conform.mjs";
 import { configure, login } from "./player.mjs";
-import { tmpdir } from "node:os";
+import { keepFailure, watch } from "./evidence.mjs";
 
 const require = createRequire(`${process.cwd()}/`);
 const { chromium } = require("playwright-core");
@@ -14,6 +14,7 @@ const [base, user, password] = process.argv.slice(2);
 configure({ base, user, password });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? "/usr/bin/chromium", args: ["--disable-gpu"] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+watch(page.context(), base);
 recordResponses(page, base);
 
 const failures = [];
@@ -39,7 +40,7 @@ async function step(name, action) {
   } catch (error) {
     failures.push(`${name}: ${error.message.split("\n")[0]}`);
     console.log(`FAIL  ${name} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
-    await page.screenshot({ path: `${tmpdir()}/jellyscale-e2e-failure.png` }).catch(() => {});
+    await keepFailure(name, began);
   }
 }
 

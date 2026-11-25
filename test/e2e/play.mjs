@@ -11,6 +11,7 @@ import {
 } from "./player.mjs";
 import { waitFor } from "./player.mjs";
 import { configure, time } from "./player.mjs";
+import { keepFailure, watch } from "./evidence.mjs";
 
 const require = createRequire(`${process.cwd()}/`);
 const { chromium } = require("playwright-core");
@@ -30,6 +31,7 @@ configure({ base, user, password });
 
 async function newSession() {
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  watch(context, base);
   const page = await context.newPage();
   recordResponses(page, base);
   const seen = { videos: [], errors: [], sockets: [], frames: [] };
@@ -59,6 +61,7 @@ async function step(name, action) {
   } catch (error) {
     failures.push(`${name}: ${error.message.split("\n")[0]}`);
     console.log(`FAIL  ${name}: ${error.message.split("\n")[0]} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
+    await keepFailure(name, began);
   }
 }
 

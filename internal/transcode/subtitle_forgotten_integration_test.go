@@ -3,6 +3,7 @@
 package transcode
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -329,8 +330,8 @@ func TestAStoppedWorkersSubtitleExtractionIsTakenOverOnlyOnceItsLastLeaseHasRunO
 // ends the ffmpeg of its extraction before another worker's ffmpeg for the row
 // starts, moves no cut lease later even when a renewal it had already sent reaches
 // Postgres after the reap, and writes nothing to the row once another worker has
-// claimed it. The interleaving is forced: the keeper's connection is held with a
-// renewal on it, the lock is cut, and the renewal is let go once the row is gone.
+// claimed it. The interleaving is forced: the next renewal of the extraction's row is
+// kept from Postgres, the lock is cut, and the renewal is let go once the row is gone.
 func TestAWorkerForgottenWhileItLivesEndsItsExtractionAndItsLateRenewalMovesNoCutLeaseLater(t *testing.T) {
 	overlaps := subtitleShim(t)
 	s := newStack(t, 3, "JELLYSCALE_TEST_SUBTITLES=1", "JELLYSCALE_TEST_LEASE=10s", "JELLYSCALE_TEST_HEARTBEAT=3s")
@@ -354,17 +355,37 @@ func TestAWorkerForgottenWhileItLivesEndsItsExtractionAndItsLateRenewalMovesNoCu
 	if victim == nil {
 		t.Fatalf("the extraction is run by %q, not one of the workers", owner)
 	}
-	// The renewal the check lets go late: held on the keeper's connection once it is sent.
-	sent := len(victim.keep.Statements())
-	victim.keep.Hold()
-	waitFor(t, "a renewal to be on the held keeper connection", 30*time.Second, func() bool { return len(victim.keep.Statements()) > sent })
+	// The renewal the check lets go late: the next lease renewal of the extraction's row
+	// is kept from Postgres, on the keeper's connection, until the worker is forgotten.
+	// The proxy asks the matcher as the statement arrives, under its own lock, so the
+	// close below is the moment this statement, and no other, is held.
+	var key string
+	r.pool.QueryRow(context.Background(), "SELECT key FROM subtitle_jobs WHERE state = 'running' AND kind = 'track'").Scan(&key) //nolint:errcheck
+	held := make(chan struct{})
+	releaseRenewal := victim.keep.HoldStatement(func(sent []byte) bool {
+		if !bytes.Contains(sent, []byte("UPDATE subtitle_jobs s SET lease_expires_at")) || !bytes.Contains(sent, []byte(key)) {
+			return false
+		}
+		close(held)
+		return true
+	})
+	t.Cleanup(releaseRenewal)
+	waitFor(t, "a lease renewal of the extraction's row to be held from Postgres", 30*time.Second, func() bool {
+		select {
+		case <-held:
+			return true
+		default:
+			return false
+		}
+	})
 	victim.live.CutServers() // The lock is gone and the connection stands,
 	victim.live.Refuse(true) // and it cannot lock again until the check lets it.
 	t.Cleanup(func() { victim.live.Refuse(false) })
 	s.forgottenAt(t, owner)
 	var cutLease time.Time
 	r.pool.QueryRow(context.Background(), "SELECT lease_expires_at FROM subtitle_jobs WHERE kind = 'track'").Scan(&cutLease) //nolint:errcheck
-	victim.keep.Release()                                                                                                    // The renewal reaches Postgres after the reap.
+	// The renewal reaches Postgres after the reap.
+	releaseRenewal()
 
 	// The cut lease never moves later while the row is still the victim's.
 	deadline := time.Now().Add(60 * time.Second)

@@ -15,6 +15,9 @@
 //   PUT /__router  {"api": [ports], "stream": [ports], "throttle": bytesPerSecond, "fallback": true}   a part may be left out
 //   PUT /__router  {"reset": true}                                                   the lists the router started with
 //   GET /__router                                                                    {"api": [{port, up}], "stream": [...], "throttle": n, "fallback": bool}
+//   GET /__router/requests                                                           {"requests": [...]}: the last 20000 requests the router received, in order, each
+//     {id, at (epoch ms), method, url, status (null until a header is sent), routed, backend, ended ("complete", "client closed", "upstream failed" or null while it runs)}.
+//     A failed scenario reads it to say what the router answered for each request the browser reported failed (test/e2e/evidence.mjs).
 // fallback does what the shipped Caddyfile's handle_errors does when no replica of a role is ready (Postgres has been
 // away from all of them over 30 seconds, JS-085): send to every replica of the role, whatever /readyz says, and a
 // replica that refuses the connection is passed over by the retry. Off by default, where the router answers 503 itself.
@@ -35,6 +38,17 @@ let throttle = 0;
 let fallback = false;
 let faults = [];
 const next = { stream: 0, api: 0 };
+const log = [];
+const logLimit = 20000;
+let logged = 0;
+
+// A request is written down as it arrives and filled in as it is answered.
+function record(req) {
+  const entry = { id: ++logged, at: Date.now(), method: req.method, url: req.url, status: null, routed: null, backend: null, ended: null };
+  log.push(entry);
+  if (log.length > logLimit) log.shift();
+  return entry;
+}
 
 function setBackends(role, ports) {
   backends[role] = ports.map((port) => backends[role].find((b) => b.port === port) ?? { port, up: false });
@@ -96,11 +110,17 @@ function control(req, res) {
 }
 
 const server = http.createServer((req, res) => {
+  if (req.url.startsWith("/__router/requests")) {
+    res.writeHead(200, { "content-type": "application/json" });
+    return res.end(JSON.stringify({ requests: log }));
+  }
   if (req.url.startsWith("/__router")) return control(req, res);
+  const entry = record(req);
+  res.on("close", () => { entry.ended ??= res.writableFinished ? "complete" : "client closed"; });
   // The body is read first, so a request can go to another replica when the first one is not there.
   const chunks = [];
   req.on("data", (c) => chunks.push(c));
-  req.on("end", () => forward(req, res, Buffer.concat(chunks), []));
+  req.on("end", () => forward(req, res, Buffer.concat(chunks), [], entry));
 });
 
 // The rule that spoils this request, if any.
@@ -116,15 +136,17 @@ function faultFor(req) {
   return null;
 }
 
-function forward(req, res, body, tried) {
+function forward(req, res, body, tried, entry) {
   const fault = tried.length ? null : faultFor(req);
   if (fault && /^\d+$/.test(fault.mode)) {
+    Object.assign(entry, { status: Number(fault.mode), routed: "fault" });
     res.writeHead(Number(fault.mode), { "x-routed-to": "fault" });
     return res.end();
   }
   if (fault?.mode === "stall") return; // The socket stays open and silent until the client closes it.
   const target = pick(req.url, tried);
   if (!target) {
+    Object.assign(entry, { status: tried.length ? 502 : 503, routed: "none" });
     res.writeHead(tried.length ? 502 : 503, { "x-routed-to": "none" });
     return res.end();
   }
@@ -132,6 +154,7 @@ function forward(req, res, body, tried) {
   const upstream = http.request(
     { host: "127.0.0.1", port: backend.port, method: req.method, path: req.url, headers: req.headers, agent: false },
     (response) => {
+      Object.assign(entry, { status: response.statusCode, routed: name, backend: backend.port });
       res.writeHead(response.statusCode, { ...response.headers, "x-routed-to": name, "x-backend": String(backend.port) });
       if (fault?.mode === "cut") {
         const half = Number(response.headers["content-length"] ?? 0) / 2;
@@ -154,8 +177,8 @@ function forward(req, res, body, tried) {
         response.pipe(res);
       }
       // A replica that dies under a response ends it for the client too, as a dropped connection does.
-      response.on("aborted", () => res.destroy());
-      response.on("error", () => res.destroy());
+      response.on("aborted", () => { entry.ended = "upstream failed"; res.destroy(); });
+      response.on("error", () => { entry.ended = "upstream failed"; res.destroy(); });
       // A client that goes away must cancel the upstream read.
       res.on("close", () => response.destroy());
     });
@@ -166,10 +189,11 @@ function forward(req, res, body, tried) {
   let clientGone = false;
   upstream.on("error", (error) => {
     if (clientGone) return;
-    if (res.headersSent) return res.destroy();
+    if (res.headersSent) { entry.ended = "upstream failed"; return res.destroy(); }
     backend.up = false;
     // A replica that refused the connection got nothing; a GET or HEAD is safe to ask another replica for.
-    if (error.code === "ECONNREFUSED" || req.method === "GET" || req.method === "HEAD") return forward(req, res, body, [...tried, backend]);
+    if (error.code === "ECONNREFUSED" || req.method === "GET" || req.method === "HEAD") return forward(req, res, body, [...tried, backend], entry);
+    Object.assign(entry, { status: 502, routed: name, backend: backend.port });
     res.writeHead(502, { "x-routed-to": name, "x-backend": String(backend.port) });
     res.end();
   });
@@ -178,12 +202,17 @@ function forward(req, res, body, tried) {
 }
 
 // WebSocket upgrades are tunnelled byte for byte.
-server.on("upgrade", (req, socket, head) => tunnel(req, socket, head, []));
+server.on("upgrade", (req, socket, head) => {
+  const entry = record(req);
+  socket.on("close", () => { entry.ended ??= "complete"; });
+  tunnel(req, socket, head, [], entry);
+});
 
-function tunnel(req, socket, head, tried) {
+function tunnel(req, socket, head, tried, entry) {
   const target = pick(req.url, tried);
   if (!target) return socket.destroy();
   const upstream = net.connect(target.backend.port, "127.0.0.1", () => {
+    Object.assign(entry, { status: 101, routed: target.name, backend: target.backend.port });
     let raw = `${req.method} ${req.url} HTTP/1.1\r\n`;
     for (let i = 0; i < req.rawHeaders.length; i += 2) raw += `${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}\r\n`;
     upstream.write(`${raw}\r\n`);
@@ -193,7 +222,7 @@ function tunnel(req, socket, head, tried) {
   });
   upstream.on("error", (error) => {
     target.backend.up = false;
-    if (error.code === "ECONNREFUSED" && !socket.destroyed) return tunnel(req, socket, head, [...tried, target.backend]);
+    if (error.code === "ECONNREFUSED" && !socket.destroyed) return tunnel(req, socket, head, [...tried, target.backend], entry);
     socket.destroy();
   });
   socket.on("error", () => upstream.destroy());
