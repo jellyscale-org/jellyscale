@@ -16,7 +16,7 @@
 //   PUT /__router  {"reset": true}                                                   the lists the router started with
 //   GET /__router                                                                    {"api": [{port, up}], "stream": [...], "throttle": n, "fallback": bool}
 //   GET /__router/requests                                                           {"requests": [...]}: the last 20000 requests the router received, in order, each
-//     {id, at (epoch ms), method, url, status (null until a header is sent), routed, backend, ended ("complete", "client closed", "upstream failed" or null while it runs)}.
+//     {id, at (epoch ms), method, url, status (null until a header is sent), routed, backend, ended ("complete", "client closed", "upstream failed", "fault cut" or null while it runs), endedAt}.
 //     A failed scenario reads it to say what the router answered for each request the browser reported failed (test/e2e/evidence.mjs).
 // fallback does what the shipped Caddyfile's handle_errors does when no replica of a role is ready (Postgres has been
 // away from all of them over 30 seconds, JS-085): send to every replica of the role, whatever /readyz says, and a
@@ -44,7 +44,7 @@ let logged = 0;
 
 // A request is written down as it arrives and filled in as it is answered.
 function record(req) {
-  const entry = { id: ++logged, at: Date.now(), method: req.method, url: req.url, status: null, routed: null, backend: null, ended: null };
+  const entry = { id: ++logged, at: Date.now(), method: req.method, url: req.url, status: null, routed: null, backend: null, ended: null, endedAt: null };
   log.push(entry);
   if (log.length > logLimit) log.shift();
   return entry;
@@ -116,7 +116,7 @@ const server = http.createServer((req, res) => {
   }
   if (req.url.startsWith("/__router")) return control(req, res);
   const entry = record(req);
-  res.on("close", () => { entry.ended ??= res.writableFinished ? "complete" : "client closed"; });
+  res.on("close", () => { entry.ended ??= res.writableFinished ? "complete" : "client closed"; entry.endedAt = Date.now(); });
   // The body is read first, so a request can go to another replica when the first one is not there.
   const chunks = [];
   req.on("data", (c) => chunks.push(c));
@@ -164,7 +164,7 @@ function forward(req, res, body, tried, entry) {
           const piece = chunk.subarray(0, Math.max(1, half - sent));
           sent += piece.length;
           res.write(piece);
-          if (sent >= half) setTimeout(() => res.destroy(), 50);
+          if (sent >= half) setTimeout(() => { entry.ended ??= "fault cut"; res.destroy(); }, 50);
         });
       } else if (throttle && isDirectPlay(req.url)) {
         response.on("data", (chunk) => {
@@ -206,7 +206,7 @@ function forward(req, res, body, tried, entry) {
 // WebSocket upgrades are tunnelled byte for byte.
 server.on("upgrade", (req, socket, head) => {
   const entry = record(req);
-  socket.on("close", () => { entry.ended ??= "complete"; });
+  socket.on("close", () => { entry.ended ??= "complete"; entry.endedAt = Date.now(); });
   tunnel(req, socket, head, [], entry);
 });
 

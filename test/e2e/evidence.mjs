@@ -11,17 +11,23 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 const recorders = new Set();
 // A token wherever it is written: a query value (ApiKey=, api_key=, token=), a header or a JSON key (X-Emby-Token: ...,
 // "AccessToken": "..."), the Token="..." of an Authorization value.
-const secret = /(api_?key|access_?token|x-emby-token|x-mediabrowser-token|token)(["']?\s*[=:]\s*["']?)[^&\s"',;}]+/gi;
-const redact = (text) => String(text).replace(secret, "$1$2…");
+// The separator and quotes are written plainly, JSON-escaped (\" ) or percent-encoded (%3D, %3A, %22, %5C%22); the value
+// ends at a terminator in any of those forms.
+const quote = String.raw`(?:\\*["']|%5[Cc]%22|%22|%27)?`;
+const separator = String.raw`\s*(?:[=:]|%3[Dd]|%3[Aa])\s*`;
+const secret = new RegExp(String.raw`(api_?key|access_?token|x-emby-token|x-mediabrowser-token|token)(${quote}${separator}${quote})(?:(?!%22|%27|%2[Cc]|%26|%7[Dd])[^&\s"',;}\\])+`, "gi");
+export const redact = (text) => String(text).replace(secret, "$1$2…");
 
 // Starts recording what the context's pages do, for the requests to base: call it once for each context a gate opens.
 // A page the scenario opens later is recorded too.
 export function watch(context, base) {
-  const recorder = { base, began: Date.now(), events: [], requests: [], answers: [], failed: [], sockets: [], console: [], errors: [], context, late: [], closed: false };
+  const recorder = { base, began: Date.now(), events: [], requests: [], answers: [], failed: [], sockets: [], console: [], errors: [], context, late: [], closed: false, open: new Set() };
   recorders.add(recorder);
   const since = () => Date.now() - recorder.began;
   const note = (what) => recorder.events.push({ at: since(), what: redact(what) });
-  const ours = (url) => url.startsWith(base);
+  // The same origin as base, not the same beginning: 127.0.0.1:4104 is not 127.0.0.1:41041.
+  const origin = new URL(base).origin;
+  const ours = (url) => { try { return new URL(url).origin === origin; } catch { return false; } };
   const attach = (page) => {
     page.on("console", (message) => {
       const where = message.location().url ? ` (${redact(message.location().url)}:${message.location().lineNumber})` : "";
@@ -39,6 +45,7 @@ export function watch(context, base) {
       const entry = { at: since(), started: Date.now(), method: request.method(), url: redact(request.url()), range: request.headers().range };
       recorder.requests.push(entry);
       request.evidence = entry;
+      recorder.open.add(request);
       note(`request ${entry.method} ${entry.url}${entry.range ? ` ${entry.range}` : ""}`);
     });
     page.on("response", (response) => {
@@ -48,10 +55,15 @@ export function watch(context, base) {
       recorder.answers.push(entry);
       note(`answer ${entry.status} ${entry.method} ${entry.url} from ${entry.routed ?? "?"}`);
     });
+    page.on("requestfinished", (request) => recorder.open.delete(request));
     page.on("requestfailed", (request) => {
+      recorder.open.delete(request);
       if (!ours(request.url())) return;
       const url = new URL(request.url());
-      const entry = { at: since(), started: request.evidence?.started ?? Date.now(), failedAt: Date.now(), method: request.method(), path: url.pathname, target: url.pathname + url.search, origin: url.origin, error: request.failure()?.errorText };
+      // The earlier of when this side saw the request and when the browser says it began it (an event can be late).
+      const began = request.timing().startTime;
+      const started = Math.min(request.evidence?.started ?? Date.now(), began > 0 ? began : Infinity);
+      const entry = { at: since(), started, failedAt: Date.now(), method: request.method(), path: url.pathname, target: url.pathname + url.search, origin: url.origin, error: request.failure()?.errorText };
       recorder.failed.push(entry);
       note(`request failed ${entry.method} ${redact(entry.target)} ${entry.error}`);
     });
@@ -100,35 +112,56 @@ function stemFor(name) {
   }
 }
 
-// What the router said of each request, from its log: the one for the same request, nearest to when the browser sent it.
+// What the router said of each request, from its log. A log that cannot be read says why.
 async function routerAnswers(origins) {
   const logs = new Map();
   for (const origin of origins) {
-    logs.set(origin, await fetch(`${origin}/__router/requests`).then((response) => response.json()).then((body) => body.requests).catch(() => null));
+    try {
+      const response = await fetch(`${origin}/__router/requests`, { signal: AbortSignal.timeout(3000) });
+      logs.set(origin, { log: (await response.json()).requests });
+    } catch (error) {
+      logs.set(origin, { error: error.name === "TimeoutError" ? "no answer in 3 s" : error.message });
+    }
   }
   return logs;
 }
 
+// A router entry can be the failed request's only if the router received it when or after the browser began it (a few
+// ms of clock and event-order slack) and it had not ended before then: an earlier identical request is another one.
+const slack = 25;
+const answers = (failed, entry) => entry.method === failed.method && entry.url === failed.target
+  && entry.at >= failed.started - slack && entry.at <= failed.failedAt + slack && !(entry.endedAt && entry.endedAt < failed.started - slack);
+
 function describeAnswer(failed, entry) {
   if (!entry) return "the router received no such request";
   if (!entry.status) return `the router received it ${Math.max(0, entry.at - failed.started)} ms after the browser sent it and sent no answer`;
-  const ending = entry.ended === "client closed" ? ", and the client closed it before the end" : entry.ended === "upstream failed" ? ", and the replica's response broke" : "";
-  return `the router answered ${entry.status} from ${entry.routed} (backend port ${entry.backend ?? "none"})${ending}`;
+  const endings = { "client closed": ", and the client closed it before the end", "upstream failed": ", and the replica's response broke", "fault cut": ", and the router cut it on purpose (a fault)" };
+  return `the router answered ${entry.status} from ${entry.routed} (backend port ${entry.backend ?? "none"})${endings[entry.ended] ?? ""}`;
 }
 
-// Prints the line of each request the browser reported failed in the failing step or scenario, with the router's answer. A router entry answers one
-// request only.
+// Prints the line of each request the browser reported failed in the failing step or scenario, with the router's answer.
+// A router entry answers one request only.
 async function printFailedRequests(failures) {
   if (!failures.length) return;
   const logs = await routerAnswers(new Set(failures.map((failed) => failed.origin)));
   const used = new Set();
   for (const failed of failures) {
-    const log = logs.get(failed.origin);
-    const near = (log ?? []).filter((entry) => !used.has(entry) && entry.method === failed.method && entry.url === failed.target && entry.at >= failed.started - 1000 && entry.at <= failed.failedAt + 1000);
+    const { log, error } = logs.get(failed.origin);
+    const near = (log ?? []).filter((entry) => !used.has(entry) && answers(failed, entry));
     near.sort((a, b) => Math.abs(a.at - failed.started) - Math.abs(b.at - failed.started));
     if (near[0]) used.add(near[0]);
-    const answer = log ? describeAnswer(failed, near[0]) : "the router's log could not be read";
-    console.log(`      requestfailed ${failed.method} ${failed.path}: ${failed.error}; ${answer}`);
+    const answer = log ? describeAnswer(failed, near[0]) : `the router's log could not be read (${error})`;
+    console.log(`      requestfailed ${failed.method} ${redact(failed.target)}: ${failed.error}; ${answer}`);
+  }
+}
+
+// Playwright delivers a request's failure after the page's own answer to the step may have: wait, on the failure path
+// only and for at most 1.5 s, until every request the live pages sent has finished or failed.
+async function settle(live) {
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  const deadline = Date.now() + 1500;
+  while (live.some((recorder) => !recorder.closed && recorder.open.size) && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 50));
   }
 }
 
@@ -139,8 +172,18 @@ async function printFailedRequests(failures) {
 // failed requests printed and kept as "failed" are those since startedAt, and the console and the timeline, kept
 // whole, say where the step began; the failed requests before it are apart, as "failedEarlier".
 export async function keepFailure(name, startedAt = 0) {
+  try {
+    await keep(name, startedAt);
+  } catch (error) {
+    // The failure being kept is the one that matters: a gate goes on past an evidence it could not write.
+    console.log(`      evidence could not be kept: ${error.message}`);
+  }
+}
+
+async function keep(name, startedAt) {
   const live = [...recorders].filter((recorder) => !recorder.closed || recorder.began >= startedAt);
   if (!live.length) return;
+  await settle(live);
   const stem = stemFor(name);
   const files = [];
   const write = (suffix, content) => { writeFileSync(`${stem}${suffix}`, content); files.push(suffix); };
