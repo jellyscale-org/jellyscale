@@ -40,16 +40,13 @@ sudo apt-get -o Acquire::Retries=3 update
 # --reinstall: a package the runner image already has (fontconfig, fonts-dejavu-core) is
 # otherwise never downloaded, so it would leave no .deb and every later run would miss.
 # A runner image can carry a newer exact-version dependency than the mirror's
-# package. --allow-downgrades alone lets apt accept the older version but does
-# not make it choose one (merge-group run 45736550858; PR 285's first fix). The
-# cached .debs may already have installed an older Mesa driver, whose exact
-# mesa-libgallium must come down to the same version. Pin both to the installed
-# driver (or the mirror's candidate when none is installed).
+# package, and a cached .deb can carry an older one the mirror no longer has
+# (merge-group run 45736550858; PR 285). --allow-downgrades alone lets apt accept
+# the older version but does not make it choose a coherent pair. Pin the Mesa
+# driver and its exact mesa-libgallium to the mirror's candidate, which upgrades
+# a stale cached driver to the library the runner already has.
 packages=("$@")
-driver_version=$(dpkg-query -W -f='${Version}' mesa-va-drivers 2>/dev/null || true)
-if [[ -z $driver_version ]]; then
-  driver_version=$(apt-cache policy mesa-va-drivers 2>/dev/null | sed -n 's/^  Candidate: //p' | head -1)
-fi
+driver_version=$(apt-cache policy mesa-va-drivers 2>/dev/null | sed -n 's/^  Candidate: //p' | head -1)
 if [[ -n $driver_version ]]; then
   packages+=("mesa-va-drivers=$driver_version" "mesa-libgallium=$driver_version")
 fi
