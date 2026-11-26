@@ -815,6 +815,72 @@
       "decision": "keep (option A, amended)",
       "entry": "B and C are rejected for now: no cause found was load, and C's trigger decides integration shards on pull requests (D-069), not B. The 10 counted runs start with the first queued after d7dbeeb, not at JS-175's merge. The count gains a load verdict; two or more in 10 bring one process per shard job back as a priced brief. JS-175 is trimmed: criterion 1's rows owned by a merged task or the queued PR carry run, test and verdict only; criterion 4 reproduces only product suspects, 2 hours each and 4 in all; criterion 6 is counted in the 10 runs; criterion 5's 10-minute rule is applied to the measured time of the next three successful runs (35 minutes or more splits the process). A pull request that adds or changes integration tests runs ci:full once before it is queued. Reopens on: the count.",
       "serves": "Owner, 2026-11-22: nothing outruns the product. D-050: never CI capacity or a longer bound. D-058, D-069. PRODUCT.md quality bar: 'Failure modes are designed, tested and reported.'"
+    },
+    {
+      "id": "D-076",
+      "date": "2026-11-25",
+      "by": "owner",
+      "task": "the build workflow and every role; Fable 5.2 advice",
+      "brief": "Owner, 2026-11-25: Claude usage reset weekly; use Anthropic where appropriate but mix in OpenCode Go and zero-cost models; Fable 5.2 is the product owner's default again; when the lead is consistently stuck, consult Fable 5.2 blind with minimal context and have it delegate finding and reading.",
+      "tradeoff": "Free OpenCode Go builders and QA may be weaker than Sonnet 5.5, and a host that cannot reach them needs a documented fallback. Fable advice costs its input and output, so it sees only the question and the minimum evidence and delegates reading to cheaper models.",
+      "decision": "accept",
+      "entry": "Refine and Check on claude-agent/opus high; Spec, architecture, adversarial and UX on claude-agent/sonnet high; Build/Fix and helpers on OpenCode Go hy4-flash-free; QA on OpenCode Go beam-free; product owner and advisor on claude-agent/fable high. The Claude Agent provider uses the weekly allowance, not the Anthropic API balance. A host that cannot reach an OpenCode model runs that role on claude-agent/sonnet and records the substitution. The advisor is blind, gets minimal context, and must use Task to delegate any finding or reading to cheaper models.",
+      "serves": "PRODUCT.md quality bar; the weekly model budget; 'A claim of working means a real client or a real store exercised it.'"
+    },
+    {
+      "id": "D-080",
+      "date": "2026-11-26",
+      "by": "owner",
+      "task": "the plan; every task",
+      "brief": "Owner, 2026-11-26: priorities and the order of tasks are the product owner's responsibility, not the lead's. The lead moved JS-039 for OIDC without asking.",
+      "tradeoff": "The lead loses the ability to reprioritise promptly, and every reorder costs a product-owner brief. In return the plan's order stays a product decision.",
+      "decision": "accept",
+      "entry": "The lead never edits a task's priority, moves a task in tasks/prd.json, or decides what is built next. It brings the product owner a brief with the options and costs. The OIDC move (formerly D-077) is reverted and returned to the product owner for a decision.",
+      "serves": "Owner, 2026-11-26; PRODUCT.md's plan order."
+    },
+    {
+      "id": "D-081",
+      "date": "2026-11-26",
+      "by": "product-owner",
+      "task": "JS-039",
+      "brief": "Lead's brief: JS-039 sat at 68, behind every open task, depending on JS-037 (29, in Refine/Spec). No OIDC exists. Options: keep 68 (A); 30, directly after the identity tasks (B); 36, after the household and capacity set (C); split off a first slice (D). How many households run an identity provider is unverified: no dogfood or issue data either way.",
+      "tradeoff": "A delays nobody, but single sign-on arrives after stages 4 to 6 of a road that puts it in stage 3. Every household with a provider keeps a second password per viewer, and its operator keeps accounts by hand in two places, indefinitely. B gives those households sign-on one task after Quick Connect, but the household set (30 onward) waits one build longer, and that set has a waiting household behind it (D-056) where OIDC has none. C gives it about six tasks later than B, and delays nothing a viewer is waiting on. JS-056 and the tasks at 37 to 46 (GPU, preset, autoscaling signal, measurement) each wait one build longer, a cost to operators. D has no slice worth a viewer's time: web sign-in without the TV code leaves an OIDC viewer with no password and no way onto a TV, so the smallest useful slice is both criteria, which is the whole task. Given up under C: households with a provider wait through the household and capacity set, and operators wait one build longer for example sizes and what follows.",
+      "decision": "change (option C)",
+      "entry": "JS-039 moves from 68 to 36, after JS-178. JS-056 moves to 37, and the tasks at 37 to 46 each move down one. B is rejected because the household set has a waiting household and OIDC has only the promise. A is rejected because last place puts a stage 3 promise behind stages 4 to 6 with no data to justify it. D is rejected, and JS-039 is not split. Its criteria stay the two it has, with its own guessing bound (note of 2026-11-19) and no cookie (invariant 63). Provider groups, several providers and account provisioning rules do not enter it; each needs a household asking. Reopens on: a household with an identity provider waiting to move in, or an issue from one (JS-039 goes to 30, option B); the dogfood read of D-072 showing a viewer stalled or refused (capacity goes ahead, D-073); JS-037's Refine showing the TV code cannot serve an account without a password (JS-039's second criterion is priced in a brief before JS-037 builds).",
+      "serves": "PRODUCT.md: 'Signing in is easy and safe. A password, a code entered on the TV from a phone, or the household's own single sign-on'; road stage 3, 'People: accounts, sign-in by code and single sign-on', ahead of stages 4 to 6. Owner, 2026-11-20: a request alone is not evidence of need. Owner, 2026-11-22: nothing outruns the product. D-056, D-073."
+    },
+    {
+      "id": "D-082",
+      "date": "2026-11-26",
+      "by": "product-owner",
+      "task": "JS-039, JS-037; BL-209, BL-229",
+      "brief": "Owner's direction: two sign-in journeys (Jellyfin parity; OIDC with a TV code or QR approved on a signed-in device), same behaviour after sign-in. Four questions: the framing, a device-authorization grant in JS-039, account mapping, priority.",
+      "tradeoff": "Given up by viewers: a QR on the TV. Unmodified Jellyfin TV apps draw Quick Connect's six digits, and none starts a device-authorization grant, so that endpoint would serve no supported client. Given up by operators: removing someone at the provider stops new sign-ins only, and issued tokens run until the user is disabled in jellyscale. Also given up: group-driven roles and libraries, and a second provider.",
+      "decision": "change",
+      "entry": "Framing accepted. 'Same' means either journey ends in an ordinary per-device token, sent on every media request (D-026) and never in a cookie (invariant 63). Session, device list, watch state, library access (JS-036) and revocation (JS-033) follow the jellyscale user, never the journey. No device-authorization grant: Quick Connect is the TV journey for both account kinds, a code on the TV approved from a device signed in by password or provider. Mapping in scope: one provider declared in configuration, identity as issuer plus subject; a first sign-in links the local user whose name equals the provider's username claim, keeping watch state, as migrated users without passwords arrive; provisioning a default-policy viewer is a configuration switch, off by default. Mapping out: linking by email, groups to administrator or libraries, an admission group (the provider's application policy does it), several providers, provider logout or session expiry ending tokens. JS-039 stays one task, directly after JS-178 and ahead of JS-056. Reopens on a client that authorizes every media request drawing a QR or shipping the grant (BL-229, then a brief); an operator report of provider offboarding not cutting access, of a provider that cannot limit who uses the application, or of two providers in use.",
+      "serves": "PRODUCT.md: 'A password, a code entered on the TV from a phone, or the household's own single sign-on, and only the libraries they are allowed to see'; goal 3, 'Current Jellyfin clients that authorize every request work unmodified'; the non-goal 'A client that works only with jellyscale'; invariant 63. Owner, 2026-11-22: nothing outruns the product."
+    },
+    {
+      "id": "D-083",
+      "date": "2026-11-26",
+      "by": "product-owner",
+      "task": "JS-039, JS-037; BL-229, BL-279",
+      "brief": "New fact: Octave could draw a QR on the TV and finish an OIDC device-authorization grant, approved on another device through the household's provider. Four questions: does this lift D-082's rejection; what the server would provide; how it sits beside Quick Connect; JS-039's priority and criteria.",
+      "tradeoff": "Given up by viewers: a QR on Octave's sign-in screen, until Octave's project commits to drawing one. Nobody is locked out, since a provider account already reaches Octave by Quick Connect's code (D-082). Given up for good: a standard device grant any generic OIDC client could call, because no such client plays films here. Unverified: whether jellyfin-web's approval page takes a code from its address; which households' providers offer the grant; how many Octave users sit at a TV (PRODUCT.md calls it a desktop client).",
+      "decision": "keep",
+      "entry": "D-082 stands, and the grant is rejected as a second protocol, not deferred. 'Could' is not use, and no jellyscale work goes in for Octave (D-027). If a QR comes, it carries Quick Connect's own code in a link: one code, one expiry, one guessing bound, one approval, one ordinary token. A grant at jellyscale would be a second pending-code machine for the same outcome. A grant at the provider would make a provider token a credential, work only where the provider offers it, and move approval to where jellyscale cannot name the device. D-082's trigger is corrected, because 'ships the grant' can never fire for something that needs the server first. BL-229 is promoted when the project of a client that authorizes every media request states in an issue that it will draw the QR. It then becomes its own task directly after JS-039 (after JS-037 if JS-039 is not built), never a criterion of either. Product terms on promotion: the link opens the approval with the code filled in; a signed-out device signs in by password or provider and returns to the approval; the page names the device and app, and approves only on an explicit confirmation, never on opening; a page jellyscale serves lives under /jellyscale/v1/, documented. The TV shows one code, with a QR of the same code where the client draws one, never two flows. JS-039 keeps priority 36, its dependencies and its eight criteria. The grant itself reopens on a supported client that cannot speak Quick Connect, or an operator report of a provider policy that requires the provider's own device page.",
+      "serves": "PRODUCT.md: 'A password, a code entered on the TV from a phone, or the household's own single sign-on'; 'Octave first... (no jellyscale work goes in for it)'; 'what jellyscale adds beyond Jellyfin's API is something it can use, never something it needs'; 'Signing in is easy and safe'. Owner, 2026-11-22: nothing outruns the product."
+    },
+    {
+      "id": "D-084",
+      "date": "2026-11-26",
+      "by": "owner",
+      "task": "model routing; every task",
+      "brief": "Owner, 2026-11-26: Fable 5.2 usage in the Claude allowance is too high. Keep Fable for the state-of-the-art check, but make that check less frequent and use cheaper models for the work.",
+      "tradeoff": "Fewer Fable calls can miss a product trade-off until the next phase gate, and a batched decision can be less tailored than a per-task one. In return, the expensive model reviews direction and true trade-offs rather than routine confirmations.",
+      "decision": "accept",
+      "entry": "Fable is called at most once per phase, and only for a new product trade-off, a direction review, or a decision not derivable from a recorded decision. All pending questions are batched into that call. Routine priority confirmations, single decisions covered by a decision id, and per-task checks do not use Fable. The advisor has the same budget: one call per task after two failed attempts on the same question. Opus 5.5 remains the per-task Refine and Check model; Sonnet 5.5 carries architecture, adversarial and UX review; Build/Fix, QA and helpers use zero-cost OpenCode Go models. Escalation to Fable happens only when those disagree or a product trade-off remains. If a Fable call would only confirm existing policy, the lead cites the decision and does not call.",
+      "serves": "Owner, 2026-11-26; the Claude allowance; PRODUCT.md quality bar."
     }
   ]
 }

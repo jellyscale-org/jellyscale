@@ -243,7 +243,7 @@
       "passes": false,
       "dependsOn": [],
       "source": "PRODUCT.md identity",
-      "notes": "Requested by Fluster, the client that ships with jellyscale: #104. Access: approval is own, an administrator included. (access model, 2026-11-16) Needs its own guessing bound, following JS-145's design (product owner, 2026-11-19). Findroid is dropped as a target: the second client is one that sends its token on media requests (owner, 2026-11-20, D-026)."
+      "notes": "Requested by Fluster, the client that ships with jellyscale: #104. Access: approval is own, an administrator included. (access model, 2026-11-16) Needs its own guessing bound, following JS-145's design (product owner, 2026-11-19). Findroid is dropped as a target: the second client is one that sends its token on media requests (owner, 2026-11-20, D-026). D-082: the TV journey for password and provider accounts alike."
     },
     {
       "id": "JS-038",
@@ -264,19 +264,26 @@
       "id": "JS-039",
       "phase": "ID",
       "title": "OIDC beside local accounts",
-      "description": "A login link on jellyfin-web's login page (branding disclaimer); apps and TVs use Quick Connect.",
+      "description": "A sign-in link on jellyfin-web's login page (branding disclaimer) for one OIDC provider declared in configuration; TVs and apps sign in by Quick Connect, approved from a device signed in either way.",
       "acceptanceCriteria": [
-        "Sign in with an OIDC provider in jellyfin-web",
-        "OIDC users reach TV apps through Quick Connect"
+        "Observed first: how unmodified jellyfin-web 12.4 shows the link and takes a token it did not get from a password, and whether the disclaimer can carry a refused sign-in's reason (BL-209).",
+        "A viewer signs in with the provider in jellyfin-web and plays a film; the device holds an ordinary token, with the session, device, watch state and library access of a password sign-in.",
+        "No route of the journey reads or sets a cookie (invariant 63). With real processes, the return from the provider is answered by a different api replica from the one that started it.",
+        "JS-037's TV app signs in by a code approved from a jellyfin-web signed in through the provider, then plays.",
+        "A first sign-in links the local user whose name equals the provider's username claim, a migrated user without a password included, and keeps its watch state. After that the subject is the identity, and email never links.",
+        "Provisioning is a configuration switch, off by default. On, an unmatched first sign-in creates a viewer with the policy a new local user gets; off, it is refused with its reason on the page and in the log.",
+        "A user disabled or deleted in jellyscale is refused through the provider too. Removal at the provider stops new sign-ins only, and docs/access.md says so.",
+        "The journey's routes are bounded per address (D-020). The client secret comes from the environment and is never in configuration or logs."
       ],
-      "priority": 68,
+      "priority": 36,
       "status": "todo",
       "passes": false,
       "dependsOn": [
-        "JS-037"
+        "JS-037",
+        "JS-033"
       ],
       "source": "PRODUCT.md identity",
-      "notes": "Needs its own guessing bound, following JS-145's design (product owner, 2026-11-19)."
+      "notes": "Needs its own guessing bound, following JS-145's design (product owner, 2026-11-19). D-081: moved from 68 to 36, after JS-178; JS-056 and the tasks at 37 to 46 each moved down one. Criteria, dependency on JS-037 and scope unchanged. Reopens to 30 (after Quick Connect) if a household with an identity provider is waiting or reports it. D-082. Refine returns a brief before Spec on whether an administrator may be linked by name, since whoever picks a name at the provider takes that account. No device-authorization grant (D-083: rejected as a second protocol; a QR, if it comes, is Quick Connect's code in a link, its own task after this one)."
     },
     {
       "id": "JS-040",
@@ -552,7 +559,7 @@
         "docs/running.md says what every worker must reach (Postgres, each library, the transcode store), and the worker's termination grace matches JS-165's (D-045)",
         "The example manifests declare no transcodeCores and give workers CPU requests equal to limits in whole cores (D-064)"
       ],
-      "priority": 36,
+      "priority": 37,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -937,7 +944,7 @@
       ],
       "notes": "Owner, 2026-11-15: a page, after the track-language batch. Moved up (D-028): the settings are built and no browser viewer can reach them. 2026-11-17 (JS-121's UX review): PlayDefaultAudioTrack defaults to true, so a viewer who only saves a language keeps hearing a film's flagged track, usually its original; the page says so and offers the switch.",
       "passes": false,
-      "priority": 41,
+      "priority": 42,
       "source": "owner 2026-11-15",
       "status": "todo"
     },
@@ -983,7 +990,7 @@
         "With real processes: a worker given jobs whose costs add up to its measured capacity (JS-161), at faster and at medium, keeps each at 1.2 times real time or more without a helper",
         "No viewer-visible change while every spec is veryfast: the transcode, seek and helper e2e scenarios pass as before"
       ],
-      "priority": 43,
+      "priority": 44,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1006,7 +1013,7 @@
         "The default change is listed under Changed guarantees: more CPU per viewer (fewer viewers per worker), up to about a second on a start on a full worker, a better picture",
         "A 4K HDR tone mapped re-encode, with and without a burned subtitle, holds real time at the default preset on any worker whose measured capacity admits it (JS-161), or the default does not apply to it; the pull request says, from JS-154's figures, which machines hold it at veryfast and no longer at faster (D-038, D-044)"
       ],
-      "priority": 44,
+      "priority": 45,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1088,7 +1095,7 @@
         "JS-089"
       ],
       "source": "decision D-002; product-owner plan review 2026-11-19",
-      "priority": 42
+      "priority": 43
     },
     {
       "id": "JS-146",
@@ -1144,7 +1151,7 @@
         "The figures go to the product owner as a brief with keeping the source's height and range priced per viewer, on CPU and on a GPU family; its decision names the task that closes the gap or accepts it, and docs/status.md's line is updated; its GPU figure is JS-163's (the HD 530 neither decodes Main 10 nor tone maps, JS-154), or is stated unmeasured if JS-163 has not run, and today's 2160-to-1080 burn-in path is measured there, not here (D-038)",
         "No viewer-visible change"
       ],
-      "priority": 45,
+      "priority": 46,
       "source": "product owner, D-021 (2026-11-19)",
       "status": "todo",
       "passes": false,
@@ -1208,7 +1215,7 @@
         "POST PlaybackInfo with a MediaSourceId in upper-case compact form, in dashed form and as an id of no source are added to test/differential/requests.yaml, as observed on Jellyfin 12.4 during JS-153: the upper-case compact id answers the same on both and is no listed difference; the dashed id (refused by Jellyfin, accepted here) and the unknown id (NoCompatibleStream on Jellyfin, an empty list here) are listed in compat/differences.yaml, each with a verdict and its reason. No answer changes unless a capture shows an app docs/status.md lists as supported sending that form (D-041)",
         "No viewer-visible change"
       ],
-      "priority": 39,
+      "priority": 40,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1293,7 +1300,7 @@
         "docs/running.md's metric table and docs/transcoding.md describe both gauges with an example alert and an example scaling query; BL-005's missing reason is readable here. Amended by D-048: the example scaling query is on the room gauge, the example alert on the demand gauge; docs/running.md no longer calls `jellyscale_transcode_queue_cores` the signal to scale on, and says why.",
         "No viewer-visible change"
       ],
-      "priority": 37,
+      "priority": 38,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1317,7 +1324,7 @@
         "docs/running.md gives the worker's termination grace and what it bounds",
         "No start of play or seek is slower: time to first segment measured before and after"
       ],
-      "priority": 46,
+      "priority": 47,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1367,7 +1374,7 @@
         "Recorded in docs/transcoding.md with machine and command, no film title, path or host name; the figures come to the product owner as a brief, every option priced, keeping today's picture among them.",
         "No viewer-visible change, and nothing in the media namespace touched."
       ],
-      "priority": 38,
+      "priority": 39,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1391,7 +1398,7 @@
         "On the dogfood, each homelab change approved by the owner first (the GPU through the device plugin, no privileged container): a 4K HDR re-encode with and without a burned-in image subtitle plays 10 minutes with a seek at speed 1.0 or above after the first 30 seconds; as many at once on one GPU as JS-169 measured to hold 1.2 times real time each do so; recorded with ids and counts only.",
         "docs/running.md (an optional GPU worker pool and its request), docs/transcoding.md and docs/status.md are updated; DOMAINS.md invariants 23 and 53 are amended citing D-047 where the tone map's filter or the family rule changes."
       ],
-      "priority": 40,
+      "priority": 41,
       "status": "todo",
       "passes": false,
       "dependsOn": [
