@@ -24,6 +24,7 @@ func TestAJobThatStartsPastTheEndEndsDoneWithNoFFmpeg(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	r.watchedBy(t, r.spec, "device") // A job nobody watches is cancelled by the lease keeper's first renewal.
 	var id int64
 	if err := r.pool.QueryRow(context.Background(), `INSERT INTO transcode_jobs (spec_hash, spec, owner, start_segment, next_segment, output_version)
 		VALUES ($1, $2, 'viewer', 100000, 100000, $3) RETURNING id`, r.hash, raw, playback.OutputVersion).Scan(&id); err != nil {

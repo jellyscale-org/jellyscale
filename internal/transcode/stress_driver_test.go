@@ -5,6 +5,7 @@ package transcode
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -19,6 +20,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"jellyscale/internal/db"
@@ -74,6 +76,7 @@ type recorder struct {
 
 type opLog struct {
 	intended, errors int
+	first            error // The first failure, kept so a queue failure can print it.
 	samples          []time.Duration
 }
 
@@ -99,6 +102,9 @@ func (r *recorder) call(ctx context.Context, name string, timeout time.Duration,
 		op.samples = append(op.samples, time.Since(began))
 		if err != nil {
 			op.errors++
+			if op.first == nil {
+				op.first = err
+			}
 		}
 		r.mu.Unlock()
 	}
@@ -123,6 +129,33 @@ func (r *recorder) result() map[string]stress.Op {
 	return out
 }
 
+// firstErrors is the first failure of each operation that had one, so a run
+// that fails can say what went wrong and not only that something did.
+func (r *recorder) firstErrors() map[string]error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := map[string]error{}
+	for name, op := range r.ops {
+		if op.first != nil {
+			out[name] = op.first
+		}
+	}
+	return out
+}
+
+// errorText is an error as a failure message should show it: a Postgres error
+// by its message and SQLSTATE, anything else by its text.
+func errorText(err error) string {
+	if err == nil {
+		return "none recorded"
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return fmt.Sprintf("%s (SQLSTATE %s)", pgErr.Message, pgErr.Code)
+	}
+	return err.Error()
+}
+
 type driver struct {
 	cfg   stressConfig
 	pool  *pgxpool.Pool
@@ -134,7 +167,7 @@ type driver struct {
 	specs []playback.Spec
 }
 
-func runStress(ctx context.Context, t testing.TB, dsn string, cfg stressConfig) (stress.Step, error) {
+func runStress(ctx context.Context, t testing.TB, dsn string, cfg stressConfig) (stress.Step, map[string]error, error) {
 	t.Helper()
 	size := cfg.Pool
 	if n, err := strconv.Atoi(os.Getenv("JELLYSCALE_STRESS_POOL")); size == 0 && err == nil {
@@ -145,7 +178,7 @@ func runStress(ctx context.Context, t testing.TB, dsn string, cfg stressConfig) 
 	}
 	pool, err := db.Open(ctx, dsn, db.WithMaxConns(size))
 	if err != nil {
-		return stress.Step{}, err
+		return stress.Step{}, nil, err
 	}
 	defer pool.Close()
 	d := &driver{cfg: cfg, pool: pool, segs: store.NewPosix(t.TempDir()), rec: &recorder{ops: map[string]*opLog{}}}
@@ -158,7 +191,7 @@ func runStress(ctx context.Context, t testing.TB, dsn string, cfg stressConfig) 
 	d.clean()
 	defer d.clean()
 	if _, err := pool.Exec(ctx, `INSERT INTO users (id, name, password_hash) VALUES ($1, 'stress', '') ON CONFLICT DO NOTHING`, stressUser); err != nil {
-		return stress.Step{}, err
+		return stress.Step{}, nil, err
 	}
 
 	hubCtx, stopHub := context.WithCancel(ctx)
@@ -168,7 +201,7 @@ func runStress(ctx context.Context, t testing.TB, dsn string, cfg stressConfig) 
 
 	workers, err := d.startWorkers(ctx, t, dsn)
 	if err != nil {
-		return stress.Step{}, err
+		return stress.Step{}, nil, err
 	}
 	defer workers.close()
 	time.Sleep(300 * time.Millisecond) // The hub's LISTEN.
@@ -193,7 +226,7 @@ func runStress(ctx context.Context, t testing.TB, dsn string, cfg stressConfig) 
 
 	step := stress.Step{Viewers: cfg.Viewers, Workers: cfg.Workers, Pool: int(size), Ops: d.rec.result(), PostgresCPU: cpu, Connections: conns}
 	t.Logf("pool %d\n%s", size, stress.Format([]stress.Step{step}))
-	return step, stress.RateShortfall(step)
+	return step, d.rec.firstErrors(), stress.RateShortfall(step)
 }
 
 // clean removes the rows a run leaves. It gives up quickly: a test that holds a

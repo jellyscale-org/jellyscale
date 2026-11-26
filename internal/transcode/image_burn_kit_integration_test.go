@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -195,6 +196,28 @@ type meter struct {
 	// forward past the cut. 0 counts nothing.
 	cut    atomic.Int64
 	before atomic.Int64
+	// reads is every Open that was served, in the order opened, with what was read through it.
+	readsMu sync.Mutex
+	reads   []*filmRead
+}
+
+// filmRead is one Open of the film: where it began and the bytes read through it so far.
+type filmRead struct{ offset, bytes int64 }
+
+// describeReads is every read of the film in the order opened, for a failure about the film's bytes:
+// a part read twice shows where its second read starts.
+func (m *meter) describeReads() string {
+	m.readsMu.Lock()
+	defer m.readsMu.Unlock()
+	var out strings.Builder
+	fmt.Fprintf(&out, "every read of the film, in the order opened (the cut is at byte %d):", m.cut.Load())
+	for i, read := range m.reads {
+		fmt.Fprintf(&out, "\n\tread %d: from byte %d, %d bytes through it", i+1, read.offset, read.bytes)
+	}
+	if len(m.reads) == 0 {
+		out.WriteString("\n\tnone")
+	}
+	return out.String()
 }
 
 func newMeter(dir string, rate int) *meter {
@@ -213,6 +236,7 @@ type meterBody struct {
 	ctx   context.Context
 	gated bool
 	pos   int64 // The film's byte position of the next read.
+	read  *filmRead
 }
 
 func (m *meter) Open(ctx context.Context, key string, offset int64) (io.ReadCloser, error) {
@@ -225,7 +249,10 @@ func (m *meter) Open(ctx context.Context, key string, offset int64) (io.ReadClos
 		return nil, err
 	}
 	m.live.Add(1)
-	b := &meterBody{ReadCloser: body, m: m, ctx: ctx, pos: offset}
+	b := &meterBody{ReadCloser: body, m: m, ctx: ctx, pos: offset, read: &filmRead{offset: offset}}
+	m.readsMu.Lock()
+	m.reads = append(m.reads, b.read)
+	m.readsMu.Unlock()
 	if m.gate != nil && m.first.CompareAndSwap(false, true) {
 		b.gated = true
 		m.gated.Store(true)
@@ -250,6 +277,9 @@ func (b *meterBody) Read(p []byte) (int, error) {
 	}
 	n, err := b.ReadCloser.Read(p)
 	b.m.read.Add(int64(n))
+	b.m.readsMu.Lock()
+	b.read.bytes += int64(n)
+	b.m.readsMu.Unlock()
 	if cut := b.m.cut.Load(); b.pos < cut {
 		b.m.before.Add(min(int64(n), cut-b.pos))
 	}

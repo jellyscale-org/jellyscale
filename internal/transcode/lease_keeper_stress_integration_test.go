@@ -36,7 +36,7 @@ func TestTheStressDriverHoldsTwoConnectionsPerFakeWorker(t *testing.T) {
 	const workers = 10
 	before := backends()
 	var gained int
-	if _, err := runStress(ctx, t, dsn, stressConfig{Viewers: 2, Workers: workers, Specs: 2, Pool: 2, Duration: 2 * time.Second,
+	if _, _, err := runStress(ctx, t, dsn, stressConfig{Viewers: 2, Workers: workers, Specs: 2, Pool: 2, Duration: 2 * time.Second,
 		AfterSetup: func(context.Context) { gained = backends() - before }}); err != nil {
 		t.Fatal(err)
 	}
