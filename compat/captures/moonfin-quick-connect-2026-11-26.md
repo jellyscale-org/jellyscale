@@ -82,7 +82,21 @@ The app's data was cleared and the server added again. `zbarimg` decoded a scree
 
 ### A request jellyscale does not serve
 
-Each time the Quick Connect page opened, jellyfin-web sent `GET /Users` three times and got 404 (`unknown route`, also seen in the browser's request list). Approval worked both times, for this non-administrator. What the page does with that route on Jellyfin, and an administrator's page against this 404, were not checked.
+Each time the Quick Connect page opened, jellyfin-web sent `GET /Users` three times and got 404 (`unknown route`, also seen in the browser's request list). Approval worked both times, for this non-administrator. The administrator's page is below.
+
+## 2026-11-26, the administrator's Quick Connect page, jellyscale at c1d192d
+
+No Moonfin or emulator: `--roles=api,stream` with a disposable Postgres, jellyfin-web from the `jellyfin/jellyfin:12.4` image, headless Chrome 155 (1280x800) signed in as the administrator `admin`, with `qc-viewer` as a second account. Each code came from the host's `POST /QuickConnect/Initiate`, and the host redeemed its secret.
+
+- The user menu links `Quick Connect`, and it opened `#/quickconnect`.
+- The page showed a **User** list, a code field and Authorize. **The list was empty**: no options, an empty value, and clicking it showed none. Opening the page from the menu, the server logged three `GET /Users` 404s. Against Jellyfin 12.4 the list had the administrator selected (`quick-connect-12.4.md`).
+
+| Code | Authorize request | Page after | Redeeming the secret |
+|---|---|---|---|
+| typed, page opened from the menu | `POST /QuickConnect/Authorize?code=NNNNNN&userId=` (`userId` present and empty), 200 | `You have successfully authenticated your device!` | 200, signed in as `admin` (administrator) for the asking DeviceId, with a token |
+| filled in by the link `#/quickconnect?code=NNNNNN` (`localhost`, loaded from `about:blank`) | the same form, 200, body `true` (the body was read for this request only) | the same text | the same |
+
+The link filled in the code with the User list still empty, and had not approved after 6 seconds: Authorize had to be pressed. The browser stayed signed in as `admin`. With an empty list, no other account could be chosen on this page.
 
 ## Not verified
 
