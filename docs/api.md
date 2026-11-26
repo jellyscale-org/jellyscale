@@ -4,7 +4,7 @@ Jellyfin's API has no place for some of what jellyscale offers a viewer. Those r
 
 The version in the path, `v1`, is the shape of these routes. Within v1 a field may be added to an answer, but no field, route or accepted spelling is removed or changed in meaning; a break is `v2`, served beside v1. Field names are exact (`HideOtherAudio`, not `hideotheraudio`), so v1 never accepts a spelling it would have to take away. Paths, like all of jellyscale's, are matched without regard to case.
 
-Every route needs a token (docs/access.md), acts on the caller only and takes no user id; a `userId` in the query is ignored. A request without a known token is answered 401.
+Every route needs a token (docs/access.md) and acts on the caller only. A `userId` or `controllableByUserId` query value, or a PlaybackInfo body's `UserId`, must name the caller in compact or dashed form, in any letter case; another, unknown or malformed id is answered 403, and an empty value is absent. A request without a known token is answered 401 before its user id is checked.
 
 ## Track preferences
 
@@ -45,13 +45,13 @@ PlaybackInfo for a client that hides tracks itself. The request is the same as `
 - `Hidden` on each audio and subtitle track of each source: true when PlaybackInfo would list the track as a placeholder for this viewer and request (the saved languages, the switches, `ShowAllTracks`, and the track the request names by `AudioStreamIndex` or `SubtitleStreamIndex`), false otherwise. A video track has no `Hidden`. A hidden text track keeps its `DeliveryUrl`.
 - `OriginalLanguage` on each source: the language tag of that source's default audio track, as `GET /Items/{itemId}` answers for the item, or `""` for a film whose default audio names no language or that has no audio. It is always present.
 
-One rule on the server decides what is hidden, so every client agrees. The marks come from the caller's token; a `UserId` is ignored.
+One rule on the server decides what is hidden, so every client agrees. The marks come from the caller's token; a `UserId` naming another viewer is refused with 403, and one naming the caller is equivalent to no `UserId`.
 
 ```json
 {"Index": 3, "Type": "Audio", "Language": "deu", "Hidden": true}
 ```
 
-The answers that are not 200 are PlaybackInfo's: 404 for an unknown or malformed item id, 400 for a body that is not a JSON object, 401 for no token or an unknown one. A transcode that cannot start is answered 200 with no sources and `ErrorCode` `RateLimitExceeded`, as PlaybackInfo does.
+The answers that are not 200 are PlaybackInfo's: 404 for an unknown or malformed item id, 400 for a body that is not a JSON object, 401 for no token or an unknown one, and 403 when a user id names anyone but the caller. A transcode that cannot start is answered 200 with no sources and `ErrorCode` `RateLimitExceeded`, as PlaybackInfo does.
 
 ## A viewer's settings
 

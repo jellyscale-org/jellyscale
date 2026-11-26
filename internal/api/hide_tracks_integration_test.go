@@ -516,8 +516,8 @@ func TestAnOptedInViewerIsListedTheTracksOutsideTheirLanguagesAsPlaceholders(t *
 
 	t.Run("lists are unchanged: no Type Data in GET /Items", func(t *testing.T) {
 		v := f.viewer(t, "lister", "eng", "eng", bothOn)
-		path := "/Items?ids=" + db.CompactID(f.babel) + "&Fields=MediaSources,MediaStreams&userId=" + db.CompactID(v.id)
 		ask := func(who viewer) string {
+			path := "/Items?ids=" + db.CompactID(f.babel) + "&Fields=MediaSources,MediaStreams&userId=" + db.CompactID(who.id)
 			response, raw := f.do(t, 0, "GET", path, who.token, nil, "Authorization", f.auth(who))
 			if response.StatusCode != 200 {
 				t.Fatalf("GET %s: %d %s", path, response.StatusCode, raw)
