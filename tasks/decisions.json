@@ -826,17 +826,6 @@
       "decision": "accept",
       "entry": "Refine and Check on claude-agent/opus high; Spec, architecture, adversarial and UX on claude-agent/sonnet high; Build/Fix and helpers on OpenCode Go hy4-flash-free; QA on OpenCode Go beam-free; product owner and advisor on claude-agent/fable high. The Claude Agent provider uses the weekly allowance, not the Anthropic API balance. A host that cannot reach an OpenCode model runs that role on claude-agent/sonnet and records the substitution. The advisor is blind, gets minimal context, and must use Task to delegate any finding or reading to cheaper models.",
       "serves": "PRODUCT.md quality bar; the weekly model budget; 'A claim of working means a real client or a real store exercised it.'"
-    },
-    {
-      "id": "D-077",
-      "date": "2026-11-25",
-      "by": "owner",
-      "task": "JS-039, JS-037, JS-033, JS-036",
-      "brief": "Owner, 2026-11-25: OIDC is a core identity promise and should be on the roadmap. It was JS-039 at priority 68, behind every other open task, and depends on Quick Connect (JS-037).",
-      "tradeoff": "Artwork, Next Up, migration, the capacity/GPU tasks and everything after them move down one place. JS-033 (user management) and JS-036 (per-library access) stay ahead, and Quick Connect remains JS-039's dependency, so OIDC does not outrun the identity stage.",
-      "decision": "change",
-      "entry": "JS-039 moves from priority 68 to 30, directly after Quick Connect and the user-management and per-library tasks. Every task at 30 or later moves down one place. Its scope and JS-037 dependency are unchanged: a login link on jellyfin-web's page, and OIDC users reaching TV apps through Quick Connect.",
-      "serves": "PRODUCT.md: 'Signing in is easy and safe. A password, a code entered on the TV from a phone, or the household's own single sign-on.' Stage 3, 'People: accounts, sign-in by code and single sign-on.' Owner, 2026-11-25."
     }
   ]
 }
