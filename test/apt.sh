@@ -42,11 +42,17 @@ sudo apt-get -o Acquire::Retries=3 update
 # A runner image can carry a newer exact-version dependency than the mirror's
 # package. --allow-downgrades alone lets apt accept the older version but does
 # not make it choose one (merge-group run 45736550858; PR 285's first fix). The
-# runner's newest Mesa driver requires an exact mesa-libgallium, so name the
-# version of the driver the mirror would install.
+# cached .debs may already have installed an older Mesa driver, whose exact
+# mesa-libgallium must come down to the same version. Pin both to the installed
+# driver (or the mirror's candidate when none is installed).
 packages=("$@")
-libgallium=$(apt-cache show mesa-va-drivers 2>/dev/null | sed -nE 's/^Depends: .*mesa-libgallium \(= ([^)]+)\).*/\1/p' | head -1)
-[[ -n $libgallium ]] && packages+=("mesa-libgallium=$libgallium")
+driver_version=$(dpkg-query -W -f='${Version}' mesa-va-drivers 2>/dev/null || true)
+if [[ -z $driver_version ]]; then
+  driver_version=$(apt-cache policy mesa-va-drivers 2>/dev/null | sed -n 's/^  Candidate: //p' | head -1)
+fi
+if [[ -n $driver_version ]]; then
+  packages+=("mesa-va-drivers=$driver_version" "mesa-libgallium=$driver_version")
+fi
 sudo apt-get -o Acquire::Retries=3 install -y --reinstall --allow-downgrades "${packages[@]}"
 if [[ -n $debs ]]; then
   mkdir -p "$debs"
