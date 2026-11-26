@@ -113,5 +113,6 @@ The workflow's steps:
 - Record each brief and decision in `tasks/decisions.json`.
 - Cite a decision id in every Changed guarantees entry, amended check, and weakened DOMAINS.md or docs statement.
 - **Advice when stuck.** When the lead is consistently stuck, or a decision's real cost is unclear, consult the `advisor` role (Fable 5.2 at high effort) blind. Send only the question, the constraints, and the minimum evidence needed; no whole diff, logs or tree. Tell it to use cheaper OpenCode Go or Sonnet agents through Task to find and read anything it needs, so its own input and output stay small. It returns a short recommendation, the risk and the check that would disprove it. Record material advice as a decision id. This is not a substitute for the product owner's trade-off briefs.
+- **Priorities and plan order are the product owner's alone.** The lead never edits a task's priority, moves a task in `tasks/prd.json`, or decides what is built next without the product owner's decision. Bring a brief with the options and costs (D-080).
 - Follow its decisions.
 - Leave changes to PRODUCT.md, and to what the product is for, to the owner.
