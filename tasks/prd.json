@@ -283,7 +283,7 @@
         "JS-033"
       ],
       "source": "PRODUCT.md identity",
-      "notes": "Needs its own guessing bound, following JS-145's design (product owner, 2026-11-19). D-081: moved from 68 to 36, after JS-178; JS-056 and the tasks at 37 to 46 each moved down one. Criteria, dependency on JS-037 and scope unchanged. Reopens to 30 (after Quick Connect) if a household with an identity provider is waiting or reports it. D-082. Refine returns a brief before Spec on whether an administrator may be linked by name, since whoever picks a name at the provider takes that account. No device-authorization grant."
+      "notes": "Needs its own guessing bound, following JS-145's design (product owner, 2026-11-19). D-081: moved from 68 to 36, after JS-178; JS-056 and the tasks at 37 to 46 each moved down one. Criteria, dependency on JS-037 and scope unchanged. Reopens to 30 (after Quick Connect) if a household with an identity provider is waiting or reports it. D-082. Refine returns a brief before Spec on whether an administrator may be linked by name, since whoever picks a name at the provider takes that account. No device-authorization grant (D-083: rejected as a second protocol; a QR, if it comes, is Quick Connect's code in a link, its own task after this one)."
     },
     {
       "id": "JS-040",

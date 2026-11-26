@@ -2061,7 +2061,7 @@
     {
       "id": "BL-229",
       "title": "A link that opens the Quick Connect approval with the code filled in, for a QR code",
-      "notes": "Issue #118. Waits for JS-037. Promote if a supported TV app (docs/status.md) shows a QR, if any client that authorizes every media request draws a QR or ships the device-authorization grant, or if sign-ins by code are started and not finished often enough to matter.",
+      "notes": "Issue #118. Waits for JS-037. D-083: the only form a QR sign-in takes. Promote when the project of a client that authorizes every media request states in an issue that it will draw the QR, when a supported TV app (docs/status.md) shows one, or when sign-ins by code are started and not finished often enough to matter. It becomes its own task after JS-039. First step then: observe whether jellyfin-web 12.4's approval page takes a code from its address (unverified). Terms: a signed-out device signs in by password or provider and returns to the approval; the page names the device and approves only on an explicit confirmation; one code, Quick Connect's expiry and bound.",
       "status": "open",
       "severity": "minor",
       "reviewer": "product-owner",
@@ -2483,12 +2483,12 @@
     },
     {
       "id": "BL-279",
-      "status": "open",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "product-owner",
       "source": "D-082",
       "title": "A TV client that authorizes every media request can use an OIDC device-authorization grant and a QR code",
-      "notes": "Rejected for JS-039 because no supported client calls it: unmodified Jellyfin TV apps draw Quick Connect's code, and Jellyfin's own grant no jellyscale work makes Octave use. Promote when a client that authorizes every media request draws a QR or ships the device-authorization grant; it then returns as a brief."
+      "notes": "Rejected for JS-039 because no supported client calls it: unmodified Jellyfin TV apps draw Quick Connect's code, and Jellyfin's own grant no jellyscale work makes Octave use. Promote when a client that authorizes every media request draws a QR or ships the device-authorization grant; it then returns as a brief. D-083: the grant is rejected as a protocol; the QR outcome is BL-229."
     },
     {
       "id": "BL-280",
