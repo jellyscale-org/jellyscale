@@ -7,12 +7,13 @@ Who may call each route of jellyscale, and the rule behind it. The model is deci
 - Every route declares its access in `internal/api/routes.go` (`Route.Access`), and the declaration is printed on the route's line of `compat/endpoints.yaml`. There are two words:
   - `viewer`: the request carries a token that Postgres knows, in any of the seven spellings `compat.ParseAuth` reads. Without one the answer is 401 with the body `unauthorized`, the same for every route and every cause (no token, an unknown token, a signed-out token, a deleted user, a replaced device).
   - `anyone`: no token is needed. The route says why (`Route.Why`).
-- None is open by default: a route with no `Access`, or a word that is neither, stops `Server.Handler()` from building, whichever roles the server has, so no binary starts.
+- A viewer route also declares whose account it acts on (`Route.Users`). `own` is the default: every user id it names must be the caller's, and an administrator gets no other viewer's view. `admin-any` is exactly `GET /Users/{userId}`, `POST /Users/Configuration`, `POST /Users/{userId}/Configuration` and `POST /UserItems/{itemId}/UserData`: an administrator may name another account there. The guard runs after authentication and before the handler, on every role.
+- None is open by default: a route with no `Access`, or a word that is neither, stops `Server.Handler()` from building, whichever roles the server has, so no binary starts. A viewer route with an unknown user scope, or an open route with a user scope, stops it too.
 - Media, item data and anything that names a user are never open. A client must send its token on every media request. `master.m3u8` and `main.m3u8` carry the token in their lines only when the request carried it in the query (as `ApiKey` or `api_key`, with the request's own token; any other value is not echoed). A client that sends its token in a header must send that header on every playlist and segment request; `TranscodingUrl`, the `DeliveryUrls` and the subtitle playlist still carry it, because jellyfin-web loads them as URLs.
 - Pictures by id are the one content open to whoever holds the id, by the owner's decision: jellyfin-web builds picture URLs with no token and an `<img>` cannot send one, and item ids are random. A picture by name needs a token.
 - Postgres decides while it answers. The snapshot of active sessions only lets a `Snapshot` route go on for a token it holds while Postgres is away (DOMAINS invariant 37).
 - Opening a route takes a change of the open list in `internal/api/access_test.go`, which a reviewer sees.
-- A viewer sees every film today; per-user libraries are JS-036. A request naming another user's id is answered as the caller's own today; answering it 403 is JS-127. The `admin` word joins with its first route in JS-033.
+- A viewer sees every film today; per-user libraries are JS-036. A user id in a path, any `userId` or `controllableByUserId` query value, or a PlaybackInfo body's `UserId` names the caller or the request is refused. The caller's own id may be dashed or compact, in any letter case; an empty value is absent, and the all-zero id is another id. On an `own` route another, unknown or malformed id is the same 403 for everyone, after the token is checked. On an `admin-any` route a non-administrator naming another or unknown id gets 403, a malformed id is 400 whoever asks, an administrator naming nobody gets 404, and different ids in one request are 400 for an administrator and 403 for anyone else. An `anyone` route ignores ids. During a Postgres outage a snapshot route applies the same own-id check from the identity carried in its existing session reads: the caller's id is served as no id, another's waits for Postgres and is never answered 4xx because it was away (DOMAINS invariant 37).
 
 ## What a client must send
 
@@ -30,9 +31,9 @@ This holds for every media request: the direct-play stream, the playlists and se
 
 ## Stricter than Jellyfin
 
-Where Jellyfin 12.4 answers a request that carries no token and jellyscale answers 401. Each row names the row of `compat/captures/access-12.4.json` that observed Jellyfin's answer (`access-12.4.md` describes it), or says `source only` with the file and line at tag v12.4. `go test ./test/differential` holds the table to the capture. Pictures by id are open here too, and are not in it (see The model).
+Where Jellyfin 12.4 answers a request more openly and jellyscale refuses it. Each row names the capture entry that observed Jellyfin's answer. The table is documentation, not a test held to the capture. Pictures by id are open here too, and are not in it (see The model).
 
-| Route | Jellyfin with no token | Observed |
+| Route | Jellyfin's answer | Observed |
 |---|---|---|
 | `GET /Videos/{id}/stream?static=true` | 200 | capture: `GET /Videos/{id}/stream?static=true` |
 | `HEAD /Videos/{id}/stream?static=true` | 200 | capture: `HEAD /Videos/{id}/stream?static=true` |
@@ -41,9 +42,9 @@ Where Jellyfin 12.4 answers a request that carries no token and jellyscale answe
 | `GET /Videos/{id}/{id}/Subtitles/2/Stream.vtt` | 200 | capture: `GET /Videos/{id}/{id}/Subtitles/2/Stream.vtt` |
 | `GET /Videos/{id}/{id}/Subtitles/2/Stream.sup` | 200 | capture: `GET /Videos/{id}/{id}/Subtitles/2/Stream.sup` |
 | `GET /Videos/{id}/{id}/Subtitles/2/10000000/Stream.vtt` | 200 | capture: `GET /Videos/{id}/{id}/Subtitles/2/10000000/Stream.vtt` |
-| any signed-in user reading every account | 200 | source only: `UserController.cs:91` and `:127` at tag v12.4 |
+| an administrator naming B on a route that acts for the caller, such as `GET /Items?userId=B` | 200 with B's data | capture: `GET /Items`, caller `admin`, case `query userId: B` in `user-scope-12.4.json` |
 
-The last row is not a route with no token: Jellyfin lets any signed-in user list and read every account (`GET /Users` and `GET /Users/{userId}` are `[Authorize]`, not administrator-only), and jellyscale shows a viewer no other viewer's name (owner's decision, 2026-11-16).
+Jellyfin serves an administrator another viewer's view on every route that reads the id. jellyscale does that on the four `admin-any` routes only; on every other viewer route the administrator is refused. Jellyfin also lets a non-administrator read every account (`GET /Users/{userId}` is `[Authorize]`, not administrator-only); jellyscale shows a viewer no other viewer's name (owner's decision, 2026-11-16, D-075).
 
 ## Failed sign-ins
 
@@ -90,95 +91,95 @@ That does not open a viewer's account. No route reads or sets a cookie, so the b
 
 | Route | What it does | Requires | Scope |
 |---|---|---|---|
-| `GET /Artists` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
+| `GET /Artists` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
 | `GET /Branding/Configuration` | Branding of the sign-in page; empty | anyone | none: no token is read |
 | `GET /Branding/Css` | Branding of the sign-in page; empty | anyone | none: no token is read |
 | `GET /Branding/Css.css` | Branding of the sign-in page; empty | anyone | none: no token is read |
-| `GET /DisplayPreferences/{preferenceId}` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
-| `POST /DisplayPreferences/{preferenceId}` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
-| `GET /Genres` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Items` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Items/Filters` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Items/Filters2` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Items/Latest` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Items/Suggestions` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Items/{itemId}` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Items/{itemId}/Ancestors` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Items/{itemId}/Collections` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Items/{itemId}/Download` | Sends a film's bytes, playlist, segment, subtitle, font or file | viewer | the library as it is today (per-user libraries: JS-036) |
+| `GET /DisplayPreferences/{preferenceId}` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account (`own`) |
+| `POST /DisplayPreferences/{preferenceId}` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account (`own`) |
+| `GET /Genres` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Items` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Items/Filters` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Items/Filters2` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Items/Latest` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Items/Suggestions` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Items/{itemId}` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Items/{itemId}/Ancestors` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Items/{itemId}/Collections` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Items/{itemId}/Download` | Sends a film's bytes, playlist, segment, subtitle, font or file | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
 | `GET /Items/{itemId}/Images/{imageType}` | Sends a picture of an item, by its random id | anyone | whoever holds the item id; a picture by name needs a token |
 | `GET /Items/{itemId}/Images/{imageType}/{imageIndex}` | Sends a picture of an item, by its random id | anyone | whoever holds the item id; a picture by name needs a token |
-| `GET /Items/{itemId}/LocalTrailers` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Items/{itemId}/PlaybackInfo` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `POST /Items/{itemId}/PlaybackInfo` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Items/{itemId}/Similar` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Items/{itemId}/SpecialFeatures` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Items/{itemId}/ThemeMedia` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /jellyscale/v1/track-preferences` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
-| `PATCH /jellyscale/v1/track-preferences` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
-| `POST /jellyscale/v1/items/{itemId}/playback-info` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
-| `PATCH /jellyscale/v1/users/configuration` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
-| `GET /LiveTv/Programs` | Answers a question about the server, or a stub for a feature not built | viewer | the server |
-| `GET /LiveTv/Programs/Recommended` | Answers a question about the server, or a stub for a feature not built | viewer | the server |
-| `GET /Localization/Cultures` | Answers a question about the server, or a stub for a feature not built | viewer | the server |
-| `GET /MediaSegments/{itemId}` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Persons` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Playback/BitrateTest` | Answers a question about the server, or a stub for a feature not built | viewer | the server |
-| `GET /Plugins` | Answers a question about the server, or a stub for a feature not built | viewer | the server |
+| `GET /Items/{itemId}/LocalTrailers` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Items/{itemId}/PlaybackInfo` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `POST /Items/{itemId}/PlaybackInfo` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Items/{itemId}/Similar` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Items/{itemId}/SpecialFeatures` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Items/{itemId}/ThemeMedia` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /jellyscale/v1/track-preferences` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account (`own`) |
+| `PATCH /jellyscale/v1/track-preferences` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account (`own`) |
+| `POST /jellyscale/v1/items/{itemId}/playback-info` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account (`own`) |
+| `PATCH /jellyscale/v1/users/configuration` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account (`own`) |
+| `GET /LiveTv/Programs` | Answers a question about the server, or a stub for a feature not built | viewer | the server; the caller's own account (`own`) |
+| `GET /LiveTv/Programs/Recommended` | Answers a question about the server, or a stub for a feature not built | viewer | the server; the caller's own account (`own`) |
+| `GET /Localization/Cultures` | Answers a question about the server, or a stub for a feature not built | viewer | the server; the caller's own account (`own`) |
+| `GET /MediaSegments/{itemId}` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Persons` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Playback/BitrateTest` | Answers a question about the server, or a stub for a feature not built | viewer | the server; the caller's own account (`own`) |
+| `GET /Plugins` | Answers a question about the server, or a stub for a feature not built | viewer | the server; the caller's own account (`own`) |
 | `GET /QuickConnect/Enabled` | Says who the server is, or that it answers, or that Quick Connect is off | anyone | none: no token is read |
-| `GET /Search/Hints` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Sessions` | Reports or ends the caller's playback session, or pushes messages to it | viewer | the caller's own account |
-| `POST /Sessions/Capabilities` | Reports or ends the caller's playback session, or pushes messages to it | viewer | the caller's own account |
-| `POST /Sessions/Capabilities/Full` | Reports or ends the caller's playback session, or pushes messages to it | viewer | the caller's own account |
-| `POST /Sessions/Logout` | Reports or ends the caller's playback session, or pushes messages to it | viewer | the caller's own account |
-| `POST /Sessions/Playing` | Reports or ends the caller's playback session, or pushes messages to it | viewer | the caller's own account |
-| `POST /Sessions/Playing/Ping` | Reports or ends the caller's playback session, or pushes messages to it | viewer | the caller's own account |
-| `POST /Sessions/Playing/Progress` | Reports or ends the caller's playback session, or pushes messages to it | viewer | the caller's own account |
-| `POST /Sessions/Playing/Stopped` | Reports or ends the caller's playback session, or pushes messages to it | viewer | the caller's own account |
-| `GET /Shows/NextUp` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Shows/{seriesId}/Episodes` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Shows/{seriesId}/Seasons` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /socket` | Reports or ends the caller's playback session, or pushes messages to it | viewer | the caller's own account |
-| `GET /Studios` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /SyncPlay/List` | Answers a question about the server, or a stub for a feature not built | viewer | the server |
-| `GET /System/Configuration/encoding` | Answers a question about the server, or a stub for a feature not built | viewer | the server |
-| `GET /System/Endpoint` | Answers a question about the server, or a stub for a feature not built | viewer | the server |
-| `GET /System/Info` | Answers a question about the server, or a stub for a feature not built | viewer | the server |
+| `GET /Search/Hints` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Sessions` | Reports or ends the caller's playback session, or pushes messages to it | viewer | any user id in the request must name the caller (`own`); with no id an administrator still gets the existing all-sessions list, a non-administrator their own |
+| `POST /Sessions/Capabilities` | Reports or ends the caller's playback session, or pushes messages to it | viewer | the caller's own account (`own`) |
+| `POST /Sessions/Capabilities/Full` | Reports or ends the caller's playback session, or pushes messages to it | viewer | the caller's own account (`own`) |
+| `POST /Sessions/Logout` | Reports or ends the caller's playback session, or pushes messages to it | viewer | the caller's own account (`own`) |
+| `POST /Sessions/Playing` | Reports or ends the caller's playback session, or pushes messages to it | viewer | the caller's own account (`own`) |
+| `POST /Sessions/Playing/Ping` | Reports or ends the caller's playback session, or pushes messages to it | viewer | the caller's own account (`own`) |
+| `POST /Sessions/Playing/Progress` | Reports or ends the caller's playback session, or pushes messages to it | viewer | the caller's own account (`own`) |
+| `POST /Sessions/Playing/Stopped` | Reports or ends the caller's playback session, or pushes messages to it | viewer | the caller's own account (`own`) |
+| `GET /Shows/NextUp` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Shows/{seriesId}/Episodes` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Shows/{seriesId}/Seasons` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /socket` | Reports or ends the caller's playback session, or pushes messages to it | viewer | the caller's own account (`own`) |
+| `GET /Studios` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /SyncPlay/List` | Answers a question about the server, or a stub for a feature not built | viewer | the server; the caller's own account (`own`) |
+| `GET /System/Configuration/encoding` | Answers a question about the server, or a stub for a feature not built | viewer | the server; the caller's own account (`own`) |
+| `GET /System/Endpoint` | Answers a question about the server, or a stub for a feature not built | viewer | the server; the caller's own account (`own`) |
+| `GET /System/Info` | Answers a question about the server, or a stub for a feature not built | viewer | the server; the caller's own account (`own`) |
 | `GET /System/Info/Public` | Says who the server is, or that it answers, or that Quick Connect is off | anyone | none: no token is read |
 | `GET /System/Ping` | Says who the server is, or that it answers, or that Quick Connect is off | anyone | none: no token is read |
 | `POST /System/Ping` | Says who the server is, or that it answers, or that Quick Connect is off | anyone | none: no token is read |
-| `DELETE /UserFavoriteItems/{itemId}` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
-| `POST /UserFavoriteItems/{itemId}` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
-| `GET /UserItems/Resume` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
-| `POST /UserItems/{itemId}/UserData` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
-| `DELETE /UserPlayedItems/{itemId}` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
-| `POST /UserPlayedItems/{itemId}` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
+| `DELETE /UserFavoriteItems/{itemId}` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account (`own`) |
+| `POST /UserFavoriteItems/{itemId}` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account (`own`) |
+| `GET /UserItems/Resume` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account (`own`) |
+| `POST /UserItems/{itemId}/UserData` | Reads or changes watched state, favourites or position | viewer | the named account for an administrator, otherwise the caller's own (`admin-any`) |
+| `DELETE /UserPlayedItems/{itemId}` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account (`own`) |
+| `POST /UserPlayedItems/{itemId}` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account (`own`) |
 | `POST /Users/AuthenticateByName` | Signs a viewer in with a name and password and answers a token | anyone | checks the name and password itself |
-| `POST /Users/Configuration` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
-| `GET /Users/Me` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
+| `POST /Users/Configuration` | Reads or changes a Configuration | viewer | the named account for an administrator, otherwise the caller's own (`admin-any`) |
+| `GET /Users/Me` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account (`own`) |
 | `GET /Users/Public` | Lists the users to pick from on the sign-in page; always empty | anyone | none: no token is read |
-| `GET /Users/{userId}` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
-| `POST /Users/{userId}/Configuration` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
-| `DELETE /Users/{userId}/FavoriteItems/{itemId}` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
-| `POST /Users/{userId}/FavoriteItems/{itemId}` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
-| `GET /Users/{userId}/GroupingOptions` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
-| `GET /Users/{userId}/Items` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Users/{userId}/Items/Latest` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Users/{userId}/Items/Resume` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Users/{userId}/Items/Root` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Users/{userId}/Items/{itemId}` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Users/{userId}/Items/{itemId}/Intros` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Users/{userId}/Items/{itemId}/LocalTrailers` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Users/{userId}/Items/{itemId}/SpecialFeatures` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `DELETE /Users/{userId}/PlayedItems/{itemId}` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
-| `POST /Users/{userId}/PlayedItems/{itemId}` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
-| `GET /UserViews` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /UserViews/GroupingOptions` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account |
-| `DELETE /Videos/ActiveEncodings` | Sends a film's bytes, playlist, segment, subtitle, font or file | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Videos/{itemId}/hls1/main/{segmentId}` | Sends a film's bytes, playlist, segment, subtitle, font or file | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Videos/{itemId}/main.m3u8` | Sends a film's bytes, playlist, segment, subtitle, font or file | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Videos/{itemId}/master.m3u8` | Sends a film's bytes, playlist, segment, subtitle, font or file | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Videos/{itemId}/{file}` | Sends a film's bytes, playlist, segment, subtitle, font or file | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Videos/{itemId}/{sourceId}/Attachments/{index}` | Sends a film's bytes, playlist, segment, subtitle, font or file | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{file}` | Sends a film's bytes, playlist, segment, subtitle, font or file | viewer | the library as it is today (per-user libraries: JS-036) |
-| `GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{startPositionTicks}/{file}` | Sends a film's bytes, playlist, segment, subtitle, font or file | viewer | the library as it is today (per-user libraries: JS-036) |
+| `GET /Users/{userId}` | Reads an account | viewer | the named account for an administrator, otherwise the caller's own (`admin-any`) |
+| `POST /Users/{userId}/Configuration` | Reads or changes a Configuration | viewer | the named account for an administrator, otherwise the caller's own (`admin-any`) |
+| `DELETE /Users/{userId}/FavoriteItems/{itemId}` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account (`own`) |
+| `POST /Users/{userId}/FavoriteItems/{itemId}` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account (`own`) |
+| `GET /Users/{userId}/GroupingOptions` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account (`own`) |
+| `GET /Users/{userId}/Items` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Users/{userId}/Items/Latest` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Users/{userId}/Items/Resume` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Users/{userId}/Items/Root` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Users/{userId}/Items/{itemId}` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Users/{userId}/Items/{itemId}/Intros` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Users/{userId}/Items/{itemId}/LocalTrailers` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Users/{userId}/Items/{itemId}/SpecialFeatures` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `DELETE /Users/{userId}/PlayedItems/{itemId}` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account (`own`) |
+| `POST /Users/{userId}/PlayedItems/{itemId}` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account (`own`) |
+| `GET /UserViews` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /UserViews/GroupingOptions` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account (`own`) |
+| `DELETE /Videos/ActiveEncodings` | Sends a film's bytes, playlist, segment, subtitle, font or file | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Videos/{itemId}/hls1/main/{segmentId}` | Sends a film's bytes, playlist, segment, subtitle, font or file | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Videos/{itemId}/main.m3u8` | Sends a film's bytes, playlist, segment, subtitle, font or file | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Videos/{itemId}/master.m3u8` | Sends a film's bytes, playlist, segment, subtitle, font or file | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Videos/{itemId}/{file}` | Sends a film's bytes, playlist, segment, subtitle, font or file | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Videos/{itemId}/{sourceId}/Attachments/{index}` | Sends a film's bytes, playlist, segment, subtitle, font or file | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{file}` | Sends a film's bytes, playlist, segment, subtitle, font or file | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{startPositionTicks}/{file}` | Sends a film's bytes, playlist, segment, subtitle, font or file | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |

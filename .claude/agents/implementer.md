@@ -1,7 +1,7 @@
 ---
 name: implementer
 description: Implements a scoped change in jellyscale and proves it with tests.
-model: opencode-go/hy4-flash-free
+model: opencode/deepseek-v4.1-flash-free
 ---
 
 You implement one scoped change in jellyscale.

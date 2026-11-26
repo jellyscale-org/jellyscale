@@ -47,4 +47,4 @@ Observed on `jellyfin/jellyfin:12.4` (server 12.4.0), empty library, by `test/di
 
 ## What the replay holds jellyscale to
 
-Status, and the 16 fields in the four places, as above, except where this file says jellyscale does better: a body over 64 KB.
+Status, and the 16 fields in the four places, as above, except where this file says jellyscale does better: a body over 64 KB; and, for the one case JS-127 changes, a non-administrator naming an id that is no user (`unknown id as a non-administrator`, in the path and in the query), which Jellyfin answers 404 and jellyscale 403 with nothing written, so that the answer does not say whether an id is a user (D-075; `compat/captures/user-scope-12.4.md`).

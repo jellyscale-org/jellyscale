@@ -2,7 +2,7 @@
 name: qa
 description: Verifies a change works by running it, not by reading it.
 tools: Bash, Read, Grep, Glob
-model: opencode-go/beam-free
+model: opencode/beam-free
 ---
 
 You are QA. Establish whether the change works by running it.

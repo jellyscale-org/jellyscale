@@ -654,18 +654,30 @@ func TestPlayedAndFavoriteToggles(t *testing.T) {
 		t.Fatalf("not persisted: %+v", r)
 	}
 
-	// The web aliases act on the caller, whatever userId says.
-	if dto := data("POST", "/Users/"+e.other+"/PlayedItems/"+id); dto["Played"] != true {
+	// The web aliases refuse another user's id with 403 and change nothing of either user's (JS-127, D-075: they used to
+	// answer with the caller's own data under the other's name); naming the caller, they act on the caller.
+	for _, call := range []struct{ method, path string }{
+		{"POST", "/Users/" + e.other + "/PlayedItems/" + id}, {"POST", "/Users/" + e.other + "/FavoriteItems/" + id},
+		{"DELETE", "/Users/" + e.other + "/PlayedItems/" + id}, {"DELETE", "/Users/" + e.other + "/FavoriteItems/" + id},
+	} {
+		if response, body := e.do(t, 0, call.method, call.path, e.token, nil); response.StatusCode != 403 {
+			t.Fatalf("%s %s: %d %s, want 403", call.method, call.path, response.StatusCode, body)
+		}
+	}
+	if r := e.row(t, e.user); r.played || r.favorite {
+		t.Fatalf("an alias naming another user changed the caller's data: %+v", r)
+	}
+	if dto := data("POST", "/Users/"+e.user+"/PlayedItems/"+id); dto["Played"] != true {
 		t.Fatalf("alias: %v", dto)
 	}
-	data("POST", "/Users/"+e.other+"/FavoriteItems/"+id)
+	data("POST", "/Users/"+e.user+"/FavoriteItems/"+id)
 	if r := e.row(t, e.user); !r.played || !r.favorite {
 		t.Fatalf("alias missed the caller: %+v", r)
 	}
 	if scalar[int](t, e.pool, "SELECT count(*) FROM user_item_data WHERE user_id = $1", e.other) != 0 {
 		t.Fatal("an alias wrote another user's data")
 	}
-	data("DELETE", "/Users/"+e.other+"/PlayedItems/"+id)
+	data("DELETE", "/Users/"+e.user+"/PlayedItems/"+id)
 	if r := e.row(t, e.user); r.played {
 		t.Fatal("alias delete missed the caller")
 	}
@@ -697,7 +709,7 @@ func TestPlayedCascadesToEpisodes(t *testing.T) {
 	if played(e.item) {
 		t.Fatal("an unrelated film was marked")
 	}
-	e.do(t, 0, "DELETE", "/Users/"+e.other+"/PlayedItems/"+db.CompactID(season), e.token, nil)
+	e.do(t, 0, "DELETE", "/Users/"+e.user+"/PlayedItems/"+db.CompactID(season), e.token, nil)
 	if played(season) || played(ep1) || played(ep2) {
 		t.Fatal("season unplayed left episodes watched")
 	}

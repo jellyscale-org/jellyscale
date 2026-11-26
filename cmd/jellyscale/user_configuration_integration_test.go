@@ -33,7 +33,8 @@ import (
 // saved is read by another that has never seen the user; the processes are then restarted and read again.
 //
 // Where jellyscale deliberately answers otherwise, expectedOf says so: a body over 64 KB, which Jellyfin stores
-// and jellyscale refuses with the status of a body that is not JSON, storing nothing.
+// and jellyscale refuses with the status of a body that is not JSON, storing nothing; and an id that is no user, named
+// by a non-administrator, which Jellyfin answers 404 and jellyscale 403 (D-075).
 
 const configCapturePath = "../../compat/captures/user-configuration-12.4.json"
 const configPassword = "capture-pass"
@@ -229,6 +230,11 @@ type expectation struct {
 // records for that route under "body that is not JSON".
 func expectedOf(t *testing.T, capture *testenv.UserConfigurationCapture, k testenv.ConfigCase) expectation {
 	t.Helper()
+	// D-075 (JS-127): a non-administrator naming an id that is no user is answered 403, as for another user's id, so that
+	// the answer does not say whether the id is a user. Jellyfin answers 404. Nothing is written either way.
+	if strings.HasPrefix(k.Name, "unknown id as a non-administrator, route=") {
+		return expectation{http.StatusForbidden, k.After}
+	}
 	if k.Request != nil && k.Request.Body == nil && k.Request.BodyBytes > bodyLimit {
 		route := k.Name[strings.LastIndex(k.Name, "route=")+len("route="):]
 		refused := capture.Case(t, "body that is not JSON, route="+route)

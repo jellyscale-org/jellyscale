@@ -538,8 +538,9 @@ func TestTheMarkedPlaybackInfoListsEveryTrackWhateverTheReplicaCanOffer(t *testi
 	}
 }
 
-// The marks come from the token's user: a UserId naming another viewer, in the query or the body, changes nothing.
-func TestTheMarkedPlaybackInfoIgnoresAUserIdThatNamesAnotherViewer(t *testing.T) {
+// The marks come from the token's user: a UserId naming another viewer, in the query or the body, is refused with 403
+// and changes nothing (JS-127, D-075); naming the caller, in any spelling, answers the caller's own marks.
+func TestTheMarkedPlaybackInfoRefusesAUserIdThatNamesAnotherViewerAndReadsTheCallers(t *testing.T) {
 	f := languagesEnv(t, true)
 	mine := f.viewer(t, "eng", "eng", "eng", bothOn)
 	other := f.viewer(t, "stranger", "deu", "deu", bothOn)
@@ -548,28 +549,34 @@ func TestTheMarkedPlaybackInfoIgnoresAUserIdThatNamesAnotherViewer(t *testing.T)
 	if !slices.Equal(want, []int{2, 3, 8, 9, 10, 12, 13, 14}) {
 		t.Fatalf("own marks %v", want)
 	}
+	ask := func(where string, id string) (int, doc) {
+		if where == "body" {
+			return f.marked(t, 0, mine, f.babel, map[string]any{"UserId": id})
+		}
+		response, raw := f.do(t, 0, "POST", fmt.Sprintf(markedPath, f.babel)+"?UserId="+id, mine.token,
+			map[string]any{"MaxStreamingBitrate": 2147483647, "DeviceProfile": f.profile}, "Authorization", f.auth(mine))
+		var reply doc
+		if response.StatusCode == 200 {
+			_ = json.Unmarshal(raw, &reply)
+		}
+		return response.StatusCode, reply
+	}
 	for _, named := range []viewer{other, plain} {
-		for where, ask := range map[string]func() (int, doc){
-			"body": func() (int, doc) {
-				return f.marked(t, 0, mine, f.babel, map[string]any{"UserId": db.CompactID(named.id)})
-			},
-			"query": func() (int, doc) {
-				response, raw := f.do(t, 0, "POST", fmt.Sprintf(markedPath, f.babel)+"?UserId="+db.CompactID(named.id), mine.token,
-					map[string]any{"MaxStreamingBitrate": 2147483647, "DeviceProfile": f.profile}, "Authorization", f.auth(mine))
-				var reply doc
-				if response.StatusCode == 200 {
-					_ = json.Unmarshal(raw, &reply)
-				}
-				return response.StatusCode, reply
-			},
-		} {
-			status, reply := ask()
+		for _, where := range []string{"body", "query"} {
+			if status, _ := ask(where, db.CompactID(named.id)); status != 403 {
+				t.Errorf("%s names %s: %d, want 403", where, named.name, status)
+			}
+		}
+	}
+	for _, id := range []string{db.CompactID(mine.id), mine.id, strings.ToUpper(db.CompactID(mine.id)), strings.ToUpper(mine.id)} {
+		for _, where := range []string{"body", "query"} {
+			status, reply := ask(where, id)
 			if status != 200 {
-				t.Errorf("%s names %s: %d", where, named.name, status)
+				t.Errorf("%s names the caller (%s): %d", where, id, status)
 				continue
 			}
 			if have := hiddenAt(t, where, streamsOf(t, sourceOf(reply)["MediaStreams"])); !slices.Equal(have, want) {
-				t.Errorf("a UserId in the %s naming %s: Hidden at %v, want %v", where, named.name, have, want)
+				t.Errorf("a UserId in the %s naming the caller (%s): Hidden at %v, want %v", where, id, have, want)
 			}
 		}
 	}
