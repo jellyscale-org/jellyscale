@@ -17,7 +17,7 @@
 //   GET /__router                                                                    {"api": [{port, up}], "stream": [...], "throttle": n, "fallback": bool}
 //   GET /__router/requests                                                           {"requests": [...]}: the last 20000 requests the router received, in order, each
 //     {id, at (epoch ms), method, url, status (null until a header is sent), routed, backend, ended ("complete", "client closed", "upstream failed", "fault cut" or null while it runs), endedAt}.
-//     A failed scenario reads it to say what the router answered for each request the browser reported failed (test/e2e/evidence.mjs).
+//     A failed scenario reads it for every candidate of each request the browser reported failed (test/e2e/evidence.mjs).
 // fallback does what the shipped Caddyfile's handle_errors does when no replica of a role is ready (Postgres has been
 // away from all of them over 30 seconds, JS-085): send to every replica of the role, whatever /readyz says, and a
 // replica that refuses the connection is passed over by the retry. Off by default, where the router answers 503 itself.

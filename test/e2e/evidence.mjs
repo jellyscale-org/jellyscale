@@ -3,8 +3,9 @@
 // record (every request, answer and socket with its frames, and one timeline of all of them, each timed). They go to
 // $E2E_FAILURES (test/e2e/run.sh sets it to <logs>/failures, which CI uploads on failure), in files named by gate
 // and scenario, and by iteration under E2E_REPEAT, so no failure overwrites another's. For every request to the
-// server that the browser reports failed, the output also says what the test router answered for it (router.mjs keeps
-// the log), or that it never received it. A scenario that passes keeps nothing and prints nothing.
+// server that the browser reports failed, the output lists the test router's candidates in its valid time window,
+// without guessing which identical browser request they belong to, or says that the router received none. A scenario
+// that passes keeps nothing and prints nothing.
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 
@@ -27,7 +28,12 @@ export function watch(context, base) {
   const note = (what) => recorder.events.push({ at: since(), what: redact(what) });
   // The same origin as base, not the same beginning: 127.0.0.1:4104 is not 127.0.0.1:41041.
   const origin = new URL(base).origin;
-  const ours = (url) => { try { return new URL(url).origin === origin; } catch { return false; } };
+  const ours = (url) => {
+    try {
+      const parsed = new URL(url);
+      return ["http:", "https:"].includes(parsed.protocol) && parsed.origin === origin;
+    } catch { return false; }
+  };
   const attach = (page) => {
     page.on("console", (message) => {
       const where = message.location().url ? ` (${redact(message.location().url)}:${message.location().lineNumber})` : "";
@@ -42,10 +48,11 @@ export function watch(context, base) {
     page.on("crash", () => note("the page crashed"));
     page.on("request", (request) => {
       if (!ours(request.url())) return;
-      const entry = { at: since(), started: Date.now(), method: request.method(), url: redact(request.url()), range: request.headers().range };
+      const url = new URL(request.url());
+      const entry = { at: since(), started: Date.now(), method: request.method(), url: redact(request.url()), target: url.pathname + url.search, range: request.headers().range, page, endedAt: null };
       recorder.requests.push(entry);
       request.evidence = entry;
-      recorder.open.add(request);
+      recorder.open.add(entry);
       note(`request ${entry.method} ${entry.url}${entry.range ? ` ${entry.range}` : ""}`);
     });
     page.on("response", (response) => {
@@ -55,17 +62,25 @@ export function watch(context, base) {
       recorder.answers.push(entry);
       note(`answer ${entry.status} ${entry.method} ${entry.url} from ${entry.routed ?? "?"}`);
     });
-    page.on("requestfinished", (request) => recorder.open.delete(request));
+    page.on("requestfinished", (request) => {
+      if (request.evidence) request.evidence.endedAt = Date.now();
+      recorder.open.delete(request.evidence);
+    });
     page.on("requestfailed", (request) => {
-      recorder.open.delete(request);
+      if (request.evidence) request.evidence.endedAt = Date.now();
+      recorder.open.delete(request.evidence);
       if (!ours(request.url())) return;
       const url = new URL(request.url());
       // The earlier of when this side saw the request and when the browser says it began it (an event can be late).
       const began = request.timing().startTime;
       const started = Math.min(request.evidence?.started ?? Date.now(), began > 0 ? began : Infinity);
-      const entry = { at: since(), started, failedAt: Date.now(), method: request.method(), path: url.pathname, target: url.pathname + url.search, origin: url.origin, error: request.failure()?.errorText };
+      const entry = { at: since(), started, failedAt: Date.now(), method: request.method(), path: url.pathname, target: url.pathname + url.search, origin: url.origin, error: request.failure()?.errorText, page };
       recorder.failed.push(entry);
       note(`request failed ${entry.method} ${redact(entry.target)} ${entry.error}`);
+    });
+    // Chromium does not finish or fail requests that are still open when their page closes.
+    page.on("close", () => {
+      for (const entry of recorder.open) if (entry.page === page) recorder.open.delete(entry);
     });
     page.on("websocket", (ws) => {
       const socket = { url: redact(ws.url()), openedAt: since(), closedAt: null, received: [], sent: [] };
@@ -90,7 +105,7 @@ export function forgetBefore(startedAt) {
 // A screenshot of a page that is about to close, for a failure that is found after it has: the failure keeps it.
 export async function rescue(page) {
   const recorder = [...recorders].find((candidate) => candidate.context === page.context());
-  const picture = await page.screenshot().catch(() => null);
+  const picture = await page.screenshot({ timeout: 3000 }).catch(() => null);
   if (recorder && picture) recorder.late.push(picture);
 }
 
@@ -129,29 +144,47 @@ async function routerAnswers(origins) {
 // A router entry can be the failed request's only if the router received it when or after the browser began it (a few
 // ms of clock and event-order slack) and it had not ended before then: an earlier identical request is another one.
 const slack = 25;
-const answers = (failed, entry) => entry.method === failed.method && entry.url === failed.target
-  && entry.at >= failed.started - slack && entry.at <= failed.failedAt + slack && !(entry.endedAt && entry.endedAt < failed.started - slack);
+const inWindow = (failed, started, endedAt) => started >= failed.started - slack && started <= failed.failedAt + slack
+  && !(endedAt && endedAt < failed.started - slack);
+const answers = (failed, entry) => entry.method === failed.method && entry.url === failed.target && inWindow(failed, entry.at, entry.endedAt);
 
 function describeAnswer(failed, entry) {
-  if (!entry) return "the router received no such request";
   if (!entry.status) return `the router received it ${Math.max(0, entry.at - failed.started)} ms after the browser sent it and sent no answer`;
   const endings = { "client closed": ", and the client closed it before the end", "upstream failed": ", and the replica's response broke", "fault cut": ", and the router cut it on purpose (a fault)" };
   return `the router answered ${entry.status} from ${entry.routed} (backend port ${entry.backend ?? "none"})${endings[entry.ended] ?? ""}`;
 }
 
-// Prints the line of each request the browser reported failed in the failing step or scenario, with the router's answer.
-// A router entry answers one request only.
+function describeCandidate(failed, entry) {
+  const status = entry.status ?? "none";
+  const ending = entry.ended ?? "still open";
+  return `router entry #${entry.id}: status ${status}; backend ${entry.routed ?? "none"} (port ${entry.backend ?? "none"}); ending ${ending}; received ${Math.max(0, entry.at - failed.started)} ms after the browser sent it`;
+}
+
+// Prints what the browser reported failed in the failing step or scenario. Identical requests cannot be paired with
+// router entries by URL and time alone, so when there is more than one, every candidate is listed without attribution.
 async function printFailedRequests(failures) {
   if (!failures.length) return;
   const logs = await routerAnswers(new Set(failures.map((failed) => failed.origin)));
-  const used = new Set();
   for (const failed of failures) {
     const { log, error } = logs.get(failed.origin);
-    const near = (log ?? []).filter((entry) => !used.has(entry) && answers(failed, entry));
-    near.sort((a, b) => Math.abs(a.at - failed.started) - Math.abs(b.at - failed.started));
-    if (near[0]) used.add(near[0]);
-    const answer = log ? describeAnswer(failed, near[0]) : `the router's log could not be read (${error})`;
-    console.log(`      requestfailed ${failed.method} ${redact(failed.target)}: ${failed.error}; ${answer}`);
+    const prefix = `      requestfailed ${failed.method} ${redact(failed.target)}: ${failed.error};`;
+    if (!log) {
+      console.log(`${prefix} the router's log could not be read (${error})`);
+      continue;
+    }
+    const near = log.filter((entry) => answers(failed, entry));
+    const requestWord = failed.browserRequests === 1 ? "request" : "requests";
+    const counts = `${failed.browserRequests} identical browser ${requestWord} in the valid time window; ${near.length} router ${near.length === 1 ? "entry" : "entries"} ${near.length === 1 ? "matches" : "match"}`;
+    if (!near.length) {
+      console.log(`${prefix} the router received no such request (${counts})`);
+      continue;
+    }
+    if (near.length === 1 && failed.browserRequests === 1) {
+      console.log(`${prefix} ${describeAnswer(failed, near[0])}`);
+      continue;
+    }
+    console.log(`${prefix} ${counts}; no one-to-one attribution is possible:`);
+    for (const entry of near) console.log(`        ${describeCandidate(failed, entry)}`);
   }
 }
 
@@ -200,7 +233,12 @@ async function keep(name, startedAt) {
     const timeline = recorder.events.map(({ at, what }) => ({ at, text: `${at} ms ${what}` }));
     if (stepAt > 0) timeline.push({ at: stepAt, text: marker(stepAt) });
     timeline.sort((a, b) => a.at - b.at);
-    inStep.push(...recorder.failed.filter((failed) => failed.failedAt >= startedAt));
+    const failures = recorder.failed.filter((failed) => failed.failedAt >= startedAt);
+    for (const failed of failures) {
+      failed.browserRequests = recorder.requests.filter((request) => request.page === failed.page && request.method === failed.method
+        && request.target === failed.target && inWindow(failed, request.started, request.endedAt)).length;
+    }
+    inStep.push(...failures);
     record.push({
       viewer: index + 1,
       began: new Date(recorder.began).toISOString(),
@@ -213,7 +251,7 @@ async function keep(name, startedAt) {
       timeline: timeline.map(({ text }) => text),
     });
     const pages = recorder.closed ? [] : recorder.context.pages();
-    const shots = await Promise.all(pages.map((page) => page.screenshot().catch(() => null)));
+    const shots = await Promise.all(pages.map((page) => page.screenshot({ timeout: 3000 }).catch(() => null)));
     for (const [n, picture] of [...shots, ...recorder.late].filter(Boolean).entries()) {
       write(`${live.length > 1 ? `-viewer${index + 1}` : ""}${n > 0 ? `-${n + 1}` : ""}.png`, picture);
     }

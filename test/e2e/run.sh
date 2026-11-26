@@ -34,7 +34,8 @@
 # wrote, in <gate>/server.log and <gate>/ffmpeg.log.
 # JS-160: a scenario or step that fails leaves <logs>/failures/<gate>[-iteration<n>]-<scenario>-<hash>.{png,console.txt,record.json}
 # (test/e2e/evidence.mjs: a screenshot at the failure, the browser's whole console, the viewer's record), and prints
-# each request the browser reported failed with what the router answered for it. A scenario that passes leaves nothing.
+# each request the browser reported failed with every router entry that could be it, never a guess between identical
+# requests. A scenario that passes leaves nothing.
 # JS-070: each gate records the JSON responses its browser gets in <logs>/<gate>/responses.jsonl (test/e2e/conform.mjs),
 # and when the gate ends compat/conform/cmd/conform holds them to compat/schema-12.4.json and prints
 # "e2e <gate>: checked N JSON responses on M routes"; a violation, or no response, fails the gate.

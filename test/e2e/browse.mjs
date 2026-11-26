@@ -18,12 +18,24 @@ watch(page.context(), base);
 recordResponses(page, base);
 
 const failures = [];
+let pendingEvidence = Promise.resolve();
+let currentStep = "before the first step";
+let currentStepBegan = 0;
+// Names are free until the console file is written, so simultaneous page events must not choose the same one.
+const queueEvidence = (name, began) => {
+  pendingEvidence = pendingEvidence.then(() => keepFailure(name, began));
+  return pendingEvidence;
+};
+const collectFailure = (kind, message) => {
+  failures.push(message);
+  queueEvidence(`${currentStep}: ${kind}`, currentStepBegan);
+};
 const notFound = new Map();
-page.on("pageerror", (error) => failures.push(`page error: ${error.message}`));
+page.on("pageerror", (error) => collectFailure("page error", `page error: ${error.message}`));
 page.on("response", (response) => {
   const url = new URL(response.url());
   if (!url.href.startsWith(base) || url.pathname.startsWith("/web/")) return;
-  if (response.status() >= 500) failures.push(`${response.status()} ${url.pathname}`);
+  if (response.status() >= 500) collectFailure("server error", `${response.status()} ${url.pathname}`);
   if (response.status() === 404) {
     const key = url.pathname.replace(/[0-9a-f]{32}/g, "{id}");
     notFound.set(key, (notFound.get(key) ?? 0) + 1);
@@ -34,13 +46,15 @@ let steps = 0;
 async function step(name, action) {
   steps++;
   const began = Date.now();
+  currentStep = name;
+  currentStepBegan = began;
   try {
     await action();
     console.log(`ok    ${name} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
   } catch (error) {
     failures.push(`${name}: ${error.message.split("\n")[0]}`);
     console.log(`FAIL  ${name} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
-    await keepFailure(name, began);
+    await queueEvidence(name, began);
   }
 }
 
@@ -195,6 +209,7 @@ if (process.env.E2E_FLAKY_DEMO) {
   });
 }
 
+await pendingEvidence;
 await browser.close();
 console.log("\nunknown routes:", notFound.size ? [...notFound].map(([k, v]) => `${k} x${v}`).join(", ") : "none");
 if (failures.length) {

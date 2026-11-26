@@ -73,6 +73,7 @@ await step("login", () => login(first.page));
 
 for (const film of films) {
   const { page, seen } = first;
+  const filmBegan = Date.now();
   await step(`${film.backend}: play ${film.title}`, async () => {
     await page.goto(`${base}/web/`);
     await page.waitForSelector(".card", { timeout: 30000 });
@@ -115,7 +116,10 @@ for (const film of films) {
     const fraction = stoppedAt / total;
     if (fraction < 0.4 || fraction > 0.6) throw new Error(`stopped at ${(fraction * 100).toFixed(0)}%`);
   });
-  if (seen.errors.length) failures.push(`${film.backend}: ${seen.errors.join("; ")}`);
+  if (seen.errors.length) {
+    failures.push(`${film.backend}: ${seen.errors.join("; ")}`);
+    await keepFailure(`${film.backend}: browser errors`, filmBegan);
+  }
 }
 await step("web socket got ForceKeepAlive through the router", async () => {
   const { sockets, frames } = first.seen;

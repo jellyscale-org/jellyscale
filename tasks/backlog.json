@@ -2480,6 +2480,24 @@
       "source": "D-072",
       "title": "On a worker that overstates itself and holds more than one job, a play admitted above what it holds may take the viewer already watching under real time (D-050's guarantee)",
       "notes": "Unverified; a reading of docs/transcoding.md ('an overstated figure admits no more than floor(start / price) plays of a row'). Promote before any ceiling is dropped on a worker that can hold two heavy jobs by its start figure, at JS-056's Refine, or on a dogfood sighting of a play at 1.0x or more falling under it within a minute of another's admission."
+    },
+    {
+      "id": "BL-277",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-160",
+      "title": "On a fresh install every asset sweep logs an ERROR because the library's assets directories do not exist yet",
+      "notes": "Seen by the implementer and QA on a fresh e2e stack: 'a sweep of the asset store ... removed nothing more' with 'lstat ...: no such file or directory'. It looks like invariant 56's missing-root protection firing for an asset prefix that has never been created; nothing was removed wrongly. Decide whether a fresh install should create the directories or the sweep should treat an absent assets prefix as empty while a missing media root stays an error."
+    },
+    {
+      "id": "BL-278",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-160",
+      "title": "An e2e failure found only after its pages close keeps no screenshot",
+      "notes": "The 'ffmpeg still running afterwards' check runs after the scenario has closed its pages; it keeps the viewer record and console but cannot take a screenshot. All failures observed while a page is open keep one. The owner chose fix/simplify/land after three blind reviews of the evidence code; this remaining diagnostic gap is recorded rather than expanding that work."
     }
   ]
 }
