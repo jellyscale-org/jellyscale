@@ -182,32 +182,7 @@ func (s *Server) currentUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getUser(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("userId")
-	session := sessionOf(r)
-	if db.CompactID(id) == db.CompactID(session.User.ID) {
-		writeJSON(w, s.userDTO(session.User))
-		return
-	}
-	if !session.User.IsAdmin {
-		http.Error(w, "forbidden", http.StatusForbidden)
-		return
-	}
-	if !db.ValidID(id) {
-		http.NotFound(w, r)
-		return
-	}
-	var user User
-	err := s.Pool.QueryRow(r.Context(), "SELECT id::text, name, is_admin, last_login_at, configuration FROM users WHERE id = $1::uuid", id).
-		Scan(&user.ID, &user.Name, &user.IsAdmin, &user.LastLoginAt, &user.Configuration)
-	if errors.Is(err, pgx.ErrNoRows) {
-		http.NotFound(w, r)
-		return
-	}
-	if err != nil {
-		s.fail(w, r, err)
-		return
-	}
-	writeJSON(w, s.userDTO(user))
+	writeJSON(w, s.userDTO(sessionOf(r).Target))
 }
 
 func (s *Server) userDTO(user User) map[string]any {

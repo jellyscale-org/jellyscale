@@ -60,6 +60,14 @@ const (
 	AccessViewer Access = "viewer"
 )
 
+// UserScope says whose account a viewer route acts on. Its zero value is own.
+type UserScope string
+
+const (
+	UsersOwn      UserScope = "own"
+	UsersAdminAny UserScope = "admin-any"
+)
+
 // Route is one API operation.
 type Route struct {
 	Method string
@@ -68,12 +76,25 @@ type Route struct {
 	Role   string
 	// Access says who may call the route: AccessAnyone (and then Why says why)
 	// or AccessViewer. Every route declares it; docs/access.md is the model.
-	Access  Access
-	Why     string
-	Handler http.HandlerFunc
+	Access Access
+	// Users is own by default, or admin-any on the four routes an administrator
+	// may use for another account. It is empty on an anyone route.
+	Users UserScope
+	// UserIDBody says the body may name a user under UserId, so the scope guard
+	// reads it before the handler and leaves it whole for the handler to read.
+	UserIDBody bool
+	Why        string
+	Handler    http.HandlerFunc
 	// Snapshot says the handler may run from the snapshot of active sessions
 	// while Postgres is away (invariant 37), for a token it holds.
 	Snapshot bool
+}
+
+func (r Route) userScope() UserScope {
+	if r.Users == "" {
+		return UsersOwn
+	}
+	return r.Users
 }
 
 // Server holds what handlers need.
@@ -134,8 +155,11 @@ type contextKey struct{}
 
 // Session is the authenticated caller.
 type Session struct {
-	User  User
-	Token string
+	User User
+	// Target is the account this request acts on. It is the caller except on
+	// an admin-any route where an administrator named another account.
+	Target User
+	Token  string
 	compat.ClientInfo
 }
 
@@ -161,6 +185,15 @@ func (s *Server) Handler() http.Handler {
 		if route.Access != AccessAnyone && route.Access != AccessViewer {
 			panic(fmt.Sprintf("route %s %s declares Access %q, want %q or %q", route.Method, route.Path, route.Access, AccessAnyone, AccessViewer))
 		}
+		if route.Access == AccessAnyone {
+			if route.Users != "" {
+				panic(fmt.Sprintf("open route %s %s declares user scope %q", route.Method, route.Path, route.Users))
+			}
+			continue
+		}
+		if route.userScope() != UsersOwn && route.userScope() != UsersAdminAny {
+			panic(fmt.Sprintf("route %s %s declares Users %q, want %q or %q", route.Method, route.Path, route.Users, UsersOwn, UsersAdminAny))
+		}
 	}
 	for _, route := range s.Routes() {
 		if !slices.Contains(s.Roles, route.Role) {
@@ -168,7 +201,7 @@ func (s *Server) Handler() http.Handler {
 		}
 		handler := route.Handler
 		if route.Access == AccessViewer {
-			handler = s.requireAuth(handler, route.Snapshot)
+			handler = s.requireAuth(handler, route)
 		}
 		mux.HandleFunc(route.Method+" "+lowerLiterals(route.Path), handler)
 	}
@@ -260,7 +293,7 @@ func (s *Server) logRequests(next http.Handler) http.Handler {
 	})
 }
 
-func (s *Server) requireAuth(next http.HandlerFunc, snapshot bool) http.HandlerFunc {
+func (s *Server) requireAuth(next http.HandlerFunc, route Route) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		info := compat.ParseAuth(r)
 		if info.Token == "" {
@@ -276,7 +309,7 @@ func (s *Server) requireAuth(next http.HandlerFunc, snapshot bool) http.HandlerF
 			away = db.IsAway(err)
 		}
 		if away {
-			if snapshot && s.serveFromSnapshot(next, w, r, info) {
+			if route.Snapshot && s.serveFromSnapshot(next, route, w, r, info) {
 				return
 			}
 			user, err = s.userByToken(r.Context(), info.Token)
@@ -290,6 +323,9 @@ func (s *Server) requireAuth(next http.HandlerFunc, snapshot bool) http.HandlerF
 			return
 		}
 		session := Session{User: user, Token: info.Token, ClientInfo: info}
+		if !s.requireUserScope(w, r, route, &session) {
+			return
+		}
 		next(w, r.WithContext(context.WithValue(r.Context(), contextKey{}, session)))
 	}
 }

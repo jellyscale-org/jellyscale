@@ -32,8 +32,9 @@ const (
 // from Postgres, which has accepted the token, and adds what it finds.
 const startChannel = "jellyscale_session_started"
 
-// offlineSession is what the snapshot knows of a token: the film its session plays.
+// offlineSession is what the snapshot knows of a token: its user and the film its session plays.
 type offlineSession struct {
+	user  string // Compact, so a request naming the caller can be scoped without Postgres.
 	item  string // Compact, empty if the session plays nothing.
 	films []*film
 }
@@ -96,7 +97,7 @@ func notFound(w http.ResponseWriter, r *http.Request) {
 // serveFromSnapshot runs the handler of a request whose token the snapshot holds,
 // with the snapshot in Postgres's place, and says whether it answered. A handler
 // that waits sent nothing, and the headers it set are taken back.
-func (s *Server) serveFromSnapshot(next http.HandlerFunc, w http.ResponseWriter, r *http.Request, info compat.ClientInfo) (answered bool) {
+func (s *Server) serveFromSnapshot(next http.HandlerFunc, route Route, w http.ResponseWriter, r *http.Request, info compat.ClientInfo) (answered bool) {
 	s.snapshot.mu.RLock()
 	session := s.snapshot.sessions[info.Token]
 	s.snapshot.mu.RUnlock()
@@ -115,7 +116,13 @@ func (s *Server) serveFromSnapshot(next http.HandlerFunc, w http.ResponseWriter,
 		}
 	}()
 	ctx := context.WithValue(r.Context(), snapshotKey{}, session)
-	ctx = context.WithValue(ctx, contextKey{}, Session{Token: info.Token, ClientInfo: info})
+	caller := Session{User: User{ID: session.user}, Token: info.Token, ClientInfo: info}
+	ctx = context.WithValue(ctx, contextKey{}, caller)
+	r = r.WithContext(ctx)
+	if !s.requireUserScope(w, r, route, &caller) {
+		return false
+	}
+	ctx = context.WithValue(ctx, contextKey{}, caller)
 	next(w, r.WithContext(ctx))
 	return true
 }
@@ -196,7 +203,7 @@ func (s *Server) keepSnapshot() {
 func (s *Server) refreshSnapshot(ctx context.Context) error {
 	s.snapshot.reading.Lock()
 	defer s.snapshot.reading.Unlock()
-	rows, err := s.Pool.Query(ctx, `SELECT token, COALESCE(item_id::text, '')
+	rows, err := s.Pool.Query(ctx, `SELECT token, user_id::text, COALESCE(item_id::text, '')
 		FROM sessions
 		WHERE last_seen_at > now() - make_interval(secs => $1)`, snapshotWindow.Seconds())
 	if err != nil {
@@ -205,12 +212,12 @@ func (s *Server) refreshSnapshot(ctx context.Context) error {
 	sessions := map[string]*offlineSession{}
 	var itemIDs []string
 	for rows.Next() {
-		var token, item string
-		if err := rows.Scan(&token, &item); err != nil {
+		var token, user, item string
+		if err := rows.Scan(&token, &user, &item); err != nil {
 			rows.Close()
 			return err
 		}
-		sessions[token] = &offlineSession{item: compact(item)}
+		sessions[token] = &offlineSession{user: compact(user), item: compact(item)}
 		if item != "" {
 			itemIDs = append(itemIDs, item)
 		}
@@ -287,13 +294,13 @@ func (s *Server) listenOnce(ctx context.Context) {
 func (s *Server) addStarted(ctx context.Context, token string) {
 	s.snapshot.reading.Lock()
 	defer s.snapshot.reading.Unlock()
-	var item string
-	err := s.Pool.QueryRow(ctx, `SELECT COALESCE(item_id::text, '') FROM sessions
-		WHERE token = $1 AND last_seen_at > now() - make_interval(secs => $2)`, token, snapshotWindow.Seconds()).Scan(&item)
+	var user, item string
+	err := s.Pool.QueryRow(ctx, `SELECT user_id::text, COALESCE(item_id::text, '') FROM sessions
+		WHERE token = $1 AND last_seen_at > now() - make_interval(secs => $2)`, token, snapshotWindow.Seconds()).Scan(&user, &item)
 	if err != nil {
 		return
 	}
-	session := &offlineSession{item: compact(item)}
+	session := &offlineSession{user: compact(user), item: compact(item)}
 	var films []itemFilm
 	if item != "" {
 		if films, err = s.refreshFilms(ctx, []string{item}); err != nil {

@@ -707,15 +707,29 @@ func TestWithoutAKnownTokenGetAndPatchAre401AndStoreNothing(t *testing.T) {
 	tpSame(t, "after the refused PATCHes", token, tpDefaults(), g.a, g.b)
 }
 
-// The route acts on the caller only: an administrator's ?userId= of another viewer reads and changes the
-// administrator's own, and no path with a user id in it answers 2xx.
-func TestTheRouteActsOnTheCallerAndTakesNoUserId(t *testing.T) {
+// The route acts on the caller only: another user's id in the query is refused with 403 whoever asks, an administrator
+// included, and changes nothing (JS-127, D-075); the caller's own id, in any spelling, acts on the caller. And no path
+// with a user id in it answers 2xx.
+func TestTheRouteActsOnTheCallerAndRefusesAnotherUsersId(t *testing.T) {
 	g := newTPRig(t)
 	viewer := g.viewer(t, "U")
 	admin := g.viewer(t, "A")
 	tpPatch(t, g.a, viewer, tpAwayBody)
 	u := g.users["U"]
 	for _, query := range []string{"?userId=" + u.compact(), "?userid=" + u.id, "?UserId=" + strings.ToUpper(u.compact())} {
+		for _, r := range []*proc{g.a, g.b} {
+			if status, raw := tpSend(t, r, "GET", admin, tpPath+query, ""); status != 403 {
+				t.Errorf("the administrator's GET%s on %s: %d %s, want 403", query, r.addr, status, raw)
+			}
+		}
+		if status, raw := tpSend(t, g.b, "PATCH", admin, tpPath+query, `{"KeepAudioLanguages":["ita"]}`); status != 403 {
+			t.Errorf("the administrator's PATCH%s: %d %s, want 403", query, status, raw)
+		}
+		tpSame(t, "the administrator after the refused PATCH"+query, admin, tpDefaults(), g.a, g.b)
+		tpSame(t, "the viewer after the administrator's PATCH"+query, viewer, tpAway(), g.a, g.b)
+	}
+	a := g.users["A"]
+	for _, query := range []string{"?userId=" + a.compact(), "?userid=" + a.id, "?UserId=" + strings.ToUpper(a.compact()), "?userId="} {
 		for _, r := range []*proc{g.a, g.b} {
 			status, raw := tpSend(t, r, "GET", admin, tpPath+query, "")
 			if status != 200 || !reflect.DeepEqual(parseTP(t, raw), tpDefaults()) {

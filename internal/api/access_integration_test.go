@@ -60,6 +60,7 @@ type accessSite struct {
 	hashed  string
 	asked   map[string]int // "<accHandler> <method> <path>" to how many requests.
 	problem []string
+	scoped  *scopeFixture // The users of the JS-127 sweep, made by the first handler that asks.
 }
 
 func (a *accessSite) fail(format string, args ...any) {
@@ -684,6 +685,7 @@ func TestAccess(t *testing.T) {
 		a.media(t, h, a.token)
 		a.neighbours(t, h, both)
 		a.outside(t, h)
+		a.scope(t, h)
 		a.report(t)
 	}
 	// Every route was asked, on every accHandler that serves it, and a route that no accHandler serves is a failure.
