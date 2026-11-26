@@ -870,6 +870,17 @@
       "decision": "keep",
       "entry": "D-082 stands, and the grant is rejected as a second protocol, not deferred. 'Could' is not use, and no jellyscale work goes in for Octave (D-027). If a QR comes, it carries Quick Connect's own code in a link: one code, one expiry, one guessing bound, one approval, one ordinary token. A grant at jellyscale would be a second pending-code machine for the same outcome. A grant at the provider would make a provider token a credential, work only where the provider offers it, and move approval to where jellyscale cannot name the device. D-082's trigger is corrected, because 'ships the grant' can never fire for something that needs the server first. BL-229 is promoted when the project of a client that authorizes every media request states in an issue that it will draw the QR. It then becomes its own task directly after JS-039 (after JS-037 if JS-039 is not built), never a criterion of either. Product terms on promotion: the link opens the approval with the code filled in; a signed-out device signs in by password or provider and returns to the approval; the page names the device and app, and approves only on an explicit confirmation, never on opening; a page jellyscale serves lives under /jellyscale/v1/, documented. The TV shows one code, with a QR of the same code where the client draws one, never two flows. JS-039 keeps priority 36, its dependencies and its eight criteria. The grant itself reopens on a supported client that cannot speak Quick Connect, or an operator report of a provider policy that requires the provider's own device page.",
       "serves": "PRODUCT.md: 'A password, a code entered on the TV from a phone, or the household's own single sign-on'; 'Octave first... (no jellyscale work goes in for it)'; 'what jellyscale adds beyond Jellyfin's API is something it can use, never something it needs'; 'Signing in is easy and safe'. Owner, 2026-11-22: nothing outruns the product."
+    },
+    {
+      "id": "D-084",
+      "date": "2026-11-26",
+      "by": "owner",
+      "task": "model routing; every task",
+      "brief": "Owner, 2026-11-26: Fable 5.2 usage in the Claude allowance is too high. Keep Fable for the state-of-the-art check, but make that check less frequent and use cheaper models for the work.",
+      "tradeoff": "Fewer Fable calls can miss a product trade-off until the next phase gate, and a batched decision can be less tailored than a per-task one. In return, the expensive model reviews direction and true trade-offs rather than routine confirmations.",
+      "decision": "accept",
+      "entry": "Fable is called at most once per phase, and only for a new product trade-off, a direction review, or a decision not derivable from a recorded decision. All pending questions are batched into that call. Routine priority confirmations, single decisions covered by a decision id, and per-task checks do not use Fable. The advisor has the same budget: one call per task after two failed attempts on the same question. Opus 5.5 remains the per-task Refine and Check model; Sonnet 5.5 carries architecture, adversarial and UX review; Build/Fix, QA and helpers use zero-cost OpenCode Go models. Escalation to Fable happens only when those disagree or a product trade-off remains. If a Fable call would only confirm existing policy, the lead cites the decision and does not call.",
+      "serves": "Owner, 2026-11-26; the Claude allowance; PRODUCT.md quality bar."
     }
   ]
 }
