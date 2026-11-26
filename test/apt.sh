@@ -39,7 +39,11 @@ done
 sudo apt-get -o Acquire::Retries=3 update
 # --reinstall: a package the runner image already has (fontconfig, fonts-dejavu-core) is
 # otherwise never downloaded, so it would leave no .deb and every later run would miss.
-sudo apt-get -o Acquire::Retries=3 install -y --reinstall "$@"
+# A runner image can carry a newer exact-version dependency than the mirror's
+# package. Without --allow-downgrades apt leaves mesa-va-drivers unconfigured
+# instead of bringing mesa-libgallium to the matching version (merge-group run
+# 45736550858).
+sudo apt-get -o Acquire::Retries=3 install -y --reinstall --allow-downgrades "$@"
 if [[ -n $debs ]]; then
   mkdir -p "$debs"
   cp "$archives"/*.deb "$debs"/
