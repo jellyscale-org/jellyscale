@@ -2061,7 +2061,7 @@
     {
       "id": "BL-229",
       "title": "A link that opens the Quick Connect approval with the code filled in, for a QR code",
-      "notes": "Issue #118. Waits for JS-037. D-083: the only form a QR sign-in takes. Promote when the project of a client that authorizes every media request states in an issue that it will draw the QR, when a supported TV app (docs/status.md) shows one, or when sign-ins by code are started and not finished often enough to matter. It becomes its own task after JS-039. First step then: observe whether jellyfin-web 12.4's approval page takes a code from its address (unverified). Terms: a signed-out device signs in by password or provider and returns to the approval; the page names the device and approves only on an explicit confirmation; one code, Quick Connect's expiry and bound.",
+      "notes": "Issue #118. Waits for JS-037. D-083: the only form a QR sign-in takes. Promote when the project of a client that authorizes every media request states in an issue that it will draw the QR, when a supported TV app (docs/status.md) shows one, or when sign-ins by code are started and not finished often enough to matter. It becomes its own task after JS-039. First step then: observe whether jellyfin-web 12.4's approval page takes a code from its address (unverified). Terms: a signed-out device signs in by password or provider and returns to the approval; the page names the device and approves only on an explicit confirmation; one code, Quick Connect's expiry and bound. D-087: the link must open a page that survives a change of default client (D-083's /jellyscale/v1/ term). A line in an Octave issue stating the TV QR will be drawn promotes it, with no new decision.",
       "status": "open",
       "severity": "minor",
       "reviewer": "product-owner",
@@ -2507,6 +2507,24 @@
       "source": "D-082",
       "title": "OIDC provider groups, a second provider, and provider-driven policy or library mapping",
       "notes": "Out of JS-039, which supports one provider declared in configuration and maps identity by issuer plus subject. Promote when an operator uses two providers, or needs the provider's groups to drive administrator roles or library access."
+    },
+    {
+      "id": "BL-282",
+      "status": "open",
+      "severity": "major",
+      "reviewer": "product-owner",
+      "source": "issue #289; D-085, D-087",
+      "title": "Serve Octave's web app as the default browser client",
+      "notes": "Returns as a trade-off brief once all four hold: (1) the owner approves PRODUCT.md's wording and says what 'default' means; (2) Octave's project publishes a pinned, licensed web build; (3) Octave's project measures high-bitrate fragmented MP4 through MSE with a header loader in desktop Chrome, Firefox and Safari and on iPhone and iPad, with start and seek times and the share of films that play as they are; (4) the lead measures on the dogfood library how many films jellyfin-web direct plays today that Octave web would need repackaged, and the cores that holds. Scope then, for the web build only: serving it (deep links, cache headers, precompressed assets), its pages' response headers including a CSP, and the e2e tier against it. D-027 otherwise stands."
+    },
+    {
+      "id": "BL-283",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-127; D-087",
+      "title": "No committed check that a request naming the caller's own id is served during a Postgres outage",
+      "notes": "It works today, shown by hand by two reviewers. Add the check when the outage snapshot or JS-127's rule next changes."
     }
   ]
 }
