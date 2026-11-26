@@ -405,17 +405,19 @@ func TestABodyThatIsNotOneObjectOrIsTooLongIsRefusedAndAnExactLimitIsAccepted(t 
 	ucSame(t, "after the body of exactly 65,536 bytes", token, want, g.a, g.b)
 }
 
-// The route acts on the caller: an administrator's PATCH, with or without ?userId= naming another user, changes the
-// administrator's settings alone and another viewer's 16 fields stay as they were; no token and an unknown token are 401.
+// The route acts on the caller: an administrator's PATCH with no id or with their own id (any spelling) changes the
+// administrator's settings alone and another viewer's 16 fields stay as they were; a PATCH naming another user's id is
+// refused with 403 for everyone, an administrator included, and changes nothing (JS-127, D-075); no token and an unknown
+// token are 401.
 func TestThePatchActsOnTheCallerOnly(t *testing.T) {
 	g := newUCRig(t)
 	viewer, other, admin := g.token("U"), g.token("O"), g.token("A")
 	ucSave(t, g.a, viewer, ucAway())
 	ucSave(t, g.a, other, ucWith(ucAway(), map[string]any{"SubtitleMode": "Smart", "AudioLanguagePreference": "ita"}))
 	otherWant := ucWith(ucAway(), map[string]any{"SubtitleMode": "Smart", "AudioLanguagePreference": "ita"})
-	u := g.users["U"]
+	u, a := g.users["U"], g.users["A"]
 	adminWant := ucNew()
-	for n, query := range []string{"", "?userId=" + u.compact(), "?userid=" + u.id, "?UserId=" + strings.ToUpper(u.compact())} {
+	for n, query := range []string{"", "?userId=" + a.compact(), "?userid=" + a.id, "?UserId=" + strings.ToUpper(a.compact())} {
 		field, value := "SubtitleLanguagePreference", fmt.Sprintf("l%d", n)
 		status, raw := doRequest(t, []*proc{g.a, g.b}[n%2], "PATCH", ucPath+query, admin, "application/json", fmt.Sprintf(`{%q:%q}`, field, value))
 		if status != 200 {
@@ -429,13 +431,23 @@ func TestThePatchActsOnTheCallerOnly(t *testing.T) {
 		ucSame(t, "the viewer after the administrator's PATCH"+query, viewer, ucAway(), g.a, g.b)
 		ucSame(t, "the second viewer after the administrator's PATCH"+query, other, otherWant, g.a, g.b)
 	}
-	// A viewer's PATCH with ?userId= naming the administrator or the other viewer changes the viewer's own settings only.
-	status, raw := doRequest(t, g.b, "PATCH", ucPath+"?userId="+g.users["O"].compact(), viewer, "application/json", `{"SubtitleMode":"None"}`)
-	if status != 200 {
-		t.Fatalf("a viewer's PATCH naming another user: %d %s", status, raw)
+	// Naming another user is refused for the administrator, and nothing of anyone's changes.
+	for _, query := range []string{"?userId=" + u.compact(), "?userid=" + u.id, "?UserId=" + strings.ToUpper(u.compact())} {
+		if status, raw := doRequest(t, g.a, "PATCH", ucPath+query, admin, "application/json", `{"SubtitleLanguagePreference":"zzz"}`); status != 403 {
+			t.Errorf("the administrator's PATCH%s naming another user: %d %s, want 403", query, status, raw)
+		}
+		ucSame(t, "the administrator after the refused PATCH"+query, admin, adminWant, g.a, g.b)
+		ucSame(t, "the viewer after the refused PATCH"+query, viewer, ucAway(), g.a, g.b)
 	}
-	ucSame(t, "the viewer after naming another user", viewer, ucWith(ucAway(), map[string]any{"SubtitleMode": "None"}), g.a, g.b)
+	// A viewer's PATCH with ?userId= naming the administrator or the other viewer is refused too.
+	for _, named := range []string{g.users["O"].compact(), a.compact()} {
+		if status, raw := doRequest(t, g.b, "PATCH", ucPath+"?userId="+named, viewer, "application/json", `{"SubtitleMode":"None"}`); status != 403 {
+			t.Fatalf("a viewer's PATCH naming another user: %d %s, want 403", status, raw)
+		}
+	}
+	ucSame(t, "the viewer after naming another user", viewer, ucAway(), g.a, g.b)
 	ucSame(t, "the other viewer after the first named them", other, otherWant, g.a, g.b)
+	ucSame(t, "the administrator after the viewer named them", admin, adminWant, g.a, g.b)
 
 	for _, r := range []*proc{g.a, g.b} {
 		for _, bad := range []string{"", strings.Repeat("0", 32), uuid.NewString()} {
@@ -446,7 +458,7 @@ func TestThePatchActsOnTheCallerOnly(t *testing.T) {
 			}
 		}
 	}
-	ucSame(t, "the viewer after the 401s", viewer, ucWith(ucAway(), map[string]any{"SubtitleMode": "None"}), g.a, g.b)
+	ucSame(t, "the viewer after the 401s", viewer, ucAway(), g.a, g.b)
 }
 
 // A language saved through this PATCH is the one the rest of jellyscale reads: the track preferences' switch needs it.
