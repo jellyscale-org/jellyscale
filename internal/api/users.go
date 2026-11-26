@@ -166,23 +166,7 @@ func (s *Server) authenticateByName(w http.ResponseWriter, r *http.Request) {
 	}
 	user.LastLoginAt = &now
 
-	writeJSON(w, map[string]any{
-		"User": s.userDTO(user),
-		"SessionInfo": map[string]any{
-			"PlayState": map[string]any{"CanSeek": false, "IsPaused": false, "IsMuted": false, "RepeatMode": "RepeatNone",
-				"PlaybackOrder": "Default"},
-			"AdditionalUsers": []any{}, "PlayableMediaTypes": []any{}, "SupportedCommands": []any{},
-			"Id": db.CompactID(uuid.NewString()), "UserId": db.CompactID(user.ID), "UserName": user.Name,
-			"Client": info.Client, "DeviceName": info.Device, "DeviceId": info.DeviceID,
-			"ApplicationVersion": info.Version, "LastActivityDate": now.Format(time.RFC3339Nano),
-			// Nothing played yet; Jellyfin sends its zero time. SDK clients require the field.
-			"LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
-			"ServerId":            s.ServerID, "IsActive": true, "SupportsMediaControl": false, "SupportsRemoteControl": false,
-			"HasCustomDeviceName": false, "NowPlayingQueue": []any{},
-		},
-		"AccessToken": accessToken,
-		"ServerId":    s.ServerID,
-	})
+	writeJSON(w, s.signInJSON(user, accessToken, info))
 }
 
 var dummyHash, _ = bcrypt.GenerateFromPassword([]byte("jellyscale"), bcrypt.DefaultCost)

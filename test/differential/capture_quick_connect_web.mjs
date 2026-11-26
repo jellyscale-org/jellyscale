@@ -133,6 +133,34 @@ if (phase === "on") {
     result.refused_initiate.push({ status, retry_after: retryAfter, dialogs: state.dialogs, sign_in_form: state.sign_in_form });
     await refused.context.close();
   }
+} else if (phase === "refused-approval") {
+  // JS-037: jellyscale answers 409 where Jellyfin's second approval answers 500. This is what a viewer sees for
+  // each. A fresh context per status, a signed-in viewer on #/quickconnect, and the Authorize request answered in
+  // the server's place so the page sees each status. Rerun with:
+  //   PHASE=refused-approval BASE=http://127.0.0.1:<port> PASSWORD=<password> node capture_quick_connect_web.mjs
+  result.refused_approve = [];
+  for (const status of [409, 500, 404, 403]) {
+    const opened = await signedIn("viewer");
+    await opened.page.route(/\/quickconnect\/authorize/i, (route) => route.fulfill({
+      status, headers: { "content-type": "text/plain" }, body: "Error processing request.",
+    }));
+    const before = await quickConnectPage(opened.page);
+    const after = await submitCode(opened.page, "123456");
+    await opened.page.waitForTimeout(1000);
+    let start = 0;
+    while (start < before.page_text.length && before.page_text[start] === after.page_text[start]) start++;
+    let end = 0;
+    while (end < before.page_text.length - start &&
+      before.page_text[before.page_text.length - 1 - end] === after.page_text[after.page_text.length - 1 - end]) end++;
+    result.refused_approve.push({
+      status,
+      page_text_added: after.page_text.slice(start, after.page_text.length - end).trim(),
+      dialogs: after.dialogs,
+      route: after.route,
+      still_signed_in: await opened.page.evaluate(() => !!window.ApiClient?.accessToken()),
+    });
+    await opened.context.close();
+  }
 } else {
   const tv = await loginPage("off-tv");
   result.login_page = await shown(tv.page);

@@ -1217,3 +1217,36 @@
   reason: "approving an already approved code, redeemed or not, is a conflict with the code's state and is answered 409 here; Jellyfin 12.4 answers 500, which reads as a server fault. jellyfin-web 12.4 shows both alike, Unknown Quick Connect code (compat/captures/quick-connect-second-approval-12.4.md)"
   paths:
     - "(status)"
+
+# JS-037: approval is always for the account that is signed in, administrators included (D-082). Jellyfin lets an
+# administrator sign a device into somebody else's account by naming them; Jellyscale refuses that naming with 403,
+# leaves the code pending and never issues the other account's token.
+- requests:
+    - "quick connect: administrator names another user"
+    - "quick connect: administrator names a user nobody is"
+    - "quick connect: viewer names a malformed userId"
+  kind: improvement
+  reason: "naming anyone but the approver is refused 403 here, whether the id is another account, nobody's, or malformed; Jellyfin 12.4 answers 200 for an administrator naming another account and 400 for the other two (JS-037, D-082)"
+  paths:
+    - "(status)"
+
+- requests:
+    - "quick connect: connect after the administrator named another"
+  kind: improvement
+  reason: "the refused approval left this code pending, so its poll still says not approved; Jellyfin's administrator approval made it approved (JS-037)"
+  paths:
+    - "body.Authenticated"
+
+- requests:
+    - "quick connect: redeem the approval naming another"
+  kind: improvement
+  reason: "no approval for the other account happened, so there is no sign-in to give this device; Jellyfin hands out the other account's token (JS-037)"
+  paths:
+    - "(status)"
+
+- requests:
+    - "quick connect: redeem after the approver is deleted"
+  kind: improvement
+  reason: "an account deleted after it approved redeems nothing: there is no account to sign the device into, so the device gets the unknown-secret answer; Jellyfin 12.4 answers with a 200 sign-in whose token then answers 401 (JS-037)"
+  paths:
+    - "(status)"

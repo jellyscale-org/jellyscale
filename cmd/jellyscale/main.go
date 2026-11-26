@@ -107,6 +107,10 @@ type config struct {
 	TrustedProxies *[]string `json:"trustedProxies"`
 	proxies        *signin.Proxies
 
+	// QuickConnect is on by default, as in Jellyfin 12.4. false on the api role turns it off there: Enabled answers
+	// false and the other four routes answer 401, without touching codes another replica may still offer.
+	QuickConnect *bool `json:"quickConnect"`
+
 	// MetricsListen is where /metrics is served, such as ":9090", by every role
 	// in the process and apart from the public port. Empty serves none.
 	MetricsListen string `json:"metricsListen"`
@@ -326,7 +330,8 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 	server := &api.Server{
 		Pool: pool, Items: &items.Repo{Pool: pool, ServerID: serverID}, ServerID: serverID,
 		Name: cfg.Name, WebDir: cfg.WebDir, Roles: enabled, Log: log, Transcode: transcodes.jobs, Hub: transcodes.hub,
-		Proxies: cfg.proxies,
+		Proxies: cfg.proxies, QuickConnectOff: cfg.QuickConnect != nil && !*cfg.QuickConnect,
+		AuditLog: slog.New(slog.NewJSONHandler(os.Stderr, nil)),
 	}
 	if slices.Contains(enabled, api.RoleAPI) {
 		if cfg.proxies == nil {

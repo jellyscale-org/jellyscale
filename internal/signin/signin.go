@@ -32,9 +32,12 @@ const (
 
 // Bounds, as logged and counted.
 const (
-	BoundName    = "name"
-	BoundDevice  = "device"
-	BoundAddress = "address"
+	BoundName     = "name"
+	BoundDevice   = "device"
+	BoundAddress  = "address"
+	BoundApproval = "approval"
+	// ApprovalLimit is D-078's ten failed approvals in a quarter of an hour, refused for that long.
+	ApprovalLimit = 10
 )
 
 // Attempt is who signs in. UserID is "" for a name that is no account.
@@ -120,6 +123,43 @@ func Begin(ctx context.Context, pool *pgxpool.Pool, a Attempt) (Ticket, *Refusal
 			}
 			ticket.ids = append(ticket.ids, id)
 		}
+		return nil
+	})
+	if err != nil {
+		return Ticket{}, nil, err
+	}
+	return ticket, refusal, nil
+}
+
+// BeginApproval reserves one failed Quick Connect approval toward the approving account (D-078). It is called before
+// the code is looked at, so approvals sent at once cannot all check a code. An approval that succeeds gives the
+// reservation back with Release; an unknown, expired or already approved code keeps it. Nothing but this account's
+// approvals count toward it: a refusal checks no code, stores nothing and lives its own quarter of an hour.
+func BeginApproval(ctx context.Context, pool *pgxpool.Pool, userID string) (Ticket, *Refusal, error) {
+	var ticket Ticket
+	var refusal *Refusal
+	err := pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
+		ticket, refusal = Ticket{}, nil
+		approval := key{BoundApproval, userID, ApprovalLimit}
+		if err := lock(ctx, tx, []key{approval}); err != nil {
+			return err
+		}
+		after, err := refusedFor(ctx, tx, approval)
+		if err != nil {
+			return err
+		}
+		if after > 0 {
+			refusal = &Refusal{Bound: approval.bound, After: after}
+			return nil
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM signin_failures WHERE at < clock_timestamp() - $1 * interval '2 seconds'`, window); err != nil {
+			return err
+		}
+		id, err := fail(ctx, tx, approval.bound, approval.key, false)
+		if err != nil {
+			return err
+		}
+		ticket.ids = append(ticket.ids, id)
 		return nil
 	})
 	if err != nil {

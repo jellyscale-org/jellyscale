@@ -93,6 +93,11 @@ type Server struct {
 	// Proxies are the proxies in front of the server, from trustedProxies; nil when the key is absent, and then no address
 	// is counted toward a sign-in bound (docs/access.md).
 	Proxies *signin.Proxies
+	// QuickConnectOff is this replica's "quickConnect": false. The zero value is on, as Jellyfin 12.4's default.
+	QuickConnectOff bool
+	// AuditLog writes the Quick Connect refusals as structured records, so an operator can count them by bound or cap
+	// and by the account that was refused. The ordinary Log stays in the human-readable format.
+	AuditLog *slog.Logger
 	// SocketIdle closes a WebSocket that sends nothing for this long.
 	// Defaults to 60 seconds, the interval ForceKeepAlive promises.
 	SocketIdle time.Duration

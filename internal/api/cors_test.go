@@ -108,9 +108,9 @@ func TestEveryRoutePreflightIsAnswered368TimesOnAProcessWithOnlyItsRole(t *testi
 		byMethod[route.Method]++
 		paths[route.Path] = true
 	}
-	if len(routes) != 92 || len(paths) != 84 || byRole[RoleAPI] != 79 || byRole[RoleStream] != 13 ||
-		byMethod["GET"] != 66 || byMethod["POST"] != 19 || byMethod["DELETE"] != 5 || byMethod["PATCH"] != 2 {
-		t.Fatalf("the route table is %d routes on %d paths, by role %v, by method %v; the task pins 92 on 84, 79 api and 13 stream, 66 GET, 19 POST, 5 DELETE, 2 PATCH", len(routes), len(paths), byRole, byMethod)
+	if len(routes) != 96 || len(paths) != 88 || byRole[RoleAPI] != 83 || byRole[RoleStream] != 13 ||
+		byMethod["GET"] != 67 || byMethod["POST"] != 22 || byMethod["DELETE"] != 5 || byMethod["PATCH"] != 2 {
+		t.Fatalf("the route table is %d routes on %d paths, by role %v, by method %v; the task pins 96 on 88, 83 api and 13 stream, 67 GET, 22 POST, 5 DELETE, 2 PATCH", len(routes), len(paths), byRole, byMethod)
 	}
 	asked := map[string]int{}
 	var bad []string
@@ -137,12 +137,12 @@ func TestEveryRoutePreflightIsAnswered368TimesOnAProcessWithOnlyItsRole(t *testi
 			}
 		}
 	}
-	if asked[RoleAPI] != 316 || asked[RoleStream] != 52 {
-		t.Fatalf("asked %v preflights, want 316 on api-only processes and 52 on stream-only ones", asked)
+	if asked[RoleAPI] != 332 || asked[RoleStream] != 52 {
+		t.Fatalf("asked %v preflights, want 332 on api-only processes and 52 on stream-only ones", asked)
 	}
 	if len(bad) > 0 {
 		sort.Strings(bad)
-		t.Errorf("%d of 368 preflights were refused or incomplete; the first 12:\n  %s", len(bad), strings.Join(bad[:min(12, len(bad))], "\n  "))
+		t.Errorf("%d of 384 preflights were refused or incomplete; the first 12:\n  %s", len(bad), strings.Join(bad[:min(12, len(bad))], "\n  "))
 	}
 }
 
@@ -401,8 +401,8 @@ func TestEachViewerRouteAskedFromAnotherOriginWithNoTokenIsA401TheOriginMayRead(
 			}
 		}
 	}
-	if viewers != 81 {
-		t.Fatalf("%d viewer routes asked, want the 81 of the task (92 less the 11 open ones)", viewers)
+	if viewers != 82 {
+		t.Fatalf("%d viewer routes asked, want the 82 of the task (96 less the 14 open ones)", viewers)
 	}
 	if len(bad) > 0 {
 		t.Errorf("%d wrong; the first 8:\n  %s", len(bad), strings.Join(bad[:min(8, len(bad))], "\n  "))

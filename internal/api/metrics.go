@@ -38,13 +38,27 @@ var (
 		Help: "1 when the per-address sign-in bound is on (trustedProxies is set), 0 when it is off."})
 )
 
+// Quick Connect's own two refusals (JS-037, D-078 and D-079), one series each: a bound and a cap, never an account,
+// device or secret. The password bounds count neither of these routes.
+var (
+	quickconnectBoundRefusals = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "jellyscale_quickconnect_bound_refusals_total",
+		Help: "Quick Connect approvals refused because the approving account made too many failed guesses, by the bound (approval)."}, []string{"bound"})
+	quickconnectCapRefusals = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "jellyscale_quickconnect_cap_refusals_total",
+		Help: "Quick Connect Initiates refused because the cluster has reached its cap of live codes, by the cap (live_codes)."}, []string{"cap"})
+)
+
 func init() {
 	for _, bound := range []string{signin.BoundName, signin.BoundDevice, signin.BoundAddress} {
 		signinRefusals.WithLabelValues(bound)
 	}
+	quickconnectBoundRefusals.WithLabelValues(signin.BoundApproval)
+	quickconnectCapRefusals.WithLabelValues("live_codes")
 }
 
 // Collectors are the metrics of this package.
 func Collectors() []prometheus.Collector {
-	return []prometheus.Collector{playbackDecisions, playbackRefusals, playbackDecisionReasons, playbackFallbacks, signinFailures, signinRefusals, signinUnattributed, signinAddressBound}
+	return []prometheus.Collector{playbackDecisions, playbackRefusals, playbackDecisionReasons, playbackFallbacks,
+		signinFailures, signinRefusals, signinUnattributed, signinAddressBound, quickconnectBoundRefusals, quickconnectCapRefusals}
 }

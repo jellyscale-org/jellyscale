@@ -67,7 +67,3 @@ func (s *Server) systemEndpoint(w http.ResponseWriter, r *http.Request) {
 func (s *Server) branding(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, map[string]any{"SplashscreenEnabled": false})
 }
-
-func quickConnectDisabled(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, false)
-}
