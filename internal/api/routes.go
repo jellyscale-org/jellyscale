@@ -24,9 +24,9 @@ func (s *Server) Routes() []Route {
 		{Method: "GET", Path: "/Users/Public", Status: Implemented, Role: RoleAPI, Access: AccessAnyone, Why: "the sign-in page asks for the users to pick from before anyone has signed in; it answers none", Handler: emptyList},
 		{Method: "POST", Path: "/Users/AuthenticateByName", Status: Implemented, Role: RoleAPI, Access: AccessAnyone, Why: "it is how a viewer signs in, and it checks the name and password itself", Handler: s.authenticateByName},
 		{Method: "GET", Path: "/Users/Me", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.currentUser},
-		{Method: "GET", Path: "/Users/{userId}", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.getUser},
-		{Method: "POST", Path: "/Users/Configuration", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.saveConfiguration},
-		{Method: "POST", Path: "/Users/{userId}/Configuration", Status: Alias, Role: RoleAPI, Access: AccessViewer, Handler: s.saveConfiguration},
+		{Method: "GET", Path: "/Users/{userId}", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Users: UsersAdminAny, Handler: s.getUser},
+		{Method: "POST", Path: "/Users/Configuration", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Users: UsersAdminAny, Handler: s.saveConfiguration},
+		{Method: "POST", Path: "/Users/{userId}/Configuration", Status: Alias, Role: RoleAPI, Access: AccessViewer, Users: UsersAdminAny, Handler: s.saveConfiguration},
 		// jellyscale's own namespace: Jellyfin has no place for these (docs/api.md). Each acts on the caller only.
 		{Method: "GET", Path: "/jellyscale/v1/track-preferences", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.getTrackPreferences},
 		{Method: "PATCH", Path: "/jellyscale/v1/track-preferences", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.patchTrackPreferences},
@@ -103,7 +103,7 @@ func (s *Server) Routes() []Route {
 		{Method: "POST", Path: "/Sessions/Playing/Ping", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.playbackPing},
 		{Method: "GET", Path: "/Sessions", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.listSessions},
 		{Method: "GET", Path: "/socket", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.socket},
-		{Method: "POST", Path: "/UserItems/{itemId}/UserData", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.setUserData},
+		{Method: "POST", Path: "/UserItems/{itemId}/UserData", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Users: UsersAdminAny, Handler: s.setUserData},
 		{Method: "POST", Path: "/UserPlayedItems/{itemId}", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.markPlayed(true)},
 		{Method: "DELETE", Path: "/UserPlayedItems/{itemId}", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.markPlayed(false)},
 		{Method: "POST", Path: "/UserFavoriteItems/{itemId}", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.markFavorite(true)},
@@ -123,7 +123,7 @@ func (s *Server) Routes() []Route {
 		{Method: "GET", Path: "/Users/{userId}/Items/{itemId}/Intros", Status: Alias, Role: RoleAPI, Access: AccessViewer, Handler: emptyResult},
 		{Method: "GET", Path: "/Users/{userId}/Items/{itemId}/LocalTrailers", Status: Alias, Role: RoleAPI, Access: AccessViewer, Handler: emptyList},
 		{Method: "GET", Path: "/Users/{userId}/Items/{itemId}/SpecialFeatures", Status: Alias, Role: RoleAPI, Access: AccessViewer, Handler: emptyList},
-		// These act on the caller whatever userId says.
+		// These Jellyfin aliases act on the caller; the guard refuses another user's id (JS-127).
 		{Method: "POST", Path: "/Users/{userId}/PlayedItems/{itemId}", Status: Alias, Role: RoleAPI, Access: AccessViewer, Handler: s.markPlayed(true)},
 		{Method: "DELETE", Path: "/Users/{userId}/PlayedItems/{itemId}", Status: Alias, Role: RoleAPI, Access: AccessViewer, Handler: s.markPlayed(false)},
 		{Method: "POST", Path: "/Users/{userId}/FavoriteItems/{itemId}", Status: Alias, Role: RoleAPI, Access: AccessViewer, Handler: s.markFavorite(true)},

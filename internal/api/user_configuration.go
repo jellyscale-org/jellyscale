@@ -153,31 +153,7 @@ func subtitleModeOf(raw json.RawMessage) (string, bool) {
 // saveConfiguration serves POST /Users/Configuration, naming a user in its userId query or nobody, and the
 // obsolete POST /Users/{userId}/Configuration jellyfin-web calls.
 func (s *Server) saveConfiguration(w http.ResponseWriter, r *http.Request) {
-	session := sessionOf(r)
-	target := r.PathValue("userId")
-	if target == "" {
-		target = r.URL.Query().Get("userid")
-	}
-	if target != "" && !db.ValidID(target) {
-		http.Error(w, "invalid user id", http.StatusBadRequest)
-		return
-	}
-	if target == "" || strings.EqualFold(db.CompactID(target), db.CompactID(session.User.ID)) {
-		target = session.User.ID
-	} else if !session.User.IsAdmin {
-		// Another user's settings are not an unknown user's to be told about.
-		var exists bool
-		if err := s.Pool.QueryRow(r.Context(), "SELECT EXISTS (SELECT 1 FROM users WHERE id = $1::uuid)", target).Scan(&exists); err != nil {
-			s.fail(w, r, err)
-			return
-		}
-		if !exists {
-			http.NotFound(w, r)
-			return
-		}
-		http.Error(w, "forbidden", http.StatusForbidden)
-		return
-	}
+	target := sessionOf(r).Target.ID
 	// A body over 64 KB is refused like one that is not JSON; Jellyfin stores any size.
 	raw, err := io.ReadAll(io.LimitReader(r.Body, 1<<16+1))
 	if err != nil {
