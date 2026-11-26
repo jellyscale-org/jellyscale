@@ -1002,6 +1002,17 @@
       "decision": "change",
       "entry": "PRODUCT.md is rewritten under D-091 to hold only the product and its direction. jellyscale is the back end and Octave the front end it ships. Goal 3 adds \"Octave's features have the server they need\". \"No jellyscale work goes in for Octave\" is withdrawn, completing D-089's lift of D-027: the server side of Octave's features is jellyscale's work, while Octave itself stays its own project's and needs nothing only jellyscale has. No viewer or operator guarantee is removed. JS-053, JS-052 and JS-046 take priorities 52 to 54. JS-032 and JS-049 wait for Octave's statement or dogfood counts.",
       "serves": "Owner, 2026-11-26 (D-091): \"focus on the back end work and also supporting Octave features\"; PRODUCT.md: \"Their library feels alive\"."
+    },
+    {
+      "id": "D-097",
+      "date": "2026-11-26",
+      "by": "product-owner",
+      "task": "JS-037",
+      "brief": "Two minors JS-037's last review left: an approval that outlives its client delayed shutdown to 29 s with an 8 s grace and the database stalled, and one that failed after its client hung up logged nothing.",
+      "tradeoff": "Nothing given up.",
+      "decision": "plan",
+      "entry": "JS-037 bounds an in-flight approval by the shutdown grace and logs a failed approval.",
+      "serves": "docs/running.md: the process exits within seconds of the grace; 'every failure is reported with its reason'."
     }
   ]
 }

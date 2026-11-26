@@ -255,7 +255,9 @@
         "Quick Connect is on by default, as in Jellyfin 12.4, and is turned off in configuration. When off: /QuickConnect/Enabled answers false and jellyfin-web shows no Quick Connect button; the other four routes answer 401, as in Jellyfin; Moonfin falls back to the password form only on Initiate's 401 (#104); a replica with it off gives no token for a code started before it was turned off.",
         "Each refusal is logged with its bound or cap, the approving account (for D-078) and never a secret. Refusals are counted in a metric labelled by bound or cap only.",
         "Initiate, Connect and AuthenticateWithQuickConnect are open to anyone, each with its reason. Authorize requires a viewer. TestAccess asks all five.",
-        "docs/access.md states how long a code lives, the 100-live-code cap, D-078's bound, the worst-case 960 guesses per account per day, and that Quick Connect is how a viewer gets in while their name is refused. docs/status.md and docs/running.md (the configuration key and its default, and the cap) are updated. These are deliverables, not things to test."
+        "docs/access.md states how long a code lives, the 100-live-code cap, D-078's bound, the worst-case 960 guesses per account per day, and that Quick Connect is how a viewer gets in while their name is refused. docs/status.md and docs/running.md (the configuration key and its default, and the cap) are updated. These are deliverables, not things to test.",
+        "An approval in flight ends at shutdownGrace: forced with Postgres stalled and the client gone, the replica exits within seconds of the grace (D-097).",
+        "An approval that fails after its client hung up is logged at warn with the user and the reason, never the code (D-097)."
       ],
       "priority": 29,
       "status": "todo",
