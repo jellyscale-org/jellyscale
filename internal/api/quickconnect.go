@@ -181,8 +181,9 @@ func (s *Server) quickConnectAuthorize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// A code that is unknown, expired or already approved is a guess at someone's account, so it keeps the
-	// reservation. So does every outcome that could not be seen: a timeout, a severed connection, a cancelled
-	// statement. Only a database that definitely refused the write, which says nothing about the code, gives it back.
+	// reservation. So does every outcome the database never answered: the timeout, a lost connection. An error it
+	// did answer with (a cancelled statement or a terminated backend included) says nothing about the code, and a
+	// client cannot cause one, so that gives it back.
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
 		if releaseErr := ticket.Release(approval, s.Pool); releaseErr != nil {
