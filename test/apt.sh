@@ -39,7 +39,15 @@ done
 sudo apt-get -o Acquire::Retries=3 update
 # --reinstall: a package the runner image already has (fontconfig, fonts-dejavu-core) is
 # otherwise never downloaded, so it would leave no .deb and every later run would miss.
-sudo apt-get -o Acquire::Retries=3 install -y --reinstall "$@"
+# A cached .deb can carry an older Mesa VA driver whose exact mesa-libgallium
+# the runner no longer has and the mirror no longer offers (merge-group run
+# 45736550858; PR 285). dpkg leaves it half-configured and apt refuses to resolve
+# around it. CI encodes in software, so the optional VA packages are removed; the
+# required packages install without recommendations, which also keeps the
+# mirror download inside the job's 5-minute bound.
+sudo dpkg --purge --force-all mesa-va-drivers va-driver-all >/dev/null 2>&1 || true
+# Keep the mirror install inside the job's five-minute bound: required packages only.
+sudo apt-get -o Acquire::Retries=3 install -y --reinstall --no-install-recommends "$@"
 if [[ -n $debs ]]; then
   mkdir -p "$debs"
   cp "$archives"/*.deb "$debs"/
