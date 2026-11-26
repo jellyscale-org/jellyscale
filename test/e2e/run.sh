@@ -285,7 +285,21 @@ for ext in mkv en.sub en.idx; do
   "$work/putfile" "s3://e2e/media?$s3" "Idx Beside Cloud Film (2126)/Idx Beside Cloud Film (2126).$ext" "$sub/Idx Beside Film (2122)/Idx Beside Film (2122).$ext" || exit 1
 done
 
-free() { python3 -I -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])'; }
+ports_file="$work/ports"
+: >"$ports_file"
+free() {
+  local port attempt
+  for attempt in $(seq 1 100); do
+    port=$(python3 -I -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])')
+    if ! grep -qx -- "$port" "$ports_file"; then
+      echo "$port" >>"$ports_file"
+      echo "$port"
+      return 0
+    fi
+  done
+  echo "could not choose a port no other process of the run has" >&2
+  return 1
+}
 export JELLYSCALE_DATABASE_URL="postgres://postgres:e2e@127.0.0.1:$port/postgres" JELLYSCALE_ADMIN_PASSWORD=e2e-pass
 router=$(free)
 : >"$logs/server.log"
