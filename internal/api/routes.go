@@ -30,7 +30,7 @@ func (s *Server) Routes() []Route {
 		// jellyscale's own namespace: Jellyfin has no place for these (docs/api.md). Each acts on the caller only.
 		{Method: "GET", Path: "/jellyscale/v1/track-preferences", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.getTrackPreferences},
 		{Method: "PATCH", Path: "/jellyscale/v1/track-preferences", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.patchTrackPreferences},
-		{Method: "POST", Path: "/jellyscale/v1/items/{itemId}/playback-info", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.markedPlaybackInfo},
+		{Method: "POST", Path: "/jellyscale/v1/items/{itemId}/playback-info", Status: Implemented, Role: RoleAPI, Access: AccessViewer, UserIDBody: true, Handler: s.markedPlaybackInfo},
 		{Method: "PATCH", Path: "/jellyscale/v1/users/configuration", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.patchConfiguration},
 		{Method: "GET", Path: "/Localization/Cultures", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: listCultures},
 		{Method: "POST", Path: "/Sessions/Logout", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.logout},
@@ -94,7 +94,7 @@ func (s *Server) Routes() []Route {
 		{Method: "GET", Path: "/Videos/{itemId}/{sourceId}/Attachments/{index}", Status: Implemented, Role: RoleStream, Access: AccessViewer, Handler: s.attachment, Snapshot: true},
 		{Method: "GET", Path: "/Videos/{itemId}/{file}", Status: Implemented, Role: RoleStream, Access: AccessViewer, Handler: s.stream, Snapshot: true},
 		{Method: "GET", Path: "/Items/{itemId}/PlaybackInfo", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.playbackInfo},
-		{Method: "POST", Path: "/Items/{itemId}/PlaybackInfo", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.playbackInfo},
+		{Method: "POST", Path: "/Items/{itemId}/PlaybackInfo", Status: Implemented, Role: RoleAPI, Access: AccessViewer, UserIDBody: true, Handler: s.playbackInfo},
 		{Method: "GET", Path: "/Items/{itemId}/Download", Status: Implemented, Role: RoleStream, Access: AccessViewer, Handler: s.download},
 		{Method: "GET", Path: "/Playback/BitrateTest", Status: Implemented, Role: RoleStream, Access: AccessViewer, Handler: s.bitrateTest},
 		{Method: "POST", Path: "/Sessions/Playing", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.playbackStarted},

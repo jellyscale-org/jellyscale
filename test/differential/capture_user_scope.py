@@ -646,7 +646,10 @@ def cell(row):
 def findings(by):
     """What the rows say, as sentences: each is computed from them, so a rerun that finds otherwise says otherwise."""
     def status(route, caller, case):
-        row = by[route].get((caller, case))
+        # A capture limited by the optional route regex has no row for the
+        # routes the sentences below mention: those say None, as they would in
+        # a full capture that answered no such case.
+        row = by.get(route, {}).get((caller, case))
         return row["status"] if row else None
 
     routes = [r for r, cases in by.items() if not any(x.get("notJellyfin") for x in cases.values())]

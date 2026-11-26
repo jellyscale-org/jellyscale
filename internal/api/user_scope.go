@@ -14,8 +14,8 @@ import (
 )
 
 // requestUserIDs returns every user id the request names, in the path, in any
-// query value and, for the two PlaybackInfo POSTs, in the body. An empty value
-// is no id. Reading PlaybackInfo's body leaves it whole for its handler.
+// query value and, on a route with UserIDBody, in the body. An empty value is
+// no id. Reading that body leaves it whole for its handler.
 func requestUserIDs(r *http.Request, route Route) ([]string, error) {
 	var ids []string
 	if id := r.PathValue("userId"); id != "" {
@@ -28,7 +28,7 @@ func requestUserIDs(r *http.Request, route Route) ([]string, error) {
 			}
 		}
 	}
-	if route.Method != http.MethodPost || (route.Path != "/Items/{itemId}/PlaybackInfo" && route.Path != "/jellyscale/v1/items/{itemId}/playback-info") {
+	if !route.UserIDBody {
 		return ids, nil
 	}
 	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))

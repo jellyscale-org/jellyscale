@@ -128,7 +128,7 @@ That does not open a viewer's account. No route reads or sets a cookie, so the b
 | `GET /Plugins` | Answers a question about the server, or a stub for a feature not built | viewer | the server; the caller's own account (`own`) |
 | `GET /QuickConnect/Enabled` | Says who the server is, or that it answers, or that Quick Connect is off | anyone | none: no token is read |
 | `GET /Search/Hints` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
-| `GET /Sessions` | Reports or ends the caller's playback session, or pushes messages to it | viewer | the caller's own account (`own`) |
+| `GET /Sessions` | Reports or ends the caller's playback session, or pushes messages to it | viewer | any user id in the request must name the caller (`own`); with no id an administrator still gets the existing all-sessions list, a non-administrator their own |
 | `POST /Sessions/Capabilities` | Reports or ends the caller's playback session, or pushes messages to it | viewer | the caller's own account (`own`) |
 | `POST /Sessions/Capabilities/Full` | Reports or ends the caller's playback session, or pushes messages to it | viewer | the caller's own account (`own`) |
 | `POST /Sessions/Logout` | Reports or ends the caller's playback session, or pushes messages to it | viewer | the caller's own account (`own`) |

@@ -184,8 +184,8 @@ func TestAPlaybackInfoBodyThatNamesTheCallerIsReadWhole(t *testing.T) {
 }
 
 // While Postgres is away a stream replica goes on serving, from the snapshot of active sessions, what a token that
-// is in it asks for. A request that names another user is not served from the snapshot: the snapshot cannot say who the
-// token's user is, so it cannot tell the caller's own id from another's, and the guard needs Postgres. Such a request is
+// is in it asks for. The snapshot carries the session's user_id, so it can tell the caller's own id from another's and
+// serves no user id but the caller's. A request that names another user waits for Postgres. Such a request is
 // sent nothing while Postgres is away, no status line and no header, never a 4xx (invariant 37: no request is answered with an
 // error because Postgres is away), and is answered 403 once it is back. The same requests with no user id are served
 // from the snapshot as today. The wrong build: the guard runs after the snapshot has decided, or runs from the snapshot

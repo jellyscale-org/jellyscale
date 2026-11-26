@@ -79,9 +79,12 @@ type Route struct {
 	Access Access
 	// Users is own by default, or admin-any on the four routes an administrator
 	// may use for another account. It is empty on an anyone route.
-	Users   UserScope
-	Why     string
-	Handler http.HandlerFunc
+	Users UserScope
+	// UserIDBody says the body may name a user under UserId, so the scope guard
+	// reads it before the handler and leaves it whole for the handler to read.
+	UserIDBody bool
+	Why        string
+	Handler    http.HandlerFunc
 	// Snapshot says the handler may run from the snapshot of active sessions
 	// while Postgres is away (invariant 37), for a token it holds.
 	Snapshot bool
