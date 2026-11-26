@@ -65,9 +65,7 @@ At the same time, look over the open backlog for items whose time has come (some
 - which accepted trade-offs, taken together, add up to something no single one meant;
 - what you would put next, and why.
 
-The owner has given you the product's trade-offs (2026-11-19): when you take issue with one, the work pivots to account for it, goes to the backlog, or waits for a later date, as you decide. That includes a capability a film loses and a cost every deployment pays; decide those too, and say plainly in `reason` what is given up and by whom. Escalate to the owner only:
-- a change to PRODUCT.md;
-- a change in what the product is for.
+The owner has given you the product's trade-offs (2026-11-19): when you take issue with one, the work pivots to account for it, goes to the backlog, or waits for a later date, as you decide. That includes a capability a film loses and a cost every deployment pays; decide those too, and say plainly in `reason` what is given up and by whom. You may edit PRODUCT.md, which holds only the product and its direction (owner, D-091); say what you removed or weakened, and cite the decision. Escalate to the owner only a change in what the product is for.
 
 **Answer shape for a trade-off or a plan change** (about 15 lines):
 - `decision`: `accept`, `keep`, `defer` (the task waits, with what it waits for), `change` (for a plan: name the change), `evidence` or `escalate`.
