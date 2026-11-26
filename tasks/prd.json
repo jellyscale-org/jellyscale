@@ -243,7 +243,7 @@
       "passes": false,
       "dependsOn": [],
       "source": "PRODUCT.md identity",
-      "notes": "Requested by Fluster, the client that ships with jellyscale: #104. Access: approval is own, an administrator included. (access model, 2026-11-16) Needs its own guessing bound, following JS-145's design (product owner, 2026-11-19). Findroid is dropped as a target: the second client is one that sends its token on media requests (owner, 2026-11-20, D-026)."
+      "notes": "Requested by Fluster, the client that ships with jellyscale: #104. Access: approval is own, an administrator included. (access model, 2026-11-16) Needs its own guessing bound, following JS-145's design (product owner, 2026-11-19). Findroid is dropped as a target: the second client is one that sends its token on media requests (owner, 2026-11-20, D-026). D-082: the TV journey for password and provider accounts alike."
     },
     {
       "id": "JS-038",
@@ -264,19 +264,26 @@
       "id": "JS-039",
       "phase": "ID",
       "title": "OIDC beside local accounts",
-      "description": "A login link on jellyfin-web's login page (branding disclaimer); apps and TVs use Quick Connect.",
+      "description": "A sign-in link on jellyfin-web's login page (branding disclaimer) for one OIDC provider declared in configuration; TVs and apps sign in by Quick Connect, approved from a device signed in either way.",
       "acceptanceCriteria": [
-        "Sign in with an OIDC provider in jellyfin-web",
-        "OIDC users reach TV apps through Quick Connect"
+        "Observed first: how unmodified jellyfin-web 12.4 shows the link and takes a token it did not get from a password, and whether the disclaimer can carry a refused sign-in's reason (BL-209).",
+        "A viewer signs in with the provider in jellyfin-web and plays a film; the device holds an ordinary token, with the session, device, watch state and library access of a password sign-in.",
+        "No route of the journey reads or sets a cookie (invariant 63). With real processes, the return from the provider is answered by a different api replica from the one that started it.",
+        "JS-037's TV app signs in by a code approved from a jellyfin-web signed in through the provider, then plays.",
+        "A first sign-in links the local user whose name equals the provider's username claim, a migrated user without a password included, and keeps its watch state. After that the subject is the identity, and email never links.",
+        "Provisioning is a configuration switch, off by default. On, an unmatched first sign-in creates a viewer with the policy a new local user gets; off, it is refused with its reason on the page and in the log.",
+        "A user disabled or deleted in jellyscale is refused through the provider too. Removal at the provider stops new sign-ins only, and docs/access.md says so.",
+        "The journey's routes are bounded per address (D-020). The client secret comes from the environment and is never in configuration or logs."
       ],
       "priority": 36,
       "status": "todo",
       "passes": false,
       "dependsOn": [
-        "JS-037"
+        "JS-037",
+        "JS-033"
       ],
       "source": "PRODUCT.md identity",
-      "notes": "Needs its own guessing bound, following JS-145's design (product owner, 2026-11-19). D-081: moved from 68 to 36, after JS-178; JS-056 and the tasks at 37 to 46 each moved down one. Criteria, dependency on JS-037 and scope unchanged. Reopens to 30 (after Quick Connect) if a household with an identity provider is waiting or reports it."
+      "notes": "Needs its own guessing bound, following JS-145's design (product owner, 2026-11-19). D-081: moved from 68 to 36, after JS-178; JS-056 and the tasks at 37 to 46 each moved down one. Criteria, dependency on JS-037 and scope unchanged. Reopens to 30 (after Quick Connect) if a household with an identity provider is waiting or reports it. D-082. Refine returns a brief before Spec on whether an administrator may be linked by name, since whoever picks a name at the provider takes that account. No device-authorization grant."
     },
     {
       "id": "JS-040",

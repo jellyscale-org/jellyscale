@@ -2061,7 +2061,7 @@
     {
       "id": "BL-229",
       "title": "A link that opens the Quick Connect approval with the code filled in, for a QR code",
-      "notes": "Issue #118. Waits for JS-037. Promote if a supported TV app (docs/status.md) shows a QR, or if sign-ins by code are started and not finished often enough to matter.",
+      "notes": "Issue #118. Waits for JS-037. Promote if a supported TV app (docs/status.md) shows a QR, if any client that authorizes every media request draws a QR or ships the device-authorization grant, or if sign-ins by code are started and not finished often enough to matter.",
       "status": "open",
       "severity": "minor",
       "reviewer": "product-owner",
@@ -2480,6 +2480,33 @@
       "source": "D-072",
       "title": "On a worker that overstates itself and holds more than one job, a play admitted above what it holds may take the viewer already watching under real time (D-050's guarantee)",
       "notes": "Unverified; a reading of docs/transcoding.md ('an overstated figure admits no more than floor(start / price) plays of a row'). Promote before any ceiling is dropped on a worker that can hold two heavy jobs by its start figure, at JS-056's Refine, or on a dogfood sighting of a play at 1.0x or more falling under it within a minute of another's admission."
+    },
+    {
+      "id": "BL-279",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "D-082",
+      "title": "A TV client that authorizes every media request can use an OIDC device-authorization grant and a QR code",
+      "notes": "Rejected for JS-039 because no supported client calls it: unmodified Jellyfin TV apps draw Quick Connect's code, and Jellyfin's own grant no jellyscale work makes Octave use. Promote when a client that authorizes every media request draws a QR or ships the device-authorization grant; it then returns as a brief."
+    },
+    {
+      "id": "BL-280",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "D-082",
+      "title": "Removing a user at the OIDC provider stops new sign-ins but not the tokens already issued",
+      "notes": "Accepted for JS-039: docs/access.md says so, and disabling or deleting the user in jellyscale stops the token. Promote on an operator report of provider offboarding not cutting access; options include provider-driven revocation, a shorter token life, or checking the provider on each refresh."
+    },
+    {
+      "id": "BL-281",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "D-082",
+      "title": "OIDC provider groups, a second provider, and provider-driven policy or library mapping",
+      "notes": "Out of JS-039, which supports one provider declared in configuration and maps identity by issuer plus subject. Promote when an operator uses two providers, or needs the provider's groups to drive administrator roles or library access."
     }
   ]
 }
