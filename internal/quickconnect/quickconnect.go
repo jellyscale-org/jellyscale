@@ -6,16 +6,18 @@ package quickconnect
 import (
 	"context"
 	"crypto/rand"
-	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
 	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"jellyscale/internal/signin"
 )
 
 const (
@@ -28,6 +30,9 @@ const (
 	capLock = 370038
 )
 
+// codeLimit is all six-digit codes, leading zeros included.
+var codeLimit = big.NewInt(1_000_000)
+
 var (
 	ErrUnknownCode     = errors.New("unknown Quick Connect code")
 	ErrAlreadyApproved = errors.New("Quick Connect code already approved")
@@ -38,9 +43,8 @@ var (
 )
 
 // Device is how the asking device named itself at Initiate. A redemption uses these values, whatever header it brings.
-type Device struct {
-	ID, Name, App, Version string
-}
+// It is signin's device: the token a code makes is issued by the same path a password sign-in uses.
+type Device = signin.Device
 
 // Code is a code's stored state. The secret is the credential; Value is the six digits a viewer types.
 type Code struct {
@@ -69,18 +73,20 @@ var (
 		+ interval '` + codeWindow + ` seconds' > clock_timestamp()`
 )
 
-// draw takes both values from crypto/rand. A collision redraws both, as the forced-collision check requires.
+// draw takes both values from crypto/rand. The code is drawn uniformly over all a million six-digit values, not from
+// two bytes reduced modulo a million, which would never give a viewer most of them. A collision redraws both, as the
+// forced-collision check requires.
 func draw() (Code, error) {
 	var secretBytes [32]byte
-	var number [2]byte
 	if _, err := rand.Read(secretBytes[:]); err != nil {
 		return Code{}, err
 	}
-	if _, err := rand.Read(number[:]); err != nil {
+	number, err := rand.Int(rand.Reader, codeLimit)
+	if err != nil {
 		return Code{}, err
 	}
 	return Code{Secret: hex.EncodeToString(secretBytes[:]),
-		Value: fmt.Sprintf("%06d", int(binary.BigEndian.Uint16(number[:]))%1000000)}, nil
+		Value: fmt.Sprintf("%06d", number.Int64())}, nil
 }
 
 func scan(row interface{ Scan(...any) error }) (Code, error) {
@@ -116,14 +122,14 @@ func Initiate(ctx context.Context, pool *pgxpool.Pool, device Device) (Code, err
 			if liveCount >= MaxLive {
 				return ErrFull
 			}
-			_, err := tx.Exec(ctx, `INSERT INTO quickconnect_codes
-				(secret, code, device_id, device_name, app_name, app_version) VALUES ($1, $2, $3, $4, $5, $6)`,
-				code.Secret, code.Value, device.ID, device.Name, device.App, device.Version)
-			return err
+			// One clock for the time Initiate sends and the time Connect reads back: the row is the answer's source.
+			return tx.QueryRow(ctx, `INSERT INTO quickconnect_codes
+				(secret, code, device_id, device_name, app_name, app_version) VALUES ($1, $2, $3, $4, $5, $6)
+				RETURNING created_at`, code.Secret, code.Value, device.ID, device.Name, device.App, device.Version).
+				Scan(&code.Created)
 		})
 		if err == nil {
 			code.Device = device
-			code.Created = time.Now().UTC()
 			return code, nil
 		}
 		if errors.Is(err, ErrFull) {
@@ -172,8 +178,11 @@ func Approve(ctx context.Context, pool *pgxpool.Pool, value, userID string) erro
 }
 
 // Redeem signs the asking device in. The code's row decides the one token: a second redemption is given the token the
-// first one made, and devices is written only by the request that set the row's token. An account deleted after it
-// approved redeems nothing, as Jellyfin's own token does work but answers 401; jellyscale refuses it at the door.
+// first one made, and devices is written only by the request that set the row's token. The token itself is issued by
+// signin.Issue, the same path a password sign-in uses, so the two cannot give one device two tokens. A code whose token
+// no longer names a device and an account, whatever ended it, is worth no more than an unknown secret: no replacement
+// is made. An account deleted after it approved redeems nothing, as Jellyfin's own token does work but answers 401;
+// jellyscale refuses it at the door.
 func Redeem(ctx context.Context, pool *pgxpool.Pool, secret string) (Code, error) {
 	var result Code
 	err := pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
@@ -189,6 +198,19 @@ func Redeem(ctx context.Context, pool *pgxpool.Pool, secret string) (Code, error
 			return ErrNotApproved
 		}
 		if code.Token != "" {
+			// Sign-out, a password sign-in, a newer code or a deleted account takes the device row away. The stored
+			// token is then dead: answering with it would give the device a token nothing accepts, and making a new
+			// one here would leave two tokens in devices. Both wrong answers are the unknown secret's 404.
+			var held bool
+			if err := tx.QueryRow(ctx, `SELECT EXISTS (
+				SELECT 1 FROM devices d JOIN users u ON u.id = d.user_id
+				WHERE d.token = $1 AND d.user_id = $2 AND d.device_id = $3)`,
+				code.Token, code.Approver, code.Device.ID).Scan(&held); err != nil {
+				return err
+			}
+			if !held {
+				return ErrUnknownSecret
+			}
 			result = code
 			return nil
 		}
@@ -199,30 +221,16 @@ func Redeem(ctx context.Context, pool *pgxpool.Pool, secret string) (Code, error
 		if !exists {
 			return ErrUnknownSecret
 		}
-		token := randomToken()
-		if _, err := tx.Exec(ctx, `DELETE FROM devices WHERE user_id = $1 AND device_id = $2`, code.Approver, code.Device.ID); err != nil {
+		issued, err := signin.Issue(ctx, tx, code.Approver, code.Device)
+		if err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO devices (token, user_id, device_id, device_name, client, app_version)
-			VALUES ($1, $2, $3, $4, $5, $6)`, token, code.Approver, code.Device.ID, code.Device.Name, code.Device.App, code.Device.Version); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE quickconnect_codes SET token = $2 WHERE secret = $1 AND token IS NULL`, secret, issued.Value); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `UPDATE quickconnect_codes SET token = $2 WHERE secret = $1 AND token IS NULL`, secret, token); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(ctx, `UPDATE users SET last_login_at = clock_timestamp() WHERE id = $1`, code.Approver); err != nil {
-			return err
-		}
-		code.Token = token
+		code.Token = issued.Value
 		result = code
 		return nil
 	})
 	return result, err
-}
-
-// randomToken is a device token, the same shape as a password sign-in's.
-func randomToken() string {
-	var raw [16]byte
-	_, _ = rand.Read(raw[:])
-	return hex.EncodeToString(raw[:])
 }

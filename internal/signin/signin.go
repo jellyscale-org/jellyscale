@@ -152,7 +152,12 @@ func BeginApproval(ctx context.Context, pool *pgxpool.Pool, userID string) (Tick
 			refusal = &Refusal{Bound: approval.bound, After: after}
 			return nil
 		}
-		if _, err := tx.Exec(ctx, `DELETE FROM signin_failures WHERE at < clock_timestamp() - $1 * interval '2 seconds'`, window); err != nil {
+		// The same cleanup as Begin: failures still held by another attempt are left for it, and a device long
+		// forgotten stops keeping an account's bound alive.
+		if _, err := tx.Exec(ctx, `WITH old AS (DELETE FROM signin_failures WHERE id IN (
+				SELECT id FROM signin_failures WHERE at < clock_timestamp() - $1 * interval '2 seconds' FOR UPDATE SKIP LOCKED)),
+			ended AS (DELETE FROM signin_device_ended WHERE ended_at < clock_timestamp() - $2 * interval '1 day')
+			SELECT 1`, window, KnownDays); err != nil {
 			return err
 		}
 		id, err := fail(ctx, tx, approval.bound, approval.key, false)

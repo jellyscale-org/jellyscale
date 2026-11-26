@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 
@@ -37,6 +38,17 @@ func (s *Server) refusalLog(fields ...any) {
 	}
 }
 
+// storable refuses text Postgres cannot keep, before a query carries it. A NUL or an invalid UTF-8 byte in a device
+// field, a secret, a code or a user id is the client's mistake (400), never a server error.
+func storable(values ...string) bool {
+	for _, value := range values {
+		if !utf8.ValidString(value) || strings.ContainsRune(value, 0) {
+			return false
+		}
+	}
+	return true
+}
+
 func writeCode(w http.ResponseWriter, code quickconnect.Code, approved bool) {
 	writeJSON(w, map[string]any{
 		"Authenticated": approved,
@@ -54,7 +66,8 @@ func (s *Server) quickConnectInitiate(w http.ResponseWriter, r *http.Request) {
 	// Jellyfin validates the device fields before it checks whether Quick Connect is on, so a request with no
 	// Authorization is 400 either way (the capture's "initiate when off with no Authorization").
 	info := compat.ParseAuth(r)
-	if info.DeviceID == "" || info.Device == "" || info.Client == "" || info.Version == "" {
+	if info.DeviceID == "" || info.Device == "" || info.Client == "" || info.Version == "" ||
+		!storable(info.DeviceID, info.Device, info.Client, info.Version) {
 		http.Error(w, "Error processing request.", http.StatusBadRequest)
 		return
 	}
@@ -90,6 +103,10 @@ func (s *Server) quickConnectConnect(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"title":"One or more validation errors occurred.","errors":{"secret":["The secret field is required."]}}`, http.StatusBadRequest)
 		return
 	}
+	if !storable(secret) {
+		http.Error(w, "Error processing request.", http.StatusBadRequest)
+		return
+	}
 	code, err := quickconnect.Connect(r.Context(), s.Pool, secret)
 	if errors.Is(err, quickconnect.ErrUnknownSecret) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -118,15 +135,16 @@ func (s *Server) quickConnectAuthorize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	value := r.URL.Query().Get("code")
-	if value == "" {
+	// normalize lowercases query keys once, in middleware, so the key arrives as "userid".
+	named := r.URL.Query().Get("userid")
+	if value == "" || !storable(value, named) {
 		http.Error(w, "Error processing request.", http.StatusBadRequest)
 		return
 	}
 	user := sessionOf(r).User
 	// Approval is always for the approver's own account, administrators included. A plain 403 (no Retry-After) is
 	// not a refusal of the guessing bound and does not count toward it (D-078).
-	// normalize lowercases query keys once, in middleware, so the key arrives as "userid".
-	if named := r.URL.Query().Get("userid"); named != "" &&
+	if named != "" &&
 		!strings.EqualFold(db.CompactID(named), db.CompactID(user.ID)) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
@@ -160,6 +178,11 @@ func (s *Server) quickConnectAuthorize(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, quickconnect.ErrAlreadyApproved):
 		http.Error(w, "already approved", http.StatusConflict)
 	default:
+		// The write failed for a reason that says nothing about the code. It was no wrong guess, so the account
+		// keeps all of its approvals; the reservation is given back before the 500 is sent.
+		if releaseErr := ticket.Release(r.Context(), s.Pool); releaseErr != nil {
+			s.Log.Warn("an approval's reservation was not given back", "error", releaseErr)
+		}
 		s.fail(w, r, err)
 	}
 }
@@ -170,7 +193,8 @@ func (s *Server) authenticateWithQuickConnect(w http.ResponseWriter, r *http.Req
 		return
 	}
 	var body struct{ Secret string }
-	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&body); err != nil || body.Secret == "" {
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&body); err != nil || body.Secret == "" ||
+		!storable(body.Secret) {
 		http.Error(w, "Error processing request.", http.StatusBadRequest)
 		return
 	}
