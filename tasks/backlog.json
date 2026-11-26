@@ -2488,16 +2488,16 @@
       "reviewer": "product-owner",
       "source": "JS-160",
       "title": "On a fresh install every asset sweep logs an ERROR because the library's assets directories do not exist yet",
-      "notes": "Seen by the implementer and QA on a fresh e2e stack: 'a sweep of the asset store ... removed nothing more' with 'lstat ...: no such file or directory'. It looks like invariant 56's missing-root protection firing for an asset prefix that has never been created; nothing was removed wrongly. Decide whether a fresh install should create the directories or the sweep should treat an absent assets prefix as empty while a missing media root stays an error."
+      "notes": "Seen by the implementer and QA on a fresh e2e stack: 'a sweep of the asset store ... removed nothing more' with 'lstat ...: no such file or directory'. It looks like invariant 56's missing-root protection firing for an asset prefix that has never been created; nothing was removed wrongly. Decide whether a fresh install should create the directories or the sweep should treat an absent assets prefix as empty while a missing media root stays an error. (D-087) Backlog, minor: a false ERROR on a healthy install wears down 'every failure is reported with its reason'. Promote at JS-056's fresh-cluster run or on an operator's report."
     },
     {
       "id": "BL-278",
-      "status": "open",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "product-owner",
       "source": "JS-160",
       "title": "An e2e failure found only after its pages close keeps no screenshot",
-      "notes": "The 'ffmpeg still running afterwards' check runs after the scenario has closed its pages; it keeps the viewer record and console but cannot take a screenshot. All failures observed while a page is open keep one. The owner chose fix/simplify/land after three blind reviews of the evidence code; this remaining diagnostic gap is recorded rather than expanding that work."
+      "notes": "The 'ffmpeg still running afterwards' check runs after the scenario has closed its pages; it keeps the viewer record and console but cannot take a screenshot. All failures observed while a page is open keep one. The owner chose fix/simplify/land after three blind reviews of the evidence code; this remaining diagnostic gap is recorded rather than expanding that work. (D-087) Dropped: test tooling that protects no viewer outcome. It returns if a queue failure goes undiagnosed for want of the screenshot."
     },
     {
       "id": "BL-279",
