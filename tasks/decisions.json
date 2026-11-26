@@ -815,6 +815,17 @@
       "decision": "keep (option A, amended)",
       "entry": "B and C are rejected for now: no cause found was load, and C's trigger decides integration shards on pull requests (D-069), not B. The 10 counted runs start with the first queued after d7dbeeb, not at JS-175's merge. The count gains a load verdict; two or more in 10 bring one process per shard job back as a priced brief. JS-175 is trimmed: criterion 1's rows owned by a merged task or the queued PR carry run, test and verdict only; criterion 4 reproduces only product suspects, 2 hours each and 4 in all; criterion 6 is counted in the 10 runs; criterion 5's 10-minute rule is applied to the measured time of the next three successful runs (35 minutes or more splits the process). A pull request that adds or changes integration tests runs ci:full once before it is queued. Reopens on: the count.",
       "serves": "Owner, 2026-11-22: nothing outruns the product. D-050: never CI capacity or a longer bound. D-058, D-069. PRODUCT.md quality bar: 'Failure modes are designed, tested and reported.'"
+    },
+    {
+      "id": "D-076",
+      "date": "2026-11-25",
+      "by": "owner",
+      "task": "the build workflow and every role; Fable 5.2 advice",
+      "brief": "Owner, 2026-11-25: Claude usage reset weekly; use Anthropic where appropriate but mix in OpenCode Go and zero-cost models; Fable 5.2 is the product owner's default again; when the lead is consistently stuck, consult Fable 5.2 blind with minimal context and have it delegate finding and reading.",
+      "tradeoff": "Free OpenCode Go builders and QA may be weaker than Sonnet 5.5, and a host that cannot reach them needs a documented fallback. Fable advice costs its input and output, so it sees only the question and the minimum evidence and delegates reading to cheaper models.",
+      "decision": "accept",
+      "entry": "Refine on Opus 5.5 high; Check on Opus 5.5 high; Spec, architecture, adversarial and UX on Sonnet 5.5 high; Build/Fix and helpers on OpenCode Go hy4-flash-free; QA on OpenCode Go beam-free; product owner and advisor on Fable 5.2 high. A host that cannot reach an OpenCode model runs that role on Sonnet 5.5 and records the substitution. The advisor is blind, gets minimal context, and must use Task to delegate any finding or reading to cheaper models.",
+      "serves": "PRODUCT.md quality bar; the weekly model budget; 'A claim of working means a real client or a real store exercised it.'"
     }
   ]
 }

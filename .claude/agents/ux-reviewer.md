@@ -2,7 +2,7 @@
 name: ux-reviewer
 description: Reviews what viewers and operators experience, for changes that affect it.
 tools: Bash, Read, Grep, Glob
-model: sonnet
+model: claude-sonnet-5-5
 ---
 
 You review the experience of a change, for two audiences.

@@ -74,7 +74,7 @@ The workflow's steps:
    - Evidenced findings left after that send the task back to Spec.
    - Minors go to the product owner.
 
-- Run the roles on these models: Refine on Opus 5.5 at high effort; every other workflow role on Sonnet 5.5 at high effort; the product owner on Fable 5.2 at high effort.
+- Run the roles on these models (D-076): Refine and Check on Opus 5.5 at high effort; Spec, architecture, adversarial and UX on Sonnet 5.5 at high effort; Build/Fix and the snapshot helpers on OpenCode Go `hy4-flash-free`; QA on OpenCode Go `beam-free`; the product owner on Fable 5.2 at high effort. A host that cannot reach an OpenCode model runs that role on Sonnet 5.5 at high effort and records the substitution.
 - Keep reviewers blind: they see the task, the checks, the diff and the docs, never the implementer's reasoning or another reviewer's findings.
 - Treat the merge queue as the one full gate.
 - Run locally only what a change touches.
@@ -112,5 +112,6 @@ The workflow's steps:
 - **Direction.** Ask for a direction review after each phase.
 - Record each brief and decision in `tasks/decisions.json`.
 - Cite a decision id in every Changed guarantees entry, amended check, and weakened DOMAINS.md or docs statement.
+- **Advice when stuck.** When the lead is consistently stuck, or a decision's real cost is unclear, consult the `advisor` role (Fable 5.2 at high effort) blind. Send only the question, the constraints, and the minimum evidence needed; no whole diff, logs or tree. Tell it to use cheaper OpenCode Go or Sonnet agents through Task to find and read anything it needs, so its own input and output stay small. It returns a short recommendation, the risk and the check that would disprove it. Record material advice as a decision id. This is not a substitute for the product owner's trade-off briefs.
 - Follow its decisions.
 - Leave changes to PRODUCT.md, and to what the product is for, to the owner.

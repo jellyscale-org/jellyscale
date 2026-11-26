@@ -93,8 +93,9 @@ const LOCKED = {
 const { task, tests = [], id = '', ux = false, core = false, resolved = null, refine = true } = args
 let { acceptance = [] } = args
 // args.root runs the task in its own worktree, so two tasks can build side by side.
-// Only the lead consults the advisor (owner, 2026-11-22). Claude Code gives every subagent the advisor and has no
-// per-agent switch, so this line is the control; the lead checks each run's usage for advisor calls.
+// Only the lead consults the advisor, and only when stuck (owner, 2026-11-22; D-076). Claude Code gives every
+// subagent the advisor and has no per-agent switch, so this line is the control; the lead checks each run's usage
+// for advisor calls.
 const advice = 'Never call the advisor tool, even if you have one: only the lead consults it.\n\n'
 const where = (args.root ? `Work only in the checkout at ${args.root}: cd there before anything else, run every command from it, and never read or change another checkout of this repository.\n\n` : '') + advice
 // Told to every later reviewer and fixer, so a corrected check is not reported or restored as tampering.
@@ -129,17 +130,24 @@ const criteria = acceptance.map((line) => `- ${line}`).join('\n')
 const commands = tests.map((line) => `- ${line}`).join('\n')
 const brief = `## Task${id ? ` ${id}` : ''}\n${task}\n\n## Acceptance criteria\n${criteria}\n\n## Test commands\n${commands}`
 
+// Owner's model routing (D-076). Anthropic carries judgement: Refine and Check
+// on Opus 5.5, Spec and the blind reviewers on Sonnet 5.5, the product owner and
+// advisor on Fable 5.2. OpenCode Go's zero-cost models carry the mechanical work:
+// Build/Fix and QA. If the host cannot reach an OpenCode model, run that role on
+// Sonnet 5.5 and say so in the task record.
 const MODELS = {
-  'spec-writer': { model: 'sonnet' },
-  implementer: { model: 'sonnet' },
-  'architecture-reviewer': { model: 'sonnet' },
+  'spec-writer': { model: 'claude-sonnet-5-5', effort: 'high' },
+  implementer: { model: 'opencode-go/hy4-flash-free', effort: 'high' },
+  'architecture-reviewer': { model: 'claude-sonnet-5-5', effort: 'high' },
   // Check reads only the spec and its checks, and a gap it misses costs a
   // whole build and Verify (about 1M tokens), so it gets the strongest model.
-  // Pinned by ID: the `fable` alias follows the CLI version of the session.
-  check: { model: 'claude-fable-5-2' },
-  'adversarial-reviewer': { model: 'sonnet' },
-  qa: { model: 'sonnet', effort: 'high' },
-  'ux-reviewer': { model: 'sonnet', effort: 'high' },
+  check: { model: 'claude-opus-5-5', effort: 'high' },
+  'adversarial-reviewer': { model: 'claude-sonnet-5-5', effort: 'high' },
+  qa: { model: 'opencode-go/beam-free', effort: 'high' },
+  'ux-reviewer': { model: 'claude-sonnet-5-5', effort: 'high' },
+  'product-owner': { model: 'claude-fable-5-2', effort: 'high' },
+  advisor: { model: 'claude-fable-5-2', effort: 'high' },
+  helper: { model: 'opencode-go/hy4-flash-free', effort: 'low' },
 }
 // Roles are read from their files, so a role added in this session works too.
 const role = (name) => ({ agentType: 'general-purpose', ...MODELS[name] })
@@ -150,7 +158,7 @@ let root = null
 // a repeated prompt replays the old tree from the cache.
 const snapshot = async (label, phase, note = '') => {
   const result = await agent(`${where}Run \`bash tools/snapshot.sh\` from the repository root and return the printed tree hash, and the absolute path of the repository root (\`pwd\`). Do nothing else.${note}`,
-    { label, phase, schema: SNAPSHOT, model: 'sonnet', effort: 'low' })
+    { label, phase, schema: SNAPSHOT, ...MODELS.helper })
   if (!result) throw new Error(`snapshot failed: ${label}`)
   root = result.root
   return result.tree
@@ -202,7 +210,7 @@ const settledNote = resolved?.settled?.length ? `\n\n## Settled by the lead\nThe
 // The checks are what the spec writer wrote. A file a check only cites, such as an
 // existing script the task must change, stays open to the implementer.
 const written = await agent(`${where}Run \`git diff --name-only ${base} ${specTree}\` in the repository root and return the files it lists. Do nothing else.`,
-  { label: 'checks written', phase: 'Spec', schema: LOCKED, model: 'sonnet', effort: 'low' })
+  { label: 'checks written', phase: 'Spec', schema: LOCKED, ...MODELS.helper })
 if (!written) throw new Error('could not list the files the spec writer wrote')
 const lockedFiles = written.changed
 const locked = `\n\n## Locked checks\n${checkList(spec)}\n\nThese files are locked: ${lockedFiles.join(', ')}. Make the checks pass by building the task. Never edit, weaken, skip or delete a locked check. If you believe one is wrong, stop work on it and put it in disputes with your evidence.`
@@ -215,7 +223,7 @@ let lockBase = specTree
 const unlocked = resolved?.unlock ?? []
 const lockedChanged = async (head, label) => {
   const result = await agent(`${where}Run \`git diff --name-only ${lockBase} ${head} -- ${lockedFiles.map((f) => `'${f}'`).join(' ')}\` in the repository root and return the files it lists. Do nothing else.`,
-    { label, phase: 'Build', schema: LOCKED, model: 'sonnet', effort: 'low' })
+    { label, phase: 'Build', schema: LOCKED, ...MODELS.helper })
   return result ? result.changed.filter((f) => !unlocked.includes(f)) : ['(could not check)']
 }
 
