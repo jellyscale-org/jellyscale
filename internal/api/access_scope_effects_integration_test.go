@@ -54,8 +54,9 @@ func (a *accessSite) serveTraced(t *testing.T, roles ...string) (accHandler, *st
 
 // A request that names anyone but the caller is refused before any handler runs, so Postgres is sent the one
 // statement that reads the token and nothing else: not a look at the user it names (which would tell a non-administrator
-// whether an id is a user), not a write. This holds for the 'own' routes in every place, and for the admin-any routes
-// when a non-administrator names B, nobody or the zero id. The wrong build the check fails: a guard that looks the
+// whether an id is a user), not a write. This holds for the 'own' routes in every place, for the admin-any routes
+// when a non-administrator names B, nobody or the zero id, and for the four administrator requests whose path and
+// query disagree (which must be 400 without being read). The wrong build the check fails: a guard that looks the
 // named user up before it refuses (as saveConfiguration does today), or a handler that goes on to read.
 func TestARefusedRequestSendsPostgresNothingBeyondTheTokenLookup(t *testing.T) {
 	a := newAccessSite(t)
@@ -66,7 +67,8 @@ func TestARefusedRequestSendsPostgresNothingBeyondTheTokenLookup(t *testing.T) {
 	}
 	asks := a.scopeRefusals(t, h, f)
 	for _, k := range a.scopeAdminAnyAsks(t, h, f) {
-		if k.want == 403 {
+		adminConflict := k.who == "admin" && k.want == 400 && strings.Contains(k.what, ", query ")
+		if k.want == 403 || adminConflict {
 			asks = append(asks, k.scopeAsk)
 		}
 	}

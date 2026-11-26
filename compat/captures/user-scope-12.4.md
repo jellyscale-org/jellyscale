@@ -2,7 +2,7 @@
 
 Observed with `jellyfin/jellyfin:12.4` (server version 12.4.0), a disposable container on a Docker-assigned port over synthetic films made by `test/differential/capture_user_scope.py`: four films (the first with an English and a Spanish text subtitle) and an episode of a show. Evidence in `user-scope-12.4.json`, one line for each request; the script is rerun with `python3 -I test/differential/capture_user_scope.py compat/captures/user-scope-12.4.json` from the repository root.
 
-Every route of `compat/endpoints.yaml` is asked as an administrator, as a non-administrator A, and with no token, with the id of a second non-administrator B, of nobody, a malformed id, the caller's own id (compact, and dashed in upper case) and the all-zero id, in each place the route can take one: the `{userId}` segment of its path, the `userId` and `controllableByUserId` query keys, and the `UserId` of the body of `POST /Items/{itemId}/PlaybackInfo`; and with two ids in two places or two values under one key. Each case that can change something (`POST`, `DELETE`, `PATCH`) is asked of three new users; the others of one shared set.
+Every route of `compat/endpoints.yaml` is asked as an administrator, as a non-administrator A, and with no token. A second non-administrator B's id goes in each place of each route: the `{userId}` segment of its path, the `userId` and `controllableByUserId` query keys, and the `UserId` of the body of `POST /Items/{itemId}/PlaybackInfo`. The path, `userId` and PlaybackInfo body also take an id of nobody, a malformed id, the caller's own id (compact, and dashed in upper case) and the all-zero id; `GET /Sessions` gives `controllableByUserId` the same matrix. Cases also put two ids in two places or two values under one key. Each case that can change something (`POST`, `DELETE`, `PATCH`) is asked of three new users; the others of one shared set.
 
 The users hold data that tells them apart. **A**: favourite film 1, film 2 played, a position in film 3, the Configuration `Always`/`eng`/`fra`. **B**: favourite film 2, film 1 played, a position twice A's in film 3, `Always`/`spa`/`deu`. **The administrator**: nothing, `None`/``/`ita`. Each has a session on a device of their own and display preferences naming them. Whose data an answer carries is read from the ids in it, the `UserData` of films 1 to 3, a `Configuration`'s subtitle language, `CustomPrefs` and the `DefaultSubtitleStreamIndex` PlaybackInfo chooses; `nobody` is an answer with none of these. What a request changed is the difference between what each user holds before and after (their favourites, played state and positions, Configuration, display preferences, whether their token still works, and their session).
 
@@ -10,375 +10,375 @@ In the tables a cell is the status, then whose data came back (`A`, `B`, `admin`
 
 ## As a non-administrator A
 
-| Route | own id in the path | no id | path: B | query userId: B | query userId: nobody | query userId: malformed | query userId: self | query userId: selfCompact | query userId: zero | query userId: empty | query controllableByUserId: B |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| `DELETE /UserFavoriteItems/{itemId}` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `DELETE /UserPlayedItems/{itemId}` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `DELETE /Users/{userId}/FavoriteItems/{itemId}` | 200 nobody | - | 403 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `DELETE /Users/{userId}/PlayedItems/{itemId}` | 200 nobody | - | 403 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `DELETE /Videos/ActiveEncodings` | - | 204 | - | 204 | 204 | 204 | 204 | 204 | 204 | 204 | 204 |
-| `GET /Artists` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Branding/Configuration` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Branding/Css` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Branding/Css.css` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /DisplayPreferences/{preferenceId}` | - | 200 A | - | 403 | 403 | 400 | 200 A | 200 A | 200 A | 200 A | 200 A |
-| `GET /Genres` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/Filters` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/Filters2` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/Latest` | - | 200 A | - | 403 | 403 | 400 | 200 A | 200 A | 200 A | 200 A | 200 A |
-| `GET /Items/Suggestions` | - | 200 nobody | - | 403 | 403 | 400 | 200 A | 200 A | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/{itemId}` | - | 200 A | - | 403 | 403 | 400 | 200 A | 200 A | 200 A | 200 A | 200 A |
-| `GET /Items/{itemId}/Ancestors` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/{itemId}/Collections` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/{itemId}/Download` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/{itemId}/Images/{imageType}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/{itemId}/Images/{imageType}/{imageIndex}` | - | 404 | - | 404 | 404 | 404 | 404 | 404 | 404 | 404 | 404 |
-| `GET /Items/{itemId}/LocalTrailers` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/{itemId}/PlaybackInfo` | - | 200 A | - | 403 | 403 | 400 | 200 A | 200 A | 200 A | 200 A | 200 A |
-| `GET /Items/{itemId}/Similar` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/{itemId}/SpecialFeatures` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/{itemId}/ThemeMedia` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /LiveTv/Programs` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /LiveTv/Programs/Recommended` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Localization/Cultures` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /MediaSegments/{itemId}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Persons` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Playback/BitrateTest` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Plugins` | - | 403 | - | 403 | 403 | 403 | 403 | 403 | 403 | 403 | 403 |
-| `GET /QuickConnect/Enabled` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Search/Hints` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Sessions` | - | 200 A | - | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 403 |
-| `GET /Shows/NextUp` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Shows/{seriesId}/Episodes` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Shows/{seriesId}/Seasons` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Studios` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /SyncPlay/List` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /System/Configuration/encoding` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /System/Endpoint` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /System/Info` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /System/Info/Public` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /System/Ping` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /UserItems/Resume` | - | 200 A | - | 403 | 403 | 400 | 200 A | 200 A | 200 A | 200 A | 200 A |
-| `GET /UserViews` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /UserViews/GroupingOptions` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Users/Me` | - | 200 A | - | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A |
-| `GET /Users/Public` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Users/{userId}` | 200 A | - | 200 B | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A |
-| `GET /Users/{userId}/GroupingOptions` | 200 nobody | - | 403 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Users/{userId}/Items` | 200 nobody | - | 403 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Users/{userId}/Items/Latest` | 200 A | - | 403 | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A |
-| `GET /Users/{userId}/Items/Resume` | 200 A | - | 403 | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A |
-| `GET /Users/{userId}/Items/Root` | 200 nobody | - | 403 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Users/{userId}/Items/{itemId}` | 200 A | - | 403 | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A |
-| `GET /Users/{userId}/Items/{itemId}/Intros` | 200 nobody | - | 403 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Users/{userId}/Items/{itemId}/LocalTrailers` | 200 nobody | - | 403 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Users/{userId}/Items/{itemId}/SpecialFeatures` | 200 nobody | - | 403 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Videos/{itemId}/hls1/main/{segmentId}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Videos/{itemId}/main.m3u8` | - | 200 nobody | - | 200 B | 200 nobody | 200 nobody | 200 A | 200 A | 200 nobody | 200 nobody | 200 B |
-| `GET /Videos/{itemId}/master.m3u8` | - | 200 nobody | - | 200 B | 200 nobody | 200 nobody | 200 A | 200 A | 200 nobody | 200 nobody | 200 B |
-| `GET /Videos/{itemId}/{file}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Videos/{itemId}/{sourceId}/Attachments/{index}` | - | 404 | - | 404 | 404 | 404 | 404 | 404 | 404 | 404 | 404 |
-| `GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{file}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{startPositionTicks}/{file}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /socket` | - | 101 | - | 101 | 101 | 101 | 101 | 101 | 101 | 101 | 101 |
-| `POST /DisplayPreferences/{preferenceId}` | - | 204 changed A | - | 403 | 403 | 400 | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A |
-| `POST /Items/{itemId}/PlaybackInfo` | - | 200 A | - | 403 | 403 | 400 | 200 A | 200 A | 200 A | 200 A | 200 A |
-| `POST /Sessions/Capabilities` | - | 204 | - | 204 | 204 | 204 | 204 | 204 | 204 | 204 | 204 |
-| `POST /Sessions/Capabilities/Full` | - | 204 | - | 204 | 204 | 204 | 204 | 204 | 204 | 204 | 204 |
-| `POST /Sessions/Logout` | - | 204 changed A | - | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A |
-| `POST /Sessions/Playing` | - | 204 changed A | - | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A |
-| `POST /Sessions/Playing/Ping` | - | 204 | - | 204 | 204 | 204 | 204 | 204 | 204 | 204 | 204 |
-| `POST /Sessions/Playing/Progress` | - | 204 changed A | - | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A |
-| `POST /Sessions/Playing/Stopped` | - | 204 changed A | - | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A |
-| `POST /System/Ping` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `POST /UserFavoriteItems/{itemId}` | - | 200 nobody changed A | - | 403 | 403 | 400 | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A |
-| `POST /UserItems/{itemId}/UserData` | - | 200 nobody changed A | - | 403 | 403 | 400 | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A |
-| `POST /UserPlayedItems/{itemId}` | - | 200 nobody changed A | - | 403 | 403 | 400 | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A |
-| `POST /Users/AuthenticateByName` | - | 200 A changed A | - | 200 A changed A | 200 A changed A | 200 A changed A | 200 A changed A | 200 A changed A | 200 A changed A | 200 A changed A | 200 A changed A |
-| `POST /Users/Configuration` | - | 204 changed A | - | 403 | 404 | 400 | 204 changed A | 204 changed A | 400 | 204 changed A | 204 changed A |
-| `POST /Users/{userId}/Configuration` | 204 changed A | - | 403 | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A |
-| `POST /Users/{userId}/FavoriteItems/{itemId}` | 200 nobody changed A | - | 403 | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A |
-| `POST /Users/{userId}/PlayedItems/{itemId}` | 200 nobody changed A | - | 403 | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A |
+| Route | own id in the path | no id | path: B | query userId: B | query userId: nobody | query userId: malformed | query userId: self | query userId: selfCompact | query userId: zero | query userId: empty | query controllableByUserId: B | query controllableByUserId: nobody | query controllableByUserId: malformed | query controllableByUserId: self | query controllableByUserId: selfCompact | query controllableByUserId: zero |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `DELETE /UserFavoriteItems/{itemId}` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `DELETE /UserPlayedItems/{itemId}` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `DELETE /Users/{userId}/FavoriteItems/{itemId}` | 200 nobody | - | 403 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `DELETE /Users/{userId}/PlayedItems/{itemId}` | 200 nobody | - | 403 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `DELETE /Videos/ActiveEncodings` | - | 204 | - | 204 | 204 | 204 | 204 | 204 | 204 | 204 | 204 | - | - | - | - | - |
+| `GET /Artists` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Branding/Configuration` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Branding/Css` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Branding/Css.css` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /DisplayPreferences/{preferenceId}` | - | 200 A | - | 403 | 403 | 400 | 200 A | 200 A | 200 A | 200 A | 200 A | - | - | - | - | - |
+| `GET /Genres` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/Filters` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/Filters2` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/Latest` | - | 200 A | - | 403 | 403 | 400 | 200 A | 200 A | 200 A | 200 A | 200 A | - | - | - | - | - |
+| `GET /Items/Suggestions` | - | 200 nobody | - | 403 | 403 | 400 | 200 A | 200 A | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/{itemId}` | - | 200 A | - | 403 | 403 | 400 | 200 A | 200 A | 200 A | 200 A | 200 A | - | - | - | - | - |
+| `GET /Items/{itemId}/Ancestors` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/{itemId}/Collections` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/{itemId}/Download` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/{itemId}/Images/{imageType}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/{itemId}/Images/{imageType}/{imageIndex}` | - | 404 | - | 404 | 404 | 404 | 404 | 404 | 404 | 404 | 404 | - | - | - | - | - |
+| `GET /Items/{itemId}/LocalTrailers` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/{itemId}/PlaybackInfo` | - | 200 A | - | 403 | 403 | 400 | 200 A | 200 A | 200 A | 200 A | 200 A | - | - | - | - | - |
+| `GET /Items/{itemId}/Similar` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/{itemId}/SpecialFeatures` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/{itemId}/ThemeMedia` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /LiveTv/Programs` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /LiveTv/Programs/Recommended` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Localization/Cultures` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /MediaSegments/{itemId}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Persons` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Playback/BitrateTest` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Plugins` | - | 403 | - | 403 | 403 | 403 | 403 | 403 | 403 | 403 | 403 | - | - | - | - | - |
+| `GET /QuickConnect/Enabled` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Search/Hints` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Sessions` | - | 200 A | - | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody |
+| `GET /Shows/NextUp` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Shows/{seriesId}/Episodes` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Shows/{seriesId}/Seasons` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Studios` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /SyncPlay/List` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /System/Configuration/encoding` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /System/Endpoint` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /System/Info` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /System/Info/Public` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /System/Ping` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /UserItems/Resume` | - | 200 A | - | 403 | 403 | 400 | 200 A | 200 A | 200 A | 200 A | 200 A | - | - | - | - | - |
+| `GET /UserViews` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /UserViews/GroupingOptions` | - | 200 nobody | - | 403 | 403 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Users/Me` | - | 200 A | - | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | - | - | - | - | - |
+| `GET /Users/Public` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Users/{userId}` | 200 A | - | 200 B | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | - | - | - | - | - |
+| `GET /Users/{userId}/GroupingOptions` | 200 nobody | - | 403 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Users/{userId}/Items` | 200 nobody | - | 403 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Users/{userId}/Items/Latest` | 200 A | - | 403 | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | - | - | - | - | - |
+| `GET /Users/{userId}/Items/Resume` | 200 A | - | 403 | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | - | - | - | - | - |
+| `GET /Users/{userId}/Items/Root` | 200 nobody | - | 403 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Users/{userId}/Items/{itemId}` | 200 A | - | 403 | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | 200 A | - | - | - | - | - |
+| `GET /Users/{userId}/Items/{itemId}/Intros` | 200 nobody | - | 403 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Users/{userId}/Items/{itemId}/LocalTrailers` | 200 nobody | - | 403 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Users/{userId}/Items/{itemId}/SpecialFeatures` | 200 nobody | - | 403 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Videos/{itemId}/hls1/main/{segmentId}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Videos/{itemId}/main.m3u8` | - | 200 nobody | - | 200 B | 200 nobody | 200 nobody | 200 A | 200 A | 200 nobody | 200 nobody | 200 B | - | - | - | - | - |
+| `GET /Videos/{itemId}/master.m3u8` | - | 200 nobody | - | 200 B | 200 nobody | 200 nobody | 200 A | 200 A | 200 nobody | 200 nobody | 200 B | - | - | - | - | - |
+| `GET /Videos/{itemId}/{file}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Videos/{itemId}/{sourceId}/Attachments/{index}` | - | 404 | - | 404 | 404 | 404 | 404 | 404 | 404 | 404 | 404 | - | - | - | - | - |
+| `GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{file}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{startPositionTicks}/{file}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /socket` | - | 101 | - | 101 | 101 | 101 | 101 | 101 | 101 | 101 | 101 | - | - | - | - | - |
+| `POST /DisplayPreferences/{preferenceId}` | - | 204 changed A | - | 403 | 403 | 400 | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | - | - | - | - | - |
+| `POST /Items/{itemId}/PlaybackInfo` | - | 200 A | - | 403 | 403 | 400 | 200 A | 200 A | 200 A | 200 A | 200 A | - | - | - | - | - |
+| `POST /Sessions/Capabilities` | - | 204 | - | 204 | 204 | 204 | 204 | 204 | 204 | 204 | 204 | - | - | - | - | - |
+| `POST /Sessions/Capabilities/Full` | - | 204 | - | 204 | 204 | 204 | 204 | 204 | 204 | 204 | 204 | - | - | - | - | - |
+| `POST /Sessions/Logout` | - | 204 changed A | - | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | - | - | - | - | - |
+| `POST /Sessions/Playing` | - | 204 changed A | - | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | - | - | - | - | - |
+| `POST /Sessions/Playing/Ping` | - | 204 | - | 204 | 204 | 204 | 204 | 204 | 204 | 204 | 204 | - | - | - | - | - |
+| `POST /Sessions/Playing/Progress` | - | 204 changed A | - | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | - | - | - | - | - |
+| `POST /Sessions/Playing/Stopped` | - | 204 changed A | - | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | - | - | - | - | - |
+| `POST /System/Ping` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `POST /UserFavoriteItems/{itemId}` | - | 200 nobody changed A | - | 403 | 403 | 400 | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | - | - | - | - | - |
+| `POST /UserItems/{itemId}/UserData` | - | 200 nobody changed A | - | 403 | 403 | 400 | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | - | - | - | - | - |
+| `POST /UserPlayedItems/{itemId}` | - | 200 nobody changed A | - | 403 | 403 | 400 | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | - | - | - | - | - |
+| `POST /Users/AuthenticateByName` | - | 200 A changed A | - | 200 A changed A | 200 A changed A | 200 A changed A | 200 A changed A | 200 A changed A | 200 A changed A | 200 A changed A | 200 A changed A | - | - | - | - | - |
+| `POST /Users/Configuration` | - | 204 changed A | - | 403 | 404 | 400 | 204 changed A | 204 changed A | 400 | 204 changed A | 204 changed A | - | - | - | - | - |
+| `POST /Users/{userId}/Configuration` | 204 changed A | - | 403 | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 204 changed A | - | - | - | - | - |
+| `POST /Users/{userId}/FavoriteItems/{itemId}` | 200 nobody changed A | - | 403 | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | - | - | - | - | - |
+| `POST /Users/{userId}/PlayedItems/{itemId}` | 200 nobody changed A | - | 403 | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | - | - | - | - | - |
 
 ## As an administrator
 
-| Route | own id in the path | no id | path: B | query userId: B | query userId: nobody | query userId: malformed | query userId: self | query userId: selfCompact | query userId: zero | query userId: empty | query controllableByUserId: B |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| `DELETE /UserFavoriteItems/{itemId}` | - | 200 nobody | - | 200 nobody | 404 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `DELETE /UserPlayedItems/{itemId}` | - | 200 nobody | - | 200 nobody | 404 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `DELETE /Users/{userId}/FavoriteItems/{itemId}` | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `DELETE /Users/{userId}/PlayedItems/{itemId}` | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `DELETE /Videos/ActiveEncodings` | - | 204 | - | 204 | 204 | 204 | 204 | 204 | 204 | 204 | 204 |
-| `GET /Artists` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Branding/Configuration` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Branding/Css` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Branding/Css.css` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /DisplayPreferences/{preferenceId}` | - | 200 admin | - | 200 B | 500 | 400 | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin |
-| `GET /Genres` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items` | - | 200 nobody | - | 200 nobody | 404 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/Filters` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/Filters2` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/Latest` | - | 200 admin | - | 200 B | 404 | 400 | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin |
-| `GET /Items/Suggestions` | - | 200 nobody | - | 200 B | 200 nobody | 400 | 200 admin | 200 admin | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/{itemId}` | - | 200 admin | - | 200 B | 404 | 400 | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin |
-| `GET /Items/{itemId}/Ancestors` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/{itemId}/Collections` | - | 200 nobody | - | 200 nobody | 401 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/{itemId}/Download` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/{itemId}/Images/{imageType}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/{itemId}/Images/{imageType}/{imageIndex}` | - | 404 | - | 404 | 404 | 404 | 404 | 404 | 404 | 404 | 404 |
-| `GET /Items/{itemId}/LocalTrailers` | - | 200 nobody | - | 200 nobody | 404 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/{itemId}/PlaybackInfo` | - | 200 admin | - | 200 B | 200 admin | 400 | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin |
-| `GET /Items/{itemId}/Similar` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/{itemId}/SpecialFeatures` | - | 200 nobody | - | 200 nobody | 404 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Items/{itemId}/ThemeMedia` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /LiveTv/Programs` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /LiveTv/Programs/Recommended` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Localization/Cultures` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /MediaSegments/{itemId}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Persons` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Playback/BitrateTest` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Plugins` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /QuickConnect/Enabled` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Search/Hints` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Sessions` | - | 200 A/B/admin | - | 200 A/B/admin | 200 A/B/admin | 200 A/B/admin | 200 A/B/admin | 200 A/B/admin | 200 A/B/admin | 200 A/B/admin | 200 nobody |
-| `GET /Shows/NextUp` | - | 200 nobody | - | 200 nobody | 404 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Shows/{seriesId}/Episodes` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Shows/{seriesId}/Seasons` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Studios` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /SyncPlay/List` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /System/Configuration/encoding` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /System/Endpoint` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /System/Info` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /System/Info/Public` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /System/Ping` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /UserItems/Resume` | - | 200 nobody | - | 200 B | 404 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /UserViews` | - | 200 nobody | - | 200 nobody | 404 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /UserViews/GroupingOptions` | - | 200 nobody | - | 200 nobody | 404 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Users/Me` | - | 200 admin | - | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin |
-| `GET /Users/Public` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Users/{userId}` | 200 admin | - | 200 B | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin |
-| `GET /Users/{userId}/GroupingOptions` | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Users/{userId}/Items` | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Users/{userId}/Items/Latest` | 200 admin | - | 200 B | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin |
-| `GET /Users/{userId}/Items/Resume` | 200 nobody | - | 200 B | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Users/{userId}/Items/Root` | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Users/{userId}/Items/{itemId}` | 200 admin | - | 200 B | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin |
-| `GET /Users/{userId}/Items/{itemId}/Intros` | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Users/{userId}/Items/{itemId}/LocalTrailers` | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Users/{userId}/Items/{itemId}/SpecialFeatures` | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Videos/{itemId}/hls1/main/{segmentId}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Videos/{itemId}/main.m3u8` | - | 200 nobody | - | 200 B | 200 nobody | 200 nobody | 200 admin | 200 admin | 200 nobody | 200 nobody | 200 B |
-| `GET /Videos/{itemId}/master.m3u8` | - | 200 nobody | - | 200 B | 200 nobody | 200 nobody | 200 admin | 200 admin | 200 nobody | 200 nobody | 200 B |
-| `GET /Videos/{itemId}/{file}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Videos/{itemId}/{sourceId}/Attachments/{index}` | - | 404 | - | 404 | 404 | 404 | 404 | 404 | 404 | 404 | 404 |
-| `GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{file}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{startPositionTicks}/{file}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `GET /socket` | - | 101 | - | 101 | 101 | 101 | 101 | 101 | 101 | 101 | 101 |
-| `POST /DisplayPreferences/{preferenceId}` | - | 204 changed admin | - | 204 changed B | 500 | 400 | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin |
-| `POST /Items/{itemId}/PlaybackInfo` | - | 200 admin | - | 200 B | 404 | 400 | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin |
-| `POST /Sessions/Capabilities` | - | 204 | - | 204 | 204 | 204 | 204 | 204 | 204 | 204 | 204 |
-| `POST /Sessions/Capabilities/Full` | - | 204 | - | 204 | 204 | 204 | 204 | 204 | 204 | 204 | 204 |
-| `POST /Sessions/Logout` | - | 204 changed admin | - | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin |
-| `POST /Sessions/Playing` | - | 204 changed admin | - | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin |
-| `POST /Sessions/Playing/Ping` | - | 204 | - | 204 | 204 | 204 | 204 | 204 | 204 | 204 | 204 |
-| `POST /Sessions/Playing/Progress` | - | 204 changed admin | - | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin |
-| `POST /Sessions/Playing/Stopped` | - | 204 changed admin | - | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin |
-| `POST /System/Ping` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody |
-| `POST /UserFavoriteItems/{itemId}` | - | 200 nobody changed admin | - | 200 nobody changed B | 404 | 400 | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin |
-| `POST /UserItems/{itemId}/UserData` | - | 200 nobody changed admin | - | 200 nobody changed B | 404 | 400 | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin |
-| `POST /UserPlayedItems/{itemId}` | - | 200 nobody changed admin | - | 200 nobody changed B | 404 | 400 | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin |
-| `POST /Users/AuthenticateByName` | - | 200 admin changed admin | - | 200 admin changed admin | 200 admin changed admin | 200 admin changed admin | 200 admin changed admin | 200 admin changed admin | 200 admin changed admin | 200 admin changed admin | 200 admin changed admin |
-| `POST /Users/Configuration` | - | 204 changed admin | - | 204 changed B | 404 | 400 | 204 changed admin | 204 changed admin | 400 | 204 changed admin | 204 changed admin |
-| `POST /Users/{userId}/Configuration` | 204 changed admin | - | 204 changed B | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin |
-| `POST /Users/{userId}/FavoriteItems/{itemId}` | 200 nobody changed admin | - | 200 nobody changed B | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin |
-| `POST /Users/{userId}/PlayedItems/{itemId}` | 200 nobody changed admin | - | 200 nobody changed B | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin |
+| Route | own id in the path | no id | path: B | query userId: B | query userId: nobody | query userId: malformed | query userId: self | query userId: selfCompact | query userId: zero | query userId: empty | query controllableByUserId: B | query controllableByUserId: nobody | query controllableByUserId: malformed | query controllableByUserId: self | query controllableByUserId: selfCompact | query controllableByUserId: zero |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `DELETE /UserFavoriteItems/{itemId}` | - | 200 nobody | - | 200 nobody | 404 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `DELETE /UserPlayedItems/{itemId}` | - | 200 nobody | - | 200 nobody | 404 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `DELETE /Users/{userId}/FavoriteItems/{itemId}` | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `DELETE /Users/{userId}/PlayedItems/{itemId}` | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `DELETE /Videos/ActiveEncodings` | - | 204 | - | 204 | 204 | 204 | 204 | 204 | 204 | 204 | 204 | - | - | - | - | - |
+| `GET /Artists` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Branding/Configuration` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Branding/Css` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Branding/Css.css` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /DisplayPreferences/{preferenceId}` | - | 200 admin | - | 200 B | 500 | 400 | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | - | - | - | - | - |
+| `GET /Genres` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items` | - | 200 nobody | - | 200 nobody | 404 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/Filters` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/Filters2` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/Latest` | - | 200 admin | - | 200 B | 404 | 400 | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | - | - | - | - | - |
+| `GET /Items/Suggestions` | - | 200 nobody | - | 200 B | 200 nobody | 400 | 200 admin | 200 admin | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/{itemId}` | - | 200 admin | - | 200 B | 404 | 400 | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | - | - | - | - | - |
+| `GET /Items/{itemId}/Ancestors` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/{itemId}/Collections` | - | 200 nobody | - | 200 nobody | 401 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/{itemId}/Download` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/{itemId}/Images/{imageType}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/{itemId}/Images/{imageType}/{imageIndex}` | - | 404 | - | 404 | 404 | 404 | 404 | 404 | 404 | 404 | 404 | - | - | - | - | - |
+| `GET /Items/{itemId}/LocalTrailers` | - | 200 nobody | - | 200 nobody | 404 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/{itemId}/PlaybackInfo` | - | 200 admin | - | 200 B | 200 admin | 400 | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | - | - | - | - | - |
+| `GET /Items/{itemId}/Similar` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/{itemId}/SpecialFeatures` | - | 200 nobody | - | 200 nobody | 404 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Items/{itemId}/ThemeMedia` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /LiveTv/Programs` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /LiveTv/Programs/Recommended` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Localization/Cultures` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /MediaSegments/{itemId}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Persons` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Playback/BitrateTest` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Plugins` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /QuickConnect/Enabled` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Search/Hints` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Sessions` | - | 200 A/B/admin | - | 200 A/B/admin | 200 A/B/admin | 200 A/B/admin | 200 A/B/admin | 200 A/B/admin | 200 A/B/admin | 200 A/B/admin | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody |
+| `GET /Shows/NextUp` | - | 200 nobody | - | 200 nobody | 404 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Shows/{seriesId}/Episodes` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Shows/{seriesId}/Seasons` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Studios` | - | 200 nobody | - | 200 nobody | 200 nobody | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /SyncPlay/List` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /System/Configuration/encoding` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /System/Endpoint` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /System/Info` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /System/Info/Public` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /System/Ping` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /UserItems/Resume` | - | 200 nobody | - | 200 B | 404 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /UserViews` | - | 200 nobody | - | 200 nobody | 404 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /UserViews/GroupingOptions` | - | 200 nobody | - | 200 nobody | 404 | 400 | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Users/Me` | - | 200 admin | - | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | - | - | - | - | - |
+| `GET /Users/Public` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Users/{userId}` | 200 admin | - | 200 B | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | - | - | - | - | - |
+| `GET /Users/{userId}/GroupingOptions` | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Users/{userId}/Items` | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Users/{userId}/Items/Latest` | 200 admin | - | 200 B | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | - | - | - | - | - |
+| `GET /Users/{userId}/Items/Resume` | 200 nobody | - | 200 B | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Users/{userId}/Items/Root` | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Users/{userId}/Items/{itemId}` | 200 admin | - | 200 B | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | - | - | - | - | - |
+| `GET /Users/{userId}/Items/{itemId}/Intros` | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Users/{userId}/Items/{itemId}/LocalTrailers` | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Users/{userId}/Items/{itemId}/SpecialFeatures` | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Videos/{itemId}/hls1/main/{segmentId}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Videos/{itemId}/main.m3u8` | - | 200 nobody | - | 200 B | 200 nobody | 200 nobody | 200 admin | 200 admin | 200 nobody | 200 nobody | 200 B | - | - | - | - | - |
+| `GET /Videos/{itemId}/master.m3u8` | - | 200 nobody | - | 200 B | 200 nobody | 200 nobody | 200 admin | 200 admin | 200 nobody | 200 nobody | 200 B | - | - | - | - | - |
+| `GET /Videos/{itemId}/{file}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Videos/{itemId}/{sourceId}/Attachments/{index}` | - | 404 | - | 404 | 404 | 404 | 404 | 404 | 404 | 404 | 404 | - | - | - | - | - |
+| `GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{file}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{startPositionTicks}/{file}` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `GET /socket` | - | 101 | - | 101 | 101 | 101 | 101 | 101 | 101 | 101 | 101 | - | - | - | - | - |
+| `POST /DisplayPreferences/{preferenceId}` | - | 204 changed admin | - | 204 changed B | 500 | 400 | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | - | - | - | - | - |
+| `POST /Items/{itemId}/PlaybackInfo` | - | 200 admin | - | 200 B | 404 | 400 | 200 admin | 200 admin | 200 admin | 200 admin | 200 admin | - | - | - | - | - |
+| `POST /Sessions/Capabilities` | - | 204 | - | 204 | 204 | 204 | 204 | 204 | 204 | 204 | 204 | - | - | - | - | - |
+| `POST /Sessions/Capabilities/Full` | - | 204 | - | 204 | 204 | 204 | 204 | 204 | 204 | 204 | 204 | - | - | - | - | - |
+| `POST /Sessions/Logout` | - | 204 changed admin | - | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | - | - | - | - | - |
+| `POST /Sessions/Playing` | - | 204 changed admin | - | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | - | - | - | - | - |
+| `POST /Sessions/Playing/Ping` | - | 204 | - | 204 | 204 | 204 | 204 | 204 | 204 | 204 | 204 | - | - | - | - | - |
+| `POST /Sessions/Playing/Progress` | - | 204 changed admin | - | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | - | - | - | - | - |
+| `POST /Sessions/Playing/Stopped` | - | 204 changed admin | - | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | - | - | - | - | - |
+| `POST /System/Ping` | - | 200 nobody | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - |
+| `POST /UserFavoriteItems/{itemId}` | - | 200 nobody changed admin | - | 200 nobody changed B | 404 | 400 | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | - | - | - | - | - |
+| `POST /UserItems/{itemId}/UserData` | - | 200 nobody changed admin | - | 200 nobody changed B | 404 | 400 | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | - | - | - | - | - |
+| `POST /UserPlayedItems/{itemId}` | - | 200 nobody changed admin | - | 200 nobody changed B | 404 | 400 | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | - | - | - | - | - |
+| `POST /Users/AuthenticateByName` | - | 200 admin changed admin | - | 200 admin changed admin | 200 admin changed admin | 200 admin changed admin | 200 admin changed admin | 200 admin changed admin | 200 admin changed admin | 200 admin changed admin | 200 admin changed admin | - | - | - | - | - |
+| `POST /Users/Configuration` | - | 204 changed admin | - | 204 changed B | 404 | 400 | 204 changed admin | 204 changed admin | 400 | 204 changed admin | 204 changed admin | - | - | - | - | - |
+| `POST /Users/{userId}/Configuration` | 204 changed admin | - | 204 changed B | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | - | - | - | - | - |
+| `POST /Users/{userId}/FavoriteItems/{itemId}` | 200 nobody changed admin | - | 200 nobody changed B | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | - | - | - | - | - |
+| `POST /Users/{userId}/PlayedItems/{itemId}` | 200 nobody changed admin | - | 200 nobody changed B | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | - | - | - | - | - |
 
 ## A with two ids
 
-| Route | query userId: two values, own then B | query userId: two values, B then own | query UserId and userId: own and B | path own, query B | path B, query own | path B, query B | path nobody, query B | body UserId: B | body UserId: nobody | body UserId: malformed | body UserId: zero | body UserId: self | query own, body B | query B, body own |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `DELETE /UserFavoriteItems/{itemId}` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `DELETE /UserPlayedItems/{itemId}` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `DELETE /Users/{userId}/FavoriteItems/{itemId}` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 403 | 403 | 403 | - | - | - | - | - | - | - |
-| `DELETE /Users/{userId}/PlayedItems/{itemId}` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 403 | 403 | 403 | - | - | - | - | - | - | - |
-| `DELETE /Videos/ActiveEncodings` | 204 | 204 | 204 | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Artists` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Branding/Configuration` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Branding/Css` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Branding/Css.css` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /DisplayPreferences/{preferenceId}` | 200 A | 403 | 200 A | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Genres` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/Filters` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/Filters2` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/Latest` | 200 A | 403 | 200 A | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/Suggestions` | 200 A | 403 | 200 A | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}` | 200 A | 403 | 200 A | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}/Ancestors` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}/Collections` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}/Download` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}/Images/{imageType}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}/Images/{imageType}/{imageIndex}` | 404 | 404 | 404 | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}/LocalTrailers` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}/PlaybackInfo` | 200 A | 403 | 200 A | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}/Similar` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}/SpecialFeatures` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}/ThemeMedia` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /LiveTv/Programs` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /LiveTv/Programs/Recommended` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Localization/Cultures` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /MediaSegments/{itemId}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Persons` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Playback/BitrateTest` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Plugins` | 403 | 403 | 403 | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /QuickConnect/Enabled` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Search/Hints` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Sessions` | 200 A | 200 A | 200 A | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Shows/NextUp` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Shows/{seriesId}/Episodes` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Shows/{seriesId}/Seasons` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Studios` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /SyncPlay/List` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /System/Configuration/encoding` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /System/Endpoint` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /System/Info` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /System/Info/Public` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /System/Ping` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /UserItems/Resume` | 200 A | 403 | 200 A | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /UserViews` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /UserViews/GroupingOptions` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Users/Me` | 200 A | 200 A | 200 A | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Users/Public` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Users/{userId}` | 200 A | 200 A | 200 A | 200 A | 200 B | 200 B | 404 | - | - | - | - | - | - | - |
-| `GET /Users/{userId}/GroupingOptions` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 403 | 403 | 403 | - | - | - | - | - | - | - |
-| `GET /Users/{userId}/Items` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 403 | 403 | 403 | - | - | - | - | - | - | - |
-| `GET /Users/{userId}/Items/Latest` | 200 A | 200 A | 200 A | 200 A | 403 | 403 | 403 | - | - | - | - | - | - | - |
-| `GET /Users/{userId}/Items/Resume` | 200 A | 200 A | 200 A | 200 A | 403 | 403 | 403 | - | - | - | - | - | - | - |
-| `GET /Users/{userId}/Items/Root` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 403 | 403 | 403 | - | - | - | - | - | - | - |
-| `GET /Users/{userId}/Items/{itemId}` | 200 A | 200 A | 200 A | 200 A | 403 | 403 | 403 | - | - | - | - | - | - | - |
-| `GET /Users/{userId}/Items/{itemId}/Intros` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 403 | 403 | 403 | - | - | - | - | - | - | - |
-| `GET /Users/{userId}/Items/{itemId}/LocalTrailers` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 403 | 403 | 403 | - | - | - | - | - | - | - |
-| `GET /Users/{userId}/Items/{itemId}/SpecialFeatures` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 403 | 403 | 403 | - | - | - | - | - | - | - |
-| `GET /Videos/{itemId}/hls1/main/{segmentId}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Videos/{itemId}/main.m3u8` | 200 A/B | 200 A/B | 200 A/B | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Videos/{itemId}/master.m3u8` | 200 A/B | 200 A/B | 200 A/B | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Videos/{itemId}/{file}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Videos/{itemId}/{sourceId}/Attachments/{index}` | 404 | 404 | 404 | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{file}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{startPositionTicks}/{file}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /socket` | 101 | 101 | 101 | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /DisplayPreferences/{preferenceId}` | 204 changed A | 403 | 204 changed A | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /Items/{itemId}/PlaybackInfo` | 200 A | 403 | 200 A | - | - | - | - | 403 | 403 | 400 | 200 A | 200 A | 200 A | 403 |
-| `POST /Sessions/Capabilities` | 204 | 204 | 204 | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /Sessions/Capabilities/Full` | 204 | 204 | 204 | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /Sessions/Logout` | 204 changed A | 204 changed A | 204 changed A | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /Sessions/Playing` | 204 changed A | 204 changed A | 204 changed A | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /Sessions/Playing/Ping` | 204 | 204 | 204 | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /Sessions/Playing/Progress` | 204 changed A | 204 changed A | 204 changed A | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /Sessions/Playing/Stopped` | 204 changed A | 204 changed A | 204 changed A | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /System/Ping` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /UserFavoriteItems/{itemId}` | 200 nobody changed A | 403 | 200 nobody changed A | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /UserItems/{itemId}/UserData` | 200 nobody changed A | 403 | 200 nobody changed A | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /UserPlayedItems/{itemId}` | 200 nobody changed A | 403 | 200 nobody changed A | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /Users/AuthenticateByName` | 200 A changed A | 200 A changed A | 200 A changed A | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /Users/Configuration` | 204 changed A | 403 | 204 changed A | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /Users/{userId}/Configuration` | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 403 | 403 | 404 | - | - | - | - | - | - | - |
-| `POST /Users/{userId}/FavoriteItems/{itemId}` | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 403 | 403 | 403 | - | - | - | - | - | - | - |
-| `POST /Users/{userId}/PlayedItems/{itemId}` | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 403 | 403 | 403 | - | - | - | - | - | - | - |
+| Route | query userId: two values, own then B | query userId: two values, B then own | query UserId and userId: own and B | path own, query B | path B, query own | path B, query B | path nobody, query B | query controllableByUserId: two values, own then B | query controllableByUserId: two values, B then own | query ControllableByUserId and controllableByUserId: own and B | query userId and controllableByUserId: own and B | body UserId: B | body UserId: nobody | body UserId: malformed | body UserId: zero | body UserId: self | query own, body B | query B, body own |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `DELETE /UserFavoriteItems/{itemId}` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `DELETE /UserPlayedItems/{itemId}` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `DELETE /Users/{userId}/FavoriteItems/{itemId}` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 403 | 403 | 403 | - | - | - | - | - | - | - | - | - | - | - |
+| `DELETE /Users/{userId}/PlayedItems/{itemId}` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 403 | 403 | 403 | - | - | - | - | - | - | - | - | - | - | - |
+| `DELETE /Videos/ActiveEncodings` | 204 | 204 | 204 | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Artists` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Branding/Configuration` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Branding/Css` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Branding/Css.css` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /DisplayPreferences/{preferenceId}` | 200 A | 403 | 200 A | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Genres` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/Filters` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/Filters2` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/Latest` | 200 A | 403 | 200 A | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/Suggestions` | 200 A | 403 | 200 A | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}` | 200 A | 403 | 200 A | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}/Ancestors` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}/Collections` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}/Download` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}/Images/{imageType}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}/Images/{imageType}/{imageIndex}` | 404 | 404 | 404 | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}/LocalTrailers` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}/PlaybackInfo` | 200 A | 403 | 200 A | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}/Similar` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}/SpecialFeatures` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}/ThemeMedia` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /LiveTv/Programs` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /LiveTv/Programs/Recommended` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Localization/Cultures` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /MediaSegments/{itemId}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Persons` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Playback/BitrateTest` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Plugins` | 403 | 403 | 403 | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /QuickConnect/Enabled` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Search/Hints` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Sessions` | 200 A | 200 A | 200 A | - | - | - | - | 200 nobody | 403 | 200 nobody | 403 | - | - | - | - | - | - | - |
+| `GET /Shows/NextUp` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Shows/{seriesId}/Episodes` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Shows/{seriesId}/Seasons` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Studios` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /SyncPlay/List` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /System/Configuration/encoding` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /System/Endpoint` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /System/Info` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /System/Info/Public` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /System/Ping` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /UserItems/Resume` | 200 A | 403 | 200 A | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /UserViews` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /UserViews/GroupingOptions` | 200 nobody | 403 | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/Me` | 200 A | 200 A | 200 A | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/Public` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/{userId}` | 200 A | 200 A | 200 A | 200 A | 200 B | 200 B | 404 | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/{userId}/GroupingOptions` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 403 | 403 | 403 | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/{userId}/Items` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 403 | 403 | 403 | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/{userId}/Items/Latest` | 200 A | 200 A | 200 A | 200 A | 403 | 403 | 403 | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/{userId}/Items/Resume` | 200 A | 200 A | 200 A | 200 A | 403 | 403 | 403 | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/{userId}/Items/Root` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 403 | 403 | 403 | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/{userId}/Items/{itemId}` | 200 A | 200 A | 200 A | 200 A | 403 | 403 | 403 | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/{userId}/Items/{itemId}/Intros` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 403 | 403 | 403 | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/{userId}/Items/{itemId}/LocalTrailers` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 403 | 403 | 403 | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/{userId}/Items/{itemId}/SpecialFeatures` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 403 | 403 | 403 | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Videos/{itemId}/hls1/main/{segmentId}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Videos/{itemId}/main.m3u8` | 200 A/B | 200 A/B | 200 A/B | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Videos/{itemId}/master.m3u8` | 200 A/B | 200 A/B | 200 A/B | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Videos/{itemId}/{file}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Videos/{itemId}/{sourceId}/Attachments/{index}` | 404 | 404 | 404 | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{file}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{startPositionTicks}/{file}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /socket` | 101 | 101 | 101 | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /DisplayPreferences/{preferenceId}` | 204 changed A | 403 | 204 changed A | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Items/{itemId}/PlaybackInfo` | 200 A | 403 | 200 A | - | - | - | - | - | - | - | - | 403 | 403 | 400 | 200 A | 200 A | 200 A | 403 |
+| `POST /Sessions/Capabilities` | 204 | 204 | 204 | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Sessions/Capabilities/Full` | 204 | 204 | 204 | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Sessions/Logout` | 204 changed A | 204 changed A | 204 changed A | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Sessions/Playing` | 204 changed A | 204 changed A | 204 changed A | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Sessions/Playing/Ping` | 204 | 204 | 204 | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Sessions/Playing/Progress` | 204 changed A | 204 changed A | 204 changed A | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Sessions/Playing/Stopped` | 204 changed A | 204 changed A | 204 changed A | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /System/Ping` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /UserFavoriteItems/{itemId}` | 200 nobody changed A | 403 | 200 nobody changed A | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /UserItems/{itemId}/UserData` | 200 nobody changed A | 403 | 200 nobody changed A | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /UserPlayedItems/{itemId}` | 200 nobody changed A | 403 | 200 nobody changed A | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Users/AuthenticateByName` | 200 A changed A | 200 A changed A | 200 A changed A | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Users/Configuration` | 204 changed A | 403 | 204 changed A | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Users/{userId}/Configuration` | 204 changed A | 204 changed A | 204 changed A | 204 changed A | 403 | 403 | 404 | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Users/{userId}/FavoriteItems/{itemId}` | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 403 | 403 | 403 | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Users/{userId}/PlayedItems/{itemId}` | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 200 nobody changed A | 403 | 403 | 403 | - | - | - | - | - | - | - | - | - | - | - |
 
 ## The administrator with two ids
 
-| Route | query userId: two values, own then B | query userId: two values, B then own | query UserId and userId: own and B | path own, query B | path B, query own | path B, query B | path nobody, query B | body UserId: B | body UserId: nobody | body UserId: malformed | body UserId: zero | body UserId: self | query own, body B | query B, body own |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `DELETE /UserFavoriteItems/{itemId}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `DELETE /UserPlayedItems/{itemId}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `DELETE /Users/{userId}/FavoriteItems/{itemId}` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 404 | - | - | - | - | - | - | - |
-| `DELETE /Users/{userId}/PlayedItems/{itemId}` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 404 | - | - | - | - | - | - | - |
-| `DELETE /Videos/ActiveEncodings` | 204 | 204 | 204 | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Artists` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Branding/Configuration` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Branding/Css` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Branding/Css.css` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /DisplayPreferences/{preferenceId}` | 200 admin | 200 B | 200 admin | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Genres` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/Filters` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/Filters2` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/Latest` | 200 admin | 200 B | 200 admin | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/Suggestions` | 200 admin | 200 B | 200 admin | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}` | 200 admin | 200 B | 200 admin | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}/Ancestors` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}/Collections` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}/Download` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}/Images/{imageType}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}/Images/{imageType}/{imageIndex}` | 404 | 404 | 404 | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}/LocalTrailers` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}/PlaybackInfo` | 200 admin | 200 B | 200 admin | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}/Similar` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}/SpecialFeatures` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Items/{itemId}/ThemeMedia` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /LiveTv/Programs` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /LiveTv/Programs/Recommended` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Localization/Cultures` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /MediaSegments/{itemId}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Persons` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Playback/BitrateTest` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Plugins` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /QuickConnect/Enabled` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Search/Hints` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Sessions` | 200 A/B/admin | 200 A/B/admin | 200 A/B/admin | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Shows/NextUp` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Shows/{seriesId}/Episodes` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Shows/{seriesId}/Seasons` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Studios` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /SyncPlay/List` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /System/Configuration/encoding` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /System/Endpoint` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /System/Info` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /System/Info/Public` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /System/Ping` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /UserItems/Resume` | 200 nobody | 200 B | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /UserViews` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /UserViews/GroupingOptions` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Users/Me` | 200 admin | 200 admin | 200 admin | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Users/Public` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Users/{userId}` | 200 admin | 200 admin | 200 admin | 200 admin | 200 B | 200 B | 404 | - | - | - | - | - | - | - |
-| `GET /Users/{userId}/GroupingOptions` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 404 | - | - | - | - | - | - | - |
-| `GET /Users/{userId}/Items` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 404 | - | - | - | - | - | - | - |
-| `GET /Users/{userId}/Items/Latest` | 200 admin | 200 admin | 200 admin | 200 admin | 200 B | 200 B | 404 | - | - | - | - | - | - | - |
-| `GET /Users/{userId}/Items/Resume` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 B | 200 B | 404 | - | - | - | - | - | - | - |
-| `GET /Users/{userId}/Items/Root` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 404 | - | - | - | - | - | - | - |
-| `GET /Users/{userId}/Items/{itemId}` | 200 admin | 200 admin | 200 admin | 200 admin | 200 B | 200 B | 404 | - | - | - | - | - | - | - |
-| `GET /Users/{userId}/Items/{itemId}/Intros` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 404 | - | - | - | - | - | - | - |
-| `GET /Users/{userId}/Items/{itemId}/LocalTrailers` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 404 | - | - | - | - | - | - | - |
-| `GET /Users/{userId}/Items/{itemId}/SpecialFeatures` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 404 | - | - | - | - | - | - | - |
-| `GET /Videos/{itemId}/hls1/main/{segmentId}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Videos/{itemId}/main.m3u8` | 200 B/admin | 200 B/admin | 200 B/admin | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Videos/{itemId}/master.m3u8` | 200 B/admin | 200 B/admin | 200 B/admin | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Videos/{itemId}/{file}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Videos/{itemId}/{sourceId}/Attachments/{index}` | 404 | 404 | 404 | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{file}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{startPositionTicks}/{file}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `GET /socket` | 101 | 101 | 101 | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /DisplayPreferences/{preferenceId}` | 204 changed admin | 204 changed B | 204 changed admin | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /Items/{itemId}/PlaybackInfo` | 200 admin | 200 B | 200 admin | - | - | - | - | 200 B | 404 | 400 | 200 admin | 200 admin | 200 admin | 200 B |
-| `POST /Sessions/Capabilities` | 204 | 204 | 204 | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /Sessions/Capabilities/Full` | 204 | 204 | 204 | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /Sessions/Logout` | 204 changed admin | 204 changed admin | 204 changed admin | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /Sessions/Playing` | 204 changed admin | 204 changed admin | 204 changed admin | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /Sessions/Playing/Ping` | 204 | 204 | 204 | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /Sessions/Playing/Progress` | 204 changed admin | 204 changed admin | 204 changed admin | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /Sessions/Playing/Stopped` | 204 changed admin | 204 changed admin | 204 changed admin | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /System/Ping` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /UserFavoriteItems/{itemId}` | 200 nobody changed admin | 200 nobody changed B | 200 nobody changed admin | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /UserItems/{itemId}/UserData` | 200 nobody changed admin | 200 nobody changed B | 200 nobody changed admin | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /UserPlayedItems/{itemId}` | 200 nobody changed admin | 200 nobody changed B | 200 nobody changed admin | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /Users/AuthenticateByName` | 200 admin changed admin | 200 admin changed admin | 200 admin changed admin | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /Users/Configuration` | 204 changed admin | 204 changed B | 204 changed admin | - | - | - | - | - | - | - | - | - | - | - |
-| `POST /Users/{userId}/Configuration` | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed B | 204 changed B | 404 | - | - | - | - | - | - | - |
-| `POST /Users/{userId}/FavoriteItems/{itemId}` | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed B | 200 nobody changed B | 404 | - | - | - | - | - | - | - |
-| `POST /Users/{userId}/PlayedItems/{itemId}` | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed B | 200 nobody changed B | 404 | - | - | - | - | - | - | - |
+| Route | query userId: two values, own then B | query userId: two values, B then own | query UserId and userId: own and B | path own, query B | path B, query own | path B, query B | path nobody, query B | query controllableByUserId: two values, own then B | query controllableByUserId: two values, B then own | query ControllableByUserId and controllableByUserId: own and B | query userId and controllableByUserId: own and B | body UserId: B | body UserId: nobody | body UserId: malformed | body UserId: zero | body UserId: self | query own, body B | query B, body own |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `DELETE /UserFavoriteItems/{itemId}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `DELETE /UserPlayedItems/{itemId}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `DELETE /Users/{userId}/FavoriteItems/{itemId}` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 404 | - | - | - | - | - | - | - | - | - | - | - |
+| `DELETE /Users/{userId}/PlayedItems/{itemId}` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 404 | - | - | - | - | - | - | - | - | - | - | - |
+| `DELETE /Videos/ActiveEncodings` | 204 | 204 | 204 | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Artists` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Branding/Configuration` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Branding/Css` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Branding/Css.css` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /DisplayPreferences/{preferenceId}` | 200 admin | 200 B | 200 admin | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Genres` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/Filters` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/Filters2` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/Latest` | 200 admin | 200 B | 200 admin | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/Suggestions` | 200 admin | 200 B | 200 admin | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}` | 200 admin | 200 B | 200 admin | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}/Ancestors` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}/Collections` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}/Download` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}/Images/{imageType}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}/Images/{imageType}/{imageIndex}` | 404 | 404 | 404 | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}/LocalTrailers` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}/PlaybackInfo` | 200 admin | 200 B | 200 admin | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}/Similar` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}/SpecialFeatures` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Items/{itemId}/ThemeMedia` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /LiveTv/Programs` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /LiveTv/Programs/Recommended` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Localization/Cultures` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /MediaSegments/{itemId}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Persons` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Playback/BitrateTest` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Plugins` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /QuickConnect/Enabled` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Search/Hints` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Sessions` | 200 A/B/admin | 200 A/B/admin | 200 A/B/admin | - | - | - | - | 200 nobody | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - |
+| `GET /Shows/NextUp` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Shows/{seriesId}/Episodes` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Shows/{seriesId}/Seasons` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Studios` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /SyncPlay/List` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /System/Configuration/encoding` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /System/Endpoint` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /System/Info` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /System/Info/Public` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /System/Ping` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /UserItems/Resume` | 200 nobody | 200 B | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /UserViews` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /UserViews/GroupingOptions` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/Me` | 200 admin | 200 admin | 200 admin | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/Public` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/{userId}` | 200 admin | 200 admin | 200 admin | 200 admin | 200 B | 200 B | 404 | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/{userId}/GroupingOptions` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 404 | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/{userId}/Items` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 404 | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/{userId}/Items/Latest` | 200 admin | 200 admin | 200 admin | 200 admin | 200 B | 200 B | 404 | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/{userId}/Items/Resume` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 B | 200 B | 404 | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/{userId}/Items/Root` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 404 | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/{userId}/Items/{itemId}` | 200 admin | 200 admin | 200 admin | 200 admin | 200 B | 200 B | 404 | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/{userId}/Items/{itemId}/Intros` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 404 | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/{userId}/Items/{itemId}/LocalTrailers` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 404 | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Users/{userId}/Items/{itemId}/SpecialFeatures` | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 200 nobody | 404 | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Videos/{itemId}/hls1/main/{segmentId}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Videos/{itemId}/main.m3u8` | 200 B/admin | 200 B/admin | 200 B/admin | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Videos/{itemId}/master.m3u8` | 200 B/admin | 200 B/admin | 200 B/admin | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Videos/{itemId}/{file}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Videos/{itemId}/{sourceId}/Attachments/{index}` | 404 | 404 | 404 | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{file}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /Videos/{itemId}/{sourceId}/Subtitles/{index}/{startPositionTicks}/{file}` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `GET /socket` | 101 | 101 | 101 | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /DisplayPreferences/{preferenceId}` | 204 changed admin | 204 changed B | 204 changed admin | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Items/{itemId}/PlaybackInfo` | 200 admin | 200 B | 200 admin | - | - | - | - | - | - | - | - | 200 B | 404 | 400 | 200 admin | 200 admin | 200 admin | 200 B |
+| `POST /Sessions/Capabilities` | 204 | 204 | 204 | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Sessions/Capabilities/Full` | 204 | 204 | 204 | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Sessions/Logout` | 204 changed admin | 204 changed admin | 204 changed admin | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Sessions/Playing` | 204 changed admin | 204 changed admin | 204 changed admin | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Sessions/Playing/Ping` | 204 | 204 | 204 | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Sessions/Playing/Progress` | 204 changed admin | 204 changed admin | 204 changed admin | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Sessions/Playing/Stopped` | 204 changed admin | 204 changed admin | 204 changed admin | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /System/Ping` | 200 nobody | 200 nobody | 200 nobody | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /UserFavoriteItems/{itemId}` | 200 nobody changed admin | 200 nobody changed B | 200 nobody changed admin | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /UserItems/{itemId}/UserData` | 200 nobody changed admin | 200 nobody changed B | 200 nobody changed admin | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /UserPlayedItems/{itemId}` | 200 nobody changed admin | 200 nobody changed B | 200 nobody changed admin | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Users/AuthenticateByName` | 200 admin changed admin | 200 admin changed admin | 200 admin changed admin | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Users/Configuration` | 204 changed admin | 204 changed B | 204 changed admin | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Users/{userId}/Configuration` | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed admin | 204 changed B | 204 changed B | 404 | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Users/{userId}/FavoriteItems/{itemId}` | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed B | 200 nobody changed B | 404 | - | - | - | - | - | - | - | - | - | - | - |
+| `POST /Users/{userId}/PlayedItems/{itemId}` | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed admin | 200 nobody changed B | 200 nobody changed B | 404 | - | - | - | - | - | - | - | - | - | - | - |
 
 ## No token
 
@@ -482,7 +482,7 @@ In the tables a cell is the status, then whose data came back (`A`, `B`, `admin`
 - **Several values:** Jellyfin binds the first value of a repeated or differently cased key: `userId=B&userId=own` is refused (35 of the 35 routes that read the id), `userId=own&userId=B` is served as own, and `userId=own&UserId=B` likewise (the keys are one key). On `POST /Items/{itemId}/PlaybackInfo` the query beats the body: query own with B in the body is served as own, query B with own in the body is refused.
 - **Path and query naming different users** on the routes that take both (`POST /Users/{userId}/Configuration`, `GET /Users/{userId}`): the path wins and the query is ignored. A non-administrator with B in the path gets 403 whatever the query says, and with its own id in the path and B in the query is served as itself (`POST /Users/{own}/Configuration?userId=B`: 204, A's row changed); an administrator with the path on B and the query on themselves writes B. Jellyfin answers neither 400 nor 403 for the disagreement.
 - **Nobody's id as a non-administrator on the Configuration routes** is 404 (`POST /Users/Configuration?userId=nobody`: 404); on `POST /UserItems/{itemId}/UserData` and every GetUserId route it is 403, the status for B's id. A malformed id is 400 on every route that reads it.
-- **No token** is 401 on every route that needs one, with or without `userId=B`; the open routes answer as they do without the id.
+- **No token** is 401 on every route that needs one, with or without `userId=B`, except `GET /socket`, which was observed answering 403 without an id and 403 with `userId=B`. The open routes answer as they do without the id.
 - The answers of `master.m3u8` and `main.m3u8` carry the query string they were asked with (the id in them is the id the request named, not a user's data); the table reads that as `B`.
 
 ## Where jellyscale answers otherwise

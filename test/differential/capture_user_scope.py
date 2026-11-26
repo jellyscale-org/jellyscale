@@ -6,10 +6,11 @@ Usage: python3 -I test/differential/capture_user_scope.py <out.json> [route rege
 
 Starts jellyfin/jellyfin:12.4 in Docker on a Docker-assigned port over synthetic films made here with ffmpeg,
 completes the startup wizard, and asks every route of compat/endpoints.yaml as three callers: an administrator, a
-non-administrator A, and nobody (no token), with the id of another non-administrator B, of nobody, a malformed id, the
-caller's own id (compact, and dashed in upper case) and the all-zero id, in each place the route can take one: the
-{userId} segment of its path, the userId and controllableByUserId query keys, and the UserId of the body of
-POST /Items/{itemId}/PlaybackInfo. A few cases put two different ids in two places or two values under one key.
+non-administrator A, and nobody (no token), with B's id in each place the route can take one: the {userId} segment of its path,
+the userId and controllableByUserId query keys, and the UserId of the body of POST /Items/{itemId}/PlaybackInfo. The path,
+userId and PlaybackInfo body also take an id of nobody, a malformed id, the caller's own id (compact, and dashed in upper case)
+and the all-zero id; GET /Sessions gives controllableByUserId the same matrix. A few cases put two different ids in two places or
+two values under one key.
 
 Each user holds data that tells them apart (a favourite, a played film, a position, display preferences, a
 Configuration, a session on a device of their own), so the answer says whose data came back, and what a request
@@ -422,10 +423,17 @@ def cases_of(route, kind_of_route):
             if postinfo:
                 out.append((caller, f"body UserId: {kind}", [("body", kind)]))
         out.append((caller, "query userId: empty", [("query", "userId", "empty")] + ([("path", "selfCompact")] if has_path else [])))
-        out.append((caller, "query controllableByUserId: B", [("query", "controllableByUserId", "B")] + ([("path", "selfCompact")] if has_path else [])))
+        controllable_kinds = ("B", "nobody", "malformed", "self", "selfCompact", "zero") if route == ("GET", "/Sessions") else ("B",)
+        for kind in controllable_kinds:
+            out.append((caller, f"query controllableByUserId: {kind}", [("query", "controllableByUserId", kind)] + ([("path", "selfCompact")] if has_path else [])))
         out.append((caller, "query userId: two values, own then B", [("query-twice", "userId", "selfCompact", "B")] + ([("path", "selfCompact")] if has_path else [])))
         out.append((caller, "query userId: two values, B then own", [("query-twice", "userId", "B", "selfCompact")] + ([("path", "selfCompact")] if has_path else [])))
         out.append((caller, "query UserId and userId: own and B", [("query", "UserId", "selfCompact"), ("query", "userId", "B")] + ([("path", "selfCompact")] if has_path else [])))
+        if route == ("GET", "/Sessions"):
+            out.append((caller, "query controllableByUserId: two values, own then B", [("query-twice", "controllableByUserId", "selfCompact", "B")]))
+            out.append((caller, "query controllableByUserId: two values, B then own", [("query-twice", "controllableByUserId", "B", "selfCompact")]))
+            out.append((caller, "query ControllableByUserId and controllableByUserId: own and B", [("query", "ControllableByUserId", "selfCompact"), ("query", "controllableByUserId", "B")]))
+            out.append((caller, "query userId and controllableByUserId: own and B", [("query", "userId", "selfCompact"), ("query", "controllableByUserId", "B")]))
         if has_path:
             out.append((caller, "path own, query B", [("path", "selfCompact"), ("query", "userId", "B")]))
             out.append((caller, "path B, query own", [("path", "B"), ("query", "userId", "selfCompact")]))
@@ -666,7 +674,8 @@ def findings(by):
                  f"and with its own id in the path and B in the query is served as itself (`POST /Users/{{own}}/Configuration?userId=B`: {status('POST /Users/{userId}/Configuration', 'A', 'path own, query B')}, A's row changed); an administrator with the path on B and the query on themselves writes B. Jellyfin answers neither 400 nor 403 for the disagreement.")
     lines.append(f"- **Nobody's id as a non-administrator on the Configuration routes** is 404 (`POST /Users/Configuration?userId=nobody`: {status('POST /Users/Configuration', 'A', 'query userId: nobody')}); on `POST /UserItems/{{itemId}}/UserData` and every GetUserId route it is "
                  f"{status('POST /UserItems/{itemId}/UserData', 'A', 'query userId: nobody')}, the status for B's id. A malformed id is 400 on every route that reads it.")
-    lines.append("- **No token** is 401 on every route that needs one, with or without `userId=B`; the open routes answer as they do without the id.")
+    lines.append(f"- **No token** is 401 on every route that needs one, with or without `userId=B`, except `GET /socket`, which was observed answering "
+                 f"{status('GET /socket', 'none', 'no token, no id')} without an id and {status('GET /socket', 'none', 'no token, query userId: B')} with `userId=B`. The open routes answer as they do without the id.")
     lines.append("- The answers of `master.m3u8` and `main.m3u8` carry the query string they were asked with (the id in them is the id the request named, not a user's data); the table reads that as `B`.")
     lines.append("")
 
@@ -706,10 +715,11 @@ def markdown(c):
            "made by `test/differential/capture_user_scope.py`: four films (the first with an English and a Spanish text subtitle) and an episode of a show. "
            "Evidence in `user-scope-12.4.json`, one line for each request; the script is rerun with "
            "`python3 -I test/differential/capture_user_scope.py compat/captures/user-scope-12.4.json` from the repository root.\n",
-           "Every route of `compat/endpoints.yaml` is asked as an administrator, as a non-administrator A, and with no token, with the id of a second "
-           "non-administrator B, of nobody, a malformed id, the caller's own id (compact, and dashed in upper case) and the all-zero id, in each place the route "
-           "can take one: the `{userId}` segment of its path, the `userId` and `controllableByUserId` query keys, and the `UserId` of the body of "
-           "`POST /Items/{itemId}/PlaybackInfo`; and with two ids in two places or two values under one key. Each case that can change something "
+           "Every route of `compat/endpoints.yaml` is asked as an administrator, as a non-administrator A, and with no token. A second non-administrator B's id goes "
+           "in each place of each route: the `{userId}` segment of its path, the `userId` and `controllableByUserId` query keys, and the `UserId` of the body of "
+           "`POST /Items/{itemId}/PlaybackInfo`. The path, `userId` and PlaybackInfo body also take an id of nobody, a malformed id, the caller's own id "
+           "(compact, and dashed in upper case) and the all-zero id; `GET /Sessions` gives `controllableByUserId` the same matrix. Cases also put two ids in two places "
+           "or two values under one key. Each case that can change something "
            "(`POST`, `DELETE`, `PATCH`) is asked of three new users; the others of one shared set.\n",
            "The users hold data that tells them apart. **A**: favourite film 1, film 2 played, a position in film 3, the Configuration `Always`/`eng`/`fra`. "
            "**B**: favourite film 2, film 1 played, a position twice A's in film 3, `Always`/`spa`/`deu`. **The administrator**: nothing, `None`/``/`ita`. "
@@ -731,12 +741,14 @@ def markdown(c):
         out.append("")
 
     mains = ["own id in the path", "no id", "path: B", "query userId: B", "query userId: nobody", "query userId: malformed", "query userId: self", "query userId: selfCompact", "query userId: zero",
-             "query userId: empty", "query controllableByUserId: B"]
+             "query userId: empty", "query controllableByUserId: B", "query controllableByUserId: nobody", "query controllableByUserId: malformed", "query controllableByUserId: self",
+             "query controllableByUserId: selfCompact", "query controllableByUserId: zero"]
     table("As a non-administrator A", "A", mains)
     table("As an administrator", "admin", mains)
     mixed = ["query userId: two values, own then B", "query userId: two values, B then own", "query UserId and userId: own and B", "path own, query B", "path B, query own",
-             "path B, query B", "path nobody, query B", "body UserId: B", "body UserId: nobody", "body UserId: malformed", "body UserId: zero", "body UserId: self",
-             "query own, body B", "query B, body own"]
+             "path B, query B", "path nobody, query B", "query controllableByUserId: two values, own then B", "query controllableByUserId: two values, B then own",
+             "query ControllableByUserId and controllableByUserId: own and B", "query userId and controllableByUserId: own and B", "body UserId: B", "body UserId: nobody",
+             "body UserId: malformed", "body UserId: zero", "body UserId: self", "query own, body B", "query B, body own"]
     mixed_cases = {n for rows_by in by.values() for (_, n) in rows_by}
     mixed = [m for m in mixed if m in mixed_cases]
     for caller, title in (("A", "A with two ids"), ("admin", "The administrator with two ids")):

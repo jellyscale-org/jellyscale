@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"regexp"
 	"slices"
@@ -416,7 +417,7 @@ func (a *accessSite) scope(t *testing.T, h accHandler) {
 	// Criteria 23 and 24: an open route answers as it does without the id, and signing in is the name and password's.
 	a.scopeOpenRoutes(t, h, f)
 
-	// The WebSocket: the caller's own id in the query upgrades, another's gets no 101.
+	// The WebSocket: the caller's own id in the query upgrades, another's is 403 with no upgraded connection.
 	a.scopeSocket(t, h, f)
 }
 
@@ -702,8 +703,8 @@ func (a *accessSite) scopeSocket(t *testing.T, h accHandler, f *scopeFixture) {
 				a.fail("%s: GET /socket?userId=<own, %s> as %s: %d %v, want the upgrade", h.name, id, who.name, status, err)
 			}
 		}
-		if status, err := dial(db.CompactID(f.b.id)); status == 101 || err != nil {
-			a.fail("%s: GET /socket?userId=B as %s: %d %v, want no 101 (403)", h.name, who.name, status, err)
+		if status, err := dial(db.CompactID(f.b.id)); status != http.StatusForbidden || err != nil {
+			a.fail("%s: GET /socket?userId=B as %s: %d %v, want 403 and no upgraded connection", h.name, who.name, status, err)
 		}
 	}
 }
