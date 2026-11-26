@@ -11,6 +11,7 @@ import {
 } from "./player.mjs";
 import { waitFor } from "./player.mjs";
 import { configure, time } from "./player.mjs";
+import { advances, sql, submitSignIn } from "./player.mjs";
 
 const require = createRequire(`${process.cwd()}/`);
 const { chromium } = require("playwright-core");
@@ -158,6 +159,55 @@ await step("positions persisted and films are under Continue Watching", async ()
   if (misplaced.length) throw new Error(`films shown in other rows: ${misplaced.join("; ")}`);
 });
 await second.context.close();
+
+// JS-037: a browser holding no token picks Use Quick Connect, a second browser signed in as a viewer approves the code
+// on jellyfin-web's Quick Connect page, and the first is signed in as that viewer and plays a film. What each page shows
+// is what jellyfin-web 12.4 showed against Jellyfin 12.4 (compat/captures/quick-connect-12.4.json, "web").
+// There is no route that makes an account yet (JS-033), so the viewer, no administrator, is a row.
+const viewer = { name: "qc-viewer", password: "qc-viewer-pass" };
+sql("CREATE EXTENSION IF NOT EXISTS pgcrypto");
+sql(`INSERT INTO users (id, name, password_hash) VALUES (gen_random_uuid(), '${viewer.name}', crypt('${viewer.password}', gen_salt('bf', 10))) ON CONFLICT DO NOTHING`);
+const tv = await newSession();
+const phone = await newSession();
+let code = null;
+await step("quick connect: a browser with no token is shown a code", async () => {
+  await tv.page.goto(`${base}/web/`);
+  await tv.page.waitForSelector("#txtManualName", { timeout: 30000 });
+  await tv.page.locator(".btnQuick:visible", { hasText: "Use Quick Connect" }).click({ timeout: 15000 });
+  const dialog = tv.page.locator(".formDialog", { hasText: "to login" });
+  await dialog.waitFor({ timeout: 15000 });
+  code = /\b(\d{6})\b/.exec(await dialog.innerText())?.[1];
+  if (!code) throw new Error(`no six-digit code in ${JSON.stringify(await dialog.innerText())}`);
+});
+await step("quick connect: a second browser signed in as a viewer approves the code", async () => {
+  if (!code) throw new Error("no code to approve");
+  const { page } = phone;
+  await page.goto(`${base}/web/`);
+  await submitSignIn(page, viewer.name, viewer.password, 30000);
+  await page.waitForSelector(".card", { timeout: 30000 });
+  await page.goto(`${base}/web/#/quickconnect`);
+  await page.waitForSelector("#txtQuickConnectCode", { timeout: 30000 });
+  await page.fill("#txtQuickConnectCode", code);
+  await page.click("#quickConnectPreferencesPage button[type=submit]");
+  await page.locator("#quickConnectPreferencesPage", { hasText: "You have successfully authenticated your device!" }).waitFor({ timeout: 15000 });
+});
+await step("quick connect: the first browser is signed in as that viewer", async () => {
+  // jellyfin-web asks /QuickConnect/Connect every 5 seconds.
+  await tv.page.waitForSelector(".card", { timeout: 60000 });
+  const name = await tv.page.evaluate(async () => (await window.ApiClient.getCurrentUser()).Name);
+  if (name !== viewer.name) throw new Error(`signed in as ${name}, want ${viewer.name}`);
+});
+await step("quick connect: the signed-in browser plays a film", async () => {
+  const { page } = tv;
+  await page.locator(".card:visible", { hasText: "Movies" }).first().click();
+  await page.locator(".cardText a:visible", { hasText: "Alpha Film" }).first().click();
+  await page.locator(".btnPlay:visible").first().click();
+  await waitFor("video to start", async () => (await time(page)) > 0.5, 20000);
+  await advances(page);
+  await page.evaluate(() => window.history.back());
+});
+await tv.context.close();
+await phone.context.close();
 await browser.close();
 
 if (failures.length) {

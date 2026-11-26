@@ -393,6 +393,12 @@ func (a *accessSite) judge(u *accUniform, route Route, what string, r accReply, 
 		return
 	}
 	if accOpen(route) {
+		if slices.Contains(openButAsks, routeName(route)) {
+			if r.status == 401 || r.status == 403 || r.status >= 500 {
+				a.fail("%s is open and answered %d %.60s", name, r.status, r.body)
+			}
+			return
+		}
 		if r.status/100 != 2 {
 			a.fail("%s is open and answered %d %.60s", name, r.status, r.body)
 		}
@@ -530,7 +536,7 @@ func (a *accessSite) matrix(t *testing.T, h accHandler, via accHandler, film acc
 				a.fail("%s with a valid token, %s: %v", routeName(route), accSpellings[s], r.err)
 			case r.status == 401 || r.status == 403 && !viewer:
 				a.fail("%s with a valid token, %s: answered %d %.60q", routeName(route), accSpellings[s], r.status, r.body)
-			case !viewer && r.status/100 != 2:
+			case !viewer && r.status/100 != 2 && !slices.Contains(openButAsks, routeName(route)):
 				a.fail("%s is open and answered %d to a valid token, %s", routeName(route), r.status, accSpellings[s])
 			}
 		}
@@ -689,6 +695,11 @@ func TestAccess(t *testing.T) {
 		}
 		if !slices.Contains([]string{RoleAPI, RoleStream}, route.Role) {
 			t.Errorf("%s has role %q, which no accHandler of the test serves", routeName(route), route.Role)
+		}
+	}
+	for _, name := range quickConnectRoutes {
+		if !slices.ContainsFunc(routes, func(route Route) bool { return routeName(route) == name }) {
+			t.Errorf("%s is not in Routes(), so it was not asked", name)
 		}
 	}
 	t.Logf("%d routes asked on %d handlers", len(routes), 3)
