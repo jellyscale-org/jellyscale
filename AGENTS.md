@@ -74,7 +74,15 @@ The workflow's steps:
    - Evidenced findings left after that send the task back to Spec.
    - Minors go to the product owner.
 
-- Run the roles on these models (D-076): Refine and Check on `claude-agent/opus` (Opus 5.5) at high effort; Spec, architecture, adversarial and UX on `claude-agent/sonnet` (Sonnet 5.5) at high effort; Build/Fix and the snapshot helpers on OpenCode Go `hy4-flash-free`; QA on OpenCode Go `beam-free`; the product owner and advisor on `claude-agent/fable` (Fable 5.2) at high effort. The `claude-agent/` models use the weekly Claude agent allowance, not the Anthropic API balance. A host that cannot reach an OpenCode model runs that role on `claude-agent/sonnet` at high effort and records the substitution.
+- Run the roles on these models (D-076, D-086):
+  - Refine and Check: `claude-agent/opus` (Opus 5.5), high effort.
+  - Spec, architecture, adversarial and UX: `claude-agent/sonnet` (Sonnet 5.5), high effort.
+  - Product owner and advisor: `claude-agent/fable` (Fable 5.2), high effort.
+  - Build/Fix: `opencode/deepseek-v4.1-flash-free`, high effort. QA: `opencode/beam-free`, high effort. Snapshot helpers: `opencode/mimo-v2.6-flash-free`.
+- Use an OpenCode Zen free model (`opencode/...-free`) for any other work that doesn't judge quality: searching, reading logs, running checks, captures, test diagnostics.
+- Replace a free model with `claude-agent/sonnet` when it is unavailable or fails the same step twice, and record it in the task record. Check a free model on a task with a known answer before routing a role to it.
+- Never give a free model a credential, or work on the homelab or the dogfood: a free tier may keep what it is sent.
+- The `claude-agent/` models use the weekly Claude agent allowance, not the Anthropic API balance. Don't use `anthropic/` or paid `opencode-go/` models.
 - Keep reviewers blind: they see the task, the checks, the diff and the docs, never the implementer's reasoning or another reviewer's findings.
 - Treat the merge queue as the one full gate.
 - Run locally only what a change touches.
@@ -98,6 +106,16 @@ The workflow's steps:
 - Bring the product owner the run's unfixed findings and what the application now needs.
 - Amend `tasks/prd.json` by pull request as the product owner decides.
 
+## Octave
+
+[Octave](https://github.com/jellyscale-org/octave) is jellyscale's own client. Its web app is to become jellyscale's default web client (owner, D-085). The two projects ask each other for work through GitHub issues.
+
+- Octave files an issue on this repository when it wants a feature or finds a gap, labelled `from:fluster` (its former name).
+- When jellyscale wants a feature or a change from Octave, or finds a bug in it, file an issue on `jellyscale-org/octave`, labelled `from:jellyscale` (create the label if it is missing). Don't work around it here.
+- In such an issue, say what a viewer or operator needs, why, and how to see it. Search Octave's issues first. Never include a credential, a name, a real film title, a path or a homelab address.
+- Send every issue that comes from Octave to the product owner before any work on it. Batch all untriaged ones into one triage brief after a task; with none, make no call. D-084's once-per-phase cap doesn't hold back this triage.
+- The lead labels each triaged issue, posts the product owner's comment and closes declined ones.
+
 ## Product owner
 
 - Ask a fresh `product-owner` agent (`.claude/agents/product-owner.md`) for trade-offs, the plan and direction reviews.
@@ -112,9 +130,9 @@ The workflow's steps:
 - **Direction.** Ask for a direction review after each phase.
 - Record each brief and decision in `tasks/decisions.json`.
 - Cite a decision id in every Changed guarantees entry, amended check, and weakened DOMAINS.md or docs statement.
-- **Advice when stuck.** When the lead is consistently stuck, or a decision's real cost is unclear, consult the `advisor` role (Fable 5.2 at high effort) blind. Send only the question, the constraints, and the minimum evidence needed; no whole diff, logs or tree. Tell it to use cheaper OpenCode Go or Sonnet agents through Task to find and read anything it needs, so its own input and output stay small. It returns a short recommendation, the risk and the check that would disprove it. Record material advice as a decision id. This is not a substitute for the product owner's trade-off briefs.
+- **Advice when stuck.** When the lead is consistently stuck, or a decision's real cost is unclear, consult the `advisor` role (Fable 5.2 at high effort) blind. Send only the question, the constraints, and the minimum evidence needed; no whole diff, logs or tree. Tell it to use OpenCode Zen free or Sonnet agents through Task to find and read anything it needs, so its own input and output stay small. It returns a short recommendation, the risk and the check that would disprove it. Record material advice as a decision id. This is not a substitute for the product owner's trade-off briefs.
 - **Fable is a scarce phase-gate reviewer (D-084).** Call the product owner on Fable 5.2 at most once per phase, and only for a new product trade-off, a direction review, or a decision that cannot be derived from recorded decisions. Batch every pending question into that one brief. Do not call it for routine priority confirmations, a single decision already covered by a decision id, or a per-task check that Opus 5.5 and the blind reviewers can settle. The advisor uses the same budget: one call per task only after two attempts have failed on the same question. If a Fable call would only confirm existing policy, cite the decision and do not call.
-- **Per-task quality comes from cheaper checks.** Opus 5.5 is the per-task Check and Refine model; Sonnet 5.5 carries architecture, adversarial and UX review; OpenCode Go's zero-cost models carry Build/Fix, QA and helpers. Escalate to Fable only when those disagree or a product trade-off remains.
+- **Per-task quality comes from cheaper checks.** Opus 5.5 is the per-task Check and Refine model; Sonnet 5.5 carries architecture, adversarial and UX review; OpenCode Zen's free models carry Build/Fix, QA and helpers. Escalate to Fable only when those disagree or a product trade-off remains.
 - **Priorities and plan order are the product owner's alone.** The lead never edits a task's priority, moves a task in `tasks/prd.json`, or decides what is built next without the product owner's decision. Bring a brief with the options and costs (D-080).
 - Follow its decisions.
 - Leave changes to PRODUCT.md, and to what the product is for, to the owner.
