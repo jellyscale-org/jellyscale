@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -11,12 +12,17 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"jellyscale/internal/compat"
 	"jellyscale/internal/db"
 	"jellyscale/internal/quickconnect"
 	"jellyscale/internal/signin"
 )
+
+// approvalTimeout bounds an approval that outlives its client. It is longer than a client waits for an answer, so a
+// hang-up cannot change the outcome, and short enough that a stuck database does not hold the statement forever.
+const approvalTimeout = 30 * time.Second
 
 // A Quick Connect code is shown by a device that has no token: Initiate, the poll that reads the code's state and the
 // redemption are open. Only the approval is a viewer's. Every route refuses when this replica has Quick Connect off,
@@ -149,7 +155,11 @@ func (s *Server) quickConnectAuthorize(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	ticket, refusal, err := signin.BeginApproval(r.Context(), s.Pool, user.ID)
+	// The approval and its reservation run on a context detached from the request: a client that hangs up must not
+	// change whether a guess is counted or whether the code is approved. The timeout bounds a database that hangs.
+	approval, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), approvalTimeout)
+	defer cancel()
+	ticket, refusal, err := signin.BeginApproval(approval, s.Pool, user.ID)
 	if err != nil {
 		s.fail(w, r, err)
 		return
@@ -162,27 +172,29 @@ func (s *Server) quickConnectAuthorize(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "too many failed approvals", http.StatusForbidden)
 		return
 	}
-	err = quickconnect.Approve(r.Context(), s.Pool, value, user.ID)
+	err = quickconnect.Approve(approval, s.Pool, value, user.ID)
 	if err == nil {
-		if err := ticket.Release(r.Context(), s.Pool); err != nil {
-			s.fail(w, r, err)
-			return
+		if releaseErr := ticket.Release(approval, s.Pool); releaseErr != nil {
+			s.Log.Warn("an approval's reservation was not given back", "error", releaseErr)
 		}
 		writeJSON(w, true)
 		return
 	}
-	// A failure keeps the reservation: an unknown, expired or already approved code is a guess at someone's account.
+	// A code that is unknown, expired or already approved is a guess at someone's account, so it keeps the
+	// reservation. So does every outcome that could not be seen: a timeout, a severed connection, a cancelled
+	// statement. Only a database that definitely refused the write, which says nothing about the code, gives it back.
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		if releaseErr := ticket.Release(approval, s.Pool); releaseErr != nil {
+			s.Log.Warn("an approval's reservation was not given back", "error", releaseErr)
+		}
+	}
 	switch {
 	case errors.Is(err, quickconnect.ErrUnknownCode):
 		http.Error(w, "Error processing request.", http.StatusNotFound)
 	case errors.Is(err, quickconnect.ErrAlreadyApproved):
 		http.Error(w, "already approved", http.StatusConflict)
 	default:
-		// The write failed for a reason that says nothing about the code. It was no wrong guess, so the account
-		// keeps all of its approvals; the reservation is given back before the 500 is sent.
-		if releaseErr := ticket.Release(r.Context(), s.Pool); releaseErr != nil {
-			s.Log.Warn("an approval's reservation was not given back", "error", releaseErr)
-		}
 		s.fail(w, r, err)
 	}
 }
@@ -198,9 +210,8 @@ func (s *Server) authenticateWithQuickConnect(w http.ResponseWriter, r *http.Req
 		http.Error(w, "Error processing request.", http.StatusBadRequest)
 		return
 	}
-	code, err := quickconnect.Redeem(r.Context(), s.Pool, body.Secret)
-	if errors.Is(err, quickconnect.ErrUnknownSecret) || errors.Is(err, quickconnect.ErrNotApproved) ||
-		errors.Is(err, quickconnect.ErrAccountGone) {
+	code, account, err := quickconnect.Redeem(r.Context(), s.Pool, body.Secret)
+	if errors.Is(err, quickconnect.ErrUnknownSecret) || errors.Is(err, quickconnect.ErrNotApproved) {
 		http.Error(w, "Error processing request.", http.StatusNotFound)
 		return
 	}
@@ -208,10 +219,11 @@ func (s *Server) authenticateWithQuickConnect(w http.ResponseWriter, r *http.Req
 		s.fail(w, r, err)
 		return
 	}
-	user, err := s.queryUser(r.Context(), code.Token)
-	if err != nil {
-		s.fail(w, r, err)
-		return
+	// The account was read in the transaction that issued the token, so a sign-in or sign-out that ends the token
+	// after its commit cannot turn this answer into a server error.
+	user := User{
+		ID: account.ID, Name: account.Name, IsAdmin: account.IsAdmin,
+		LastLoginAt: account.LastLoginAt, Configuration: account.Configuration,
 	}
 	writeJSON(w, s.signInJSON(user, code.Token, compat.ClientInfo{
 		Client: code.Device.App, Device: code.Device.Name, DeviceID: code.Device.ID, Version: code.Device.Version,

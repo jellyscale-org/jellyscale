@@ -15,4 +15,6 @@ CREATE TABLE quickconnect_codes (
 );
 -- A code is never live for two devices; Initiate removes expired rows first, so a code that is still live is kept out.
 CREATE UNIQUE INDEX quickconnect_code_key ON quickconnect_codes (code);
-CREATE INDEX quickconnect_expiry_key ON quickconnect_codes (created_at, approved_at);
+-- The expiry predicates use CASE WHEN approved_at IS NOT NULL THEN approved_at ELSE created_at END, which no index on
+-- the two columns alone can serve. At most 100 codes are live and expired ones are removed by the next Initiate, so a
+-- scan of the small table costs less than maintaining an index nothing uses.

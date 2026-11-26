@@ -39,7 +39,6 @@ var (
 	ErrUnknownSecret   = errors.New("unknown Quick Connect secret")
 	ErrNotApproved     = errors.New("Quick Connect code is not approved yet")
 	ErrFull            = errors.New("no room for another Quick Connect code")
-	ErrAccountGone     = errors.New("the approving account is gone")
 )
 
 // Device is how the asking device named itself at Initiate. A redemption uses these values, whatever header it brings.
@@ -54,6 +53,15 @@ type Code struct {
 	Approved      *time.Time
 	Approver      string
 	Token         string
+}
+
+// Account is the approving account as a redemption signs it in. It is read in the transaction that issues the token,
+// so a sign-in or sign-out that ends the token after the commit cannot leave the answer without a user.
+type Account struct {
+	ID, Name      string
+	IsAdmin       bool
+	LastLoginAt   *time.Time
+	Configuration []byte
 }
 
 var (
@@ -182,9 +190,11 @@ func Approve(ctx context.Context, pool *pgxpool.Pool, value, userID string) erro
 // signin.Issue, the same path a password sign-in uses, so the two cannot give one device two tokens. A code whose token
 // no longer names a device and an account, whatever ended it, is worth no more than an unknown secret: no replacement
 // is made. An account deleted after it approved redeems nothing, as Jellyfin's own token does work but answers 401;
-// jellyscale refuses it at the door.
-func Redeem(ctx context.Context, pool *pgxpool.Pool, secret string) (Code, error) {
+// jellyscale refuses it at the door. The account is read here, under the row lock, so the answer does not depend on
+// the token still naming a device after the commit.
+func Redeem(ctx context.Context, pool *pgxpool.Pool, secret string) (Code, Account, error) {
 	var result Code
+	var account Account
 	err := pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 		code, err := scan(tx.QueryRow(ctx, `SELECT `+columns+` FROM quickconnect_codes
 			WHERE secret = $1 AND `+readable+` FOR UPDATE`, secret))
@@ -211,26 +221,42 @@ func Redeem(ctx context.Context, pool *pgxpool.Pool, secret string) (Code, error
 			if !held {
 				return ErrUnknownSecret
 			}
-			result = code
-			return nil
+		} else {
+			var exists bool
+			if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM users WHERE id = $1)`, code.Approver).Scan(&exists); err != nil {
+				return err
+			}
+			if !exists {
+				return ErrUnknownSecret
+			}
+			issued, err := signin.Issue(ctx, tx, code.Approver, code.Device)
+			if err != nil {
+				return err
+			}
+			if _, err := tx.Exec(ctx, `UPDATE quickconnect_codes SET token = $2 WHERE secret = $1 AND token IS NULL`, secret, issued.Value); err != nil {
+				return err
+			}
+			code.Token = issued.Value
 		}
-		var exists bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM users WHERE id = $1)`, code.Approver).Scan(&exists); err != nil {
-			return err
-		}
-		if !exists {
-			return ErrUnknownSecret
-		}
-		issued, err := signin.Issue(ctx, tx, code.Approver, code.Device)
+		account, err = readAccount(ctx, tx, code.Approver)
 		if err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `UPDATE quickconnect_codes SET token = $2 WHERE secret = $1 AND token IS NULL`, secret, issued.Value); err != nil {
-			return err
-		}
-		code.Token = issued.Value
 		result = code
 		return nil
 	})
-	return result, err
+	return result, account, err
+}
+
+// readAccount reads the account a redemption signs in. A row gone between the checks above and this read is the unknown
+// secret's answer, never a server error.
+func readAccount(ctx context.Context, tx pgx.Tx, userID string) (Account, error) {
+	var account Account
+	err := tx.QueryRow(ctx, `SELECT id::text, name, is_admin, last_login_at, configuration
+		FROM users WHERE id = $1`, userID).
+		Scan(&account.ID, &account.Name, &account.IsAdmin, &account.LastLoginAt, &account.Configuration)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Account{}, ErrUnknownSecret
+	}
+	return account, err
 }
