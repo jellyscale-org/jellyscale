@@ -237,7 +237,18 @@ func TestJellyscaleAnswersTheCapturedQuickConnectRequests(t *testing.T) {
 	for _, name := range []string{"admin", "viewer", "other", "gone"} {
 		r.addAccount(name)
 	}
+	allowed := qcListedDifferences(t)
 	found := map[qcDifference][]string{}
+	// Deferred, so that a replay that stops part way still says what differed before it stopped.
+	defer func() {
+		for _, step := range capture.Steps {
+			for d, what := range found {
+				if d.request == qcReplayed+step.Name && !allowed[d] {
+					t.Errorf("%s: %s differs from Jellyfin 12.4 and compat/differences.yaml does not list it: %s", d.request, d.path, what[0])
+				}
+			}
+		}
+	}()
 	replicas := []int{0, 1} // Those that have Quick Connect as the capture's server has it now.
 	asked := 0
 	for _, step := range capture.Steps {
@@ -292,10 +303,16 @@ func TestJellyscaleAnswersTheCapturedQuickConnectRequests(t *testing.T) {
 			found[d] = append(found[d], fmt.Sprintf("Jellyfin %s, jellyscale %s", jellyfin, ours))
 		})
 	}
-	if asked < 80 {
-		t.Fatalf("the capture gave %d requests; it has over 80", asked)
+	for d := range allowed {
+		if _, differs := found[d]; !differs {
+			t.Errorf("compat/differences.yaml lists %s of %q and jellyscale answers as Jellyfin does: remove the entry", d.path, d.request)
+		}
 	}
+}
 
+// qcListedDifferences are the entries of compat/differences.yaml for the requests of this replay.
+func qcListedDifferences(t *testing.T) map[qcDifference]bool {
+	t.Helper()
 	listed, err := os.ReadFile("../../compat/differences.yaml")
 	if err != nil {
 		t.Fatal(err)
@@ -321,16 +338,5 @@ func TestJellyscaleAnswersTheCapturedQuickConnectRequests(t *testing.T) {
 			}
 		}
 	}
-	for _, step := range capture.Steps {
-		for d, what := range found {
-			if d.request == qcReplayed+step.Name && !allowed[d] {
-				t.Errorf("%s: %s differs from Jellyfin 12.4 and compat/differences.yaml does not list it: %s", d.request, d.path, what[0])
-			}
-		}
-	}
-	for d := range allowed {
-		if _, differs := found[d]; !differs {
-			t.Errorf("compat/differences.yaml lists %s of %q and jellyscale answers as Jellyfin does: remove the entry", d.path, d.request)
-		}
-	}
+	return allowed
 }

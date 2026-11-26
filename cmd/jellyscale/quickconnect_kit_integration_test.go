@@ -277,13 +277,22 @@ func (q *qcSite) deviceTokens(device qcDevice, who qcAccount) int {
 	return n
 }
 
-// together makes the requests meet inside Postgres: it holds every Quick Connect table in EXCLUSIVE mode (plain reads
-// go on; writes and row locks wait), sends the requests to the replicas named, waits until each request has either
-// answered (a redemption of a pending code need not write) or waits on a lock, and that this has stopped changing, then
-// lets go. A build that reads a code's state and writes it later without a lock or a condition has then read the same
-// state in each request. The settling wait only decides how many requests are held at once, never whether a right build
+// together makes the requests meet inside Postgres: it holds every Quick Connect table, and devices, in EXCLUSIVE mode
+// (plain reads go on, a token's check among them; writes and row locks wait), sends the requests to the replicas named,
+// waits until each request has either answered (a redemption of a pending code need not write) or waits on a lock, and
+// that this has stopped changing, then lets go. A build that reads a code's state and writes it later without a lock or
+// a condition has then read the same state in each request: it waits where it first writes, in devices if that is where
+// it goes next. Nothing in devices stops two tokens for one device and account, so holding the code's table alone lets
+// such a build through. The settling wait only decides how many requests are held at once, never whether a right build
 // passes: every state it waits for ends when this function lets go.
 func (q *qcSite) together(replicas []int, requests ...func() signInReply) []signInReply {
+	q.t.Helper()
+	return q.held("EXCLUSIVE", replicas, requests...)
+}
+
+// held is together with the table lock's mode named: in ACCESS EXCLUSIVE mode plain reads wait as well, which holds a
+// request where it looks a code up.
+func (q *qcSite) held(mode string, replicas []int, requests ...func() signInReply) []signInReply {
 	q.t.Helper()
 	ctx := context.Background()
 	tables := q.quickTables()
@@ -295,7 +304,11 @@ func (q *qcSite) together(replicas []int, requests ...func() signInReply) []sign
 		q.t.Fatal(err)
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck // The commit below has ended it on the way out.
-	if _, err := tx.Exec(ctx, `LOCK TABLE "`+strings.Join(tables, `", "`)+`" IN EXCLUSIVE MODE`); err != nil {
+	if _, err := tx.Exec(ctx, `LOCK TABLE "`+strings.Join(tables, `", "`)+`" IN `+mode+` MODE`); err != nil {
+		q.t.Fatal(err)
+	}
+	// Never more than EXCLUSIVE here: every request's token is checked by a read of devices, which must go on.
+	if _, err := tx.Exec(ctx, `LOCK TABLE devices IN EXCLUSIVE MODE`); err != nil {
 		q.t.Fatal(err)
 	}
 	replies := make([]signInReply, len(requests))

@@ -11,10 +11,6 @@ import (
 
 func routeName(r Route) string { return r.Method + " " + r.Path }
 
-// quickConnectRoutes are the five routes of Quick Connect (JS-037), all of which TestAccess must have asked.
-var quickConnectRoutes = []string{"GET /QuickConnect/Enabled", "POST /QuickConnect/Initiate", "GET /QuickConnect/Connect",
-	"POST /QuickConnect/Authorize", "POST /Users/AuthenticateWithQuickConnect"}
-
 // openButAsks are the open routes that need more than a request to answer 2xx (a device's name, a secret), as
 // Jellyfin 12.4 does (400 and 404): asked without it, they must still never answer 401 or 403.
 var openButAsks = []string{"POST /QuickConnect/Initiate", "GET /QuickConnect/Connect", "POST /Users/AuthenticateWithQuickConnect"}

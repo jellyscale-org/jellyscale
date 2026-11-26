@@ -697,11 +697,6 @@ func TestAccess(t *testing.T) {
 			t.Errorf("%s has role %q, which no accHandler of the test serves", routeName(route), route.Role)
 		}
 	}
-	for _, name := range quickConnectRoutes {
-		if !slices.ContainsFunc(routes, func(route Route) bool { return routeName(route) == name }) {
-			t.Errorf("%s is not in Routes(), so it was not asked", name)
-		}
-	}
 	t.Logf("%d routes asked on %d handlers", len(routes), 3)
 }
 

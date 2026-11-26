@@ -2,6 +2,8 @@
 """Records how a real Jellyfin 12.4 and its jellyfin-web treat Quick Connect (JS-037).
 
 Usage: python3 -I test/differential/capture_quick_connect.py <out.json>   (run from the repository root)
+       python3 -I test/differential/capture_quick_connect.py --markdown <out.json>
+It writes <out.json> and, beside it, <out>.md. With --markdown it only writes the .md again from a capture already taken.
 Environment: PLAYWRIGHT_DIR, a directory with playwright-core installed (default ~/.cache/jellyscale/pw);
 CHROMIUM_PATH (default /usr/bin/chromium). It takes about 22 minutes: the expiry rows wait for real time.
 
@@ -430,7 +432,190 @@ def seconds_between(first, second):
     return parse(second) - parse(first)
 
 
+# What the summary above the tables says, and the recorded answers it rests on: a capture that answers otherwise is not
+# summarized with the old words.
+SUMMARY_RESTS_ON = {
+    "approve an approved code again": 500,
+    "another account approves an approved code": 500,
+    "redeem a second time": 200,
+    "first token after the second redemption": 200,
+    "initiate without DeviceId": 400,
+    "initiate without Device": 400,
+    "initiate without Client": 400,
+    "initiate without Version": 400,
+    "initiate with no Authorization": 400,
+    "initiate when off": 401,
+    "initiate when off with no Authorization": 400,
+    "redeem a code approved before turning off": 401,
+    "redeem the approved code once turned on again": 200,
+    "redeem after the approver is deleted": 200,
+    "the token redeemed after deletion": 401,
+    "redeem after the approver is disabled": 200,
+    "the token redeemed after the approver was disabled": 401,
+    "redeem pending": 404,
+    "viewer names another user": 403,
+    "administrator names another user": 200,
+}
+
+SUMMARY = """# Quick Connect on Jellyfin 12.4 (JS-037)
+
+This file is written by `test/differential/capture_quick_connect.py`: edit the script, not this file. `python3 -I test/differential/capture_quick_connect.py --markdown compat/captures/quick-connect-12.4.json` writes it again from the capture.
+
+`quick-connect-12.4.json`, from `python3 -I test/differential/capture_quick_connect.py compat/captures/quick-connect-12.4.json` (about 25 minutes; `capture_quick_connect_web.mjs` is its browser part): a disposable `jellyfin/jellyfin:12.4` (12.4.0) on a Docker-assigned port, synthetic accounts `admin`, `viewer`, `other`, `gone`, no library. `cmd/jellyscale/quickconnect_capture_integration_test.go` asks jellyscale the `steps`.
+
+## The observations that matter
+
+- **The sign-in is made at approval, not at redemption** (an inference): a second redemption hands out the same token, and a redemption after the approving account was deleted or disabled still answers 200 with that account's sign-in, whose token answers 401.
+- **A second approval answers 500** `Error processing request.`, from the same account or another, before and after redemption.
+- **Redeeming a second time answers 200 with the same token**, and that token goes on working.
+- **Initiate missing any of DeviceId, Device, Client or Version answers 400**, missing or empty, with Quick Connect on. With it off, Initiate with those fields answers 401 `"Quick connect is disabled"`, and with no `Authorization` still 400.
+- **Both windows are 10 minutes:** a pending code from Initiate, an approved one's redemption from approval (`How long codes live` below).
+
+## Routes and answers
+
+Quick Connect is on by default (`QuickConnectAvailable` true). `GET /QuickConnect/Enabled` answers `true`.
+
+| Request | State | Answer |
+|---|---|---|
+| `POST /QuickConnect/Initiate` | device fields in `Authorization` | 200 `{Authenticated:false, Secret (64 hex), Code (6 digits), DeviceId, DeviceName, AppName, AppVersion, DateAdded}` |
+| Initiate | any of DeviceId, Device, Client, Version missing or empty, or no header | 400 `Error processing request.` |
+| Initiate, Connect, redemption | with an unknown, a signed-out or another account's token | as with none; the other account's token still works |
+| `GET /QuickConnect/Connect?Secret=` | pending / approved / redeemed | 200, the same fields; `Authenticated` true once approved, and `DateAdded` becomes the approval's time plus 60 s. No token |
+| Connect | unknown secret / no secret | 404 `"Unknown secret"` / 400 validation problem |
+| `POST /QuickConnect/Authorize?code=[&userId=]` | pending, own account (userId own, dashed or capitals, empty, or absent) | 200 `true` |
+| Authorize | unknown code, or the code typed with a space | 404 `Error processing request.` |
+| Authorize | already approved (by anyone) or redeemed | 500 `Error processing request.` |
+| Authorize | no code / malformed userId / no token | 400 / 400 / 401 |
+| Authorize | viewer naming another account or an unknown id | 403 (the code stays pending) |
+| Authorize | **administrator naming another account** | 200, and the device is signed in **as that account** |
+| Authorize | administrator naming an unknown id | 400 |
+| `POST /Users/AuthenticateWithQuickConnect {Secret}` | approved | 200, a sign-in (`User`, `SessionInfo`, `AccessToken`, `ServerId`) for the **initiating** device, whatever the redemption's own `Authorization` says (or with none) |
+| redemption | pending ("not yet") or unknown secret | 404 `Error processing request.` (the same) |
+| redemption | empty or no Secret | 400 |
+| redemption | a second time | 200 with the **same** token |
+| redemption | after the approving account was **deleted** / **disabled** | 200 with a token that answers 401 |
+
+A redemption on a device that held a token for the same account replaces it (the old one answers 401); a token for another account on the device is kept. A password sign-in on one device does the same. `/Sessions` lists the initiating device with its name, app and version at once; it does not list the device whose header came with the redemption. The approver's token keeps working.
+
+## Off
+
+With `QuickConnectAvailable` false: `Enabled` answers `false`; Initiate (with device fields), Connect and Authorize (with a token) answer 401 `"Quick connect is disabled"`; redemption answers 401 `Error processing request.`; Authorize with no token answers 401 with no body; Initiate with no `Authorization` answers 400. A code approved before is refused while off and redeemable again once on; a pending one is still pending once on.
+
+## How long codes live
+
+`expiry` rows. Seconds are from the batch's Initiate.
+
+- **Pending:** there at 590 s after Initiate, gone at 612 s: Connect `Unknown secret`, approval and redemption 404.
+- **Approved, redemption:** 200 at 589 s after an approval made 1 s after Initiate and at 590 s after one made 540 s after Initiate; 404 at 611 s and 612 s. So redemption is possible for about **10 minutes from approval**, whenever the approval came. A code redeemed in that time is refused after it too.
+- **Approved, Connect:** still answers `Authenticated: true` 612 to 649 s after approval, when redemption already answers 404; `Unknown secret` at 674 s. Connect follows the moved `DateAdded` plus 10 minutes (about 11 minutes after approval); jellyscale need not copy that gap.
+
+## jellyfin-web 12.4 (`web`)
+
+- Login page, Quick Connect on: a **Use Quick Connect** button. Picking it sends `POST /QuickConnect/Initiate` (device fields, no token), shows a dialog `Quick Connect / Enter code NNNNNN to login / Got It`, asks `GET /QuickConnect/Connect?Secret=` every 5 s, and once approved sends `POST /Users/AuthenticateWithQuickConnect {"Secret"}` and goes to the home page signed in.
+- Quick Connect page (`#/quickconnect`, linked from the user menu), viewer: a code field and **Authorize**. It strips spaces and sends `POST /QuickConnect/Authorize?code=` with no `userId`. An unknown code shows `Unknown Quick Connect code`; success shows `You have successfully authenticated your device!`.
+- The same page, administrator: a **User** list (itself selected) as well; it sends `userId` of the selected account, here its own.
+- A refused Initiate (401, 403, 429, 500 or 503, with or without `Retry-After`, answered by the capture in the server's place) shows the same dialog, `Error / Quick Connect is not active on this server`, and stays on the sign-in form. No status shows a connection failure, so the choice for the 100-code cap is free as far as jellyfin-web goes; Moonfin reads 401, or the word `disabled` in the body, as Quick Connect turned off (`moonfin-quick-connect-2026-11-26.md`).
+- Off: no button and no menu link. The Quick Connect page opened by its address still shows the form, and submitting it shows `Unknown Quick Connect code` (the server answered 401).
+
+## Not observed
+
+- Whether the device's old token of the same account stops working at approval or at redemption: `/Users/Me` was asked with it only after the redemption.
+- jellyfin-web's administrator page was only seen to send the selected account's own id; an empty `userId` was sent by the capture itself.
+- The exact instant each window closes: the rows bracket it (589 to 611 s for redemption, 649 to 674 s for Connect after approval).
+- Whether two live codes can be equal, and any limit on live codes or on guessing: none was provoked (jellyscale's bounds are D-078 and D-079).
+- Quick Connect being refused for a disabled account at approval time: only disabling after approval was asked.
+- Moonfin against Jellyfin 12.4: Moonfin was run against jellyscale only.
+"""
+
+
+def check_summary(capture):
+    steps = {step["name"]: step for step in capture["steps"] if step["action"] == "request"}
+    for name, status in SUMMARY_RESTS_ON.items():
+        if steps[name]["status"] != status:
+            raise SystemExit(f"{name} answered {steps[name]['status']}, the summary says {status}: rewrite SUMMARY")
+    first, second = (steps[name]["response"]["AccessToken"] for name in ("redeem approved", "redeem a second time"))
+    if first != second:
+        raise SystemExit("the second redemption gave another token: rewrite SUMMARY")
+
+
+def cell(value, limit=150):
+    text = value if isinstance(value, str) else json.dumps(value)
+    if len(text) > limit:
+        text = text[:limit] + "..."
+    return "`" + text.replace("|", "\\|").replace("\n", " ") + "`" if text else ""
+
+
+def answer(step):
+    body = step["response"]
+    if isinstance(body, dict) and "AccessToken" in body:
+        return cell(f"sign-in of {body['User']['Name']} for {body['SessionInfo']['DeviceId']}, AccessToken {body['AccessToken']}")
+    if isinstance(body, dict) and "Secret" in body:
+        return cell({"Authenticated": body["Authenticated"], "DeviceId": body["DeviceId"], "(fields)": " ".join(body)}, 220)
+    if isinstance(body, dict) and "Policy" in body:
+        return cell(f"the user {body['Name']}")
+    if isinstance(body, dict) and "errors" in body:
+        return cell({"title": body["title"], "errors": body["errors"]})
+    return cell(body)
+
+
+def step_tables(capture):
+    lines = ["## Every step", "",
+             "In the order asked. `{secret:x}`, `{code:x}`, `{token:x}` and `{userid:x}` stand for the server's values."]
+    section = None
+    for step in capture["steps"]:
+        if step["section"] != section:
+            section = step["section"]
+            lines += ["", f"### {section}", "", "| Step | Request | Status | Answer |", "|---|---|---|---|"]
+        if step["action"] != "request":
+            fields = ", ".join(f"{key} {value}" for key, value in step.items() if key not in ("section", "name", "action"))
+            lines.append(f"| *{step['action']}* | {fields} | | |")
+            continue
+        request_text = f"{step['method']} {step['path']}" + (f" {step['body']}" if step["body"] else "")
+        lines.append(f"| {step['name']} | {cell(request_text)} | {step['status']} | {answer(step)} |")
+    return lines
+
+
+def web_tables(capture):
+    lines = ["", "## What jellyfin-web showed", "", "| Quick Connect | View | Route | Button | Dialogs | Page text |", "|---|---|---|---|---|---|"]
+    for phase, views in ((phase, capture["web"][phase]) for phase in ("on", "off")):
+        for view, state in views.items():
+            if isinstance(state, dict) and "page_text" in state:
+                lines.append(f"| {phase} | {view} | {cell(state['route'])} | {cell(state['quick_connect_button'] or '')} | "
+                             f"{cell(' / '.join(state['dialogs']))} | {cell(state['page_text'], 400)} |")
+    lines += ["", "| Initiate answered | Retry-After | Dialog | Still on the sign-in form |", "|---|---|---|---|"]
+    for row in capture["web"]["on"]["refused_initiate"]:
+        lines.append(f"| {row['status']} | {row['retry_after'] or ''} | {cell(' / '.join(row['dialogs']))} | {row['sign_in_form']} |")
+    lines += ["", "| Quick Connect | Browser | Request | Query | Sends a token | Body | Status |", "|---|---|---|---|---|---|---|"]
+    for phase in ("on", "off"):
+        for row in capture["web"][phase]["requests"]:
+            lines.append(f"| {phase} | {row['browser']} | {cell(row['method'] + ' ' + row['path'])} | {cell(row['query'] or '')} | "
+                         f"{row['sends_token']} | {cell(row['body'] or '')} | {row['status']} |")
+    return lines
+
+
+def expiry_table(capture):
+    lines = ["", "## Expiry rows", "", f"{len(capture['expiry'])} calls, at seconds after the batch's Initiate.", "",
+             "| At | Code | Call | Status | Authenticated | DateAdded moved by | Body |", "|---|---|---|---|---|---|---|"]
+    for row in capture["expiry"]:
+        moved = row.get("date_added_moved_seconds")
+        lines.append(f"| {row['at_seconds']} s | {row['code']} | {row['call']} | {row['status']} | {row.get('Authenticated', '')} | "
+                     f"{'' if moved is None else str(moved) + ' s'} | {cell(row.get('body', ''))} |")
+    return lines
+
+
+def write_markdown(path):
+    with open(path) as f:
+        capture = json.load(f)
+    check_summary(capture)
+    lines = [SUMMARY.rstrip(), ""] + step_tables(capture) + web_tables(capture) + expiry_table(capture)
+    with open(os.path.splitext(path)[0] + ".md", "w") as f:
+        f.write("\n".join(lines) + "\n")
+
+
 def main():
+    if sys.argv[1] == "--markdown":
+        write_markdown(os.path.abspath(sys.argv[2]))
+        return
     out = os.path.abspath(sys.argv[1])
     here = os.path.dirname(os.path.abspath(__file__))
     name = f"jellyscale-capture-quick-connect-{os.getpid()}"
@@ -479,6 +664,7 @@ def main():
         with open(out, "w") as f:
             json.dump(result, f, indent=1)
             f.write("\n")
+        write_markdown(out)
     finally:
         if started:
             remove_container(name)

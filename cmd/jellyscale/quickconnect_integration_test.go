@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"net/url"
 	"regexp"
@@ -56,22 +57,19 @@ func TestAQuickConnectSignInSurvivesEveryReplicaBeingKilledBetweenSteps(t *testi
 
 var sixDigits = regexp.MustCompile(`^[0-9]{6}$`)
 
-// Criterion 6. A code is six decimal digits and no two live ones in this run are alike; the secret alone reads a code's
-// state and redeems it; the code gives no token anywhere; Connect never carries one.
+// Criterion 6. A code is six decimal digits; the secret alone reads a code's state and redeems it; the code gives no
+// token anywhere; Connect never carries one. That no code is live for two devices is
+// internal/api/quickconnect_unique_integration_test.go's, which forces the collision.
 func TestOnlyTheSecretReadsOrRedeemsASixDigitCode(t *testing.T) {
 	q := newQCSite(t, 2, nil)
 	viewer := q.member(false)
-	codes, secrets := map[string]bool{}, map[string]bool{}
 	var code qcCode
+	// A hundred, so that a build that drops a code's leading zeros (one code in ten) shows.
 	for i := range qcCap {
 		code = q.start(i, newTV())
 		if !sixDigits.MatchString(code.Code) {
 			t.Fatalf("code %q is not six decimal digits", code.Code)
 		}
-		if codes[code.Code] || secrets[code.Secret] || code.Code == code.Secret {
-			t.Fatalf("code or secret given twice while live: %q", code.Code)
-		}
-		codes[code.Code], secrets[code.Secret] = true, true
 	}
 	pendingConnect := q.connectSecret(0, code.Secret)
 	q.approve(1, viewer, code)
@@ -222,8 +220,13 @@ func TestApprovalAndRedemptionAtOnceOnTwoReplicasGiveNotYetOrTheToken(t *testing
 	}
 }
 
+// qcAlreadyApproved is what approving an already approved code answers. Jellyfin 12.4 answers 500 (the capture);
+// compat/differences.yaml lists the difference, and jellyfin-web shows both alike
+// (compat/captures/quick-connect-second-approval-12.4.md).
+const qcAlreadyApproved = 409
+
 // Criterion 9. Two accounts approve one code at once on two replicas: one is told yes and the device is signed in to it;
-// the other is refused, and so is a third that comes later, the same way, and neither changes anything.
+// the other is refused 409, and so is a third that comes later, and neither changes anything.
 func TestTwoAccountsApprovingOneCodeAtOnceSignTheDeviceInToExactlyOne(t *testing.T) {
 	q := newQCSite(t, 2, nil)
 	for round := range 4 {
@@ -238,17 +241,19 @@ func TestTwoAccountsApprovingOneCodeAtOnceSignTheDeviceInToExactlyOne(t *testing
 		if replies[1].status == 200 {
 			winner, loser = 1, 0
 		}
-		if replies[winner].status != 200 || replies[loser].status == 200 || replies[loser].status == 401 {
-			t.Fatalf("round %d: the two approvals answered %s, want one 200 and one refusal", round, statuses(replies))
+		if replies[winner].status != 200 || replies[loser].status != qcAlreadyApproved {
+			t.Fatalf("round %d: the two approvals answered %s, want one 200 and one %d", round, statuses(replies), qcAlreadyApproved)
 		}
-		refusal := replies[loser].status
 		for _, again := range []qcAccount{later, accounts[loser]} {
-			if got := q.authorize(round+1, again.token, code.Code, ""); got.status != refusal {
-				t.Errorf("round %d: a later approval of the approved code: %d %q, want %d as the loser got", round, got.status, got.body, refusal)
+			if got := q.authorize(round+1, again.token, code.Code, ""); got.status != qcAlreadyApproved {
+				t.Errorf("round %d: a later approval of the approved code: %d %q, want %d as the loser got", round, got.status, got.body, qcAlreadyApproved)
 			}
 		}
 		if got := q.redeemed(round, code); got.User.Name != accounts[winner].name {
 			t.Errorf("round %d: signed in as %q, want %q whose approval was accepted", round, got.User.Name, accounts[winner].name)
+		}
+		if got := q.authorize(round, later.token, code.Code, ""); got.status != qcAlreadyApproved {
+			t.Errorf("round %d: approving the redeemed code: %d %q, want %d", round, got.status, got.body, qcAlreadyApproved)
 		}
 		if n := q.deviceTokens(code.device, accounts[loser]) + q.deviceTokens(code.device, later); n != 0 {
 			t.Errorf("round %d: the device holds %d tokens of an account whose approval was refused", round, n)
@@ -270,6 +275,12 @@ func (q *qcSite) liveOf(tokens []string) int {
 
 // Criterion 10. One secret redeemed twice, one after the other or at once on two replicas, leaves the device one live
 // token and no more, one it was told.
+//
+// What it asks of a build's design: a token is made only through the code's row, as in
+// UPDATE <code's row> SET token = coalesce(token, $new) ... RETURNING token. The row decides the one token, a second
+// redemption is given that same token, and there is no other path that makes one: devices is written only by whoever
+// set the row's token (it got $new back). A build that reads the code with a plain SELECT and then deletes and inserts
+// in devices fails here, because together holds devices until both redemptions have read the code.
 func TestOneSecretRedeemedTwiceNeverLeavesTheDeviceTwoLiveTokens(t *testing.T) {
 	q := newQCSite(t, 2, nil)
 	viewer := q.member(false)
@@ -304,6 +315,44 @@ func TestOneSecretRedeemedTwiceNeverLeavesTheDeviceTwoLiveTokens(t *testing.T) {
 			func() signInReply { return q.redeem(0, code.device, code.Secret) },
 			func() signInReply { return q.redeem(1, code.device, code.Secret) }))
 	}
+}
+
+// stored is how many rows the quickconnect_* tables hold together, and how many each does.
+func (q *qcSite) stored() (int, map[string]int) {
+	q.t.Helper()
+	total, each := 0, map[string]int{}
+	for _, table := range q.quickTables() {
+		var n int
+		if err := q.pool.QueryRow(context.Background(), `SELECT count(*) FROM "`+table+`"`).Scan(&n); err != nil {
+			q.t.Fatal(err)
+		}
+		total, each[table] = total+n, n
+	}
+	return total, each
+}
+
+// Codes do not pile up: anyone may ask for one. A redeemed code is kept while its secret can still be redeemed, for the
+// same token, an Initiate in between or not. Twenty-one minutes later, past both windows, one Initiate leaves the
+// quickconnect_* tables holding one row together, its own code's: the expired codes, pending, approved and redeemed,
+// are deleted, by that Initiate at the latest. So a code is one row, and nothing else is kept in those tables.
+func TestAfterTwentyOneMinutesAnInitiateLeavesOnlyItsOwnCodeStored(t *testing.T) {
+	q := newQCSite(t, 2, nil)
+	viewer := q.member(false)
+	q.start(0, newTV()) // Left pending.
+	unredeemed, redeemed := q.start(1, newTV()), q.start(0, newTV())
+	q.approve(0, viewer, unredeemed)
+	q.approve(1, viewer, redeemed)
+	first := q.redeemed(0, redeemed)
+	q.start(1, newTV())
+	if again := q.redeemed(1, redeemed); again.AccessToken != first.AccessToken {
+		t.Fatal("redeeming again, after another device's Initiate, gave another token")
+	}
+	q.pass(21 * time.Minute)
+	fresh := q.start(0, newTV())
+	if total, each := q.stored(); total != 1 {
+		t.Errorf("21 minutes after four codes, one Initiate leaves %d rows in the quickconnect_* tables, want 1: %v", total, each)
+	}
+	q.mustBePending(1, fresh, "the code of the Initiate that cleared the others")
 }
 
 func dashed(id string) string {
@@ -550,9 +599,13 @@ func TestTenFailedApprovalsRefuseThatAccountsApprovalsAndNothingElse(t *testing.
 		q.pass(qcPendingLife + time.Second)
 		taken := q.start(0, newTV())
 		q.approve(0, neighbour, taken)
-		for _, guess := range []string{expired.Code, taken.Code} {
-			if got := q.authorize(1, guesser.token, guess, ""); got.status/100 != 4 || got.status == 403 {
-				t.Fatalf("a failed approval: %d %q", got.status, got.body)
+		// An expired code answers as an unknown one does in Jellyfin 12.4, 404 (the capture).
+		for _, guess := range []struct {
+			code string
+			want int
+		}{{expired.Code, 404}, {taken.Code, qcAlreadyApproved}} {
+			if got := q.authorize(1, guesser.token, guess.code, ""); got.status != guess.want {
+				t.Fatalf("a failed approval: %d %q, want %d", got.status, got.body, guess.want)
 			}
 		}
 		q.failApprovals(guesser, 8)
@@ -669,6 +722,31 @@ func TestTwoHundredApprovalsAtOnceCheckNoMoreThanTenCodes(t *testing.T) {
 	}
 	if got[0] != 0 || got[500] != 0 || got[401] != 0 || checked > 10 || checked == 0 || got[403] != 200-checked {
 		t.Errorf("200 approvals at once answered %v, want no more than 10 codes checked and 403 for the rest", got)
+	}
+}
+
+// Criterion 16, forced: no approval can finish looking its code up while twenty are sent on two replicas, so a build
+// that looks before it has counted the attempt lets all twenty through. Ten per replica is under a replica's 16
+// database connections.
+func TestApprovalsHeldAtTheirCodeLookupCheckNoMoreThanTen(t *testing.T) {
+	q := newQCSite(t, 2, nil)
+	guesser := q.member(false)
+	var requests []func() signInReply
+	for i := range 20 {
+		requests = append(requests, func() signInReply { return q.authorize(i, guesser.token, "000001", "") })
+	}
+	replies := q.held("ACCESS EXCLUSIVE", []int{0, 1}, requests...)
+	checked, refused := 0, 0
+	for _, reply := range replies {
+		switch {
+		case reply.status == 403:
+			refused++
+		case reply.status/100 == 4 && reply.status != 401:
+			checked++
+		}
+	}
+	if checked == 0 || checked > 10 || checked+refused != 20 {
+		t.Errorf("20 approvals held at their lookup answered %s, want no more than 10 codes checked and 403 for the rest", statuses(replies))
 	}
 }
 
