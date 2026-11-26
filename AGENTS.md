@@ -74,7 +74,7 @@ The workflow's steps:
    - Evidenced findings left after that send the task back to Spec.
    - Minors go to the product owner.
 
-- Run the roles on these models (D-076): Refine and Check on Opus 5.5 at high effort; Spec, architecture, adversarial and UX on Sonnet 5.5 at high effort; Build/Fix and the snapshot helpers on OpenCode Go `hy4-flash-free`; QA on OpenCode Go `beam-free`; the product owner on Fable 5.2 at high effort. A host that cannot reach an OpenCode model runs that role on Sonnet 5.5 at high effort and records the substitution.
+- Run the roles on these models (D-076): Refine and Check on `claude-agent/opus` (Opus 5.5) at high effort; Spec, architecture, adversarial and UX on `claude-agent/sonnet` (Sonnet 5.5) at high effort; Build/Fix and the snapshot helpers on OpenCode Go `hy4-flash-free`; QA on OpenCode Go `beam-free`; the product owner and advisor on `claude-agent/fable` (Fable 5.2) at high effort. The `claude-agent/` models use the weekly Claude agent allowance, not the Anthropic API balance. A host that cannot reach an OpenCode model runs that role on `claude-agent/sonnet` at high effort and records the substitution.
 - Keep reviewers blind: they see the task, the checks, the diff and the docs, never the implementer's reasoning or another reviewer's findings.
 - Treat the merge queue as the one full gate.
 - Run locally only what a change touches.

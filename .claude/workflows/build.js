@@ -117,7 +117,7 @@ const REFINED = {
 }
 if (refine) {
   const refined = await agent(`${where}You sharpen the acceptance criteria of one jellyscale task before its checks are written. Read PRODUCT.md, the parts of DOMAINS.md and ARCHITECTURE.md the task touches, and the code it will change (targeted reads, not whole trees). Then rewrite the criteria so a spec writer can turn each into a check that fails on a plausible wrong build:\n- Name the cases a wrong build would get wrong: counts and bounds (how many reads, runs, jobs; "at most", "each"), failures that are the file's and failures that are not (store, timeout, signal, lost lease), several of a thing as well as one, a replaced or changed file, two replicas or workers at once, and what the viewer or operator sees.\n- Split a criterion that holds several claims; state an "always" or "whatever X does" claim only with the bound it really has.\n- Keep every guarantee the criteria give: never drop, weaken or narrow one, and never add a feature the task did not ask for. If a criterion seems wrong, keep it and say why in changes.\n- Keep the criteria few and plain: one line each, no implementation.\nDo not edit any file, and do not run tests, Docker or servers.\n\n## Task${id ? ` ${id}` : ''}\n${task}\n\n## Acceptance criteria\n${acceptance.map((line) => `- ${line}`).join('\n')}`,
-    { label: 'refine criteria', phase: 'Spec', model: 'claude-opus-5-5', effort: 'high', schema: REFINED })
+    { label: 'refine criteria', phase: 'Spec', model: 'claude-agent/opus', effort: 'high', schema: REFINED })
   if (refined && refined.acceptance.length) {
     acceptance = refined.acceptance
     log(`Refined criteria (record in tasks/prd.json): ${JSON.stringify(refined)}`)
@@ -136,17 +136,17 @@ const brief = `## Task${id ? ` ${id}` : ''}\n${task}\n\n## Acceptance criteria\n
 // Build/Fix and QA. If the host cannot reach an OpenCode model, run that role on
 // Sonnet 5.5 and say so in the task record.
 const MODELS = {
-  'spec-writer': { model: 'claude-sonnet-5-5', effort: 'high' },
+  'spec-writer': { model: 'claude-agent/sonnet', effort: 'high' },
   implementer: { model: 'opencode-go/hy4-flash-free', effort: 'high' },
-  'architecture-reviewer': { model: 'claude-sonnet-5-5', effort: 'high' },
+  'architecture-reviewer': { model: 'claude-agent/sonnet', effort: 'high' },
   // Check reads only the spec and its checks, and a gap it misses costs a
   // whole build and Verify (about 1M tokens), so it gets the strongest model.
-  check: { model: 'claude-opus-5-5', effort: 'high' },
-  'adversarial-reviewer': { model: 'claude-sonnet-5-5', effort: 'high' },
+  check: { model: 'claude-agent/opus', effort: 'high' },
+  'adversarial-reviewer': { model: 'claude-agent/sonnet', effort: 'high' },
   qa: { model: 'opencode-go/beam-free', effort: 'high' },
-  'ux-reviewer': { model: 'claude-sonnet-5-5', effort: 'high' },
-  'product-owner': { model: 'claude-fable-5-2', effort: 'high' },
-  advisor: { model: 'claude-fable-5-2', effort: 'high' },
+  'ux-reviewer': { model: 'claude-agent/sonnet', effort: 'high' },
+  'product-owner': { model: 'claude-agent/fable', effort: 'high' },
+  advisor: { model: 'claude-agent/fable', effort: 'high' },
   helper: { model: 'opencode-go/hy4-flash-free', effort: 'low' },
 }
 // Roles are read from their files, so a role added in this session works too.
