@@ -937,7 +937,8 @@
         "Turning an opt-in on with no default language set asks for one first; the page saves through the /jellyscale/v1/ track-preferences route (JS-118), and the next PlaybackInfo in jellyfin-web reflects it",
         "A viewer whose audio language is saved and whose PlayDefaultAudioTrack is on is told on the page that a film whose default track is in another language still starts in that track (Jellyfin's rule, and its default for every new user), and can turn it off there with one switch, saved through PATCH /jellyscale/v1/users/configuration (JS-123); the next PlaybackInfo in jellyfin-web then names the track in their language",
         "A viewer changes only their own settings; another viewer's are untouched, and an unsigned request is refused",
-        "The page works at phone width and in light and dark, with no route outside /jellyscale/v1/ and no change to jellyfin-web's files"
+        "The page works at phone width and in light and dark, with no route outside /jellyscale/v1/ and no change to jellyfin-web's files",
+        "The page serves Octave Web viewers first and stays broadly compatible with jellyfin-web viewers; where the two conflict, Octave Web's viewers come first (D-090)."
       ],
       "dependsOn": [
         "JS-118",
