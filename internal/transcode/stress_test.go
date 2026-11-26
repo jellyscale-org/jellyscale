@@ -40,7 +40,7 @@ func TestControlPlaneLadder(t *testing.T) {
 	}
 	var steps []stress.Step
 	for _, v := range ladder {
-		step, err := runStress(context.Background(), t, dsn, stressConfig{Viewers: v, Workers: v / 4, Specs: v / 4, Duration: 60 * time.Second, Container: container})
+		step, _, err := runStress(context.Background(), t, dsn, stressConfig{Viewers: v, Workers: v / 4, Specs: v / 4, Duration: 60 * time.Second, Container: container})
 		if err != nil {
 			t.Fatalf("V=%d: %v", v, err)
 		}

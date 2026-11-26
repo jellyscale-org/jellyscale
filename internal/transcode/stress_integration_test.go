@@ -23,7 +23,7 @@ import (
 // They do not compile until it exists.
 
 func TestStressDriverCallsEveryOperationAtItsRate(t *testing.T) {
-	step, err := runStress(context.Background(), t, testenv.DatabaseURL(t), stressConfig{Viewers: 8, Workers: 2, Specs: 4, Duration: 6 * time.Second})
+	step, firstErrors, err := runStress(context.Background(), t, testenv.DatabaseURL(t), stressConfig{Viewers: 8, Workers: 2, Specs: 4, Duration: 6 * time.Second})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestStressDriverCallsEveryOperationAtItsRate(t *testing.T) {
 			continue
 		}
 		if op.Errors != 0 {
-			t.Errorf("%s: %d errors on an idle database", name, op.Errors)
+			t.Errorf("%s: %d errors on an idle database, the first: %s", name, op.Errors, errorText(firstErrors[name]))
 		}
 		if op.P50 <= 0 || op.P99 < op.P50 {
 			t.Errorf("%s: p50 %v, p99 %v", name, op.P50, op.P99)
@@ -85,7 +85,7 @@ func TestStressDriverFailsLoudlyWhenItCannotKeepTheRate(t *testing.T) {
 			}
 		}}
 	start := time.Now()
-	_, err = runStress(ctx, t, testenv.DatabaseURL(t), cfg)
+	_, _, err = runStress(ctx, t, testenv.DatabaseURL(t), cfg)
 	if !errors.Is(err, stress.ErrRate) {
 		t.Fatalf("a run whose calls were all blocked returned %v, want stress.ErrRate", err)
 	}

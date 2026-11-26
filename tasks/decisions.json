@@ -936,6 +936,72 @@
       "decision": "accept",
       "entry": "Build/Fix on opencode/deepseek-v4.1-flash-free, QA on opencode/beam-free, snapshot helpers on opencode/mimo-v2.6-flash-free, and other non-judging work on a free model; each was checked on a task with a known answer. A free model that is unavailable or fails the same step twice is replaced by claude-agent/sonnet and recorded. No credential, homelab or dogfood work goes to a free model. Refine, Check, Spec, the blind reviewers, the product owner and the advisor are unchanged. Replaces D-076's and D-084's use of OpenCode Go.",
       "serves": "Owner, 2026-11-26; PRODUCT.md quality bar."
+    },
+    {
+      "id": "D-087",
+      "date": "2026-11-26",
+      "by": "product-owner",
+      "task": "#289, #288; BL-282, BL-229, JS-047, JS-150, JS-151",
+      "brief": "Triage of Octave's issues #289 (ship Octave's web client; narrow D-027) and #288 (episodes lack SeriesName), with D-085's owner direction, and the findings JS-160 and JS-127 left unfixed.",
+      "tradeoff": "Given up by browser viewers until the conditions hold: conversions shown with their reason, and a token never in a URL.",
+      "decision": "defer",
+      "entry": "D-085's direction is followed and nothing is built yet. A narrowed lift of D-027 covers only serving the web build (deep links, cache headers, precompressed assets), its pages' response headers including a CSP, and the e2e tier against it. It takes effect when the owner approves PRODUCT.md's wording and says what 'default' means, Octave's project publishes a pinned build with its browser playback measurement, and the lead measures the worker cost of repackaging on the dogfood. Until then D-027 stands whole. JS-150 and D-033 are unchanged and /web/ stays jellyfin-web's. BL-229 keeps D-083's trigger. #288 becomes a JS-047 criterion. BL-277 is backlog (promote at JS-056's fresh-cluster run or an operator's report), BL-278 is dropped, J127-a is BL-283, J127-b is a JS-151 criterion.",
+      "serves": "PRODUCT.md: 'Octave first'; goal 3; 'Their library feels alive'. Owner, 2026-11-22: nothing outruns the product."
+    },
+    {
+      "id": "D-088",
+      "date": "2026-11-26",
+      "by": "owner",
+      "task": "JS-150; PRODUCT.md; supersedes D-027 and D-033 as D-089 records",
+      "brief": "The owner's direction after reading D-087.",
+      "tradeoff": "None stated by the owner; D-089 states what is given up.",
+      "decision": "change",
+      "entry": "The owner: \"JellyScale is not a desktop client. JellyScale is the back end scalable [API]. Octave is the front end. So Octave will run in the web, on a TV, and natively on device. JellyScale should consider the user experience of Octave, since Octave is the primary client that will ship with JellyScale. So instead of Jellyfin Web, it will ship with Octave.\" And: \"Octave will also support rendering a QR code for quick connect.\"",
+      "serves": "PRODUCT.md, whose wording the owner is still to approve."
+    },
+    {
+      "id": "D-089",
+      "date": "2026-11-26",
+      "by": "product-owner",
+      "task": "JS-150, JS-056, JS-178, JS-039, JS-179; BL-282, BL-229; #289, #118",
+      "brief": "Plan the owner's direction in D-088 and the owner's QR statement.",
+      "tradeoff": "- **Operators**: D-033's ready-made jellyfin-web. They keep copying it in until Octave Web ships.\n- **Jellyfin Desktop and webOS viewers**: possibly a web client that works with no operator step. Unverified; criterion 6 settles it.\n- **Every deployment**: possibly worker cores for repackaging. Unmeasured; criterion 2 settles it.\n- **Other apps' QR links.** Moonfin's QR, and any Jellyfin app's drawn the same way, points at a jellyfin-web page. On an image with no jellyfin-web it leads nowhere. That is true today on a default install, and stays true after Octave Web ships unless JS-150 criterion 10 holds. The digits keep working throughout; no one is locked out.\n- **Unverified:** whether jellyfin-web 12.4 fills the code from that address (being checked), and whether other TV apps draw the same address.",
+      "decision": "change",
+      "entry": "Following D-088, JS-150 is re-scoped to ship a pinned Octave Web at `/` and waits for its first licensed build. JS-056 no longer depends on it. JS-178, JS-039, JS-056 and JS-150 take priorities 34 to 37. BL-282 merges into JS-150. D-087's gates 3 and 4 become JS-150 criteria. D-033's jellyfin-web image is withdrawn; its JS-151 part stands. D-027 is lifted for weighing Octave viewers' experience; jellyscale still builds nothing in Octave. jellyfin-web stays the e2e gate. The PRODUCT.md wording and five questions go to the owner. BL-229 is promoted under D-083's trigger: Moonfin 3.1.1 shows a Quick Connect QR, and the owner states Octave will draw one. It is its own task at 36, after JS-039, and JS-056 and JS-150 take 37 and 38. D-083's link term is corrected: the QR carries the address Jellyfin apps already draw, `/web/#/quickconnect?code=`, not a `/jellyscale/v1/` link. JS-150 gains the criterion that this address still ends at an approval once Octave Web ships. Given up until then: a working QR on installs that serve no jellyfin-web; the digits remain. The image ships no web client today, so not shipping jellyfin-web takes nothing a viewer has; it withdraws D-033's unbuilt promise. Building JS-150 as written would pin and licence a build the owner has replaced. Octave Web has no published build, so nothing is built until one exists, and the operator's install (JS-056) must not wait on another project.",
+      "serves": "\"jellyscale ships with Octave\"; \"Installing is boring\"; goal 3, \"Current Jellyfin clients that authorize every request work unmodified\"; owner 2026-11-22, nothing outruns the product."
+    },
+    {
+      "id": "D-090",
+      "date": "2026-11-26",
+      "by": "owner",
+      "task": "JS-150, JS-122; D-089's questions",
+      "brief": "The owner's answers to D-089's questions.",
+      "tradeoff": "None beyond D-089's.",
+      "decision": "settle",
+      "entry": "Web address: the owner defers to the product owner, whose D-089 position stands: Octave Web at /, with /web/ passing the Quick Connect address to it and still serving an operator's build. Jellyfin Desktop and webOS: decided later, by the product owner, on JS-150's observation of them. jellyfin-web stays the compatibility check while Octave Web is being built. The image ships no default web client for now. The language settings page (JS-122) is broadly compatible with jellyfin-web and puts Octave Web users first. The owner defers most such questions to the product owner. PRODUCT.md's wording is not yet approved.",
+      "serves": "Owner, 2026-11-26."
+    },
+    {
+      "id": "D-091",
+      "date": "2026-11-26",
+      "by": "owner",
+      "task": "PRODUCT.md",
+      "brief": "The owner, on PRODUCT.md and the focus.",
+      "tradeoff": "None stated.",
+      "decision": "change",
+      "entry": "The owner: \"The product MD should just include specific and direction for the overall product. So I'm willing to let the product owner also edit that file. The key thing for Jelly Scale is to focus on the back end work and also supporting Octave features.\" The product owner may edit PRODUCT.md. A change in what the product is for still goes to the owner.",
+      "serves": "Owner, 2026-11-26."
+    },
+    {
+      "id": "D-092",
+      "date": "2026-11-26",
+      "by": "product-owner",
+      "task": "PRODUCT.md; JS-053, JS-052, JS-046",
+      "brief": "Rewrite PRODUCT.md under D-091 and say what the focus changes in the order.",
+      "tradeoff": "Given up: PRODUCT.md's code-simplicity line (now AGENTS.md's alone), its file-name pointers, and 3 places of order for the tasks at 52 to 72.",
+      "decision": "change",
+      "entry": "PRODUCT.md is rewritten under D-091 to hold only the product and its direction. jellyscale is the back end and Octave the front end it ships. Goal 3 adds \"Octave's features have the server they need\". \"No jellyscale work goes in for Octave\" is withdrawn, completing D-089's lift of D-027: the server side of Octave's features is jellyscale's work, while Octave itself stays its own project's and needs nothing only jellyscale has. No viewer or operator guarantee is removed. JS-053, JS-052 and JS-046 take priorities 52 to 54. JS-032 and JS-049 wait for Octave's statement or dogfood counts.",
+      "serves": "Owner, 2026-11-26 (D-091): \"focus on the back end work and also supporting Octave features\"; PRODUCT.md: \"Their library feels alive\"."
     }
   ]
 }

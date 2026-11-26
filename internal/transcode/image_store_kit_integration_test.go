@@ -48,6 +48,30 @@ func (s *scannedFilm) storedObjects() map[string]int64 {
 	return found
 }
 
+// holdsAnObjectNotIn is whether the asset store holds an object that before did not.
+func (s *scannedFilm) holdsAnObjectNotIn(before map[string]int64) bool {
+	for key := range s.storedObjects() {
+		if _, held := before[key]; !held {
+			return true
+		}
+	}
+	return false
+}
+
+// takeTheAssetSweepsTurn is the test taking the turn to sweep the asset stores (sweeps, claimSweep) for the next nine
+// minutes (0.9 of the ten sweep periods of a minute that assetSweepEvery makes), so that no worker of the test sweeps
+// them on its own: the turn is a row that outlives the test's rows and is free again nine minutes after the last worker
+// of any earlier test took it, which can be when this test's worker starts,
+// and that sweep removes the replaced file's track before the test's own sweep or its wait is ready for it. The
+// test's own Sweep takes no turn.
+func (s *scannedFilm) takeTheAssetSweepsTurn(t *testing.T) {
+	t.Helper()
+	if _, err := s.pool.Exec(context.Background(), `INSERT INTO sweeps (name) VALUES ('assets')
+		ON CONFLICT (name) DO UPDATE SET at = now()`); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // storedSize is the bytes of every stored object.
 func (s *scannedFilm) storedSize() (total int64) {
 	for _, size := range s.storedObjects() {
@@ -251,6 +275,7 @@ type stored struct {
 	// assetsAll is what it had served when the last of the segments asked for was
 	// stored, across every ffmpeg the job started for them.
 	assetsAll int64
+	reads     string // m.film.describeReads() as the first segment was stored.
 }
 
 // seekStored is scannedFilm.seek on a worker of its own with the asset store
@@ -272,7 +297,7 @@ func (s *scannedFilm) seekStored(t *testing.T, cut, count int, burnt bool, rate 
 	if err != nil {
 		t.Fatalf("segment %d: %v", cut, err)
 	}
-	got := stored{film: m.film.before.Load(), served: served, assets: m.assets.read.Load()}
+	got := stored{film: m.film.before.Load(), served: served, assets: m.assets.read.Load(), reads: m.film.describeReads()}
 	for n := cut + 1; n < cut+count; n++ {
 		if _, err := s.fetchAt(t, j, psid(0), n, cut); err != nil {
 			t.Fatalf("segment %d: %v", n, err)

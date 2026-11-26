@@ -32,6 +32,10 @@
 # ffmpeg's stderr, and ffmpeg.log with each command line the worker ran) go to
 # $JELLYSCALE_LOG_DIR, default <workdir>/logs, whole and, for what each gate
 # wrote, in <gate>/server.log and <gate>/ffmpeg.log.
+# JS-160: a scenario or step that fails leaves <logs>/failures/<gate>[-iteration<n>]-<scenario>-<hash>.{png,console.txt,record.json}
+# (test/e2e/evidence.mjs: a screenshot at the failure, the browser's whole console, the viewer's record), and prints
+# each request the browser reported failed with every router entry that could be it, never a guess between identical
+# requests. A scenario that passes leaves nothing.
 # JS-070: each gate records the JSON responses its browser gets in <logs>/<gate>/responses.jsonl (test/e2e/conform.mjs),
 # and when the gate ends compat/conform/cmd/conform holds them to compat/schema-12.4.json and prints
 # "e2e <gate>: checked N JSON responses on M routes"; a violation, or no response, fails the gate.
@@ -72,8 +76,6 @@ cleanup() {
     IFS='|' read -r name gate_status summary log <<<"$entry"
     result_write "$name" $((gate_status || leaked)) "$summary" "$log"
   done
-  # A failing scenario's screenshot is the one thing in the temp dir worth keeping.
-  mv "$TMPDIR"/jellyscale-e2e*.png "$logs/" 2>/dev/null
   rm -rf "$tmp_base" "$work/t"
 }
 trap cleanup EXIT
@@ -425,7 +427,7 @@ libraries=$(grep -c '"kind":' "$work/config-s3.json")
 for _ in $(seq 1 120); do [[ $(grep -c 'scan finished' "$logs/server.log") -ge $libraries ]] && break; sleep 0.5; done
 
 base="http://127.0.0.1:$router"
-cp "$repo/test/e2e/conform.mjs" "$repo/test/e2e/shard.mjs" "$repo/test/e2e/player.mjs" "$repo/test/e2e/recovery.mjs" "$repo/test/e2e/browse.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/cors.mjs" "$repo/test/e2e/transcode.mjs" "$repo/test/e2e/subtitles.mjs" "$repo/test/e2e/failover.mjs" "$repo/test/e2e/away.mjs" "$playwright/"
+cp "$repo/test/e2e/conform.mjs" "$repo/test/e2e/shard.mjs" "$repo/test/e2e/evidence.mjs" "$repo/test/e2e/player.mjs" "$repo/test/e2e/recovery.mjs" "$repo/test/e2e/browse.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/cors.mjs" "$repo/test/e2e/transcode.mjs" "$repo/test/e2e/subtitles.mjs" "$repo/test/e2e/failover.mjs" "$repo/test/e2e/away.mjs" "$playwright/"
 result=0
 export E2E_METRICS=$(IFS=,; echo "${metrics_ports[*]}") E2E_CAPTURES="$repo/compat/captures"
 export E2E_MOVIES="$work/media/movies"
@@ -440,6 +442,7 @@ whole=1
 run_gate() { # gate out_dir
   local gate=$1 dir=$2 out=$2/out.txt status record
   mkdir -p "$dir"
+  export E2E_GATE=$gate E2E_FAILURES=$logs/failures
   export E2E_RESPONSES=$dir/responses.jsonl
   : >"$E2E_RESPONSES"
   # One stack serves every gate, so what a gate wrote is the log from here on.

@@ -13,6 +13,7 @@ import { readFileSync } from "node:fs";
 import { wholeLine } from "./shard.mjs";
 import { recordResponses } from "./conform.mjs";
 import { signInShown, submitSignIn } from "./player.mjs";
+import { keepFailure, rescue, watch } from "./evidence.mjs";
 
 const require = createRequire(`${process.cwd()}/`);
 const { chromium } = require("playwright-core");
@@ -33,6 +34,7 @@ const browser = await chromium.launch({
   args: ["--disable-gpu", "--autoplay-policy=no-user-gesture-required"],
 });
 const context = await browser.newContext({ viewport: { width: 800, height: 600 } });
+watch(context, base);
 const page = await context.newPage();
 recordResponses(page, base);
 page.on("console", (message) => { if (process.env.E2E_DEBUG) console.log(`page: ${message.text()}`); });
@@ -70,6 +72,7 @@ async function step(name, action) {
   } catch (error) {
     failures.push(`${name}: ${error.message.split("\n")[0]}`);
     console.log(`FAIL  ${name}: ${error.message.split("\n")[0]} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
+    await keepFailure(name, began);
   }
 }
 const need = (condition, message) => { if (!condition) throw new Error(message); };
@@ -367,6 +370,9 @@ await step("a refused sign-in shows jellyfin-web's 403 text and stays on the sig
     console.log(`recorded: jellyfin-web showed ${JSON.stringify(shown)} for a 403 with Retry-After ${retryAfter}`);
     need(shown.some((t) => t.includes(text)), `jellyfin-web showed ${JSON.stringify(shown)}, want the 403 text`);
     need(await signInShown(web), "the page left the sign-in form");
+  } catch (error) {
+    await rescue(web); // The page closes below, before the step's failure is kept.
+    throw error;
   } finally {
     await web.close();
   }

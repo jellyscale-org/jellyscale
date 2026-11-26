@@ -12,6 +12,7 @@ import {
 import { waitFor } from "./player.mjs";
 import { configure, time } from "./player.mjs";
 import { advances, sql, submitSignIn } from "./player.mjs";
+import { keepFailure, watch } from "./evidence.mjs";
 
 const require = createRequire(`${process.cwd()}/`);
 const { chromium } = require("playwright-core");
@@ -31,6 +32,7 @@ configure({ base, user, password });
 
 async function newSession() {
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  watch(context, base);
   const page = await context.newPage();
   recordResponses(page, base);
   const seen = { videos: [], errors: [], sockets: [], frames: [] };
@@ -60,6 +62,7 @@ async function step(name, action) {
   } catch (error) {
     failures.push(`${name}: ${error.message.split("\n")[0]}`);
     console.log(`FAIL  ${name}: ${error.message.split("\n")[0]} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
+    await keepFailure(name, began);
   }
 }
 
@@ -71,6 +74,7 @@ await step("login", () => login(first.page));
 
 for (const film of films) {
   const { page, seen } = first;
+  const filmBegan = Date.now();
   await step(`${film.backend}: play ${film.title}`, async () => {
     await page.goto(`${base}/web/`);
     await page.waitForSelector(".card", { timeout: 30000 });
@@ -113,7 +117,10 @@ for (const film of films) {
     const fraction = stoppedAt / total;
     if (fraction < 0.4 || fraction > 0.6) throw new Error(`stopped at ${(fraction * 100).toFixed(0)}%`);
   });
-  if (seen.errors.length) failures.push(`${film.backend}: ${seen.errors.join("; ")}`);
+  if (seen.errors.length) {
+    failures.push(`${film.backend}: ${seen.errors.join("; ")}`);
+    await keepFailure(`${film.backend}: browser errors`, filmBegan);
+  }
 }
 await step("web socket got ForceKeepAlive through the router", async () => {
   const { sockets, frames } = first.seen;
