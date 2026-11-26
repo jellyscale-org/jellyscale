@@ -41,13 +41,13 @@ sudo apt-get -o Acquire::Retries=3 update
 # otherwise never downloaded, so it would leave no .deb and every later run would miss.
 # A runner image can carry a newer exact-version dependency than the mirror's
 # package. --allow-downgrades alone lets apt accept the older version but does
-# not make it choose one for a dependency, so name every exact-version dependency
-# explicitly (merge-group run 45736550858).
-exact=()
-while read -r package version; do
-  exact+=("$package=$version")
-done < <(apt-cache depends "$@" | sed -nE 's/^[[:space:]]*(Pre)?Depends: ([^ ]+) \(= ([^)]+)\).*/\2 \3/p' | sort -u)
-sudo apt-get -o Acquire::Retries=3 install -y --reinstall --allow-downgrades "$@" "${exact[@]}"
+# not make it choose one (merge-group run 45736550858; PR 285's first fix). The
+# runner's newest Mesa driver requires an exact mesa-libgallium, so name the
+# version of the driver the mirror would install.
+packages=("$@")
+libgallium=$(apt-cache show mesa-va-drivers 2>/dev/null | sed -nE 's/^Depends: .*mesa-libgallium \(= ([^)]+)\).*/\1/p' | head -1)
+[[ -n $libgallium ]] && packages+=("mesa-libgallium=$libgallium")
+sudo apt-get -o Acquire::Retries=3 install -y --reinstall --allow-downgrades "${packages[@]}"
 if [[ -n $debs ]]; then
   mkdir -p "$debs"
   cp "$archives"/*.deb "$debs"/
