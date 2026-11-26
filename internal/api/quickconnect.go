@@ -24,6 +24,27 @@ import (
 // hang-up cannot change the outcome, and short enough that a stuck database does not hold the statement forever.
 const approvalTimeout = 30 * time.Second
 
+func (s *Server) approvalCut() (context.Context, context.CancelFunc) {
+	s.shutdownOnce.Do(func() { s.shutdownCut, s.cutAtShutdown = context.WithCancel(context.Background()) })
+	return s.shutdownCut, s.cutAtShutdown
+}
+
+// CutApprovals ends the approvals in flight, which no request's end does. A stopping replica calls it when its shutdown
+// grace expires. A cut approval keeps its reservation, as any the database never answered.
+func (s *Server) CutApprovals() {
+	_, cut := s.approvalCut()
+	cut()
+}
+
+// logAbandonedFailure records why an approval failed when its client is gone: fail says nothing then, and nobody else
+// hears of it. The code is never logged.
+func (s *Server) logAbandonedFailure(r *http.Request, user User, err error) {
+	if r.Context().Err() == nil {
+		return
+	}
+	s.Log.Warn("an approval failed after its client hung up", "user", user.Name, "error", err)
+}
+
 // A Quick Connect code is shown by a device that has no token: Initiate, the poll that reads the code's state and the
 // redemption are open. Only the approval is a viewer's. Every route refuses when this replica has Quick Connect off,
 // as Jellyfin 12.4 does, without touching a code another replica may still offer.
@@ -156,11 +177,16 @@ func (s *Server) quickConnectAuthorize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// The approval and its reservation run on a context detached from the request: a client that hangs up must not
-	// change whether a guess is counted or whether the code is approved. The timeout bounds a database that hangs.
+	// change whether a guess is counted or whether the code is approved. The timeout bounds a database that hangs, and
+	// the end of the shutdown grace bounds a replica that is stopping.
 	approval, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), approvalTimeout)
 	defer cancel()
+	shutdownCut, _ := s.approvalCut()
+	stopCut := context.AfterFunc(shutdownCut, cancel)
+	defer stopCut()
 	ticket, refusal, err := signin.BeginApproval(approval, s.Pool, user.ID)
 	if err != nil {
+		s.logAbandonedFailure(r, user, err)
 		s.fail(w, r, err)
 		return
 	}
@@ -180,6 +206,7 @@ func (s *Server) quickConnectAuthorize(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, true)
 		return
 	}
+	s.logAbandonedFailure(r, user, err)
 	// A code that is unknown, expired or already approved is a guess at someone's account, so it keeps the
 	// reservation. So does every outcome the database never answered: the timeout, a lost connection. An error it
 	// did answer with (a cancelled statement or a terminated backend included) says nothing about the code, and a

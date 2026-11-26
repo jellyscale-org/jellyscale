@@ -360,7 +360,8 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 // requests are taken as before for drainLead, so the router has stopped
 // sending when the listener closes. Then the sockets are closed with their rows
 // removed, and the responses in flight are sent whole if they end in time, and
-// cut at the end of the grace if not.
+// cut at the end of the grace if not. Approvals, which outlive their clients, are
+// cut then too, so the pool they hold a connection of can close.
 func drain(httpServer *http.Server, server *api.Server, grace time.Duration, log *slog.Logger) {
 	deadline, cancel := context.WithTimeout(context.Background(), grace)
 	defer cancel()
@@ -377,6 +378,7 @@ func drain(httpServer *http.Server, server *api.Server, grace time.Duration, log
 	}()
 	if err := httpServer.Shutdown(deadline); err != nil {
 		log.Warn("responses still in flight at the end of the grace are cut", "error", err)
+		server.CutApprovals()
 		httpServer.Close() //nolint:errcheck
 	}
 	<-socketsClosed

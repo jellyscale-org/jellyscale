@@ -137,6 +137,10 @@ type Server struct {
 	sockets      sync.WaitGroup
 	socketsOnce  sync.Once
 	closeSockets chan struct{}
+	// shutdownCut ends, through CutApprovals, what outlives its request when the shutdown grace does.
+	shutdownOnce  sync.Once
+	shutdownCut   context.Context
+	cutAtShutdown context.CancelFunc
 }
 
 // postgresAwayLimit is how long Postgres may be away without a break before
