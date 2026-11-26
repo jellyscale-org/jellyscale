@@ -28,7 +28,7 @@ compat/gen-schema.sh                        # compat/schema-12.4.json from the j
 ## Rules
 
 - Prefer retrieval-led reasoning over training-led reasoning.
-- Write the simplest code that works. Add an abstraction only when something real needs it.
+- Write the simplest code that works, readable and maintainable by people. Add an abstraction only when something real needs it.
 - Observe a real Jellyfin 12.4 before implementing a protocol.
 - Don't port Jellyfin code.
 - Match the surrounding code. Write comments that explain why, not what.
@@ -108,7 +108,7 @@ The workflow's steps:
 
 ## Octave
 
-[Octave](https://github.com/jellyscale-org/octave) is jellyscale's own client. Its web app is to become jellyscale's default web client (owner, D-085). The two projects ask each other for work through GitHub issues.
+[Octave](https://github.com/jellyscale-org/octave) is jellyscale's front end, on the web, TVs and native devices; jellyscale is the back end and is to ship Octave Web as its browser client (owner, D-088). Focus on the back end and on what Octave's features need from it (owner, D-091). The two projects ask each other for work through GitHub issues.
 
 - Octave files an issue on this repository when it wants a feature or finds a gap, labelled `from:fluster` (its former name).
 - When jellyscale wants a feature or a change from Octave, or finds a bug in it, file an issue on `jellyscale-org/octave`, labelled `from:jellyscale` (create the label if it is missing). Don't work around it here.
@@ -135,4 +135,4 @@ The workflow's steps:
 - **Per-task quality comes from cheaper checks.** Opus 5.5 is the per-task Check and Refine model; Sonnet 5.5 carries architecture, adversarial and UX review; OpenCode Zen's free models carry Build/Fix, QA and helpers. Escalate to Fable only when those disagree or a product trade-off remains.
 - **Priorities and plan order are the product owner's alone.** The lead never edits a task's priority, moves a task in `tasks/prd.json`, or decides what is built next without the product owner's decision. Bring a brief with the options and costs (D-080).
 - Follow its decisions.
-- Leave changes to PRODUCT.md, and to what the product is for, to the owner.
+- Let the product owner edit PRODUCT.md, which holds only the product and its direction; leave a change in what the product is for to the owner (D-091).
