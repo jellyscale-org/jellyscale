@@ -161,20 +161,19 @@ jobs:
         with:
           go-version-file: go.mod
       # ffmpeg from Ubuntu has libx264, libx265, libsvtav1 and libass; burn-in needs a font.
-      # The .deb files of the install below, kept per runner image and package list: a hit installs
-      # them with no mirror (test/apt.sh); a miss installs as always and saves them.
+      # The .deb files of the install below, kept per runner image, package list and apt script: a hit
+      # installs them with no mirror (test/apt.sh); a miss installs as always and saves them.
       - id: image
         run: echo "ImageVersion=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v6
         with:
           path: /home/runner/apt-debs
-          key: apt-debs-ffmpeg-fontconfig-fonts-dejavu-core-on-${{ steps.image.outputs.ImageVersion }}
+          key: apt-debs-${{ hashFiles('test/apt.sh') }}-ffmpeg-fontconfig-fonts-dejavu-core-on-${{ steps.image.outputs.ImageVersion }}
           # A new runner image installs the last image's files rather than ask the mirror
           # (test/apt.sh falls back to the mirror if dpkg refuses them). The second key is the
           # cache main held before the key was reordered; remove it once main has saved a new one.
           restore-keys: |
-            apt-debs-ffmpeg-fontconfig-fonts-dejavu-core-on-
-            apt-debs-20261111.370.1-ffmpeg-fontconfig-fonts-dejavu-core
+            apt-debs-${{ hashFiles('test/apt.sh') }}-ffmpeg-fontconfig-fonts-dejavu-core-on-
       - run: bash test/apt.sh ffmpeg fontconfig fonts-dejavu-core
         env:
           APT_DEBS: /home/runner/apt-debs
@@ -291,20 +290,19 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      # The .deb files of the install below, kept per runner image and package list: a hit installs
-      # them with no mirror (test/apt.sh); a miss installs as always and saves them.
+      # The .deb files of the install below, kept per runner image, package list and apt script: a hit
+      # installs them with no mirror (test/apt.sh); a miss installs as always and saves them.
       - id: image
         run: echo "ImageVersion=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v6
         with:
           path: /home/runner/apt-debs
-          key: apt-debs-ffmpeg-on-${{ steps.image.outputs.ImageVersion }}
+          key: apt-debs-${{ hashFiles('test/apt.sh') }}-ffmpeg-on-${{ steps.image.outputs.ImageVersion }}
           # A new runner image installs the last image's files rather than ask the mirror
           # (test/apt.sh falls back to the mirror if dpkg refuses them). The second key is the
           # cache main held before the key was reordered; remove it once main has saved a new one.
           restore-keys: |
-            apt-debs-ffmpeg-on-
-            apt-debs-20261111.370.1-ffmpeg
+            apt-debs-${{ hashFiles('test/apt.sh') }}-ffmpeg-on-
       - run: bash test/apt.sh ffmpeg
         env:
           APT_DEBS: /home/runner/apt-debs
@@ -337,20 +335,19 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      # The .deb files of the install below, kept per runner image and package list: a hit installs
-      # them with no mirror (test/apt.sh); a miss installs as always and saves them.
+      # The .deb files of the install below, kept per runner image, package list and apt script: a hit
+      # installs them with no mirror (test/apt.sh); a miss installs as always and saves them.
       - id: image
         run: echo "ImageVersion=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v6
         with:
           path: /home/runner/apt-debs
-          key: apt-debs-ffmpeg-on-${{ steps.image.outputs.ImageVersion }}
+          key: apt-debs-${{ hashFiles('test/apt.sh') }}-ffmpeg-on-${{ steps.image.outputs.ImageVersion }}
           # A new runner image installs the last image's files rather than ask the mirror
           # (test/apt.sh falls back to the mirror if dpkg refuses them). The second key is the
           # cache main held before the key was reordered; remove it once main has saved a new one.
           restore-keys: |
-            apt-debs-ffmpeg-on-
-            apt-debs-20261111.370.1-ffmpeg
+            apt-debs-${{ hashFiles('test/apt.sh') }}-ffmpeg-on-
       - run: bash test/apt.sh ffmpeg
         env:
           APT_DEBS: /home/runner/apt-debs
@@ -380,20 +377,19 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      # The .deb files of the install below, kept per runner image and package list: a hit installs
-      # them with no mirror (test/apt.sh); a miss installs as always and saves them.
+      # The .deb files of the install below, kept per runner image, package list and apt script: a hit
+      # installs them with no mirror (test/apt.sh); a miss installs as always and saves them.
       - id: image
         run: echo "ImageVersion=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v6
         with:
           path: /home/runner/apt-debs
-          key: apt-debs-ffmpeg-fontconfig-fonts-dejavu-core-on-${{ steps.image.outputs.ImageVersion }}
+          key: apt-debs-${{ hashFiles('test/apt.sh') }}-ffmpeg-fontconfig-fonts-dejavu-core-on-${{ steps.image.outputs.ImageVersion }}
           # A new runner image installs the last image's files rather than ask the mirror
           # (test/apt.sh falls back to the mirror if dpkg refuses them). The second key is the
           # cache main held before the key was reordered; remove it once main has saved a new one.
           restore-keys: |
-            apt-debs-ffmpeg-fontconfig-fonts-dejavu-core-on-
-            apt-debs-20261111.370.1-ffmpeg-fontconfig-fonts-dejavu-core
+            apt-debs-${{ hashFiles('test/apt.sh') }}-ffmpeg-fontconfig-fonts-dejavu-core-on-
       - run: bash test/apt.sh ffmpeg fontconfig fonts-dejavu-core
         env:
           APT_DEBS: /home/runner/apt-debs
@@ -444,20 +440,19 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
-      # The .deb files of the install below, kept per runner image and package list: a hit installs
-      # them with no mirror (test/apt.sh); a miss installs as always and saves them.
+      # The .deb files of the install below, kept per runner image, package list and apt script: a hit
+      # installs them with no mirror (test/apt.sh); a miss installs as always and saves them.
       - id: image
         run: echo "ImageVersion=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v6
         with:
           path: /home/runner/apt-debs
-          key: apt-debs-ffmpeg-on-${{ steps.image.outputs.ImageVersion }}
+          key: apt-debs-${{ hashFiles('test/apt.sh') }}-ffmpeg-on-${{ steps.image.outputs.ImageVersion }}
           # A new runner image installs the last image's files rather than ask the mirror
           # (test/apt.sh falls back to the mirror if dpkg refuses them). The second key is the
           # cache main held before the key was reordered; remove it once main has saved a new one.
           restore-keys: |
-            apt-debs-ffmpeg-on-
-            apt-debs-20261111.370.1-ffmpeg
+            apt-debs-${{ hashFiles('test/apt.sh') }}-ffmpeg-on-
       - run: bash test/apt.sh ffmpeg
         env:
           APT_DEBS: /home/runner/apt-debs
