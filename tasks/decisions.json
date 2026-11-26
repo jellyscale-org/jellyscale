@@ -980,6 +980,50 @@
       "decision": "change",
       "entry": "PRODUCT.md is rewritten under D-091 to hold only the product and its direction. jellyscale is the back end and Octave the front end it ships. Goal 3 adds \"Octave's features have the server they need\". \"No jellyscale work goes in for Octave\" is withdrawn, completing D-089's lift of D-027: the server side of Octave's features is jellyscale's work, while Octave itself stays its own project's and needs nothing only jellyscale has. No viewer or operator guarantee is removed. JS-053, JS-052 and JS-046 take priorities 52 to 54. JS-032 and JS-049 wait for Octave's statement or dogfood counts.",
       "serves": "Owner, 2026-11-26 (D-091): \"focus on the back end work and also supporting Octave features\"; PRODUCT.md: \"Their library feels alive\"."
+    },
+    {
+      "id": "D-093",
+      "date": "2026-11-26",
+      "by": "product-owner",
+      "task": "JS-033, JS-036",
+      "brief": "JS-033's open questions after Refine and the Jellyfin 12.4 capture.",
+      "tradeoff": "Until JS-036 the operator sees a generic error and spinner on New User unless 'all libraries' is ticked; the user exists, sees every library, and the log says why.",
+      "decision": "change",
+      "entry": "Unenforced Policy changes stay 400 and are logged; null equals [] and channel fields are accepted; New User without 'all libraries' errors in jellyfin-web until JS-036, which gains the criterion.",
+      "serves": "PRODUCT.md: 'only the libraries they are allowed to see'; 'Nothing is hidden'."
+    },
+    {
+      "id": "D-094",
+      "date": "2026-11-26",
+      "by": "product-owner",
+      "task": "JS-033",
+      "brief": "JS-033's open questions after Refine and the Jellyfin 12.4 capture.",
+      "tradeoff": "A client that omits a field in order to demote or enable does nothing; none is known.",
+      "decision": "change",
+      "entry": "A Policy POST changes only the fields it names; the provider ids are optional.",
+      "serves": "Invariant 49's rule; 'Signing in is easy and safe'."
+    },
+    {
+      "id": "D-095",
+      "date": "2026-11-26",
+      "by": "product-owner",
+      "task": "JS-033",
+      "brief": "JS-033's open questions after Refine and the Jellyfin 12.4 capture.",
+      "tradeoff": "Operators cannot delete or rename that account from a client while it is configured, and jellyfin-web shows nothing on the refusal.",
+      "decision": "change",
+      "entry": "The configured admin cannot be deleted or renamed through the API while configured; demote and disable are allowed; start-up refuses a commonly guessed admin password only when it creates the account.",
+      "serves": "'Settings are declared in configuration'; 'every failure is reported with its reason'."
+    },
+    {
+      "id": "D-096",
+      "date": "2026-11-26",
+      "by": "product-owner",
+      "task": "JS-033",
+      "brief": "JS-033's open questions after Refine and the Jellyfin 12.4 capture.",
+      "tradeoff": "A signed-in user picker lists one account; a disabled viewer reads 'invalid password'; after a reset every device signs in again.",
+      "decision": "keep",
+      "entry": "Confirmed: a viewer's GET /Users lists only themselves; a disabled account answers 401 like a wrong password; a password change or reset ends the user's other tokens.",
+      "serves": "Invariants 26 and 61."
     }
   ]
 }
