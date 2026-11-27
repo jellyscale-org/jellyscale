@@ -4,9 +4,9 @@ go 1.27.1
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.48.0
-	github.com/aws/aws-sdk-go-v2/credentials v1.21.1
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.10
-	github.com/aws/smithy-go v1.28.9
+	github.com/aws/aws-sdk-go-v2/credentials v1.21.3
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.116.0
+	github.com/aws/smithy-go v1.28.10
 	github.com/coder/websocket v1.8.15
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.13.0
