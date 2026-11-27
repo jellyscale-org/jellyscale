@@ -76,7 +76,7 @@ func TestAnAdministratorSetsAnothersPasswordWithoutTheCurrentOne(t *testing.T) {
 	}
 }
 
-// An account that already has no password (criterion 15, D-082) keeps the sign-in it has (D-100). Setting one is as
+// A migrated account, which has no password (D-082), keeps the sign-in it has until one is set. Setting one is as
 // captured: no CurrentPw, or an empty one, will do, and a wrong one will not.
 func TestAnExistingUserWithNoPasswordSignsInAndSetsOneAsCaptured(t *testing.T) {
 	u := newUsersSite(t, 1, nil)
@@ -140,24 +140,81 @@ func TestGuessingTheCurrentPasswordIsBoundedForTheAccount(t *testing.T) {
 	signedIn(t, "the old password from another device", u.try(0, newDevice(), viewer.name, rightPassword))
 }
 
-// A viewer's own reset needs the right current password (a difference from Jellyfin 12.4, which asks none). What one
-// with the right password does is not held here: it would leave no password, which D-100 leaves open for a reset.
-func TestAViewersOwnResetWithoutTheRightCurrentPasswordIsRefused(t *testing.T) {
+// A reset of one's own password is refused, administrator or not, with the right current password too, and changes
+// nothing: no token ends and the password stays (D-103; Jellyfin 12.4 takes it). Jellyfin's refusals, 403 and 400, are
+// both taken.
+func TestAResetOfOnesOwnPasswordIsRefusedForEveryone(t *testing.T) {
+	for _, administrator := range []bool{false, true} {
+		t.Run(fmt.Sprintf("administrator %v", administrator), func(t *testing.T) {
+			u := newUsersSite(t, 2, nil)
+			who := u.member(administrator)
+			other := signedIn(t, "a second device", u.try(0, newDevice(), who.name, rightPassword))
+			for _, path := range []string{"/Users/Password?userId=" + who.id, "/Users/Password", "/Users/" + who.id + "/Password"} {
+				for how, current := range map[string]any{"no CurrentPw": nil, "an empty CurrentPw": "", "a wrong CurrentPw": "wrong", "the right CurrentPw": rightPassword} {
+					// jellyfin-web spells it resetPassword, the API document ResetPassword.
+					for _, field := range []string{"resetPassword", "ResetPassword"} {
+						fields := map[string]any{field: true}
+						if current != nil {
+							fields["CurrentPw"] = current
+						}
+						if got := u.as(0, who.token, "POST", path, body(fields)); got.status != 403 && got.status != 400 {
+							t.Errorf("POST %s %s with %s: %d %.100q, want a refusal, 403 or 400", path, field, how, got.status, got.body)
+						}
+					}
+				}
+			}
+			u.check(200, u.as(1, who.token, "GET", "/Users/Me", ""), "the asking token afterwards")
+			u.check(200, u.as(1, other, "GET", "/Users/Me", ""), "the other token afterwards")
+			u.check(401, u.try(0, newDevice(), who.name, ""), "an empty password afterwards")
+			signedIn(t, "the old password afterwards", u.try(1, newDevice(), who.name, rightPassword))
+		})
+	}
+}
+
+// An administrator's reset of another user leaves the account with no password that signs in, the empty one included,
+// until an administrator sets one, and ends every token of the user, on the next request through the other api process
+// and through stream. Nobody else's token or sign-in is touched (D-103; Jellyfin 12.4 keeps the tokens and takes the
+// empty password).
+func TestAnAdministratorsResetOfAnotherLeavesNoPasswordThatSignsInAndEndsTheUsersTokens(t *testing.T) {
 	for _, route := range passwordRoutes {
 		t.Run(route.name, func(t *testing.T) {
 			u := newUsersSite(t, 2, nil)
-			viewer := u.member(false)
-			other := signedIn(t, "a second device", u.try(0, newDevice(), viewer.name, rightPassword))
-			for how, current := range map[string]any{"no CurrentPw": nil, "an empty CurrentPw": "", "a wrong CurrentPw": "wrong"} {
-				fields := map[string]any{"resetPassword": true} // As jellyfin-web spells it.
-				if current != nil {
-					fields["CurrentPw"] = current
+			admin, target, bystander := u.member(true), u.member(false), u.member(false)
+			film := u.film(4096)
+			stream := start(t, "stream", u.dsn, map[string]any{"adminUser": ""})
+			tokens := []string{target.token, signedIn(t, "a second device", u.try(0, newDevice(), target.name, rightPassword))}
+			for _, token := range tokens {
+				if got := rangeStatus(stream, film, token); got != 206 {
+					t.Fatalf("a byte range before the reset: %d, want 206", got)
 				}
-				u.check(403, u.as(0, viewer.token, "POST", route.path(viewer.id), body(fields)), "a reset with "+how)
 			}
-			signedIn(t, "the old password after the refusals", u.try(0, newDevice(), viewer.name, rightPassword))
-			u.check(401, u.try(0, newDevice(), viewer.name, ""), "an empty password after the refusals")
-			u.check(200, u.as(1, other, "GET", "/Users/Me", ""), "the other token after the refusals")
+			// As jellyfin-web's Reset Password button sends it.
+			u.check(204, u.as(0, admin.token, "POST", route.path(target.id), `{"resetPassword":true}`), "the administrator's reset")
+			for n, token := range tokens {
+				u.check(401, u.as(1, token, "GET", "/Users/Me", ""), fmt.Sprintf("the user's token %d on the next request through the other api process", n+1))
+				if got := rangeStatus(stream, film, token); got != 401 {
+					t.Errorf("a byte range with the user's token %d through stream: %d, want 401", n+1, got)
+				}
+			}
+			wrong := u.wrong(1, bystander.name)
+			for what, password := range map[string]string{"the empty password": "", "the old password": rightPassword, "another password": strong()} {
+				got := u.try(1, newDevice(), target.name, password)
+				if wrong.status != 401 || got.status != wrong.status || string(got.body) != string(wrong.body) {
+					t.Errorf("signing in with %s after the reset: %d %q, want a wrong password's %d %q", what, got.status, got.body, wrong.status, wrong.body)
+				}
+			}
+			for who, token := range map[string]string{"the administrator's": admin.token, "another user's": bystander.token} {
+				u.check(200, u.as(1, token, "GET", "/Users/Me", ""), who+" token afterwards")
+				if got := rangeStatus(stream, film, token); got != 206 {
+					t.Errorf("a byte range with %s token afterwards: %d, want 206", who, got)
+				}
+			}
+			signedIn(t, "another user's password afterwards", u.try(1, newDevice(), bystander.name, rightPassword))
+
+			next := strong()
+			u.check(204, u.as(0, admin.token, "POST", route.path(target.id), body(map[string]any{"NewPw": next})), "the administrator setting a password")
+			signedIn(t, "the password the administrator set", u.try(1, newDevice(), target.name, next))
+			u.check(401, u.try(1, newDevice(), target.name, ""), "the empty password once one is set")
 		})
 	}
 }
@@ -221,11 +278,13 @@ func TestACommonlyGuessedOrEmptyPasswordIs400WithAMessageAndNothingIsStored(t *t
 		for _, route := range passwordRoutes {
 			refused(route.name+", own", password, u.as(0, viewer.token, "POST", route.path(viewer.id), body(map[string]any{"CurrentPw": rightPassword, "NewPw": password})))
 			refused(route.name+", an administrator's", password, u.as(0, admin.token, "POST", route.path(viewer.id), body(map[string]any{"NewPw": password})))
+			refused(route.name+", an administrator's own", password, u.as(0, admin.token, "POST", route.path(admin.id), body(map[string]any{"CurrentPw": rightPassword, "NewPw": password})))
 		}
 		u.check(401, u.try(0, newDevice(), viewer.name, password), "signing in with the refused password")
 	}
 	u.check(200, u.as(0, other, "GET", "/Users/Me", ""), "the other token after the refusals")
 	signedIn(t, "the old password after the refusals", u.try(0, newDevice(), viewer.name, rightPassword))
+	signedIn(t, "the administrator's old password after the refusals", u.try(0, newDevice(), admin.name, rightPassword))
 	u.created(admin, "fine-"+uuid.NewString()[:8], strong())
 }
 

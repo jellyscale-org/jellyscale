@@ -159,7 +159,7 @@ func (u *usersSite) userCount(name string) int {
 }
 
 // withNoPassword is an account that already exists with no password: its stored hash is the empty password's. No route
-// makes one (D-100), so it is written as the accounts there are were.
+// makes one (D-100; a reset leaves one no password signs in to), so it is written to the table.
 func (u *usersSite) withNoPassword() (id, name string) {
 	u.t.Helper()
 	id, name = uuid.NewString(), "bare-"+uuid.NewString()[:8]
