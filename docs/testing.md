@@ -438,3 +438,59 @@ By run, counting a run once under each cause any of its rows has: JS-171 4 runs 
 | (d) rows and the (c) restart rows | No product effect claimed from an unknown cause; the restart rows are a test-pairing bug forced in docs/testing.md JS-175, not a JS-161 product finding. The criterion-2 pooler sighting in 45017053835 is verdict (d): its evidence is the 503 after 15.518 s at `liveness_url_pooler_integration_test.go:278` and the absence of any worker decision line, job row or capacity figure; the JS-168-first-build reading is unverified. | If that hypothesis were right, a viewer would have seen a 503 with `Retry-After: 5` instead of the next segment; unverified. | If right, a refusal line naming its reason in that build only; unverified. |
 
 Per criterion 2 the (c) switchover sighting needs a product-owner brief before any product fix; no such brief was filed by this record and no product code was changed. JS-159's two rows and JS-173's one carry the viewer effects their merged records give, as the criterion allows.
+
+### Criterion 4: bounded reproduction, what was actually run
+
+No CI-shaped reproduction was run for any sighting whose verdict may be the product's. The three (d) rows (the negative-hash reap in 44997492843, the 15.518 s pooler 503 in 45017053835, the 45 m stop in 45076662687) and the one (c) product row (the copied job's lost lead limit in 45041377896) have 0 runs and 0 hours each; the only evidence is their queue logs, recorded above. Nothing was retried or left running when a box ran out, and the total reproduction spend for criterion 4 is 0 hours, against the 2 h per sighting and 4 h total limits (D-074). The forced runs recorded under criterion 3 are test causes, not these product sightings; they are listed here for completeness and are not charged to the product budget.
+
+| Sighting | Command / forcing | Runs | Failure and message | Hours |
+|---|---|---|---|---|
+| 45041377896 switchover (c) | none; queue log only (`worker.go:975` WARN, `transcode ended ... elapsed=13.401s`) | 0 | none reproduced | 0.00 |
+| 45017053835 pooler 503 (d) | none; log lacks a worker decision line | 0 | none reproduced | 0.00 |
+| 44997492843 negative-hash reap (d) | none; log lacks a lock snapshot | 0 | none reproduced | 0.00 |
+| 45076662687 45 m stop (d) | none; log lacks what held the test | 0 | none reproduced | 0.00 |
+| Restart check's positional pairing (test cause, criterion 3, not CI-shaped) | one hand-forced temporary edit of `liveness_url_integration_test.go` (not committed): a cancelled helper row of viewer 1's spec between the viewers' rows; 16 CPUs, Docker Postgres, host ffmpeg 9.0.2 | 1 defective pairing, 1 fixed pairing | defective: `liveness_url_integration_test.go:458: job 13 restarted its spec at segment 4, past the first one not stored` (26.6 s); fixed: check and forcing pass (49.5 s) | 0.02 |
+
+### Criterion 5: the 45-minute shard, regenerated times and the split decision
+
+The process stopped at go test's 45 m alarm is `integration shard (0of4), process 1/2` of run 45076662687. Its `panic: test timed out after 45m0s` names `TestTheStoreSizeMetricIsTheSameOnEveryWorkerAndEqualsTheBytesHeld/garage/budget_0` (2 s into that subtest, 2 s into the top-level test); the goroutine dump shows sweep-process waits and no line naming what held it. The other process of that shard finished normally, `DONE 371 tests in 1947.572s` (32.5 min), which is this shard's healthy time in the 18-run window; its healthy time from the three successful runs below is 34.09 min.
+
+`test/shard-times.txt` was regenerated with the repository's tool, not edited: `gh run download <id> --repo jellyscale-org/jellyscale --pattern 'integration-shard-*' -D <dir>` for runs 45852834482, 45898984413 and 45905960427 (the first three successful integration-tier merge-queue runs after the cleanup), then `test/shard-times.sh <dir>...`. Its header names those three runs; it has 1,465 dealt-test lines (up from 1,461), so every dealt test now has a measured CI time. A shard's healthy time below is the slowest of its two share processes' gotestsum wall times in each run (the `alone` processes have their own limit and are excluded), averaged over the three runs:
+
+| Shard | Run 45852834482 | Run 45898984413 | Run 45905960427 | Mean healthy time |
+|---|---:|---:|---:|---:|
+| 0of4 | 2018.0 s (33.6 min) | 2069.8 s (34.5 min) | 2048.4 s (34.1 min) | 2045.4 s = 34.09 min |
+| 1of4 | 2301.0 s (38.4 min) | 2292.5 s (38.2 min) | 2009.4 s (33.5 min) | 2201.0 s = 36.68 min |
+| 2of4 | 2000.7 s (33.3 min) | 1981.1 s (33.0 min) | 2364.6 s (39.4 min) | 2115.5 s = 35.26 min |
+| 3of4 | 2041.3 s (34.0 min) | 2412.5 s (40.2 min) | 2055.7 s (34.3 min) | 2169.8 s = 36.16 min |
+
+Decision under the 10-minute rule (35 min = 45 min minus 10): 1of4, 2of4 and 3of4 are at or above 35 minutes and would be split as `internal/transcode` is split, with no test dropped; 0of4 is below it. No split was made, and eight shards were not adopted. Regenerating the file only decides which shard a test is dealt to; it is not a bound (D-069).
+
+JS-172's flood tests are dealt to `rest`, not to a dealt shard; their measured times from the regenerated file are `TestAFloodOfInventedNamesChangesNoRealAccountsCountAndIsStoredWithinABound` 114.0 s, `TestAFloodFromTwoProcessesHoldsTheSameCeilingAndCarriesNothingOver` 93.3 s, `TestANameThatFailedBeforeItsAccountExistedKeepsItsCountThroughAFlood` 59.9 s and `TestAnExcessLeftBySignInsInFlightIsForgottenByTheNextOneAlone` 40.2 s (the carry-over check JS-172 added): 307.4 s (5.1 min) of rest's deal in all.
+
+### Criterion 6: TestAHeldWorkerEndsAJobWaitingForItsSubtitleTrackBeforeItsLeaseRunsOut, apart
+
+Counted apart in the 8 of 10 runs recorded below: it ran and passed in all 8 (10.29 to 11.42 s each), 0 failed. No run shows the JS-173 refusal text `cores are short ... most any worker has free is 0.0` right after a give-up in this test's own failure; the line appears in other tests' log output and in e2e warnings, none of them this test's failure. No brief to the product owner is owed for JS-173 from these 8 runs.
+
+### Criteria 7 and 8: the counted runs, 8 of 10
+
+The count starts with the first merge group queued after d7dbeeb (PR 279). Eight integration-tier runs have finished so far; run 45860199535 was plan-only (integration skipped) and is not counted. Three failed and five succeeded. Each failure's verdict uses criterion 1's definitions; "load" says whether a Postgres or store bound was missed on the runner, with the test passing alone under CI's shape.
+
+| Run | PR | Conclusion | Failed job / test and first error line | Verdict and load |
+|---|---|---|---|---|
+| 45736550858 | #284 | failure | `roles`, `e2e shard (subtitles-1of2)` and `integration shard (3of4)` stopped in `test/apt.sh ffmpeg`: `E: Unmet dependencies. Try 'apt --fix-broken install' with no packages (or specify a solution).`; `e2e` and `integration` failed as aggregates. No test ran. | (c) environment/package archive, recorded as counted run 1 of 10 above, fixed by `test/apt.sh` removing the optional Mesa VA packages; not load |
+| 45752568205 | #285 | failure | `roles` and `e2e shard (subtitles-1of2)` in `test/apt.sh ffmpeg`: `E: Version '25.2.8-0ubuntu0.24.04.4' for 'mesa-libgallium' was not found` (same package-archive cause); `integration shard (2of4)`: `stress_integration_test.go:28: the stress run could not keep its call rate: V=8, beat: 8 of 8 intended calls finished, 1 of them with an error` (the group also logs `no step degraded`); `e2e` and `integration` failed as aggregates. | apt: (c), not load. Stress: (d) cause unknown — the log counts the error but does not carry its value (docs/testing.md records a later edit that prints it); load not established from this log |
+| 45852834482 | #285 | success | none | — |
+| 45898984413 | #286 | success | none | — |
+| 45905960427 | #284 | success | none | — |
+| 45911124939 | #292 | failure | `integration shard (rest)`: `output_version_integration_test.go:582: the stream replica logged no error for spec a605c5287559280318bd0bb3a7c826b3:`; `integration shard (3of4)`: `stop_scope_integration_test.go:184: round 9: no worker had the cores the transcode job costs`; `integration` failed as aggregate. | both (d): the logs give the assertion and a playback-decision line but no reason line naming the cause; no Postgres or store bound line, so load not established |
+| 45916656701 | #292 | success | none | — |
+| 45958482016 | #302 | success | none | — |
+
+So far 3 of 8 failed (already more than 2, but the triage and its count are owed at 10, not now). The two cut-read recovery cases are counted apart: all three `TestAFailureThatIsNotTheFilesIsMadeAgainForTheRequestThatWaited/<a re-encode | a copy | a job that burns in a subtitle>, the source store cuts a read` subtests and `TestACauseThatPersistsStartsAtMostThreeFreshJobsAndThenFails/the_source_store_cuts_a_read` ran and passed in each of the 8 runs (0 failures), so no JS-159 brief is owed from this partial count.
+
+`40P01` search: each of the 8 run logs and, for the failed jobs, their `tests.json` (no `failures.log` artifact was present) has 5 lines: two passing unit subtests named `40P01_bare`/`40P01_wrapped` in `TestADeadlockOrSerializationFailureOnAWorkersWriteNeverFailsTheJob`, two matching integration subtests of the same name, and one `a finished segment is kept until it can be recorded ... ERROR: deadlock detected (SQLSTATE 40P01)` inside the passing `TestASegmentCommitThatPostgresAbortsForADeadlockNeverFailsTheJob`. All are inside the two tests that provoke it on purpose; none is outside them, and none is on a job end (`recording the end of a transcode job failed`), so BL-260 is not promoted. A passing test's output is not printed in the job log unless it logs, so a `40P01` inside one is not seen by this search. No hook was added to the worker to force the exit-first order (D-061). The runs of PRs 270, 277 and 279 on 2026-11-24 are outside this window and are not counted here (D-074).
+
+Criterion 8 holds for this record: no retry, skip, raised timeout, widened bound or lengthened lease; no check amended to pass, and no product code changed — the only repository changes are this record and the regenerated `test/shard-times.txt`, which decides shard deals only.
+
+**Still unmet:** the remaining 2 of 10 counted runs and their triage (including the product-owner counts and the load brief if two or more failures are load); the split itself, if the lead chooses it; and any brief owed from a product verdict (the switchover (c) row).
