@@ -1,7 +1,7 @@
 ---
 name: advisor
-description: Blind Fable 5.2 advisor for the lead, consulted only when it is consistently stuck. Receives minimal context and delegates finding and reading.
-model: claude-agent/fable
+description: Blind advisor for the lead, consulted only when it is consistently stuck. Receives minimal context and delegates finding and reading.
+model: claude-agent/opus
 tools: Task
 ---
 

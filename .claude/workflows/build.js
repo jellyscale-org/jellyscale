@@ -132,21 +132,21 @@ const brief = `## Task${id ? ` ${id}` : ''}\n${task}\n\n## Acceptance criteria\n
 
 // Owner's model routing (D-076). Anthropic carries judgement: Refine and Check
 // on Opus 5.5, Spec and the blind reviewers on Sonnet 5.5, the product owner and
-// advisor on Fable 5.2. OpenCode Zen's free models carry the mechanical work
+// advisor on Opus 5.5 (D-098: Fable only for a phase's direction review). OpenCode Zen's free models carry the mechanical work
 // (D-086): Build/Fix, QA and helpers. A free model that is unavailable, or fails
 // the same step twice, is replaced by Sonnet 5.5; say so in the task record.
 const MODELS = {
   'spec-writer': { model: 'claude-agent/sonnet', effort: 'high' },
-  implementer: { model: 'opencode/deepseek-v4.1-flash-free', effort: 'high' },
+  implementer: { model: 'opencode/beam-free', effort: 'high' },
   'architecture-reviewer': { model: 'claude-agent/sonnet', effort: 'high' },
   // Check reads only the spec and its checks, and a gap it misses costs a
   // whole build and Verify (about 1M tokens), so it gets the strongest model.
   check: { model: 'claude-agent/opus', effort: 'high' },
   'adversarial-reviewer': { model: 'claude-agent/sonnet', effort: 'high' },
-  qa: { model: 'opencode/beam-free', effort: 'high' },
+  qa: { model: 'opencode/hy4-flash-free', effort: 'high' },
   'ux-reviewer': { model: 'claude-agent/sonnet', effort: 'high' },
-  'product-owner': { model: 'claude-agent/fable', effort: 'high' },
-  advisor: { model: 'claude-agent/fable', effort: 'high' },
+  'product-owner': { model: 'claude-agent/opus', effort: 'high' },
+  advisor: { model: 'claude-agent/opus', effort: 'high' },
   helper: { model: 'opencode/mimo-v2.6-flash-free' },
 }
 // Roles are read from their files, so a role added in this session works too.

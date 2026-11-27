@@ -1997,8 +1997,8 @@
     },
     {
       "id": "BL-222",
-      "title": "Apps ask for trickplay tiles and for sign-in by code, which are not built; what their viewers see is not known",
-      "notes": "Roku, Streamyfin, Fladder and Jellyfin for Android request Trickplay routes and get 404 (read from source). Whether they show no preview or an error is unverified. /QuickConnect/Enabled answers false today (internal/api/system.go, read by the lead), so apps should not offer a code. JS-075 records both. Promote: if an app shows an error or offers a code that fails, plan the smallest answer that makes it quiet (an item that advertises no trickplay) ahead of JS-053 and JS-037; if apps are quiet, close.",
+      "title": "Apps ask for trickplay tiles, which are not built; what their viewers see is not known",
+      "notes": "Roku, Streamyfin, Fladder and Jellyfin for Android request Trickplay routes and get 404 (read from source). Whether they show no preview or an error is unverified. /QuickConnect/Enabled answers false today (internal/api/system.go, read by the lead), so apps should not offer a code. JS-075 records both. Promote: if an app shows an error or offers a code that fails, plan the smallest answer that makes it quiet (an item that advertises no trickplay) ahead of JS-053 and JS-037; if apps are quiet, close. D-101: sign-in by code is built (JS-037); narrowed to trickplay tiles, which come back with JS-053.",
       "reviewer": "product-owner",
       "severity": "minor",
       "source": "client research 2026-11-20",
@@ -2543,6 +2543,87 @@
       "source": "JS-127; D-087",
       "title": "No committed check that a request naming the caller's own id is served during a Postgres outage",
       "notes": "It works today, shown by hand by two reviewers. Add the check when the outage snapshot or JS-127's rule next changes."
+    },
+    {
+      "id": "BL-284",
+      "status": "closed",
+      "severity": "minor",
+      "reviewer": "adversarial",
+      "source": "JS-037",
+      "title": "An approval sent with a request body that then hangs up logs no warning naming the user",
+      "notes": "The handler never reads the body, so the hang-up goes unnoticed and only 'request failed' is logged (D-097's re-review, by command). Awaits the product owner's triage in the next batch. D-101: dropped; the failure is already logged as 'request failed' and an operator loses nothing they can act on."
+    },
+    {
+      "id": "BL-285",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "adversarial",
+      "source": "JS-037",
+      "title": "A shutdown that cuts a successful approval's release leaves it counted as a failure",
+      "notes": "Ticket.Release is not cut at the grace; with its rows locked it logged 'reservation was not given back: closed pool' (D-097's re-review, by command). D-101: backlog; comes back with JS-079 or an operator's report of a false failure count."
+    },
+    {
+      "id": "BL-286",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "adversarial",
+      "source": "JS-033",
+      "title": "A password change whose own token ends mid-request answers 500, not 401",
+      "notes": "checkCurrentPassword (internal/api/accounts.go) treats the missing row as an error; by command in the re-review. Awaits the product owner."
+    },
+    {
+      "id": "BL-287",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "architecture",
+      "source": "JS-033",
+      "title": "The token lookup does not refuse a disabled account's token",
+      "notes": "Only issue paths check is_disabled; a token an older replica issues survives a rollback. By reading. Awaits the product owner."
+    },
+    {
+      "id": "BL-288",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "architecture",
+      "source": "JS-033",
+      "title": "A WebSocket stays open after its token ends, and logs an ERROR on every keepalive",
+      "notes": "openPlays covers stream routes only; touchSocket fails by the foreign key. By reading. Awaits the product owner."
+    },
+    {
+      "id": "BL-289",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "ux",
+      "source": "JS-033",
+      "title": "A refused name or common password shows a generic error and logs nothing",
+      "notes": "Duplicate name, invalid name, common password. By the running UI. Awaits the product owner."
+    },
+    {
+      "id": "BL-290",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "ux",
+      "source": "JS-033",
+      "title": "The API answers HasPassword true for accounts without one, so an admin can't find them",
+      "notes": "Matches Jellyfin; D-105 makes such accounts unable to sign in by password. Awaits the product owner."
+    },
+    {
+      "id": "BL-291",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "ux",
+      "source": "JS-033",
+      "title": "jellyfin-web's Reset on one's own password spins",
+      "notes": "Refused under D-103; jellyfin-web shows no message. Awaits the product owner."
+    },
+    {
+      "id": "BL-292",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "ux",
+      "source": "JS-033",
+      "title": "A viewer disabled mid-film sees no message or sign-in prompt",
+      "notes": "Playback stops within about 22 s; the page stays on the player. Awaits the product owner."
     }
   ]
 }

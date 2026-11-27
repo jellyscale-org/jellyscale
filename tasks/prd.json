@@ -96,7 +96,7 @@
         "Exported over OTLP to any backend, off by default; the dogfood runs a backend and the docs show reading a stall from it",
         "Checked with real processes: a test collector receives a playback's trace from three processes, with a stall and a failover in it"
       ],
-      "priority": 84,
+      "priority": 86,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -117,7 +117,7 @@
         "Metrics beyond the transcode path: HTTP requests by role, route and status with latency, store operations and bytes by store, scan durations and errors",
         "Every figure the docs tell an operator to watch is a series on /metrics, and docs/running.md's table lists every series the endpoint serves, compared once by hand with a live /metrics answer when the task closes, the comparison recorded; no test reads the doc (D-069, superseding D-038's 'by a check')."
       ],
-      "priority": 83,
+      "priority": 85,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -134,7 +134,7 @@
         "jellyfin-web's remote control drives another session",
         "POST /Sessions/Capabilities and /Sessions/Capabilities/Full are accepted and stored for the session, so other clients see it as a remote-control target (#106)"
       ],
-      "priority": 69,
+      "priority": 71,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -142,53 +142,6 @@
       ],
       "source": "PRODUCT.md phase4-ha; compat/coverage-12.4.tsv phase4-ha (10 routes)",
       "notes": "Requested by Fluster, the client that ships with jellyscale: #106. Access: commands reach the caller's own user's sessions, an administrator any; adding a user to a session is admin. (access model, 2026-11-16)"
-    },
-    {
-      "id": "JS-033",
-      "phase": "ID",
-      "title": "User management",
-      "description": "Create, delete, disable users; change passwords; preferences and configuration.",
-      "acceptanceCriteria": [
-        "Observed first. `compat/captures/users-admin-12.4.md` and `.json`, from a script under `test/differential/`, with an admin and two viewers: `GET /Users` with and without `isHidden` and `isDisabled`; `POST /Users/New`: a name already used in other case, an empty name, no password; `POST /Users?userId=`; `DELETE /Users/{id}`: self, last admin, a user nobody has, a malformed id; `POST /Users/{id}/Policy`: the full body, missing fields, demoting the last admin, disabling yourself; `POST /Users/Password`: wrong, empty and right `CurrentPw`; an admin for another user; `ResetPassword`; a user with no password; `GET /Auth/Providers` and `/Auth/PasswordResetProviders`; a disabled user's sign-in and token; every request jellyfin-web 12.4's user list, new-user, profile, parental-control, password and Quick Connect pages send, and what each page shows for a 400 or 403 from them.",
-        "The 12.4 routes answer with the status and shape captured: `POST /Users/New`, `GET /Users`, `POST /Users`, `DELETE /Users/{userId}`, `POST /Users/{userId}/Policy`, `POST /Users/Password`, `GET /Auth/Providers` (and `/Auth/PasswordResetProviders` if the pages call it). Every difference goes in `compat/differences.yaml`. POST /Users/{userId}/Password, which jellyfin-web calls and Jellyfin marks obsolete, is an alias (compat/captures/users-admin-12.4.md, invariant 20, D-069).",
-        "`Route.Access` gains `admin`, and `Handler()` still panics on any other word. Five routes declare it with `Users: admin-any`: `POST /Users/New`, `DELETE /Users/{userId}`, `POST /Users/{userId}/Policy` and `GET /Auth/Providers` and `GET /Auth/PasswordResetProviders` (Jellyfin refuses viewers both). On each, a viewer token gets 403, and no token or an unknown one gets 401 (401 first), with no statement beyond the token lookup. TestAccess asks each. Named mutant: the guard treating admin as viewer. A viewer's request with a malformed id on an admin route is 403, as captured: access is checked before the id.",
-        "`GET /Users`, `POST /Users` and `POST /Users/Password` are viewer routes with `Users: admin-any`, through JS-127's one helper: a non-admin naming someone else or nobody gets 403, and nothing is read; an admin naming nobody gets 404; a malformed id gets 400; path and query disagreeing gets 400 for an admin. The pull request lists the larger admin-any set; `endpoints.yaml` and `docs/access.md` are regenerated with `user:`.",
-        "`GET /Users` gives a viewer exactly one entry, themselves, and an admin every user, disabled ones included, each with its stored IsAdministrator and IsDisabled. In a recorded jellyfin-web run, the Quick Connect page lists every enabled user to an admin.",
-        "`POST /Users/New` makes an enabled non-admin. A name taken in any case gets the captured answer, and nothing is created. Forced: two processes creating one name at once make exactly one user. A deleted user's name can be reused; the new user inherits no watch state, favourite, device or token.",
-        "Enforced Policy: changes to IsAdministrator, IsDisabled and EnableContentDownloading act on the next request through another process. A demoted admin gets 403 on the admin routes. With EnableContentDownloading false, GET /Items/{id}/Download is 403 through stream, and that user's item says CanDownload false, decided per user at answer time and never written into the shared items.dto. LoginAttemptsBeforeLockout stays -1, no account is disabled by failed sign-ins, and a POST changing LoginAttemptsBeforeLockout or InvalidLoginAttemptCount from GET's value is 400 (D-020, D-093).",
-        "Policy says only what is enforced: IsAdministrator, IsDisabled and EnableContentDownloading are stored and act. A POST changing any other field from the value GET answers is 400 naming every such field, stores nothing, and is logged at warn with the user and the fields. Not a change: null where GET answers []; any value of EnableAllChannels, EnabledChannels or BlockedChannels (no channels exist; listed in compat/differences.yaml). GET's own Policy posted back answers 204 (D-093).",
-        "A disabled user's right password gets the wrong password's 401 byte for byte, after the same bcrypt work, shown by a timing check that can fail (as JS-145). A deleted user's name answers as an unknown name, and counts toward the JS-145 bounds like one. The log names the disabled account as the reason (D-096). Re-enabling brings back no old token, as Jellyfin 12.4 does.",
-        "Forced with real processes (`test/roles.sh`): after a disable or delete through api 1, every token of the user gets 401 on its next `GET /Users/Me` through api 2 and its next byte range and HLS segment through stream.",
-        "After a disable or delete commits and the stream replica's next snapshot refresh (5 s or less), with Postgres held away, the user's byte ranges are not served from the snapshot. Invariant 37's accepted window covers only a change in the 5 s before an outage.",
-        "Quick Connect (JS-037): a disabled account's Authorize is 401. A code it approved, redeemed through another process after the disable or delete commits, gives the unknown-secret 404 and issues no token. `quickconnect.Redeem` checks only that the user exists today.",
-        "The last-admin race as written: demote, disable, delete, and a mixed pair (A demotes B while B deletes A). Exactly one 204, the other 403, and one enabled admin remains. Named mutant as written. A sole admin doing any of the three to themselves gets 403.",
-        "Delete removes the user's `user_item_data`, `display_preferences`, `devices`, `sessions`, `session_sockets` and approved Quick Connect codes in one transaction, and no row of another user changes.",
-        "Passwords: Changing your own needs the current one. A wrong one changes nothing and counts in JS-145's per-name and per-address bounds together with sign-in; 10 from one address gets 403 with Retry-After. A user with no password follows D-105. An admin resets another's password without the current one. Either way, the user's other tokens get 401 on the next request through api 2 and stream; the device that changed its own password keeps its token.",
-        "A new or changed password in the shipped list is 400 with a message, and nothing is stored. `docs/access.md` names the list's source and size, and nothing is sent outside the operator's servers.",
-        "A running stream stops: forced, a direct play of the whole file read slowly closes within 15 s of sign-out, a password change, delete or disable, having sent less than the file. An HLS viewer's next segment gets 401.",
-        "In the jellyfin-web e2e tier an admin lists, creates, sets a password, disables, enables, demotes and deletes; the profile, password, parental-control and access pages save, and delete works; New User works with 'all libraries' ticked. Otherwise, until JS-036, it makes the user and shows its generic error (D-093).",
-        "Criterion 11 kept: LoginAttemptsBeforeLockout stays -1 and the `differences.yaml` entry stands (D-020).",
-        "A Policy POST changes only the fields its body names: omitting IsAdministrator, IsDisabled or EnableContentDownloading leaves each as stored (Jellyfin resets them; listed in compat/differences.yaml); a body without the provider ids is accepted (D-094).",
-        "While adminUser names a user, DELETE and a name change of that user answer 403 naming the adminUser key, logged at warn; with the key removed they are an ordinary user's. Demote and disable are allowed and survive a restart. docs/running.md says so (D-095).",
-        "Start-up that would create adminUser with a commonly guessed JELLYSCALE_ADMIN_PASSWORD stops, naming the variable and never the value; an existing account is never checked, so no upgrade stops. The quick start's example password changes (D-095). If the test fixtures need more than a password swap, the lead returns to the product owner.",
-        "Settled at Check (lead): an administrator naming the zero id gets JS-127's 404 (Jellyfin's 400 is listed in compat/differences.yaml); disabling an administrator stays allowed under the last-administrator rule, and Jellyfin's refusal is listed there (D-095); a wrong CurrentPw counts toward the requesting device's bound as a known device and toward the per-address bound (D-020).",
-        "An empty new password is refused like a commonly guessed one: 400 with the reason in the body, nothing stored, whoever sets it (listed in compat/differences.yaml; jellyfin-web shows its generic message, and docs/access.md says so). An administrator's ResetPassword of another user leaves the account with no password: every password sign-in for it, the empty one included, gets the wrong password's 401 until an administrator sets one, and every token of the user gets 401 on its next request through api 2 and stream. Other sign-ins (D-102) are unaffected. A ResetPassword of one's own account is refused and changes nothing, administrator or not, with or without CurrentPw. (D-100, D-103).",
-        "An account with no password (migrated, created without one, or reset by an administrator) is refused every password sign-in, the empty password included, with the wrong password's 401 after the same bcrypt work, until an administrator sets a password; its other sign-ins (D-102) are unaffected. POST /Users/New with no or an empty Password creates the user with no password (listed in compat/differences.yaml). docs/access.md and JS-060's migration docs tell the operator to set each such user's password or link them through the provider (D-105).",
-        "Settled at Check (lead): the pages' other calls work: GET /Channels and GET /Localization/ParentalRatings answer a valid empty list, and GET /Library/MediaFolders and GET /Devices answer minimal real lists with admin access, each only if a page the criteria name needs it; compat/differences.yaml keeps the IsHidden entry, citing D-093 and no task; every fixture and test that configures a commonly guessed admin password swaps it (D-095).",
-        "No token outlives a disable: sign-in, Quick Connect redemption and a password change cannot leave a live token for an account being disabled, forced with the disable held (D-096, criterion on disabled accounts).",
-        "Stopping a running stream costs Postgres no more than a poll: forced, a slow direct play of 15 seconds adds at most a handful of statements on the stream replica, not one per chunk sent (invariant 10)."
-      ],
-      "priority": 27,
-      "status": "todo",
-      "passes": false,
-      "dependsOn": [
-        "JS-125",
-        "JS-127"
-      ],
-      "source": "PRODUCT.md identity",
-      "notes": "/Configuration moved to JS-116 (2026-11-15). Access criteria from the access model (2026-11-16). Refine with care: a throttle per client address needs a trusted-proxy setting first (behind an ingress every request has its address), and a lockout by user name lets anyone lock a known account out. State what start-up does when the configured administrator was deleted or demoted through the API. D-069: named mutants are shown failing once by hand in the Spec step and recorded in the task's record; no mutant table or script is committed.",
-      "core": true,
-      "ux": true
     },
     {
       "id": "JS-034",
@@ -199,7 +152,7 @@
         "No plain token in the database",
         "API keys created and revoked through jellyfin-web"
       ],
-      "priority": 56,
+      "priority": 58,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -216,7 +169,7 @@
         "Last use time and address recorded",
         "A read-only key is shown against the routes it may call and those it may not: each allowed route answers, each other route is refused"
       ],
-      "priority": 70,
+      "priority": 72,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -248,45 +201,6 @@
       "notes": "Moved to directly after JS-033 (owner, 2026-11-16)."
     },
     {
-      "id": "JS-037",
-      "phase": "ID",
-      "title": "Quick Connect",
-      "description": "Initiate, Connect, Authorize, AuthenticateWithQuickConnect; pending codes in Postgres with a short expiry so any api replica answers.",
-      "acceptanceCriteria": [
-        "Observed first: a rerunnable capture of Jellyfin 12.4 (compat/captures/quick-connect-12.4) records the status, body and fields of all five routes in each state: Quick Connect on by default and turned off; a code pending, approved, redeemed and expired; an unknown code and an unknown secret; Initiate missing each device field and carrying a stale token; approval naming yourself, naming another user as a viewer and as an administrator, and approving an already-approved code; redemption before approval, twice, and after the approving account is deleted; a device already signed in to the same account and to another one. It also records what jellyfin-web sends and shows on its login page and Quick Connect page, for a viewer and an administrator.",
-        "Each route answers what that capture records; every difference is listed in compat/differences.yaml with its reason, and a check asks jellyscale the capture's requests.",
-        "Moonfin (Moonfin-Core at a pinned commit, D-030) signs in with a code approved in jellyfin-web, then plays a film; the run records the device or emulator. An app whose player sends no token is not a target (D-026).",
-        "In jellyfin-web, a browser holding no token picks Use Quick Connect; a second browser signed in as a viewer approves the code; the first is then signed in as that viewer and plays a film.",
-        "Initiate, approval, every Connect poll and redemption can each be answered by a different api replica, run as separate processes; an api replica killed between any two steps loses no code, approval or token.",
-        "A code is six decimal digits, as Jellyfin's are. No code is live for two devices at once. Only the secret reads a code's state or redeems it; the code alone never yields a token. Connect's answer never carries a token.",
-        "A code not approved within 10 minutes of Initiate is gone: approval answers as for an unknown code, and Connect and redemption answer as for an unknown secret. An approved code can be redeemed only within the window the capture confirms after approval, never later.",
-        "Redeeming before approval answers 'not yet', as Jellyfin does, and the code can still be approved. When approval and redemption arrive at once on two replicas, the device gets either 'not yet' or its token, never an error.",
-        "If two accounts approve one code at once on two replicas, the device is signed in to exactly one of them; the other approval is refused and changes nothing. A later second approval is refused the same way.",
-        "Redeeming one secret twice, one after the other or at once on two replicas, never leaves the device with two live tokens.",
-        "Approval is always for the approver's own account, administrators included. A userId naming the caller, missing, or empty (as jellyfin-web's administrator page may send it) approves for the caller. Naming anyone else answers 403 and leaves the code pending. This differs from Jellyfin and is listed in compat/differences.yaml.",
-        "The token belongs to the device that asked for the code: its DeviceId, name, app and version, as /Sessions shows. It works on api and stream replicas like a token from a password sign-in. The approver's own token keeps working.",
-        "If the asking device already holds a token for the approver's account, that old token is replaced and answers 401. A token the device holds for another account is kept. Both match what a password sign-in on that device does.",
-        "Initiate without DeviceId, Device, Client or Version is refused as Jellyfin refuses it, and nothing is stored. Initiate, Connect and redemption read no token, so a stale, revoked or unknown token sent with them changes nothing.",
-        "An account deleted after approving redeems nothing: the device gets the unknown-secret answer and no token. The same holds for a disabled account if JS-033 has landed first.",
-        "The guessing bound (D-078): failed approvals (an unknown, expired or already-approved code) are counted per approving account only. After 10 failures within 15 minutes, approvals by that account are refused for 15 minutes with 403 and Retry-After, and the refusal checks no code, counts toward nothing and does not lengthen itself. The account's tokens, playback and password sign-in go on. The bound holds across two replicas and restarts; 200 approvals sent at once check no more than 10 codes. Connect polling and redemption are never refused.",
-        "Nothing is refused for polling. Ten devices behind one address, each polling Connect every 5 seconds well past their code's expiry, are all answered. Initiate, Connect and redemption count toward no bound.",
-        "The password bounds neither count nor refuse any Quick Connect route. A device approved by code signs in while the account's name is refused to strangers and while its address is refused for passwords (D-020). Afterwards it is a known device of the account for JS-145's per-device bound.",
-        "At most 100 live codes exist across all replicas, pending or approved and unredeemed; the cap is not configurable. Past it Initiate is refused, the status chosen from what jellyfin-web is observed to show, and no code already issued is touched, so a TV's code works for its full time. Each refusal is logged with its reason and counted in a metric. docs/access.md and docs/running.md state the cap and that password sign-in is unaffected.",
-        "Quick Connect is on by default, as in Jellyfin 12.4, and is turned off in configuration. When off: /QuickConnect/Enabled answers false and jellyfin-web shows no Quick Connect button; the other four routes answer 401, as in Jellyfin; Moonfin falls back to the password form only on Initiate's 401 (#104); a replica with it off gives no token for a code started before it was turned off.",
-        "Each refusal is logged with its bound or cap, the approving account (for D-078) and never a secret. Refusals are counted in a metric labelled by bound or cap only.",
-        "Initiate, Connect and AuthenticateWithQuickConnect are open to anyone, each with its reason. Authorize requires a viewer. TestAccess asks all five.",
-        "docs/access.md states how long a code lives, the 100-live-code cap, D-078's bound, the worst-case 960 guesses per account per day, and that Quick Connect is how a viewer gets in while their name is refused. docs/status.md and docs/running.md (the configuration key and its default, and the cap) are updated. These are deliverables, not things to test.",
-        "An approval in flight ends at shutdownGrace: forced with Postgres stalled and the client gone, the replica exits within seconds of the grace (D-097).",
-        "An approval that fails after its client hung up is logged at warn with the user and the reason, never the code (D-097)."
-      ],
-      "priority": 29,
-      "status": "todo",
-      "passes": false,
-      "dependsOn": [],
-      "source": "PRODUCT.md identity",
-      "notes": "Requested by Fluster, the client that ships with jellyscale: #104. Access: approval is own, an administrator included. (access model, 2026-11-16) Needs its own guessing bound, following JS-145's design (product owner, 2026-11-19). Findroid is dropped as a target: the second client is one that sends its token on media requests (owner, 2026-11-20, D-026). D-078: failed approvals are bounded per approving account, 10 failures in 15 minutes then 15 minutes refused. D-079: at most 100 live codes; past the cap Initiate is refused, never an eviction. C (per-address Initiate caps) is backlog, promoted when the metric shows the cap reached. D-082: the TV journey for password and provider accounts alike."
-    },
-    {
       "id": "JS-038",
       "phase": "ID",
       "title": "Forgot password answers ContactAdmin",
@@ -294,7 +208,7 @@
       "acceptanceCriteria": [
         "Answer shape as Jellyfin 12.4"
       ],
-      "priority": 71,
+      "priority": 73,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -319,7 +233,7 @@
         "With passwordSignIn true, passwords work for everyone; removing the provider turns them back on; tokens issued before the switch keep working; forced with two api replicas, both answer alike (D-102).",
         "docs/running.md gives the two setups, 'Postgres only' and 'with your provider', and names the break-glass account; docs/status.md lists the apps verified by a live run to sign in by Quick Connect (D-102)."
       ],
-      "priority": 35,
+      "priority": 36,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -327,7 +241,7 @@
         "JS-033"
       ],
       "source": "PRODUCT.md identity",
-      "notes": "Needs its own guessing bound, following JS-145's design (product owner, 2026-11-19). D-081: moved from 68 to 36, after JS-178; JS-056 and the tasks at 37 to 46 each moved down one. Criteria, dependency on JS-037 and scope unchanged. Reopens to 30 (after Quick Connect) if a household with an identity provider is waiting or reports it. D-082. Refine returns a brief before Spec on whether an administrator may be linked by name, since whoever picks a name at the provider takes that account. No device-authorization grant (D-083: rejected as a second protocol; a QR, if it comes, is Quick Connect's code in a link, its own task after this one)."
+      "notes": "Needs its own guessing bound, following JS-145's design (product owner, 2026-11-19). D-081: moved from 68 to 36, after JS-178; JS-056 and the tasks at 37 to 46 each moved down one. Criteria, dependency on JS-037 and scope unchanged. Reopens to 30 (after Quick Connect) if a household with an identity provider is waiting or reports it. D-082. Refine returns a brief before Spec on whether an administrator may be linked by name, since whoever picks a name at the provider takes that account. No device-authorization grant (D-083: rejected as a second protocol; a QR, if it comes, is Quick Connect's code in a link, its own task after this one). Refine designs the return so that no token or reusable code appears in a URL, and so that JS-180 is a second form of the same handoff, not a second protocol (D-083, D-099)."
     },
     {
       "id": "JS-040",
@@ -340,7 +254,7 @@
         "Whatever replaces the token in a URL never ends a film: a film longer than the replacement's lifetime, a pause longer than it, a seek, a move to another stream replica and a Postgres outage served from the snapshot each go on playing with no action by the viewer, in jellyfin-web (e2e) and with a client that sends its token in a header",
         "Before building: a trade-off brief to the product owner on whether TranscodingUrl and the subtitle and attachment DeliveryUrls lose the account token too (#222), against DOMAINS 17 ('TranscodingUrl stays Jellyfin-shaped and unsigned'), the Kodi criterion above and D-005 (a PlaybackInfo-based grant was set aside); until it is answered this task covers the URLs inside playlists only. A replacement is never logged and is redacted wherever tokens are, and a media request with neither still answers 401 (D-026)"
       ],
-      "priority": 55,
+      "priority": 57,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -355,7 +269,7 @@
       "acceptanceCriteria": [
         "Revoked device's token stops working"
       ],
-      "priority": 73,
+      "priority": 75,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -370,7 +284,7 @@
       "acceptanceCriteria": [
         "jellyfin-web's dashboard lists entries"
       ],
-      "priority": 74,
+      "priority": 76,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -385,7 +299,7 @@
       "acceptanceCriteria": [
         "jellyfin-web shows and changes avatars"
       ],
-      "priority": 75,
+      "priority": 77,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -419,7 +333,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 54,
+      "priority": 56,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -454,7 +368,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 76,
+      "priority": 78,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -470,7 +384,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 77,
+      "priority": 79,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -486,7 +400,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 79,
+      "priority": 81,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -502,7 +416,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 80,
+      "priority": 82,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -519,7 +433,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 53,
+      "priority": 55,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -535,7 +449,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 52,
+      "priority": 54,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -557,7 +471,7 @@
         "Operators see the family and worker of each stream (Sessions, /metrics, JS-021 traces); the overrides are JS-170's three and no more.",
         "An optional GPU worker pool requests nvidia.com/gpu or the vendor's resource through its device plugin; documented in docs/running.md."
       ],
-      "priority": 81,
+      "priority": 83,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -578,7 +492,7 @@
         "Matches a Jellyfin 12.4 capture where a client calls it",
         "Played or browsed in jellyfin-web"
       ],
-      "priority": 82,
+      "priority": 84,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -605,7 +519,7 @@
         "The example manifests declare no transcodeCores and give workers CPU requests equal to limits in whole cores (D-064)",
         "docs/running.md and the example manifests show how an operator supplies a web client through webDir until the image ships one (D-089)."
       ],
-      "priority": 37,
+      "priority": 39,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -624,7 +538,7 @@
         "A rolling upgrade under playback loses no picture",
         "docs/running.md's upgrade section says what an OutputVersion bump costs (every film playing is re-encoded once and its stored segments orphaned), and a bump touches only the specs whose output changed, or the pull request says why it cannot"
       ],
-      "priority": 86,
+      "priority": 88,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -641,7 +555,7 @@
       "acceptanceCriteria": [
         "Restore tested from a backup"
       ],
-      "priority": 87,
+      "priority": 89,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -675,7 +589,7 @@
         "200 mixed streams with stated rebuffer ratio and p95s",
         "A stated target for time to first frame on a start and on a seek, held at 200 streams and recorded run over run, so 'play starts in seconds' is measured"
       ],
-      "priority": 89,
+      "priority": 91,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -693,7 +607,7 @@
         "Two viewers on different api replicas stay in sync in jellyfin-web",
         "compat/coverage-12.4.tsv phase7-syncplay routes built (23)"
       ],
-      "priority": 90,
+      "priority": 92,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -713,7 +627,7 @@
         "Replays run in CI and fail on a response a client would reject (status, missing field, wrong shape)",
         "No titles or paths from a real library in the captures (synthetic fixtures only)"
       ],
-      "priority": 67,
+      "priority": 69,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -732,7 +646,7 @@
         "test/differential/run.sh passes with the entries removed",
         "GET /Items/Latest honours groupItems as Jellyfin 12.4 does (default true): new episodes of one series are one entry with Jellyfin's count field, limit counts entries after grouping, groupItems=false keeps today's answer; this entry is matched, not kept as an improvement (#234, D-039)"
       ],
-      "priority": 68,
+      "priority": 70,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -782,7 +696,7 @@
         "A worker of the previous release is never counted as a partner for a shared play unless it has said it can help: during a rolling upgrade no play is admitted as shared and then left without a helper, in a real-process test (D-061).",
         "Observed first with real processes under a playing film: a migration that takes exclusive locks on two tables a running worker and a stream replica use is applied while they run. The upgrading replica starts (it applies the migration again after a deadlock or lock timeout) or refuses once with a message naming the lock; it never fails to start silently. No viewer request is answered an error. The record says what a stream replica answers from memory if Postgres stops just after its snapshot read was aborted; a gap there returns to the product owner as a brief and is not built here (D-063)."
       ],
-      "priority": 58,
+      "priority": 60,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -800,7 +714,7 @@
         "No library titles in the fixtures",
         "A title that ends in a year-like number keeps it: synthetic table cases 'Harbor Lights 2049 (2017)', 'Harbor.Lights.2049.2017.1080p', 'Harbor Lights 2049' (no year), '2001 Night Garden (1968)', '1888 (2019)' and '2031' give the right title and year, and an existing library's item ids do not change"
       ],
-      "priority": 57,
+      "priority": 59,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -817,7 +731,7 @@
         "A library with background extraction on has every text track extracted after a scan, one read per film; one without it extracts on first pick as today",
         "docs/running.md states the setting and its cost"
       ],
-      "priority": 64,
+      "priority": 66,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -834,7 +748,7 @@
         "A process warns at startup when the cluster's registered processes approach max_connections",
         "A multi-process variant of test/stress.sh measures connections and Postgres load at 50 workers"
       ],
-      "priority": 60,
+      "priority": 62,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -857,7 +771,7 @@
         "Every existing citation still resolves: shown by one search run when the task closes, its output recorded; no committed check reads code, docs/, ARCHITECTURE.md or tasks/ (D-069).",
         "The pointers change in the same change: CLAUDE.md, the role files in .claude/agents/ (the product owner's read list included) and the build workflow's instructions say every agent reads DOMAINS.md, and a task's agents also read the domain file of each domain the task touches"
       ],
-      "priority": 50,
+      "priority": 52,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -873,7 +787,7 @@
         "PlaybackInfo, the stream requests, the job and the worker's ffmpeg log lines of one playback carry the same id",
         "docs/running.md shows how to follow one playback"
       ],
-      "priority": 61,
+      "priority": 63,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -892,7 +806,7 @@
         "encode becomes a job type with named state: no function in internal/transcode is longer than 120 lines (a structure check), and the unreachable branches the audit found (run(begin), next < begin, the stale-file removal) are gone, with the integration and e2e tiers passing with no check changed",
         "Every job kind observes a store failure only where store.Reader gives up (store.InputWithFailure, JS-088): the chapter-picture, subtitle, fonts and .sup jobs no longer wrap the store below the Reader, so a cut the Reader healed never fails a job or skips a chapter (BL-169)"
       ],
-      "priority": 65,
+      "priority": 67,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -909,7 +823,7 @@
         "A failing nightly run opens or updates one issue naming the failed tests",
         "The nightly run also runs, under the ffmpeg of the published image at its pinned version, the existing transcode integration checks whose result depends on ffmpeg: a restart's splice for a re-encode and for a copy, the tone map, a text and an image burn-in, and the read-ahead pause. No new check is written for it and it is never a required check of the merge queue: what an operator's viewers get is made by that ffmpeg, which the queue (6.1) does not run (D-069)."
       ],
-      "priority": 91,
+      "priority": 93,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -926,7 +840,7 @@
         "Branch protection is the ruleset alone; the classic rule is removed",
         "A pull request touching .github/ or test/**/*.sh runs the media tiers as ci:full does, and only the ci:full label restarts a run"
       ],
-      "priority": 92,
+      "priority": 94,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -942,7 +856,7 @@
         "An image with ffmpeg 6.1, Node and Chrome runs test/e2e/run.sh and test/roles.sh locally, to reproduce a merge-queue failure",
         "Its versions match CI's"
       ],
-      "priority": 93,
+      "priority": 95,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -961,7 +875,7 @@
         "A viewer with no history gets a sensible answer (empty or popular in the library), and another account's history never shapes a viewer's suggestions",
         "A viewer in a browser sees their suggestions, each with its reason, with no other app: on a page jellyscale serves (as JS-122's), or where jellyfin-web already shows recommendations if what it asks there is observed on Jellyfin 12.4 first and no Jellyfin route changes behaviour"
       ],
-      "priority": 78,
+      "priority": 80,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -991,7 +905,7 @@
       ],
       "notes": "Owner, 2026-11-15: a page, after the track-language batch. Moved up (D-028): the settings are built and no browser viewer can reach them. 2026-11-17 (JS-121's UX review): PlayDefaultAudioTrack defaults to true, so a viewer who only saves a language keeps hearing a film's flagged track, usually its original; the page says so and offers the switch.",
       "passes": false,
-      "priority": 43,
+      "priority": 45,
       "source": "owner 2026-11-15",
       "status": "todo"
     },
@@ -1011,7 +925,7 @@
         "With real processes: a worker given jobs whose costs add up to its measured capacity (JS-161), at faster and at medium, keeps each at 1.2 times real time or more without a helper",
         "No viewer-visible change while every spec is veryfast: the transcode, seek and helper e2e scenarios pass as before"
       ],
-      "priority": 45,
+      "priority": 47,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1034,7 +948,7 @@
         "The default change is listed under Changed guarantees: more CPU per viewer (fewer viewers per worker), up to about a second on a start on a full worker, a better picture",
         "A 4K HDR tone mapped re-encode, with and without a burned subtitle, holds real time at the default preset on any worker whose measured capacity admits it (JS-161), or the default does not apply to it; the pull request says, from JS-154's figures, which machines hold it at veryfast and no longer at faster (D-038, D-044)"
       ],
-      "priority": 46,
+      "priority": 48,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1053,7 +967,7 @@
         "With a store slow enough that a film's copy needs more than an hour, the copy completes and the film's seeks into long cues then cost what any seek does; a store that hangs still frees its background slot within the no-progress bound",
         "docs/running.md and DOMAINS 51 state the new rule; D-002's remembered failure applies only to what the new rule still cannot finish"
       ],
-      "priority": 62,
+      "priority": 64,
       "dependsOn": [
         "JS-089",
         "JS-143"
@@ -1073,7 +987,7 @@
         "The same answer for text-track extraction, which today also reads the whole film (it decides what JS-091's background extraction would cost)",
         "A recommendation with what each kind of film would then cost, recorded in spikes/; a follow-up task if it works"
       ],
-      "priority": 63,
+      "priority": 65,
       "dependsOn": [
         "JS-089"
       ],
@@ -1092,7 +1006,7 @@
         "The manifests and the chart cannot drift: a test fails when they would deploy different resources (for example, the manifests are the chart rendered with its defaults, checked in)",
         "The chart sizes CNPG's max_connections as JS-056's manifests do, and installing values whose sum exceeds it fails the render"
       ],
-      "priority": 85,
+      "priority": 87,
       "dependsOn": [
         "JS-056"
       ],
@@ -1116,7 +1030,7 @@
         "JS-089"
       ],
       "source": "decision D-002; product-owner plan review 2026-11-19",
-      "priority": 44
+      "priority": 46
     },
     {
       "id": "JS-146",
@@ -1135,7 +1049,7 @@
       "status": "todo",
       "passes": false,
       "dependsOn": [],
-      "priority": 59
+      "priority": 61
     },
     {
       "id": "JS-149",
@@ -1151,7 +1065,7 @@
         "The job's price (Spec.Cost) is at or above its measured CPU",
         "DOMAINS 53, docs/transcoding.md and docs/status.md say the one thing seen; the gap line leaves docs/status.md"
       ],
-      "priority": 51,
+      "priority": 53,
       "source": "product owner, D-021 (2026-11-19)",
       "status": "todo",
       "passes": false,
@@ -1172,7 +1086,7 @@
         "The figures go to the product owner as a brief with keeping the source's height and range priced per viewer, on CPU and on a GPU family; its decision names the task that closes the gap or accepts it, and docs/status.md's line is updated; its GPU figure is JS-163's (the HD 530 neither decodes Main 10 nor tone maps, JS-154), or is stated unmeasured if JS-163 has not run, and today's 2160-to-1080 burn-in path is measured there, not here (D-038)",
         "No viewer-visible change"
       ],
-      "priority": 47,
+      "priority": 49,
       "source": "product owner, D-021 (2026-11-19)",
       "status": "todo",
       "passes": false,
@@ -1199,7 +1113,7 @@
         "The procedure for moving to the next Jellyfin release names this pin with the others, or says none exists yet (BL-043)",
         "With Octave Web shipped and no operator webDir, `<server>/web/#/quickconnect?code=<code>` (the address Moonfin draws) ends at Octave Web's approval with the code filled in, on the terms of the QR task's criteria 2 to 4. With an operator's jellyfin-web at /web/, that page answers as before."
       ],
-      "priority": 38,
+      "priority": 40,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1220,7 +1134,7 @@
         "The differential tier asks both servers the route with the signed-in user's id, and any kept difference is in compat/differences.yaml with its reason; compat/coverage-12.4.tsv and docs/status.md name the route and the three clients",
         "docs/access.md's 'Stricter than Jellyfin' table lists every difference compat/captures/user-scope-12.4.md holds (D-087)."
       ],
-      "priority": 66,
+      "priority": 68,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1240,7 +1154,7 @@
         "POST PlaybackInfo with a MediaSourceId in upper-case compact form, in dashed form and as an id of no source are added to test/differential/requests.yaml, as observed on Jellyfin 12.4 during JS-153: the upper-case compact id answers the same on both and is no listed difference; the dashed id (refused by Jellyfin, accepted here) and the unknown id (NoCompatibleStream on Jellyfin, an empty list here) are listed in compat/differences.yaml, each with a verdict and its reason. No answer changes unless a capture shows an app docs/status.md lists as supported sending that form (D-041)",
         "No viewer-visible change"
       ],
-      "priority": 41,
+      "priority": 43,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1290,39 +1204,6 @@
       "notes": "ux: false, core: false. Reads JS-158's and JS-159's records when they exist; waits for neither. Does not hold any merge (owner, 2026-11-21). Runs beside JS-161; its reproduction runs do not share a machine with JS-174's measurement. If criterion 1 shows one cause behind most of the 12, the lead brings that count back before criteria 3 to 5 are built, and the task is cut to that cause. D-069: the table and the 10-run count also say, for each failure, whether it was a defect of the change itself that the integration shards on the pull request (ci:full) would have shown, and whether it was the fault-schedule test on a random seed. Columns of the table, not new work. Three or more of the first in the 10 runs brings integration shards on every code pull request to the product owner as a criterion of JS-097; one of the second on a build later shown right brings the fixed-seed list back as a brief. D-074: merges in parts, as PR 277 did; closes when the 10 runs are counted. A pull request that adds or changes integration tests runs ci:full once before it is queued."
     },
     {
-      "id": "JS-160",
-      "phase": "OPS",
-      "title": "Three transcode tests fail only for the product, not for their own waits, and the two unexplained failures leave a log that can name their cause",
-      "description": "JS-155's record names three test causes from the queue logs: a hold that catches the lease keeper's first renewal and then swallows its reconnect; a count-based wait that the asset sweep defeats by removing the old track first; a job inserted with no viewer row, which the keeper's cancel can beat to its end (named as likely). Each costs a merge-queue run of about an hour and delays the dogfood's redeploy. Two sightings have no cause because their logs cannot tell. D-043.",
-      "acceptanceCriteria": [
-        "Forced cause 1, a forgotten worker's late renewal: the order is forced by hand, the test's hold landing while the lease keeper's first renewal of the extraction's row has been sent and not yet answered. The unchanged TestAWorkerForgottenWhileItLivesEndsItsExtractionAndItsLateRenewalMovesNoCutLeaseLater fails at its own wait, \"a renewal to be on the held keeper connection\", and not at any check of the product. The fixed test passes under the same forcing.",
-        "Forced cause 2, a sweep between the replace and the wait: the order is forced by hand, an asset sweep by one of the test's own workers removing the replaced file's track after the replace and before the wait. The unchanged TestAfterTheFileIsReplacedAMidFilmRunDrawsAndReadsByTheNewFilesTrack fails at its wait for \"the new file's track\". The fixed test passes under the same forcing.",
-        "Forced cause 3, the keeper's renewal before the job's end: the order is forced by hand, the keeper's first renewal of the job answered before the worker's own end statement. The unchanged TestAJobThatStartsPastTheEndEndsDoneWithNoFFmpeg fails with \"ended cancelled, want done\". The fixed test ends done under the same forcing.",
-        "The sightings of 2026-11-24 are this task's causes: the past-the-end job read cancelled (queue run 45316094444, criterion 3's test) and the asset sweep removing a track before its replacement was stored (run 45339157706, TestTheStoredTrackOfAFileChangedBackIsNeverDeletedByTheSweepThatListedItAnOrphan, with TestTheAssetSweepRemovesAReplacedFilesAndARemovedFilmsTrackAndKeepsACurrentOne, same exposure). For the two sweep tests the old track must still be there, so no worker of the test takes the asset turn before the test's own sweep; the forcing of criterion 2 is shown for them too and they pass after the fix.",
-        "If, under criterion 3's forcing, a job that has a viewer still ends cancelled, that is a product finding: it goes to the product owner as a brief and the test is not changed to pass it.",
-        "Each forcing in criteria 1 to 4 is done once by hand and not committed (D-069). docs/testing.md records for each: the command and how the order was forced, the failure message before the fix and the result after it, and the machine. A cause that cannot be forced is recorded as cause unknown and goes to the product owner.",
-        "After the fix the forgotten-worker test waits for a real renewal: a lease renewal of the extraction's row that the hold kept from Postgres until after the worker was forgotten. Any other statement, or a renewal Postgres had already answered, does not satisfy the wait. A build whose late renewal moves the cut lease later still fails the test.",
-        "After the fix the replaced-file test waits for the new file's track: an object in the asset store that it did not hold before the replace, with no extraction queued or running, whether or not the old file's track was swept meanwhile. A build that never stores the new file's track fails at that wait with a message naming it; a build that draws or reads by the old file's track fails the picture or read check.",
-        "After the fix the past-the-end job has a viewer of its spec who is not stopped and was seen within the worker's idle time, as every production job has. A build that starts an ffmpeg for the job, fails it, or takes the worker down still fails the test.",
-        "For each test in criteria 4 and 7 to 9 the failure on its named wrong build is shown once by hand and its message recorded in docs/testing.md.",
-        "The seek-read test's every failure about the film's bytes (TestWithTheTrackStoredASeekIntoALongCueReadsNoMoreOfTheFilmThanAnySeek: a burnt-in seek over its limit; the older cue's seek reading more than the younger's) lists, for each run that read too much, every read of the film in the order opened, with its start offset, the bytes read through it, and the byte position of the cut, so a part read twice shows where it starts. Shown once with a failure forced by hand and recorded.",
-        "When an e2e scenario fails, in every gate (browse, play, cors, subtitles, failover, transcode), the run keeps under its log directory (which CI uploads on failure as e2e-logs-<shard>), named by gate and scenario (or gate and step): the viewer's record (every request, answer, socket with its frames, and the timeline, each timed), the browser's whole console at every level plus page errors, and a screenshot taken at the failure.",
-        "No failure overwrites another's artifact: two failing scenarios of one gate, the same scenario failing in two E2E_REPEAT iterations, and two failing gates each keep their own files.",
-        "In a failed scenario, for every request to the server that the browser reports failed (requestfailed), the output prints its method, path and the browser's error text, and what the test router answered for it: the status and the backend, or that the router received no such request.",
-        "A passing scenario keeps no artifact and prints no new line, and a gate whose scenarios all pass takes no longer than before beyond the run-to-run spread (measured once and recorded). The lead may relax this to allow router lines in server.log.",
-        "Criteria 12 to 15 are proven by hand: one forced failure in two scenarios of one gate plus a repeat shows the artifacts and the printed line, recorded in docs/testing.md and not committed (the e2e harness is not application behaviour).",
-        "No test retries or skips; no wait bound or timeout is raised; the rig's 3 s lease and the forgotten-worker test's 10 s lease are unchanged; no file changes outside *_test.go, test/e2e/ and docs, so no product code is changed to fit a test.",
-        "docs/testing.md names this task: the JS-155 table's rows for the three sightings give the forced runs and their verdicts and name JS-160, the 2026-11-24 sightings of criterion 4 name JS-160, and the Historical test failures summary (and its line saying the three were fixed by forcing the order or by the kit's reset keeping live workers) says how they were actually fixed.",
-        "No viewer-visible change: no route, response, log line or server behaviour changes."
-      ],
-      "priority": 24,
-      "status": "todo",
-      "passes": false,
-      "dependsOn": [],
-      "source": "JS-155 record; D-042; D-043",
-      "notes": "If the past-the-end check shows the product can end a watched job as cancelled, that is a brief, not a test fix. D-073: starts now beside JS-127, first if the machine holds one. D-058's condition is met: 8 of 8 counted queue runs of PR 270 failed outside the change. The lead confirms whether the asset-sweep and past-the-end sightings of 2026-11-24 are this task's causes."
-    },
-    {
       "id": "JS-164",
       "phase": "OPS",
       "title": "An operator and an autoscaler can read that encoding is falling behind, and why",
@@ -1337,7 +1218,7 @@
         "docs/running.md's metric table and docs/transcoding.md describe both gauges with an example alert and an example scaling query; BL-005's missing reason is readable here. Amended by D-048: the example scaling query is on the room gauge, the example alert on the demand gauge; docs/running.md no longer calls `jellyscale_transcode_queue_cores` the signal to scale on, and says why.",
         "No viewer-visible change"
       ],
-      "priority": 39,
+      "priority": 41,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1361,7 +1242,7 @@
         "docs/running.md gives the worker's termination grace and what it bounds",
         "No start of play or seek is slower: time to first segment measured before and after"
       ],
-      "priority": 48,
+      "priority": 50,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1383,7 +1264,7 @@
         "Run on the dogfood for 14 days once the owner approves each homelab change; recorded, counts only: scale events by reason, refusals for lack of cores, stalls. Amended by D-048: also records the time the room was below target, and scale-ups by trigger (room, falling behind, refusal).",
         "docs/running.md documents it; docs/transcoding.md no longer says an autoscaler is not built; docs/status.md is updated"
       ],
-      "priority": 49,
+      "priority": 51,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1411,7 +1292,7 @@
         "Recorded in docs/transcoding.md with machine and command, no film title, path or host name; the figures come to the product owner as a brief, every option priced, keeping today's picture among them.",
         "No viewer-visible change, and nothing in the media namespace touched."
       ],
-      "priority": 40,
+      "priority": 42,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1435,7 +1316,7 @@
         "On the dogfood, each homelab change approved by the owner first (the GPU through the device plugin, no privileged container): a 4K HDR re-encode with and without a burned-in image subtitle plays 10 minutes with a seek at speed 1.0 or above after the first 30 seconds; as many at once on one GPU as JS-169 measured to hold 1.2 times real time each do so; recorded with ids and counts only.",
         "docs/running.md (an optional GPU worker pool and its request), docs/transcoding.md and docs/status.md are updated; DOMAINS.md invariants 23 and 53 are amended citing D-047 where the tone map's filter or the family rule changes."
       ],
-      "priority": 42,
+      "priority": 44,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1462,7 +1343,7 @@
         "Docs and DOMAINS.md are updated, with the cost stated: one row per class, written at most once a minute on a move of 5% or more.",
         "After it merges, the lead offers the owner dropping the 4-core worker's declared figure, with the dogfood's counters since JS-177 was deployed. The 12-thread worker keeps its ceiling while its CPU request is below its limit, as 'Sizing workers' advises for a shared host (D-072)."
       ],
-      "priority": 34,
+      "priority": 35,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1476,7 +1357,7 @@
       "id": "JS-179",
       "title": "A scanned Quick Connect QR opens the approval with the code filled in",
       "description": "TV apps draw a Quick Connect QR that links to <server>/web/#/quickconnect?code= (D-089).",
-      "priority": 36,
+      "priority": 38,
       "phase": "ID",
       "status": "todo",
       "passes": false,
@@ -1493,6 +1374,43 @@
         "The link carries Quick Connect's own code: one code, JS-037's expiry and guessing bound, no second pending-code flow, and no route that takes a code without a signed-in approver.",
         "docs/status.md says which apps draw the QR and what a viewer does where no web client is served (type the digits).",
         "If the observation shows jellyfin-web 12.4 does not fill the code in or loses it across sign-in, the lead returns with a brief before building. No file of jellyfin-web is changed."
+      ]
+    },
+    {
+      "id": "JS-180",
+      "title": "Octave Web signs in through the household's provider by a one-time code only its own tab can redeem",
+      "description": "Octave Web, jellyscale's browser client (D-089), needs single sign-on without a cookie (#296).",
+      "priority": 37,
+      "phase": "ID",
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-039"
+      ],
+      "source": "issue #296; D-099",
+      "notes": "Waits for an Octave Web build that starts the sign-in, as JS-150 waits for one (D-099).",
+      "acceptanceCriteria": [
+        "The provider's tokens never reach the page. The return carries only a one-time code that expires in about 60 seconds. The code is redeemed once, by the verifier of the tab that started the sign-in, and a second redemption or a wrong verifier is refused.",
+        "No route reads or sets a cookie (invariant 63). The journey is over HTTPS only. With real processes, start, return and redemption are each answered by a different api replica.",
+        "A threat review of the handoff is recorded before Build. Its guessing bound follows JS-039's.",
+        "Octave Web, as built, signs in through the provider and plays. The device holds an ordinary token, as JS-039's criterion 2 describes."
+      ]
+    },
+    {
+      "id": "JS-181",
+      "title": "Re-encoded audio that loses channels says so, and the default for a profile that names none follows Jellyfin 12.4",
+      "description": "A 5.1 track re-encoded for a profile with no MaxAudioChannels arrives as stereo with no reason given (#295).",
+      "priority": 34,
+      "phase": "P4",
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [],
+      "source": "issue #295; D-099",
+      "notes": "",
+      "acceptanceCriteria": [
+        "Observed first: what Jellyfin 12.4 sends for a surround track, and what reasons it gives, when the HLS transcoding profile has no MaxAudioChannels.",
+        "Whenever the output has fewer channels than the source, re-encoded or refused a copy, TranscodeReasons includes AudioChannelsNotSupported, whether the limit came from the profile or from the default. If Jellyfin does not, the difference is listed in compat/differences.yaml.",
+        "The default number of channels is the observed one, and it applies to the copy test (invariant 52) and to the encode alike."
       ]
     }
   ]

@@ -1059,6 +1059,28 @@
       "serves": "docs/running.md: the process exits within seconds of the grace; 'every failure is reported with its reason'."
     },
     {
+      "id": "D-098",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "AGENTS.md, build.js, the product-owner and advisor roles",
+      "brief": "The owner, on model use.",
+      "tradeoff": "Product judgement runs on a cheaper model between phase reviews.",
+      "decision": "change",
+      "entry": "The owner: \"We need to reduce my Fable usage.\" The product owner and advisor run on Opus 5.5 at high effort. Fable 5.2 is used only for the one direction review after a phase, or when the owner asks for it by name. Replaces D-076's and D-084's Fable routing; D-084's batching stands.",
+      "serves": "Owner, 2026-11-27."
+    },
+    {
+      "id": "D-099",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-180, JS-181, JS-039; #296, #295, #221",
+      "brief": "Batched triage of Octave's issues, and #221's stale plan comment.",
+      "tradeoff": "Nothing given up; viewers gain a stated reason and possibly surround sound.",
+      "decision": "plan",
+      "entry": "#296 becomes JS-180 (Octave Web's verifier-bound one-time code, after JS-039, waiting for an Octave Web build). JS-039 is not widened; its Refine keeps tokens and reusable codes out of URLs and makes JS-180 a form of the same handoff. #295 becomes JS-181 at 34, observed against Jellyfin 12.4 first. #221 is closed as wontfix under D-089 and D-090. JS-181 takes 34, JS-178 35, JS-039 36, JS-180 37, JS-179 38, and later tasks move down two.",
+      "serves": "PRODUCT.md goals 1 and 3; 'Nothing is hidden'."
+    },
+    {
       "id": "D-100",
       "date": "2026-11-27",
       "by": "product-owner",
@@ -1070,15 +1092,15 @@
       "serves": "'Signing in is easy and safe'."
     },
     {
-      "id": "D-103",
+      "id": "D-101",
       "date": "2026-11-27",
       "by": "product-owner",
-      "task": "JS-033",
-      "brief": "jellyfin-web shows a generic message for a refused password; what ResetPassword does under D-100.",
-      "tradeoff": "A viewer's Reset button does nothing; after an admin reset the user cannot sign in by password until one is set.",
-      "decision": "keep",
-      "entry": "jellyfin-web's generic message for a refused password is accepted, and the reason is in the body. An administrator's reset of another user leaves no password that signs in and ends the user's tokens. Resetting your own password is refused for everyone.",
-      "serves": "'Signing in is easy and safe'; D-096."
+      "task": "backlog",
+      "brief": "JS-037's last two minors and open backlog due.",
+      "tradeoff": "An unread-body hang-up gets no named warning.",
+      "decision": "change",
+      "entry": "BL-284 dropped. BL-285 kept until JS-079 or an operator report. BL-222 narrowed to trickplay now that JS-037 is done.",
+      "serves": "Nothing outruns the product."
     },
     {
       "id": "D-102",
@@ -1090,6 +1112,17 @@
       "decision": "change",
       "entry": "Password sign-in stays. With no provider it is on. Once a provider is declared it is off for everyone but the configured adminUser (break-glass), unless passwordSignIn is true. Issued tokens survive the switch. The refusal is D-020's 403, logged with its reason. JS-039 gains these criteria; JS-033, JS-060, JS-180, JS-179 and the order are unchanged. OIDC only would make a provider a required service against goal 5, leave no way to make the first admin, and no first sign-in without a shipped web client.",
       "serves": "PRODUCT.md goals 3 and 5; 'Signing in is easy and safe'."
+    },
+    {
+      "id": "D-103",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-033",
+      "brief": "jellyfin-web shows a generic message for a refused password; what ResetPassword does under D-100.",
+      "tradeoff": "A viewer's Reset button does nothing; after an admin reset the user cannot sign in by password until one is set.",
+      "decision": "keep",
+      "entry": "jellyfin-web's generic message for a refused password is accepted, and the reason is in the body. An administrator's reset of another user leaves no password that signs in and ends the user's tokens. Resetting your own password is refused for everyone.",
+      "serves": "'Signing in is easy and safe'; D-096."
     },
     {
       "id": "D-104",
@@ -1112,6 +1145,17 @@
       "decision": "change",
       "entry": "An account without a password never signs in by password, empty included, until an administrator sets one. A user created with a blank password has none. Migrated users need a password set or a provider link. Partly supersedes D-100.",
       "serves": "'Signing in is easy and safe'."
+    },
+    {
+      "id": "D-106",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "AGENTS.md, build.js; amends D-086",
+      "brief": "The owner, on free models.",
+      "tradeoff": "None.",
+      "decision": "change",
+      "entry": "The owner: \"If one model fails, you can always swap to another one. Just try to, as much as you can, use some sort of reviews or feedback on which of the free models are superior so you can kind of create a tier list and work your way down.\" A graded benchmark (a race and logic fix with hidden tests; two CI logs with verified answers) ranked beam, hy4 and seaglass-alpha first (all hidden tests passed); deepseek, mimo, iceman, nemotron super and flint each missed one bug; nemotron lightning fixed one of four and reported success; tidepool was unavailable. Build/Fix is beam, QA hy4, helpers mimo; failures move down the list before Sonnet.",
+      "serves": "Owner, 2026-11-27."
     }
   ]
 }
