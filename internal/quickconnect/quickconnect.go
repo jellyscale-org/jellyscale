@@ -39,6 +39,7 @@ var (
 	ErrUnknownSecret   = errors.New("unknown Quick Connect secret")
 	ErrNotApproved     = errors.New("Quick Connect code is not approved yet")
 	ErrFull            = errors.New("no room for another Quick Connect code")
+	ErrSignedOut       = errors.New("the approving token is signed out, or its account disabled")
 )
 
 // Device is how the asking device named itself at Initiate. A redemption uses these values, whatever header it brings.
@@ -60,6 +61,7 @@ type Code struct {
 type Account struct {
 	ID, Name      string
 	IsAdmin       bool
+	AllowDownload bool
 	LastLoginAt   *time.Time
 	Configuration []byte
 }
@@ -164,8 +166,24 @@ func Connect(ctx context.Context, pool *pgxpool.Pool, secret string) (Code, erro
 
 // Approve sets the code's approving account once. A second approval, from anyone, is a conflict: the first one wins
 // and leaves the code as it is. The caller has already reserved its failure and gives it back on success.
-func Approve(ctx context.Context, pool *pgxpool.Pool, value, userID string) error {
+//
+// token is what the approver signed this request with. It was checked before this transaction, so it is checked again
+// while the account's row is held: a change that ends the account's tokens holds that row before it removes the codes
+// the account approved, so it either removes this approval or has ended the token this looks for.
+func Approve(ctx context.Context, pool *pgxpool.Pool, value, userID, token string) error {
 	return pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
+		enabled, err := tx.Exec(ctx, `SELECT 1 FROM users WHERE id = $1 AND NOT is_disabled FOR SHARE`, userID)
+		if err != nil {
+			return err
+		}
+		// A statement of its own, so that it sees what was committed while the lock was waited for.
+		var held bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM devices WHERE token = $1 AND user_id = $2)`, token, userID).Scan(&held); err != nil {
+			return err
+		}
+		if enabled.RowsAffected() == 0 || !held {
+			return ErrSignedOut
+		}
 		tag, err := tx.Exec(ctx, `UPDATE quickconnect_codes SET approved_at = clock_timestamp(), approved_by = $2
 			WHERE code = $1 AND approved_at IS NULL AND `+readable, value, userID)
 		if err != nil {
@@ -192,10 +210,17 @@ func Approve(ctx context.Context, pool *pgxpool.Pool, value, userID string) erro
 // is made. An account deleted after it approved redeems nothing, as Jellyfin's own token does work but answers 401;
 // jellyscale refuses it at the door. The account is read here, under the row lock, so the answer does not depend on
 // the token still naming a device after the commit.
+//
+// Every transaction that locks both an account's row and one of its codes takes the account's first, so none can
+// deadlock with another.
 func Redeem(ctx context.Context, pool *pgxpool.Pool, secret string) (Code, Account, error) {
 	var result Code
 	var account Account
 	err := pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
+		approver, err := lockApprover(ctx, tx, secret)
+		if err != nil {
+			return err
+		}
 		code, err := scan(tx.QueryRow(ctx, `SELECT `+columns+` FROM quickconnect_codes
 			WHERE secret = $1 AND `+readable+` FOR UPDATE`, secret))
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -204,7 +229,8 @@ func Redeem(ctx context.Context, pool *pgxpool.Pool, secret string) (Code, Accou
 		if err != nil {
 			return err
 		}
-		if code.Approved == nil {
+		// One approved since lockApprover looked is answered as it was then: its account's row is not held.
+		if code.Approved == nil || code.Approver != approver {
 			return ErrNotApproved
 		}
 		if code.Token != "" {
@@ -222,14 +248,10 @@ func Redeem(ctx context.Context, pool *pgxpool.Pool, secret string) (Code, Accou
 				return ErrUnknownSecret
 			}
 		} else {
-			var exists bool
-			if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM users WHERE id = $1)`, code.Approver).Scan(&exists); err != nil {
-				return err
-			}
-			if !exists {
+			issued, err := signin.Issue(ctx, tx, code.Approver, "", code.Device)
+			if errors.Is(err, signin.ErrNoAccount) {
 				return ErrUnknownSecret
 			}
-			issued, err := signin.Issue(ctx, tx, code.Approver, code.Device)
 			if err != nil {
 				return err
 			}
@@ -248,15 +270,42 @@ func Redeem(ctx context.Context, pool *pgxpool.Pool, secret string) (Code, Accou
 	return result, account, err
 }
 
+// lockApprover holds what a redemption needs before it locks the code: the pair its token is for and the approving
+// account's row. It returns the account, "" for a code that is not approved or not there.
+func lockApprover(ctx context.Context, tx pgx.Tx, secret string) (string, error) {
+	var approver, device string
+	err := tx.QueryRow(ctx, `SELECT coalesce(approved_by::text, ''), device_id FROM quickconnect_codes
+		WHERE secret = $1 AND `+readable, secret).Scan(&approver, &device)
+	if errors.Is(err, pgx.ErrNoRows) || err == nil && approver == "" {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	if err := signin.LockDevice(ctx, tx, approver, device); err != nil {
+		return "", err
+	}
+	_, err = tx.Exec(ctx, `SELECT 1 FROM users WHERE id = $1 FOR NO KEY UPDATE`, approver)
+	return approver, err
+}
+
 // readAccount reads the account a redemption signs in. A row gone between the checks above and this read is the unknown
 // secret's answer, never a server error.
 func readAccount(ctx context.Context, tx pgx.Tx, userID string) (Account, error) {
 	var account Account
-	err := tx.QueryRow(ctx, `SELECT id::text, name, is_admin, last_login_at, configuration
+	err := tx.QueryRow(ctx, `SELECT id::text, name, is_admin, allow_download, last_login_at, configuration
 		FROM users WHERE id = $1`, userID).
-		Scan(&account.ID, &account.Name, &account.IsAdmin, &account.LastLoginAt, &account.Configuration)
+		Scan(&account.ID, &account.Name, &account.IsAdmin, &account.AllowDownload, &account.LastLoginAt, &account.Configuration)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Account{}, ErrUnknownSecret
 	}
 	return account, err
+}
+
+// Forget removes the codes the account approved, so that none signs a device in later. keep is the token that stays
+// signed in ("" keeps none). The caller's transaction already holds the account's row, so that no approval of the
+// account's can be written beside it (see Approve).
+func Forget(ctx context.Context, tx pgx.Tx, userID, keep string) error {
+	_, err := tx.Exec(ctx, `DELETE FROM quickconnect_codes WHERE approved_by = $1 AND token IS DISTINCT FROM $2`, userID, keep)
+	return err
 }

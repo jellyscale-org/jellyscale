@@ -27,10 +27,26 @@ import (
 // non-administrator A and as an administrator, with another user B's id (and nobody's, a malformed one and the
 // all-zero one) in every place the route can take one, on each of the three handlers (the api alone, the stream alone,
 // both), and holds the answers to compat/captures/user-scope-12.4.md where the criteria keep Jellyfin's behaviour and
-// to the criteria where they improve on it. Four routes are 'admin-any': an administrator naming a user acts on that
-// user. Every other viewer route is 'own'. The test names the four, so it needs no field of Route to ask.
+// to the criteria where they improve on it. A viewer route that declares Users 'admin-any' lets an administrator who
+// names a user act on that user; every other viewer route is 'own'. The routes of Access 'admin' (JS-033) refuse a
+// viewer whoever they name. The lists below are which routes the access model puts where, and a route declared
+// otherwise fails.
 
+// scopeAdminAny are the admin-any routes whose success for an administrator the sweep judges.
 var scopeAdminAny = []string{"GET /Users/{userId}", "POST /Users/Configuration", "POST /Users/{userId}/Configuration", "POST /UserItems/{itemId}/UserData"}
+
+// scopeUserAccounts are JS-033's admin-any viewer routes. The sweep asks them only what changes nothing; what an
+// administrator naming another user does there is cmd/jellyscale's users checks', on users of their own.
+var scopeUserAccounts = []string{"GET /Users", "POST /Users", "POST /Users/Password", "POST /Users/{userId}/Password"}
+
+// scopeAdministrators are JS-033's routes of Access 'admin'. scopeAdministratorsToo are the others that may be there,
+// if a page needs them: also for administrators only.
+var scopeAdministrators = []string{"POST /Users/New", "DELETE /Users/{userId}", "POST /Users/{userId}/Policy", "GET /Auth/Providers", "GET /Auth/PasswordResetProviders"}
+
+var scopeAdministratorsToo = []string{"GET /Library/MediaFolders", "GET /Devices"}
+
+// scopeAccessAdmin is Route.Access of a route for administrators.
+const scopeAccessAdmin Access = "admin"
 
 const (
 	scopeNobody    = "0f0f0f0f0f0f40408f8f0f0f0f0f0f0f"
@@ -212,19 +228,59 @@ func scopeMixed(route Route, self, other string) []scopePlace {
 	return places
 }
 
-// scopeOwnRoutes are the viewer routes of the handler that are not admin-any.
+// scopeRoutes are the viewer routes of the handler, by the user scope each declares. The routes of Access 'admin' are
+// in neither: no viewer may call one, whoever it names.
 func scopeRoutes(h accHandler) (own, adminAny []Route) {
 	for _, route := range (&Server{}).Routes() {
-		if accOpen(route) || !h.serves(route) {
+		if accOpen(route) || !h.serves(route) || route.Access == scopeAccessAdmin {
 			continue
 		}
-		if slices.Contains(scopeAdminAny, routeName(route)) {
+		if route.Users == UsersAdminAny {
 			adminAny = append(adminAny, route)
 		} else {
 			own = append(own, route)
 		}
 	}
 	return own, adminAny
+}
+
+// scopeDeclarations holds what the routes of a handler with the api role declare to the access model's lists: a route
+// that is not declared as listed would be swept as something it is not.
+func (a *accessSite) scopeDeclarations(h accHandler) {
+	if !slices.Contains(h.roles, RoleAPI) {
+		return
+	}
+	declared := map[string]string{}
+	for _, route := range (&Server{}).Routes() {
+		switch {
+		case route.Access == scopeAccessAdmin:
+			declared[routeName(route)] = "admin"
+		case route.Access == AccessViewer && route.Users == UsersAdminAny:
+			declared[routeName(route)] = "admin-any"
+		case !accOpen(route):
+			declared[routeName(route)] = "own"
+		}
+	}
+	for _, name := range append(slices.Clone(scopeAdminAny), scopeUserAccounts...) {
+		if declared[name] != "admin-any" {
+			a.fail("%s: %s is declared %q, want a viewer route of scope admin-any", h.name, name, declared[name])
+		}
+	}
+	for _, name := range scopeAdministrators {
+		if declared[name] != "admin" {
+			a.fail("%s: %s is declared %q, want Access admin", h.name, name, declared[name])
+		}
+	}
+	for name, scope := range declared {
+		switch {
+		case slices.Contains(scopeAdministratorsToo, name) && scope != "admin":
+			a.fail("%s: %s is declared %q, want Access admin", h.name, name, scope)
+		case scope == "admin-any" && !slices.Contains(scopeAdminAny, name) && !slices.Contains(scopeUserAccounts, name):
+			a.fail("%s: %s is declared admin-any, which the access model does not give it", h.name, name)
+		case scope == "admin" && !slices.Contains(scopeAdministrators, name) && !slices.Contains(scopeAdministratorsToo, name):
+			a.fail("%s: %s is declared Access admin, which the access model does not give it", h.name, name)
+		}
+	}
 }
 
 // scopeWho is a caller of the sweep.
@@ -405,7 +461,9 @@ func (a *accessSite) scope(t *testing.T, h accHandler) {
 		a.fail("%s: requests that named another user changed rows: %s", h.name, strings.Join(changed, ", "))
 	}
 
-	// Criteria 15 to 20: the four admin-any routes.
+	a.scopeDeclarations(h)
+
+	// Criteria 15 to 20: the admin-any routes.
 	a.scopeAdminAny(t, h, f)
 
 	// Criterion 11: the caller's own id, in any of its spellings and any place, answers as the request without it.
@@ -421,7 +479,7 @@ func (a *accessSite) scope(t *testing.T, h accHandler) {
 	a.scopeSocket(t, h, f)
 }
 
-// scopeAdminAnyAsks are the requests the four admin-any routes answer by who asks.
+// scopeAdminAnyAsks are the requests the admin-any routes answer by who asks.
 type scopeAdminAnyAsk struct {
 	scopeAsk
 	success bool // The administrator acts on B.
@@ -435,6 +493,10 @@ func (a *accessSite) scopeAdminAnyAsks(t *testing.T, h accHandler, f *scopeFixtu
 		"POST /Users/{userId}/Configuration": `{"SubtitleMode":"Smart","SubtitleLanguagePreference":"deu"}`,
 		"POST /UserItems/{itemId}/UserData":  `{"IsFavorite":false,"Played":false,"PlaybackPositionTicks":777}`,
 		"GET /Users/{userId}":                "",
+		// Never accepted by the sweep, and each a change that would show in the rows if a wrong build made it.
+		"POST /Users":                   `{"Name":"scope-sweep-rename"}`,
+		"POST /Users/Password":          `{"CurrentPw":"scope-wrong","NewPw":"Qx7!scope-sweep-password"}`,
+		"POST /Users/{userId}/Password": `{"CurrentPw":"scope-wrong","NewPw":"Qx7!scope-sweep-password"}`,
 	}
 	var out []scopeAdminAnyAsk
 	bCompact := db.CompactID(f.b.id)
@@ -442,6 +504,9 @@ func (a *accessSite) scopeAdminAnyAsks(t *testing.T, h accHandler, f *scopeFixtu
 		for _, who := range f.callers() {
 			self := db.CompactID(who.user.id)
 			add := func(what, group string, req scopeRequest, want int, success bool) {
+				if success && !slices.Contains(scopeAdminAny, routeName(route)) {
+					return
+				}
 				path, body, err := a.scopeBuild(route, f.film, req, bodies[routeName(route)])
 				if err != nil {
 					a.fail("%v", err)
@@ -471,10 +536,17 @@ func (a *accessSite) scopeAdminAnyAsks(t *testing.T, h accHandler, f *scopeFixtu
 					add("path other, query own", "", scopeRequest{pathUser: bCompact, query: []string{"userId=" + self}}, 403, false)
 					add("path own, query nobody", "", scopeRequest{pathUser: self, query: []string{"userId=" + scopeNobody}}, 403, false)
 				}
+				if slices.Contains(scopeUserAccounts, routeName(route)) {
+					// Every value counts: the caller's own id beside another's, whichever comes first.
+					for _, mixed := range scopeMixed(route, self, bCompact) {
+						add(mixed.name, "", mixed.req, 403, false)
+					}
+				}
 				continue
 			}
 			add(place+": B", "", named(bCompact), ok, true)
 			add(place+": nobody", "", named(scopeNobody), 404, false)
+			add(place+": zero", "", named(scopeZero), 404, false)
 			add(place+": malformed", "", named(scopeMalformed), 400, false)
 			if scopeHasPath(route) {
 				add("path own, query other", "", scopeRequest{pathUser: self, query: []string{"userId=" + bCompact}}, 400, false)
@@ -561,8 +633,13 @@ func (a *accessSite) scopeOwnID(t *testing.T, h accHandler, f *scopeFixture) {
 		}
 		for _, who := range f.callers() {
 			compact := db.CompactID(who.user.id)
+			own := ""
+			if routeName(route) == "POST /Users" {
+				// The profile page's save with nothing changed: the caller's own record, with their own name.
+				own = string(accSend("GET", h.base, "/Users/"+compact, who.user.token, 3, "").body)
+			}
 			send := func(req scopeRequest) (accReply, error) {
-				path, body, err := a.scopeBuild(route, f.film, req, "")
+				path, body, err := a.scopeBuild(route, f.film, req, own)
 				if err != nil {
 					return accReply{}, err
 				}
@@ -574,6 +651,10 @@ func (a *accessSite) scopeOwnID(t *testing.T, h accHandler, f *scopeFixture) {
 				continue
 			}
 			again, _ := send(scopeRequest{pathUser: compact})
+			// Two refusals alike would prove nothing about the caller's own id on these two.
+			if want := map[string]int{"GET /Users": 200, "POST /Users": 204}[routeName(route)]; want != 0 && again.status != want {
+				a.fail("%s: %s as %s with no id answered %d %.40q, want %d", h.name, routeName(route), who.name, again.status, again.body, want)
+			}
 			// Suggestions come in a random order, so two answers to one request may differ: its body is not compared.
 			stable := route.Method == "GET" && route.Path != "/Items/Suggestions" && scopeShape(baseline) == scopeShape(again)
 			spellings := []string{compact, who.user.id, strings.ToUpper(compact), strings.ToUpper(who.user.id)}
@@ -603,15 +684,37 @@ func (a *accessSite) scopeOwnID(t *testing.T, h accHandler, f *scopeFixture) {
 	}
 }
 
+// scopeCredential is a token that is no token of anybody's, in a spelling, or none.
+type scopeCredential struct {
+	name, token string
+	spelling    int
+}
+
 func (a *accessSite) scopeAuthenticationFirst(t *testing.T, h accHandler, f *scopeFixture) {
 	t.Helper()
 	own, adminAny := scopeRoutes(h)
+	routes := slices.DeleteFunc(append(own, adminAny...), func(route Route) bool { return slices.Contains(scopeUserAccounts, routeName(route)) })
+	// JS-033's routes are asked by name, those for administrators too, whatever Routes() declares of them.
+	users := append(slices.Clone(scopeUserAccounts), scopeAdministrators...)
+	if slices.Contains(h.roles, RoleAPI) {
+		for _, name := range users {
+			method, path, _ := strings.Cut(name, " ")
+			routes = append(routes, Route{Method: method, Path: path, Role: RoleAPI})
+		}
+	}
 	other := db.CompactID(f.b.id)
-	for _, route := range append(own, adminAny...) {
+	for _, route := range routes {
 		var wrong []string
 		var headers []string
 		if route.Path == "/socket" {
 			headers = scopeHandshake
+		}
+		credentials := []scopeCredential{{"no token", "", -1}, {"unknown token", "unknown-" + uuid.NewString(), 3}, {"unknown token in ApiKey", "unknown-" + uuid.NewString(), 5}}
+		if slices.Contains(users, routeName(route)) {
+			credentials = []scopeCredential{{"no token", "", -1}}
+			for spelling, name := range accSpellings {
+				credentials = append(credentials, scopeCredential{"unknown token in " + name, "unknown-" + uuid.NewString(), spelling})
+			}
 		}
 		for _, place := range append(scopePlaces(route, other, other), scopeMixed(route, other, other)...) {
 			path, body, err := a.scopeBuild(route, f.film, place.req, "")
@@ -619,10 +722,7 @@ func (a *accessSite) scopeAuthenticationFirst(t *testing.T, h accHandler, f *sco
 				a.fail("%v", err)
 				continue
 			}
-			for _, credential := range []struct {
-				name, token string
-				spelling    int
-			}{{"no token", "", -1}, {"unknown token", "unknown-" + uuid.NewString(), 3}, {"unknown token in ApiKey", "unknown-" + uuid.NewString(), 5}} {
+			for _, credential := range credentials {
 				r := accSend(route.Method, h.base, path, credential.token, credential.spelling, body, headers...)
 				if r.err != nil || r.status != 401 || strings.TrimSpace(string(r.body)) != "unauthorized" {
 					wrong = append(wrong, fmt.Sprintf("%s with %s: %d %.40q", place.name, credential.name, r.status, r.body))

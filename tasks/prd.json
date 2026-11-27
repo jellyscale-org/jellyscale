@@ -144,34 +144,6 @@
       "notes": "Requested by Fluster, the client that ships with jellyscale: #106. Access: commands reach the caller's own user's sessions, an administrator any; adding a user to a session is admin. (access model, 2026-11-16)"
     },
     {
-      "id": "JS-033",
-      "phase": "ID",
-      "title": "User management",
-      "description": "Create, delete, disable users; change passwords; preferences and configuration.",
-      "acceptanceCriteria": [
-        "POST /Users/New, DELETE /Users/{id}, /Users/{id}/Policy, /Password as Jellyfin 12.4",
-        "jellyfin-web's admin user pages work",
-        "Login attempts are throttled per user and per client address, and the Policy's lockout fields work as Jellyfin 12.4's do",
-        "'admin' joins Route.Access: POST /Users/New, DELETE /Users/{userId}, POST /Users/{userId}/Policy and GET /Auth/Providers declare it; a viewer gets 403 on each and TestAccess asks (named mutant: the guard treating admin as viewer)",
-        "GET /Users answers a viewer a list of one, themselves, and an administrator everyone; POST /Users and the password routes are admin-any",
-        "Policy says only what is enforced: IsAdministrator, IsDisabled, EnableContentDownloading and the two lockout fields are stored and act; a POST changing any other field from the value GET answers is 400 naming the field and stores nothing; GET's own Policy posted back answers 204",
-        "Disabled or deleted, at once: sign-in answers the same 401, in the same time, as a wrong password; forced with real processes, every token of the user answers 401 on the next request through another api process and through stream",
-        "The last administrator: forced, two administrators each demote the other through two api processes with both statements held on the users rows until pg_stat_activity shows both waiting, then released: exactly one answers 204, the other 403, and one enabled administrator remains; the same for disable and delete (named mutant: counting administrators before the update, outside its transaction)",
-        "Passwords: changing your own needs the current one; an administrator resets another's without it; either revokes the user's other tokens, shown on a second process",
-        "A revoked device or disabled user's running stream stops: forced, a direct play of the whole file read slowly when the device is revoked or the user disabled closes within 15 seconds having sent less than the file",
-        "LoginAttemptsBeforeLockout stays -1 and a set value is not honoured, as compat/differences.yaml says (D-020); a new or changed password is refused if it is among the commonly guessed ones"
-      ],
-      "priority": 27,
-      "status": "todo",
-      "passes": false,
-      "dependsOn": [
-        "JS-125",
-        "JS-127"
-      ],
-      "source": "PRODUCT.md identity",
-      "notes": "/Configuration moved to JS-116 (2026-11-15). Access criteria from the access model (2026-11-16). Refine with care: a throttle per client address needs a trusted-proxy setting first (behind an ingress every request has its address), and a lockout by user name lets anyone lock a known account out. State what start-up does when the configured administrator was deleted or demoted through the API. D-069: named mutants are shown failing once by hand in the Spec step and recorded in the task's record; no mutant table or script is committed."
-    },
-    {
       "id": "JS-034",
       "phase": "ID",
       "title": "Hashed tokens at rest and operator API keys",
@@ -216,7 +188,8 @@
         "EnableAllFolders and EnabledFolders are stored; an administrator always sees every library",
         "TestAccess gains a viewer limited to one library: every route that names an item by path (itemId, seriesId) or query (parentId, ids, seriesId, mediaSourceId) answers 404 with the body of an unknown id for an item of the other library, on api and on stream, and sends no byte; every listing, search, suggestion, resume and latest holds no such item (named mutant: the stream role skipping the check)",
         "Forced: a library is taken from a viewer mid-film; their next segment and next byte range, through another replica, answer 404 (the outage exception is DOMAINS 37's)",
-        "Pictures by id stay open to whoever holds the id; watch state for hidden items stays stored and is not shown"
+        "Pictures by id stay open to whoever holds the id; watch state for hidden items stays stored and is not shown",
+        "jellyfin-web's New User with boxes untouched, and with a library ticked, answers 204; the user sees exactly the ticked libraries, none if none (D-093)."
       ],
       "priority": 28,
       "status": "todo",
@@ -255,7 +228,10 @@
         "A first sign-in links the local user whose name equals the provider's username claim, a migrated user without a password included, and keeps its watch state. After that the subject is the identity, and email never links.",
         "Provisioning is a configuration switch, off by default. On, an unmatched first sign-in creates a viewer with the policy a new local user gets; off, it is refused with its reason on the page and in the log.",
         "A user disabled or deleted in jellyscale is refused through the provider too. Removal at the provider stops new sign-ins only, and docs/access.md says so.",
-        "The journey's routes are bounded per address (D-020). The client secret comes from the environment and is never in configuration or logs."
+        "The journey's routes are bounded per address (D-020). The client secret comes from the environment and is never in configuration or logs.",
+        "With a provider declared and passwordSignIn unset, AuthenticateByName refuses every user except adminUser (break-glass): a right and a wrong password get the same answer, the 403 jellyfin-web shows as 'not authorized … contact your administrator' (D-020), it counts toward JS-145's bounds, and it is logged at info with the reason 'password sign-in off'. A password set while it is off does not let that user sign in (D-102).",
+        "With passwordSignIn true, passwords work for everyone; removing the provider turns them back on; tokens issued before the switch keep working; forced with two api replicas, both answer alike (D-102).",
+        "docs/running.md gives the two setups, 'Postgres only' and 'with your provider', and names the break-glass account; docs/status.md lists the apps verified by a live run to sign in by Quick Connect (D-102)."
       ],
       "priority": 36,
       "status": "todo",
@@ -594,7 +570,8 @@
       "acceptanceCriteria": [
         "Viewers keep their history; users set a password or use OIDC",
         "Against a real Jellyfin 12.4 with two users who each have a watched film, a film stopped partway and a favourite: after the import each user signs in to jellyscale (by setting a password) and finds the same played marks, the same resume position to the second, and the same favourites.",
-        "The import is run from the operator's side with a documented command, changes nothing in the Jellyfin it reads, can be run twice with the same result, and reports every user or item it could not carry, with the reason."
+        "The import is run from the operator's side with a documented command, changes nothing in the Jellyfin it reads, can be run twice with the same result, and reports every user or item it could not carry, with the reason.",
+        "Migrated users arrive with no password and cannot sign in by password until an administrator sets one or the provider links them; the migration docs tell the operator so (D-105)."
       ],
       "priority": 32,
       "status": "todo",

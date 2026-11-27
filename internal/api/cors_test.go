@@ -98,7 +98,7 @@ func (a corsAnswer) allowsHeader(name string) bool {
 
 func (a corsAnswer) is2xx() bool { return a.Code/100 == 2 }
 
-func TestEveryRoutePreflightIsAnswered368TimesOnAProcessWithOnlyItsRole(t *testing.T) {
+func TestEveryRoutePreflightIsAnsweredOnAProcessWithOnlyItsRole(t *testing.T) {
 	routes := (&Server{}).Routes()
 	var byRole = map[string]int{}
 	byMethod := map[string]int{}
@@ -108,9 +108,9 @@ func TestEveryRoutePreflightIsAnswered368TimesOnAProcessWithOnlyItsRole(t *testi
 		byMethod[route.Method]++
 		paths[route.Path] = true
 	}
-	if len(routes) != 96 || len(paths) != 88 || byRole[RoleAPI] != 83 || byRole[RoleStream] != 13 ||
-		byMethod["GET"] != 67 || byMethod["POST"] != 22 || byMethod["DELETE"] != 5 || byMethod["PATCH"] != 2 {
-		t.Fatalf("the route table is %d routes on %d paths, by role %v, by method %v; the task pins 96 on 88, 83 api and 13 stream, 67 GET, 22 POST, 5 DELETE, 2 PATCH", len(routes), len(paths), byRole, byMethod)
+	if len(routes) != 109 || len(paths) != 99 || byRole[RoleAPI] != 96 || byRole[RoleStream] != 13 ||
+		byMethod["GET"] != 74 || byMethod["POST"] != 27 || byMethod["DELETE"] != 6 || byMethod["PATCH"] != 2 {
+		t.Fatalf("the route table is %d routes on %d paths, by role %v, by method %v; the test pins 109 on 99, 96 api and 13 stream, 74 GET, 27 POST, 6 DELETE, 2 PATCH", len(routes), len(paths), byRole, byMethod)
 	}
 	asked := map[string]int{}
 	var bad []string
@@ -137,12 +137,12 @@ func TestEveryRoutePreflightIsAnswered368TimesOnAProcessWithOnlyItsRole(t *testi
 			}
 		}
 	}
-	if asked[RoleAPI] != 332 || asked[RoleStream] != 52 {
-		t.Fatalf("asked %v preflights, want 332 on api-only processes and 52 on stream-only ones", asked)
+	if asked[RoleAPI] != 384 || asked[RoleStream] != 52 {
+		t.Fatalf("asked %v preflights, want 384 on api-only processes and 52 on stream-only ones", asked)
 	}
 	if len(bad) > 0 {
 		sort.Strings(bad)
-		t.Errorf("%d of 384 preflights were refused or incomplete; the first 12:\n  %s", len(bad), strings.Join(bad[:min(12, len(bad))], "\n  "))
+		t.Errorf("%d of 436 preflights were refused or incomplete; the first 12:\n  %s", len(bad), strings.Join(bad[:min(12, len(bad))], "\n  "))
 	}
 }
 
@@ -215,8 +215,8 @@ func TestAPreflightAllowsEachMethodOfARouteByNameAndHeadWhereGetIsServed(t *test
 			paths++
 		}
 	}
-	if paths != 8 {
-		t.Fatalf("%d paths have two methods, the task pins 8", paths)
+	if paths != 10 {
+		t.Fatalf("%d paths have two methods, the test pins 10", paths)
 	}
 	if len(bad) > 0 {
 		t.Errorf("%d wrong; the first 12:\n  %s", len(bad), strings.Join(bad[:min(12, len(bad))], "\n  "))
@@ -388,7 +388,7 @@ func TestEachViewerRouteAskedFromAnotherOriginWithNoTokenIsA401TheOriginMayRead(
 	viewers := 0
 	var bad []string
 	for _, route := range (&Server{}).Routes() {
-		if route.Access != AccessViewer {
+		if route.Access == AccessAnyone {
 			continue
 		}
 		viewers++
@@ -401,8 +401,8 @@ func TestEachViewerRouteAskedFromAnotherOriginWithNoTokenIsA401TheOriginMayRead(
 			}
 		}
 	}
-	if viewers != 82 {
-		t.Fatalf("%d viewer routes asked, want the 82 of the task (96 less the 14 open ones)", viewers)
+	if viewers != 95 {
+		t.Fatalf("%d viewer routes asked, want the 95 that need a token (109 less the 14 open ones)", viewers)
 	}
 	if len(bad) > 0 {
 		t.Errorf("%d wrong; the first 8:\n  %s", len(bad), strings.Join(bad[:min(8, len(bad))], "\n  "))

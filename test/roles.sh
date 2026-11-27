@@ -382,6 +382,37 @@ PATH="$work/bin:$PATH" start --roles=worker
 wait "$requester"
 check "a request made while no worker runs waits for the replacement" 200 "$(cat "$work/replaced.code")"
 
+# A disable or a delete through api 1 ends every token of the user at once (JS-033): the very next request of each of
+# two devices to api 2, to stream for a byte range and for an HLS segment, each sent once with no wait, is a 401. The
+# cap makes a spec of the user's own, which the live worker plays.
+admin_post() { curl -s -o "$work/admin.out" -w '%{http_code}' -X POST -H "$header" -H 'Content-Type: application/json' -d "$2" "127.0.0.1:$api1$1"; }
+signin_as() { curl -s -X POST "127.0.0.1:$api1/Users/AuthenticateByName" -H 'Content-Type: application/json' \
+  -H "Authorization: MediaBrowser Client=\"c\", Device=\"d\", DeviceId=\"$2\", Version=\"1\"" -d "{\"Username\":\"$1\",\"Pw\":\"Qx7-roles-viewer\"}" |
+  python3 -I -c 'import json,sys;print(json.load(sys.stdin).get("AccessToken",""))' 2>/dev/null; }
+for ending in disable delete; do
+  check "an administrator makes a user to $ending" 200 "$(admin_post /Users/New "{\"Name\":\"roles-$ending\",\"Password\":\"Qx7-roles-viewer\"}")"
+  gone=$(python3 -I -c 'import json,sys;print(json.load(open(sys.argv[1]))["Id"])' "$work/admin.out" 2>/dev/null)
+  first=$(signin_as "roles-$ending" "$ending-one") second=$(signin_as "roles-$ending" "$ending-two")
+  info=$(curl -s -X POST -H "X-Emby-Token: $first" -H 'Content-Type: application/json' "127.0.0.1:$api1/Items/$zeta/PlaybackInfo" \
+    -d "{\"DeviceProfile\":$profile,\"MaxStreamingBitrate\":1100000}")
+  url=$(echo "$info" | python3 -I -c 'import json,sys;print(json.load(sys.stdin)["MediaSources"][0]["TranscodingUrl"])' 2>/dev/null)
+  base=${url%%/master.m3u8*}
+  main=$(curl -s "127.0.0.1:$stream$url" | sed -n 's/^\(main.m3u8.*\)$/\1/p')
+  segment=$(curl -s "127.0.0.1:$stream$base/$main" | grep -m1 '^hls1/main/0.mp4')
+  check "before the $ending: Me through api 2, a range and an HLS segment through stream" "200 206 200 200" \
+    "$(code -H "X-Emby-Token: $first" "127.0.0.1:$api2/Users/Me") $(code -r 0-9 "127.0.0.1:$stream/Videos/$id/stream?ApiKey=$first&Static=true") $(code -m 60 "127.0.0.1:$stream$base/$segment") $(code -H "X-Emby-Token: $second" "127.0.0.1:$api2/Users/Me")"
+  if [[ $ending == disable ]]; then
+    check "the disable through api 1" 204 "$(admin_post "/Users/$gone/Policy" '{"IsDisabled":true}')"
+  else
+    check "the delete through api 1" 204 "$(code -X DELETE -H "$header" "127.0.0.1:$api1/Users/$gone")"
+  fi
+  check "the next HLS segment after the $ending" 401 "$(code "127.0.0.1:$stream$base/$segment")"
+  for token_of in "$first" "$second"; do
+    check "each token after the $ending: Me through api 2 and a range through stream" "401 401" \
+      "$(code -H "X-Emby-Token: $token_of" "127.0.0.1:$api2/Users/Me") $(code -r 0-9 "127.0.0.1:$stream/Videos/$id/stream?ApiKey=$token_of&Static=true")"
+  done
+done
+
 # With every worker gone, a track that was extracted before still plays and one
 # that wasn't is neither listed nor left hanging.
 pkill -9 -f "$work/jellyscale --roles=worker"

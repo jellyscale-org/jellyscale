@@ -31,6 +31,22 @@ func (s *Server) Routes() []Route {
 		{Method: "POST", Path: "/Users/AuthenticateWithQuickConnect", Status: Implemented, Role: RoleAPI, Access: AccessAnyone, Why: "a device with no token redeems its secret for the token the approval made for it", Handler: s.authenticateWithQuickConnect},
 		{Method: "GET", Path: "/Users/Me", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.currentUser},
 		{Method: "GET", Path: "/Users/{userId}", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Users: UsersAdminAny, Handler: s.getUser},
+		// User management (JS-033). A viewer lists, renames and changes the password of their own account only.
+		{Method: "GET", Path: "/Users", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Users: UsersAdminAny, Handler: s.listUsers},
+		{Method: "POST", Path: "/Users", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Users: UsersAdminAny, Handler: s.updateUser},
+		{Method: "POST", Path: "/Users/Password", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Users: UsersAdminAny, Handler: s.changePassword},
+		// jellyfin-web's password page still calls it (compat/captures/users-admin-12.4.md).
+		{Method: "POST", Path: "/Users/{userId}/Password", Status: Alias, Role: RoleAPI, Access: AccessViewer, Users: UsersAdminAny, Handler: s.changePassword},
+		{Method: "POST", Path: "/Users/New", Status: Implemented, Role: RoleAPI, Access: AccessAdmin, Users: UsersAdminAny, Handler: s.newUser},
+		{Method: "DELETE", Path: "/Users/{userId}", Status: Implemented, Role: RoleAPI, Access: AccessAdmin, Users: UsersAdminAny, Handler: s.deleteUser},
+		{Method: "POST", Path: "/Users/{userId}/Policy", Status: Implemented, Role: RoleAPI, Access: AccessAdmin, Users: UsersAdminAny, Handler: s.setPolicy},
+		{Method: "GET", Path: "/Auth/Providers", Status: Stub, Role: RoleAPI, Access: AccessAdmin, Users: UsersAdminAny, Handler: authenticationProviders},
+		{Method: "GET", Path: "/Auth/PasswordResetProviders", Status: Stub, Role: RoleAPI, Access: AccessAdmin, Users: UsersAdminAny, Handler: passwordResetProviders},
+		// What jellyfin-web's user pages also read.
+		{Method: "GET", Path: "/Library/MediaFolders", Status: Implemented, Role: RoleAPI, Access: AccessAdmin, Handler: s.mediaFolders},
+		{Method: "GET", Path: "/Devices", Status: Implemented, Role: RoleAPI, Access: AccessAdmin, Handler: s.listDevices},
+		{Method: "GET", Path: "/Channels", Status: Stub, Role: RoleAPI, Access: AccessViewer, Handler: emptyResult},
+		{Method: "GET", Path: "/Localization/ParentalRatings", Status: Stub, Role: RoleAPI, Access: AccessViewer, Handler: emptyList},
 		{Method: "POST", Path: "/Users/Configuration", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Users: UsersAdminAny, Handler: s.saveConfiguration},
 		{Method: "POST", Path: "/Users/{userId}/Configuration", Status: Alias, Role: RoleAPI, Access: AccessViewer, Users: UsersAdminAny, Handler: s.saveConfiguration},
 		// jellyscale's own namespace: Jellyfin has no place for these (docs/api.md). Each acts on the caller only.

@@ -1004,6 +1004,50 @@
       "serves": "Owner, 2026-11-26 (D-091): \"focus on the back end work and also supporting Octave features\"; PRODUCT.md: \"Their library feels alive\"."
     },
     {
+      "id": "D-093",
+      "date": "2026-11-26",
+      "by": "product-owner",
+      "task": "JS-033, JS-036",
+      "brief": "JS-033's open questions after Refine and the Jellyfin 12.4 capture.",
+      "tradeoff": "Until JS-036 the operator sees a generic error and spinner on New User unless 'all libraries' is ticked; the user exists, sees every library, and the log says why.",
+      "decision": "change",
+      "entry": "Unenforced Policy changes stay 400 and are logged; null equals [] and channel fields are accepted; New User without 'all libraries' errors in jellyfin-web until JS-036, which gains the criterion.",
+      "serves": "PRODUCT.md: 'only the libraries they are allowed to see'; 'Nothing is hidden'."
+    },
+    {
+      "id": "D-094",
+      "date": "2026-11-26",
+      "by": "product-owner",
+      "task": "JS-033",
+      "brief": "JS-033's open questions after Refine and the Jellyfin 12.4 capture.",
+      "tradeoff": "A client that omits a field in order to demote or enable does nothing; none is known.",
+      "decision": "change",
+      "entry": "A Policy POST changes only the fields it names; the provider ids are optional.",
+      "serves": "Invariant 49's rule; 'Signing in is easy and safe'."
+    },
+    {
+      "id": "D-095",
+      "date": "2026-11-26",
+      "by": "product-owner",
+      "task": "JS-033",
+      "brief": "JS-033's open questions after Refine and the Jellyfin 12.4 capture.",
+      "tradeoff": "Operators cannot delete or rename that account from a client while it is configured, and jellyfin-web shows nothing on the refusal.",
+      "decision": "change",
+      "entry": "The configured admin cannot be deleted or renamed through the API while configured; demote and disable are allowed; start-up refuses a commonly guessed admin password only when it creates the account.",
+      "serves": "'Settings are declared in configuration'; 'every failure is reported with its reason'."
+    },
+    {
+      "id": "D-096",
+      "date": "2026-11-26",
+      "by": "product-owner",
+      "task": "JS-033",
+      "brief": "JS-033's open questions after Refine and the Jellyfin 12.4 capture.",
+      "tradeoff": "A signed-in user picker lists one account; a disabled viewer reads 'invalid password'; after a reset every device signs in again.",
+      "decision": "keep",
+      "entry": "Confirmed: a viewer's GET /Users lists only themselves; a disabled account answers 401 like a wrong password; a password change or reset ends the user's other tokens.",
+      "serves": "Invariants 26 and 61."
+    },
+    {
       "id": "D-097",
       "date": "2026-11-26",
       "by": "product-owner",
@@ -1037,6 +1081,17 @@
       "serves": "PRODUCT.md goals 1 and 3; 'Nothing is hidden'."
     },
     {
+      "id": "D-100",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-033",
+      "brief": "May a viewer set an empty password?",
+      "tradeoff": "A viewer's choice of an account with no password.",
+      "decision": "keep",
+      "entry": "JS-033 refuses an empty password, set by anyone, as it refuses a commonly guessed one. This departs from Jellyfin 12.4 and is listed. Refine briefs if jellyfin-web cannot show the refusal.",
+      "serves": "'Signing in is easy and safe'."
+    },
+    {
       "id": "D-101",
       "date": "2026-11-27",
       "by": "product-owner",
@@ -1046,6 +1101,50 @@
       "decision": "change",
       "entry": "BL-284 dropped. BL-285 kept until JS-079 or an operator report. BL-222 narrowed to trickplay now that JS-037 is done.",
       "serves": "Nothing outruns the product."
+    },
+    {
+      "id": "D-102",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-039",
+      "brief": "The owner preferred OIDC only unless there was a good reason to keep passwords.",
+      "tradeoff": "Households that turn passwords off: no typing a password into an app; new devices sign in by Quick Connect, and an app without it cannot sign in.",
+      "decision": "change",
+      "entry": "Password sign-in stays. With no provider it is on. Once a provider is declared it is off for everyone but the configured adminUser (break-glass), unless passwordSignIn is true. Issued tokens survive the switch. The refusal is D-020's 403, logged with its reason. JS-039 gains these criteria; JS-033, JS-060, JS-180, JS-179 and the order are unchanged. OIDC only would make a provider a required service against goal 5, leave no way to make the first admin, and no first sign-in without a shipped web client.",
+      "serves": "PRODUCT.md goals 3 and 5; 'Signing in is easy and safe'."
+    },
+    {
+      "id": "D-103",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-033",
+      "brief": "jellyfin-web shows a generic message for a refused password; what ResetPassword does under D-100.",
+      "tradeoff": "A viewer's Reset button does nothing; after an admin reset the user cannot sign in by password until one is set.",
+      "decision": "keep",
+      "entry": "jellyfin-web's generic message for a refused password is accepted, and the reason is in the body. An administrator's reset of another user leaves no password that signs in and ends the user's tokens. Resetting your own password is refused for everyone.",
+      "serves": "'Signing in is easy and safe'; D-096."
+    },
+    {
+      "id": "D-104",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "JS-033, JS-039",
+      "brief": "After weighing OIDC only against D-102.",
+      "tradeoff": "jellyscale keeps owning password sign-in.",
+      "decision": "keep",
+      "entry": "The owner: \"You know what? Forget it. Let's keep basic auth and OIDC?\" Password sign-in and OIDC both stay, as D-102 plans them.",
+      "serves": "Owner, 2026-11-27."
+    },
+    {
+      "id": "D-105",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-033, JS-060",
+      "brief": "What a passwordless account may do by password sign-in, and what creating a user without a password does.",
+      "tradeoff": "A migrated or blank-created user cannot sign in until an administrator sets a password or the provider links them.",
+      "decision": "change",
+      "entry": "An account without a password never signs in by password, empty included, until an administrator sets one. A user created with a blank password has none. Migrated users need a password set or a provider link. Partly supersedes D-100.",
+      "serves": "'Signing in is easy and safe'."
     },
     {
       "id": "D-106",

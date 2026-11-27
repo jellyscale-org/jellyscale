@@ -58,6 +58,8 @@ const (
 	AccessAnyone Access = "anyone"
 	// AccessViewer needs a token that Postgres knows.
 	AccessViewer Access = "viewer"
+	// AccessAdmin needs an administrator's token.
+	AccessAdmin Access = "admin"
 )
 
 // UserScope says whose account a viewer route acts on. Its zero value is own.
@@ -74,11 +76,11 @@ type Route struct {
 	Path   string
 	Status string
 	Role   string
-	// Access says who may call the route: AccessAnyone (and then Why says why)
-	// or AccessViewer. Every route declares it; docs/access.md is the model.
+	// Access says who may call the route: AccessAnyone (and then Why says why),
+	// AccessViewer or AccessAdmin. Every route declares it; docs/access.md is the model.
 	Access Access
-	// Users is own by default, or admin-any on the four routes an administrator
-	// may use for another account. It is empty on an anyone route.
+	// Users is own by default, or admin-any on the routes an administrator may
+	// use for another account. It is empty on an anyone route.
 	Users UserScope
 	// UserIDBody says the body may name a user under UserId, so the scope guard
 	// reads it before the handler and leaves it whole for the handler to read.
@@ -103,9 +105,12 @@ type Server struct {
 	Items    *items.Repo
 	ServerID string
 	Name     string
-	WebDir   string
-	Roles    []string
-	Log      *slog.Logger
+	// AdminUser is the configured administrator, which no client may delete or
+	// rename while it is named (D-095); "" is none.
+	AdminUser string
+	WebDir    string
+	Roles     []string
+	Log       *slog.Logger
 	// Transcode is nil when no transcode store is configured, and then every
 	// source plays as it is.
 	Transcode *transcode.Jobs
@@ -137,6 +142,8 @@ type Server struct {
 	sockets      sync.WaitGroup
 	socketsOnce  sync.Once
 	closeSockets chan struct{}
+	// plays are the stream requests in flight, which end when their token does.
+	plays openPlays
 	// shutdownCut ends, through CutApprovals, what outlives its request when the shutdown grace does.
 	shutdownOnce  sync.Once
 	shutdownCut   context.Context
@@ -176,7 +183,10 @@ func sessionOf(r *http.Request) Session {
 func (s *Server) Handler() http.Handler {
 	db.Of(s.Pool).SetLog(s.Log)                                // Where it says Postgres went away, and came back.
 	if s.Pool != nil && slices.Contains(s.Roles, RoleStream) { // Handler tests of routes run with no database.
-		s.snapshotOnce.Do(func() { go s.keepSnapshot() })
+		s.snapshotOnce.Do(func() {
+			go s.keepSnapshot()
+			go s.endRevokedPlays()
+		})
 	}
 	if s.Proxies != nil {
 		signinAddressBound.Set(1)
@@ -186,8 +196,8 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	// Whichever roles this server has, a route nobody decided about stops it.
 	for _, route := range s.Routes() {
-		if route.Access != AccessAnyone && route.Access != AccessViewer {
-			panic(fmt.Sprintf("route %s %s declares Access %q, want %q or %q", route.Method, route.Path, route.Access, AccessAnyone, AccessViewer))
+		if route.Access != AccessAnyone && route.Access != AccessViewer && route.Access != AccessAdmin {
+			panic(fmt.Sprintf("route %s %s declares Access %q, want %q, %q or %q", route.Method, route.Path, route.Access, AccessAnyone, AccessViewer, AccessAdmin))
 		}
 		if route.Access == AccessAnyone {
 			if route.Users != "" {
@@ -204,7 +214,10 @@ func (s *Server) Handler() http.Handler {
 			continue
 		}
 		handler := route.Handler
-		if route.Access == AccessViewer {
+		if route.Access != AccessAnyone {
+			if route.Role == RoleStream {
+				handler = s.whileSignedIn(handler)
+			}
 			handler = s.requireAuth(handler, route)
 		}
 		mux.HandleFunc(route.Method+" "+lowerLiterals(route.Path), handler)
@@ -324,6 +337,11 @@ func (s *Server) requireAuth(next http.HandlerFunc, route Route) http.HandlerFun
 		}
 		if err != nil {
 			s.fail(w, r, err)
+			return
+		}
+		// Before any id the request names is looked at.
+		if route.Access == AccessAdmin && !user.IsAdmin {
+			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
 		session := Session{User: user, Token: info.Token, ClientInfo: info}

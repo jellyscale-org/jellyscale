@@ -278,6 +278,10 @@ func (a *accessSite) path(route Route, film accessFilm, user string) (string, er
 
 func accRequestBody(route Route) string {
 	switch {
+	case route.Method == "POST" && strings.HasSuffix(route.Path, "/Password"):
+		// Not JSON: the sweep asks with a valid token many times over, and a wrong current password would count
+		// toward the account's sign-in bounds.
+		return "not json"
 	case route.Path == "/Users/AuthenticateByName":
 		return fmt.Sprintf(`{"Username":%q,"Pw":%q}`, accessUserName, accessUserPassword)
 	case route.Method == "POST":
@@ -637,7 +641,7 @@ func (a *accessSite) outside(t *testing.T, h accHandler) {
 			}
 		}
 	}
-	for _, p := range []string{"/", "/web/", "/web/index.html", "/Items/x/y/z/w", "/System/Configuration", "/System/Info/Private", "/metrics", "/Videos", "/Users", "/Items/" + a.item + "/Images", "/healthz/x"} {
+	for _, p := range []string{"/", "/web/", "/web/index.html", "/Items/x/y/z/w", "/System/Configuration", "/System/Info/Private", "/metrics", "/Videos", "/Items/" + a.item + "/Images", "/healthz/x"} {
 		for _, token := range []string{"", a.token} {
 			if r := accSend("GET", h.base, p, token, 3, ""); r.err != nil || r.status != 404 {
 				a.fail("%s: GET %s (token %v) answered %d, want the catch-all's 404", h.name, p, token != "", r.status)
@@ -686,6 +690,7 @@ func TestAccess(t *testing.T) {
 		a.neighbours(t, h, both)
 		a.outside(t, h)
 		a.scope(t, h)
+		a.administrators(t, h)
 		a.report(t)
 	}
 	// Every route was asked, on every accHandler that serves it, and a route that no accHandler serves is a failure.

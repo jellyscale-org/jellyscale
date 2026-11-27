@@ -198,7 +198,7 @@ func (s *Server) quickConnectAuthorize(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "too many failed approvals", http.StatusForbidden)
 		return
 	}
-	err = quickconnect.Approve(approval, s.Pool, value, user.ID)
+	err = quickconnect.Approve(approval, s.Pool, value, user.ID, sessionOf(r).Token)
 	if err == nil {
 		if releaseErr := ticket.Release(approval, s.Pool); releaseErr != nil {
 			s.Log.Warn("an approval's reservation was not given back", "error", releaseErr)
@@ -211,13 +211,17 @@ func (s *Server) quickConnectAuthorize(w http.ResponseWriter, r *http.Request) {
 	// reservation. So does every outcome the database never answered: the timeout, a lost connection. An error it
 	// did answer with (a cancelled statement or a terminated backend included) says nothing about the code, and a
 	// client cannot cause one, so that gives it back.
+	// A token that ended meanwhile says nothing about the code either, and none was looked at.
 	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
+	if errors.As(err, &pgErr) || errors.Is(err, quickconnect.ErrSignedOut) {
 		if releaseErr := ticket.Release(approval, s.Pool); releaseErr != nil {
 			s.Log.Warn("an approval's reservation was not given back", "error", releaseErr)
 		}
 	}
 	switch {
+	case errors.Is(err, quickconnect.ErrSignedOut):
+		s.Log.Warn("an approval was refused: its token ended while it was made", "user", user.Name)
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
 	case errors.Is(err, quickconnect.ErrUnknownCode):
 		http.Error(w, "Error processing request.", http.StatusNotFound)
 	case errors.Is(err, quickconnect.ErrAlreadyApproved):
@@ -250,7 +254,7 @@ func (s *Server) authenticateWithQuickConnect(w http.ResponseWriter, r *http.Req
 	// The account was read in the transaction that issued the token, so a sign-in or sign-out that ends the token
 	// after its commit cannot turn this answer into a server error.
 	user := User{
-		ID: account.ID, Name: account.Name, IsAdmin: account.IsAdmin,
+		ID: account.ID, Name: account.Name, IsAdmin: account.IsAdmin, AllowDownload: account.AllowDownload,
 		LastLoginAt: account.LastLoginAt, Configuration: account.Configuration,
 	}
 	writeJSON(w, s.signInJSON(user, code.Token, compat.ClientInfo{

@@ -120,8 +120,7 @@ func (s *Server) adminAnyTarget(w http.ResponseWriter, r *http.Request, ids []st
 		return caller, true
 	}
 	var user User
-	err := s.Pool.QueryRow(r.Context(), "SELECT id::text, name, is_admin, last_login_at, configuration FROM users WHERE id = $1::uuid", target).
-		Scan(&user.ID, &user.Name, &user.IsAdmin, &user.LastLoginAt, &user.Configuration)
+	err := s.Pool.QueryRow(r.Context(), "SELECT "+userColumns+" FROM users u WHERE u.id = $1::uuid", target).Scan(user.fields()...)
 	if errors.Is(err, pgx.ErrNoRows) {
 		notFound(w, r)
 		return User{}, false

@@ -427,7 +427,7 @@ libraries=$(grep -c '"kind":' "$work/config-s3.json")
 for _ in $(seq 1 120); do [[ $(grep -c 'scan finished' "$logs/server.log") -ge $libraries ]] && break; sleep 0.5; done
 
 base="http://127.0.0.1:$router"
-cp "$repo/test/e2e/conform.mjs" "$repo/test/e2e/shard.mjs" "$repo/test/e2e/evidence.mjs" "$repo/test/e2e/player.mjs" "$repo/test/e2e/recovery.mjs" "$repo/test/e2e/browse.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/cors.mjs" "$repo/test/e2e/transcode.mjs" "$repo/test/e2e/subtitles.mjs" "$repo/test/e2e/failover.mjs" "$repo/test/e2e/away.mjs" "$playwright/"
+cp "$repo/test/e2e/conform.mjs" "$repo/test/e2e/shard.mjs" "$repo/test/e2e/evidence.mjs" "$repo/test/e2e/player.mjs" "$repo/test/e2e/recovery.mjs" "$repo/test/e2e/browse.mjs" "$repo/test/e2e/users.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/cors.mjs" "$repo/test/e2e/transcode.mjs" "$repo/test/e2e/subtitles.mjs" "$repo/test/e2e/failover.mjs" "$repo/test/e2e/away.mjs" "$playwright/"
 result=0
 export E2E_METRICS=$(IFS=,; echo "${metrics_ports[*]}") E2E_CAPTURES="$repo/compat/captures"
 export E2E_MOVIES="$work/media/movies"

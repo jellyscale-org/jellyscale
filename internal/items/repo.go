@@ -127,7 +127,8 @@ func (r *Repo) hydrate(ctx context.Context, ids []string, userID string, fields 
 		return hydrated, nil
 	}
 	rows, err := r.Pool.Query(ctx, `SELECT i.id::text, i.dto, COALESCE(d.played, false), COALESCE(d.favorite, false),
-			COALESCE(d.play_count, 0), COALESCE(d.position_ticks, 0), i.run_time_ticks, d.last_played_at, c.keys
+			COALESCE(d.play_count, 0), COALESCE(d.position_ticks, 0), i.run_time_ticks, d.last_played_at, c.keys,
+			COALESCE((SELECT allow_download FROM users WHERE id = $2::uuid), true)
 		FROM shown_items i
 		LEFT JOIN user_item_data d ON d.item_id = i.id AND d.user_id = $2::uuid
 		LEFT JOIN media_sources m ON m.id = i.id
@@ -149,7 +150,8 @@ func (r *Repo) hydrate(ctx context.Context, ids []string, userID string, fields 
 		var runtime *int64
 		var lastPlayed *time.Time
 		var chapterKeys []string
-		if err := rows.Scan(&id, &raw, &played, &favorite, &playCount, &position, &runtime, &lastPlayed, &chapterKeys); err != nil {
+		var allowDownload bool
+		if err := rows.Scan(&id, &raw, &played, &favorite, &playCount, &position, &runtime, &lastPlayed, &chapterKeys, &allowDownload); err != nil {
 			return nil, err
 		}
 		var dto map[string]any
@@ -170,6 +172,10 @@ func (r *Repo) hydrate(ctx context.Context, ids []string, userID string, fields 
 			}
 		}
 		tagChapters(dto, chapterKeys)
+		// Decided for the user at answer time; items.dto is everyone's.
+		if _, listed := dto["CanDownload"]; listed && !allowDownload {
+			dto["CanDownload"] = false
+		}
 		dto["UserData"] = UserDataDTO(id, UserData{position, runtime, playCount, favorite, played, lastPlayed})
 		byID[compact] = dto
 		if runtimes != nil && runtime != nil {

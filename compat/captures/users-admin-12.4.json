@@ -1,0 +1,4839 @@
+{
+ "image": "jellyfin/jellyfin:12.4",
+ "server_version": "12.4.0",
+ "api": [
+  {
+   "section": "list",
+   "case": "admin",
+   "method": "GET",
+   "path": "/Users",
+   "status": 200,
+   "answer": [
+    {
+     "Name": "capture-admin",
+     "HasPassword": true,
+     "IsAdministrator": true,
+     "IsDisabled": false,
+     "IsHidden": true
+    },
+    {
+     "Name": "capture-off",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": true,
+     "IsHidden": true
+    },
+    {
+     "Name": "capture-shown",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": false,
+     "IsHidden": false
+    },
+    {
+     "Name": "capture-viewer-one",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": false,
+     "IsHidden": true
+    },
+    {
+     "Name": "capture-viewer-two",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": false,
+     "IsHidden": true
+    }
+   ]
+  },
+  {
+   "section": "list",
+   "case": "admin",
+   "method": "GET",
+   "path": "/Users?isHidden=true",
+   "status": 200,
+   "answer": [
+    {
+     "Name": "capture-admin",
+     "HasPassword": true,
+     "IsAdministrator": true,
+     "IsDisabled": false,
+     "IsHidden": true
+    },
+    {
+     "Name": "capture-off",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": true,
+     "IsHidden": true
+    },
+    {
+     "Name": "capture-viewer-one",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": false,
+     "IsHidden": true
+    },
+    {
+     "Name": "capture-viewer-two",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": false,
+     "IsHidden": true
+    }
+   ]
+  },
+  {
+   "section": "list",
+   "case": "admin",
+   "method": "GET",
+   "path": "/Users?isHidden=false",
+   "status": 200,
+   "answer": [
+    {
+     "Name": "capture-shown",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": false,
+     "IsHidden": false
+    }
+   ]
+  },
+  {
+   "section": "list",
+   "case": "admin",
+   "method": "GET",
+   "path": "/Users?isDisabled=true",
+   "status": 200,
+   "answer": [
+    {
+     "Name": "capture-off",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": true,
+     "IsHidden": true
+    }
+   ]
+  },
+  {
+   "section": "list",
+   "case": "admin",
+   "method": "GET",
+   "path": "/Users?isDisabled=false",
+   "status": 200,
+   "answer": [
+    {
+     "Name": "capture-admin",
+     "HasPassword": true,
+     "IsAdministrator": true,
+     "IsDisabled": false,
+     "IsHidden": true
+    },
+    {
+     "Name": "capture-shown",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": false,
+     "IsHidden": false
+    },
+    {
+     "Name": "capture-viewer-one",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": false,
+     "IsHidden": true
+    },
+    {
+     "Name": "capture-viewer-two",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": false,
+     "IsHidden": true
+    }
+   ]
+  },
+  {
+   "section": "list",
+   "case": "admin",
+   "method": "GET",
+   "path": "/Users?isHidden=false&isDisabled=false",
+   "status": 200,
+   "answer": [
+    {
+     "Name": "capture-shown",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": false,
+     "IsHidden": false
+    }
+   ]
+  },
+  {
+   "section": "list",
+   "case": "viewer",
+   "method": "GET",
+   "path": "/Users",
+   "status": 200,
+   "answer": [
+    {
+     "Name": "capture-admin",
+     "HasPassword": true,
+     "IsAdministrator": true,
+     "IsDisabled": false,
+     "IsHidden": true
+    },
+    {
+     "Name": "capture-off",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": true,
+     "IsHidden": true
+    },
+    {
+     "Name": "capture-shown",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": false,
+     "IsHidden": false
+    },
+    {
+     "Name": "capture-viewer-one",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": false,
+     "IsHidden": true
+    },
+    {
+     "Name": "capture-viewer-two",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": false,
+     "IsHidden": true
+    }
+   ]
+  },
+  {
+   "section": "list",
+   "case": "viewer",
+   "method": "GET",
+   "path": "/Users?isHidden=true",
+   "status": 200,
+   "answer": [
+    {
+     "Name": "capture-admin",
+     "HasPassword": true,
+     "IsAdministrator": true,
+     "IsDisabled": false,
+     "IsHidden": true
+    },
+    {
+     "Name": "capture-off",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": true,
+     "IsHidden": true
+    },
+    {
+     "Name": "capture-viewer-one",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": false,
+     "IsHidden": true
+    },
+    {
+     "Name": "capture-viewer-two",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": false,
+     "IsHidden": true
+    }
+   ]
+  },
+  {
+   "section": "list",
+   "case": "viewer",
+   "method": "GET",
+   "path": "/Users?isHidden=false",
+   "status": 200,
+   "answer": [
+    {
+     "Name": "capture-shown",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": false,
+     "IsHidden": false
+    }
+   ]
+  },
+  {
+   "section": "list",
+   "case": "viewer",
+   "method": "GET",
+   "path": "/Users?isDisabled=true",
+   "status": 200,
+   "answer": [
+    {
+     "Name": "capture-off",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": true,
+     "IsHidden": true
+    }
+   ]
+  },
+  {
+   "section": "list",
+   "case": "viewer",
+   "method": "GET",
+   "path": "/Users?isDisabled=false",
+   "status": 200,
+   "answer": [
+    {
+     "Name": "capture-admin",
+     "HasPassword": true,
+     "IsAdministrator": true,
+     "IsDisabled": false,
+     "IsHidden": true
+    },
+    {
+     "Name": "capture-shown",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": false,
+     "IsHidden": false
+    },
+    {
+     "Name": "capture-viewer-one",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": false,
+     "IsHidden": true
+    },
+    {
+     "Name": "capture-viewer-two",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": false,
+     "IsHidden": true
+    }
+   ]
+  },
+  {
+   "section": "list",
+   "case": "viewer",
+   "method": "GET",
+   "path": "/Users?isHidden=false&isDisabled=false",
+   "status": 200,
+   "answer": [
+    {
+     "Name": "capture-shown",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": false,
+     "IsHidden": false
+    }
+   ]
+  },
+  {
+   "section": "list",
+   "case": "no token",
+   "method": "GET",
+   "path": "/Users",
+   "status": 401
+  },
+  {
+   "section": "list",
+   "case": "no token",
+   "method": "GET",
+   "path": "/Users?isHidden=true",
+   "status": 401
+  },
+  {
+   "section": "list",
+   "case": "no token",
+   "method": "GET",
+   "path": "/Users?isHidden=false",
+   "status": 401
+  },
+  {
+   "section": "list",
+   "case": "no token",
+   "method": "GET",
+   "path": "/Users?isDisabled=true",
+   "status": 401
+  },
+  {
+   "section": "list",
+   "case": "no token",
+   "method": "GET",
+   "path": "/Users?isDisabled=false",
+   "status": 401
+  },
+  {
+   "section": "list",
+   "case": "no token",
+   "method": "GET",
+   "path": "/Users?isHidden=false&isDisabled=false",
+   "status": 401
+  },
+  {
+   "section": "list",
+   "case": "no token",
+   "method": "GET",
+   "path": "/Users/Public",
+   "status": 200,
+   "answer": [
+    {
+     "Name": "capture-shown",
+     "HasPassword": true,
+     "IsAdministrator": false,
+     "IsDisabled": false,
+     "IsHidden": false
+    }
+   ]
+  },
+  {
+   "section": "new",
+   "case": "viewer",
+   "method": "POST",
+   "path": "/Users/New",
+   "status": 403,
+   "request": {
+    "Name": "capture-by-viewer",
+    "Password": "<right-password>"
+   }
+  },
+  {
+   "section": "new",
+   "case": "no token",
+   "method": "POST",
+   "path": "/Users/New",
+   "status": 401,
+   "request": {
+    "Name": "capture-anon",
+    "Password": "<right-password>"
+   }
+  },
+  {
+   "section": "new",
+   "case": "admin, plain",
+   "method": "POST",
+   "path": "/Users/New",
+   "status": 200,
+   "request": {
+    "Name": "capture-made",
+    "Password": "<right-password>"
+   },
+   "answer": {
+    "Name": "capture-made",
+    "HasPassword": true,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "IsHidden": true
+   }
+  },
+  {
+   "section": "new",
+   "case": "admin, same name",
+   "method": "POST",
+   "path": "/Users/New",
+   "status": 400,
+   "request": {
+    "Name": "capture-made",
+    "Password": "<right-password>"
+   },
+   "answer": "Error processing request."
+  },
+  {
+   "section": "new",
+   "case": "admin, name taken in another case",
+   "method": "POST",
+   "path": "/Users/New",
+   "status": 400,
+   "request": {
+    "Name": "CAPTURE-MADE",
+    "Password": "<right-password>"
+   },
+   "answer": "Error processing request."
+  },
+  {
+   "section": "new",
+   "case": "viewer, name taken in another case",
+   "method": "POST",
+   "path": "/Users/New",
+   "status": 403,
+   "request": {
+    "Name": "CAPTURE-MADE",
+    "Password": "<right-password>"
+   }
+  },
+  {
+   "section": "new",
+   "case": "admin, empty name",
+   "method": "POST",
+   "path": "/Users/New",
+   "status": 400,
+   "request": {
+    "Name": "",
+    "Password": "<right-password>"
+   },
+   "answer": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"Name\":[\"The Name field is required.\"]},\"traceId\":\"00-<id>-dd8723d1fa3819c8-00\"}"
+  },
+  {
+   "section": "new",
+   "case": "viewer, empty name",
+   "method": "POST",
+   "path": "/Users/New",
+   "status": 403,
+   "request": {
+    "Name": "",
+    "Password": "<right-password>"
+   }
+  },
+  {
+   "section": "new",
+   "case": "admin, blank name",
+   "method": "POST",
+   "path": "/Users/New",
+   "status": 400,
+   "request": {
+    "Name": "   ",
+    "Password": "<right-password>"
+   },
+   "answer": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"Name\":[\"The Name field is required.\"]},\"traceId\":\"00-<id>-cbe40002b310fa63-00\"}"
+  },
+  {
+   "section": "new",
+   "case": "admin, no Name",
+   "method": "POST",
+   "path": "/Users/New",
+   "status": 400,
+   "request": {
+    "Password": "<right-password>"
+   },
+   "answer": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"$\":[\"JSON deserialization for type \\u0027Jellyfin.Api.Models.UserDtos.CreateUserByName\\u0027 was missing required properties including: \\u0027Name\\u0027.\"],\"request\""
+  },
+  {
+   "section": "new",
+   "case": "admin, name with trailing space",
+   "method": "POST",
+   "path": "/Users/New",
+   "status": 400,
+   "request": {
+    "Name": "capture-trail ",
+    "Password": "<right-password>"
+   },
+   "answer": "Error processing request."
+  },
+  {
+   "section": "new",
+   "case": "admin, name with a slash",
+   "method": "POST",
+   "path": "/Users/New",
+   "status": 400,
+   "request": {
+    "Name": "capture/slash",
+    "Password": "<right-password>"
+   },
+   "answer": "Error processing request."
+  },
+  {
+   "section": "new",
+   "case": "admin, no Password field",
+   "method": "POST",
+   "path": "/Users/New",
+   "status": 200,
+   "request": {
+    "Name": "capture-nopass"
+   },
+   "answer": {
+    "Name": "capture-nopass",
+    "HasPassword": true,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "IsHidden": true
+   }
+  },
+  {
+   "section": "new",
+   "case": "admin, empty Password",
+   "method": "POST",
+   "path": "/Users/New",
+   "status": 200,
+   "request": {
+    "Name": "capture-emptypass",
+    "Password": ""
+   },
+   "answer": {
+    "Name": "capture-emptypass",
+    "HasPassword": true,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "IsHidden": true
+   }
+  },
+  {
+   "section": "new",
+   "case": "viewer, no Password field",
+   "method": "POST",
+   "path": "/Users/New",
+   "status": 403,
+   "request": {
+    "Name": "capture-viewer-nopass"
+   }
+  },
+  {
+   "section": "new",
+   "case": "admin, password 'password'",
+   "method": "POST",
+   "path": "/Users/New",
+   "status": 200,
+   "request": {
+    "Name": "capture-common",
+    "Password": "password"
+   },
+   "answer": {
+    "Name": "capture-common",
+    "HasPassword": true,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "IsHidden": true
+   }
+  },
+  {
+   "section": "new",
+   "case": "the whole Policy of a new user",
+   "answer": {
+    "IsAdministrator": false,
+    "IsHidden": true,
+    "EnableCollectionManagement": false,
+    "EnableSubtitleManagement": false,
+    "EnableLyricManagement": false,
+    "IsDisabled": false,
+    "BlockedTags": [],
+    "AllowedTags": [],
+    "EnableUserPreferenceAccess": true,
+    "AccessSchedules": [],
+    "BlockUnratedItems": [],
+    "EnableRemoteControlOfOtherUsers": false,
+    "EnableSharedDeviceControl": true,
+    "EnableRemoteAccess": true,
+    "EnableLiveTvManagement": false,
+    "EnableLiveTvAccess": true,
+    "EnableMediaPlayback": true,
+    "EnableAudioPlaybackTranscoding": true,
+    "EnableVideoPlaybackTranscoding": true,
+    "EnablePlaybackRemuxing": true,
+    "ForceRemoteSourceTranscoding": false,
+    "EnableContentDeletion": false,
+    "EnableContentDeletionFromFolders": [],
+    "EnableContentDownloading": true,
+    "EnableSyncTranscoding": true,
+    "EnableMediaConversion": true,
+    "EnabledDevices": [],
+    "EnableAllDevices": true,
+    "EnabledChannels": [],
+    "EnableAllChannels": true,
+    "EnabledFolders": [],
+    "EnableAllFolders": true,
+    "InvalidLoginAttemptCount": 0,
+    "LoginAttemptsBeforeLockout": -1,
+    "MaxActiveSessions": 0,
+    "EnablePublicSharing": true,
+    "BlockedMediaFolders": [],
+    "BlockedChannels": [],
+    "RemoteClientBitrateLimit": 0,
+    "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+    "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+    "SyncPlayAccess": "CreateAndJoinGroups"
+   }
+  },
+  {
+   "section": "new",
+   "case": "the fields of a new user's answer",
+   "answer": [
+    "Configuration",
+    "EnableAutoLogin",
+    "HasConfiguredEasyPassword",
+    "HasConfiguredPassword",
+    "HasPassword",
+    "Id",
+    "Name",
+    "Policy",
+    "ServerId"
+   ]
+  },
+  {
+   "section": "new",
+   "case": "user made without Password signs in with empty Pw",
+   "method": "POST",
+   "path": "/Users/AuthenticateByName",
+   "status": 200,
+   "answer": "token issued"
+  },
+  {
+   "section": "new",
+   "case": "user made without Password signs in with some Pw",
+   "method": "POST",
+   "path": "/Users/AuthenticateByName",
+   "status": 401,
+   "answer": "Error processing request."
+  },
+  {
+   "section": "update",
+   "case": "viewer renames themselves, full user DTO",
+   "method": "POST",
+   "path": "/Users?userId=<capture-rename-id>",
+   "status": 204,
+   "request": {
+    "(full user DTO)": true,
+    "Name": "capture-renamed",
+    "Policy.IsAdministrator": false
+   }
+  },
+  {
+   "section": "update",
+   "case": "viewer renames themselves, full user DTO: what changed",
+   "answer": {
+    "Name": [
+     "capture-rename",
+     "capture-renamed"
+    ],
+    "Policy": {},
+    "Configuration": {}
+   }
+  },
+  {
+   "section": "update",
+   "case": "viewer renames another",
+   "method": "POST",
+   "path": "/Users?userId=<capture-viewer-two-id>",
+   "status": 403,
+   "request": {
+    "(full user DTO)": true,
+    "Name": "capture-stolen",
+    "Policy.IsAdministrator": false
+   },
+   "answer": "\"User update not allowed.\""
+  },
+  {
+   "section": "update",
+   "case": "viewer renames another: what changed",
+   "answer": {
+    "Name": [
+     "capture-viewer-two",
+     "capture-viewer-two"
+    ],
+    "Policy": {},
+    "Configuration": {}
+   }
+  },
+  {
+   "section": "update",
+   "case": "admin renames another",
+   "method": "POST",
+   "path": "/Users?userId=<capture-rename-id>",
+   "status": 204,
+   "request": {
+    "(full user DTO)": true,
+    "Name": "capture-by-admin",
+    "Policy.IsAdministrator": false
+   }
+  },
+  {
+   "section": "update",
+   "case": "admin renames another: what changed",
+   "answer": {
+    "Name": [
+     "capture-renamed",
+     "capture-by-admin"
+    ],
+    "Policy": {},
+    "Configuration": {}
+   }
+  },
+  {
+   "section": "update",
+   "case": "rename to a taken name in another case",
+   "method": "POST",
+   "path": "/Users?userId=<capture-rename-id>",
+   "status": 400,
+   "request": {
+    "(full user DTO)": true,
+    "Name": "CAPTURE-VIEWER-ONE",
+    "Policy.IsAdministrator": false
+   },
+   "answer": "Error processing request."
+  },
+  {
+   "section": "update",
+   "case": "rename to a taken name in another case: what changed",
+   "answer": {
+    "Name": [
+     "capture-by-admin",
+     "capture-by-admin"
+    ],
+    "Policy": {},
+    "Configuration": {}
+   }
+  },
+  {
+   "section": "update",
+   "case": "rename to own name in another case",
+   "method": "POST",
+   "path": "/Users?userId=<capture-rename-id>",
+   "status": 204,
+   "request": {
+    "(full user DTO)": true,
+    "Name": "CAPTURE-BY-ADMIN",
+    "Policy.IsAdministrator": false
+   }
+  },
+  {
+   "section": "update",
+   "case": "rename to own name in another case: what changed",
+   "answer": {
+    "Name": [
+     "capture-by-admin",
+     "CAPTURE-BY-ADMIN"
+    ],
+    "Policy": {},
+    "Configuration": {}
+   }
+  },
+  {
+   "section": "update",
+   "case": "rename to empty",
+   "method": "POST",
+   "path": "/Users?userId=<capture-rename-id>",
+   "status": 400,
+   "request": {
+    "(full user DTO)": true,
+    "Name": "",
+    "Policy.IsAdministrator": false
+   },
+   "answer": "Error processing request."
+  },
+  {
+   "section": "update",
+   "case": "rename to empty: what changed",
+   "answer": {
+    "Name": [
+     "CAPTURE-BY-ADMIN",
+     "CAPTURE-BY-ADMIN"
+    ],
+    "Policy": {},
+    "Configuration": {}
+   }
+  },
+  {
+   "section": "update",
+   "case": "body is only Name",
+   "method": "POST",
+   "path": "/Users?userId=<capture-rename-id>",
+   "status": 400,
+   "request": {
+    "Name": "capture-only-name"
+   },
+   "answer": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"Policy.PasswordResetProviderId\":[\"The PasswordResetProviderId field is required.\"],\"Policy.AuthenticationProviderId\":[\"The AuthenticationProviderId field is required"
+  },
+  {
+   "section": "update",
+   "case": "body is only Name: what changed",
+   "answer": {
+    "Name": [
+     "CAPTURE-BY-ADMIN",
+     "CAPTURE-BY-ADMIN"
+    ],
+    "Policy": {},
+    "Configuration": {}
+   }
+  },
+  {
+   "section": "update",
+   "case": "own DTO that also asks IsAdministrator",
+   "method": "POST",
+   "path": "/Users?userId=<capture-rename-id>",
+   "status": 204,
+   "request": {
+    "(full user DTO)": true,
+    "Name": "CAPTURE-BY-ADMIN",
+    "Policy.IsAdministrator": true
+   }
+  },
+  {
+   "section": "update",
+   "case": "own DTO that also asks IsAdministrator: what changed",
+   "answer": {
+    "Name": [
+     "CAPTURE-BY-ADMIN",
+     "CAPTURE-BY-ADMIN"
+    ],
+    "Policy": {},
+    "Configuration": {}
+   }
+  },
+  {
+   "section": "update",
+   "case": "unknown id, full user DTO",
+   "method": "POST",
+   "path": "/Users?userId=0f0f0f0f0f0f40408f8f0f0f0f0f0f0f",
+   "status": 404,
+   "request": {
+    "(full user DTO)": true,
+    "Name": "capture-nobody",
+    "Policy.IsAdministrator": false
+   },
+   "answer": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.5\",\"title\":\"Not Found\",\"status\":404,\"traceId\":\"00-<id>-d14d1642f9678998-00\"}"
+  },
+  {
+   "section": "update",
+   "case": "malformed id, full user DTO",
+   "method": "POST",
+   "path": "/Users?userId=not-a-guid",
+   "status": 400,
+   "request": {
+    "(full user DTO)": true,
+    "Name": "capture-malformed",
+    "Policy.IsAdministrator": false
+   },
+   "answer": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"userId\":[\"The value \\u0027not-a-guid\\u0027 is not valid.\"]},\"traceId\":\"00-<id>-e46f52d9c999c2ab-00\"}"
+  },
+  {
+   "section": "update",
+   "case": "no userId",
+   "method": "POST",
+   "path": "/Users",
+   "status": 204,
+   "request": {
+    "(full user DTO)": true,
+    "Name": "capture-no-query",
+    "Policy.IsAdministrator": false
+   }
+  },
+  {
+   "section": "update",
+   "case": "no userId: the caller's name afterwards",
+   "answer": "capture-no-query"
+  },
+  {
+   "section": "update",
+   "case": "GET /Users/Me with the renamed user's token",
+   "answer": {
+    "own": 200
+   }
+  },
+  {
+   "section": "delete",
+   "case": "only admin deletes themselves (the last admin)",
+   "method": "DELETE",
+   "path": "/Users/<capture-admin-id>",
+   "status": 400,
+   "answer": "Error processing request."
+  },
+  {
+   "section": "delete",
+   "case": "the only admin's token after that refusal",
+   "answer": {
+    "admin": 401
+   }
+  },
+  {
+   "section": "delete",
+   "case": "the administrator after signing in again",
+   "answer": {
+    "Name": "capture-admin",
+    "HasPassword": true,
+    "IsAdministrator": true,
+    "IsDisabled": false,
+    "IsHidden": true
+   }
+  },
+  {
+   "section": "delete",
+   "case": "viewer deletes an administrator",
+   "method": "DELETE",
+   "path": "/Users/<capture-admin-two-id>",
+   "status": 403
+  },
+  {
+   "section": "delete",
+   "case": "one of two administrators deletes themselves",
+   "method": "DELETE",
+   "path": "/Users/<capture-admin-two-id>",
+   "status": 204
+  },
+  {
+   "section": "delete",
+   "case": "their token afterwards",
+   "answer": {
+    "deleted": 401
+   }
+  },
+  {
+   "section": "delete",
+   "case": "disable the second administrator through Policy",
+   "method": "POST",
+   "path": "/Users/<capture-spare-admin-id>/Policy",
+   "status": 403,
+   "request": {
+    "(full policy, fields)": 42,
+    "IsAdministrator": true,
+    "IsDisabled": true,
+    "LoginAttemptsBeforeLockout": -1
+   },
+   "answer": "\"Administrators cannot be disabled.\""
+  },
+  {
+   "section": "delete",
+   "case": "admin deletes a viewer",
+   "method": "DELETE",
+   "path": "/Users/<capture-gone-id>",
+   "status": 204
+  },
+  {
+   "section": "delete",
+   "case": "deleted user's token",
+   "method": "GET",
+   "path": "/Users/Me",
+   "status": 401
+  },
+  {
+   "section": "delete",
+   "case": "deleted user's token",
+   "method": "GET",
+   "path": "/Items",
+   "status": 401
+  },
+  {
+   "section": "delete",
+   "case": "deleted user's token",
+   "method": "GET",
+   "path": "/System/Info",
+   "status": 401
+  },
+  {
+   "section": "delete",
+   "case": "deleted user's token",
+   "method": "GET",
+   "path": "/Users/Public",
+   "status": 200,
+   "answer": []
+  },
+  {
+   "section": "delete",
+   "case": "made-up token",
+   "method": "GET",
+   "path": "/Users/Me",
+   "status": 401
+  },
+  {
+   "section": "delete",
+   "case": "made-up token",
+   "method": "GET",
+   "path": "/Items",
+   "status": 401
+  },
+  {
+   "section": "delete",
+   "case": "made-up token",
+   "method": "GET",
+   "path": "/System/Info",
+   "status": 401
+  },
+  {
+   "section": "delete",
+   "case": "made-up token",
+   "method": "GET",
+   "path": "/Users/Public",
+   "status": 200,
+   "answer": []
+  },
+  {
+   "section": "delete",
+   "case": "deleted name, its old password",
+   "method": "POST",
+   "path": "/Users/AuthenticateByName",
+   "status": 401,
+   "answer": "Error processing request."
+  },
+  {
+   "section": "delete",
+   "case": "never-existing name",
+   "method": "POST",
+   "path": "/Users/AuthenticateByName",
+   "status": 401,
+   "answer": "Error processing request."
+  },
+  {
+   "section": "delete",
+   "case": "existing name, wrong password",
+   "method": "POST",
+   "path": "/Users/AuthenticateByName",
+   "status": 401,
+   "answer": "Error processing request."
+  },
+  {
+   "section": "delete",
+   "case": "GET deleted id",
+   "method": "GET",
+   "path": "/Users/<capture-gone-id>",
+   "status": 404,
+   "answer": "\"User not found\""
+  },
+  {
+   "section": "delete",
+   "case": "admin, deleted id",
+   "method": "DELETE",
+   "path": "/Users/<capture-gone-id>",
+   "status": 404,
+   "answer": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.5\",\"title\":\"Not Found\",\"status\":404,\"traceId\":\"00-<id>-0dc747db4b105ab2-00\"}"
+  },
+  {
+   "section": "delete",
+   "case": "viewer, deleted id",
+   "method": "DELETE",
+   "path": "/Users/<capture-gone-id>",
+   "status": 403
+  },
+  {
+   "section": "delete",
+   "case": "GET unknown id",
+   "method": "GET",
+   "path": "/Users/0f0f0f0f0f0f40408f8f0f0f0f0f0f0f",
+   "status": 404,
+   "answer": "\"User not found\""
+  },
+  {
+   "section": "delete",
+   "case": "admin, unknown id",
+   "method": "DELETE",
+   "path": "/Users/0f0f0f0f0f0f40408f8f0f0f0f0f0f0f",
+   "status": 404,
+   "answer": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.5\",\"title\":\"Not Found\",\"status\":404,\"traceId\":\"00-<id>-b1a461feb3aa1501-00\"}"
+  },
+  {
+   "section": "delete",
+   "case": "viewer, unknown id",
+   "method": "DELETE",
+   "path": "/Users/0f0f0f0f0f0f40408f8f0f0f0f0f0f0f",
+   "status": 403
+  },
+  {
+   "section": "delete",
+   "case": "GET malformed id",
+   "method": "GET",
+   "path": "/Users/not-a-guid",
+   "status": 400,
+   "answer": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"userId\":[\"The value \\u0027not-a-guid\\u0027 is not valid.\"]},\"traceId\":\"00-<id>-578e0ee7ba0ca434-00\"}"
+  },
+  {
+   "section": "delete",
+   "case": "admin, malformed id",
+   "method": "DELETE",
+   "path": "/Users/not-a-guid",
+   "status": 400,
+   "answer": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"userId\":[\"The value \\u0027not-a-guid\\u0027 is not valid.\"]},\"traceId\":\"00-<id>-0253990a19022bce-00\"}"
+  },
+  {
+   "section": "delete",
+   "case": "viewer, malformed id",
+   "method": "DELETE",
+   "path": "/Users/not-a-guid",
+   "status": 403
+  },
+  {
+   "section": "delete",
+   "case": "GET all-zero id",
+   "method": "GET",
+   "path": "/Users/00000000000000000000000000000000",
+   "status": 400,
+   "answer": "Error processing request."
+  },
+  {
+   "section": "delete",
+   "case": "admin, all-zero id",
+   "method": "DELETE",
+   "path": "/Users/00000000000000000000000000000000",
+   "status": 400,
+   "answer": "Error processing request."
+  },
+  {
+   "section": "delete",
+   "case": "viewer, all-zero id",
+   "method": "DELETE",
+   "path": "/Users/00000000000000000000000000000000",
+   "status": 403
+  },
+  {
+   "section": "delete",
+   "case": "old token after the name is made again",
+   "answer": {
+    "deleted": 401
+   }
+  },
+  {
+   "section": "policy",
+   "case": "the administrator's whole Policy",
+   "answer": {
+    "IsAdministrator": true,
+    "IsHidden": true,
+    "EnableCollectionManagement": false,
+    "EnableSubtitleManagement": false,
+    "EnableLyricManagement": false,
+    "IsDisabled": false,
+    "BlockedTags": [],
+    "AllowedTags": [],
+    "EnableUserPreferenceAccess": true,
+    "AccessSchedules": [],
+    "BlockUnratedItems": [],
+    "EnableRemoteControlOfOtherUsers": true,
+    "EnableSharedDeviceControl": true,
+    "EnableRemoteAccess": true,
+    "EnableLiveTvManagement": false,
+    "EnableLiveTvAccess": true,
+    "EnableMediaPlayback": true,
+    "EnableAudioPlaybackTranscoding": true,
+    "EnableVideoPlaybackTranscoding": true,
+    "EnablePlaybackRemuxing": true,
+    "ForceRemoteSourceTranscoding": false,
+    "EnableContentDeletion": true,
+    "EnableContentDeletionFromFolders": [],
+    "EnableContentDownloading": true,
+    "EnableSyncTranscoding": true,
+    "EnableMediaConversion": true,
+    "EnabledDevices": [],
+    "EnableAllDevices": true,
+    "EnabledChannels": [],
+    "EnableAllChannels": true,
+    "EnabledFolders": [],
+    "EnableAllFolders": true,
+    "InvalidLoginAttemptCount": 0,
+    "LoginAttemptsBeforeLockout": -1,
+    "MaxActiveSessions": 0,
+    "EnablePublicSharing": true,
+    "BlockedMediaFolders": [],
+    "BlockedChannels": [],
+    "RemoteClientBitrateLimit": 0,
+    "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+    "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+    "SyncPlayAccess": "CreateAndJoinGroups"
+   }
+  },
+  {
+   "section": "policy",
+   "case": "a viewer's whole Policy",
+   "answer": {
+    "IsAdministrator": false,
+    "IsHidden": true,
+    "EnableCollectionManagement": false,
+    "EnableSubtitleManagement": false,
+    "EnableLyricManagement": false,
+    "IsDisabled": false,
+    "BlockedTags": [],
+    "AllowedTags": [],
+    "EnableUserPreferenceAccess": true,
+    "AccessSchedules": [],
+    "BlockUnratedItems": [],
+    "EnableRemoteControlOfOtherUsers": false,
+    "EnableSharedDeviceControl": true,
+    "EnableRemoteAccess": true,
+    "EnableLiveTvManagement": false,
+    "EnableLiveTvAccess": true,
+    "EnableMediaPlayback": true,
+    "EnableAudioPlaybackTranscoding": true,
+    "EnableVideoPlaybackTranscoding": true,
+    "EnablePlaybackRemuxing": true,
+    "ForceRemoteSourceTranscoding": false,
+    "EnableContentDeletion": false,
+    "EnableContentDeletionFromFolders": [],
+    "EnableContentDownloading": true,
+    "EnableSyncTranscoding": true,
+    "EnableMediaConversion": true,
+    "EnabledDevices": [],
+    "EnableAllDevices": true,
+    "EnabledChannels": [],
+    "EnableAllChannels": true,
+    "EnabledFolders": [],
+    "EnableAllFolders": true,
+    "InvalidLoginAttemptCount": 0,
+    "LoginAttemptsBeforeLockout": -1,
+    "MaxActiveSessions": 0,
+    "EnablePublicSharing": true,
+    "BlockedMediaFolders": [],
+    "BlockedChannels": [],
+    "RemoteClientBitrateLimit": 0,
+    "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+    "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+    "SyncPlayAccess": "CreateAndJoinGroups"
+   }
+  },
+  {
+   "section": "policy",
+   "case": "GET's own Policy posted back",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 204,
+   "request": {
+    "(full policy, fields)": 42,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": -1
+   }
+  },
+  {
+   "section": "policy",
+   "case": "GET's own Policy posted back: Policy changes [before, after]",
+   "answer": {}
+  },
+  {
+   "section": "policy",
+   "case": "empty object",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 400,
+   "request": {},
+   "answer": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"PasswordResetProviderId\":[\"The PasswordResetProviderId field is required.\"],\"AuthenticationProviderId\":[\"The AuthenticationProviderId field is required.\"]},\"traceId\""
+  },
+  {
+   "section": "policy",
+   "case": "empty object: Policy changes [before, after]",
+   "answer": {}
+  },
+  {
+   "section": "policy",
+   "case": "only IsDisabled=false",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 400,
+   "request": {
+    "IsDisabled": false
+   },
+   "answer": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"PasswordResetProviderId\":[\"The PasswordResetProviderId field is required.\"],\"AuthenticationProviderId\":[\"The AuthenticationProviderId field is required.\"]},\"traceId\""
+  },
+  {
+   "section": "policy",
+   "case": "only IsDisabled=false: Policy changes [before, after]",
+   "answer": {}
+  },
+  {
+   "section": "policy",
+   "case": "only the two provider ids",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 204,
+   "request": {
+    "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+    "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider"
+   }
+  },
+  {
+   "section": "policy",
+   "case": "only the two provider ids: Policy changes [before, after]",
+   "answer": {
+    "EnableAllFolders": [
+     false,
+     true
+    ],
+    "EnableContentDownloading": [
+     false,
+     true
+    ],
+    "EnableLiveTvManagement": [
+     false,
+     true
+    ],
+    "IsHidden": [
+     false,
+     true
+    ],
+    "LoginAttemptsBeforeLockout": [
+     3,
+     -1
+    ]
+   }
+  },
+  {
+   "section": "policy",
+   "case": "full body without AuthenticationProviderId",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 400,
+   "request": {
+    "(full policy, fields)": 41,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": -1
+   },
+   "answer": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"AuthenticationProviderId\":[\"The AuthenticationProviderId field is required.\"]},\"traceId\":\"00-<id>-b902e3c47e50e39e-00\"}"
+  },
+  {
+   "section": "policy",
+   "case": "full body without AuthenticationProviderId: Policy changes [before, after]",
+   "answer": {}
+  },
+  {
+   "section": "policy",
+   "case": "full body without PasswordResetProviderId",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 400,
+   "request": {
+    "(full policy, fields)": 41,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": -1
+   },
+   "answer": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"PasswordResetProviderId\":[\"The PasswordResetProviderId field is required.\"]},\"traceId\":\"00-<id>-d85b6b3f5962cfc5-00\"}"
+  },
+  {
+   "section": "policy",
+   "case": "full body without PasswordResetProviderId: Policy changes [before, after]",
+   "answer": {}
+  },
+  {
+   "section": "policy",
+   "case": "full body without IsAdministrator (stored true)",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 204,
+   "request": {
+    "(full policy, fields)": 41,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": -1
+   }
+  },
+  {
+   "section": "policy",
+   "case": "full body without IsAdministrator (stored true): Policy changes [before, after]",
+   "answer": {
+    "IsAdministrator": [
+     true,
+     false
+    ]
+   }
+  },
+  {
+   "section": "policy",
+   "case": "full body without IsDisabled (stored true)",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 204,
+   "request": {
+    "(full policy, fields)": 41,
+    "IsAdministrator": false,
+    "LoginAttemptsBeforeLockout": -1
+   }
+  },
+  {
+   "section": "policy",
+   "case": "full body without IsDisabled (stored true): Policy changes [before, after]",
+   "answer": {
+    "IsDisabled": [
+     true,
+     false
+    ]
+   }
+  },
+  {
+   "section": "policy",
+   "case": "full body without IsHidden (stored false)",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 204,
+   "request": {
+    "(full policy, fields)": 41,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": -1
+   }
+  },
+  {
+   "section": "policy",
+   "case": "full body without IsHidden (stored false): Policy changes [before, after]",
+   "answer": {
+    "IsHidden": [
+     false,
+     true
+    ]
+   }
+  },
+  {
+   "section": "policy",
+   "case": "full body without EnableContentDownloading (stored false)",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 204,
+   "request": {
+    "(full policy, fields)": 41,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": -1
+   }
+  },
+  {
+   "section": "policy",
+   "case": "full body without EnableContentDownloading (stored false): Policy changes [before, after]",
+   "answer": {
+    "EnableContentDownloading": [
+     false,
+     true
+    ]
+   }
+  },
+  {
+   "section": "policy",
+   "case": "full body without LoginAttemptsBeforeLockout (stored 3)",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 204,
+   "request": {
+    "(full policy, fields)": 41,
+    "IsAdministrator": false,
+    "IsDisabled": false
+   }
+  },
+  {
+   "section": "policy",
+   "case": "full body without LoginAttemptsBeforeLockout (stored 3): Policy changes [before, after]",
+   "answer": {
+    "LoginAttemptsBeforeLockout": [
+     3,
+     -1
+    ]
+   }
+  },
+  {
+   "section": "policy",
+   "case": "full body without InvalidLoginAttemptCount (stored 2)",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 204,
+   "request": {
+    "(full policy, fields)": 41,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": -1
+   }
+  },
+  {
+   "section": "policy",
+   "case": "full body without InvalidLoginAttemptCount (stored 2): Policy changes [before, after]",
+   "answer": {
+    "InvalidLoginAttemptCount": [
+     2,
+     0
+    ]
+   }
+  },
+  {
+   "section": "policy",
+   "case": "full body without EnableAllFolders (stored false)",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 204,
+   "request": {
+    "(full policy, fields)": 41,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": -1
+   }
+  },
+  {
+   "section": "policy",
+   "case": "full body without EnableAllFolders (stored false): Policy changes [before, after]",
+   "answer": {
+    "EnableAllFolders": [
+     false,
+     true
+    ]
+   }
+  },
+  {
+   "section": "policy",
+   "case": "full body without EnableMediaPlayback (stored false)",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 204,
+   "request": {
+    "(full policy, fields)": 41,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": -1
+   }
+  },
+  {
+   "section": "policy",
+   "case": "full body without EnableMediaPlayback (stored false): Policy changes [before, after]",
+   "answer": {
+    "EnableMediaPlayback": [
+     false,
+     true
+    ]
+   }
+  },
+  {
+   "section": "policy",
+   "case": "full body with IsAdministrator=null",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 400,
+   "request": {
+    "(full policy, fields)": 42,
+    "IsAdministrator": null,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": -1
+   },
+   "answer": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"newPolicy\":[\"The newPolicy field is required.\"],\"$.IsAdministrator\":[\"The JSON value could not be converted to System.Boolean. Path: $.IsAdministrator | LineNumber: "
+  },
+  {
+   "section": "policy",
+   "case": "full body with IsAdministrator=null: Policy changes [before, after]",
+   "answer": {}
+  },
+  {
+   "section": "policy",
+   "case": "full body with IsDisabled=null",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 400,
+   "request": {
+    "(full policy, fields)": 42,
+    "IsAdministrator": false,
+    "IsDisabled": null,
+    "LoginAttemptsBeforeLockout": -1
+   },
+   "answer": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"newPolicy\":[\"The newPolicy field is required.\"],\"$.IsDisabled\":[\"The JSON value could not be converted to System.Boolean. Path: $.IsDisabled | LineNumber: 0 | BytePo"
+  },
+  {
+   "section": "policy",
+   "case": "full body with IsDisabled=null: Policy changes [before, after]",
+   "answer": {}
+  },
+  {
+   "section": "policy",
+   "case": "full body with LoginAttemptsBeforeLockout=null",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 400,
+   "request": {
+    "(full policy, fields)": 42,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": null
+   },
+   "answer": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"newPolicy\":[\"The newPolicy field is required.\"],\"$.LoginAttemptsBeforeLockout\":[\"The JSON value could not be converted to System.Int32. Path: $.LoginAttemptsBeforeLo"
+  },
+  {
+   "section": "policy",
+   "case": "full body with LoginAttemptsBeforeLockout=null: Policy changes [before, after]",
+   "answer": {}
+  },
+  {
+   "section": "policy",
+   "case": "LoginAttemptsBeforeLockout=-5",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 204,
+   "request": {
+    "(full policy, fields)": 42,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": -5
+   }
+  },
+  {
+   "section": "policy",
+   "case": "LoginAttemptsBeforeLockout=-5: Policy changes [before, after]",
+   "answer": {
+    "LoginAttemptsBeforeLockout": [
+     -1,
+     -5
+    ]
+   }
+  },
+  {
+   "section": "policy",
+   "case": "LoginAttemptsBeforeLockout=-1",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 204,
+   "request": {
+    "(full policy, fields)": 42,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": -1
+   }
+  },
+  {
+   "section": "policy",
+   "case": "LoginAttemptsBeforeLockout=-1: Policy changes [before, after]",
+   "answer": {
+    "LoginAttemptsBeforeLockout": [
+     -5,
+     -1
+    ]
+   }
+  },
+  {
+   "section": "policy",
+   "case": "LoginAttemptsBeforeLockout=0",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 204,
+   "request": {
+    "(full policy, fields)": 42,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": 0
+   }
+  },
+  {
+   "section": "policy",
+   "case": "LoginAttemptsBeforeLockout=0: Policy changes [before, after]",
+   "answer": {
+    "LoginAttemptsBeforeLockout": [
+     -1,
+     3
+    ]
+   }
+  },
+  {
+   "section": "policy",
+   "case": "LoginAttemptsBeforeLockout=1",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 204,
+   "request": {
+    "(full policy, fields)": 42,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": 1
+   }
+  },
+  {
+   "section": "policy",
+   "case": "LoginAttemptsBeforeLockout=1: Policy changes [before, after]",
+   "answer": {
+    "LoginAttemptsBeforeLockout": [
+     3,
+     1
+    ]
+   }
+  },
+  {
+   "section": "policy",
+   "case": "LoginAttemptsBeforeLockout=5",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 204,
+   "request": {
+    "(full policy, fields)": 42,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": 5
+   }
+  },
+  {
+   "section": "policy",
+   "case": "LoginAttemptsBeforeLockout=5: Policy changes [before, after]",
+   "answer": {
+    "LoginAttemptsBeforeLockout": [
+     1,
+     5
+    ]
+   }
+  },
+  {
+   "section": "policy",
+   "case": "LoginAttemptsBeforeLockout=1000",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 204,
+   "request": {
+    "(full policy, fields)": 42,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": 1000
+   }
+  },
+  {
+   "section": "policy",
+   "case": "LoginAttemptsBeforeLockout=1000: Policy changes [before, after]",
+   "answer": {
+    "LoginAttemptsBeforeLockout": [
+     5,
+     1000
+    ]
+   }
+  },
+  {
+   "section": "policy",
+   "case": "unknown field",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 204,
+   "request": {
+    "(full policy, fields)": 43,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": 1000
+   }
+  },
+  {
+   "section": "policy",
+   "case": "unknown field: Policy changes [before, after]",
+   "answer": {}
+  },
+  {
+   "section": "policy",
+   "case": "viewer posts their own Policy",
+   "method": "POST",
+   "path": "/Users/<capture-viewer-one-id>/Policy",
+   "status": 403,
+   "request": {
+    "(full policy, fields)": 42,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": -1
+   }
+  },
+  {
+   "section": "policy",
+   "case": "viewer posts another's Policy",
+   "method": "POST",
+   "path": "/Users/<capture-policy-id>/Policy",
+   "status": 403,
+   "request": {
+    "(full policy, fields)": 42,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": 1000
+   }
+  },
+  {
+   "section": "policy",
+   "case": "unknown id",
+   "method": "POST",
+   "path": "/Users/0f0f0f0f0f0f40408f8f0f0f0f0f0f0f/Policy",
+   "status": 404,
+   "request": {
+    "(full policy, fields)": 42,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": 1000
+   },
+   "answer": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.5\",\"title\":\"Not Found\",\"status\":404,\"traceId\":\"00-<id>-3980d1ff943f037b-00\"}"
+  },
+  {
+   "section": "policy",
+   "case": "malformed id",
+   "method": "POST",
+   "path": "/Users/not-a-guid/Policy",
+   "status": 400,
+   "request": {
+    "(full policy, fields)": 42,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": 1000
+   },
+   "answer": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"userId\":[\"The value \\u0027not-a-guid\\u0027 is not valid.\"]},\"traceId\":\"00-<id>-633feab6015c588b-00\"}"
+  },
+  {
+   "section": "policy",
+   "case": "last administrator demotes themselves",
+   "method": "POST",
+   "path": "/Users/<capture-admin-id>/Policy",
+   "status": 403,
+   "request": {
+    "(full policy, fields)": 42,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": -1
+   },
+   "answer": "\"There must be at least one user in the system with administrative access.\""
+  },
+  {
+   "section": "policy",
+   "case": "last administrator demotes themselves: Policy changes [before, after]",
+   "answer": {}
+  },
+  {
+   "section": "policy",
+   "case": "last administrator posts a body without IsAdministrator",
+   "method": "POST",
+   "path": "/Users/<capture-admin-id>/Policy",
+   "status": 403,
+   "request": {
+    "(full policy, fields)": 41,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": -1
+   },
+   "answer": "\"There must be at least one user in the system with administrative access.\""
+  },
+  {
+   "section": "policy",
+   "case": "last administrator posts a body without IsAdministrator: Policy changes [before, after]",
+   "answer": {}
+  },
+  {
+   "section": "policy",
+   "case": "last administrator posts only the provider ids",
+   "method": "POST",
+   "path": "/Users/<capture-admin-id>/Policy",
+   "status": 403,
+   "request": {
+    "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+    "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider"
+   },
+   "answer": "\"There must be at least one user in the system with administrative access.\""
+  },
+  {
+   "section": "policy",
+   "case": "last administrator posts only the provider ids: Policy changes [before, after]",
+   "answer": {}
+  },
+  {
+   "section": "policy",
+   "case": "administrator disables themselves",
+   "method": "POST",
+   "path": "/Users/<capture-admin-id>/Policy",
+   "status": 403,
+   "request": {
+    "(full policy, fields)": 42,
+    "IsAdministrator": true,
+    "IsDisabled": true,
+    "LoginAttemptsBeforeLockout": -1
+   },
+   "answer": "\"Administrators cannot be disabled.\""
+  },
+  {
+   "section": "policy",
+   "case": "administrator disables themselves: Policy changes [before, after]",
+   "answer": {}
+  },
+  {
+   "section": "policy",
+   "case": "one of two administrators disables themselves",
+   "method": "POST",
+   "path": "/Users/<capture-admin-two-id>/Policy",
+   "status": 403,
+   "request": {
+    "(full policy, fields)": 42,
+    "IsAdministrator": true,
+    "IsDisabled": true,
+    "LoginAttemptsBeforeLockout": -1
+   },
+   "answer": "\"Administrators cannot be disabled.\""
+  },
+  {
+   "section": "policy",
+   "case": "one of two administrators disables themselves: Policy changes [before, after]",
+   "answer": {}
+  },
+  {
+   "section": "policy",
+   "case": "one of two administrators demotes and disables themselves at once",
+   "method": "POST",
+   "path": "/Users/<capture-admin-two-id>/Policy",
+   "status": 403,
+   "request": {
+    "(full policy, fields)": 42,
+    "IsAdministrator": false,
+    "IsDisabled": true,
+    "LoginAttemptsBeforeLockout": -1
+   },
+   "answer": "\"Administrators cannot be disabled.\""
+  },
+  {
+   "section": "policy",
+   "case": "one of two administrators demotes and disables themselves at once: Policy changes [before, after]",
+   "answer": {}
+  },
+  {
+   "section": "policy",
+   "case": "one of two administrators demotes themselves",
+   "method": "POST",
+   "path": "/Users/<capture-admin-two-id>/Policy",
+   "status": 204,
+   "request": {
+    "(full policy, fields)": 42,
+    "IsAdministrator": false,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": -1
+   }
+  },
+  {
+   "section": "policy",
+   "case": "one of two administrators demotes themselves: Policy changes [before, after]",
+   "answer": {
+    "IsAdministrator": [
+     true,
+     false
+    ]
+   }
+  },
+  {
+   "section": "policy",
+   "case": "the demoted token on an administrator route",
+   "method": "GET",
+   "path": "/Auth/Providers",
+   "status": 403
+  },
+  {
+   "section": "lockout",
+   "case": "limit 3: wrong passwords",
+   "answer": [
+    {
+     "wrong": 1,
+     "status": 401,
+     "InvalidLoginAttemptCount": 1,
+     "IsDisabled": false
+    },
+    {
+     "wrong": 2,
+     "status": 401,
+     "InvalidLoginAttemptCount": 2,
+     "IsDisabled": false
+    },
+    {
+     "wrong": 3,
+     "status": 401,
+     "InvalidLoginAttemptCount": 4,
+     "IsDisabled": true
+    },
+    {
+     "wrong": 4,
+     "status": 403,
+     "InvalidLoginAttemptCount": 4,
+     "IsDisabled": true
+    },
+    {
+     "wrong": 5,
+     "status": 403,
+     "InvalidLoginAttemptCount": 4,
+     "IsDisabled": true
+    },
+    {
+     "wrong": 6,
+     "status": 403,
+     "InvalidLoginAttemptCount": 4,
+     "IsDisabled": true
+    }
+   ]
+  },
+  {
+   "section": "lockout",
+   "case": "limit 3: right password afterwards",
+   "method": "POST",
+   "path": "/Users/AuthenticateByName",
+   "status": 403,
+   "answer": "Error processing request."
+  },
+  {
+   "section": "lockout",
+   "case": "limit 3: counter after that",
+   "answer": {
+    "InvalidLoginAttemptCount": 4,
+    "IsDisabled": true,
+    "LoginAttemptsBeforeLockout": 3
+   }
+  },
+  {
+   "section": "lockout",
+   "case": "limit 3: the token held from before",
+   "answer": {
+    "held": 401
+   }
+  },
+  {
+   "section": "lockout",
+   "case": "limit 3: counter after an administrator enables",
+   "answer": {
+    "InvalidLoginAttemptCount": 4,
+    "IsDisabled": false
+   }
+  },
+  {
+   "section": "lockout",
+   "case": "limit 3: after enable, one more wrong password",
+   "answer": {
+    "InvalidLoginAttemptCount": 6,
+    "IsDisabled": true
+   }
+  },
+  {
+   "section": "lockout",
+   "case": "limit 3: right password after enable",
+   "method": "POST",
+   "path": "/Users/AuthenticateByName",
+   "status": 200,
+   "answer": "token issued"
+  },
+  {
+   "section": "lockout",
+   "case": "limit 3: counter after that sign-in",
+   "answer": {
+    "InvalidLoginAttemptCount": 0,
+    "IsDisabled": false
+   }
+  },
+  {
+   "section": "lockout",
+   "case": "limit -1: wrong passwords",
+   "answer": [
+    {
+     "wrong": 1,
+     "status": 401,
+     "InvalidLoginAttemptCount": 1,
+     "IsDisabled": false
+    },
+    {
+     "wrong": 2,
+     "status": 401,
+     "InvalidLoginAttemptCount": 2,
+     "IsDisabled": false
+    },
+    {
+     "wrong": 3,
+     "status": 401,
+     "InvalidLoginAttemptCount": 3,
+     "IsDisabled": false
+    },
+    {
+     "wrong": 4,
+     "status": 401,
+     "InvalidLoginAttemptCount": 4,
+     "IsDisabled": false
+    },
+    {
+     "wrong": 5,
+     "status": 401,
+     "InvalidLoginAttemptCount": 5,
+     "IsDisabled": false
+    },
+    {
+     "wrong": 6,
+     "status": 401,
+     "InvalidLoginAttemptCount": 6,
+     "IsDisabled": false
+    }
+   ]
+  },
+  {
+   "section": "lockout",
+   "case": "limit -1: right password afterwards",
+   "method": "POST",
+   "path": "/Users/AuthenticateByName",
+   "status": 200,
+   "answer": "token issued"
+  },
+  {
+   "section": "lockout",
+   "case": "limit -1: counter after that",
+   "answer": {
+    "InvalidLoginAttemptCount": 0,
+    "IsDisabled": false,
+    "LoginAttemptsBeforeLockout": -1
+   }
+  },
+  {
+   "section": "lockout",
+   "case": "limit -1: the token held from before",
+   "answer": {
+    "held": 200
+   }
+  },
+  {
+   "section": "lockout",
+   "case": "limit 0: wrong passwords",
+   "answer": [
+    {
+     "wrong": 1,
+     "status": 401,
+     "InvalidLoginAttemptCount": 1,
+     "IsDisabled": false
+    },
+    {
+     "wrong": 2,
+     "status": 401,
+     "InvalidLoginAttemptCount": 2,
+     "IsDisabled": false
+    },
+    {
+     "wrong": 3,
+     "status": 401,
+     "InvalidLoginAttemptCount": 4,
+     "IsDisabled": true
+    },
+    {
+     "wrong": 4,
+     "status": 403,
+     "InvalidLoginAttemptCount": 4,
+     "IsDisabled": true
+    },
+    {
+     "wrong": 5,
+     "status": 403,
+     "InvalidLoginAttemptCount": 4,
+     "IsDisabled": true
+    },
+    {
+     "wrong": 6,
+     "status": 403,
+     "InvalidLoginAttemptCount": 4,
+     "IsDisabled": true
+    }
+   ]
+  },
+  {
+   "section": "lockout",
+   "case": "limit 0: right password afterwards",
+   "method": "POST",
+   "path": "/Users/AuthenticateByName",
+   "status": 403,
+   "answer": "Error processing request."
+  },
+  {
+   "section": "lockout",
+   "case": "limit 0: counter after that",
+   "answer": {
+    "InvalidLoginAttemptCount": 4,
+    "IsDisabled": true,
+    "LoginAttemptsBeforeLockout": 3
+   }
+  },
+  {
+   "section": "lockout",
+   "case": "limit 0: the token held from before",
+   "answer": {
+    "held": 401
+   }
+  },
+  {
+   "section": "lockout",
+   "case": "limit 0: counter after an administrator enables",
+   "answer": {
+    "InvalidLoginAttemptCount": 4,
+    "IsDisabled": false
+   }
+  },
+  {
+   "section": "lockout",
+   "case": "limit 0: after enable, one more wrong password",
+   "answer": {
+    "InvalidLoginAttemptCount": 6,
+    "IsDisabled": true
+   }
+  },
+  {
+   "section": "lockout",
+   "case": "limit 0: right password after enable",
+   "method": "POST",
+   "path": "/Users/AuthenticateByName",
+   "status": 200,
+   "answer": "token issued"
+  },
+  {
+   "section": "lockout",
+   "case": "limit 0: counter after that sign-in",
+   "answer": {
+    "InvalidLoginAttemptCount": 0,
+    "IsDisabled": false
+   }
+  },
+  {
+   "section": "lockout",
+   "case": "a second administrator, limit 3, four wrong passwords",
+   "answer": {
+    "statuses": [
+     401,
+     401,
+     401,
+     403
+    ],
+    "IsAdministrator": true,
+    "InvalidLoginAttemptCount": 4,
+    "IsDisabled": true
+   }
+  },
+  {
+   "section": "disable",
+   "case": "tokens before",
+   "answer": {
+    "first": 200,
+    "second": 200
+   }
+  },
+  {
+   "section": "disable",
+   "case": "disabled, first token",
+   "method": "GET",
+   "path": "/Users/Me",
+   "status": 401
+  },
+  {
+   "section": "disable",
+   "case": "disabled, first token",
+   "method": "GET",
+   "path": "/Items",
+   "status": 401
+  },
+  {
+   "section": "disable",
+   "case": "disabled, second token",
+   "method": "GET",
+   "path": "/Users/Me",
+   "status": 401
+  },
+  {
+   "section": "disable",
+   "case": "disabled, second token",
+   "method": "GET",
+   "path": "/Items",
+   "status": 401
+  },
+  {
+   "section": "disable",
+   "case": "disabled, right password",
+   "method": "POST",
+   "path": "/Users/AuthenticateByName",
+   "status": 403,
+   "answer": "Error processing request."
+  },
+  {
+   "section": "disable",
+   "case": "disabled, wrong password",
+   "method": "POST",
+   "path": "/Users/AuthenticateByName",
+   "status": 403,
+   "answer": "Error processing request."
+  },
+  {
+   "section": "disable",
+   "case": "enabled user, wrong password",
+   "method": "POST",
+   "path": "/Users/AuthenticateByName",
+   "status": 401,
+   "answer": "Error processing request."
+  },
+  {
+   "section": "disable",
+   "case": "unknown name",
+   "method": "POST",
+   "path": "/Users/AuthenticateByName",
+   "status": 401,
+   "answer": "Error processing request."
+  },
+  {
+   "section": "disable",
+   "case": "counter while disabled",
+   "answer": 0
+  },
+  {
+   "section": "disable",
+   "case": "old tokens after re-enable",
+   "answer": {
+    "first": 401,
+    "second": 401
+   }
+  },
+  {
+   "section": "disable",
+   "case": "re-enabled, right password",
+   "method": "POST",
+   "path": "/Users/AuthenticateByName",
+   "status": 200,
+   "answer": "token issued"
+  },
+  {
+   "section": "disable",
+   "case": "a token not presented while disabled, after re-enable",
+   "answer": {
+    "never used while disabled": 401
+   }
+  },
+  {
+   "section": "password",
+   "case": "own, wrong CurrentPw",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-pass-id>",
+   "status": 403,
+   "request": {
+    "CurrentPw": "wrong",
+    "NewPw": "<new-password>"
+   },
+   "answer": "\"Invalid user or password entered.\""
+  },
+  {
+   "section": "password",
+   "case": "own, wrong CurrentPw: the user's tokens afterwards",
+   "answer": {
+    "caller": 200,
+    "other": 200
+   }
+  },
+  {
+   "section": "password",
+   "case": "own, wrong CurrentPw: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "own, empty CurrentPw",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-pass-id>",
+   "status": 403,
+   "request": {
+    "CurrentPw": "",
+    "NewPw": "<new-password>"
+   },
+   "answer": "\"Invalid user or password entered.\""
+  },
+  {
+   "section": "password",
+   "case": "own, empty CurrentPw: the user's tokens afterwards",
+   "answer": {
+    "caller": 200,
+    "other": 200
+   }
+  },
+  {
+   "section": "password",
+   "case": "own, empty CurrentPw: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "own, no CurrentPw",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-pass-id>",
+   "status": 403,
+   "request": {
+    "NewPw": "<new-password>"
+   },
+   "answer": "\"Invalid user or password entered.\""
+  },
+  {
+   "section": "password",
+   "case": "own, no CurrentPw: the user's tokens afterwards",
+   "answer": {
+    "caller": 200,
+    "other": 200
+   }
+  },
+  {
+   "section": "password",
+   "case": "own, no CurrentPw: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "own, right CurrentPw",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-pass-id>",
+   "status": 204,
+   "request": {
+    "CurrentPw": "<right-password>",
+    "NewPw": "<new-password>"
+   }
+  },
+  {
+   "section": "password",
+   "case": "own, right CurrentPw: the user's tokens afterwards",
+   "answer": {
+    "caller": 200,
+    "other": 401
+   }
+  },
+  {
+   "section": "password",
+   "case": "own, right CurrentPw: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "admin for another, no CurrentPw",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-pass-id>",
+   "status": 204,
+   "request": {
+    "NewPw": "<right-password>"
+   }
+  },
+  {
+   "section": "password",
+   "case": "admin for another, no CurrentPw: the user's tokens afterwards",
+   "answer": {
+    "caller": 401,
+    "other": 401
+   }
+  },
+  {
+   "section": "password",
+   "case": "admin for another, no CurrentPw: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "admin for another, wrong CurrentPw",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-pass-id>",
+   "status": 204,
+   "request": {
+    "CurrentPw": "wrong",
+    "NewPw": "<new-password>"
+   }
+  },
+  {
+   "section": "password",
+   "case": "admin for another, wrong CurrentPw: the user's tokens afterwards",
+   "answer": {
+    "caller": 401,
+    "other": 401
+   }
+  },
+  {
+   "section": "password",
+   "case": "admin for another, wrong CurrentPw: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "viewer for another",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-pass-id>",
+   "status": 403,
+   "request": {
+    "CurrentPw": "<new-password>",
+    "NewPw": "<right-password>"
+   },
+   "answer": "\"User is not allowed to update the password.\""
+  },
+  {
+   "section": "password",
+   "case": "viewer for another: the user's tokens afterwards",
+   "answer": {
+    "caller": 200,
+    "other": 200
+   }
+  },
+  {
+   "section": "password",
+   "case": "viewer for another: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "own, right CurrentPw, new password 'password'",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-pass-id>",
+   "status": 204,
+   "request": {
+    "CurrentPw": "<new-password>",
+    "NewPw": "password"
+   }
+  },
+  {
+   "section": "password",
+   "case": "own, right CurrentPw, new password 'password': the user's tokens afterwards",
+   "answer": {
+    "caller": 200,
+    "other": 401
+   }
+  },
+  {
+   "section": "password",
+   "case": "own, right CurrentPw, new password 'password': HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "own, right CurrentPw, one letter",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-pass-id>",
+   "status": 204,
+   "request": {
+    "CurrentPw": "password",
+    "NewPw": "a"
+   }
+  },
+  {
+   "section": "password",
+   "case": "own, right CurrentPw, one letter: the user's tokens afterwards",
+   "answer": {
+    "caller": 200,
+    "other": 401
+   }
+  },
+  {
+   "section": "password",
+   "case": "own, right CurrentPw, one letter: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "admin sets it back",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-pass-id>",
+   "status": 204,
+   "request": {
+    "NewPw": "<right-password>"
+   }
+  },
+  {
+   "section": "password",
+   "case": "admin sets it back: the user's tokens afterwards",
+   "answer": {
+    "caller": 401,
+    "other": 401
+   }
+  },
+  {
+   "section": "password",
+   "case": "admin sets it back: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "own, ResetPassword without CurrentPw",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-pass-id>",
+   "status": 204,
+   "request": {
+    "ResetPassword": true
+   }
+  },
+  {
+   "section": "password",
+   "case": "own, ResetPassword without CurrentPw: the user's tokens afterwards",
+   "answer": {
+    "caller": 200,
+    "other": 200
+   }
+  },
+  {
+   "section": "password",
+   "case": "own, ResetPassword without CurrentPw: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "after own reset without CurrentPw, the old password",
+   "method": "POST",
+   "path": "/Users/AuthenticateByName",
+   "status": 401,
+   "answer": "Error processing request."
+  },
+  {
+   "section": "password",
+   "case": "admin sets a password again",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-pass-id>",
+   "status": 204,
+   "request": {
+    "NewPw": "<right-password>"
+   }
+  },
+  {
+   "section": "password",
+   "case": "admin sets a password again: the user's tokens afterwards",
+   "answer": {
+    "caller": 401,
+    "other": 401
+   }
+  },
+  {
+   "section": "password",
+   "case": "admin sets a password again: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "own, ResetPassword with wrong CurrentPw",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-pass-id>",
+   "status": 204,
+   "request": {
+    "ResetPassword": true,
+    "CurrentPw": "wrong"
+   }
+  },
+  {
+   "section": "password",
+   "case": "own, ResetPassword with wrong CurrentPw: the user's tokens afterwards",
+   "answer": {
+    "caller": 200,
+    "other": 200
+   }
+  },
+  {
+   "section": "password",
+   "case": "own, ResetPassword with wrong CurrentPw: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "admin sets a password once more",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-pass-id>",
+   "status": 204,
+   "request": {
+    "NewPw": "<right-password>"
+   }
+  },
+  {
+   "section": "password",
+   "case": "admin sets a password once more: the user's tokens afterwards",
+   "answer": {
+    "caller": 401,
+    "other": 401
+   }
+  },
+  {
+   "section": "password",
+   "case": "admin sets a password once more: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "own, ResetPassword with right CurrentPw",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-pass-id>",
+   "status": 204,
+   "request": {
+    "ResetPassword": true,
+    "CurrentPw": "<right-password>"
+   }
+  },
+  {
+   "section": "password",
+   "case": "own, ResetPassword with right CurrentPw: the user's tokens afterwards",
+   "answer": {
+    "caller": 200,
+    "other": 200
+   }
+  },
+  {
+   "section": "password",
+   "case": "own, ResetPassword with right CurrentPw: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "after reset, empty password",
+   "method": "POST",
+   "path": "/Users/AuthenticateByName",
+   "status": 200,
+   "answer": "token issued"
+  },
+  {
+   "section": "password",
+   "case": "after reset, the old password",
+   "method": "POST",
+   "path": "/Users/AuthenticateByName",
+   "status": 401,
+   "answer": "Error processing request."
+  },
+  {
+   "section": "password",
+   "case": "no password: own, wrong CurrentPw",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-pass-id>",
+   "status": 403,
+   "request": {
+    "CurrentPw": "wrong",
+    "NewPw": "<new-password>"
+   },
+   "answer": "\"Invalid user or password entered.\""
+  },
+  {
+   "section": "password",
+   "case": "no password: own, wrong CurrentPw: the user's tokens afterwards",
+   "answer": {
+    "caller": 200,
+    "other": 200
+   }
+  },
+  {
+   "section": "password",
+   "case": "no password: own, wrong CurrentPw: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "no password: own, no CurrentPw",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-pass-id>",
+   "status": 204,
+   "request": {
+    "NewPw": "<new-password>"
+   }
+  },
+  {
+   "section": "password",
+   "case": "no password: own, no CurrentPw: the user's tokens afterwards",
+   "answer": {
+    "caller": 200,
+    "other": 401
+   }
+  },
+  {
+   "section": "password",
+   "case": "no password: own, no CurrentPw: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "admin ResetPassword for another",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-pass-id>",
+   "status": 204,
+   "request": {
+    "ResetPassword": true
+   }
+  },
+  {
+   "section": "password",
+   "case": "admin ResetPassword for another: the user's tokens afterwards",
+   "answer": {
+    "caller": 200,
+    "other": 200
+   }
+  },
+  {
+   "section": "password",
+   "case": "admin ResetPassword for another: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "no password: own, empty CurrentPw",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-pass-id>",
+   "status": 204,
+   "request": {
+    "CurrentPw": "",
+    "NewPw": "<new-password>"
+   }
+  },
+  {
+   "section": "password",
+   "case": "no password: own, empty CurrentPw: the user's tokens afterwards",
+   "answer": {
+    "caller": 200,
+    "other": 401
+   }
+  },
+  {
+   "section": "password",
+   "case": "no password: own, empty CurrentPw: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "own, right CurrentPw, empty NewPw",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-pass-id>",
+   "status": 204,
+   "request": {
+    "CurrentPw": "<new-password>",
+    "NewPw": ""
+   }
+  },
+  {
+   "section": "password",
+   "case": "own, right CurrentPw, empty NewPw: the user's tokens afterwards",
+   "answer": {
+    "caller": 200,
+    "other": 401
+   }
+  },
+  {
+   "section": "password",
+   "case": "own, right CurrentPw, empty NewPw: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "admin, empty body",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-pass-id>",
+   "status": 204,
+   "request": {}
+  },
+  {
+   "section": "password",
+   "case": "admin, empty body: the user's tokens afterwards",
+   "answer": {
+    "caller": 401,
+    "other": 401
+   }
+  },
+  {
+   "section": "password",
+   "case": "admin, empty body: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "after the admin's empty body, empty password",
+   "method": "POST",
+   "path": "/Users/AuthenticateByName",
+   "status": 200,
+   "answer": "token issued"
+  },
+  {
+   "section": "password",
+   "case": "unknown id",
+   "method": "POST",
+   "path": "/Users/Password?userId=0f0f0f0f0f0f40408f8f0f0f0f0f0f0f",
+   "status": 404,
+   "request": {
+    "NewPw": "<new-password>"
+   },
+   "answer": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.5\",\"title\":\"Not Found\",\"status\":404,\"traceId\":\"00-<id>-6833615715bede52-00\"}"
+  },
+  {
+   "section": "password",
+   "case": "unknown id: the user's tokens afterwards",
+   "answer": {
+    "caller": 200,
+    "other": 200
+   }
+  },
+  {
+   "section": "password",
+   "case": "unknown id: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "malformed id",
+   "method": "POST",
+   "path": "/Users/Password?userId=not-a-guid",
+   "status": 400,
+   "request": {
+    "NewPw": "<new-password>"
+   },
+   "answer": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"userId\":[\"The value \\u0027not-a-guid\\u0027 is not valid.\"]},\"traceId\":\"00-<id>-cb0aaf9d21403963-00\"}"
+  },
+  {
+   "section": "password",
+   "case": "malformed id: the user's tokens afterwards",
+   "answer": {
+    "caller": 200,
+    "other": 200
+   }
+  },
+  {
+   "section": "password",
+   "case": "malformed id: HasPassword",
+   "answer": true
+  },
+  {
+   "section": "password",
+   "case": "admin for themselves, no CurrentPw",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-admin-two-id>",
+   "status": 403,
+   "request": {
+    "NewPw": "<new-password>"
+   },
+   "answer": "\"Invalid user or password entered.\""
+  },
+  {
+   "section": "password",
+   "case": "admin for themselves, wrong CurrentPw",
+   "method": "POST",
+   "path": "/Users/Password?userId=<capture-admin-two-id>",
+   "status": 403,
+   "request": {
+    "CurrentPw": "wrong",
+    "NewPw": "<new-password>"
+   },
+   "answer": "\"Invalid user or password entered.\""
+  },
+  {
+   "section": "password",
+   "case": "no userId, right CurrentPw",
+   "method": "POST",
+   "path": "/Users/Password",
+   "status": 204,
+   "request": {
+    "CurrentPw": "<right-password>",
+    "NewPw": "<new-password>"
+   }
+  },
+  {
+   "section": "providers",
+   "case": "admin",
+   "method": "GET",
+   "path": "/Auth/Providers",
+   "status": 200,
+   "answer": [
+    {
+     "Name": "Default",
+     "Id": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider"
+    }
+   ]
+  },
+  {
+   "section": "providers",
+   "case": "admin",
+   "method": "GET",
+   "path": "/Auth/PasswordResetProviders",
+   "status": 200,
+   "answer": [
+    {
+     "Name": "Default Password Reset Provider",
+     "Id": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider"
+    }
+   ]
+  },
+  {
+   "section": "providers",
+   "case": "viewer",
+   "method": "GET",
+   "path": "/Auth/Providers",
+   "status": 403
+  },
+  {
+   "section": "providers",
+   "case": "viewer",
+   "method": "GET",
+   "path": "/Auth/PasswordResetProviders",
+   "status": 403
+  },
+  {
+   "section": "providers",
+   "case": "no token",
+   "method": "GET",
+   "path": "/Auth/Providers",
+   "status": 401
+  },
+  {
+   "section": "providers",
+   "case": "no token",
+   "method": "GET",
+   "path": "/Auth/PasswordResetProviders",
+   "status": 401
+  }
+ ],
+ "web": {
+  "pages": [
+   {
+    "page": "user list",
+    "as": "administrator",
+    "steps": [
+     {
+      "step": "load",
+      "requests": [
+       {
+        "method": "GET",
+        "path": "/System/Info/Public",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Info",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Users/<capture-admin-id>",
+        "status": 200
+       },
+       {
+        "method": "POST",
+        "path": "/Sessions/Capabilities/Full",
+        "status": 204,
+        "body": "{\"PlayableMediaTypes\":[\"Audio\",\"Video\"],\"SupportedCommands\":[\"MoveUp\",\"MoveDown\",\"MoveLeft\",\"MoveRight\",\"PageUp\",\"PageDown\",\"PreviousLetter\",\"NextLetter\",\"ToggleOsd\",\"ToggleContextMenu\",\"Select\",\"Back\",\"SendKey\",\"SendString\",\"GoHome\",\"GoToSettings\",\"VolumeUp\",\"VolumeDown\",\"Mute\",\"Unmute\",\"ToggleMute\",\"SetVolume\",\"SetAudioStreamIndex\",\"SetSubtitleStreamIndex\",\"DisplayContent\",\"GoToSearch\",\"DisplayMessage\",\"SetRepeatMode\",\"SetShuffleQueue\",\"ChannelUp\",\"ChannelDown\",\"PlayMediaSource\",\"PlayTrailers\"],\"SupportsPersistentIdentifier\":false,\"SupportsMediaControl\":true}"
+       },
+       {
+        "method": "GET",
+        "path": "/Users",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Endpoint",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=500000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=1000000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=3000000",
+        "status": 200
+       }
+      ],
+      "shows": {
+       "messages": [],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "hash": "#/dashboard/users"
+      }
+     },
+     {
+      "step": "a card's menu",
+      "requests": [],
+      "shows": {
+       "messages": [
+        "Edit user Library access Parental control Delete"
+       ],
+       "still_shown_at_the_end": [
+        "Edit user Library access Parental control Delete"
+       ],
+       "spinner_at_the_end": false,
+       "menu": [
+        "Edit user",
+        "Library access",
+        "Parental control",
+        "Delete"
+       ],
+       "hash": "#/dashboard/users"
+      }
+     }
+    ]
+   },
+   {
+    "page": "new user",
+    "as": "administrator",
+    "steps": [
+     {
+      "step": "load",
+      "requests": [
+       {
+        "method": "GET",
+        "path": "/System/Info/Public",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Info",
+        "status": 200
+       },
+       {
+        "method": "POST",
+        "path": "/Sessions/Capabilities/Full",
+        "status": 204,
+        "body": "{\"PlayableMediaTypes\":[\"Audio\",\"Video\"],\"SupportedCommands\":[\"MoveUp\",\"MoveDown\",\"MoveLeft\",\"MoveRight\",\"PageUp\",\"PageDown\",\"PreviousLetter\",\"NextLetter\",\"ToggleOsd\",\"ToggleContextMenu\",\"Select\",\"Back\",\"SendKey\",\"SendString\",\"GoHome\",\"GoToSettings\",\"VolumeUp\",\"VolumeDown\",\"Mute\",\"Unmute\",\"ToggleMute\",\"SetVolume\",\"SetAudioStreamIndex\",\"SetSubtitleStreamIndex\",\"DisplayContent\",\"GoToSearch\",\"DisplayMessage\",\"SetRepeatMode\",\"SetShuffleQueue\",\"ChannelUp\",\"ChannelDown\",\"PlayMediaSource\",\"PlayTrailers\"],\"SupportsPersistentIdentifier\":false,\"SupportsMediaControl\":true}"
+       },
+       {
+        "method": "GET",
+        "path": "/Users/<capture-admin-id>",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Library/MediaFolders",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Channels",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Endpoint",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=500000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=1000000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=3000000",
+        "status": 200
+       }
+      ],
+      "shows": {
+       "messages": [],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "hash": "#/dashboard/users/add"
+      }
+     },
+     {
+      "step": "Save with a name and a password, defaults left",
+      "requests": [
+       {
+        "method": "POST",
+        "path": "/Users/New",
+        "status": 200,
+        "body": "{\"Name\":\"capture-web-made\",\"Password\":\"<new-password>\"}"
+       },
+       {
+        "method": "POST",
+        "path": "/Users/<capture-web-made-id>/Policy",
+        "status": 204,
+        "body": "{\"IsAdministrator\":false,\"IsHidden\":true,\"EnableCollectionManagement\":false,\"EnableSubtitleManagement\":false,\"EnableLyricManagement\":false,\"IsDisabled\":false,\"BlockedTags\":[],\"AllowedTags\":[],\"EnableUserPreferenceAccess\":true,\"AccessSchedules\":[],\"BlockUnratedItems\":[],\"EnableRemoteControlOfOtherUsers\":false,\"EnableSharedDeviceControl\":true,\"EnableRemoteAccess\":true,\"EnableLiveTvManagement\":false,\"EnableLiveTvAccess\":true,\"EnableMediaPlayback\":true,\"EnableAudioPlaybackTranscoding\":true,\"EnableVideoPlaybackTranscoding\":true,\"EnablePlaybackRemuxing\":true,\"ForceRemoteSourceTranscoding\":false,\"EnableContentDeletion\":false,\"EnableContentDeletionFromFolders\":[],\"EnableContentDownloading\":true,\"EnableSyncTranscoding\":true,\"EnableMediaConversion\":true,\"EnabledDevices\":[],\"EnableAllDevices\":true,\"EnabledChannels\":[],\"EnableAllChannels\":false,\"EnabledFolders\":[],\"EnableAllFolders\":false,\"InvalidLoginAttemptCount\":0,\"LoginAttemptsBeforeLockout\":-1,\"MaxActiveSessions\":0,\"EnablePublicSharing\":true,\"BlockedMediaFolders\":[],\"BlockedChannels\":[],\"RemoteClientBitrateLimit\":0,\"AuthenticationProviderId\":\"Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider\",\"PasswordResetProviderId\":\"Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider\",\"SyncPlayAccess\":\"CreateAndJoinGroups\"}"
+       },
+       {
+        "method": "GET",
+        "path": "/Users/<capture-web-made-id>",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Auth/PasswordResetProviders",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Auth/Providers",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Configuration/network",
+        "status": 200
+       }
+      ],
+      "shows": {
+       "messages": [],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "hash": "#/dashboard/users/<capture-web-made-id>/profile"
+      }
+     },
+     {
+      "step": "load again",
+      "requests": [
+       {
+        "method": "GET",
+        "path": "/System/Info/Public",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Info",
+        "status": 200
+       },
+       {
+        "method": "POST",
+        "path": "/Sessions/Capabilities/Full",
+        "status": 204,
+        "body": "{\"PlayableMediaTypes\":[\"Audio\",\"Video\"],\"SupportedCommands\":[\"MoveUp\",\"MoveDown\",\"MoveLeft\",\"MoveRight\",\"PageUp\",\"PageDown\",\"PreviousLetter\",\"NextLetter\",\"ToggleOsd\",\"ToggleContextMenu\",\"Select\",\"Back\",\"SendKey\",\"SendString\",\"GoHome\",\"GoToSettings\",\"VolumeUp\",\"VolumeDown\",\"Mute\",\"Unmute\",\"ToggleMute\",\"SetVolume\",\"SetAudioStreamIndex\",\"SetSubtitleStreamIndex\",\"DisplayContent\",\"GoToSearch\",\"DisplayMessage\",\"SetRepeatMode\",\"SetShuffleQueue\",\"ChannelUp\",\"ChannelDown\",\"PlayMediaSource\",\"PlayTrailers\"],\"SupportsPersistentIdentifier\":false,\"SupportsMediaControl\":true}"
+       },
+       {
+        "method": "GET",
+        "path": "/Users/<capture-admin-id>",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Endpoint",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=500000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=1000000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=3000000",
+        "status": 200
+       }
+      ],
+      "shows": {
+       "messages": [],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "hash": "#/dashboard/users/add"
+      }
+     },
+     {
+      "step": "Save with a name, no password, one library ticked instead of all",
+      "requests": [
+       {
+        "method": "POST",
+        "path": "/Users/New",
+        "status": 200,
+        "body": "{\"Name\":\"capture-web-restricted\",\"Password\":\"\"}"
+       },
+       {
+        "method": "POST",
+        "path": "/Users/<id>/Policy",
+        "status": 204,
+        "body": "{\"IsAdministrator\":false,\"IsHidden\":true,\"EnableCollectionManagement\":false,\"EnableSubtitleManagement\":false,\"EnableLyricManagement\":false,\"IsDisabled\":false,\"BlockedTags\":[],\"AllowedTags\":[],\"EnableUserPreferenceAccess\":true,\"AccessSchedules\":[],\"BlockUnratedItems\":[],\"EnableRemoteControlOfOtherUsers\":false,\"EnableSharedDeviceControl\":true,\"EnableRemoteAccess\":true,\"EnableLiveTvManagement\":false,\"EnableLiveTvAccess\":true,\"EnableMediaPlayback\":true,\"EnableAudioPlaybackTranscoding\":true,\"EnableVideoPlaybackTranscoding\":true,\"EnablePlaybackRemuxing\":true,\"ForceRemoteSourceTranscoding\":false,\"EnableContentDeletion\":false,\"EnableContentDeletionFromFolders\":[],\"EnableContentDownloading\":true,\"EnableSyncTranscoding\":true,\"EnableMediaConversion\":true,\"EnabledDevices\":[],\"EnableAllDevices\":true,\"EnabledChannels\":[],\"EnableAllChannels\":false,\"EnabledFolders\":[\"<id>\"],\"EnableAllFolders\":false,\"InvalidLoginAttemptCount\":0,\"LoginAttemptsBeforeLockout\":-1,\"MaxActiveSessions\":0,\"EnablePublicSharing\":true,\"BlockedMediaFolders\":[],\"BlockedChannels\":[],\"RemoteClientBitrateLimit\":0,\"AuthenticationProviderId\":\"Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider\",\"PasswordResetProviderId\":\"Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider\",\"SyncPlayAccess\":\"CreateAndJoinGroups\"}"
+       },
+       {
+        "method": "GET",
+        "path": "/Users/<id>",
+        "status": 200
+       }
+      ],
+      "shows": {
+       "messages": [],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "hash": "#/dashboard/users/<id>/profile"
+      }
+     }
+    ]
+   },
+   {
+    "page": "user list: delete",
+    "as": "administrator",
+    "steps": [
+     {
+      "step": "load",
+      "requests": [
+       {
+        "method": "GET",
+        "path": "/System/Info/Public",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Info",
+        "status": 200
+       },
+       {
+        "method": "POST",
+        "path": "/Sessions/Capabilities/Full",
+        "status": 204,
+        "body": "{\"PlayableMediaTypes\":[\"Audio\",\"Video\"],\"SupportedCommands\":[\"MoveUp\",\"MoveDown\",\"MoveLeft\",\"MoveRight\",\"PageUp\",\"PageDown\",\"PreviousLetter\",\"NextLetter\",\"ToggleOsd\",\"ToggleContextMenu\",\"Select\",\"Back\",\"SendKey\",\"SendString\",\"GoHome\",\"GoToSettings\",\"VolumeUp\",\"VolumeDown\",\"Mute\",\"Unmute\",\"ToggleMute\",\"SetVolume\",\"SetAudioStreamIndex\",\"SetSubtitleStreamIndex\",\"DisplayContent\",\"GoToSearch\",\"DisplayMessage\",\"SetRepeatMode\",\"SetShuffleQueue\",\"ChannelUp\",\"ChannelDown\",\"PlayMediaSource\",\"PlayTrailers\"],\"SupportsPersistentIdentifier\":false,\"SupportsMediaControl\":true}"
+       },
+       {
+        "method": "GET",
+        "path": "/Users/<capture-admin-id>",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Users",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Endpoint",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=500000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=1000000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=3000000",
+        "status": 200
+       }
+      ],
+      "shows": {
+       "messages": [],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "hash": "#/dashboard/users"
+      }
+     },
+     {
+      "step": "Delete from a card's menu, confirmed",
+      "requests": [
+       {
+        "method": "DELETE",
+        "path": "/Users/<id>",
+        "status": 204
+       },
+       {
+        "method": "GET",
+        "path": "/Users",
+        "status": 200
+       }
+      ],
+      "shows": {
+       "messages": [
+        "Delete capture-web-restricted Are you sure you wish to delete this user? Cancel Delete"
+       ],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "hash": "#/dashboard/users"
+      }
+     }
+    ]
+   },
+   {
+    "page": "user profile",
+    "as": "administrator",
+    "steps": [
+     {
+      "step": "load",
+      "requests": [
+       {
+        "method": "GET",
+        "path": "/System/Info/Public",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Info",
+        "status": 200
+       },
+       {
+        "method": "POST",
+        "path": "/Sessions/Capabilities/Full",
+        "status": 204,
+        "body": "{\"PlayableMediaTypes\":[\"Audio\",\"Video\"],\"SupportedCommands\":[\"MoveUp\",\"MoveDown\",\"MoveLeft\",\"MoveRight\",\"PageUp\",\"PageDown\",\"PreviousLetter\",\"NextLetter\",\"ToggleOsd\",\"ToggleContextMenu\",\"Select\",\"Back\",\"SendKey\",\"SendString\",\"GoHome\",\"GoToSettings\",\"VolumeUp\",\"VolumeDown\",\"Mute\",\"Unmute\",\"ToggleMute\",\"SetVolume\",\"SetAudioStreamIndex\",\"SetSubtitleStreamIndex\",\"DisplayContent\",\"GoToSearch\",\"DisplayMessage\",\"SetRepeatMode\",\"SetShuffleQueue\",\"ChannelUp\",\"ChannelDown\",\"PlayMediaSource\",\"PlayTrailers\"],\"SupportsPersistentIdentifier\":false,\"SupportsMediaControl\":true}"
+       },
+       {
+        "method": "GET",
+        "path": "/Users/<capture-admin-id>",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Users/<capture-viewer-two-id>",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Auth/PasswordResetProviders",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Auth/Providers",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Configuration/network",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Library/MediaFolders?isHidden=false",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Channels?supportsMediaDeletion=true",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Endpoint",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=500000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=1000000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=3000000",
+        "status": 200
+       }
+      ],
+      "shows": {
+       "messages": [],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "hash": "#/dashboard/users/<capture-viewer-two-id>/profile"
+      }
+     },
+     {
+      "step": "Save with no change",
+      "requests": [
+       {
+        "method": "POST",
+        "path": "/Users?userId=<capture-viewer-two-id>",
+        "status": 204,
+        "body": "{\"Name\":\"capture-viewer-two\",\"ServerId\":\"<server-id>\",\"Id\":\"<capture-viewer-two-id>\",\"HasPassword\":true,\"HasConfiguredPassword\":true,\"HasConfiguredEasyPassword\":false,\"EnableAutoLogin\":false,\"Configuration\":{\"PlayDefaultAudioTrack\":true,\"SubtitleLanguagePreference\":\"\",\"DisplayMissingEpisodes\":false,\"GroupedFolders\":[],\"SubtitleMode\":\"Default\",\"DisplayCollectionsView\":false,\"EnableLocalPassword\":false,\"OrderedViews\":[],\"LatestItemsExcludes\":[],\"MyMediaExcludes\":[],\"HidePlayedInLatest\":true,\"RememberAudioSelections\":true,\"RememberSubtitleSelections\":true,\"EnableNextEpisodeAutoPlay\":true,\"CastReceiverId\":\"F007D354\"},\"Policy\":{\"IsAdministrator\":false,\"IsHidden\":true,\"EnableCollectionManagement\":false,\"EnableSubtitleManagement\":false,\"EnableLyricManagement\":false,\"IsDisabled\":false,\"BlockedTags\":[],\"AllowedTags\":[],\"EnableUserPreferenceAccess\":true,\"AccessSchedules\":[],\"BlockUnratedItems\":[],\"EnableRemoteControlOfOtherUsers\":false,\"EnableSharedDeviceControl\":true,\"EnableRemoteAccess\":true,\"EnableLiveTvManagement\":false,\"EnableLiveTvAccess\":true,\"EnableMediaPlayback\":true,\"EnableAudioPlaybackTranscoding\":true,\"EnableVideoPlaybackTranscoding\":true,\"EnablePlaybackRemuxing\":true,\"ForceRemoteSourceTranscoding\":false,\"EnableContentDeletion\":false,\"EnableContentDeletionFromFolders\":[],\"EnableContentDownloading\":true,\"EnableSyncTranscoding\":true,\"EnableMediaConversion\":true,\"EnabledDevices\":[],\"EnableAllDevices\":true,\"EnabledChannels\":[],\"EnableAllChannels\":true,\"EnabledFolders\":[],\"EnableAllFolders\":true,\"InvalidLoginAttemptCount\":2,\"LoginAttemptsBeforeLockout\":-1,\"MaxActiveSessions\":0,\"EnablePublicSharing\":true,\"BlockedMediaFolders\":[],\"BlockedChannels\":[],\"RemoteClientBitrateLimit\":0,\"AuthenticationProviderId\":\"Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider\",\"PasswordResetProviderId\":\"Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider\",\"SyncPlayAccess\":\"CreateAndJoinGroups\"}}"
+       },
+       {
+        "method": "GET",
+        "path": "/Users/<capture-viewer-two-id>",
+        "status": 200
+       },
+       {
+        "method": "POST",
+        "path": "/Users/<capture-viewer-two-id>/Policy",
+        "status": 204,
+        "body": "{\"IsAdministrator\":false,\"IsHidden\":true,\"EnableCollectionManagement\":false,\"EnableSubtitleManagement\":false,\"EnableLyricManagement\":false,\"IsDisabled\":false,\"BlockedTags\":[],\"AllowedTags\":[],\"EnableUserPreferenceAccess\":true,\"AccessSchedules\":[],\"BlockUnratedItems\":[],\"EnableRemoteControlOfOtherUsers\":false,\"EnableSharedDeviceControl\":true,\"EnableRemoteAccess\":true,\"EnableLiveTvManagement\":false,\"EnableLiveTvAccess\":true,\"EnableMediaPlayback\":true,\"EnableAudioPlaybackTranscoding\":true,\"EnableVideoPlaybackTranscoding\":true,\"EnablePlaybackRemuxing\":true,\"ForceRemoteSourceTranscoding\":false,\"EnableContentDeletion\":false,\"EnableContentDeletionFromFolders\":[],\"EnableContentDownloading\":true,\"EnableSyncTranscoding\":true,\"EnableMediaConversion\":true,\"EnabledDevices\":[],\"EnableAllDevices\":true,\"EnabledChannels\":[],\"EnableAllChannels\":true,\"EnabledFolders\":[],\"EnableAllFolders\":true,\"InvalidLoginAttemptCount\":2,\"LoginAttemptsBeforeLockout\":-1,\"MaxActiveSessions\":0,\"EnablePublicSharing\":true,\"BlockedMediaFolders\":[],\"BlockedChannels\":[],\"RemoteClientBitrateLimit\":0,\"AuthenticationProviderId\":\"Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider\",\"PasswordResetProviderId\":\"Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider\",\"SyncPlayAccess\":\"CreateAndJoinGroups\"}"
+       },
+       {
+        "method": "GET",
+        "path": "/Users",
+        "status": 200
+       }
+      ],
+      "shows": {
+       "messages": [
+        "Settings saved."
+       ],
+       "still_shown_at_the_end": [
+        "Settings saved.",
+        "Settings saved."
+       ],
+       "spinner_at_the_end": false,
+       "user_against_get": {
+        "not_posted": [],
+        "only_posted": [],
+        "differing": {}
+       },
+       "policy_against_get": {
+        "not_posted": [],
+        "only_posted": [],
+        "differing": {}
+       },
+       "hash": "#/dashboard/users"
+      }
+     }
+    ]
+   },
+   {
+    "page": "access",
+    "as": "administrator",
+    "steps": [
+     {
+      "step": "load",
+      "requests": [
+       {
+        "method": "GET",
+        "path": "/System/Info/Public",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Info",
+        "status": 200
+       },
+       {
+        "method": "POST",
+        "path": "/Sessions/Capabilities/Full",
+        "status": 204,
+        "body": "{\"PlayableMediaTypes\":[\"Audio\",\"Video\"],\"SupportedCommands\":[\"MoveUp\",\"MoveDown\",\"MoveLeft\",\"MoveRight\",\"PageUp\",\"PageDown\",\"PreviousLetter\",\"NextLetter\",\"ToggleOsd\",\"ToggleContextMenu\",\"Select\",\"Back\",\"SendKey\",\"SendString\",\"GoHome\",\"GoToSettings\",\"VolumeUp\",\"VolumeDown\",\"Mute\",\"Unmute\",\"ToggleMute\",\"SetVolume\",\"SetAudioStreamIndex\",\"SetSubtitleStreamIndex\",\"DisplayContent\",\"GoToSearch\",\"DisplayMessage\",\"SetRepeatMode\",\"SetShuffleQueue\",\"ChannelUp\",\"ChannelDown\",\"PlayMediaSource\",\"PlayTrailers\"],\"SupportsPersistentIdentifier\":false,\"SupportsMediaControl\":true}"
+       },
+       {
+        "method": "GET",
+        "path": "/Users/<capture-admin-id>",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Users/<capture-viewer-two-id>",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Library/MediaFolders?IsHidden=false",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Channels",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Devices",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Endpoint",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=500000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=1000000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=3000000",
+        "status": 200
+       }
+      ],
+      "shows": {
+       "messages": [],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "hash": "#/dashboard/users/<capture-viewer-two-id>/access"
+      }
+     },
+     {
+      "step": "Save with no change",
+      "requests": [
+       {
+        "method": "GET",
+        "path": "/Users/<capture-viewer-two-id>",
+        "status": 200
+       },
+       {
+        "method": "POST",
+        "path": "/Users/<capture-viewer-two-id>/Policy",
+        "status": 204,
+        "body": "{\"IsAdministrator\":false,\"IsHidden\":true,\"EnableCollectionManagement\":false,\"EnableSubtitleManagement\":false,\"EnableLyricManagement\":false,\"IsDisabled\":false,\"BlockedTags\":[],\"AllowedTags\":[],\"EnableUserPreferenceAccess\":true,\"AccessSchedules\":[],\"BlockUnratedItems\":[],\"EnableRemoteControlOfOtherUsers\":false,\"EnableSharedDeviceControl\":true,\"EnableRemoteAccess\":true,\"EnableLiveTvManagement\":false,\"EnableLiveTvAccess\":true,\"EnableMediaPlayback\":true,\"EnableAudioPlaybackTranscoding\":true,\"EnableVideoPlaybackTranscoding\":true,\"EnablePlaybackRemuxing\":true,\"ForceRemoteSourceTranscoding\":false,\"EnableContentDeletion\":false,\"EnableContentDeletionFromFolders\":[],\"EnableContentDownloading\":true,\"EnableSyncTranscoding\":true,\"EnableMediaConversion\":true,\"EnabledDevices\":[],\"EnableAllDevices\":true,\"EnabledChannels\":[],\"EnableAllChannels\":true,\"EnabledFolders\":[],\"EnableAllFolders\":true,\"InvalidLoginAttemptCount\":2,\"LoginAttemptsBeforeLockout\":-1,\"MaxActiveSessions\":0,\"EnablePublicSharing\":true,\"BlockedMediaFolders\":null,\"BlockedChannels\":null,\"RemoteClientBitrateLimit\":0,\"AuthenticationProviderId\":\"Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider\",\"PasswordResetProviderId\":\"Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider\",\"SyncPlayAccess\":\"CreateAndJoinGroups\"}"
+       }
+      ],
+      "shows": {
+       "messages": [
+        "Settings saved."
+       ],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "policy_against_get": {
+        "not_posted": [],
+        "only_posted": [],
+        "differing": {
+         "BlockedChannels": [
+          [],
+          null
+         ],
+         "BlockedMediaFolders": [
+          [],
+          null
+         ]
+        }
+       },
+       "hash": "#/dashboard/users/<capture-viewer-two-id>/access"
+      }
+     }
+    ]
+   },
+   {
+    "page": "parental control",
+    "as": "administrator",
+    "steps": [
+     {
+      "step": "load",
+      "requests": [
+       {
+        "method": "GET",
+        "path": "/System/Info/Public",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Info",
+        "status": 200
+       },
+       {
+        "method": "POST",
+        "path": "/Sessions/Capabilities/Full",
+        "status": 204,
+        "body": "{\"PlayableMediaTypes\":[\"Audio\",\"Video\"],\"SupportedCommands\":[\"MoveUp\",\"MoveDown\",\"MoveLeft\",\"MoveRight\",\"PageUp\",\"PageDown\",\"PreviousLetter\",\"NextLetter\",\"ToggleOsd\",\"ToggleContextMenu\",\"Select\",\"Back\",\"SendKey\",\"SendString\",\"GoHome\",\"GoToSettings\",\"VolumeUp\",\"VolumeDown\",\"Mute\",\"Unmute\",\"ToggleMute\",\"SetVolume\",\"SetAudioStreamIndex\",\"SetSubtitleStreamIndex\",\"DisplayContent\",\"GoToSearch\",\"DisplayMessage\",\"SetRepeatMode\",\"SetShuffleQueue\",\"ChannelUp\",\"ChannelDown\",\"PlayMediaSource\",\"PlayTrailers\"],\"SupportsPersistentIdentifier\":false,\"SupportsMediaControl\":true}"
+       },
+       {
+        "method": "GET",
+        "path": "/Users/<capture-admin-id>",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Users/<capture-viewer-two-id>",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Localization/ParentalRatings",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Endpoint",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=500000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=1000000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=3000000",
+        "status": 200
+       }
+      ],
+      "shows": {
+       "messages": [],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "hash": "#/dashboard/users/<capture-viewer-two-id>/parentalcontrol"
+      }
+     },
+     {
+      "step": "Save with no change",
+      "requests": [
+       {
+        "method": "GET",
+        "path": "/Users/<capture-viewer-two-id>",
+        "status": 200
+       },
+       {
+        "method": "POST",
+        "path": "/Users/<capture-viewer-two-id>/Policy",
+        "status": 204,
+        "body": "{\"IsAdministrator\":false,\"IsHidden\":true,\"EnableCollectionManagement\":false,\"EnableSubtitleManagement\":false,\"EnableLyricManagement\":false,\"IsDisabled\":false,\"BlockedTags\":[],\"AllowedTags\":[],\"EnableUserPreferenceAccess\":true,\"AccessSchedules\":[],\"BlockUnratedItems\":[],\"EnableRemoteControlOfOtherUsers\":false,\"EnableSharedDeviceControl\":true,\"EnableRemoteAccess\":true,\"EnableLiveTvManagement\":false,\"EnableLiveTvAccess\":true,\"EnableMediaPlayback\":true,\"EnableAudioPlaybackTranscoding\":true,\"EnableVideoPlaybackTranscoding\":true,\"EnablePlaybackRemuxing\":true,\"ForceRemoteSourceTranscoding\":false,\"EnableContentDeletion\":false,\"EnableContentDeletionFromFolders\":[],\"EnableContentDownloading\":true,\"EnableSyncTranscoding\":true,\"EnableMediaConversion\":true,\"EnabledDevices\":[],\"EnableAllDevices\":true,\"EnabledChannels\":[],\"EnableAllChannels\":true,\"EnabledFolders\":[],\"EnableAllFolders\":true,\"InvalidLoginAttemptCount\":2,\"LoginAttemptsBeforeLockout\":-1,\"MaxActiveSessions\":0,\"EnablePublicSharing\":true,\"BlockedMediaFolders\":[],\"BlockedChannels\":[],\"RemoteClientBitrateLimit\":0,\"AuthenticationProviderId\":\"Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider\",\"PasswordResetProviderId\":\"Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider\",\"SyncPlayAccess\":\"CreateAndJoinGroups\"}"
+       }
+      ],
+      "shows": {
+       "messages": [
+        "Settings saved."
+       ],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "policy_against_get": {
+        "not_posted": [],
+        "only_posted": [],
+        "differing": {}
+       },
+       "hash": "#/dashboard/users/<capture-viewer-two-id>/parentalcontrol"
+      }
+     }
+    ]
+   },
+   {
+    "page": "password (another user)",
+    "as": "administrator",
+    "steps": [
+     {
+      "step": "load",
+      "requests": [
+       {
+        "method": "GET",
+        "path": "/System/Info/Public",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Info",
+        "status": 200
+       },
+       {
+        "method": "POST",
+        "path": "/Sessions/Capabilities/Full",
+        "status": 204,
+        "body": "{\"PlayableMediaTypes\":[\"Audio\",\"Video\"],\"SupportedCommands\":[\"MoveUp\",\"MoveDown\",\"MoveLeft\",\"MoveRight\",\"PageUp\",\"PageDown\",\"PreviousLetter\",\"NextLetter\",\"ToggleOsd\",\"ToggleContextMenu\",\"Select\",\"Back\",\"SendKey\",\"SendString\",\"GoHome\",\"GoToSettings\",\"VolumeUp\",\"VolumeDown\",\"Mute\",\"Unmute\",\"ToggleMute\",\"SetVolume\",\"SetAudioStreamIndex\",\"SetSubtitleStreamIndex\",\"DisplayContent\",\"GoToSearch\",\"DisplayMessage\",\"SetRepeatMode\",\"SetShuffleQueue\",\"ChannelUp\",\"ChannelDown\",\"PlayMediaSource\",\"PlayTrailers\"],\"SupportsPersistentIdentifier\":false,\"SupportsMediaControl\":true}"
+       },
+       {
+        "method": "GET",
+        "path": "/Users/<capture-admin-id>",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Users/<capture-viewer-two-id>",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Endpoint",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=500000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=1000000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=3000000",
+        "status": 200
+       }
+      ],
+      "shows": {
+       "messages": [],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "current_password_field": true,
+       "hash": "#/dashboard/users/<capture-viewer-two-id>/password"
+      }
+     },
+     {
+      "step": "Save Password",
+      "requests": [
+       {
+        "method": "POST",
+        "path": "/Users/<capture-viewer-two-id>/Password",
+        "status": 204,
+        "body": "{\"CurrentPw\":\"\",\"NewPw\":\"<new-password>\"}"
+       }
+      ],
+      "shows": {
+       "messages": [
+        "Password saved."
+       ],
+       "still_shown_at_the_end": [
+        "Password saved."
+       ],
+       "spinner_at_the_end": false,
+       "hash": "#/dashboard/users/<capture-viewer-two-id>/password"
+      }
+     },
+     {
+      "step": "Reset Password, confirmed",
+      "requests": [
+       {
+        "method": "POST",
+        "path": "/Users/<capture-viewer-two-id>/Password",
+        "status": 204,
+        "body": "{\"resetPassword\":true}"
+       }
+      ],
+      "shows": {
+       "messages": [
+        "Reset Password Are you sure you wish to reset the password? Cancel OK",
+        "Reset Password The password has been reset. Got It"
+       ],
+       "still_shown_at_the_end": [
+        "Reset Password The password has been reset. Got It"
+       ],
+       "spinner_at_the_end": false,
+       "hash": "#/dashboard/users/<capture-viewer-two-id>/password"
+      }
+     }
+    ]
+   },
+   {
+    "page": "Quick Connect",
+    "as": "administrator",
+    "steps": [
+     {
+      "step": "load",
+      "requests": [
+       {
+        "method": "GET",
+        "path": "/System/Info/Public",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Info",
+        "status": 200
+       },
+       {
+        "method": "POST",
+        "path": "/Sessions/Capabilities/Full",
+        "status": 204,
+        "body": "{\"PlayableMediaTypes\":[\"Audio\",\"Video\"],\"SupportedCommands\":[\"MoveUp\",\"MoveDown\",\"MoveLeft\",\"MoveRight\",\"PageUp\",\"PageDown\",\"PreviousLetter\",\"NextLetter\",\"ToggleOsd\",\"ToggleContextMenu\",\"Select\",\"Back\",\"SendKey\",\"SendString\",\"GoHome\",\"GoToSettings\",\"VolumeUp\",\"VolumeDown\",\"Mute\",\"Unmute\",\"ToggleMute\",\"SetVolume\",\"SetAudioStreamIndex\",\"SetSubtitleStreamIndex\",\"DisplayContent\",\"GoToSearch\",\"DisplayMessage\",\"SetRepeatMode\",\"SetShuffleQueue\",\"ChannelUp\",\"ChannelDown\",\"PlayMediaSource\",\"PlayTrailers\"],\"SupportsPersistentIdentifier\":false,\"SupportsMediaControl\":true}"
+       },
+       {
+        "method": "GET",
+        "path": "/Users/<capture-admin-id>",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Users",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Endpoint",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=500000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=1000000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=3000000",
+        "status": 200
+       }
+      ],
+      "shows": {
+       "messages": [],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "user_choices": [
+        "capture-admin",
+        "capture-viewer-one",
+        "capture-viewer-two",
+        "capture-web-made"
+       ],
+       "hash": "#/quickconnect"
+      }
+     },
+     {
+      "step": "Authorize a real code",
+      "requests": [
+       {
+        "method": "POST",
+        "path": "/QuickConnect/Authorize?code=<code>&userId=<capture-admin-id>",
+        "status": 200
+       }
+      ],
+      "shows": {
+       "messages": [],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "hash": "#/quickconnect"
+      }
+     }
+    ]
+   },
+   {
+    "page": "own profile and password",
+    "as": "viewer",
+    "steps": [
+     {
+      "step": "load",
+      "requests": [
+       {
+        "method": "GET",
+        "path": "/System/Info/Public",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Info",
+        "status": 200
+       },
+       {
+        "method": "POST",
+        "path": "/Sessions/Capabilities/Full",
+        "status": 204,
+        "body": "{\"PlayableMediaTypes\":[\"Audio\",\"Video\"],\"SupportedCommands\":[\"MoveUp\",\"MoveDown\",\"MoveLeft\",\"MoveRight\",\"PageUp\",\"PageDown\",\"PreviousLetter\",\"NextLetter\",\"ToggleOsd\",\"ToggleContextMenu\",\"Select\",\"Back\",\"SendKey\",\"SendString\",\"GoHome\",\"GoToSettings\",\"VolumeUp\",\"VolumeDown\",\"Mute\",\"Unmute\",\"ToggleMute\",\"SetVolume\",\"SetAudioStreamIndex\",\"SetSubtitleStreamIndex\",\"DisplayContent\",\"GoToSearch\",\"DisplayMessage\",\"SetRepeatMode\",\"SetShuffleQueue\",\"ChannelUp\",\"ChannelDown\",\"PlayMediaSource\",\"PlayTrailers\"],\"SupportsPersistentIdentifier\":false,\"SupportsMediaControl\":true}"
+       },
+       {
+        "method": "GET",
+        "path": "/Users/<capture-viewer-one-id>",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Endpoint",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=500000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=1000000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=3000000",
+        "status": 200
+       }
+      ],
+      "shows": {
+       "messages": [],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "hash": "#/userprofile?userId=<capture-viewer-one-id>"
+      }
+     },
+     {
+      "step": "Save Password with a wrong current password (the server's real answer)",
+      "requests": [
+       {
+        "method": "POST",
+        "path": "/Users/<capture-viewer-one-id>/Password",
+        "status": 403,
+        "body": "{\"CurrentPw\":\"wrong\",\"NewPw\":\"<new-password>\"}"
+       }
+      ],
+      "shows": {
+       "messages": [
+        "Login Failure Invalid username or password. Please try again. Got It"
+       ],
+       "still_shown_at_the_end": [
+        "Login Failure Invalid username or password. Please try again. Got It"
+       ],
+       "spinner_at_the_end": false,
+       "hash": "#/userprofile?userId=<capture-viewer-one-id>"
+      }
+     },
+     {
+      "step": "load again",
+      "requests": [
+       {
+        "method": "GET",
+        "path": "/System/Info/Public",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Info",
+        "status": 200
+       },
+       {
+        "method": "POST",
+        "path": "/Sessions/Capabilities/Full",
+        "status": 204,
+        "body": "{\"PlayableMediaTypes\":[\"Audio\",\"Video\"],\"SupportedCommands\":[\"MoveUp\",\"MoveDown\",\"MoveLeft\",\"MoveRight\",\"PageUp\",\"PageDown\",\"PreviousLetter\",\"NextLetter\",\"ToggleOsd\",\"ToggleContextMenu\",\"Select\",\"Back\",\"SendKey\",\"SendString\",\"GoHome\",\"GoToSettings\",\"VolumeUp\",\"VolumeDown\",\"Mute\",\"Unmute\",\"ToggleMute\",\"SetVolume\",\"SetAudioStreamIndex\",\"SetSubtitleStreamIndex\",\"DisplayContent\",\"GoToSearch\",\"DisplayMessage\",\"SetRepeatMode\",\"SetShuffleQueue\",\"ChannelUp\",\"ChannelDown\",\"PlayMediaSource\",\"PlayTrailers\"],\"SupportsPersistentIdentifier\":false,\"SupportsMediaControl\":true}"
+       },
+       {
+        "method": "GET",
+        "path": "/Users/<capture-viewer-one-id>",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Endpoint",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=500000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=1000000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=3000000",
+        "status": 200
+       }
+      ],
+      "shows": {
+       "messages": [],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "hash": "#/userprofile?userId=<capture-viewer-one-id>"
+      }
+     },
+     {
+      "step": "Save Password with the right current password",
+      "requests": [
+       {
+        "method": "POST",
+        "path": "/Users/<capture-viewer-one-id>/Password",
+        "status": 204,
+        "body": "{\"CurrentPw\":\"<right-password>\",\"NewPw\":\"<new-password>\"}"
+       }
+      ],
+      "shows": {
+       "messages": [
+        "Password saved."
+       ],
+       "still_shown_at_the_end": [
+        "Password saved."
+       ],
+       "spinner_at_the_end": false,
+       "hash": "#/userprofile?userId=<capture-viewer-one-id>"
+      }
+     },
+     {
+      "step": "load once more",
+      "requests": [
+       {
+        "method": "GET",
+        "path": "/System/Info/Public",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Info",
+        "status": 200
+       },
+       {
+        "method": "POST",
+        "path": "/Sessions/Capabilities/Full",
+        "status": 204,
+        "body": "{\"PlayableMediaTypes\":[\"Audio\",\"Video\"],\"SupportedCommands\":[\"MoveUp\",\"MoveDown\",\"MoveLeft\",\"MoveRight\",\"PageUp\",\"PageDown\",\"PreviousLetter\",\"NextLetter\",\"ToggleOsd\",\"ToggleContextMenu\",\"Select\",\"Back\",\"SendKey\",\"SendString\",\"GoHome\",\"GoToSettings\",\"VolumeUp\",\"VolumeDown\",\"Mute\",\"Unmute\",\"ToggleMute\",\"SetVolume\",\"SetAudioStreamIndex\",\"SetSubtitleStreamIndex\",\"DisplayContent\",\"GoToSearch\",\"DisplayMessage\",\"SetRepeatMode\",\"SetShuffleQueue\",\"ChannelUp\",\"ChannelDown\",\"PlayMediaSource\",\"PlayTrailers\"],\"SupportsPersistentIdentifier\":false,\"SupportsMediaControl\":true}"
+       },
+       {
+        "method": "GET",
+        "path": "/Users/<capture-viewer-one-id>",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Endpoint",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=500000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=1000000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=3000000",
+        "status": 200
+       }
+      ],
+      "shows": {
+       "messages": [],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "hash": "#/userprofile?userId=<capture-viewer-one-id>"
+      }
+     },
+     {
+      "step": "Reset Password, confirmed",
+      "requests": [
+       {
+        "method": "POST",
+        "path": "/Users/<capture-viewer-one-id>/Password",
+        "status": 204,
+        "body": "{\"resetPassword\":true}"
+       }
+      ],
+      "shows": {
+       "messages": [
+        "Reset Password Are you sure you wish to reset the password? Cancel OK",
+        "Reset Password The password has been reset. Got It"
+       ],
+       "still_shown_at_the_end": [
+        "Reset Password The password has been reset. Got It"
+       ],
+       "spinner_at_the_end": false,
+       "hash": "#/userprofile?userId=<capture-viewer-one-id>"
+      }
+     }
+    ]
+   },
+   {
+    "page": "Quick Connect",
+    "as": "viewer",
+    "steps": [
+     {
+      "step": "load",
+      "requests": [
+       {
+        "method": "GET",
+        "path": "/System/Info/Public",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Info",
+        "status": 200
+       },
+       {
+        "method": "POST",
+        "path": "/Sessions/Capabilities/Full",
+        "status": 204,
+        "body": "{\"PlayableMediaTypes\":[\"Audio\",\"Video\"],\"SupportedCommands\":[\"MoveUp\",\"MoveDown\",\"MoveLeft\",\"MoveRight\",\"PageUp\",\"PageDown\",\"PreviousLetter\",\"NextLetter\",\"ToggleOsd\",\"ToggleContextMenu\",\"Select\",\"Back\",\"SendKey\",\"SendString\",\"GoHome\",\"GoToSettings\",\"VolumeUp\",\"VolumeDown\",\"Mute\",\"Unmute\",\"ToggleMute\",\"SetVolume\",\"SetAudioStreamIndex\",\"SetSubtitleStreamIndex\",\"DisplayContent\",\"GoToSearch\",\"DisplayMessage\",\"SetRepeatMode\",\"SetShuffleQueue\",\"ChannelUp\",\"ChannelDown\",\"PlayMediaSource\",\"PlayTrailers\"],\"SupportsPersistentIdentifier\":false,\"SupportsMediaControl\":true}"
+       },
+       {
+        "method": "GET",
+        "path": "/Users/<capture-viewer-one-id>",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Users",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Endpoint",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=500000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=1000000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=3000000",
+        "status": 200
+       }
+      ],
+      "shows": {
+       "messages": [],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "hash": "#/quickconnect"
+      }
+     },
+     {
+      "step": "Authorize an unknown code (the server's real answer)",
+      "requests": [
+       {
+        "method": "POST",
+        "path": "/QuickConnect/Authorize?code=<code>",
+        "status": 404
+       }
+      ],
+      "shows": {
+       "messages": [],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "hash": "#/quickconnect"
+      }
+     },
+     {
+      "step": "load again",
+      "requests": [
+       {
+        "method": "GET",
+        "path": "/System/Info/Public",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Info",
+        "status": 200
+       },
+       {
+        "method": "POST",
+        "path": "/Sessions/Capabilities/Full",
+        "status": 204,
+        "body": "{\"PlayableMediaTypes\":[\"Audio\",\"Video\"],\"SupportedCommands\":[\"MoveUp\",\"MoveDown\",\"MoveLeft\",\"MoveRight\",\"PageUp\",\"PageDown\",\"PreviousLetter\",\"NextLetter\",\"ToggleOsd\",\"ToggleContextMenu\",\"Select\",\"Back\",\"SendKey\",\"SendString\",\"GoHome\",\"GoToSettings\",\"VolumeUp\",\"VolumeDown\",\"Mute\",\"Unmute\",\"ToggleMute\",\"SetVolume\",\"SetAudioStreamIndex\",\"SetSubtitleStreamIndex\",\"DisplayContent\",\"GoToSearch\",\"DisplayMessage\",\"SetRepeatMode\",\"SetShuffleQueue\",\"ChannelUp\",\"ChannelDown\",\"PlayMediaSource\",\"PlayTrailers\"],\"SupportsPersistentIdentifier\":false,\"SupportsMediaControl\":true}"
+       },
+       {
+        "method": "GET",
+        "path": "/Users/<capture-viewer-one-id>",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Users",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/System/Endpoint",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=500000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=1000000",
+        "status": 200
+       },
+       {
+        "method": "GET",
+        "path": "/Playback/BitrateTest?Size=3000000",
+        "status": 200
+       }
+      ],
+      "shows": {
+       "messages": [],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "hash": "#/quickconnect"
+      }
+     },
+     {
+      "step": "Authorize a real code",
+      "requests": [
+       {
+        "method": "POST",
+        "path": "/QuickConnect/Authorize?code=<code>",
+        "status": 200
+       }
+      ],
+      "shows": {
+       "messages": [],
+       "still_shown_at_the_end": [],
+       "spinner_at_the_end": false,
+       "hash": "#/quickconnect"
+      }
+     }
+    ]
+   }
+  ],
+  "refusals": [
+   {
+    "page": "user list",
+    "action": "load",
+    "refused": "GET /Users",
+    "status": 400,
+    "shows": {
+     "messages": [],
+     "still_shown_at_the_end": [],
+     "spinner_at_the_end": false,
+     "page_text": "Users Users"
+    },
+    "hash": "#/dashboard/users",
+    "after": [],
+    "user_requests": [
+     "GET /Users/<capture-admin-id> 200",
+     "GET /Users 400"
+    ],
+    "errors": []
+   },
+   {
+    "page": "user list",
+    "action": "load",
+    "refused": "GET /Users",
+    "status": 403,
+    "shows": {
+     "messages": [],
+     "still_shown_at_the_end": [],
+     "spinner_at_the_end": false,
+     "page_text": "Users Users"
+    },
+    "hash": "#/dashboard/users",
+    "after": [],
+    "user_requests": [
+     "GET /Users/<capture-admin-id> 200",
+     "GET /Users 403"
+    ],
+    "errors": []
+   },
+   {
+    "page": "user list",
+    "action": "delete",
+    "refused": "DELETE /Users/<capture-web-made-id>",
+    "status": 400,
+    "shows": {
+     "messages": [
+      "Delete capture-web-made Are you sure you wish to delete this user? Cancel Delete"
+     ],
+     "still_shown_at_the_end": [],
+     "spinner_at_the_end": false
+    },
+    "hash": "#/dashboard/users",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "user list",
+    "action": "delete",
+    "refused": "DELETE /Users/<capture-web-made-id>",
+    "status": 403,
+    "shows": {
+     "messages": [
+      "Delete capture-web-made Are you sure you wish to delete this user? Cancel Delete"
+     ],
+     "still_shown_at_the_end": [],
+     "spinner_at_the_end": false
+    },
+    "hash": "#/dashboard/users",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "new user",
+    "action": "Save",
+    "refused": "POST /Users/New",
+    "status": 400,
+    "shows": {
+     "messages": [
+      "There was an error processing the request. Please try again later."
+     ],
+     "still_shown_at_the_end": [
+      "There was an error processing the request. Please try again later.",
+      "There was an error processing the request. Please try again later."
+     ],
+     "spinner_at_the_end": false
+    },
+    "hash": "#/dashboard/users/add",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "new user",
+    "action": "Save",
+    "refused": "POST /Users/New",
+    "status": 403,
+    "shows": {
+     "messages": [
+      "There was an error processing the request. Please try again later."
+     ],
+     "still_shown_at_the_end": [
+      "There was an error processing the request. Please try again later.",
+      "There was an error processing the request. Please try again later."
+     ],
+     "spinner_at_the_end": false
+    },
+    "hash": "#/dashboard/users/add",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "new user",
+    "action": "Save, the Policy that follows",
+    "refused": "POST /Users/<capture-web-half-6-id>/Policy",
+    "status": 400,
+    "shows": {
+     "messages": [
+      "There was an error processing the request. Please try again later."
+     ],
+     "still_shown_at_the_end": [
+      "There was an error processing the request. Please try again later.",
+      "There was an error processing the request. Please try again later."
+     ],
+     "spinner_at_the_end": true
+    },
+    "hash": "#/dashboard/users/add",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "new user",
+    "action": "Save, the Policy that follows",
+    "refused": "POST /Users/<capture-web-half-7-id>/Policy",
+    "status": 403,
+    "shows": {
+     "messages": [
+      "There was an error processing the request. Please try again later."
+     ],
+     "still_shown_at_the_end": [
+      "There was an error processing the request. Please try again later.",
+      "There was an error processing the request. Please try again later."
+     ],
+     "spinner_at_the_end": true
+    },
+    "hash": "#/dashboard/users/add",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "user profile",
+    "action": "load",
+    "refused": "GET /Users/<capture-viewer-two-id>",
+    "status": 400,
+    "shows": {
+     "messages": [
+      "Failed to load users edit page"
+     ],
+     "still_shown_at_the_end": [
+      "Failed to load users edit page"
+     ],
+     "spinner_at_the_end": false,
+     "page_text": "Failed to load users edit page Failed to load users edit page"
+    },
+    "hash": "#/dashboard/users/<capture-viewer-two-id>/profile",
+    "after": [],
+    "user_requests": [
+     "GET /Users/<capture-admin-id> 200",
+     "GET /Users/<capture-viewer-two-id> 400"
+    ],
+    "errors": []
+   },
+   {
+    "page": "user profile",
+    "action": "load",
+    "refused": "GET /Users/<capture-viewer-two-id>",
+    "status": 403,
+    "shows": {
+     "messages": [
+      "Failed to load users edit page"
+     ],
+     "still_shown_at_the_end": [
+      "Failed to load users edit page"
+     ],
+     "spinner_at_the_end": false,
+     "page_text": "Failed to load users edit page Failed to load users edit page"
+    },
+    "hash": "#/dashboard/users/<capture-viewer-two-id>/profile",
+    "after": [],
+    "user_requests": [
+     "GET /Users/<capture-admin-id> 200",
+     "GET /Users/<capture-viewer-two-id> 403"
+    ],
+    "errors": []
+   },
+   {
+    "page": "user profile",
+    "action": "Save, the user",
+    "refused": "POST /Users?userId=<capture-viewer-two-id>",
+    "status": 400,
+    "shows": {
+     "messages": [
+      "There was an error processing the request. Please try again later."
+     ],
+     "still_shown_at_the_end": [
+      "There was an error processing the request. Please try again later.",
+      "There was an error processing the request. Please try again later."
+     ],
+     "spinner_at_the_end": false
+    },
+    "hash": "#/dashboard/users/<capture-viewer-two-id>/profile",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "user profile",
+    "action": "Save, the user",
+    "refused": "POST /Users?userId=<capture-viewer-two-id>",
+    "status": 403,
+    "shows": {
+     "messages": [
+      "There was an error processing the request. Please try again later."
+     ],
+     "still_shown_at_the_end": [
+      "There was an error processing the request. Please try again later.",
+      "There was an error processing the request. Please try again later."
+     ],
+     "spinner_at_the_end": false
+    },
+    "hash": "#/dashboard/users/<capture-viewer-two-id>/profile",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "user profile",
+    "action": "Save, the Policy",
+    "refused": "POST /Users/<capture-viewer-two-id>/Policy",
+    "status": 400,
+    "shows": {
+     "messages": [],
+     "still_shown_at_the_end": [],
+     "spinner_at_the_end": true
+    },
+    "hash": "#/dashboard/users/<capture-viewer-two-id>/profile",
+    "after": [
+     "GET /Users/<capture-viewer-two-id> 200"
+    ],
+    "errors": []
+   },
+   {
+    "page": "user profile",
+    "action": "Save, the Policy",
+    "refused": "POST /Users/<capture-viewer-two-id>/Policy",
+    "status": 403,
+    "shows": {
+     "messages": [],
+     "still_shown_at_the_end": [],
+     "spinner_at_the_end": true
+    },
+    "hash": "#/dashboard/users/<capture-viewer-two-id>/profile",
+    "after": [
+     "GET /Users/<capture-viewer-two-id> 200"
+    ],
+    "errors": []
+   },
+   {
+    "page": "access",
+    "action": "Save",
+    "refused": "POST /Users/<capture-viewer-two-id>/Policy",
+    "status": 400,
+    "shows": {
+     "messages": [],
+     "still_shown_at_the_end": [],
+     "spinner_at_the_end": true
+    },
+    "hash": "#/dashboard/users/<capture-viewer-two-id>/access",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "access",
+    "action": "Save",
+    "refused": "POST /Users/<capture-viewer-two-id>/Policy",
+    "status": 403,
+    "shows": {
+     "messages": [],
+     "still_shown_at_the_end": [],
+     "spinner_at_the_end": true
+    },
+    "hash": "#/dashboard/users/<capture-viewer-two-id>/access",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "parental control",
+    "action": "Save",
+    "refused": "POST /Users/<capture-viewer-two-id>/Policy",
+    "status": 400,
+    "shows": {
+     "messages": [],
+     "still_shown_at_the_end": [],
+     "spinner_at_the_end": true
+    },
+    "hash": "#/dashboard/users/<capture-viewer-two-id>/parentalcontrol",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "parental control",
+    "action": "Save",
+    "refused": "POST /Users/<capture-viewer-two-id>/Policy",
+    "status": 403,
+    "shows": {
+     "messages": [],
+     "still_shown_at_the_end": [],
+     "spinner_at_the_end": true
+    },
+    "hash": "#/dashboard/users/<capture-viewer-two-id>/parentalcontrol",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "password (another user)",
+    "action": "Save Password",
+    "refused": "POST /Users/<capture-viewer-two-id>/Password",
+    "status": 400,
+    "shows": {
+     "messages": [
+      "Login Failure Invalid username or password. Please try again. Got It"
+     ],
+     "still_shown_at_the_end": [
+      "Login Failure Invalid username or password. Please try again. Got It"
+     ],
+     "spinner_at_the_end": false
+    },
+    "hash": "#/dashboard/users/<capture-viewer-two-id>/password",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "password (another user)",
+    "action": "Save Password",
+    "refused": "POST /Users/<capture-viewer-two-id>/Password",
+    "status": 403,
+    "shows": {
+     "messages": [
+      "Login Failure Invalid username or password. Please try again. Got It"
+     ],
+     "still_shown_at_the_end": [
+      "Login Failure Invalid username or password. Please try again. Got It"
+     ],
+     "spinner_at_the_end": false
+    },
+    "hash": "#/dashboard/users/<capture-viewer-two-id>/password",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "password (another user)",
+    "action": "Reset Password",
+    "refused": "POST /Users/<capture-viewer-two-id>/Password",
+    "status": 400,
+    "shows": {
+     "messages": [
+      "Reset Password Are you sure you wish to reset the password? Cancel OK"
+     ],
+     "still_shown_at_the_end": [],
+     "spinner_at_the_end": true
+    },
+    "hash": "#/dashboard/users/<capture-viewer-two-id>/password",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "password (another user)",
+    "action": "Reset Password",
+    "refused": "POST /Users/<capture-viewer-two-id>/Password",
+    "status": 403,
+    "shows": {
+     "messages": [
+      "Reset Password Are you sure you wish to reset the password? Cancel OK"
+     ],
+     "still_shown_at_the_end": [],
+     "spinner_at_the_end": true
+    },
+    "hash": "#/dashboard/users/<capture-viewer-two-id>/password",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "Quick Connect",
+    "action": "Authorize",
+    "refused": "POST /QuickConnect/Authorize?code=<code>&userId=<capture-admin-id>",
+    "status": 400,
+    "shows": {
+     "messages": [],
+     "still_shown_at_the_end": [],
+     "spinner_at_the_end": false
+    },
+    "hash": "#/quickconnect",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "Quick Connect",
+    "action": "Authorize",
+    "refused": "POST /QuickConnect/Authorize?code=<code>&userId=<capture-admin-id>",
+    "status": 403,
+    "shows": {
+     "messages": [],
+     "still_shown_at_the_end": [],
+     "spinner_at_the_end": false
+    },
+    "hash": "#/quickconnect",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "own profile",
+    "action": "Save Password",
+    "refused": "POST /Users/<capture-viewer-one-id>/Password",
+    "status": 400,
+    "shows": {
+     "messages": [
+      "Login Failure Invalid username or password. Please try again. Got It"
+     ],
+     "still_shown_at_the_end": [
+      "Login Failure Invalid username or password. Please try again. Got It"
+     ],
+     "spinner_at_the_end": false
+    },
+    "hash": "#/userprofile?userId=<capture-viewer-one-id>",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "own profile",
+    "action": "Save Password",
+    "refused": "POST /Users/<capture-viewer-one-id>/Password",
+    "status": 403,
+    "shows": {
+     "messages": [
+      "Login Failure Invalid username or password. Please try again. Got It"
+     ],
+     "still_shown_at_the_end": [
+      "Login Failure Invalid username or password. Please try again. Got It"
+     ],
+     "spinner_at_the_end": false
+    },
+    "hash": "#/userprofile?userId=<capture-viewer-one-id>",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "own profile",
+    "action": "Reset Password",
+    "refused": "POST /Users/<capture-viewer-one-id>/Password",
+    "status": 400,
+    "shows": {
+     "messages": [
+      "Reset Password Are you sure you wish to reset the password? Cancel OK"
+     ],
+     "still_shown_at_the_end": [],
+     "spinner_at_the_end": true
+    },
+    "hash": "#/userprofile?userId=<capture-viewer-one-id>",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "own profile",
+    "action": "Reset Password",
+    "refused": "POST /Users/<capture-viewer-one-id>/Password",
+    "status": 403,
+    "shows": {
+     "messages": [
+      "Reset Password Are you sure you wish to reset the password? Cancel OK"
+     ],
+     "still_shown_at_the_end": [],
+     "spinner_at_the_end": true
+    },
+    "hash": "#/userprofile?userId=<capture-viewer-one-id>",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "Quick Connect",
+    "action": "Authorize",
+    "refused": "POST /QuickConnect/Authorize?code=<code>",
+    "status": 400,
+    "shows": {
+     "messages": [],
+     "still_shown_at_the_end": [],
+     "spinner_at_the_end": false
+    },
+    "hash": "#/quickconnect",
+    "after": [],
+    "errors": []
+   },
+   {
+    "page": "Quick Connect",
+    "action": "Authorize",
+    "refused": "POST /QuickConnect/Authorize?code=<code>",
+    "status": 403,
+    "shows": {
+     "messages": [],
+     "still_shown_at_the_end": [],
+     "spinner_at_the_end": false
+    },
+    "hash": "#/quickconnect",
+    "after": [],
+    "errors": []
+   }
+  ]
+ },
+ "routes": {
+  "deprecated_in_openapi": [
+   "GET /Artists",
+   "GET /Artists/AlbumArtists",
+   "GET /Artists/{name}",
+   "GET /MusicGenres/InstantMix",
+   "GET /MusicGenres/{genreName}",
+   "GET /MusicGenres/{name}/InstantMix",
+   "GET /Startup/Configuration",
+   "GET /Startup/FirstUser",
+   "GET /Startup/User",
+   "GET /Trailers",
+   "POST /Startup/Configuration",
+   "POST /Startup/RemoteAccess"
+  ],
+  "web_calls_deprecated": [],
+  "web_calls_not_in_openapi": [
+   "POST /Users/<capture-viewer-one-id>/Password",
+   "POST /Users/<capture-viewer-two-id>/Password"
+  ]
+ }
+}
