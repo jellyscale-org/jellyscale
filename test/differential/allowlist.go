@@ -107,14 +107,36 @@ const replayedByTheSubtitleDefaultCheck = "subtitle default: "
 // which cmd/jellyscale/quickconnect_capture_integration_test.go replays (JS-037).
 const replayedByTheQuickConnectCheck = "quick connect: "
 
-// heldByTheUsersChecks is the start of the names of the cases of compat/captures/users-admin-12.4.json where jellyscale
-// answers otherwise than Jellyfin, which cmd/jellyscale's users checks hold (JS-033).
-const heldByTheUsersChecks = "users: "
+// heldByTheUsersChecks names the cases of compat/captures/users-admin-12.4.json where jellyscale answers otherwise than
+// Jellyfin, which cmd/jellyscale's users checks hold (JS-033). Each is named, so that a new entry needs a check.
+var heldByTheUsersChecks = []string{
+	"users: a viewer lists the users",
+	"users: the list filtered by isHidden",
+	"users: new user with no Password",
+	"users: new user with an empty Password",
+	"users: new user with a commonly guessed password",
+	"users: a commonly guessed new password",
+	"users: an empty new password",
+	"users: reset of one's own password",
+	"users: an administrator resets another's password",
+	"users: a user with no password changes their own",
+	"users: a disabled account signs in",
+	"users: an administrator is disabled",
+	"users: the last administrator deletes themselves",
+	"users: an administrator names the zero id",
+	"users: a Policy body without every field",
+	"users: a Policy that changes a field that is not enforced",
+	"users: a Policy that names a channel field",
+	"users: failed sign-ins and the lockout fields",
+	"users: a rename with only a Name",
+	"users: the configured administrator is deleted or renamed",
+	"users: the lists the user pages read",
+}
 
 func replayed(name string) bool {
 	return strings.HasPrefix(name, replayedElsewhere) || strings.HasPrefix(name, replayedByTheCorsCheck) ||
 		strings.HasPrefix(name, replayedByTheSubtitleDefaultCheck) || strings.HasPrefix(name, replayedByTheQuickConnectCheck) ||
-		strings.HasPrefix(name, heldByTheUsersChecks)
+		slices.Contains(heldByTheUsersChecks, name)
 }
 
 // CheckRequests fails if an entry names a request that reqs does not have.
