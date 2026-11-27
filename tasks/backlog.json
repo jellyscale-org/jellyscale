@@ -1002,8 +1002,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "An unchecked type assertion on PlayState is left in internal/api/sessions.go",
-      "status": "open",
-      "notes": "sessions.go: info[\"PlayState\"].(map[string]any)[\"PlayMethod\"] = method. Outside JS-086's media scope."
+      "status": "closed",
+      "notes": "sessions.go: info[\"PlayState\"].(map[string]any)[\"PlayMethod\"] = method. Outside JS-086's media scope. Closed at the replan: The PlayState it reads is on a Jellyfin sessions route, which goes at the cutover (D-109)."
     },
     {
       "id": "BL-112",
@@ -1353,8 +1353,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "A NUL character in a language string makes the save fail with a server error",
-      "status": "open",
-      "notes": "POST /Users/Configuration with {\"SubtitleLanguagePreference\":\"\\u0000\"} (same for AudioLanguagePreference). parseConfiguration accepts it, json.Marshal writes \\u0000 into the document, and the UPDATE with $2::jsonb is rejected by Postgres, so s.fail answers a 5xx rather than the 400 that other invalid bodies get. I did not run the handler end to end; the failing step, Postgres rejecting the document, I ran. The test: docker run postgres:16, then psql -c \"select '{\\\"a\\\":\\\"\\\\u0000\\\"}'::jsonb\" gave 'DETAIL: \\u0000 cannot be converted to text.' The capture records no NUL case and no check covers one."
+      "status": "closed",
+      "notes": "POST /Users/Configuration with {\"SubtitleLanguagePreference\":\"\\u0000\"} (same for AudioLanguagePreference). parseConfiguration accepts it, json.Marshal writes \\u0000 into the document, and the UPDATE with $2::jsonb is rejected by Postgres, so s.fail answers a 5xx rather than the 400 that other invalid bodies get. I did not run the handler end to end; the failing step, Postgres rejecting the document, I ran. The test: docker run postgres:16, then psql -c \"select '{\\\"a\\\":\\\"\\\\u0000\\\"}'::jsonb\" gave 'DETAIL: \\u0000 cannot be converted to text.' The capture records no NUL case and no check covers one. Closed at the replan: The save route is Jellyfin's and goes at the cutover; the new API's input is held to the contract by JS-183's conformance check."
     },
     {
       "id": "BL-151",
@@ -2600,21 +2600,21 @@
     },
     {
       "id": "BL-290",
-      "status": "open",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "ux",
       "source": "JS-033",
       "title": "The API answers HasPassword true for accounts without one, so an admin can't find them",
-      "notes": "Matches Jellyfin; D-105 makes such accounts unable to sign in by password. Awaits the product owner."
+      "notes": "Matches Jellyfin; D-105 makes such accounts unable to sign in by password. Awaits the product owner. Closed at the replan: HasPassword is on Jellyfin's user answer, which goes at the cutover; the new API's account answers are JS-184's and JS-192's."
     },
     {
       "id": "BL-291",
-      "status": "open",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "ux",
       "source": "JS-033",
       "title": "jellyfin-web's Reset on one's own password spins",
-      "notes": "Refused under D-103; jellyfin-web shows no message. Awaits the product owner."
+      "notes": "Refused under D-103; jellyfin-web shows no message. Awaits the product owner. Closed at the replan: jellyfin-web's page goes at the cutover; nothing to fix in jellyscale."
     },
     {
       "id": "BL-292",
@@ -2786,6 +2786,33 @@
       "source": "Technology and top features §3",
       "title": "A viewer's wish list for films the collection lacks, with no fetching",
       "notes": "Interest is shown (Seerr), but fetching media is out. Back if viewers ask."
+    },
+    {
+      "id": "BL-311",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "#115",
+      "title": "Sort and filter by running time",
+      "notes": "From #115. Back when Octave's design for Films and Shows asks for it (D-139)."
+    },
+    {
+      "id": "BL-312",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "#108",
+      "title": "Trailers and extras kept beside a film, offered on its page",
+      "notes": "From #108. JS-080 keeps them out of Films; offering them is back when Octave's design asks for it."
+    },
+    {
+      "id": "BL-313",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-035",
+      "title": "Scoped keys for integrations",
+      "notes": "From JS-035, dropped by the replan: no PRODUCT.md outcome. Back on an operator's recorded need."
     }
   ]
 }
