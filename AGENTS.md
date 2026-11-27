@@ -9,7 +9,7 @@ A horizontally scalable video server in Go for a private collection of films and
 ```sh
 go test ./...                               # Unit tier
 test/integration.sh                         # Every test, with Postgres, SeaweedFS, Garage and real ffmpeg
-INTEGRATION_SHARD=0/4 test/integration.sh   # One slice: i/4 of internal/transcode and internal/api, or rest
+INTEGRATION_SHARD=0/6 test/integration.sh   # One slice: i/6 of internal/transcode and internal/api, or rest
 test/roles.sh <workdir>                     # Each role as its own process
 test/e2e/run.sh <workdir> <playwright_dir>  # Real jellyfin-web in Chromium
 E2E_GATES=transcode E2E_SHARD=1/3 test/e2e/run.sh ...  # One slice of a gate; E2E_ONLY=regex picks scenarios

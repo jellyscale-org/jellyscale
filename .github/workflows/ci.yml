@@ -133,8 +133,8 @@ jobs:
 
   # Everything the integration tier needs is installed here, so a test that
   # can't run fails, and test/report.sh fails the job if any test is skipped.
-  # internal/transcode and internal/api hold most of the time and are dealt out in four by test; the
-  # fifth shard is every other package (test/shard.sh). A job runs its shard as `procs` go test
+  # internal/transcode and internal/api hold most of the time and are dealt out in six by test; the
+  # seventh shard is every other package (test/shard.sh). A job runs its shard as `procs` go test
   # processes at once, each with a Postgres of its own (INTEGRATION_PROCS, test/integration.sh).
   integration-shard:
     name: integration shard (${{ matrix.name }})
@@ -146,10 +146,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: 0of4, shard: 0/4, procs: 2 }
-          - { name: 1of4, shard: 1/4, procs: 2 }
-          - { name: 2of4, shard: 2/4, procs: 2 }
-          - { name: 3of4, shard: 3/4, procs: 2 }
+          - { name: 0of6, shard: 0/6, procs: 2 }
+          - { name: 1of6, shard: 1/6, procs: 2 }
+          - { name: 2of6, shard: 2/6, procs: 2 }
+          - { name: 3of6, shard: 3/6, procs: 2 }
+          - { name: 4of6, shard: 4/6, procs: 2 }
+          - { name: 5of6, shard: 5/6, procs: 2 }
           - { name: rest, shard: rest, procs: 4 }
     steps:
       - uses: actions/checkout@v7
@@ -261,7 +263,7 @@ jobs:
           path: shard-logs
       - if: always() && steps.decide.outputs.run == 'true'
         continue-on-error: true
-        run: bash test/shard-summary.sh shard-logs 0of4 1of4 2of4 3of4 rest | tee -a "$GITHUB_STEP_SUMMARY"
+        run: bash test/shard-summary.sh shard-logs 0of6 1of6 2of6 3of6 4of6 5of6 rest | tee -a "$GITHUB_STEP_SUMMARY"
 
   # When lint-and-unit fails in a run whose media jobs run, they would go on for up to an hour
   # for a run that can't be merged: cancel the run. Only this run (its own id) is cancelled; the

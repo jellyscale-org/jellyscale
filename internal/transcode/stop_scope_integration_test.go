@@ -192,7 +192,18 @@ func TestStopsRacingAMoveOnOneSpecCancelNothingTheOtherWaitsOn(t *testing.T) {
 	newRigForRace(t).racesStopAgainstMove(t, true)
 }
 
-func newRigForRace(t *testing.T) *rig { return newRig(t, nil) }
+func newRigForRace(t *testing.T) *rig {
+	r := newRig(t, nil)
+	// The move needs a worker to place its new job on. With none, capacity counts
+	// the stopped viewer's queued job of another spec as a held film (nothing
+	// could ever hold it), and ensure refuses the mover with ErrBusy before a
+	// Stop can race the move. A real cluster has a worker; this race is only
+	// about what a Stop cancels. Its seen_at is ahead so the row stays counted
+	// for all 200 rounds, as a worker's heartbeat would keep it.
+	r.exec(t, `INSERT INTO transcode_nodes (id, roles, cores, seen_at, output_version)
+		VALUES ('race-worker', 'worker', 4, now() + interval '1 hour', $1)`, playback.OutputVersion)
+	return r
+}
 
 // The moment the race is about, held still without assuming how a build writes it: a
 // viewer whose previous job ended is being given a new job, and the write that makes
