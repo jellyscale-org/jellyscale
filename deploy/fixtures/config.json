@@ -7,6 +7,7 @@
     {"name": "Shows", "kind": "tvshows", "media": "file:///fixtures/media/shows", "assets": "file:///tmp/assets/shows"},
     {"name": "Transcode", "kind": "movies", "media": "file:///fixtures/media/transcode", "assets": "file:///tmp/assets/transcode"},
     {"name": "Languages", "kind": "movies", "media": "file:///fixtures/media/languages", "assets": "file:///tmp/assets/languages"},
-    {"name": "S3", "kind": "movies", "media": "s3://jellyscale-fixtures/media?endpoint=http://seaweedfs:8333", "assets": "s3://jellyscale-fixtures/assets/s3?endpoint=http://seaweedfs:8333"}
+    {"name": "S3", "kind": "movies", "media": "s3://jellyscale-fixtures/media?endpoint=http://seaweedfs:8333", "assets": "s3://jellyscale-fixtures/assets/s3?endpoint=http://seaweedfs:8333"},
+    {"name": "S3 Shows", "kind": "tvshows", "media": "s3://jellyscale-fixtures/shows?endpoint=http://seaweedfs:8333", "assets": "s3://jellyscale-fixtures/assets/s3-shows?endpoint=http://seaweedfs:8333"}
   ]
 }

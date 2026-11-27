@@ -1,6 +1,7 @@
-// Command seed copies the films of the fixtures image into an S3 bucket, once, for the S3 library of
-// deploy/fixtures/compose.yaml. The image holds each film once, so each copy is renamed: the title gets " S3", with
-// its sidecar files, and the server's item names stay unique. Only the fixtures image holds it.
+// Command seed copies the films and the show of the fixtures image into an S3 bucket, for the S3 libraries of
+// deploy/fixtures/compose.yaml. The image holds each file once, so each copy is renamed, with " S3" after its title and
+// in its files' names: the server's names stay unique. A copy that the bucket already has at its size is kept, so the
+// seed service of a second `up` copies nothing. Only the fixtures image holds it.
 package main
 
 import (
@@ -11,7 +12,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -22,22 +22,28 @@ import (
 	"jellyscale/internal/store"
 )
 
-// film is a directory of the media root and the title its files are named with, without the year.
-type film struct{ dir, title string }
+// copyOf is one file of a copy: from is its path under the media root, to its key in the bucket.
+type copyOf struct{ from, to string }
 
-// films are the films the S3 library serves beside the library's own: the criteria of test/image.sh.
-var films = []film{
-	{"movies/Alpha Film (2021)", "Alpha Film"},
-	{"transcode/Tau Film (2035)", "Tau Film"},
-	{"transcode/Pgs Hevc Film (2090)", "Pgs Hevc Film"},
-	{"transcode/Resh Film (2085)", "Resh Film"},
-	{"languages/Babel Film", "Babel Film"},
+// copies are the S3 libraries' files: the films the criteria of test/image.sh name, and the show Delta Show with its
+// three episodes, each copy under its own name.
+var copies = []copyOf{
+	{"movies/Alpha Film (2021)/Alpha Film (2021).mkv", "media/Alpha Film S3 (2021)/Alpha Film S3 (2021).mkv"},
+	{"transcode/Tau Film (2035)/Tau Film (2035).mkv", "media/Tau Film S3 (2035)/Tau Film S3 (2035).mkv"},
+	{"transcode/Pgs Hevc Film (2090)/Pgs Hevc Film (2090).mkv", "media/Pgs Hevc Film S3 (2090)/Pgs Hevc Film S3 (2090).mkv"},
+	{"transcode/Resh Film (2085)/Resh Film (2085).mkv", "media/Resh Film S3 (2085)/Resh Film S3 (2085).mkv"},
+	{"languages/Babel Film/Babel Film.mkv", "media/Babel Film S3/Babel Film S3.mkv"},
+	{"languages/Babel Film/Babel Film.de.srt", "media/Babel Film S3/Babel Film S3.de.srt"},
+	{"languages/Babel Film/Babel Film.es.srt", "media/Babel Film S3/Babel Film S3.es.srt"},
+	{"shows/Delta Show (2020)/Season 01/Delta Show S01E01 Pilot.mkv", "shows/Delta Show S3 (2020)/Season 01/Delta Show S3 S01E01 Pilot S3.mkv"},
+	{"shows/Delta Show (2020)/Season 01/Delta Show S01E02 Second.mkv", "shows/Delta Show S3 (2020)/Season 01/Delta Show S3 S01E02 Second S3.mkv"},
+	{"shows/Delta Show (2020)/Season 02/Delta Show S02E01 Return.mkv", "shows/Delta Show S3 (2020)/Season 02/Delta Show S3 S02E01 Return S3.mkv"},
 }
 
 func main() {
 	endpoint := flag.String("endpoint", "http://seaweedfs:8333", "the S3 endpoint")
-	bucket := flag.String("bucket", "jellyscale-fixtures", "the bucket the films go to, under media/")
-	root := flag.String("root", "/fixtures/media", "the media root the films are read from")
+	bucket := flag.String("bucket", "jellyscale-fixtures", "the bucket the copies go to")
+	root := flag.String("root", "/fixtures/media", "the media root the copies are read from")
 	flag.Parse()
 	if err := run(*endpoint, *bucket, *root); err != nil {
 		log.Fatal(err)
@@ -49,20 +55,19 @@ func run(endpoint, bucket, root string) error {
 	if err := createBucket(ctx, endpoint, bucket); err != nil {
 		return err
 	}
-	out, err := store.Open(fmt.Sprintf("s3://%s/media?endpoint=%s", bucket, endpoint))
+	out, err := store.Open(fmt.Sprintf("s3://%s?endpoint=%s", bucket, endpoint))
 	if err != nil {
 		return err
 	}
-	for _, movie := range films {
-		if err := copyFilm(ctx, out, root, movie); err != nil {
-			return fmt.Errorf("copying %s: %w", movie.dir, err)
+	for _, copied := range copies {
+		if err := copyFile(ctx, out, filepath.Join(root, copied.from), copied.to); err != nil {
+			return fmt.Errorf("copying %s: %w", copied.from, err)
 		}
-		log.Printf("copied %s", movie.dir)
 	}
 	return nil
 }
 
-// createBucket retries until the endpoint answers: the seeder starts with SeaweedFS, which may still be starting.
+// createBucket retries until the endpoint answers: the seed service starts with SeaweedFS, which may still be starting.
 func createBucket(ctx context.Context, endpoint, bucket string) error {
 	client := s3.New(s3.Options{
 		Region:       "us-east-1",
@@ -85,30 +90,25 @@ func createBucket(ctx context.Context, endpoint, bucket string) error {
 	}
 }
 
-// copyFilm puts each file of the film's directory under the copy's directory, with the title renamed.
-func copyFilm(ctx context.Context, out store.Store, root string, movie film) error {
-	dir := filepath.Join(root, movie.dir)
-	entries, err := os.ReadDir(dir)
+// copyFile puts the file at key, unless the bucket has an object there of the file's size.
+func copyFile(ctx context.Context, out store.Store, path, key string) error {
+	info, err := os.Stat(path)
 	if err != nil {
 		return err
 	}
-	copyDir := strings.Replace(filepath.Base(dir), movie.title, movie.title+" S3", 1)
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		if err := putFile(ctx, out, filepath.Join(dir, entry.Name()), copyDir+"/"+strings.Replace(entry.Name(), movie.title, movie.title+" S3", 1)); err != nil {
-			return err
-		}
+	size, err := out.Stat(ctx, key)
+	if err == nil && size == info.Size() {
+		log.Printf("kept %s: the bucket has it", key)
+		return nil
 	}
-	return nil
-}
-
-func putFile(ctx context.Context, out store.Store, path, key string) error {
 	file, err := os.Open(path)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
-	return out.Put(ctx, key, file)
+	if err := out.Put(ctx, key, file); err != nil {
+		return err
+	}
+	log.Printf("copied %s", key)
+	return nil
 }

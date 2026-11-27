@@ -1,10 +1,13 @@
 # What test/image.sh checks the fixtures image against, and what docs/client-testing.md says (a unit test holds the two equal).
 # Tab-separated. A track is: track, film, index, type, language (none for no tag), codec, flags (default for audio, forced,
 # external, comma-separated; - for none) as PlaybackInfo lists it for the request on the page.
-# A plays row's fourth column is copy where the master URL must copy the video. A twin row names a film's copy in the S3
-# library, which lists the film's tracks and plays as the film does. A segment row asks for a film and its twin with AudioStreamIndex
-# and SubtitleStreamIndex (- for the defaults) and checks the first segment: its codecs and, where the row gives one, the colours
-# of its video (bt709 for a tone-mapped picture).
+# A plays row's fourth column is copy where the master URL must copy the video. A twin row names a film's copy in an S3
+# library, which lists the film's tracks and plays as the film does. A showcopy row names a show's copy in the S3 shows
+# library, and episodecopy rows name the copies of its episodes, which play as they are. A segment row asks for a film and
+# its twin with AudioStreamIndex and SubtitleStreamIndex (- for the defaults) and checks the first segment: its codecs, the
+# tone of its first audio track in Hz (the track the request picked), and, where the row gives one, the colours of its video
+# (bt709 for a tone-mapped picture). A deliver row fetches a track of a film and of its twin as a file: vtt is WebVTT whose
+# first cue is the last field, sup is a PGS file that begins with the last field.
 image	ghcr.io/jellyscale-org/jellyscale
 compose	deploy/fixtures/compose.yaml
 user	test
@@ -16,6 +19,7 @@ library	Shows	tvshows	shows
 library	Transcode	movies	transcode
 library	Languages	movies	languages
 s3library	S3	movies
+s3library	S3 Shows	tvshows
 film	Alpha Film
 film	Babel Film
 film	Burn Sub Film
@@ -45,6 +49,11 @@ film	Vobsub Film
 episode	Pilot
 episode	Return
 episode	Second
+show	Delta Show
+showcopy	Delta Show	Delta Show S3
+episodecopy	Pilot	Pilot S3
+episodecopy	Second	Second S3
+episodecopy	Return	Return S3
 twin	Alpha Film	Alpha Film S3
 twin	Tau Film	Tau Film S3
 twin	Pgs Hevc Film	Pgs Hevc Film S3
@@ -171,7 +180,11 @@ track	Vanishing Fonts Film	2	Subtitle	jpn	ass	-
 track	Vobsub Film	0	Video	none	h264	-
 track	Vobsub Film	1	Audio	eng	aac	default
 track	Vobsub Film	2	Subtitle	eng	DVDSUB	-
-segment	Pgs Transcode Film	-	-	aac h264	-
-segment	Tau Film	-	-	aac h264	-
-segment	Pgs Hevc Film	2	3	aac h264	-
-segment	Resh Film	-	-	aac h264	bt709
+segment	Pgs Transcode Film	-	-	aac h264	-	440
+segment	Tau Film	-	-	aac h264	-	440
+segment	Pgs Hevc Film	-	-	aac h264	-	440
+segment	Pgs Hevc Film	2	3	aac h264	-	880
+segment	Resh Film	-	-	aac h264	bt709	440
+deliver	Babel Film	5	vtt	Babel track 5
+deliver	Babel Film	12	sup	PG
+deliver	Pgs Hevc Film	3	sup	PG

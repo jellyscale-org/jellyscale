@@ -23,7 +23,7 @@ docker compose up -d --wait
 port=$(docker compose port jellyscale 8096 | sed 's/.*://')   # Docker picks it; the server listens on 127.0.0.1 only
 ```
 
-The same command starts a `main-<12 hex>-fixtures` tag with `JELLYSCALE_IMAGE` set to it. Two projects of the file can run side by side. `docker compose down -v` removes everything. With `JELLYSCALE_IMAGE` unset or empty, Compose stops and names it.
+The same command starts a `main-<12 hex>-fixtures` tag with `JELLYSCALE_IMAGE` set to it. The seed service runs on each `up` and copies only what the bucket lacks, so a second `up` copies nothing. Two projects of the file can run side by side. `docker compose down -v` removes everything. With `JELLYSCALE_IMAGE` unset or empty, Compose stops and names it.
 
 Sign in as user `test` with password `jellyscale-fixtures` (`POST /Users/AuthenticateByName` with `{"Username": "test", "Pw": "jellyscale-fixtures"}`). That user is an administrator and the only one; a second, non-administrator user is not there yet. The password is in the compose file, not the image: the image refuses to start without `JELLYSCALE_ADMIN_PASSWORD`.
 
@@ -37,12 +37,12 @@ auth='X-Emby-Authorization: MediaBrowser Client="test", Device="test", DeviceId=
 token=$(curl -s -H "$auth" -H 'Content-Type: application/json' -d '{"Username":"test","Pw":"jellyscale-fixtures"}' $base/Users/AuthenticateByName | jq -r .AccessToken)
 count() { curl -s -H "$auth, Token=\"$token\"" "$base/Items?Recursive=true&IncludeItemTypes=$1&Limit=500" | jq .TotalRecordCount; }
 for _ in $(seq 60); do   # 60 seconds, then give up
-  [ "$(count Movie)" = 31 ] && [ "$(count Episode)" = 3 ] && break
+  [ "$(count Movie)" = 31 ] && [ "$(count Episode)" = 6 ] && break
   sleep 1
 done
 ```
 
-The library has 26 films and 3 episodes, and the S3 library holds five copies of films (see Libraries), so 31 films in all. test/image.sh waits the same 60 seconds.
+The library has 26 films and 3 episodes. The S3 libraries hold five copies of films and a copy of the show Delta Show with its three episodes (see Libraries), so 31 films and 6 episodes in all. test/image.sh waits the same 60 seconds.
 
 ## What is in it
 
@@ -108,10 +108,11 @@ Each track is `- <index>: <Type> <language> <codec>`, and `, default` (audio onl
 - Transcode (movies)
 - Languages (movies)
 - S3 (movies), in the bucket: copies of five films, each renamed with ` S3` after its title (Alpha Film S3, Tau Film S3, Pgs Hevc Film S3, Resh Film S3 and Babel Film S3). Each copy lists the tracks of its film and plays as the film does.
+- S3 Shows (tvshows), in the bucket: the copy of Delta Show, Delta Show S3, with the episodes Pilot S3, Second S3 and Return S3 (see Episodes).
 
 ## Episodes
 
-One series, Delta Show, with two seasons. Each name finds one episode.
+One series, Delta Show, with two seasons. Each name finds one episode. The S3 Shows library holds a copy of the series, Delta Show S3, whose episodes are the same three under the names Pilot S3, Second S3 and Return S3; each of them plays as it is.
 
 - Pilot
 - Return

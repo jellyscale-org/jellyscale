@@ -2,8 +2,9 @@
 #   JELLYSCALE_IMAGE=ghcr.io/jellyscale-org/jellyscale:X.Y.Z-fixtures docker compose up -d --wait
 # JELLYSCALE_IMAGE may also be a main-<12 hex>-fixtures tag. The server's port is on 127.0.0.1 at a port Docker picks:
 # `docker compose port jellyscale 8096`. Everything is kept inside the containers and goes with `docker compose down -v`.
-# For tests only: the password and the S3 keys are public. The S3 library's copies of films are in a SeaweedFS bucket
-# that the seed service fills once, when the project starts, before the server starts.
+# For tests only: the password and the S3 keys are public. The S3 libraries' copies are in a SeaweedFS bucket that the
+# seed service fills before the server starts. The seed runs on every `up` and copies only what the bucket lacks, so a
+# second `up` copies nothing; `down -v` empties the bucket.
 services:
   postgres:
     image: postgres:18-alpine

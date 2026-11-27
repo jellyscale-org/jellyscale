@@ -169,7 +169,7 @@ api() { curl -s -m 30 -H "$auth" "$@"; }
 items() { api "$base/Items?Recursive=true&IncludeItemTypes=$1&Limit=500" | jq -r '.Items[] | [.Name, .Id] | @tsv'; }
 
 # --- the scan: /readyz answers before it is done, so wait, up to 60 seconds, for the documented counts.
-want_films=$(( $(tsv films) + $(awk -F'\t' '$1 == "twin"' "$expect" | grep -c .) )) want_episodes=$(tsv episodes)
+want_films=$(( $(tsv films) + $(awk -F'\t' '$1 == "twin"' "$expect" | grep -c .) )) want_episodes=$(( $(tsv episodes) + $(awk -F'\t' '$1 == "episodecopy"' "$expect" | grep -c .) ))
 deadline=$((SECONDS + 60))
 while :; do
   movies=$(items Movie) episodes=$(items Episode)
@@ -187,7 +187,11 @@ while IFS= read -r name; do
 done < <(awk -F'\t' '$1 == "twin" {print $3}' "$expect")
 while IFS= read -r name; do
   [[ $(named "$episodes" "$name") -eq 1 ]] || fail "episode '$name' finds $(named "$episodes" "$name") items, want exactly one"
-done < <(tsv episode)
+done < <({ tsv episode; awk -F'\t' '$1 == "episodecopy" {print $3}' "$expect"; })
+series=$(items Series)
+while IFS= read -r name; do
+  [[ $(named "$series" "$name") -eq 1 ]] || fail "series '$name' finds $(named "$series" "$name") items, want exactly one"
+done < <({ tsv show; awk -F'\t' '$1 == "showcopy" {print $3}' "$expect"; })
 views=$(api "$base/UserViews?userId=$userid" | jq -r '.Items[] | "\(.Name)\t\(.CollectionType)"' | LC_ALL=C sort)
 [[ $views == "$(awk -F'\t' '$1 == "library" || $1 == "s3library" {print $2 "\t" $3}' "$expect" | LC_ALL=C sort)" ]] || fail "the libraries are $(tr '\n\t' ';,' <<<"$views"), not the documented ones"
 
@@ -226,17 +230,16 @@ byte_range() { # name
 direct=$(awk -F'\t' '$1 == "plays" && $3 == "direct" {print $2; exit}' "$expect")
 byte_range "$direct"
 [[ -z $(copy_of "$direct") ]] || byte_range "$(copy_of "$direct")"
+# Each S3 copy of an episode plays as it is: PlaybackInfo has no TranscodingUrl, and a byte range of it answers 206.
+while IFS= read -r name; do
+  id=$(awk -F'\t' -v n="$name" '$1 == n {print $2}' <<<"$episodes")
+  info=$(playback "$id")
+  film_id[$name]=$id
+  source_id[$name]=$(jq -r '.MediaSources[0].Id' <<<"$info")
+  [[ -z $(jq -r '.MediaSources[0].TranscodingUrl // empty' <<<"$info") ]] || fail "$name: documented to play as it is, but PlaybackInfo has a TranscodingUrl"
+  byte_range "$name"
+done < <(awk -F'\t' '$1 == "episodecopy" {print $3}' "$expect")
 
-# Subtitles: Babel Film's track 5 as WebVTT, whose first cue is its own.
-vtt=
-for _ in $(seq 30); do
-  vtt=$(api "$base/Videos/${film_id[Babel Film]}/${source_id[Babel Film]}/Subtitles/5/Stream.vtt")
-  [[ $vtt == WEBVTT* ]] && break
-  sleep 2
-done
-[[ $vtt == WEBVTT* ]] || fail "Babel Film track 5 as Stream.vtt does not begin WEBVTT: ${vtt:0:80}"
-cue=$(awk '/-->/ {f = 1; next} f && NF == 0 {exit} f {print}' <<<"$vtt")
-[[ $cue == "Babel track 5" ]] || fail "Babel Film track 5's first cue is '$cue', want 'Babel track 5'"
 
 resolve() { # base ref: ref as a URL, relative to base
   case $2 in
@@ -254,11 +257,38 @@ fetch() { # url file: with up to 3 minutes for the worker to make it
     sleep 1
   done
 }
+# Subtitles, text and image, on a film and on its S3 copy: a text track as WebVTT, whose first cue is the one the row names,
+# and an image track as the PGS file, which begins with the bytes the row names (PG).
+delivery_check() { # name index format want
+  local name=$1 index=$2 format=$3 want=$4 first cue
+  fetch "$base/Videos/${film_id[$name]}/${source_id[$name]}/Subtitles/$index/Stream.$format" "$work/track.$format" \
+    || { fail "$name: track $index as Stream.$format did not answer 200"; return; }
+  if [[ $format == vtt ]]; then
+    first=$(head -n 1 "$work/track.vtt")
+    cue=$(awk '/-->/ {f = 1; next} f && NF == 0 {exit} f {print}' "$work/track.vtt")
+    [[ $first == WEBVTT* && $cue == "$want" ]] || fail "$name: track $index as WebVTT begins '$first' with the cue '$cue', want WEBVTT and '$want'"
+  else
+    [[ $(head -c 2 "$work/track.$format") == "$want" ]] || fail "$name: track $index as $format does not begin with '$want'"
+  fi
+}
+while IFS=$'\t' read -r name index format want; do
+  delivery_check "$name" "$index" "$format" "$want"
+  [[ -z $(copy_of "$name") ]] || delivery_check "$(copy_of "$name")" "$index" "$format" "$want"
+done < <(awk -F'\t' '$1 == "deliver" {print $2 "\t" $3 "\t" $4 "\t" $5}' "$expect")
+
+# The tone of a segment's first audio track, in Hz: a sine crosses zero twice a cycle, so its crossings give its frequency.
+tone_of() { # file
+  ffmpeg -v error -i "$1" -map 0:a:0 -ac 1 -ar 48000 -f s16le - | od -An -v -td2 -w2 | awk '
+    samples > 0 && ($1 < 0) != (previous < 0) { crossings++ }
+    { previous = $1; samples++ }
+    END { if (samples > 0) printf "%d\n", crossings / 2 / (samples / 48000) }'
+}
+
 # A film's first segment, for PlaybackInfo with the tracks a segment row names (- for the defaults). TranscodingUrl names
 # them, and the segment, with its init part, holds the codecs the row gives and, where it gives colours, a picture whose
 # primaries, transfer and matrix are all that colour.
-segment_check() { # name audio subtitle codecs colours
-  local name=$1 audio=$2 subtitle=$3 codecs=$4 colours=$5 body info url master variant init got
+segment_check() { # name audio subtitle codecs colours tone
+  local name=$1 audio=$2 subtitle=$3 codecs=$4 colours=$5 tone=$6 body info url master variant init got
   body=$request
   if [[ $audio != - ]]; then
     body=$work/choice.json
@@ -285,12 +315,17 @@ segment_check() { # name audio subtitle codecs colours
     got=$(docker run -i --rm --label "$run_label=$project" --entrypoint ffprobe "$fixtures_img" -v error -select_streams v:0 -show_entries stream=color_primaries,color_transfer,color_space -of csv=p=0 -i pipe:0 <"$work/segment.mp4" | tr -d '\n')
     [[ $got == "$colours,$colours,$colours" ]] || fail "$name's first segment has the colours '$got', want $colours"
   fi
+  if [[ $tone != - ]]; then
+    got=$(tone_of "$work/segment.mp4")
+    awk -v got="$got" -v want="$tone" 'BEGIN { gap = got - want; if (gap < 0) gap = -gap; exit !(gap <= want * 0.05) }' \
+      || fail "$name's first segment plays a tone of '$got' Hz, want $tone Hz: its audio is not the track the request picked"
+  fi
 }
 # Transcodes: each segment row checks its film's first segment and its S3 copy's.
-while IFS=$'\t' read -r name audio subtitle codecs colours; do
-  segment_check "$name" "$audio" "$subtitle" "$codecs" "$colours"
-  [[ -z $(copy_of "$name") ]] || segment_check "$(copy_of "$name")" "$audio" "$subtitle" "$codecs" "$colours"
-done < <(awk -F'\t' '$1 == "segment" {print $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6}' "$expect")
+while IFS=$'\t' read -r name audio subtitle codecs colours tone; do
+  segment_check "$name" "$audio" "$subtitle" "$codecs" "$colours" "$tone"
+  [[ -z $(copy_of "$name") ]] || segment_check "$(copy_of "$name")" "$audio" "$subtitle" "$codecs" "$colours" "$tone"
+done < <(awk -F'\t' '$1 == "segment" {print $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6 "\t" $7}' "$expect")
 
 # --- without the password the image refuses to start, creates no user and never answers /readyz with 200.
 compose exec -T postgres createdb -U postgres nopassword >/dev/null || fail "could not make a database for the no-password start"
