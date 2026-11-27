@@ -394,6 +394,12 @@ func (a *accessSite) judge(u *accUniform, route Route, what string, r accReply, 
 		return
 	}
 	if accOpen(route) {
+		if slices.Contains(openButAsks, routeName(route)) {
+			if r.status == 401 || r.status == 403 || r.status >= 500 {
+				a.fail("%s is open and answered %d %.60s", name, r.status, r.body)
+			}
+			return
+		}
 		if r.status/100 != 2 {
 			a.fail("%s is open and answered %d %.60s", name, r.status, r.body)
 		}
@@ -531,7 +537,7 @@ func (a *accessSite) matrix(t *testing.T, h accHandler, via accHandler, film acc
 				a.fail("%s with a valid token, %s: %v", routeName(route), accSpellings[s], r.err)
 			case r.status == 401 || r.status == 403 && !viewer:
 				a.fail("%s with a valid token, %s: answered %d %.60q", routeName(route), accSpellings[s], r.status, r.body)
-			case !viewer && r.status/100 != 2:
+			case !viewer && r.status/100 != 2 && !slices.Contains(openButAsks, routeName(route)):
 				a.fail("%s is open and answered %d to a valid token, %s", routeName(route), r.status, accSpellings[s])
 			}
 		}

@@ -839,6 +839,28 @@
       "serves": "PRODUCT.md quality bar; the weekly model budget; 'A claim of working means a real client or a real store exercised it.'"
     },
     {
+      "id": "D-078",
+      "date": "2026-11-26",
+      "by": "product-owner",
+      "task": "JS-037",
+      "brief": "Quick Connect: a signed-in account can try 6-digit codes against approvals. Options: (A) bound failed approvals per approving account; (B) per account, and per address when trustedProxies is declared; (C) per address only; (D) no bound. Candidate limits: 10 failures in 15 minutes, 15 minutes refused, 403 with Retry-After. Polling is never refused.",
+      "tradeoff": "How approval guessing is bounded, and who an honest viewer can be locked out by. A per-address bound lets one device behind a household's NAT stop every account there approving for 15 minutes, and it exists only where proxies are declared. A per-account bound shares nothing across accounts.",
+      "decision": "accept",
+      "entry": "Option A: failed approvals are bounded per approving account only. 10 failures in any 15 minutes, then approvals by that account are refused for 15 minutes with 403 and Retry-After, the numbers of D-020's known-device bound, which are right here. The guesser is signed in, so the account is the identity; an address adds only collateral lockout. A refusal checks no code, counts toward nothing and does not lengthen itself. It touches nothing else of the account: its tokens, playback and password sign-in go on. Connect polling and redemption are never refused. The bound holds across replicas and restarts. Each refusal is logged with the account's name and counted in a metric, so the operator sees who is guessing. docs/access.md states the 960 guesses a day per account and what a hit gives. Given up: accounts share no bound, so several colluding accounts multiply the guesses. Rejected: B and C (a household locked out by one device, and Quick Connect is D-020's way around a password lockout); D (codes guessable without limit).",
+      "serves": "PRODUCT.md: 'Signing in is easy and safe. A password, a code entered on the TV from a phone'; 'Nothing is hidden… every failure is reported with its reason, never silent'; 'Installing is boring'."
+    },
+    {
+      "id": "D-079",
+      "date": "2026-11-26",
+      "by": "product-owner",
+      "task": "JS-037",
+      "brief": "Quick Connect: Initiate is anonymous, so live codes can be flooded. Options: (A) a fixed maximum of live codes, refusing new Initiate past it; (B) evict the oldest live code; (C) per-address Initiate caps beside a global cap, needing trustedProxies; (D) no cap.",
+      "tradeoff": "Under a flood, either a new TV cannot start Quick Connect until codes expire (A), or a TV already showing a code has it silently stop working (B). With no cap, live codes fill the 6-digit space, so a viewer's mistyped approval can sign a stranger's device into their account.",
+      "decision": "accept",
+      "entry": "Option A: at most 100 live codes across all replicas, pending or approved and unredeemed; past it Initiate is refused and no code already issued is touched, so a code a TV shows works for its full time. Not configurable. 100 is far above the devices a deployment of hundreds of viewers pairs within 10 minutes, and when full of a flooder's codes a mistyped approval lands on one about 1 time in 10,000. Each refused Initiate is logged with its reason and counted in a metric; docs/access.md and docs/running.md state the cap and that password sign-in is unaffected. The refusal's status is chosen from what jellyfin-web is observed to show for it, so that it does not read as an unreachable server. Rejected: B (an honest viewer's approval then fails as an unknown code and counts toward D-078's bound, so a flood would lock honest accounts out; the failure arrives late and unexplained); D (the mistyped-approval risk above). Backlog: C, promoted when the metric shows the cap reached on the dogfood or at an operator's. Given up: an anonymous flooder can keep new TVs from starting Quick Connect while the flood lasts, and together with name guessing (D-020) can keep a viewer on a new device out; known devices and password sign-in still work.",
+      "serves": "PRODUCT.md: 'Signing in is easy and safe'; 'Failure modes are designed, tested and reported. Nothing fails silently'; 'Operating it stays boring'."
+    },
+    {
       "id": "D-080",
       "date": "2026-11-26",
       "by": "owner",
@@ -980,6 +1002,17 @@
       "decision": "change",
       "entry": "PRODUCT.md is rewritten under D-091 to hold only the product and its direction. jellyscale is the back end and Octave the front end it ships. Goal 3 adds \"Octave's features have the server they need\". \"No jellyscale work goes in for Octave\" is withdrawn, completing D-089's lift of D-027: the server side of Octave's features is jellyscale's work, while Octave itself stays its own project's and needs nothing only jellyscale has. No viewer or operator guarantee is removed. JS-053, JS-052 and JS-046 take priorities 52 to 54. JS-032 and JS-049 wait for Octave's statement or dogfood counts.",
       "serves": "Owner, 2026-11-26 (D-091): \"focus on the back end work and also supporting Octave features\"; PRODUCT.md: \"Their library feels alive\"."
+    },
+    {
+      "id": "D-097",
+      "date": "2026-11-26",
+      "by": "product-owner",
+      "task": "JS-037",
+      "brief": "Two minors JS-037's last review left: an approval that outlives its client delayed shutdown to 29 s with an 8 s grace and the database stalled, and one that failed after its client hung up logged nothing.",
+      "tradeoff": "Nothing given up.",
+      "decision": "plan",
+      "entry": "JS-037 bounds an in-flight approval by the shutdown grace and logs a failed approval.",
+      "serves": "docs/running.md: the process exits within seconds of the grace; 'every failure is reported with its reason'."
     }
   ]
 }

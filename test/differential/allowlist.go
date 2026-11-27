@@ -103,9 +103,13 @@ const replayedByTheCorsCheck = "cors: "
 // where jellyscale answers another DefaultSubtitleStreamIndex than Jellyfin, which internal/api replays (JS-041).
 const replayedByTheSubtitleDefaultCheck = "subtitle default: "
 
+// replayedByTheQuickConnectCheck is the start of the names of the steps of compat/captures/quick-connect-12.4.json,
+// which cmd/jellyscale/quickconnect_capture_integration_test.go replays (JS-037).
+const replayedByTheQuickConnectCheck = "quick connect: "
+
 func replayed(name string) bool {
 	return strings.HasPrefix(name, replayedElsewhere) || strings.HasPrefix(name, replayedByTheCorsCheck) ||
-		strings.HasPrefix(name, replayedByTheSubtitleDefaultCheck)
+		strings.HasPrefix(name, replayedByTheSubtitleDefaultCheck) || strings.HasPrefix(name, replayedByTheQuickConnectCheck)
 }
 
 // CheckRequests fails if an entry names a request that reqs does not have.

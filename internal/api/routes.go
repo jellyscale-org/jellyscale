@@ -18,11 +18,17 @@ func (s *Server) Routes() []Route {
 		{Method: "GET", Path: "/Branding/Configuration", Status: Stub, Role: RoleAPI, Access: AccessAnyone, Why: "the sign-in page shows the branding before anyone has signed in", Handler: s.branding},
 		{Method: "GET", Path: "/Branding/Css", Status: Stub, Role: RoleAPI, Access: AccessAnyone, Why: "the sign-in page loads the branding before anyone has signed in", Handler: noContent},
 		{Method: "GET", Path: "/Branding/Css.css", Status: Stub, Role: RoleAPI, Access: AccessAnyone, Why: "the sign-in page loads the branding before anyone has signed in", Handler: noContent},
-		{Method: "GET", Path: "/QuickConnect/Enabled", Status: Stub, Role: RoleAPI, Access: AccessAnyone, Why: "the sign-in page asks whether Quick Connect is offered before anyone has signed in", Handler: quickConnectDisabled},
+		{Method: "GET", Path: "/QuickConnect/Enabled", Status: Implemented, Role: RoleAPI, Access: AccessAnyone, Why: "the sign-in page asks whether Quick Connect is offered before anyone has signed in", Handler: s.quickConnectEnabled},
 
 		// Users and sessions.
 		{Method: "GET", Path: "/Users/Public", Status: Implemented, Role: RoleAPI, Access: AccessAnyone, Why: "the sign-in page asks for the users to pick from before anyone has signed in; it answers none", Handler: emptyList},
 		{Method: "POST", Path: "/Users/AuthenticateByName", Status: Implemented, Role: RoleAPI, Access: AccessAnyone, Why: "it is how a viewer signs in, and it checks the name and password itself", Handler: s.authenticateByName},
+		// A device with no token asks for a six-digit code, polls it and redeems it with the secret; only an account
+		// that is already signed in approves one (JS-037).
+		{Method: "POST", Path: "/QuickConnect/Initiate", Status: Implemented, Role: RoleAPI, Access: AccessAnyone, Why: "a device with no token asks for the code it shows its viewer; the secret is its own answer", Handler: s.quickConnectInitiate},
+		{Method: "GET", Path: "/QuickConnect/Connect", Status: Implemented, Role: RoleAPI, Access: AccessAnyone, Why: "a device with no token asks whether its code was approved; the answer carries no sign-in", Handler: s.quickConnectConnect},
+		{Method: "POST", Path: "/QuickConnect/Authorize", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.quickConnectAuthorize},
+		{Method: "POST", Path: "/Users/AuthenticateWithQuickConnect", Status: Implemented, Role: RoleAPI, Access: AccessAnyone, Why: "a device with no token redeems its secret for the token the approval made for it", Handler: s.authenticateWithQuickConnect},
 		{Method: "GET", Path: "/Users/Me", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.currentUser},
 		{Method: "GET", Path: "/Users/{userId}", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Users: UsersAdminAny, Handler: s.getUser},
 		{Method: "POST", Path: "/Users/Configuration", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Users: UsersAdminAny, Handler: s.saveConfiguration},
