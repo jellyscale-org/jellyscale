@@ -8,7 +8,8 @@
     "A subtitle read that hit the outage is served once Postgres answers, not refused for 30 s",
     "A film started from the snapshot while Postgres is away plays with the viewer's audio and subtitle languages",
     "The cases of BL-062, BL-064, BL-068 and BL-168 each have a check",
-    "docs/status.md and docs/running.md say what holds across a switchover, with the check for each"
+    "docs/status.md and docs/running.md say what holds across a switchover, with the check for each",
+    "Through a switchover, a copied job keeps invariant 57's lead: with a viewer stopped early, it stores no segment, and reads no film, past the lead and one segment beyond the furthest segment asked for."
   ],
   "core": true,
   "source": "product-owner triage 2026-11-19 (js107, js119)",

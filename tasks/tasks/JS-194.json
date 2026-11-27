@@ -9,7 +9,9 @@
     "Every Jellyfin route and Quick Connect are removed, with their tooling; nothing answers a Jellyfin path but 404.",
     "The native browser check is the e2e gate, covering every outcome the jellyfin-web gate covered that still applies.",
     "The Jellyfin-only invariants are deleted from DOMAINS.md, and docs/status.md is rewritten against PRODUCT.md.",
-    "Octave is told by a from:jellyscale issue, with the tag to test."
+    "Octave is told by a from:jellyscale issue, with the tag to test.",
+    "Its pull request carries a ledger of every invariant: kept, removed or rewritten, with its tests before and after. A test is deleted only if its invariant is removed; a test driven through a Jellyfin route is ported to the new API and shown to fail on the fault it caught (review evidence, D-069).",
+    "The tables only Jellyfin's API used are listed in docs/ for removal one release later."
   ],
   "status": "todo",
   "dependsOn": [

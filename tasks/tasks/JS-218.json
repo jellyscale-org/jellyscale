@@ -1,0 +1,18 @@
+{
+  "id": "JS-218",
+  "phase": "M1",
+  "title": "One watch history per person, and Continue watching, from the server.",
+  "description": "Serves Goal 3: \"Octave's features have the server they need.\"; \"Their place is always one press away.\". Split from JS-186 (D-20261127-domains-tasks).",
+  "acceptanceCriteria": [
+    "Each person has one watch history per title, across devices and versions.",
+    "Continue watching is decided by the server and is the same on every device: titles in progress and each show's next episode, including a show the viewer had caught up on when a new episode arrives; a title not played for longer than the viewer's own setting leaves it; removing a title keeps the viewer's place (#101, #233).",
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-186"
+  ],
+  "source": "po-check.md §B; D-20261127-domains-tasks",
+  "notes": "Criteria are JS-186's criteria 3 and 4 plus the contract criterion. Phase M1 chosen (split from JS-186, M1); ux flag chosen: true.",
+  "ux": true
+}

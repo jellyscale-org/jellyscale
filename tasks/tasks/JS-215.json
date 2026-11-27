@@ -11,7 +11,8 @@
     "No sign-in answer is kept by a cache, and no secret of it is stored unhashed or appears in a log or an error body.",
     "The Octave Web pages the server serves carry response headers that limit what scripts and framing can do, and docs/running.md says what a proxy in front must keep.",
     "DOMAINS invariant 63 is reworded as D-111 records; the header-token API is unchanged.",
-    "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check.",
+    "The web sign-in is accepted on picture routes, whose answers are marked private so no shared cache keeps them, and never on any other media request (a stream, a segment, a subtitle, a font) or a media link."
   ],
   "status": "todo",
   "dependsOn": [

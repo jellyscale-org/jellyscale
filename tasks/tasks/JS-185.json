@@ -10,13 +10,19 @@
     "Progress becomes the viewer's place on every device.",
     "A play that cannot start now, or a conversion that loses something (such as audio channels), carries a reason Octave can explain, with when to retry where retrying helps.",
     "A worker killed mid-film costs no picture, as today.",
-    "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check.",
+    "One playback's id is in every log line of it, from the play request to each segment, its job and its worker's ffmpeg; docs/running.md shows how to follow one.",
+    "The read each media request makes of its playback and its access is added to the stress run; its 99th percentile at 1,600 viewers is recorded against today's at 1,600 viewers, and one more than 20% above it comes to the product owner as a brief before merge.",
+    "A playback lives while its app reports on it; one with no report for 90 seconds has ended, never revives, and its link is refused with that reason and the action to start again. A media request does not keep a playback alive. A play with no position starts at the viewer's place with their picks."
   ],
   "status": "todo",
   "dependsOn": [
-    "JS-186"
+    "JS-186",
+    "JS-218",
+    "JS-217",
+    "JS-219"
   ],
   "source": "pivot-plan.md; D-107 to D-128",
-  "notes": "It builds the two players its criterion 3 plays on: a minimal Media3 player on an emulator and a minimal browser player, both in the server's test tree, driving only jellyscale's own API. They become the e2e gate at the cutover (JS-194) until Octave's builds take over (JS-190, JS-150). #222, #224, #295: the one-playback link, the device saying what it cannot play, and a reason when audio loses channels.",
+  "notes": "It builds the two players its criterion 3 plays on: a minimal Media3 player on an emulator and a minimal browser player, both in the server's test tree, driving only jellyscale's own API. They become the e2e gate at the cutover (JS-194) until Octave's builds take over (JS-190, JS-150). #222, #224, #295: the one-playback link, the device saying what it cannot play, and a reason when audio loses channels. Note, not a criterion: it writes end and failure messages from the start, so JS-197 adds delivery only.",
   "ux": true
 }

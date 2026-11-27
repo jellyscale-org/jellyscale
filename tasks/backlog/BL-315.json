@@ -1,0 +1,9 @@
+{
+  "id": "BL-315",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "JS-198",
+  "title": "No queued test fails if S3 subtitle files beside a film are refused",
+  "notes": "Gate gap of JS-198 (po-check.md §E; D-20261127-js198-land): the merge queue, which runs before any image is published, is meant to catch this fault; the lead names the queued test that fails if S3 subtitle files beside a film are refused (invariants 50 and 51 name roles and e2e checks on both stores; unverified). Without such a test it is fixed in JS-198's gate before it lands. Promoted when a published image ships the fault. JS-194's ledger keeps the outcome across the cutover."
+}

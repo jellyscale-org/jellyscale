@@ -7,9 +7,9 @@
     "PlaybackInfo, the stream requests, the job and the worker's ffmpeg log lines of one playback carry the same id",
     "docs/running.md shows how to follow one playback"
   ],
-  "status": "todo",
+  "status": "dropped",
   "dependsOn": [],
   "source": "Fable 5.2 architecture review, 2026-11-12 (.results/architecture-review-2026-11-12.md); owner's answers 2026-11-12",
-  "notes": "JS-153's decision line already carries the play session id (D-038).",
+  "notes": "JS-153's decision line already carries the play session id (D-038). Merged into JS-185; dropped per D-20261127-domains-tasks.",
   "ux": true
 }

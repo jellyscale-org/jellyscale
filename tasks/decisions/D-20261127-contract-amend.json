@@ -1,0 +1,11 @@
+{
+  "id": "D-20261127-contract-amend",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "JS-209",
+  "brief": "## C. JS-183, before it merges\n\nEach is accepted. Together they amend a locked check.\n1. **Action is an open string** with known values. Criterion 3 adds: \"An action a client does not know never breaks it, checked with a client generated from the contract decoding an unknown action.\"\n2. **Lock only the transport reasons now.** Criterion 3's sentence becomes: \"Within a version, a transport reason (an unknown route, a wrong method, a missing sign-in, a server failure) and a reason of a stable capability are added and never removed or renamed. A reason used only by preview capabilities may be reworded until its capability becomes stable, and the task that marks it stable locks it.\"\n3. **Meanings in a viewer's words.** Criterion 3: \"Each entry gives its meaning in words a viewer understands, naming no mechanism (no token, database or worker), and what the viewer can do…\" The operator's detail goes to the log.\n4. **Legacy capabilities are never stable.** Criterion 4 adds: \"playback-info, user-configuration and track-preferences are marked as leaving at the cutover and can never be marked stable.\"\n5. **Casing is settled in JS-216** (its criterion 3 above), before JS-184 serves anything.",
+  "tradeoff": "",
+  "serves": "\"Their app keeps working\"; \"said plainly\".",
+  "decision": "accept",
+  "entry": "JS-183 is amended before it merges: actions are an open list; only transport reasons and stable capabilities' reasons are locked; meanings are in a viewer's words; playback-info, user-configuration and track-preferences are leaving and never stable; casing is settled in JS-216."
+}

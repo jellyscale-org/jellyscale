@@ -6,7 +6,8 @@
   "acceptanceCriteria": [
     "A viewer's audio and subtitle pick, Off included, is the one a film starts with when they return, and the one each next episode of a show starts with (#117): after a reload, a new sign-in and on another device. Their saved languages still decide a title they have never picked for.",
     "Shown in Octave (or, until JS-190 and JS-150, the native browser check): a pick, a reload, a new sign-in and a second device each start the title with the pick.",
-    "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check.",
+    "A profile reads and sets its listening and reading languages, kept languages and hiding switches through the contract, and every app's track menus follow them, with tracks hidden for the profile marked in details and plans."
   ],
   "status": "todo",
   "dependsOn": [

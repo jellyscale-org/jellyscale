@@ -4,11 +4,11 @@
   "title": "Spike: what Octave's players need for a stream that steps, a quick language switch, and a one-playback link",
   "description": "Serves \"The picture follows the connection.\"; \"Their languages come first.\". Media3 now; AVPlayer's half when Octave builds its Apple app's playback (ASK-7). No product change.",
   "acceptanceCriteria": [
-    "On Media3: a one-playback link survives a 30-minute pause.",
     "How late the first piece arrives after a step down to a version not yet made, on a throttled link.",
     "The gap heard when the audio language is switched mid-film.",
     "Whether the longest piece a copied stream has today upsets the player's stepping.",
-    "Recorded in docs/ with the player, version and command; the figures go to the product owner before JS-187's Spec."
+    "Recorded in docs/ with the player, version and command; the figures go to the product owner before JS-187's Spec.",
+    "Whether audio served apart from the picture splices at a restart as today's does (invariant 52's restart check on audio-only pieces), under ffmpeg 6.1, 8.1 and 9."
   ],
   "status": "todo",
   "dependsOn": [],

@@ -23,6 +23,7 @@ You judge the product, not the code. Read only:
 - `tasks/order.txt` (open task ids in priority order) and `tasks/tasks/` (one file per task, open or finished, the same shape);
 - `tasks/backlog/` (what was found and kept for later; yours to manage, and never mentioned to anyone who builds);
 - `tasks/decisions/` (what has been decided before; stay consistent with it or say why not).
+- Decisions before D-107, whoever made them, are history only: don't cite them (D-20261127-clean-slate).
 
 DOMAINS.md has very long lines that Read cuts short. Use Bash only to read: `rg` (ripgrep), `jq`, `sed -n` on the files above, `tools/plan.sh` (the one listing command), and `git diff` of `tasks/order.txt` and `tasks/tasks/` when asked to review a plan change. Never write, run a test, or start anything with it.
 
