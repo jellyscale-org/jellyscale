@@ -9,74 +9,74 @@
   },
   "phases": [
     {
-      "id": "P0",
-      "name": "Spike",
-      "goal": "Evidence before building: hidden routes, client captures, segment seams, redirects, S3 costs, NOTIFY load.",
+      "id": "S1",
+      "name": "Watching",
+      "goal": "Browse, play, convert, subtitles and audio for every film.",
       "status": "done",
-      "source": "spikes/README.md"
+      "source": "PRODUCT.md, The road there, 1"
     },
     {
-      "id": "P1",
-      "name": "Read-only",
-      "goal": "jellyfin-web logs in and browses.",
-      "status": "done",
-      "source": "PRODUCT.md Built"
-    },
-    {
-      "id": "P2",
-      "name": "Direct play",
-      "goal": "Plays from POSIX and S3; progress persists across replicas.",
-      "status": "done",
-      "source": "PRODUCT.md Built"
-    },
-    {
-      "id": "P3",
-      "name": "Transcode",
-      "goal": "Web transcodes, seeks, switches audio; subtitles; video copy; tone mapping; chapters.",
+      "id": "S2",
+      "name": "Never interrupted",
+      "goal": "Any part of the cluster can fail mid-film without the viewer losing their place.",
       "status": "in_progress",
-      "source": "PRODUCT.md phase3"
+      "source": "PRODUCT.md, The road there, 2"
     },
     {
-      "id": "P4",
-      "name": "High availability",
-      "goal": "A worker and an API replica killed mid-film recover without losing picture or resume position.",
-      "status": "in_progress",
-      "source": "PRODUCT.md phase4-ha and its gate"
-    },
-    {
-      "id": "ID",
-      "name": "Identity",
-      "goal": "User management, hashed tokens, Quick Connect, OIDC, scoped keys.",
+      "id": "M1",
+      "name": "Its own API, first milestone",
+      "goal": "Octave signs in, browses Films and Shows with real titles and artwork, and starts playback on jellyscale's own API; then the cutover.",
       "status": "todo",
-      "source": "PRODUCT.md identity"
+      "source": "PRODUCT.md, The road there, 3; D-109"
     },
     {
-      "id": "P5",
-      "name": "Library and metadata",
-      "goal": "Daily-driver parity for video: metadata from files, Next Up, collections, trickplay, GPU.",
+      "id": "S3",
+      "name": "Its own API, for Octave's native apps",
+      "goal": "Octave's apps are the gates; Octave Web ships; an older Octave keeps working.",
       "status": "todo",
-      "source": "PRODUCT.md phase5-library"
+      "source": "PRODUCT.md, The road there, 3"
     },
     {
-      "id": "P6",
-      "name": "Kubernetes and operations",
-      "goal": "Helm, CNPG, KEDA, metrics, upgrades, migration from Jellyfin; 200 mixed streams on a real cluster.",
+      "id": "S4",
+      "name": "Watching from anywhere",
+      "goal": "The picture follows the connection, quick language switches, the shared upload, playback ready before Play.",
       "status": "todo",
-      "source": "PRODUCT.md phase6-k8s"
+      "source": "PRODUCT.md, The road there, 4"
     },
     {
-      "id": "P7",
-      "name": "SyncPlay",
-      "goal": "Group playback across replicas.",
+      "id": "S5",
+      "name": "People",
+      "goal": "Invitations, single sign-on, profiles, per-viewer access, hours and stream limits, devices and activity.",
       "status": "todo",
-      "source": "PRODUCT.md phase7-syncplay"
+      "source": "PRODUCT.md, The road there, 5"
+    },
+    {
+      "id": "S6",
+      "name": "A living collection",
+      "goal": "Notifications, disc images, filters, search, my list, collections, more like this, versions and editions, previews and intro skipping, new films appearing, the operator's hardware.",
+      "status": "todo",
+      "source": "PRODUCT.md, The road there, 6"
+    },
+    {
+      "id": "S7",
+      "name": "Running on Kubernetes",
+      "goal": "Manifests and a Helm chart, autoscaling, upgrades without downtime, backup, migration from Jellyfin.",
+      "status": "todo",
+      "source": "PRODUCT.md, The road there, 7"
+    },
+    {
+      "id": "S8",
+      "name": "Together",
+      "goal": "Watching in step and moving a film between devices, across the cluster.",
+      "status": "todo",
+      "source": "PRODUCT.md, The road there, 8"
     },
     {
       "id": "OPS",
-      "name": "Engineering and observability",
-      "goal": "Test speed, docs, metrics, tracing, load tests: what keeps the project fast to change and the dogfood diagnosable.",
+      "name": "Operations of the project",
+      "goal": "Plan records, CI and the tools that keep delivery dependable.",
       "status": "in_progress",
-      "source": "work queue"
+      "source": "AGENTS.md"
     }
   ],
   "userStories": [
@@ -95,7 +95,7 @@
         "Exported over OTLP to any backend, off by default; the dogfood runs a backend and the docs show reading a stall from it",
         "Checked with real processes: a test collector receives a playback's trace from three processes, with a stall and a failover in it"
       ],
-      "priority": 68,
+      "priority": 64,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -117,7 +117,7 @@
         "Metrics beyond the transcode path: HTTP requests by role, route and status with latency, store operations and bytes by store, scan durations and errors",
         "Every figure the docs tell an operator to watch is a series on /metrics, and docs/running.md's table lists every series the endpoint serves, compared once by hand with a live /metrics answer when the task closes, the comparison recorded; no test reads the doc (D-069, superseding D-038's 'by a check')."
       ],
-      "priority": 67,
+      "priority": 63,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -127,7 +127,7 @@
     },
     {
       "id": "JS-032",
-      "phase": "P4",
+      "phase": "S8",
       "title": "A viewer moves what they are watching to another of their devices",
       "description": "Serves \"Watching together works.\"; \"Seeking and resuming just work.\". ",
       "acceptanceCriteria": [
@@ -143,18 +143,18 @@
         "JS-194"
       ],
       "source": "PRODUCT.md phase4-ha; compat/coverage-12.4.tsv phase4-ha (10 routes)",
-      "notes": "Requested by Fluster, the client that ships with jellyscale: #106. Access: commands reach the caller's own user's sessions, an administrator any; adding a user to a session is admin. (access model, 2026-11-16)"
+      "notes": "#106: the Jellyfin capability routes go at the cutover; this is the same need on jellyscale's own API."
     },
     {
       "id": "JS-034",
-      "phase": "ID",
+      "phase": "S5",
       "title": "Sign-in tokens are stored hashed",
       "description": "Serves \"Access is enforced everywhere.\". Tokens stored hashed. Operator keys are JS-035's, from configuration.",
       "acceptanceCriteria": [
         "No plain token in the database",
         "A token read from the database does not sign anyone in: shown by trying one."
       ],
-      "priority": 70,
+      "priority": 38,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -162,29 +162,8 @@
       "notes": "Access: an operator key is never a user: an administrator's reads and account management, no playback or watch state. (access model, 2026-11-16)"
     },
     {
-      "id": "JS-035",
-      "phase": "ID",
-      "title": "Scoped integration keys",
-      "description": "Serves \"Access is enforced everywhere.\"; Goal 5: \"Operating it stays boring.\". Named, revocable keys that are not user accounts, with scopes (for example read-only stats), sent like a device's sign-in, declared in configuration.",
-      "acceptanceCriteria": [
-        "A key outside its scope gets 401/403",
-        "Last use time and address recorded",
-        "A read-only key is shown against the routes it may call and those it may not: each allowed route answers, each other route is refused",
-        "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
-      ],
-      "priority": 71,
-      "status": "todo",
-      "passes": false,
-      "dependsOn": [
-        "JS-034"
-      ],
-      "source": "user request 2026-11-07",
-      "notes": "Jellyfin offers only per-user tokens or all-powerful admin keys, so people create throwaway accounts for integrations. Access: anything narrower than an operator key is a scope. (access model, 2026-11-16)",
-      "ux": true
-    },
-    {
       "id": "JS-036",
-      "phase": "ID",
+      "phase": "S5",
       "title": "Each viewer sees only what the operator allows",
       "description": "Serves \"They see only what they may.\"; \"Access is enforced everywhere.\". One access rule, apart from how the collection is organised (D-124), decides what each account may see. JS-186 introduces the rule; this task gives it its full content. Configuration and invitations (JS-192) set it.",
       "acceptanceCriteria": [
@@ -195,7 +174,7 @@
         "A collection or way in never counts or reveals a hidden member, and no way of organising titles grants anything (D-124).",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 13,
+      "priority": 18,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -208,7 +187,7 @@
     },
     {
       "id": "JS-039",
-      "phase": "ID",
+      "phase": "S5",
       "title": "Single sign-on through the household's provider, for Octave on every platform",
       "description": "Serves \"Joining and signing in are easy and safe.\". One provider declared in configuration. Passkeys and second factors come from it (D-119). Octave on Android TV and phones, and Octave Web, sign in through it by a one-time code bound to the device that started (absorbs JS-180, #296).",
       "acceptanceCriteria": [
@@ -221,7 +200,7 @@
         "The journey's routes are bounded per address (D-020). The client secret comes from the environment and is never in configuration or logs.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 25,
+      "priority": 33,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -229,12 +208,12 @@
         "JS-194"
       ],
       "source": "PRODUCT.md identity",
-      "notes": "Needs its own guessing bound, following JS-145's design (product owner, 2026-11-19). D-081: moved from 68 to 36, after JS-178; JS-056 and the tasks at 37 to 46 each moved down one. Criteria, dependency on JS-037 and scope unchanged. Reopens to 30 (after Quick Connect) if a household with an identity provider is waiting or reports it. D-082. Refine returns a brief before Spec on whether an administrator may be linked by name, since whoever picks a name at the provider takes that account. No device-authorization grant (D-083: rejected as a second protocol; a QR, if it comes, is Quick Connect's code in a link, its own task after this one). Refine designs the return so that no token or reusable code appears in a URL, and so that JS-180 is a second form of the same handoff, not a second protocol (D-083, D-099).",
+      "notes": "Needs its own guessing bound, following JS-145's design (product owner, 2026-11-19). D-081: moved from 68 to 36, after JS-178; JS-056 and the tasks at 37 to 46 each moved down one. Criteria, dependency on JS-037 and scope unchanged. Reopens to 30 (after Quick Connect) if a household with an identity provider is waiting or reports it. D-082. Refine returns a brief before Spec on whether an administrator may be linked by name, since whoever picks a name at the provider takes that account. No device-authorization grant (D-083: rejected as a second protocol; a QR, if it comes, is Quick Connect's code in a link, its own task after this one). Refine designs the return so that no token or reusable code appears in a URL, and so that JS-180 is a second form of the same handoff, not a second protocol (D-083, D-099). #296: for Octave Web, redeeming the one-time code sets up the web sign-in (JS-215), so no credential readable by the page is handed out.",
       "ux": true
     },
     {
       "id": "JS-042",
-      "phase": "ID",
+      "phase": "M1",
       "title": "A viewer sees and signs out their devices; an operator revokes any",
       "description": "Serves \"Joining and signing in are easy and safe.\"; \"Access is enforced everywhere.\". Each sign-in belongs to a device (D-082).",
       "acceptanceCriteria": [
@@ -242,12 +221,11 @@
         "A device signed out answers 401 on its next request through any api or stream replica, shown with real processes.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 26,
+      "priority": 9,
       "status": "todo",
       "passes": false,
       "dependsOn": [
-        "JS-184",
-        "JS-194"
+        "JS-184"
       ],
       "source": "PRODUCT.md identity",
       "notes": "",
@@ -255,7 +233,7 @@
     },
     {
       "id": "JS-043",
-      "phase": "ID",
+      "phase": "S5",
       "title": "Activity log",
       "description": "Serves \"Nothing is hidden.\". Sign-ins and plays an operator can read.",
       "acceptanceCriteria": [
@@ -263,7 +241,7 @@
         "A viewer cannot read another account's entries.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 72,
+      "priority": 39,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -275,7 +253,7 @@
     },
     {
       "id": "JS-045",
-      "phase": "P5",
+      "phase": "M1",
       "title": "Artwork and synopses from files beside the film",
       "description": "Serves \"Finding something to watch is easy.\"; \"Their data is theirs.\". Poster and fanart images, .nfo files and embedded tags as the only metadata source.",
       "acceptanceCriteria": [
@@ -283,19 +261,20 @@
         "A film with no image and no .nfo beside it shows as it does today, and the scan logs no error for it.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 30,
+      "priority": 11,
       "status": "todo",
       "passes": false,
       "dependsOn": [
-        "JS-194"
+        "JS-080",
+        "JS-186"
       ],
       "source": "PRODUCT.md phase5-library",
-      "notes": "A migration that adds a column to items recreates the shown_items view (SELECT i.* is fixed when it is made; BL-087).",
+      "notes": "Moved into M1's parallel work (#299): a TV home is mostly artwork and titles, and titles that look like file names fail \"Finding something to watch is easy.\" It does not block the cutover. A migration that adds a column to items recreates the shown_items view (SELECT i.* is fixed when it is made; BL-087).",
       "ux": true
     },
     {
       "id": "JS-050",
-      "phase": "P5",
+      "phase": "S6",
       "title": "Several files of a film are one title; a different cut is its own title",
       "description": "Serves \"Finding something to watch is easy.\"; \"The picture is as good as the device and the connection allow.\"; \"Their place is always one press away.\". ",
       "acceptanceCriteria": [
@@ -305,7 +284,7 @@
         "Shown for films kept on local disk and on S3.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 36,
+      "priority": 48,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -316,7 +295,7 @@
     },
     {
       "id": "JS-051",
-      "phase": "P5",
+      "phase": "S6",
       "title": "Parental ratings",
       "description": "Serves \"They see only what they may.\". A title's rating comes from the files beside it; a ceiling per account is part of the access rule (JS-036).",
       "acceptanceCriteria": [
@@ -324,7 +303,7 @@
         "An operator gives an account a rating ceiling (JS-036); titles above it, and unrated titles if the operator says so, are hidden everywhere.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 46,
+      "priority": 53,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -336,7 +315,7 @@
     },
     {
       "id": "JS-052",
-      "phase": "P5",
+      "phase": "S6",
       "title": "Media segments and intro skip",
       "description": "Serves \"Finding something to watch is easy.\". From operator data or chapter markers; no fingerprinting.",
       "acceptanceCriteria": [
@@ -344,7 +323,7 @@
         "Where a film or episode has an intro or credits marked (chapter names or the operator's data), Octave can offer a skip at the right moment.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 45,
+      "priority": 52,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -356,7 +335,7 @@
     },
     {
       "id": "JS-053",
-      "phase": "P5",
+      "phase": "S6",
       "title": "Trickplay",
       "description": "Serves \"Seeking and resuming just work.\". A preview of where the viewer is jumping to.",
       "acceptanceCriteria": [
@@ -365,7 +344,7 @@
         "Making them never slows a playback or anything the operator waits for.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 44,
+      "priority": 51,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -376,7 +355,7 @@
     },
     {
       "id": "JS-054",
-      "phase": "P5",
+      "phase": "S6",
       "title": "Use every GPU and CPU the cluster has",
       "description": "Serves \"Growing is adding machines.\". What JS-170 (the first slice: Intel VAAPI/QSV) leaves, under D-047's rule: NVIDIA NVENC and AMD VAAPI workers, hardware decoding for processor-encoded streams, and outputs above 1080 lines. fMP4 can't splice across encoder families (spikes/seam: x264 spliced with NVENC lost half the frames), so each stream keeps one family, and its helpers (JS-024) and failover stay in it. D-047.",
       "acceptanceCriteria": [
@@ -389,7 +368,7 @@
         "Operators see the family and worker of each stream (Sessions, /metrics, JS-021 traces); the overrides are JS-170's three and no more.",
         "An optional GPU worker pool requests nvidia.com/gpu or the vendor's resource through its device plugin; documented in docs/running.md."
       ],
-      "priority": 63,
+      "priority": 61,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -403,7 +382,7 @@
     },
     {
       "id": "JS-055",
-      "phase": "P5",
+      "phase": "S6",
       "title": "New films appear on their own",
       "description": "Serves \"New films just appear.\"; \"Storage stays bounded.\". How new films are found is the design's choice (D-125).",
       "acceptanceCriteria": [
@@ -412,7 +391,7 @@
         "Finding new films costs each store no more than a stated, measured number of requests per hour for a collection of stated size.",
         "A removed file is hidden after the grace, as today (invariants 5 and 56)."
       ],
-      "priority": 37,
+      "priority": 49,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -423,7 +402,7 @@
     },
     {
       "id": "JS-056",
-      "phase": "P6",
+      "phase": "S7",
       "title": "Kubernetes example manifests",
       "description": "Serves \"Installing is boring.\". Example manifests an operator applies with kubectl: deployments per role, readiness and liveness, Postgres (CNPG), configuration as plain files. Split from the Helm chart (JS-142) by the direction review, 2026-11-19: an operator cannot install jellyscale today.",
       "acceptanceCriteria": [
@@ -436,7 +415,7 @@
         "The example manifests declare trustedProxies for their ingress (D-020) The procedure in docs/running.md for confirming declared proxies, followed against the example manifests' ingress, says what the operator sees and does when no address is counted (every answer 401, no refusal line), and no sentence there denies a log line the server writes (D-025, BL-221)",
         "Workers are their own Deployment, apart from api and stream, and the manifests' check refuses more than one worker or stream replica on a transcode store or library that not every one of them can reach (a ReadWriteOnce volume), naming the key (D-045) docs/running.md says what every worker must reach (Postgres, each library, the transcode store), and the worker's termination grace matches JS-165's (D-045) The example manifests declare no transcodeCores and give workers CPU requests equal to limits in whole cores (D-064)"
       ],
-      "priority": 51,
+      "priority": 66,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -449,14 +428,14 @@
     },
     {
       "id": "JS-058",
-      "phase": "P6",
+      "phase": "S7",
       "title": "Upgrades without downtime",
       "description": "Workers before stream and api; migrations old replicas survive; workers report their spec fields. The mixed-version safety of migrations and spec hashes is split out to JS-079, which comes much earlier.",
       "acceptanceCriteria": [
         "A rolling upgrade under playback loses no picture",
         "docs/running.md's upgrade section says what an OutputVersion bump costs (every film playing is re-encoded once and its stored segments orphaned), and a bump touches only the specs whose output changed, or the pull request says why it cannot"
       ],
-      "priority": 54,
+      "priority": 69,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -468,13 +447,13 @@
     },
     {
       "id": "JS-059",
-      "phase": "P6",
+      "phase": "S7",
       "title": "Backup and restore procedure",
       "description": "Serves \"Their data is theirs.\". Documented backup of Postgres and the object stores.",
       "acceptanceCriteria": [
         "Restore tested from a backup, for a collection on local disk and one on S3"
       ],
-      "priority": 55,
+      "priority": 70,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -484,7 +463,7 @@
     },
     {
       "id": "JS-060",
-      "phase": "P6",
+      "phase": "S7",
       "title": "Migration from Jellyfin",
       "description": "One-way import of users, watch state and libraries.",
       "acceptanceCriteria": [
@@ -493,7 +472,7 @@
         "The import is run from the operator's side with a documented command, changes nothing in the Jellyfin it reads, can be run twice with the same result, and reports every user or item it could not carry, with the reason.",
         "Migrated users arrive with no password and cannot sign in by password until an administrator sets one or the provider links them; the migration docs tell the operator so (D-105)."
       ],
-      "priority": 69,
+      "priority": 72,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -503,14 +482,14 @@
     },
     {
       "id": "JS-062",
-      "phase": "P6",
+      "phase": "S7",
       "title": "Load test: 200 mixed streams on a real cluster",
       "description": "Serves \"Growing is adding machines.\"; \"Play starts in seconds and keeps up.\". A load test of the new playback on a real cluster.",
       "acceptanceCriteria": [
         "200 mixed playbacks of the new API (as they are, converted, re-encoded, and stepping down and up) with a stated rebuffer ratio and p95s for starts, seeks and browsing",
         "A stated target for time to first frame on a start and on a seek, held at 200 streams and recorded run over run, so 'play starts in seconds' is measured"
       ],
-      "priority": 56,
+      "priority": 71,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -521,7 +500,7 @@
     },
     {
       "id": "JS-063",
-      "phase": "P7",
+      "phase": "S8",
       "title": "Watching in step",
       "description": "Serves \"Watching together works.\"; \"They see only what they may.\". ",
       "acceptanceCriteria": [
@@ -541,7 +520,7 @@
     },
     {
       "id": "JS-079",
-      "phase": "P4",
+      "phase": "S2",
       "title": "Migrations are safe across a rolling upgrade",
       "description": "Serves \"Nothing breaks the viewers' evening.\". Split by D-063 (mixed-version playback is JS-208). Every dogfood deploy already runs two versions side by side, but upgrade safety is one line at the end of the plan (JS-058). Migrations run with no lock timeout and no check for migrations a newer version applied (internal/db/db.go), an old worker can compute another spec hash than a new one (ARCHITECTURE.md known departures), and docs/running.md and ARCHITECTURE.md disagree on which role rolls first.",
       "acceptanceCriteria": [
@@ -549,7 +528,7 @@
         "One documented rollout order, the same in docs/running.md and ARCHITECTURE.md, and a test or check that each migration in a release is safe for the previous version's code",
         "Observed first with real processes under a playing film: a migration that takes exclusive locks on two tables a running worker and a stream replica use is applied while they run. The upgrading replica starts (it applies the migration again after a deadlock or lock timeout) or refuses once with a message naming the lock; it never fails to start silently. No viewer request is answered an error. The record says what a stream replica answers from memory if Postgres stops just after its snapshot read was aborted; a gap there returns to the product owner as a brief and is not built here (D-063)."
       ],
-      "priority": 47,
+      "priority": 16,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -558,7 +537,7 @@
     },
     {
       "id": "JS-080",
-      "phase": "P5",
+      "phase": "M1",
       "title": "File naming against real library layouts: extras, specials and odd names",
       "description": "Serves \"New films just appear.\"; \"Finding something to watch is easy.\". The naming rules have three tests (internal/library/naming_test.go) and every video in a movies library becomes a Movie (internal/library/scan.go), so extras, featurettes, trailers and samples beside a film are listed as films, and episodes without a season tag are skipped. Metadata files (JS-045) and the Jellyfin import (JS-060) attach to items by path, so the rules must be right first.",
       "acceptanceCriteria": [
@@ -567,7 +546,7 @@
         "No library titles in the fixtures",
         "A title that ends in a year-like number keeps it: synthetic table cases 'Harbor Lights 2049 (2017)', 'Harbor.Lights.2049.2017.1080p', 'Harbor Lights 2049' (no year), '2001 Night Garden (1968)', '1888 (2019)' and '2031' give the right title and year, and an existing library's item ids do not change"
       ],
-      "priority": 39,
+      "priority": 10,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -577,13 +556,13 @@
     },
     {
       "id": "JS-091",
-      "phase": "P5",
+      "phase": "S2",
       "title": "A text track's listing never depends on the store's health at that moment",
       "description": "Serves \"Their languages come first.\"; \"Any film plays, and plays well.\". Every item detail and playback start asks the asset store whether each text track and the fonts exist, and a store error reads as 'not there', so tracks come and go with store health. (Extraction ahead of time moves to the backlog, under D-120's opt-in rule.)",
       "acceptanceCriteria": [
         "The api answers which tracks and fonts are listed from Postgres, with no asset-store request, and a store error never hides a track"
       ],
-      "priority": 64,
+      "priority": 56,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -605,7 +584,7 @@
         "Every existing citation still resolves: shown by one search run when the task closes, its output recorded; no committed check reads code, docs/, ARCHITECTURE.md or tasks/ (D-069).",
         "The pointers change in the same change: CLAUDE.md, the role files in .claude/agents/ (the product owner's read list included) and the build workflow's instructions say every agent reads DOMAINS.md, and a task's agents also read the domain file of each domain the task touches"
       ],
-      "priority": 28,
+      "priority": 40,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -617,13 +596,13 @@
     {
       "id": "JS-094",
       "phase": "OPS",
-      "title": "A playback id in every log line from PlaybackInfo to each segment",
+      "title": "A playback id in every log line, from the play request to each segment",
       "description": "Debugging real-device and failover findings needs to follow one playback through api, stream and worker logs. The first slice of JS-021 and JS-022, moved up.",
       "acceptanceCriteria": [
         "PlaybackInfo, the stream requests, the job and the worker's ffmpeg log lines of one playback carry the same id",
         "docs/running.md shows how to follow one playback"
       ],
-      "priority": 66,
+      "priority": 62,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -633,14 +612,14 @@
     },
     {
       "id": "JS-095",
-      "phase": "P5",
+      "phase": "S2",
       "title": "A store hiccup the reader recovers from never fails a subtitle, font or chapter-picture job",
       "description": "Serves \"Any film plays, and plays well.\". Seen: BL-169, a cut the reader healed still failed a job or skipped a chapter. (The job-queue refactor moves to the backlog.)",
       "acceptanceCriteria": [
         "Every job kind observes a store failure only where store.Reader gives up (store.InputWithFailure, JS-088): the chapter-picture, subtitle, fonts and .sup jobs no longer wrap the store below the Reader, so a cut the Reader healed never fails a job or skips a chapter (BL-169)",
         "Every existing test of those job kinds passes"
       ],
-      "priority": 65,
+      "priority": 57,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -682,7 +661,7 @@
     },
     {
       "id": "JS-101",
-      "phase": "P5",
+      "phase": "S6",
       "title": "More like this, from the titles themselves, with the reason shown",
       "description": "Serves \"Finding something to watch is easy.\"; \"Their data is theirs.\". D-124: suggestions come from local metadata and from the viewer, never learned from other viewers' watching. Absorbs JS-049.",
       "acceptanceCriteria": [
@@ -692,7 +671,7 @@
         "A viewer with no history gets a sensible answer, and another account's history never shapes a viewer's suggestions",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check. Nothing leaves the server."
       ],
-      "priority": 35,
+      "priority": 47,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -705,7 +684,7 @@
     },
     {
       "id": "JS-135",
-      "phase": "P3",
+      "phase": "S4",
       "title": "A re-encode's x264 preset is part of its spec, and its price follows the preset",
       "description": "Serves \"The picture is as good as the device and the connection allow.\"; \"Growing is adding machines.\". Every x264 re-encode uses -preset veryfast (internal/transcode/ffmpeg.go, at both x264 sites). spikes/picture-quality measured faster at +2.5 VMAF on the mean and +3.5 to +5 on the worst frames for 1.2 to 1.6 times the CPU, and medium +0.5 more for 2.2 times. The owner decided (2026-11-19) that operators choose the preset, trading picture against the compute they pay for, with faster the default (JS-136). This task builds what that needs underneath: the spec carries the preset, so every worker that encodes a stream uses the same one (segments of two presets under one init segment fail in Chromium with PIPELINE_ERROR_DECODE, spikes/picture-quality), and Spec.Cost prices each preset from a film measured through a worker, so a worker admits as many jobs as it can keep at real time. The spike also found today's 0.8 cores for a 1080p job low for a hard film (1.36 CPU s per s at veryfast, pinned, unverified basis); this task measures it properly.",
       "acceptanceCriteria": [
@@ -718,7 +697,7 @@
         "Spec.Cost has a row per preset, SDR and tone mapped, 1080p and 4K, in cores of the reference machine docs/transcoding.md names (JS-161), each at or above its measured figure with the margin docs/transcoding.md gives today; the HEVC fallback's x265Extra and the AV1 fallback's rows do not follow the x264 preset; if veryfast's rows are found low and raised, the pull request states, per row, viewers per worker before and after and what the next viewer on a full worker then sees, and the owner approves those numbers before it merges",
         "With real processes: a worker given jobs whose costs add up to its measured capacity (JS-161), at faster and at medium, keeps each at 1.2 times real time or more without a helper"
       ],
-      "priority": 57,
+      "priority": 19,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -729,7 +708,7 @@
     },
     {
       "id": "JS-136",
-      "phase": "P3",
+      "phase": "S4",
       "title": "Operators choose the x264 preset, faster by default",
       "description": "Serves \"The picture is as good as the device and the connection allow.\". The owner (2026-11-19): operators choose the preset, deciding how much picture they give up for the compute they pay for, and faster is the default unless they choose another. JS-135 put the preset in the spec and priced it; this task adds the setting, makes faster the default and shows a viewer gains picture without losing a quick start.",
       "acceptanceCriteria": [
@@ -741,7 +720,7 @@
         "The default change is listed under Changed guarantees: more CPU per viewer (fewer viewers per worker), up to about a second on a start on a full worker, a better picture",
         "A 4K HDR tone mapped re-encode, with and without a burned subtitle, holds real time at the default preset on any worker whose measured capacity admits it (JS-161), or the default does not apply to it; the pull request says, from JS-154's figures, which machines hold it at veryfast and no longer at faster (D-038, D-044)"
       ],
-      "priority": 58,
+      "priority": 30,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -753,7 +732,7 @@
     },
     {
       "id": "JS-142",
-      "phase": "P6",
+      "phase": "S7",
       "title": "Helm chart, kept in step with the example manifests",
       "description": "Serves \"Installing is boring.\". The Helm half of the packaging (D-011: both ways, no drift), after JS-056's manifests.",
       "acceptanceCriteria": [
@@ -761,7 +740,7 @@
         "The manifests and the chart cannot drift: a test fails when they would deploy different resources (for example, the manifests are the chart rendered with its defaults, checked in)",
         "The chart sizes CNPG's max_connections as JS-056's manifests do, and installing values whose sum exceeds it fails the render"
       ],
-      "priority": 53,
+      "priority": 68,
       "dependsOn": [
         "JS-056"
       ],
@@ -772,7 +751,7 @@
     },
     {
       "id": "JS-146",
-      "phase": "P4",
+      "phase": "S2",
       "title": "No viewer request is answered 500, and no subtitle is refused, across a Postgres switchover",
       "description": "Serves \"Nothing breaks the viewers' evening.\"; \"Failures are invisible.\". docs/status.md calls Postgres failover done and says requests are held instead of answering 500, but findings say otherwise: a subtitle is refused for 30 s after a read that hit the outage, and a film started from the snapshot ignores the viewer's languages (product owner triage, 2026-11-19).",
       "acceptanceCriteria": [
@@ -787,11 +766,11 @@
       "status": "todo",
       "passes": false,
       "dependsOn": [],
-      "priority": 48
+      "priority": 26
     },
     {
       "id": "JS-149",
-      "phase": "P3",
+      "phase": "S4",
       "title": "A re-encoded Dolby Vision profile 5 film looks right",
       "description": "Serves \"The picture is as good as the device and the connection allow.\". The docs disagree about a re-encoded Dolby Vision profile 5 film: DOMAINS 53 and docs/status.md say it is not mapped (green and purple), docs/transcoding.md says it is tone mapped. Nothing was observed. A wrong picture on every client that does not declare Dolby Vision breaks PRODUCT.md's promise that a re-encoded HDR film looks right on an ordinary screen (D-021).",
       "acceptanceCriteria": [
@@ -802,7 +781,7 @@
         "The job's price (Spec.Cost) is at or above its measured CPU",
         "DOMAINS 53, docs/transcoding.md and docs/status.md say the one thing seen; the gap line leaves docs/status.md"
       ],
-      "priority": 60,
+      "priority": 29,
       "source": "product owner, D-021 (2026-11-19)",
       "status": "todo",
       "passes": false,
@@ -810,7 +789,7 @@
     },
     {
       "id": "JS-148",
-      "phase": "P3",
+      "phase": "S4",
       "title": "Measure what a re-encode above 1080 lines costs, and how often a viewer gets a capped one",
       "description": "Serves \"The picture is as good as the device and the connection allow.\"; \"The picture follows the connection.\". Every re-encode is H.264 SDR at no more than 1080 lines (DOMAINS 41, for cost). No decision accepted that ceiling, and the cost of keeping a 4K film's height or an HDR film's range in a re-encode is unmeasured: JS-135 measures 4K sources, not 2160-line outputs. A viewer on a 4K or HDR screen whose film must be re-encoded (a burned-in PGS track on a 4K Blu-ray rip included) sees 1080p SDR (D-021).",
       "acceptanceCriteria": [
@@ -822,7 +801,7 @@
         "The figures go to the product owner as a brief with keeping the source's height and range priced per viewer, on CPU and on a GPU family; its decision names the task that closes the gap or accepts it, and docs/status.md's line is updated; its GPU figure is JS-163's (the HD 530 neither decodes Main 10 nor tone maps, JS-154), or is stated unmeasured if JS-163 has not run, and today's 2160-to-1080 burn-in path is measured there, not here (D-038)",
         "No viewer-visible change"
       ],
-      "priority": 59,
+      "priority": 58,
       "source": "product owner, D-021 (2026-11-19)",
       "status": "todo",
       "passes": false,
@@ -834,7 +813,7 @@
     },
     {
       "id": "JS-150",
-      "phase": "P6",
+      "phase": "S3",
       "title": "The image ships a specific, tested Octave Web release",
       "description": "Serves \"Installing is boring.\". The owner: jellyscale ships a specific tested Octave Web release (D-141), so a fresh install opens in a browser with nothing copied in. Octave Web is Octave's product, released on its own schedule.",
       "acceptanceCriteria": [
@@ -843,15 +822,16 @@
         "The published image, with no webDir set, serves the pinned build at `/` with deep links, cache headers, precompressed assets and a CSP; in the e2e tier a browser signs in, browses and plays against the image as published.",
         "docs/status.md lists, per browser (desktop Chrome, Firefox, Safari; iPhone, iPad), whether Octave's project measured it playing, or 'not known'.",
         "docs/running.md: which build ships, how to replace it, how to turn it off; the quick start copies nothing; image size before and after; docs/access.md states the served paths are open and carry no Access-Control-* header; the served pages set no cookie of their own.",
-        "Octave Web's sign-in can be neither read by page scripts nor used by another site, as D-111 records (invariant 63 split in the same change); from then on artwork needs a signed-in viewer (invariant 61 amended).",
+        "The shipped Octave Web release signs in with jellyscale's web sign-in (JS-215).",
         "Before a jellyscale release ships an Octave Web release, that release passes jellyscale's browser check against the image (sign in, browse, play, seek, resume)."
       ],
-      "priority": 27,
+      "priority": 35,
       "status": "todo",
       "passes": false,
       "dependsOn": [
         "JS-039",
-        "JS-194"
+        "JS-194",
+        "JS-215"
       ],
       "source": "issue #221; owner, 2026-11-20 (D-033); PRODUCT.md operator: Installing is boring; goal 3",
       "notes": "Cross-project need (D-132): an Octave Web release built on jellyscale's API (ASK-6).",
@@ -859,15 +839,15 @@
     },
     {
       "id": "JS-157",
-      "phase": "P4",
+      "phase": "S4",
       "title": "A viewer's audio and subtitle pick for a title is what it starts with when they return, on every device",
       "description": "Serves \"Their languages come first.\". ",
       "acceptanceCriteria": [
-        "A viewer's audio and subtitle pick for a title, Off included, is the one it starts with when they return: after a reload, a new sign-in and on another device. Their saved languages still decide a title they have never picked for.",
+        "A viewer's audio and subtitle pick, Off included, is the one a film starts with when they return, and the one each next episode of a show starts with (#117): after a reload, a new sign-in and on another device. Their saved languages still decide a title they have never picked for.",
         "Shown in Octave (or, until JS-190 and JS-150, the native browser check): a pick, a reload, a new sign-in and a second device each start the title with the pick.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 29,
+      "priority": 24,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -892,7 +872,7 @@
         "After JS-158 (merged, cb1a65c) and this task merge, the next 10 merge_group runs of CI that run the integration tier (a plan-only run that skips it is not counted), starting with the first queued after d7dbeeb (PR 279), are counted in docs/testing.md: each run's id, PR and conclusion, and for each failed run every failed job and test with its first error line and a verdict as in criterion 1. The count of failed runs of 10 and the causes come to the product owner at that triage, with whether more than 2 failed (D-058, D-063: JS-160's place). The two cut-read recovery cases are counted apart in those 10 runs, each as ran and failed: the waiting-request case (the three `TestAFailureThatIsNotTheFilesIsMadeAgainForTheRequestThatWaited/<a re-encode | a copy | a job that burns in a subtitle>, the source store cuts a read` subtests) and the persisting-cause case (`TestACauseThatPersistsStartsAtMostThreeFreshJobsAndThenFails/the source store cuts a read`); one failure of either returns JS-159 to the product owner as a brief. Each counted run's log, and for a failed job its tests.json and failures.log, is searched for `40P01`: one outside the tests that provoke it on purpose (TestADeadlockOrSerializationFailureOnAWorkersWriteNeverFailsTheJob, TestASegmentCommitThatPostgresAbortsForADeadlockNeverFailsTheJob) is listed, and one on a job end (`recording the end of a transcode job failed`) promotes BL-260 (D-063). The record says that a passing test's output is not printed, so a `40P01` inside one is not seen. No hook is added to the worker to force the exit-first order (D-061). Each failure also says whether it is load: Postgres or a store that did not answer within the test's bound on the runner, the test passing alone under CI's shape. Two or more bring one test process per shard job to the product owner as a priced brief. The runs of PRs 270, 277 and 279 on 2026-11-24 are reported apart (D-074).",
         "No retry, no skip, no raised timeout (go test's 45m in test/integration.sh, the seek checks' 180 s, any wait of a test or the kit) and no widened bound: no test's bound is raised, the rig's lease is not lengthened, and no check is amended to pass. No product code is changed to fit a test, and none is changed at all by this task (criterion 1's verdicts are written, not built). No viewer-visible change. Regenerating test/shard-times.txt decides only the deal of tests to shards and is not a bound (D-069)."
       ],
-      "priority": 9,
+      "priority": 4,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -901,7 +881,7 @@
     },
     {
       "id": "JS-164",
-      "phase": "OPS",
+      "phase": "S7",
       "title": "An operator and an autoscaler can read that encoding is falling behind, and why",
       "description": "docs/running.md calls jellyscale_transcode_queue_cores the signal to scale workers on, but a play with no free cores is refused, not queued, and a re-encode running under real time is not queued either, so on the dogfood's stalled plays (2026-11-20) that signal read nothing. This task adds one cluster-wide number for demand beyond what the workers hold, with its reason, pulled forward from JS-021 criterion 5. PRODUCT.md: the cluster can grow and shrink with demand by itself; a heavy film uses the whole cluster's processors. D-045.",
       "acceptanceCriteria": [
@@ -914,7 +894,7 @@
         "docs/running.md's metric table and docs/transcoding.md describe both gauges with an example alert and an example scaling query; BL-005's missing reason is readable here. Amended by D-048: the example scaling query is on the room gauge, the example alert on the demand gauge; docs/running.md no longer calls `jellyscale_transcode_queue_cores` the signal to scale on, and says why.",
         "No viewer-visible change"
       ],
-      "priority": 50,
+      "priority": 65,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -926,7 +906,7 @@
     },
     {
       "id": "JS-165",
-      "phase": "P4",
+      "phase": "S2",
       "title": "A worker removed while films play costs no viewer a stall",
       "description": "Serves \"Failures are invisible.\"; \"Growing is adding machines.\". An autoscaler removes workers without knowing which are busy, and a rolling upgrade stops every one. docs/transcoding.md says a worker that stops gracefully and is replaced within six seconds is not noticed; whether that holds for a worker that is removed and not replaced, with other workers already running, is unverified. PRODUCT.md: failures are invisible; the cluster can grow and shrink with demand by itself. D-045.",
       "acceptanceCriteria": [
@@ -939,7 +919,7 @@
         "docs/running.md gives the worker's termination grace and what it bounds",
         "No start of play or seek is slower: time to first segment measured before and after"
       ],
-      "priority": 49,
+      "priority": 27,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -948,7 +928,7 @@
     },
     {
       "id": "JS-057",
-      "phase": "P6",
+      "phase": "S7",
       "title": "Workers are added before the room for one more film is gone, and when encoding falls behind; removed when idle, by the cluster's own autoscaler",
       "description": "Serves \"Growing is adding machines.\"; Goal 5: \"Operating it stays boring.\". The owner (2026-11-21): scale workers up as soon as encoding falls behind. Kubernetes' autoscaler does the scaling from JS-164's number; jellyscale never creates or removes a pod, and a cluster without an autoscaler runs as before. The example manifests (JS-056) carry it as an option. Replaces 'KEDA autoscaling'. D-045. D-048: spare room first, falling behind and refusals as the backstop and the readable reason.",
       "acceptanceCriteria": [
@@ -961,7 +941,7 @@
         "Run on the dogfood for 14 days once the owner approves each homelab change; recorded, counts only: scale events by reason, refusals for lack of cores, stalls. Amended by D-048: also records the time the room was below target, and scale-ups by trigger (room, falling behind, refusal).",
         "docs/running.md documents it; docs/transcoding.md no longer says an autoscaler is not built; docs/status.md is updated"
       ],
-      "priority": 52,
+      "priority": 67,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -975,7 +955,7 @@
     },
     {
       "id": "JS-169",
-      "phase": "P4",
+      "phase": "S6",
       "title": "Measure whether a GPU re-encode can show the picture the processor makes, in jellyscale's own image",
       "description": "Serves \"Growing is adding machines.\"; \"Play starts in seconds and keeps up.\". Seen now: the dogfood's processors hold one 4K HDR re-encode at a time (docs/status.md, D-071); a GPU is the hardware the operator already gives it. JS-163 answered BL-040's rule in Jellyfin's image with jellyfin-ffmpeg: 4 to 5 times real time, bytes within the bound on two dark scenes, and no GPU tone map matching today's picture. This task measures what a build would rest on. No viewer-visible change. D-047.",
       "acceptanceCriteria": [
@@ -988,7 +968,7 @@
         "A restart, a seek and a helper's chunk made on the two nodes' GPUs splice in the native browser check, as spikes/seam showed for one family.",
         "Recorded in docs/transcoding.md with machine and command, no film title, path or host name; the figures come to the product owner as a brief, every option priced, keeping today's picture among them."
       ],
-      "priority": 61,
+      "priority": 59,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -997,7 +977,7 @@
     },
     {
       "id": "JS-170",
-      "phase": "P4",
+      "phase": "S6",
       "title": "A worker finds its Intel GPU by itself and uses it for the re-encodes it does right; the operator sets nothing",
       "description": "Serves \"Growing is adding machines.\"; \"Play starts in seconds and keeps up.\". The first hardware slice (BL-040): one family, Intel VAAPI/QSV, on GPUs that do the whole job. The worker detects, chooses by D-047's rule and falls back to the processor; operators may turn it off, never need to tune it. NVIDIA, AMD, hardware decode for processor-encoded streams and outputs above 1080 lines stay in JS-054. PRODUCT.md: any film plays, and plays well; play starts in seconds and keeps up; operators want the server to be something they set up once and then mostly forget. D-047.",
       "acceptanceCriteria": [
@@ -1010,7 +990,7 @@
         "Operators see the family and the worker serving each stream (Sessions, /metrics, the JS-153 decision line); every fall back to the processor is logged with its reason and counted by reason; no label names a job, film, account or device.",
         "Tested on real hardware in its own tier, chosen explicitly and never skipped: the dogfood cluster's UHD 630s. On the dogfood, each homelab change approved by the owner first (the GPU through the device plugin, no privileged container): a 4K HDR re-encode with and without a burned-in image subtitle plays 10 minutes with a seek at speed 1.0 or above after the first 30 seconds; as many at once on one GPU as JS-169 measured to hold 1.2 times real time each do so; recorded with ids and counts only."
       ],
-      "priority": 62,
+      "priority": 60,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1024,7 +1004,7 @@
     },
     {
       "id": "JS-178",
-      "phase": "P3",
+      "phase": "S4",
       "title": "A worker that starts or restarts does not stall its first heavy film",
       "description": "Serves Goal 1: \"Playback never surprises a viewer.\"; \"Play starts in seconds and keeps up.\". JS-177 learns a worker's capacity from the jobs it runs, but every start and restart begins at the processors again and overstates the worker until it converges, so the first heavy play after each pod start or rolling upgrade runs under real time. D-066: keep the learned figure in Postgres by hardware class as a start only, and take JS-177's criterion 5, so a newly started pair carries a heavy film.",
       "acceptanceCriteria": [
@@ -1037,7 +1017,7 @@
         "Docs and DOMAINS.md are updated, with the cost stated: one row per class, written at most once a minute on a move of 5% or more.",
         "After it merges, the lead offers the owner dropping the 4-core worker's declared figure, with the dogfood's counters since JS-177 was deployed. The 12-thread worker keeps its ceiling while its CPU request is below its limit, as 'Sizing workers' advises for a shared host (D-072)."
       ],
-      "priority": 3,
+      "priority": 5,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1059,7 +1039,7 @@
         "Until the cutover it also answers the Jellyfin routes Octave uses today; after it, `jellyfin-final` stays available for good.",
         "Octave's CI pulls it with no personal credential (today's images are not anonymously pullable)."
       ],
-      "priority": 2,
+      "priority": 3,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1083,12 +1063,10 @@
         "A capability declared and not yet served is marked so in the contract and in what a client learns of the server, and the conformance check accepts that state, so Octave can build against it first (D-134).",
         "Every contract change reaches Octave as a from:jellyscale issue saying what changed and what each platform must do, before the server serves it (D-132)."
       ],
-      "priority": 4,
+      "priority": 2,
       "status": "todo",
       "passes": false,
-      "dependsOn": [
-        "JS-198"
-      ],
+      "dependsOn": [],
       "source": "pivot-plan.md; D-107 to D-128",
       "notes": "Cross-project need (D-132): Its M1 part follows Octave's approved M1 designs where Octave has them (ASK-3). A capability no design has yet confirmed ships as preview and becomes stable when Octave confirms it, so the contract never waits on another product."
     },
@@ -1103,7 +1081,7 @@
         "A refused sign-in carries a reason Octave can explain (try later, or ask the operator).",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 5,
+      "priority": 6,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1119,14 +1097,14 @@
       "title": "Films and Shows, one watch history, and Continue watching from the server",
       "description": "Serves \"Finding something to watch is easy.\"; \"Their place is always one press away.\"; \"They see only what they may.\". D-124's first stage.",
       "acceptanceCriteria": [
-        "Films and Shows each span everything the viewer may see, paged and sorted by title and by date added, with recently added; no answer tells where a file is kept.",
-        "A show's seasons and episodes, and one title's details: its tracks (with their language and the film's original language), chapters and artwork.",
+        "Films and Shows each span everything the viewer may see, paged and sorted by title and by date added, with where each first letter starts so a TV can jump to it, and recently added, where a show with several new episodes appears once with their count (#234, #227); no answer tells where a file is kept.",
+        "A show's seasons and episodes, each episode carrying its show's and season's names (#288), and one title's details: its tracks (with their language and the film's original language), chapters and artwork.",
         "Each person has one watch history per title, across devices and versions.",
-        "Continue watching is decided by the server and is the same on every device: titles in progress and each show's next episode; removing a title keeps the viewer's place.",
+        "Continue watching is decided by the server and is the same on every device: titles in progress and each show's next episode, including a show the viewer had caught up on when a new episode arrives; a title not played for longer than the viewer's own setting leaves it; removing a title keeps the viewer's place (#101, #233).",
         "One access rule applies to every answer, count, picture and media request: a title the operator hides from an account appears in no answer, count or Continue watching, and its pictures and media are refused to that account (JS-036 gives the rule its full content).",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 6,
+      "priority": 7,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1149,14 +1127,14 @@
         "A worker killed mid-film costs no picture, as today.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 7,
+      "priority": 12,
       "status": "todo",
       "passes": false,
       "dependsOn": [
         "JS-186"
       ],
       "source": "pivot-plan.md; D-107 to D-128",
-      "notes": "",
+      "notes": "It builds the two players its criterion 3 plays on: a minimal Media3 player on an emulator and a minimal browser player, both in the server's test tree, driving only jellyscale's own API. They become the e2e gate at the cutover (JS-194) until Octave's builds take over (JS-190, JS-150). #222, #224, #295: the one-playback link, the device saying what it cannot play, and a reason when audio loses channels.",
       "ux": true
     },
     {
@@ -1165,18 +1143,20 @@
       "title": "The cutover: jellyscale serves only its own API",
       "description": "Serves Goal 3: \"Octave's features have the server they need.\". D-109. It merges as soon as M1's exit criteria pass on jellyscale's side (plan §5), without waiting for Octave.",
       "acceptanceCriteria": [
-        "M1's exit criteria (pivot-plan.md §5) all pass on main's server before this merges.",
+        "The M1 exit criteria all pass on main's server before this merges: the conformance check passes for every M1 capability; a client using only the new API signs in with a password, lists Films and Shows, walks a show to an episode and fetches a poster, with no answer naming where a file is kept; on Media3 on an emulator and in a browser, a title played as it is, one whose container is converted, and one re-encoded with a non-default audio track and an image subtitle each start, play 30 seconds and seek, right from the first frame; progress on one device is the resume point and Continue watching on another; a play refused for want of capacity returns its reason and a retry time; a worker killed mid-film costs no picture; a title hidden from an account appears nowhere for it and its media are refused.",
         "The commit before it is published for good as `jellyfin-final`.",
         "Every Jellyfin route and Quick Connect are removed, with their tooling; nothing answers a Jellyfin path but 404.",
         "The native browser check is the e2e gate, covering every outcome the jellyfin-web gate covered that still applies.",
         "The Jellyfin-only invariants are deleted from DOMAINS.md, and docs/status.md is rewritten against PRODUCT.md.",
         "Octave is told by a from:jellyscale issue, with the tag to test."
       ],
-      "priority": 8,
+      "priority": 14,
       "status": "todo",
       "passes": false,
       "dependsOn": [
-        "JS-185"
+        "JS-185",
+        "JS-191",
+        "JS-042"
       ],
       "source": "pivot-plan.md; D-107 to D-128",
       "notes": ""
@@ -1193,7 +1173,7 @@
         "Whether the longest piece a copied stream has today upsets the player's stepping.",
         "Recorded in docs/ with the player, version and command; the figures go to the product owner before JS-187's Spec."
       ],
-      "priority": 10,
+      "priority": 13,
       "status": "todo",
       "passes": false,
       "dependsOn": [],
@@ -1202,7 +1182,7 @@
     },
     {
       "id": "JS-191",
-      "phase": "S5",
+      "phase": "M1",
       "title": "A TV is approved from a phone",
       "description": "Serves \"Joining and signing in are easy and safe.\". ",
       "acceptanceCriteria": [
@@ -1210,22 +1190,23 @@
         "A phone that scans the TV's code opens the approval in Octave with the code filled in; it shows the device, the network (same as the phone or not) and the code to match, with Decline as prominent as Approve.",
         "A viewer signed out on the phone signs in there first (password or single sign-on).",
         "The TV gets a viewer-only sign-in of its own, listed and revocable (JS-042).",
+        "Approving a device, and any action that creates a credential or sets a password, needs a fresh sign-in the server checks: proof that covers that one action, works once and expires within minutes. A web session cannot approve a device without it (#301).",
         "With real processes, each step is answered by a different api replica.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 11,
+      "priority": 8,
       "status": "todo",
       "passes": false,
       "dependsOn": [
-        "JS-194"
+        "JS-184"
       ],
       "source": "pivot-plan.md; D-107 to D-128",
-      "notes": "",
+      "notes": "Quick Connect goes at the cutover, so the server side of this lands before it. Viewers use it once Octave has an approval screen; until then a TV signs in by password.",
       "ux": true
     },
     {
       "id": "JS-190",
-      "phase": "S4",
+      "phase": "S3",
       "title": "Octave's Android TV app is the server's e2e gate",
       "description": "Serves Goal 3: \"Octave's features have the server they need.\"; Goal 1: \"Playback never surprises a viewer.\". D-134.",
       "acceptanceCriteria": [
@@ -1234,7 +1215,7 @@
         "It runs on every merge and is never skipped.",
         "The dogfood moves from `jellyfin-final` to main once Octave's Android TV app browses and plays there (D-116 as amended by D-134)."
       ],
-      "priority": 12,
+      "priority": 17,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1245,7 +1226,7 @@
     },
     {
       "id": "JS-199",
-      "phase": "S4",
+      "phase": "S3",
       "title": "Octave's Android phone app passes the gate",
       "description": "Serves Goal 3: \"Octave's features have the server they need.\"; Goal 1: \"Playback never surprises a viewer.\". D-134.",
       "acceptanceCriteria": [
@@ -1253,7 +1234,7 @@
         "The checks run on every merge and are never skipped.",
         "docs/status.md lists the platforms that have played."
       ],
-      "priority": 22,
+      "priority": 36,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1276,12 +1257,13 @@
         "Lighter versions are made only when needed, within the budget, on local disk and S3; storage per film-hour is stated and shown per version.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 17,
+      "priority": 20,
       "status": "todo",
       "passes": false,
       "dependsOn": [
         "JS-182",
-        "JS-190"
+        "JS-194",
+        "JS-135"
       ],
       "source": "pivot-plan.md; D-107 to D-128",
       "notes": "",
@@ -1298,7 +1280,7 @@
         "Switching subtitles mid-film is quick and doesn't restart the picture.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 18,
+      "priority": 22,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1319,7 +1301,7 @@
         "The viewer is told why their quality dropped.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 19,
+      "priority": 23,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1340,12 +1322,12 @@
         "Octave's Android TV app, or the native browser check until it exists, acts on each.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 20,
+      "priority": 21,
       "status": "todo",
       "passes": false,
       "dependsOn": [
         "JS-185",
-        "JS-190"
+        "JS-194"
       ],
       "source": "pivot-plan.md; D-107 to D-128",
       "notes": "",
@@ -1362,7 +1344,7 @@
         "Only titles the viewer may see are listed.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 24,
+      "priority": 42,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1383,7 +1365,7 @@
         "4K, HDR, audio description and SDH show as badges on a title.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 31,
+      "priority": 43,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1400,13 +1382,14 @@
       "description": "Serves \"Finding something to watch is easy.\". D-148: Postgres first, with no search service until a measurement asks for one.",
       "acceptanceCriteria": [
         "Search finds a title from its first letters, and by its original or another title taken from the file beside it.",
+        "Results come back within a stated time at one, two and three letters, measured on a collection of stated size (#228).",
         "It finds people and collections as typed results.",
         "When the collection does not have what was asked, it says so and offers titles it does have.",
         "Only titles the viewer may see are found.",
         "A title is still found when its name is misspelled: one wrong letter in a word of 5 to 8 letters and two in a longer word, measured on a synthetic title set.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 32,
+      "priority": 44,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1429,7 +1412,7 @@
         "A collection never counts or reveals a member the viewer may not see.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 34,
+      "priority": 45,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1449,7 +1432,7 @@
         "A set grants and hides nothing (D-124).",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 38,
+      "priority": 46,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1471,7 +1454,7 @@
         "A version made ahead is served exactly as the same version made on request.",
         "Storage is shown per version and title, on local disk and S3."
       ],
-      "priority": 42,
+      "priority": 54,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1490,7 +1473,7 @@
         "The next episode near an episode's end, and a title the viewer is about to resume, start measurably sooner than without preparing, stated and measured.",
         "Preparing never runs unbounded work for a title nobody plays."
       ],
-      "priority": 40,
+      "priority": 25,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1511,7 +1494,7 @@
         "A single sign-on identity is never matched to an account by email alone.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 41,
+      "priority": 37,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1531,7 +1514,7 @@
         "The operator sees each playback's buffer and the speed the player measured, beside the server's own view of it.",
         "It is kept on the operator's servers only and names no title outside them."
       ],
-      "priority": 43,
+      "priority": 55,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1543,7 +1526,7 @@
     },
     {
       "id": "JS-208",
-      "phase": "S4",
+      "phase": "S3",
       "title": "Mixed versions play, and an older Octave keeps working",
       "description": "Serves \"Nothing breaks the viewers' evening.\"; \"Their app keeps working.\". Split from JS-079 (D-063).",
       "acceptanceCriteria": [
@@ -1552,7 +1535,7 @@
         "A worker of the previous release is never counted as a partner for a shared play unless it has said it can help: during a rolling upgrade no play is admitted as shared and then left without a helper, in a real-process test (D-061).",
         "An Octave release built against an earlier stable contract keeps working against this server: the conformance check of the previous contract version passes."
       ],
-      "priority": 23,
+      "priority": 15,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1592,7 +1575,7 @@
         "It holds after a server restart, a device offline for days, a rename, a delete and a change of the viewer's access, each shown in a test.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 15,
+      "priority": 41,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1613,7 +1596,7 @@
         "Which menus, extras and multi-angle titles are left out, and how a viewer would choose among a disc's titles.",
         "A recommendation reaches the product owner with each option priced, and a follow-up task if it works."
       ],
-      "priority": 16,
+      "priority": 28,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1634,7 +1617,7 @@
         "Removing a profile from a TV, or signing the TV out, ends that profile there at once, through any replica.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 14,
+      "priority": 31,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1657,7 +1640,7 @@
         "A stream that stops frees its place within a stated time, so a viewer who stops on one device can start on another.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 21,
+      "priority": 32,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1680,7 +1663,7 @@
         "docs/access.md states exactly what leaves the operator's servers, and when.",
         "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
       ],
-      "priority": 33,
+      "priority": 50,
       "status": "todo",
       "passes": false,
       "dependsOn": [
@@ -1688,6 +1671,32 @@
         "JS-214"
       ],
       "source": "native-plan.md; D-129 to D-149",
+      "notes": "",
+      "ux": true
+    },
+    {
+      "id": "JS-215",
+      "phase": "S5",
+      "title": "Octave Web's sign-in: page scripts can't read it, other sites can't use it",
+      "description": "Serves \"Joining and signing in are easy and safe.\"; \"Access is enforced everywhere.\". D-111; #301 (Octave's web session), whose need stands and whose shapes are jellyscale's to decide.",
+      "acceptanceCriteria": [
+        "A browser signs in (by password, and by single sign-on through JS-039) and holds no credential its page's scripts can read.",
+        "A request from another site, or from another service on the same host name, is refused even when the browser sends the sign-in with it; the protection does not rest on the browser's cookie rules alone, shown with forged requests from another port on the same name.",
+        "Signing out ends it at once; it ends after stated idle and absolute times; a password change ends the account's other web sign-ins; a viewer sees and ends their own (JS-042).",
+        "Behind a proxy that ends HTTPS, it is still marked secure, from the configured external address.",
+        "No sign-in answer is kept by a cache, and no secret of it is stored unhashed or appears in a log or an error body.",
+        "The Octave Web pages the server serves carry response headers that limit what scripts and framing can do, and docs/running.md says what a proxy in front must keep.",
+        "DOMAINS invariant 63 is reworded as D-111 records; the header-token API is unchanged.",
+        "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
+      ],
+      "priority": 34,
+      "status": "todo",
+      "passes": false,
+      "dependsOn": [
+        "JS-184",
+        "JS-194"
+      ],
+      "source": "replan.md; #301",
       "notes": "",
       "ux": true
     }
