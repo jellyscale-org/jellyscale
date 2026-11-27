@@ -1997,8 +1997,8 @@
     },
     {
       "id": "BL-222",
-      "title": "Apps ask for trickplay tiles and for sign-in by code, which are not built; what their viewers see is not known",
-      "notes": "Roku, Streamyfin, Fladder and Jellyfin for Android request Trickplay routes and get 404 (read from source). Whether they show no preview or an error is unverified. /QuickConnect/Enabled answers false today (internal/api/system.go, read by the lead), so apps should not offer a code. JS-075 records both. Promote: if an app shows an error or offers a code that fails, plan the smallest answer that makes it quiet (an item that advertises no trickplay) ahead of JS-053 and JS-037; if apps are quiet, close.",
+      "title": "Apps ask for trickplay tiles, which are not built; what their viewers see is not known",
+      "notes": "Roku, Streamyfin, Fladder and Jellyfin for Android request Trickplay routes and get 404 (read from source). Whether they show no preview or an error is unverified. /QuickConnect/Enabled answers false today (internal/api/system.go, read by the lead), so apps should not offer a code. JS-075 records both. Promote: if an app shows an error or offers a code that fails, plan the smallest answer that makes it quiet (an item that advertises no trickplay) ahead of JS-053 and JS-037; if apps are quiet, close. D-101: sign-in by code is built (JS-037); narrowed to trickplay tiles, which come back with JS-053.",
       "reviewer": "product-owner",
       "severity": "minor",
       "source": "client research 2026-11-20",
@@ -2546,12 +2546,12 @@
     },
     {
       "id": "BL-284",
-      "status": "open",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "adversarial",
       "source": "JS-037",
       "title": "An approval sent with a request body that then hangs up logs no warning naming the user",
-      "notes": "The handler never reads the body, so the hang-up goes unnoticed and only 'request failed' is logged (D-097's re-review, by command). Awaits the product owner's triage in the next batch."
+      "notes": "The handler never reads the body, so the hang-up goes unnoticed and only 'request failed' is logged (D-097's re-review, by command). Awaits the product owner's triage in the next batch. D-101: dropped; the failure is already logged as 'request failed' and an operator loses nothing they can act on."
     },
     {
       "id": "BL-285",
@@ -2560,7 +2560,7 @@
       "reviewer": "adversarial",
       "source": "JS-037",
       "title": "A shutdown that cuts a successful approval's release leaves it counted as a failure",
-      "notes": "Ticket.Release is not cut at the grace; with its rows locked it logged 'reservation was not given back: closed pool' (D-097's re-review, by command). Awaits the product owner's triage in the next batch."
+      "notes": "Ticket.Release is not cut at the grace; with its rows locked it logged 'reservation was not given back: closed pool' (D-097's re-review, by command). D-101: backlog; comes back with JS-079 or an operator's report of a false failure count."
     }
   ]
 }
