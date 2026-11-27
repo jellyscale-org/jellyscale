@@ -2543,6 +2543,24 @@
       "source": "JS-127; D-087",
       "title": "No committed check that a request naming the caller's own id is served during a Postgres outage",
       "notes": "It works today, shown by hand by two reviewers. Add the check when the outage snapshot or JS-127's rule next changes."
+    },
+    {
+      "id": "BL-284",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "adversarial",
+      "source": "JS-037",
+      "title": "An approval sent with a request body that then hangs up logs no warning naming the user",
+      "notes": "The handler never reads the body, so the hang-up goes unnoticed and only 'request failed' is logged (D-097's re-review, by command). Awaits the product owner's triage in the next batch."
+    },
+    {
+      "id": "BL-285",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "adversarial",
+      "source": "JS-037",
+      "title": "A shutdown that cuts a successful approval's release leaves it counted as a failure",
+      "notes": "Ticket.Release is not cut at the grace; with its rows locked it logged 'reservation was not given back: closed pool' (D-097's re-review, by command). Awaits the product owner's triage in the next batch."
     }
   ]
 }
