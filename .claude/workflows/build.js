@@ -136,23 +136,26 @@ const brief = `## Task${id ? ` ${id}` : ''}\n${task}\n\n## Acceptance criteria\n
 // (D-086): Build/Fix, QA and helpers. A free model that is unavailable, or fails
 // the same step twice, is replaced by Sonnet 5.5; say so in the task record.
 const MODELS = {
-  'spec-writer': { model: 'claude-agent/sonnet', effort: 'high' },
+  'spec-writer': { model: 'claude-agent/haiku', effort: 'max' },
   // The lead runs design and its UX review before the workflow (D-139).
-  designer: { model: 'claude-agent/sonnet', effort: 'high' },
+  designer: { model: 'claude-agent/haiku', effort: 'max' },
   implementer: { model: 'opencode/beam-free', effort: 'high' },
-  'architecture-reviewer': { model: 'claude-agent/sonnet', effort: 'high' },
-  // Check reads only the spec and its checks, and a gap it misses costs a
-  // whole build and Verify (about 1M tokens), so it gets the strongest model.
-  check: { model: 'claude-agent/opus', effort: 'high' },
-  'adversarial-reviewer': { model: 'claude-agent/sonnet', effort: 'high' },
+  'architecture-reviewer': { model: 'claude-agent/haiku', effort: 'max' },
+  check: { model: 'claude-agent/haiku', effort: 'max' },
+  'adversarial-reviewer': { model: 'claude-agent/haiku', effort: 'max' },
   qa: { model: 'opencode/hy4-flash-free', effort: 'high' },
-  'ux-reviewer': { model: 'claude-agent/sonnet', effort: 'high' },
+  'ux-reviewer': { model: 'claude-agent/haiku', effort: 'max' },
   'product-owner': { model: 'claude-agent/opus', effort: 'high' },
   advisor: { model: 'claude-agent/opus', effort: 'high' },
-  helper: { model: 'opencode/mimo-v2.6-flash-free' },
+  helper: { model: 'opencode/mimo-v2.6-flash-free', effort: 'low' },
+}
+// A core task's Check and adversarial review get stronger models (D-151).
+const CORE_MODELS = {
+  check: { model: 'claude-agent/opus', effort: 'high' },
+  'adversarial-reviewer': { model: 'claude-agent/sonnet', effort: 'high' },
 }
 // Roles are read from their files, so a role added in this session works too.
-const role = (name) => ({ agentType: 'general-purpose', ...MODELS[name] })
+const role = (name) => ({ agentType: 'general-purpose', ...MODELS[name], ...(core ? CORE_MODELS[name] : {}) })
 const read = (name) => `${where}First read .claude/agents/${name}.md. It defines your role and its limits, and you must follow it exactly.\n\n`
 
 let root = null

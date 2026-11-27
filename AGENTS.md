@@ -78,17 +78,17 @@ The workflow's steps:
    - Evidenced findings left after that send the task back to Spec.
    - Minors go to the product owner.
 
-- Run the roles on these models (D-076, D-086):
-  - Refine and Check: `claude-agent/opus` (Opus 5.5), high effort.
-  - Spec, design, architecture, adversarial and UX: `claude-agent/sonnet` (Sonnet 5.5), high effort.
-  - Product owner and advisor: `claude-agent/opus` (Opus 5.5), high effort. Fable only as below (D-098).
+- Use a free or discounted model wherever it can do the job: tasks run in parallel, and the Claude allowance is scarce (D-151). Run the roles on these models:
   - Build/Fix: `opencode/beam-free`, high effort. QA: `opencode/hy4-flash-free`, high effort. Snapshot helpers: `opencode/mimo-v2.6-flash-free`.
+  - Refine, Check, Spec, design, architecture, adversarial and UX: `claude-agent/haiku` (Haiku 5.5), max effort.
+  - Only for a `core: true` task: Check on `claude-agent/opus` (Opus 5.5), high effort, and the adversarial review on `claude-agent/sonnet` (Sonnet 5.5), high effort.
+  - Product owner and advisor: `claude-agent/opus` (Opus 5.5), high effort, with questions batched. Fable only as below (D-098).
 - Work down the free models in this order (D-106): `beam-free`, `hy4-flash-free`, `seaglass-alpha-free`, `deepseek-v4.1-flash-free`, `mimo-v2.6-flash-free`, `iceman-free`, `nemotron-3.5-super-vl-free`, `flint-40b-free`. Don't use `nemotron-3.5-lightning-free`. Re-rank on a graded task with hidden checks, and on how each does on real work.
 - Give a free model a small, well-scoped, low-context job: reading logs, one failing test, running tests, a fix with a clear failing test, a mechanical edit. Keep large builds, test writing and reviews on the models above, and check a free model's key claims.
 - Use an OpenCode Zen free model (`opencode/...-free`) for any other work that doesn't judge quality: searching, reading logs, running checks, captures, test diagnostics.
-- When a free model is unavailable or fails the same step twice, try the next one down; use `claude-agent/sonnet` when the list runs out or the job doesn't suit a free model, and record it in the task record. Check a new free model on a task with a known answer before ranking it.
+- When a free model is unavailable or fails the same step twice, try the next one down; use `claude-agent/haiku` at max effort when the list runs out or the job doesn't suit a free model, and `claude-agent/sonnet` only after Haiku fails the same step twice. Record it in the task record. Check a new free model on a task with a known answer before ranking it.
 - Never give a free model a credential, or work on the homelab or the dogfood: a free tier may keep what it is sent.
-- The `claude-agent/` models use the weekly Claude agent allowance, not the Anthropic API balance. Don't use `anthropic/` or paid `opencode-go/` models.
+- The `claude-agent/` models use the weekly Claude agent allowance, not the Anthropic API balance. Don't use `anthropic/` models. A paid `opencode-go/` model may be used within the plan's limit (D-151); never turn on extra usage. Command Code is no longer available.
 - Keep reviewers blind: they see the task, the checks, the diff and the docs, never the implementer's reasoning or another reviewer's findings.
 - Treat the merge queue as the one full gate.
 - Run locally only what a change touches.
