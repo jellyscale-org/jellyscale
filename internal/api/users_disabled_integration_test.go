@@ -4,6 +4,7 @@ package api
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"net"
 	"net/http"
@@ -20,39 +21,91 @@ import (
 )
 
 // JS-033, criterion 9: a disabled account's right password does the same password work as a wrong password for an
-// enabled one, so the time taken does not tell that the account is disabled or that the password was right. As
-// TestAWrongPasswordAndAnUnknownNameDoTheSamePasswordWork (JS-145): a duration cannot be asserted on a shared
-// machine, so this holds the mechanism, in a process of its own: a bcrypt comparison allocates its cipher (about
-// 4 KB) and costs CPU by its cost. The wrong build it fails: refusing a disabled account before the comparison.
+// enabled one, so the time taken does not tell that the account is disabled or that the password was right. The wrong
+// build it fails: refusing a disabled account before the comparison.
 func TestADisabledAccountsRightPasswordDoesTheSamePasswordWorkAsAWrongOne(t *testing.T) {
-	if os.Getenv("JELLYSCALE_WORK_ALONE") == "" {
-		cmd := exec.Command(os.Args[0], "-test.run=^TestADisabledAccountsRightPasswordDoesTheSamePasswordWorkAsAWrongOne$", "-test.count=1", "-test.v")
-		cmd.Env = append(os.Environ(), "JELLYSCALE_WORK_ALONE=1")
-		out, err := cmd.CombinedOutput()
-		t.Logf("in a process of its own:\n%s", out)
-		if err != nil {
-			t.Fatalf("the measurement failed in a process of its own: %v", err)
-		}
+	if measuredElsewhere(t) {
 		return
 	}
+	w := newPasswordWork(t)
+	w.sameAsAWrongPassword(t, "a disabled account's right password", "right", func() string {
+		id, name := w.account()
+		if response, body := w.e.do(t, 0, "POST", "/Users/"+id+"/Policy", w.e.otherToken, map[string]any{"IsDisabled": true}); response.StatusCode != 204 {
+			t.Fatalf("disabling: %d %s", response.StatusCode, body)
+		}
+		return name
+	})
+}
+
+// D-105: a sign-in to an account with no password, with the empty password or any other, does the same password work as
+// a wrong password for an account that has one. The wrong builds it fails: refusing before the comparison, or comparing
+// with a stored value that is no hash, or with a cheaper one.
+func TestAPasswordlessAccountsSignInDoesTheSamePasswordWorkAsAWrongOne(t *testing.T) {
+	if measuredElsewhere(t) {
+		return
+	}
+	w := newPasswordWork(t)
+	for what, password := range map[string]string{"the empty password for an account with none": "", "a password for an account with none": "something"} {
+		w.sameAsAWrongPassword(t, what, password, func() string {
+			name := "bare-" + uuid.NewString()[:8]
+			if response, body := w.e.do(t, 0, "POST", "/Users/New", w.e.otherToken, map[string]any{"Name": name, "Password": ""}); response.StatusCode != 200 {
+				t.Fatalf("making a user with no password: %d %s", response.StatusCode, body)
+			}
+			return name
+		})
+	}
+}
+
+// measuredElsewhere runs the test in a process of its own, where nothing else allocates or uses CPU, and says whether
+// this is the process that asked for it.
+func measuredElsewhere(t *testing.T) bool {
+	t.Helper()
+	if os.Getenv("JELLYSCALE_WORK_ALONE") != "" {
+		return false
+	}
+	cmd := exec.Command(os.Args[0], "-test.run=^"+t.Name()+"$", "-test.count=1", "-test.v")
+	cmd.Env = append(os.Environ(), "JELLYSCALE_WORK_ALONE=1")
+	out, err := cmd.CombinedOutput()
+	t.Logf("in a process of its own:\n%s", out)
+	if err != nil {
+		t.Fatalf("the measurement failed in a process of its own: %v", err)
+	}
+	return true
+}
+
+type passwordWork struct {
+	e    *env
+	hash string
+}
+
+// newPasswordWork is an env whose other user is an administrator, and the hash of "right" that its accounts hold.
+func newPasswordWork(t *testing.T) passwordWork {
+	t.Helper()
 	e := newEnv(t)
 	mustExec(t, e.pool, "UPDATE users SET is_admin = true WHERE id = $1", e.other)
 	hash, err := bcrypt.GenerateFromPassword([]byte("right"), bcrypt.DefaultCost)
 	if err != nil {
 		t.Fatal(err)
 	}
-	account := func(disabled bool) string {
-		id, name := uuid.NewString(), "work-"+uuid.NewString()[:8]
-		mustExec(t, e.pool, `INSERT INTO users (id, name, password_hash, is_admin) VALUES ($1, $2, $3, false)`, id, name, string(hash))
-		if disabled {
-			if response, body := e.do(t, 0, "POST", "/Users/"+id+"/Policy", e.otherToken, map[string]any{"IsDisabled": true}); response.StatusCode != 204 {
-				t.Fatalf("disabling: %d %s", response.StatusCode, body)
-			}
-		}
-		return name
+	return passwordWork{e, string(hash)}
+}
+
+func (w passwordWork) account() (id, name string) {
+	id, name = uuid.NewString(), "work-"+uuid.NewString()[:8]
+	if _, err := w.e.pool.Exec(context.Background(), `INSERT INTO users (id, name, password_hash, is_admin) VALUES ($1, $2, $3, false)`, id, name, w.hash); err != nil {
+		panic(err)
 	}
+	return id, name
+}
+
+// sameAsAWrongPassword holds a refused sign-in (the password, for the accounts the refused side makes) to the work of a
+// wrong password. As TestAWrongPasswordAndAnUnknownNameDoTheSamePasswordWork (JS-145): a duration cannot be asserted on
+// a shared machine, so this holds the mechanism: a bcrypt comparison allocates its cipher (about 4 KB) and costs CPU by
+// its cost.
+func (w passwordWork) sameAsAWrongPassword(t *testing.T, what, password string, refusedAccount func() string) {
+	t.Helper()
 	ask := func(user, password string) (int, string) {
-		response, body := e.do(t, 0, "POST", "/Users/AuthenticateByName", "", map[string]string{"Username": user, "Pw": password},
+		response, body := w.e.do(t, 0, "POST", "/Users/AuthenticateByName", "", map[string]string{"Username": user, "Pw": password},
 			"Authorization", `MediaBrowser Client="c", Device="d", DeviceId="dev-`+uuid.NewString()[:8]+`", Version="1"`)
 		return response.StatusCode, string(body)
 	}
@@ -74,27 +127,28 @@ func TestADisabledAccountsRightPasswordDoesTheSamePasswordWorkAsAWrongOne(t *tes
 		runtime.ReadMemStats(&after)
 		return float64(after.TotalAlloc - before.TotalAlloc), milliseconds
 	}
-	var wrongBytes, wrongCPU, disabledBytes, disabledCPU []float64
-	var enabled, disabled string
+	var wrongBytes, wrongCPU, refusedBytes, refusedCPU []float64
+	var enabled, refused string
 	for i := range 60 {
 		if i%15 == 0 { // New accounts, so that no bound is reached however the build counts.
-			enabled, disabled = account(false), account(true)
+			_, enabled = w.account()
+			refused = refusedAccount()
 		}
 		wb, wc := one(enabled, "wrong")
-		ab, dc := one(disabled, "right")
+		rb, rc := one(refused, password)
 		if i%15 != 0 && i >= 5 { // The first requests after the accounts are made warm the pool.
 			wrongBytes, wrongCPU = append(wrongBytes, wb), append(wrongCPU, wc)
-			disabledBytes, disabledCPU = append(disabledBytes, ab), append(disabledCPU, dc)
+			refusedBytes, refusedCPU = append(refusedBytes, rb), append(refusedCPU, rc)
 		}
 	}
-	wc, dc := median(wrongCPU), median(disabledCPU)
-	t.Logf("a wrong password costs %.1f ms of CPU and a disabled account's right one %.1f ms (medians)", wc, dc)
-	if dc < wc/2 || wc < dc/2 {
-		t.Errorf("a wrong password costs %.1f ms of CPU and a disabled account's right password %.1f ms: they do not do the same password work", wc, dc)
+	wc, rc := median(wrongCPU), median(refusedCPU)
+	t.Logf("a wrong password costs %.1f ms of CPU and %s %.1f ms (medians)", wc, what, rc)
+	if rc < wc/2 || wc < rc/2 {
+		t.Errorf("a wrong password costs %.1f ms of CPU and %s %.1f ms: they do not do the same password work", wc, what, rc)
 	}
-	wb, ab := median(wrongBytes), median(disabledBytes)
-	if wb-ab > 3000 || ab-wb > 3000 {
-		t.Errorf("a wrong password allocates %.0f B and a disabled account's right one %.0f B (medians): a comparison allocates about 4 KB", wb, ab)
+	wb, rb := median(wrongBytes), median(refusedBytes)
+	if wb-rb > 3000 || rb-wb > 3000 {
+		t.Errorf("a wrong password allocates %.0f B and %s %.0f B (medians): a comparison allocates about 4 KB", wb, what, rb)
 	}
 }
 

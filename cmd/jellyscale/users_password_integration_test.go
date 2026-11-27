@@ -76,23 +76,41 @@ func TestAnAdministratorSetsAnothersPasswordWithoutTheCurrentOne(t *testing.T) {
 	}
 }
 
-// A migrated account, which has no password (D-082), keeps the sign-in it has until one is set. Setting one is as
-// captured: no CurrentPw, or an empty one, will do, and a wrong one will not.
-func TestAnExistingUserWithNoPasswordSignsInAndSetsOneAsCaptured(t *testing.T) {
-	u := newUsersSite(t, 1, nil)
-	for how, current := range map[string]any{"no CurrentPw": nil, "an empty CurrentPw": ""} {
-		id, name := u.withNoPassword()
-		token := signedIn(t, "with no password", u.try(0, newDevice(), name, ""))
-		u.check(401, u.try(0, newDevice(), name, "something"), "an account with no password signing in with one")
-		u.check(403, u.as(0, token, "POST", "/Users/Password?userId="+id, body(map[string]any{"CurrentPw": "wrong", "NewPw": strong()})), "a wrong CurrentPw")
-		next := strong()
-		fields := map[string]any{"NewPw": next}
-		if current != nil {
-			fields["CurrentPw"] = current
-		}
-		u.check(204, u.as(0, token, "POST", "/Users/Password?userId="+id, body(fields)), "setting one with "+how)
-		u.check(401, u.try(0, newDevice(), name, ""), "the empty password once one is set")
-		signedIn(t, "the password set", u.try(0, newDevice(), name, next))
+// D-105. A user made with no Password, or an empty one, has none: every password sign-in is answered as a wrong
+// password is, the empty one and one that sends no Pw included, until an administrator sets a password (Jellyfin 12.4
+// signs such a user in with the empty password). How long the refusal takes is held by internal/api's
+// TestAPasswordlessAccountsSignInDoesTheSamePasswordWorkAsAWrongOne.
+func TestAUserMadeWithoutAPasswordNeverSignsInByPasswordUntilAnAdministratorSetsOne(t *testing.T) {
+	for how, fields := range map[string]map[string]any{"no Password": {}, "an empty Password": {"Password": ""}} {
+		t.Run(how, func(t *testing.T) {
+			u := newUsersSite(t, 2, nil)
+			admin, other := u.member(true), u.member(false)
+			name := "bare-" + uuid.NewString()[:8]
+			fields["Name"] = name
+			made := decodeUser(t, u.must(200, 0, admin.token, "POST", "/Users/New", body(fields), "making a user with "+how), "POST /Users/New")
+			if made.Policy["IsAdministrator"] != false || made.Policy["IsDisabled"] != false {
+				t.Errorf("the user was made with IsAdministrator %v and IsDisabled %v", made.Policy["IsAdministrator"], made.Policy["IsDisabled"])
+			}
+			wrong := u.wrong(1, other.name)
+			asWrong := func(what string, got signInReply) {
+				t.Helper()
+				if wrong.status != 401 || got.status != wrong.status || string(got.body) != string(wrong.body) {
+					t.Errorf("signing in %s: %d %.100q, want a wrong password's %d %q", what, got.status, got.body, wrong.status, wrong.body)
+				}
+			}
+			asWrong("with the empty password", u.try(1, newDevice(), name, ""))
+			asWrong("with another password", u.try(0, newDevice(), name, strong()))
+			noPw, err := u.apis[1].signInBody(signInPath, newDevice(), []byte(body(map[string]any{"Username": name})))
+			if err != nil {
+				t.Fatal(err)
+			}
+			asWrong("with no Pw", noPw)
+
+			next := strong()
+			u.check(204, u.as(0, admin.token, "POST", "/Users/Password?userId="+made.Id, body(map[string]any{"NewPw": next})), "the administrator setting a password")
+			signedIn(t, "the password the administrator set", u.try(1, newDevice(), name, next))
+			asWrong("with the empty password once one is set", u.try(0, newDevice(), name, ""))
+		})
 	}
 }
 
@@ -247,8 +265,8 @@ func TestAnAdministratorsPasswordChangeActsOnTheNamedUserOnly(t *testing.T) {
 	}
 }
 
-// The three are on any list of commonly guessed passwords. The empty password is refused with them, by the same
-// answer (D-100; Jellyfin 12.4 takes it).
+// The first three are on any list of commonly guessed passwords. An empty new password is refused with them, by the same
+// answer (D-100; Jellyfin 12.4 takes it). A new user with an empty one is not refused: it has no password (D-105).
 var guessed = []string{"password", "123456", "qwerty", ""}
 
 func TestACommonlyGuessedOrEmptyPasswordIs400WithAMessageAndNothingIsStored(t *testing.T) {
@@ -270,10 +288,12 @@ func TestACommonlyGuessedOrEmptyPasswordIs400WithAMessageAndNothingIsStored(t *t
 		}
 	}
 	for _, password := range guessed {
-		name := "weak-" + uuid.NewString()[:8]
-		refused("a new user", password, u.as(0, admin.token, "POST", "/Users/New", body(map[string]any{"Name": name, "Password": password})))
-		if n := u.userCount(name); n != 0 {
-			t.Errorf("a refused new user with %q was stored", password)
+		if password != "" {
+			name := "weak-" + uuid.NewString()[:8]
+			refused("a new user", password, u.as(0, admin.token, "POST", "/Users/New", body(map[string]any{"Name": name, "Password": password})))
+			if n := u.userCount(name); n != 0 {
+				t.Errorf("a refused new user with %q was stored", password)
+			}
 		}
 		for _, route := range passwordRoutes {
 			refused(route.name+", own", password, u.as(0, viewer.token, "POST", route.path(viewer.id), body(map[string]any{"CurrentPw": rightPassword, "NewPw": password})))

@@ -95,16 +95,26 @@ export async function userSteps({ browser, base, user, adminPassword, step }) {
     if (!(await named(disabled))) throw new Error("the user was not made");
   });
 
-  // D-100. jellyfin-web 12.4 sends an empty password as it is and shows a 400 for it with its own words, not the
-  // server's (compat/captures/users-empty-password-12.4.md).
-  await step("users: New User with an empty password is refused, the page says so and no user is made", async () => {
+  // D-105. jellyfin-web 12.4's New User page posts a blank password as an empty one, and then opens the profile
+  // (compat/captures/users-admin-12.4.md). That user has no password: Jellyfin would sign them in with the empty one.
+  await step("users: New User with a blank password makes a user with no password until one is set", async () => {
     const { page } = admin;
     await open(page, "dashboard/users/add");
-    await page.fill("#txtUsername", "users-empty");
+    await page.fill("#txtUsername", "users-blank");
     await tick(page, ".chkEnableAllFolders", true);
     await save(page);
-    await shows(page, "There was an error processing the request. Please try again later.");
-    if (await named("users-empty")) throw new Error("the user was made");
+    await page.waitForURL(/dashboard\/users\/[^/]+\/profile/, { timeout: 20000 });
+    const id = (await named("users-blank"))?.Id;
+    if (!id) throw new Error("GET /Users does not list the new user");
+    if ((await signIn("users-blank", "")).status !== 401) throw new Error("the empty password signs in");
+    await open(page, `dashboard/users/${id}/password`);
+    await page.fill("#txtNewPassword", password);
+    await page.fill("#txtNewPasswordConfirm", password);
+    await save(page, /^Save Password$/);
+    await shows(page, "Password saved.");
+    if ((await signIn("users-blank", password)).status !== 200) throw new Error("the password set does not sign in");
+    const removed = await call("DELETE", `/Users/${id}`, adminToken);
+    if (removed.status !== 204) throw new Error(`deleting the user answered ${removed.status}`);
   });
 
   await step("users: the profile page saves with nothing changed", async () => {

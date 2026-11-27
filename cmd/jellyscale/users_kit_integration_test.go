@@ -18,7 +18,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"golang.org/x/crypto/bcrypt"
 
 	"jellyscale/internal/db"
 )
@@ -156,21 +155,6 @@ func (u *usersSite) userCount(name string) int {
 		u.t.Fatal(err)
 	}
 	return n
-}
-
-// withNoPassword is an account that already exists with no password: its stored hash is the empty password's. No route
-// makes one (D-100; a reset leaves one no password signs in to), so it is written to the table.
-func (u *usersSite) withNoPassword() (id, name string) {
-	u.t.Helper()
-	id, name = uuid.NewString(), "bare-"+uuid.NewString()[:8]
-	hash, err := bcrypt.GenerateFromPassword(nil, bcrypt.MinCost)
-	if err != nil {
-		u.t.Fatal(err)
-	}
-	if _, err := u.pool.Exec(context.Background(), `INSERT INTO users (id, name, password_hash, is_admin) VALUES ($1, $2, $3, false)`, id, name, string(hash)); err != nil {
-		u.t.Fatal(err)
-	}
-	return id, name
 }
 
 // onlyThese deletes every other user, so that "the last administrator" means one of the accounts the test made.
