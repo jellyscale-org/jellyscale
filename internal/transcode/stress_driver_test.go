@@ -65,9 +65,9 @@ const (
 	slotsPerNode = 4
 )
 
-// recorder holds what each operation did. Only calls scheduled before the
-// deadline count; the ones after it keep the load realistic while the last
-// Segment waits finish.
+// recorder holds what each operation did. Calls are counted only when their
+// tick was intended before the deadline; the dependent Segment carries its
+// tick's decision forward so a Watch ending after the deadline cannot lose it.
 type recorder struct {
 	deadline time.Time
 	mu       sync.Mutex
@@ -80,18 +80,28 @@ type opLog struct {
 	samples          []time.Duration
 }
 
-func (r *recorder) want(name string) {
+func (r *recorder) want(name string) bool {
 	if time.Now().After(r.deadline) {
-		return
+		return false
 	}
 	r.mu.Lock()
 	r.log(name).intended++
 	r.mu.Unlock()
+	return true
 }
 
-// call times f. It returns f's error.
+// call times f. It returns f's error. Its decision is made when the call starts.
 func (r *recorder) call(ctx context.Context, name string, timeout time.Duration, f func(context.Context) error) error {
-	counted := !time.Now().After(r.deadline)
+	return r.record(ctx, name, timeout, !time.Now().After(r.deadline), f)
+}
+
+// callIntended uses the decision taken when the tick was scheduled, for a call
+// that can only start after an earlier one has finished.
+func (r *recorder) callIntended(ctx context.Context, name string, timeout time.Duration, counted bool, f func(context.Context) error) error {
+	return r.record(ctx, name, timeout, counted, f)
+}
+
+func (r *recorder) record(ctx context.Context, name string, timeout time.Duration, counted bool, f func(context.Context) error) error {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	began := time.Now()
@@ -258,7 +268,7 @@ func (d *driver) viewer(load, ctx context.Context, i int) {
 	defer ticker.Stop()
 	for n := 0; ; n++ {
 		d.rec.want("Watch")
-		d.rec.want("Segment")
+		segmentIntended := d.rec.want("Segment")
 		d.calls.Add(1)
 		go func() {
 			defer d.calls.Done()
@@ -268,7 +278,7 @@ func (d *driver) viewer(load, ctx context.Context, i int) {
 			if err != nil {
 				return
 			}
-			d.rec.call(ctx, "Segment", 12*time.Second, func(ctx context.Context) error { //nolint:errcheck
+			d.rec.callIntended(ctx, "Segment", 12*time.Second, segmentIntended, func(ctx context.Context) error { //nolint:errcheck
 				_, err := bytesOf(d.jobs.Segment(ctx, d.specs[spec], hashOf(spec), viewer, n, 0))
 				return err
 			})
