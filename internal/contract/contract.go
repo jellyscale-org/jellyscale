@@ -49,12 +49,15 @@ type Components struct {
 type Reason struct {
 	Kind   string `yaml:"kind"`
 	Action string `yaml:"action"`
+	// Locked marks a transport reason, or one of a stable capability: it is added within a version, never reworded.
+	Locked bool `yaml:"locked"`
 }
 
 // Capability is one thing a client may build against, with the state its design supports.
 type Capability struct {
-	ID    string `yaml:"id"`
-	State string `yaml:"state"`
+	ID      string `yaml:"id"`
+	State   string `yaml:"state"`
+	Retires bool   `yaml:"x-retires-at-cutover"`
 }
 
 // Contract is a parsed document. Raw is what the server serves to clients.

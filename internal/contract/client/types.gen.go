@@ -39,33 +39,6 @@ func (e IdentityApiVersion) Valid() bool {
 	}
 }
 
-// Defines values for RefusalAction.
-const (
-	AskOperator   RefusalAction = "ask-operator"
-	ChooseAnother RefusalAction = "choose-another"
-	None          RefusalAction = "none"
-	Retry         RefusalAction = "retry"
-	SignIn        RefusalAction = "sign-in"
-)
-
-// Valid indicates whether the value is a known member of the RefusalAction enum.
-func (e RefusalAction) Valid() bool {
-	switch e {
-	case AskOperator:
-		return true
-	case ChooseAnother:
-		return true
-	case None:
-		return true
-	case Retry:
-		return true
-	case SignIn:
-		return true
-	default:
-		return false
-	}
-}
-
 // Capability defines model for Capability.
 type Capability struct {
 	Id    string          `json:"Id"`
@@ -115,13 +88,11 @@ type PlaybackInfo struct {
 
 // Refusal defines model for Refusal.
 type Refusal struct {
-	Action            RefusalAction `json:"Action"`
-	Reason            string        `json:"Reason"`
-	RetryAfterSeconds *int          `json:"RetryAfterSeconds,omitempty"`
+	// Action Words for what the viewer can do. A client that does not know a value keeps the string.
+	Action            string `json:"Action"`
+	Reason            string `json:"Reason"`
+	RetryAfterSeconds *int   `json:"RetryAfterSeconds,omitempty"`
 }
-
-// RefusalAction defines model for Refusal.Action.
-type RefusalAction string
 
 // TrackPreferences defines model for TrackPreferences.
 type TrackPreferences struct {

@@ -18,10 +18,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// releasedReasons are the reasons this release lists. A later release may add to the list; removing or renaming one is a
-// break (criterion 3), so the list is held here, not read from the contract it would guard.
-var releasedReasons = []string{"unauthorized", "forbidden", "not-found", "method-not-allowed", "not-served", "invalid-body",
-	"language-not-saved", "no-capacity", "server-failure"}
+// releasedReasons are the transport reasons this release locks. A later release may add to the list; removing or renaming
+// one is a break (D-20261127-contract-amend, item 2), so the list is held here, not read from the contract it guards.
+// Reasons used only by preview capabilities may be reworded until their capability becomes stable.
+var releasedReasons = []string{"unauthorized", "not-found", "method-not-allowed", "server-failure"}
 
 // reasonInfo is one entry of the contract's x-reasons list.
 type reasonInfo struct{ Kind, Action string }

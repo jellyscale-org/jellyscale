@@ -234,7 +234,7 @@ components:
           type: string
         Action:
           type: string
-          enum: [none, retry, sign-in, choose-another, ask-operator]
+          description: Words for what the viewer can do. A client that does not know a value keeps the string.
         RetryAfterSeconds:
           type: integer
           minimum: 0
@@ -345,14 +345,17 @@ x-capabilities:
   track-preferences:
     id: track-preferences
     state: preview
+    x-retires-at-cutover: true
     meaning: A viewer hides tracks outside the languages they use, without changing the film.
   user-configuration:
     id: user-configuration
     state: preview
+    x-retires-at-cutover: true
     meaning: A viewer saves the languages they listen and read in.
   playback-info:
     id: playback-info
     state: preview
+    x-retires-at-cutover: true
     meaning: A viewer sees every track of a film marked as itself, with its own language.
   sign-in:
     id: sign-in
@@ -362,40 +365,44 @@ x-reasons:
   unauthorized:
     kind: refusal
     action: sign-in
-    meaning: The request has no token Postgres knows; the viewer must sign in.
+    locked: true
+    meaning: Please sign in before you do this.
   forbidden:
     kind: refusal
     action: none
-    meaning: The token may not act on what the request names.
+    meaning: You are not allowed to use this for that title or account.
   not-found:
     kind: refusal
     action: none
-    meaning: No such item or route.
+    locked: true
+    meaning: We could not find what you asked for.
   method-not-allowed:
     kind: refusal
     action: none
-    meaning: The route exists but does not take this method; Allow names the ones it takes.
+    locked: true
+    meaning: This action cannot be used here.
   not-served:
     kind: refusal
     action: none
-    meaning: A declared capability this server does not serve yet.
+    meaning: This feature is not ready here yet.
   invalid-body:
     kind: refusal
     action: none
-    meaning: The body is not one the operation accepts.
+    meaning: What you sent could not be understood.
   language-not-saved:
     kind: refusal
     action: choose-another
-    meaning: A track switch needs a language saved first.
+    meaning: Choose the language you want to listen in first.
   no-capacity:
     kind: refusal
     action: retry
-    meaning: No worker can play this film now; retry shortly.
+    meaning: This film cannot start right now; please try again in a moment.
   nothing-to-play:
     kind: refusal
     action: choose-another
-    meaning: This title has no file of its own to play, as a series or a season has none; choose one of its episodes or films.
+    meaning: This show has no episode of its own to play here; choose an episode or a film.
   server-failure:
     kind: refusal
     action: retry
-    meaning: Something inside the server failed; retry shortly.
+    locked: true
+    meaning: Something went wrong here; please try again.

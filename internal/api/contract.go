@@ -56,6 +56,10 @@ var reasonActions = map[Reason]string{
 	reasonServerFailure:    "retry",
 }
 
+// transportReasons are the ones a version locks: an unknown route, a wrong method, a missing sign-in and a server
+// failure. Reasons used only by preview capabilities may be reworded until their capability becomes stable.
+var transportReasons = []Reason{reasonUnauthorized, reasonNotFound, reasonMethodNotAllowed, reasonServerFailure}
+
 // reasonForStatus is the reason a handler that names no reason means by its status. A switch with no saved language
 // names language-not-saved itself, since it shares 400 with a bad body.
 func reasonForStatus(status int) Reason {
@@ -207,10 +211,21 @@ var contractMethods = []string{"get", "put", "post", "delete", "patch", "head", 
 // api role, which is the one that serves them.
 func (s *Server) checkContract() {
 	document := s.contractOf()
-	for code, action := range reasonActions {
+	for code := range reasonActions {
 		entry, ok := document.Reasons[string(code)]
-		if !ok || entry.Kind != "refusal" || entry.Action != action {
-			panic("contract does not list the refusal " + string(code) + " with its kind and action")
+		if !ok || entry.Kind != "refusal" {
+			panic("the reason " + string(code) + " the server writes is not a refusal on the contract")
+		}
+	}
+	for _, reason := range transportReasons {
+		entry := document.Reasons[string(reason)]
+		if entry.Action != reasonActions[reason] || !entry.Locked {
+			panic("contract does not lock the transport refusal " + string(reason) + " with its kind and action")
+		}
+	}
+	for id, capability := range document.Capabilities {
+		if capability.Retires && capability.State == "stable" {
+			panic("the capability " + id + " leaves at the cutover and can never be stable")
 		}
 	}
 	capabilityUsed := map[string]bool{}
@@ -370,7 +385,13 @@ func (s *Server) v1Dispatch(next http.Handler) http.Handler {
 			if operation.method != method {
 				continue
 			}
-			next.ServeHTTP(w, r)
+			if operation.state == "declared" {
+				// The mux has no handler for a declared method; letting it fall through would answer the catch-all's
+				// text 404 beside a served method on the same path. The contract's not-served refusal is the answer.
+				s.refuseV1(w, r, http.StatusNotFound, reasonNotServed, "not served")
+			} else {
+				next.ServeHTTP(w, r)
+			}
 			return
 		}
 		for _, operation := range matched {
