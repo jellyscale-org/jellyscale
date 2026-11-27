@@ -1,20 +1,23 @@
+ARG VERSION=dev
+
 FROM golang:1.27-alpine AS build
+ARG VERSION
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd cmd
 COPY internal internal
 COPY deploy/fixtures/seed deploy/fixtures/seed
-RUN CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /jellyscale ./cmd/jellyscale
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X jellyscale/internal/api.buildVersion=$VERSION" -o /jellyscale ./cmd/jellyscale
 RUN CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /seed ./deploy/fixtures/seed
 
 # What the server and the fixtures image share: the binary, ffmpeg, the user and the labels.
 # A build that names no target gives the last stage, server.
 FROM alpine:3.24 AS base
+ARG VERSION
 RUN apk add --no-cache ffmpeg font-dejavu
 COPY --from=build /jellyscale /usr/local/bin/jellyscale
 ARG REVISION=
-ARG VERSION=
 LABEL org.opencontainers.image.revision=$REVISION \
       org.opencontainers.image.version=$VERSION \
       org.opencontainers.image.source=https://github.com/jellyscale-org/jellyscale

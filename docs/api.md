@@ -4,7 +4,11 @@ Jellyfin's API has no place for some of what jellyscale offers a viewer. Those r
 
 The version in the path, `v1`, is the shape of these routes. Within v1 a field may be added to an answer, but no field, route or accepted spelling is removed or changed in meaning; a break is `v2`, served beside v1. Field names are exact (`HideOtherAudio`, not `hideotheraudio`), so v1 never accepts a spelling it would have to take away. Paths, like all of jellyscale's, are matched without regard to case.
 
-Every route needs a token (docs/access.md) and acts on the caller only. A `userId` or `controllableByUserId` query value, or a PlaybackInfo body's `UserId`, must name the caller in compact or dashed form, in any letter case; another, unknown or malformed id is answered 403, and an empty value is absent. A request without a known token is answered 401 before its user id is checked.
+A client reads `GET /jellyscale/v1/contract` and `GET /jellyscale/v1/server` with no token. The contract is the OpenAPI 3.1 document at `internal/contract/openapi.yaml`, which the image carries and serves byte for byte; identity gives the build's version, `ApiVersion: v1` and every capability with its state (`preview`, `declared` or `stable`). A capability the server has not built is `declared` and its route answers the `not-served` refusal. No capability is `stable` until a CI check fails on an incompatible change to it.
+
+Every refusal on this namespace is `{"Reason": "<code>", "Action": "<what the viewer can do>"}`, with an optional `RetryAfterSeconds`. The codes are the closed list in the contract's `x-reasons`; a code is added within v1, never removed or renamed, and a client generated from an older copy still decodes one it does not know. A PlaybackInfo the server cannot start carries `Reason` and `Action` beside Jellyfin's `ErrorCode` in a 200 body. Jellyfin's routes keep their text refusals.
+
+Every route below needs a token (docs/access.md) and acts on the caller only. A `userId` or `controllableByUserId` query value, or a PlaybackInfo body's `UserId`, must name the caller in compact or dashed form, in any letter case; another, unknown or malformed id is answered 403, and an empty value is absent. A request without a known token is answered 401 before its user id is checked.
 
 ## Track preferences
 

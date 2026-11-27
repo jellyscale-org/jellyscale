@@ -246,7 +246,7 @@ func (s *Server) markedPlaybackInfo(w http.ResponseWriter, r *http.Request) {
 func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, marked bool) {
 	id := r.PathValue("itemId")
 	if !db.ValidID(id) {
-		http.NotFound(w, r)
+		s.refuseV1(w, r, http.StatusNotFound, reasonNotFound, "404 page not found")
 		return
 	}
 	var request playback.Request
@@ -256,7 +256,7 @@ func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, mark
 			request, err = playback.ParseRequest(body)
 		}
 		if err != nil {
-			http.Error(w, "invalid body", http.StatusBadRequest)
+			s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, "invalid body")
 			return
 		}
 	}
@@ -266,7 +266,7 @@ func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, mark
 		return
 	}
 	if !found {
-		http.NotFound(w, r)
+		s.refuseV1(w, r, http.StatusNotFound, reasonNotFound, "404 page not found")
 		return
 	}
 	wanted := r.URL.Query().Get("mediasourceid")
@@ -327,7 +327,12 @@ func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, mark
 			// text says the media can't play now, where "no compatible stream"
 			// would blame the client.
 			s.logDecisions(decision) // Alone: no other source of a refused reply is said to play.
-			writeJSON(w, map[string]any{"MediaSources": []media.MediaSource{}, "PlaySessionId": playSession, "ErrorCode": "RateLimitExceeded"})
+			reply := map[string]any{"MediaSources": []media.MediaSource{}, "PlaySessionId": playSession, "ErrorCode": "RateLimitExceeded"}
+			if marked {
+				// Jellyfin's ErrorCode stays for the player; jellyscale's own API also says what the viewer can do.
+				reply["Reason"], reply["Action"] = string(reasonNoCapacity), reasonActions[reasonNoCapacity]
+			}
+			writeJSON(w, reply)
 			return
 		}
 		burn := request.NoSubtitleProfiles() || (request.AlwaysBurnInSubtitleWhenTranscoding && source.TranscodingURL != "")

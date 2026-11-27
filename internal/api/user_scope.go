@@ -75,13 +75,13 @@ func allOwnUser(ids []string, caller string) bool {
 func (s *Server) requireUserScope(w http.ResponseWriter, r *http.Request, route Route, session *Session) bool {
 	ids, err := requestUserIDs(r, route)
 	if err != nil {
-		refuse(w, r, http.StatusBadRequest, "invalid body")
+		s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, "invalid body")
 		return false
 	}
 	session.Target = session.User
 	if route.userScope() == UsersOwn {
 		if !allOwnUser(ids, session.User.ID) {
-			refuse(w, r, http.StatusForbidden, "forbidden")
+			s.refuseV1(w, r, http.StatusForbidden, reasonForbidden, "forbidden")
 			return false
 		}
 		return true
@@ -97,13 +97,13 @@ func (s *Server) requireUserScope(w http.ResponseWriter, r *http.Request, route 
 func (s *Server) adminAnyTarget(w http.ResponseWriter, r *http.Request, ids []string, caller User) (User, bool) {
 	for _, id := range ids {
 		if !db.ValidID(id) {
-			refuse(w, r, http.StatusBadRequest, "invalid user id")
+			s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, "invalid user id")
 			return User{}, false
 		}
 	}
 	if !caller.IsAdmin {
 		if !allOwnUser(ids, caller.ID) {
-			refuse(w, r, http.StatusForbidden, "forbidden")
+			s.refuseV1(w, r, http.StatusForbidden, reasonForbidden, "forbidden")
 			return User{}, false
 		}
 		return caller, true
@@ -111,7 +111,7 @@ func (s *Server) adminAnyTarget(w http.ResponseWriter, r *http.Request, ids []st
 	target := ""
 	for _, id := range ids {
 		if target != "" && !sameUser(target, id) {
-			refuse(w, r, http.StatusBadRequest, "conflicting user ids")
+			s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, "conflicting user ids")
 			return User{}, false
 		}
 		target = id
@@ -122,7 +122,7 @@ func (s *Server) adminAnyTarget(w http.ResponseWriter, r *http.Request, ids []st
 	var user User
 	err := s.Pool.QueryRow(r.Context(), "SELECT "+userColumns+" FROM users u WHERE u.id = $1::uuid", target).Scan(user.fields()...)
 	if errors.Is(err, pgx.ErrNoRows) {
-		notFound(w, r)
+		s.refuseV1(w, r, http.StatusNotFound, reasonNotFound, "404 page not found")
 		return User{}, false
 	}
 	if err != nil {

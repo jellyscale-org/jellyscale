@@ -1,0 +1,339 @@
+openapi: 3.1.0
+info:
+  title: jellyscale API
+  version: 1.0.0
+  description: The contract of jellyscale's own API. A client may use every operation whose state is preview; a declared
+    one is not served yet. Reasons are added within a version, never removed or renamed.
+paths:
+  /jellyscale/v1/contract:
+    get:
+      operationId: getContract
+      x-state: preview
+      summary: This document, served to anyone.
+      responses:
+        "200":
+          description: The contract the server holds.
+          content:
+            application/json:
+              schema:
+                type: string
+  /jellyscale/v1/server:
+    get:
+      operationId: getServer
+      x-state: preview
+      summary: The server's identity, version and capabilities, for a client that has not signed in.
+      responses:
+        "200":
+          description: Identity, including every capability and its state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Identity'
+  /jellyscale/v1/track-preferences:
+    get:
+      operationId: getTrackPreferences
+      x-state: preview
+      x-capability: track-preferences
+      summary: The caller's own choices of which tracks to show.
+      responses:
+        "200":
+          description: The stored choices.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackPreferences'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      operationId: patchTrackPreferences
+      x-state: preview
+      x-capability: track-preferences
+      summary: Change the fields of the caller's own choices that the body names.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrackPreferencesPatch'
+      responses:
+        "200":
+          description: The choices as stored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackPreferences'
+        "400":
+          $ref: '#/components/responses/InvalidBody'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "409":
+          $ref: '#/components/responses/LanguageNotSaved'
+  /jellyscale/v1/users/configuration:
+    patch:
+      operationId: patchConfiguration
+      x-state: preview
+      x-capability: user-configuration
+      summary: Change the fields of the caller's own configuration that the body names.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: The configuration as stored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Configuration'
+        "400":
+          $ref: '#/components/responses/InvalidBody'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /jellyscale/v1/items/{itemId}/playback-info:
+    post:
+      operationId: playbackInfo
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+      x-state: preview
+      x-capability: playback-info
+      summary: How the caller's item can be played, with each track listed as itself.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: The media sources, or a refusal in the body beside Jellyfin's ErrorCode.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaybackInfo'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+  /jellyscale/v1/sign-in:
+    post:
+      operationId: signIn
+      x-state: declared
+      x-capability: sign-in
+      summary: Declared for Octave to build against; not served by this release.
+      responses:
+        "404":
+          $ref: '#/components/responses/NotServed'
+components:
+  responses:
+    Unauthorized:
+      description: No valid token. Sign in and try again.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Refusal'
+    Forbidden:
+      description: The token may not act on what the request names.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Refusal'
+    NotFound:
+      description: No such item.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Refusal'
+    NotServed:
+      description: A declared operation this server does not serve yet.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Refusal'
+    InvalidBody:
+      description: The body is not one this operation accepts.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Refusal'
+    LanguageNotSaved:
+      description: A switch needs a saved language first.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Refusal'
+  schemas:
+    Refusal:
+      type: object
+      additionalProperties: false
+      required: [Reason, Action]
+      properties:
+        Reason:
+          type: string
+        Action:
+          type: string
+          enum: [none, retry, sign-in, choose-another, ask-operator]
+        RetryAfterSeconds:
+          type: integer
+          minimum: 0
+    Capability:
+      type: object
+      additionalProperties: false
+      required: [Id, State]
+      properties:
+        Id:
+          type: string
+        State:
+          type: string
+          enum: [declared, preview, stable]
+    Identity:
+      type: object
+      additionalProperties: false
+      required: [Name, Id, Version, ApiVersion, Capabilities]
+      properties:
+        Name:
+          type: string
+        Id:
+          type: string
+        Version:
+          type: string
+        ApiVersion:
+          type: string
+          const: v1
+        Capabilities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Capability'
+    TrackPreferences:
+      type: object
+      additionalProperties: false
+      required: [HideOtherAudio, HideOtherSubtitles, KeepAudioLanguages, KeepSubtitleLanguages, ShowAllTracks]
+      properties:
+        HideOtherAudio:
+          type: boolean
+        HideOtherSubtitles:
+          type: boolean
+        KeepAudioLanguages:
+          type: array
+          items:
+            type: string
+        KeepSubtitleLanguages:
+          type: array
+          items:
+            type: string
+        ShowAllTracks:
+          type: boolean
+    TrackPreferencesPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        HideOtherAudio:
+          type: boolean
+        HideOtherSubtitles:
+          type: boolean
+        KeepAudioLanguages:
+          type: array
+          items:
+            type: string
+        KeepSubtitleLanguages:
+          type: array
+          items:
+            type: string
+        ShowAllTracks:
+          type: boolean
+    Configuration:
+      type: object
+      properties:
+        AudioLanguagePreference:
+          type: string
+        SubtitleLanguagePreference:
+          type: string
+        SubtitleMode:
+          type: string
+    MediaStream:
+      type: object
+      properties:
+        Hidden:
+          type: boolean
+    MediaSource:
+      type: object
+      required: [MediaStreams]
+      properties:
+        MediaStreams:
+          type: array
+          items:
+            $ref: '#/components/schemas/MediaStream'
+    PlaybackInfo:
+      type: object
+      required: [MediaSources, PlaySessionId]
+      properties:
+        MediaSources:
+          type: array
+          items:
+            $ref: '#/components/schemas/MediaSource'
+        PlaySessionId:
+          type: string
+        ErrorCode:
+          type: string
+        Reason:
+          type: string
+        Action:
+          type: string
+x-capabilities:
+  track-preferences:
+    id: track-preferences
+    state: preview
+    meaning: A viewer hides tracks outside the languages they use, without changing the film.
+  user-configuration:
+    id: user-configuration
+    state: preview
+    meaning: A viewer saves the languages they listen and read in.
+  playback-info:
+    id: playback-info
+    state: preview
+    meaning: A viewer sees every track of a film marked as itself, with its own language.
+  sign-in:
+    id: sign-in
+    state: declared
+    meaning: A device signs in to jellyscale's own API; declared for clients to build against before it is served.
+x-reasons:
+  unauthorized:
+    kind: refusal
+    action: sign-in
+    meaning: The request has no token Postgres knows; the viewer must sign in.
+  forbidden:
+    kind: refusal
+    action: none
+    meaning: The token may not act on what the request names.
+  not-found:
+    kind: refusal
+    action: none
+    meaning: No such item or route.
+  method-not-allowed:
+    kind: refusal
+    action: none
+    meaning: The route exists but does not take this method; Allow names the ones it takes.
+  not-served:
+    kind: refusal
+    action: none
+    meaning: A declared capability this server does not serve yet.
+  invalid-body:
+    kind: refusal
+    action: none
+    meaning: The body is not one the operation accepts.
+  language-not-saved:
+    kind: refusal
+    action: choose-another
+    meaning: A track switch needs a language saved first.
+  no-capacity:
+    kind: refusal
+    action: retry
+    meaning: No worker can play this film now; retry shortly.
+  server-failure:
+    kind: refusal
+    action: retry
+    meaning: Something inside the server failed; retry shortly.

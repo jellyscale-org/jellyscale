@@ -108,9 +108,10 @@ func TestEveryRoutePreflightIsAnsweredOnAProcessWithOnlyItsRole(t *testing.T) {
 		byMethod[route.Method]++
 		paths[route.Path] = true
 	}
-	if len(routes) != 109 || len(paths) != 99 || byRole[RoleAPI] != 96 || byRole[RoleStream] != 13 ||
-		byMethod["GET"] != 74 || byMethod["POST"] != 27 || byMethod["DELETE"] != 6 || byMethod["PATCH"] != 2 {
-		t.Fatalf("the route table is %d routes on %d paths, by role %v, by method %v; the test pins 109 on 99, 96 api and 13 stream, 74 GET, 27 POST, 6 DELETE, 2 PATCH", len(routes), len(paths), byRole, byMethod)
+	// JS-183 added the contract and identity routes; both are GETs on the api role.
+	if len(routes) != 111 || len(paths) != 101 || byRole[RoleAPI] != 98 || byRole[RoleStream] != 13 ||
+		byMethod["GET"] != 76 || byMethod["POST"] != 27 || byMethod["DELETE"] != 6 || byMethod["PATCH"] != 2 {
+		t.Fatalf("the route table is %d routes on %d paths, by role %v, by method %v; the test pins 111 on 101, 98 api and 13 stream, 76 GET, 27 POST, 6 DELETE, 2 PATCH", len(routes), len(paths), byRole, byMethod)
 	}
 	asked := map[string]int{}
 	var bad []string
@@ -137,12 +138,12 @@ func TestEveryRoutePreflightIsAnsweredOnAProcessWithOnlyItsRole(t *testing.T) {
 			}
 		}
 	}
-	if asked[RoleAPI] != 384 || asked[RoleStream] != 52 {
-		t.Fatalf("asked %v preflights, want 384 on api-only processes and 52 on stream-only ones", asked)
+	if asked[RoleAPI] != 392 || asked[RoleStream] != 52 {
+		t.Fatalf("asked %v preflights, want 392 on api-only processes and 52 on stream-only ones", asked)
 	}
 	if len(bad) > 0 {
 		sort.Strings(bad)
-		t.Errorf("%d of 436 preflights were refused or incomplete; the first 12:\n  %s", len(bad), strings.Join(bad[:min(12, len(bad))], "\n  "))
+		t.Errorf("%d of 444 preflights were refused or incomplete; the first 12:\n  %s", len(bad), strings.Join(bad[:min(12, len(bad))], "\n  "))
 	}
 }
 
@@ -382,8 +383,9 @@ func TestNoAnswerWithoutADatabaseAllowsCredentialsOrSetsACookie(t *testing.T) {
 	}
 }
 
-// Access is as before: each viewer route asked from another origin with no token is 401 `unauthorized`, and the answer
-// can be read by the page, which is what lets a client tell a refused request from a lost connection.
+// Access is as before: each viewer route asked from another origin with no token is 401, and the answer can be read by
+// the page, which is what lets a client tell a refused request from a lost connection. On jellyscale's own routes the
+// body is the sign-in refusal of the published contract; Jellyfin's routes keep the text.
 func TestEachViewerRouteAskedFromAnotherOriginWithNoTokenIsA401TheOriginMayRead(t *testing.T) {
 	viewers := 0
 	var bad []string
@@ -394,15 +396,19 @@ func TestEachViewerRouteAskedFromAnotherOriginWithNoTokenIsA401TheOriginMayRead(
 		viewers++
 		for _, origin := range []string{"app://localhost", "https://app.example.test"} {
 			a := corsAsk(corsHandler(route.Role), route.Method, corsURL(route), "Origin", origin, "Cookie", "X-Emby-Token=whatever")
-			if a.Code != 401 || strings.TrimSpace(a.Body.String()) != "unauthorized" {
-				bad = append(bad, fmt.Sprintf("%s %s from %s: %d %q, want 401 unauthorized", route.Method, route.Path, origin, a.Code, a.Body.String()))
+			wantBody := "unauthorized"
+			if strings.HasPrefix(route.Path, "/jellyscale/v1/") {
+				wantBody = `{"Reason":"unauthorized","Action":"sign-in"}`
+			}
+			if a.Code != 401 || strings.TrimSpace(a.Body.String()) != wantBody {
+				bad = append(bad, fmt.Sprintf("%s %s from %s: %d %q, want 401 %s", route.Method, route.Path, origin, a.Code, a.Body.String(), wantBody))
 			} else if !a.allowsOrigin(origin) {
 				bad = append(bad, fmt.Sprintf("%s %s from %s: the 401 does not allow the origin (%q), so the page sees a failed connection", route.Method, route.Path, origin, a.Header().Get("Access-Control-Allow-Origin")))
 			}
 		}
 	}
 	if viewers != 95 {
-		t.Fatalf("%d viewer routes asked, want the 95 that need a token (109 less the 14 open ones)", viewers)
+		t.Fatalf("%d viewer routes asked, want the 95 that need a token (111 less the 16 open ones)", viewers)
 	}
 	if len(bad) > 0 {
 		t.Errorf("%d wrong; the first 8:\n  %s", len(bad), strings.Join(bad[:min(8, len(bad))], "\n  "))

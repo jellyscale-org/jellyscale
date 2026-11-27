@@ -50,6 +50,9 @@ func (s *Server) Routes() []Route {
 		{Method: "POST", Path: "/Users/Configuration", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Users: UsersAdminAny, Handler: s.saveConfiguration},
 		{Method: "POST", Path: "/Users/{userId}/Configuration", Status: Alias, Role: RoleAPI, Access: AccessViewer, Users: UsersAdminAny, Handler: s.saveConfiguration},
 		// jellyscale's own namespace: Jellyfin has no place for these (docs/api.md). Each acts on the caller only.
+		// The contract and identity answer before anyone signs in, as a client must read them to know this is jellyscale.
+		{Method: "GET", Path: "/jellyscale/v1/contract", Status: Implemented, Role: RoleAPI, Access: AccessAnyone, Why: "a client reads the published contract before anyone signs in", Handler: s.getContract},
+		{Method: "GET", Path: "/jellyscale/v1/server", Status: Implemented, Role: RoleAPI, Access: AccessAnyone, Why: "a client learns which server it is talking to before anyone signs in", Handler: s.getServer},
 		{Method: "GET", Path: "/jellyscale/v1/track-preferences", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.getTrackPreferences},
 		{Method: "PATCH", Path: "/jellyscale/v1/track-preferences", Status: Implemented, Role: RoleAPI, Access: AccessViewer, Handler: s.patchTrackPreferences},
 		{Method: "POST", Path: "/jellyscale/v1/items/{itemId}/playback-info", Status: Implemented, Role: RoleAPI, Access: AccessViewer, UserIDBody: true, Handler: s.markedPlaybackInfo},

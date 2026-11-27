@@ -197,12 +197,12 @@ func (s *Server) patchConfiguration(w http.ResponseWriter, r *http.Request) {
 	session := sessionOf(r)
 	raw, err := io.ReadAll(io.LimitReader(r.Body, maxConfigurationPatchBody+1))
 	if err != nil || len(raw) > maxConfigurationPatchBody {
-		http.Error(w, "body is unreadable or over 65,536 bytes", http.StatusBadRequest)
+		s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, "body is unreadable or over 65,536 bytes")
 		return
 	}
 	patch, names, err := parseConfigurationPatch(raw)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, err.Error())
 		return
 	}
 	body, _ := json.Marshal(patch)
@@ -211,7 +211,7 @@ func (s *Server) patchConfiguration(w http.ResponseWriter, r *http.Request) {
 	err = s.Pool.QueryRow(r.Context(), `UPDATE users SET configuration = COALESCE(configuration, '{}'::jsonb) || $2::jsonb
 		WHERE id = $1::uuid RETURNING configuration`, session.User.ID, string(body)).Scan(&stored)
 	if errors.Is(err, pgx.ErrNoRows) {
-		http.NotFound(w, r)
+		s.refuseV1(w, r, http.StatusNotFound, reasonNotFound, "404 page not found")
 		return
 	}
 	if err != nil {

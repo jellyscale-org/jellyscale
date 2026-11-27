@@ -722,9 +722,13 @@ func (a *accessSite) scopeAuthenticationFirst(t *testing.T, h accHandler, f *sco
 				a.fail("%v", err)
 				continue
 			}
+			want := "unauthorized"
+			if strings.HasPrefix(route.Path, "/jellyscale/v1/") {
+				want = `{"Reason":"unauthorized","Action":"sign-in"}`
+			}
 			for _, credential := range credentials {
 				r := accSend(route.Method, h.base, path, credential.token, credential.spelling, body, headers...)
-				if r.err != nil || r.status != 401 || strings.TrimSpace(string(r.body)) != "unauthorized" {
+				if r.err != nil || r.status != 401 || strings.TrimSpace(string(r.body)) != want {
 					wrong = append(wrong, fmt.Sprintf("%s with %s: %d %.40q", place.name, credential.name, r.status, r.body))
 				}
 			}

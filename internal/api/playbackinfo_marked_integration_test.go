@@ -385,7 +385,8 @@ func listedOnly(t *testing.T, reply, baseline doc) doc {
 func normalizedAnswer2(t *testing.T, reply doc, token string) string {
 	t.Helper()
 	if sources, _ := reply["MediaSources"].([]any); len(sources) == 0 {
-		return canon(without(reply, "PlaySessionId"), token)
+		// JS-183 adds the contract's reason and action beside Jellyfin's ErrorCode on this route's refusal.
+		return canon(without(reply, "PlaySessionId", "Reason", "Action"), token)
 	}
 	return normalizedAnswer(t, reply, token)
 }

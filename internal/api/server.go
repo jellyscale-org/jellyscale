@@ -22,6 +22,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"jellyscale/internal/compat"
+	"jellyscale/internal/contract"
 	"jellyscale/internal/db"
 	"jellyscale/internal/items"
 	"jellyscale/internal/signin"
@@ -127,8 +128,11 @@ type Server struct {
 	// SocketIdle closes a WebSocket that sends nothing for this long.
 	// Defaults to 60 seconds, the interval ForceKeepAlive promises.
 	SocketIdle time.Duration
+	// Contract is the document this replica publishes and checks its routes against. Nil means the embedded one.
+	Contract *contract.Contract
 
 	stores           store.Cache
+	servedPatterns   []string
 	snapshot         snapshot
 	snapshotOnce     sync.Once
 	replicaOnce      sync.Once
@@ -157,6 +161,9 @@ const postgresAwayLimit = 30 * time.Second
 
 // BeginDrain makes /readyz answer 503 from now on. Requests are still served.
 func (s *Server) BeginDrain() { s.draining.Store(true) }
+
+// ServedPatterns are the method and path patterns Handler registered, including any a route table does not name.
+func (s *Server) ServedPatterns() []string { return slices.Clone(s.servedPatterns) }
 
 func (s *Server) ready() bool {
 	return !s.draining.Load() && db.Of(s.Pool).AwayFor() < postgresAwayLimit
@@ -193,7 +200,9 @@ func (s *Server) Handler() http.Handler {
 	} else {
 		signinAddressBound.Set(0)
 	}
+	s.checkContract()
 	mux := http.NewServeMux()
+	patterns := []string{}
 	// Whichever roles this server has, a route nobody decided about stops it.
 	for _, route := range s.Routes() {
 		if route.Access != AccessAnyone && route.Access != AccessViewer && route.Access != AccessAdmin {
@@ -220,7 +229,9 @@ func (s *Server) Handler() http.Handler {
 			}
 			handler = s.requireAuth(handler, route)
 		}
-		mux.HandleFunc(route.Method+" "+lowerLiterals(route.Path), handler)
+		pattern := route.Method + " " + lowerLiterals(route.Path)
+		mux.HandleFunc(pattern, handler)
+		patterns = append(patterns, pattern)
 	}
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		// The process alone: a probe that failed for Postgres being away would
@@ -246,7 +257,16 @@ func (s *Server) Handler() http.Handler {
 		s.Log.Warn("unknown route", "method", r.Method, "path", r.URL.Path)
 		http.NotFound(w, r)
 	})
-	return s.logRequests(s.noteUndeclaredIngress(normalize(cors(mux, mux))))
+	patterns = append(patterns, "GET /healthz", "GET /readyz", "/")
+	if s.WebDir != "" {
+		patterns = append(patterns, "GET /web/", "GET /{$}")
+	}
+	s.servedPatterns = patterns
+	var next http.Handler = mux
+	if slices.Contains(s.Roles, RoleAPI) {
+		next = s.v1Dispatch(mux)
+	}
+	return s.logRequests(s.noteUndeclaredIngress(normalize(cors(mux, next))))
 }
 
 // lowerLiterals lowercases a route's fixed segments and leaves {wildcards}
@@ -314,7 +334,7 @@ func (s *Server) requireAuth(next http.HandlerFunc, route Route) http.HandlerFun
 	return func(w http.ResponseWriter, r *http.Request) {
 		info := compat.ParseAuth(r)
 		if info.Token == "" {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			s.refuseV1(w, r, http.StatusUnauthorized, reasonUnauthorized, "unauthorized")
 			return
 		}
 		// Postgres decides, unless it is away and the route can go on from the snapshot.
@@ -332,7 +352,7 @@ func (s *Server) requireAuth(next http.HandlerFunc, route Route) http.HandlerFun
 			user, err = s.userByToken(r.Context(), info.Token)
 		}
 		if errors.Is(err, pgx.ErrNoRows) {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			s.refuseV1(w, r, http.StatusUnauthorized, reasonUnauthorized, "unauthorized")
 			return
 		}
 		if err != nil {
@@ -341,7 +361,7 @@ func (s *Server) requireAuth(next http.HandlerFunc, route Route) http.HandlerFun
 		}
 		// Before any id the request names is looked at.
 		if route.Access == AccessAdmin && !user.IsAdmin {
-			http.Error(w, "forbidden", http.StatusForbidden)
+			s.refuseV1(w, r, http.StatusForbidden, reasonForbidden, "forbidden")
 			return
 		}
 		session := Session{User: user, Token: info.Token, ClientInfo: info}
@@ -358,7 +378,7 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, err error) {
 		return // The client gave up, as a player does on a request that waits for Postgres; nobody is left to hear.
 	}
 	s.Log.Error("request failed", "method", r.Method, "path", r.URL.Path, "error", err)
-	http.Error(w, "internal error", http.StatusInternalServerError)
+	s.refuseV1(w, r, http.StatusInternalServerError, reasonServerFailure, "internal error")
 }
 
 func writeJSON(w http.ResponseWriter, value any) {
