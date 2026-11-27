@@ -62,29 +62,30 @@ func TestWithTheTrackStoredASeekIntoALongCueReadsNoMoreOfTheFilmThanAnySeek(t *t
 			for _, cut := range cuts {
 				burnt[cut] = []stored{s.seekStored(t, cut, 1, true, readRate), s.seekStored(t, cut, 1, true, readRate)}
 			}
-			var youngWorst, oldWorst int64
+			var youngWorst, oldWorst stored
 			for _, cut := range cuts {
 				_, most, width := spread(plain[cut]...)
 				limit := most + width + readMargin
 				for _, got := range burnt[cut] {
 					t.Logf("segment %d: burnt in %d bytes of the film (without the track %v, limit %d), %d from the asset store (the track is %d)", cut, got.film, plain[cut], limit, got.assets, track.size)
 					if got.film > limit {
-						t.Errorf("a seek to segment %d with the track stored read %d bytes of the film before its first segment, %d more than the most a seek without the track did (%d, spread %d)", cut, got.film, got.film-most, most, width)
+						t.Errorf("a seek to segment %d with the track stored read %d bytes of the film before its first segment, %d more than the most a seek without the track did (%d, spread %d); %s", cut, got.film, got.film-most, most, width, got.reads)
 					}
 					if got.assets <= 0 || got.assets > track.size {
 						t.Errorf("a seek to segment %d read %d bytes from the asset store, want the stored track (%d bytes) once at most and more than none", cut, got.assets, track.size)
 					}
-					if cut == tc.young {
-						youngWorst = max(youngWorst, got.film)
-					} else {
-						oldWorst = max(oldWorst, got.film)
+					if cut == tc.young && got.film > youngWorst.film {
+						youngWorst = got
+					}
+					if cut == tc.old && got.film > oldWorst.film {
+						oldWorst = got
 					}
 				}
 			}
 			_, _, youngWidth := spread(plain[tc.young]...)
 			_, _, oldWidth := spread(plain[tc.old]...)
-			if oldWorst > youngWorst+youngWidth+oldWidth+readMargin {
-				t.Errorf("the seek into the older cue (%d s) read %d bytes of the film and the one into the younger cue (8 s) %d: an older cue must not cost more", tc.ageOld, oldWorst, youngWorst)
+			if oldWorst.film > youngWorst.film+youngWidth+oldWidth+readMargin {
+				t.Errorf("the seek into the older cue (%d s) read %d bytes of the film and the one into the younger cue (8 s) %d: an older cue must not cost more\nthe older cue's seek, %s\nthe younger cue's seek, %s", tc.ageOld, oldWorst.film, youngWorst.film, oldWorst.reads, youngWorst.reads)
 			}
 			// Only the track's own read shows in the cue-age difference of the two.
 			if a, b := burnt[tc.young][0].assets, burnt[tc.old][0].assets; a-b > readMargin || b-a > readMargin {

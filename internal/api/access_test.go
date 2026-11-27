@@ -11,6 +11,10 @@ import (
 
 func routeName(r Route) string { return r.Method + " " + r.Path }
 
+// openButAsks are the open routes that need more than a request to answer 2xx (a device's name, a secret), as
+// Jellyfin 12.4 does (400 and 404): asked without it, they must still never answer 401 or 403.
+var openButAsks = []string{"POST /QuickConnect/Initiate", "GET /QuickConnect/Connect", "POST /Users/AuthenticateWithQuickConnect"}
+
 // openList is the routes anyone may call, which TestAccess reads as the expected answers. The pictures are open by the
 // owner's decision of 2026-11-16 (jellyfin-web builds picture URLs with no token, an <img> cannot send one, and item ids
 // are random).
@@ -22,6 +26,11 @@ var openList = []string{
 	"GET /Branding/Css",
 	"GET /Branding/Css.css",
 	"GET /QuickConnect/Enabled",
+	// JS-037: a device that is not signed in asks for a code, asks whether it was approved and redeems it, with the
+	// code's secret and no token. Approval (POST /QuickConnect/Authorize) is a viewer's.
+	"POST /QuickConnect/Initiate",
+	"GET /QuickConnect/Connect",
+	"POST /Users/AuthenticateWithQuickConnect",
 	"GET /Users/Public",
 	"POST /Users/AuthenticateByName",
 	"GET /Items/{itemId}/Images/{imageType}",

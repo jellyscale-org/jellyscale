@@ -36,7 +36,10 @@ routes:
   - {method: GET, path: "/Persons", status: stub, role: api, access: viewer, user: own}
   - {method: GET, path: "/Playback/BitrateTest", status: implemented, role: stream, access: viewer, user: own}
   - {method: GET, path: "/Plugins", status: stub, role: api, access: viewer, user: own}
-  - {method: GET, path: "/QuickConnect/Enabled", status: stub, role: api, access: anyone}
+  - {method: POST, path: "/QuickConnect/Authorize", status: implemented, role: api, access: viewer, user: own}
+  - {method: GET, path: "/QuickConnect/Connect", status: implemented, role: api, access: anyone}
+  - {method: GET, path: "/QuickConnect/Enabled", status: implemented, role: api, access: anyone}
+  - {method: POST, path: "/QuickConnect/Initiate", status: implemented, role: api, access: anyone}
   - {method: GET, path: "/Search/Hints", status: implemented, role: api, access: viewer, user: own}
   - {method: GET, path: "/Sessions", status: implemented, role: api, access: viewer, user: own}
   - {method: POST, path: "/Sessions/Capabilities", status: stub, role: api, access: viewer, user: own}
@@ -65,6 +68,7 @@ routes:
   - {method: DELETE, path: "/UserPlayedItems/{itemId}", status: implemented, role: api, access: viewer, user: own}
   - {method: POST, path: "/UserPlayedItems/{itemId}", status: implemented, role: api, access: viewer, user: own}
   - {method: POST, path: "/Users/AuthenticateByName", status: implemented, role: api, access: anyone}
+  - {method: POST, path: "/Users/AuthenticateWithQuickConnect", status: implemented, role: api, access: anyone}
   - {method: POST, path: "/Users/Configuration", status: implemented, role: api, access: viewer, user: admin-any}
   - {method: GET, path: "/Users/Me", status: implemented, role: api, access: viewer, user: own}
   - {method: GET, path: "/Users/Public", status: implemented, role: api, access: anyone}

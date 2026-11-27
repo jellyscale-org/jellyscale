@@ -147,42 +147,24 @@ func (s *Server) authenticateByName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessToken := randomHex(16)
-	now := time.Now().UTC()
-	// One token per device, so signing in again replaces the old one.
+	var accessToken string
+	// One token per device, issued by the same path a Quick Connect redemption uses, so the two cannot race one
+	// another into two tokens for the same user and device.
 	if err := pgx.BeginFunc(r.Context(), s.Pool, func(tx pgx.Tx) error {
-		if _, err := tx.Exec(r.Context(), "DELETE FROM devices WHERE user_id = $1 AND device_id = $2", user.ID, info.DeviceID); err != nil {
+		issued, err := signin.Issue(r.Context(), tx, user.ID, signin.Device{
+			ID: info.DeviceID, Name: info.Device, App: info.Client, Version: info.Version,
+		})
+		if err != nil {
 			return err
 		}
-		if _, err := tx.Exec(r.Context(), `INSERT INTO devices (token, user_id, device_id, device_name, client, app_version)
-			VALUES ($1, $2, $3, $4, $5, $6)`, accessToken, user.ID, info.DeviceID, info.Device, info.Client, info.Version); err != nil {
-			return err
-		}
-		_, err := tx.Exec(r.Context(), "UPDATE users SET last_login_at = $2 WHERE id = $1", user.ID, now)
-		return err
+		accessToken, user.LastLoginAt = issued.Value, &issued.LoginAt
+		return nil
 	}); err != nil {
 		s.fail(w, r, err)
 		return
 	}
-	user.LastLoginAt = &now
 
-	writeJSON(w, map[string]any{
-		"User": s.userDTO(user),
-		"SessionInfo": map[string]any{
-			"PlayState": map[string]any{"CanSeek": false, "IsPaused": false, "IsMuted": false, "RepeatMode": "RepeatNone",
-				"PlaybackOrder": "Default"},
-			"AdditionalUsers": []any{}, "PlayableMediaTypes": []any{}, "SupportedCommands": []any{},
-			"Id": db.CompactID(uuid.NewString()), "UserId": db.CompactID(user.ID), "UserName": user.Name,
-			"Client": info.Client, "DeviceName": info.Device, "DeviceId": info.DeviceID,
-			"ApplicationVersion": info.Version, "LastActivityDate": now.Format(time.RFC3339Nano),
-			// Nothing played yet; Jellyfin sends its zero time. SDK clients require the field.
-			"LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
-			"ServerId":            s.ServerID, "IsActive": true, "SupportsMediaControl": false, "SupportsRemoteControl": false,
-			"HasCustomDeviceName": false, "NowPlayingQueue": []any{},
-		},
-		"AccessToken": accessToken,
-		"ServerId":    s.ServerID,
-	})
+	writeJSON(w, s.signInJSON(user, accessToken, info))
 }
 
 var dummyHash, _ = bcrypt.GenerateFromPassword([]byte("jellyscale"), bcrypt.DefaultCost)

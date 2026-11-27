@@ -337,6 +337,7 @@ func TestTheAssetSweepRemovesAReplacedFilesAndARemovedFilmsTrackAndKeepsACurrent
 	// The file is replaced: the new file's track is stored, and the old file's goes.
 	s.replace(t, cueFilm{codec: "copy", seconds: 40, cues: []testenv.Cue{bottom(8, 30)}})
 	s.forgetFailures(t)
+	s.takeTheAssetSweepsTurn(t)
 	stop := s.metered(t, newMeters(s, 0))
 	s.askForTracks(t, s.pool)
 	s.waitStored(t, 2)
@@ -401,6 +402,7 @@ func TestTheStoredTrackOfAFileChangedBackIsNeverDeletedByTheSweepThatListedItAnO
 			// The file is replaced by one with other cues, whose track is stored too.
 			s.replace(t, cueFilm{codec: "copy", seconds: 40, cues: []testenv.Cue{bottom(8, 30)}})
 			s.forgetFailures(t)
+			s.takeTheAssetSweepsTurn(t)
 			stop := s.metered(t, newMeters(s, 0))
 			s.askForTracks(t, s.pool)
 			s.waitStored(t, 2)

@@ -417,7 +417,11 @@ func TestAfterTheFileIsReplacedAMidFilmRunDrawsAndReadsByTheNewFilesTrack(t *tes
 	s.fresh(t)
 	s.burnt()
 	s.askForTracks(t, s.pool)
-	waitFor(t, "the new file's track", time.Minute, func() bool { return len(s.storedObjects()) == len(before)+1 })
+	// A sweep of the asset store by a worker of the test may remove the old file's track at any point, as it
+	// should: what this waits for is an object the store did not hold, with the extraction over.
+	waitFor(t, "the new file's track", time.Minute, func() bool {
+		return s.holdsAnObjectNotIn(before) && s.jobRowsIn(t, "queued")+s.jobRowsIn(t, "running") == 0
+	})
 	again := quiet(t, m.film)
 	stop()
 	if again > old.film+(4<<20) || again < old.film/2 {

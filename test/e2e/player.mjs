@@ -3,6 +3,7 @@
 // and the rest then work for that gate.
 import { execFileSync } from "node:child_process";
 import { recordResponses } from "./conform.mjs";
+import { forgetBefore, keepFailure, watch } from "./evidence.mjs";
 import { schedule } from "./shard.mjs";
 
 const gate = { reasonLines: 1, ffmpegWait: 60000, unanswered: "none" };
@@ -119,6 +120,7 @@ function clock() { return Date.now(); }
 export async function viewer() {
   const { base } = gate;
   const context = await gate.browser.newContext({ viewport: { width: 1280, height: 720 } });
+  watch(context, base);
   const page = await context.newPage();
   recordResponses(page, base);
   const seen = {
@@ -201,6 +203,7 @@ export async function viewer() {
 export function scenario(name, run, options = {}) {
   return schedule(name, options, async () => {
     const began = Date.now();
+    forgetBefore(began);
     const v = await viewer();
     let passed = false;
     try {
@@ -210,7 +213,7 @@ export function scenario(name, run, options = {}) {
       const why = error.message.split("\n").filter(Boolean).slice(0, gate.reasonLines).join(" / ");
       gate.failures.push(`${name}: ${why}`);
       console.log(`FAIL  ${name}: ${why} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
-      await v.page.screenshot({ path: `${process.env.TMPDIR ?? "/tmp"}/jellyscale-e2e-${gate.name}.png` }).catch(() => {});
+      await keepFailure(name, began);
     } finally {
       await v.context.close().catch(() => {});
       await gate.afterScenario?.();
@@ -220,6 +223,7 @@ export function scenario(name, run, options = {}) {
       gate.failures.push(`${name}: ffmpeg still running afterwards`);
       console.log(`FAIL  ${name}: ffmpeg still running afterwards (${((Date.now() - began) / 1000).toFixed(1)}s)`);
       passed = false;
+      return keepFailure(name, began); // The viewers' pages are closed by now: the record and the console, no picture.
     });
     if (passed) console.log(`ok    ${name} (${((Date.now() - began) / 1000).toFixed(1)}s)`);
   });

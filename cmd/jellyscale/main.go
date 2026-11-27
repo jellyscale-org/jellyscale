@@ -107,6 +107,10 @@ type config struct {
 	TrustedProxies *[]string `json:"trustedProxies"`
 	proxies        *signin.Proxies
 
+	// QuickConnect is on by default, as in Jellyfin 12.4. false on the api role turns it off there: Enabled answers
+	// false and the other four routes answer 401, without touching codes another replica may still offer.
+	QuickConnect *bool `json:"quickConnect"`
+
 	// MetricsListen is where /metrics is served, such as ":9090", by every role
 	// in the process and apart from the public port. Empty serves none.
 	MetricsListen string `json:"metricsListen"`
@@ -269,7 +273,7 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	defer pool.Close()
+	defer closePool(pool, log)
 
 	serverID, err := api.EnsureServerID(ctx, pool)
 	if err != nil {
@@ -326,7 +330,8 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 	server := &api.Server{
 		Pool: pool, Items: &items.Repo{Pool: pool, ServerID: serverID}, ServerID: serverID,
 		Name: cfg.Name, WebDir: cfg.WebDir, Roles: enabled, Log: log, Transcode: transcodes.jobs, Hub: transcodes.hub,
-		Proxies: cfg.proxies,
+		Proxies: cfg.proxies, QuickConnectOff: cfg.QuickConnect != nil && !*cfg.QuickConnect,
+		AuditLog: slog.New(slog.NewJSONHandler(os.Stderr, nil)),
 	}
 	if slices.Contains(enabled, api.RoleAPI) {
 		if cfg.proxies == nil {
@@ -351,11 +356,29 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 	return nil
 }
 
+// poolCloseLimit is how long a stopping process waits for the pool. Closing says goodbye on every connection, and pgx
+// gives a Postgres that answers nothing 15 seconds for each, which would outlast the shutdown grace.
+const poolCloseLimit = 2 * time.Second
+
+func closePool(pool *pgxpool.Pool, log *slog.Logger) {
+	closed := make(chan struct{})
+	go func() {
+		pool.Close()
+		close(closed)
+	}()
+	select {
+	case <-closed:
+	case <-time.After(poolCloseLimit):
+		log.Warn("the database connections did not close in time; exiting without them", "limit", poolCloseLimit)
+	}
+}
+
 // drain stops serving within grace of the signal. Readiness fails first and
 // requests are taken as before for drainLead, so the router has stopped
 // sending when the listener closes. Then the sockets are closed with their rows
 // removed, and the responses in flight are sent whole if they end in time, and
-// cut at the end of the grace if not.
+// cut at the end of the grace if not. Approvals, which outlive their clients, are
+// cut then too, so the pool they hold a connection of can close.
 func drain(httpServer *http.Server, server *api.Server, grace time.Duration, log *slog.Logger) {
 	deadline, cancel := context.WithTimeout(context.Background(), grace)
 	defer cancel()
@@ -372,6 +395,7 @@ func drain(httpServer *http.Server, server *api.Server, grace time.Duration, log
 	}()
 	if err := httpServer.Shutdown(deadline); err != nil {
 		log.Warn("responses still in flight at the end of the grace are cut", "error", err)
+		server.CutApprovals()
 		httpServer.Close() //nolint:errcheck
 	}
 	<-socketsClosed

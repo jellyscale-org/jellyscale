@@ -1,0 +1,5843 @@
+{
+ "image": "jellyfin/jellyfin:12.4",
+ "server_version": "12.4.0",
+ "quick_connect_available_by_default": true,
+ "steps": [
+  {
+   "section": "on",
+   "name": "password_signin 0",
+   "action": "password_signin",
+   "user": "admin",
+   "device": "approver-admin",
+   "token": "admin"
+  },
+  {
+   "section": "on",
+   "name": "password_signin 1",
+   "action": "password_signin",
+   "user": "viewer",
+   "device": "approver-viewer",
+   "token": "viewer"
+  },
+  {
+   "section": "on",
+   "name": "password_signin 2",
+   "action": "password_signin",
+   "user": "other",
+   "device": "approver-other",
+   "token": "other"
+  },
+  {
+   "section": "on",
+   "name": "enabled by default",
+   "action": "request",
+   "method": "GET",
+   "path": "/QuickConnect/Enabled",
+   "headers": {},
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": true
+  },
+  {
+   "section": "on",
+   "name": "initiate",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-tv1\", DeviceId=\"dev-tv1\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": "tv1",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:tv1}",
+    "Code": "{code:tv1}",
+    "DeviceId": "dev-tv1",
+    "DeviceName": "TV-tv1",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:53.7071929Z"
+   }
+  },
+  {
+   "section": "on",
+   "name": "connect pending",
+   "action": "request",
+   "method": "GET",
+   "path": "/QuickConnect/Connect?Secret={secret:tv1}",
+   "headers": {},
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:tv1}",
+    "Code": "{code:tv1}",
+    "DeviceId": "dev-tv1",
+    "DeviceName": "TV-tv1",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:53.7071929Z"
+   }
+  },
+  {
+   "section": "on",
+   "name": "connect unknown secret",
+   "action": "request",
+   "method": "GET",
+   "path": "/QuickConnect/Connect?Secret=0000deadbeef",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-tv1\", DeviceId=\"dev-tv1\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 404,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": "Unknown secret"
+  },
+  {
+   "section": "on",
+   "name": "connect without a secret",
+   "action": "request",
+   "method": "GET",
+   "path": "/QuickConnect/Connect",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-tv1\", DeviceId=\"dev-tv1\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 400,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+    "title": "One or more validation errors occurred.",
+    "status": 400,
+    "errors": {
+     "secret": [
+      "The secret field is required."
+     ]
+    }
+   }
+  },
+  {
+   "section": "on",
+   "name": "redeem pending",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-tv1\", DeviceId=\"dev-tv1\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"{secret:tv1}\"}",
+   "saves": null,
+   "pick": null,
+   "status": 404,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "on",
+   "name": "redeem unknown secret",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-tv1\", DeviceId=\"dev-tv1\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"0000deadbeef\"}",
+   "saves": null,
+   "pick": null,
+   "status": 404,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "on",
+   "name": "redeem an empty secret",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-tv1\", DeviceId=\"dev-tv1\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"\"}",
+   "saves": null,
+   "pick": null,
+   "status": 400,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+    "title": "One or more validation errors occurred.",
+    "status": 400,
+    "errors": {
+     "Secret": [
+      "The Secret field is required."
+     ]
+    }
+   }
+  },
+  {
+   "section": "on",
+   "name": "redeem without a secret",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-tv1\", DeviceId=\"dev-tv1\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{}",
+   "saves": null,
+   "pick": null,
+   "status": 400,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+    "title": "One or more validation errors occurred.",
+    "status": 400,
+    "errors": {
+     "Secret": [
+      "The Secret field is required."
+     ]
+    }
+   }
+  },
+  {
+   "section": "on",
+   "name": "approve an unknown code",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code=000001",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-viewer\", DeviceId=\"dev-approver-viewer\", Version=\"1.0\", Token=\"{token:viewer}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 404,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "on",
+   "name": "approve without a code",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-viewer\", DeviceId=\"dev-approver-viewer\", Version=\"1.0\", Token=\"{token:viewer}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 400,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+    "title": "One or more validation errors occurred.",
+    "status": 400,
+    "errors": {
+     "code": [
+      "The code field is required."
+     ]
+    }
+   }
+  },
+  {
+   "section": "on",
+   "name": "approve without a token",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:tv1}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-anon\", DeviceId=\"dev-approver-anon\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 401,
+   "response_headers": {},
+   "response": ""
+  },
+  {
+   "section": "on",
+   "name": "viewer names another user",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:tv1}&userId={userid:other}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-viewer\", DeviceId=\"dev-approver-viewer\", Version=\"1.0\", Token=\"{token:viewer}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 403,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "on",
+   "name": "connect after a refused approval",
+   "action": "request",
+   "method": "GET",
+   "path": "/QuickConnect/Connect?Secret={secret:tv1}",
+   "headers": {},
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:tv1}",
+    "Code": "{code:tv1}",
+    "DeviceId": "dev-tv1",
+    "DeviceName": "TV-tv1",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:53.7071929Z"
+   }
+  },
+  {
+   "section": "on",
+   "name": "viewer approves naming themselves",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:tv1}&userId={userid:viewer}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-viewer\", DeviceId=\"dev-approver-viewer\", Version=\"1.0\", Token=\"{token:viewer}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": true
+  },
+  {
+   "section": "on",
+   "name": "connect approved",
+   "action": "request",
+   "method": "GET",
+   "path": "/QuickConnect/Connect?Secret={secret:tv1}",
+   "headers": {},
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": true,
+    "Secret": "{secret:tv1}",
+    "Code": "{code:tv1}",
+    "DeviceId": "dev-tv1",
+    "DeviceName": "TV-tv1",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:40:53.7598119Z"
+   }
+  },
+  {
+   "section": "on",
+   "name": "approve an approved code again",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:tv1}&userId={userid:viewer}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-viewer\", DeviceId=\"dev-approver-viewer\", Version=\"1.0\", Token=\"{token:viewer}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 500,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "on",
+   "name": "another account approves an approved code",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:tv1}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-other\", DeviceId=\"dev-approver-other\", Version=\"1.0\", Token=\"{token:other}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 500,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "on",
+   "name": "redeem approved",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-tv1\", DeviceId=\"dev-tv1\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"{secret:tv1}\"}",
+   "saves": "tv1-first",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "User": {
+     "Name": "viewer",
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "Id": "{userid:viewer}",
+     "HasPassword": true,
+     "HasConfiguredPassword": true,
+     "HasConfiguredEasyPassword": false,
+     "EnableAutoLogin": false,
+     "LastLoginDate": "2026-11-26T13:39:53.6125831Z",
+     "LastActivityDate": "2026-11-26T13:39:53.6125831Z",
+     "Configuration": {
+      "PlayDefaultAudioTrack": true,
+      "SubtitleLanguagePreference": "",
+      "DisplayMissingEpisodes": false,
+      "GroupedFolders": [],
+      "SubtitleMode": "Default",
+      "DisplayCollectionsView": false,
+      "EnableLocalPassword": false,
+      "OrderedViews": [],
+      "LatestItemsExcludes": [],
+      "MyMediaExcludes": [],
+      "HidePlayedInLatest": true,
+      "RememberAudioSelections": true,
+      "RememberSubtitleSelections": true,
+      "EnableNextEpisodeAutoPlay": true,
+      "CastReceiverId": "F007D354"
+     },
+     "Policy": {
+      "IsAdministrator": false,
+      "IsHidden": true,
+      "EnableCollectionManagement": false,
+      "EnableSubtitleManagement": false,
+      "EnableLyricManagement": false,
+      "IsDisabled": false,
+      "BlockedTags": [],
+      "AllowedTags": [],
+      "EnableUserPreferenceAccess": true,
+      "AccessSchedules": [],
+      "BlockUnratedItems": [],
+      "EnableRemoteControlOfOtherUsers": false,
+      "EnableSharedDeviceControl": true,
+      "EnableRemoteAccess": true,
+      "EnableLiveTvManagement": false,
+      "EnableLiveTvAccess": true,
+      "EnableMediaPlayback": true,
+      "EnableAudioPlaybackTranscoding": true,
+      "EnableVideoPlaybackTranscoding": true,
+      "EnablePlaybackRemuxing": true,
+      "ForceRemoteSourceTranscoding": false,
+      "EnableContentDeletion": false,
+      "EnableContentDeletionFromFolders": [],
+      "EnableContentDownloading": true,
+      "EnableSyncTranscoding": true,
+      "EnableMediaConversion": true,
+      "EnabledDevices": [],
+      "EnableAllDevices": true,
+      "EnabledChannels": [],
+      "EnableAllChannels": true,
+      "EnabledFolders": [],
+      "EnableAllFolders": true,
+      "InvalidLoginAttemptCount": 0,
+      "LoginAttemptsBeforeLockout": -1,
+      "MaxActiveSessions": 0,
+      "EnablePublicSharing": true,
+      "BlockedMediaFolders": [],
+      "BlockedChannels": [],
+      "RemoteClientBitrateLimit": 0,
+      "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+      "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+      "SyncPlayAccess": "CreateAndJoinGroups"
+     }
+    },
+    "SessionInfo": {
+     "PlayState": {
+      "CanSeek": false,
+      "IsPaused": false,
+      "IsMuted": false,
+      "RepeatMode": "RepeatNone",
+      "PlaybackOrder": "Default"
+     },
+     "AdditionalUsers": [],
+     "Capabilities": {
+      "PlayableMediaTypes": [],
+      "SupportedCommands": [],
+      "SupportsMediaControl": false,
+      "SupportsPersistentIdentifier": true
+     },
+     "PlayableMediaTypes": [],
+     "Id": "9061bf8379c75d99684d3350409355b6",
+     "UserId": "{userid:viewer}",
+     "UserName": "viewer",
+     "Client": "capture",
+     "LastActivityDate": "2026-11-26T13:39:53.7627586Z",
+     "LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+     "DeviceName": "TV-tv1",
+     "DeviceId": "dev-tv1",
+     "ApplicationVersion": "1.0",
+     "IsActive": true,
+     "SupportsMediaControl": false,
+     "SupportsRemoteControl": false,
+     "NowPlayingQueue": [],
+     "HasCustomDeviceName": false,
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "SupportedCommands": []
+    },
+    "AccessToken": "{token:tv1-first}",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0"
+   }
+  },
+  {
+   "section": "on",
+   "name": "redeem a second time",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-tv1\", DeviceId=\"dev-tv1\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"{secret:tv1}\"}",
+   "saves": "tv1-second",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "User": {
+     "Name": "viewer",
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "Id": "{userid:viewer}",
+     "HasPassword": true,
+     "HasConfiguredPassword": true,
+     "HasConfiguredEasyPassword": false,
+     "EnableAutoLogin": false,
+     "LastLoginDate": "2026-11-26T13:39:53.6125831Z",
+     "LastActivityDate": "2026-11-26T13:39:53.6125831Z",
+     "Configuration": {
+      "PlayDefaultAudioTrack": true,
+      "SubtitleLanguagePreference": "",
+      "DisplayMissingEpisodes": false,
+      "GroupedFolders": [],
+      "SubtitleMode": "Default",
+      "DisplayCollectionsView": false,
+      "EnableLocalPassword": false,
+      "OrderedViews": [],
+      "LatestItemsExcludes": [],
+      "MyMediaExcludes": [],
+      "HidePlayedInLatest": true,
+      "RememberAudioSelections": true,
+      "RememberSubtitleSelections": true,
+      "EnableNextEpisodeAutoPlay": true,
+      "CastReceiverId": "F007D354"
+     },
+     "Policy": {
+      "IsAdministrator": false,
+      "IsHidden": true,
+      "EnableCollectionManagement": false,
+      "EnableSubtitleManagement": false,
+      "EnableLyricManagement": false,
+      "IsDisabled": false,
+      "BlockedTags": [],
+      "AllowedTags": [],
+      "EnableUserPreferenceAccess": true,
+      "AccessSchedules": [],
+      "BlockUnratedItems": [],
+      "EnableRemoteControlOfOtherUsers": false,
+      "EnableSharedDeviceControl": true,
+      "EnableRemoteAccess": true,
+      "EnableLiveTvManagement": false,
+      "EnableLiveTvAccess": true,
+      "EnableMediaPlayback": true,
+      "EnableAudioPlaybackTranscoding": true,
+      "EnableVideoPlaybackTranscoding": true,
+      "EnablePlaybackRemuxing": true,
+      "ForceRemoteSourceTranscoding": false,
+      "EnableContentDeletion": false,
+      "EnableContentDeletionFromFolders": [],
+      "EnableContentDownloading": true,
+      "EnableSyncTranscoding": true,
+      "EnableMediaConversion": true,
+      "EnabledDevices": [],
+      "EnableAllDevices": true,
+      "EnabledChannels": [],
+      "EnableAllChannels": true,
+      "EnabledFolders": [],
+      "EnableAllFolders": true,
+      "InvalidLoginAttemptCount": 0,
+      "LoginAttemptsBeforeLockout": -1,
+      "MaxActiveSessions": 0,
+      "EnablePublicSharing": true,
+      "BlockedMediaFolders": [],
+      "BlockedChannels": [],
+      "RemoteClientBitrateLimit": 0,
+      "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+      "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+      "SyncPlayAccess": "CreateAndJoinGroups"
+     }
+    },
+    "SessionInfo": {
+     "PlayState": {
+      "CanSeek": false,
+      "IsPaused": false,
+      "IsMuted": false,
+      "RepeatMode": "RepeatNone",
+      "PlaybackOrder": "Default"
+     },
+     "AdditionalUsers": [],
+     "Capabilities": {
+      "PlayableMediaTypes": [],
+      "SupportedCommands": [],
+      "SupportsMediaControl": false,
+      "SupportsPersistentIdentifier": true
+     },
+     "PlayableMediaTypes": [],
+     "Id": "9061bf8379c75d99684d3350409355b6",
+     "UserId": "{userid:viewer}",
+     "UserName": "viewer",
+     "Client": "capture",
+     "LastActivityDate": "2026-11-26T13:39:53.7627586Z",
+     "LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+     "DeviceName": "TV-tv1",
+     "DeviceId": "dev-tv1",
+     "ApplicationVersion": "1.0",
+     "IsActive": true,
+     "SupportsMediaControl": false,
+     "SupportsRemoteControl": false,
+     "NowPlayingQueue": [],
+     "HasCustomDeviceName": false,
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "SupportedCommands": []
+    },
+    "AccessToken": "{token:tv1-first}",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0"
+   }
+  },
+  {
+   "section": "on",
+   "name": "first token after the second redemption",
+   "action": "request",
+   "method": "GET",
+   "path": "/Users/Me",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-probe\", DeviceId=\"dev-probe\", Version=\"1.0\", Token=\"{token:tv1-first}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Name": "viewer",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+    "Id": "{userid:viewer}",
+    "HasPassword": true,
+    "HasConfiguredPassword": true,
+    "HasConfiguredEasyPassword": false,
+    "EnableAutoLogin": false,
+    "LastLoginDate": "2026-11-26T13:39:53.6125831Z",
+    "LastActivityDate": "2026-11-26T13:39:53.6125831Z",
+    "Configuration": {
+     "PlayDefaultAudioTrack": true,
+     "SubtitleLanguagePreference": "",
+     "DisplayMissingEpisodes": false,
+     "GroupedFolders": [],
+     "SubtitleMode": "Default",
+     "DisplayCollectionsView": false,
+     "EnableLocalPassword": false,
+     "OrderedViews": [],
+     "LatestItemsExcludes": [],
+     "MyMediaExcludes": [],
+     "HidePlayedInLatest": true,
+     "RememberAudioSelections": true,
+     "RememberSubtitleSelections": true,
+     "EnableNextEpisodeAutoPlay": true,
+     "CastReceiverId": "F007D354"
+    },
+    "Policy": {
+     "IsAdministrator": false,
+     "IsHidden": true,
+     "EnableCollectionManagement": false,
+     "EnableSubtitleManagement": false,
+     "EnableLyricManagement": false,
+     "IsDisabled": false,
+     "BlockedTags": [],
+     "AllowedTags": [],
+     "EnableUserPreferenceAccess": true,
+     "AccessSchedules": [],
+     "BlockUnratedItems": [],
+     "EnableRemoteControlOfOtherUsers": false,
+     "EnableSharedDeviceControl": true,
+     "EnableRemoteAccess": true,
+     "EnableLiveTvManagement": false,
+     "EnableLiveTvAccess": true,
+     "EnableMediaPlayback": true,
+     "EnableAudioPlaybackTranscoding": true,
+     "EnableVideoPlaybackTranscoding": true,
+     "EnablePlaybackRemuxing": true,
+     "ForceRemoteSourceTranscoding": false,
+     "EnableContentDeletion": false,
+     "EnableContentDeletionFromFolders": [],
+     "EnableContentDownloading": true,
+     "EnableSyncTranscoding": true,
+     "EnableMediaConversion": true,
+     "EnabledDevices": [],
+     "EnableAllDevices": true,
+     "EnabledChannels": [],
+     "EnableAllChannels": true,
+     "EnabledFolders": [],
+     "EnableAllFolders": true,
+     "InvalidLoginAttemptCount": 0,
+     "LoginAttemptsBeforeLockout": -1,
+     "MaxActiveSessions": 0,
+     "EnablePublicSharing": true,
+     "BlockedMediaFolders": [],
+     "BlockedChannels": [],
+     "RemoteClientBitrateLimit": 0,
+     "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+     "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+     "SyncPlayAccess": "CreateAndJoinGroups"
+    }
+   }
+  },
+  {
+   "section": "on",
+   "name": "second token",
+   "action": "request",
+   "method": "GET",
+   "path": "/Users/Me",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-probe\", DeviceId=\"dev-probe\", Version=\"1.0\", Token=\"{token:tv1-second}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Name": "viewer",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+    "Id": "{userid:viewer}",
+    "HasPassword": true,
+    "HasConfiguredPassword": true,
+    "HasConfiguredEasyPassword": false,
+    "EnableAutoLogin": false,
+    "LastLoginDate": "2026-11-26T13:39:53.6125831Z",
+    "LastActivityDate": "2026-11-26T13:39:53.6125831Z",
+    "Configuration": {
+     "PlayDefaultAudioTrack": true,
+     "SubtitleLanguagePreference": "",
+     "DisplayMissingEpisodes": false,
+     "GroupedFolders": [],
+     "SubtitleMode": "Default",
+     "DisplayCollectionsView": false,
+     "EnableLocalPassword": false,
+     "OrderedViews": [],
+     "LatestItemsExcludes": [],
+     "MyMediaExcludes": [],
+     "HidePlayedInLatest": true,
+     "RememberAudioSelections": true,
+     "RememberSubtitleSelections": true,
+     "EnableNextEpisodeAutoPlay": true,
+     "CastReceiverId": "F007D354"
+    },
+    "Policy": {
+     "IsAdministrator": false,
+     "IsHidden": true,
+     "EnableCollectionManagement": false,
+     "EnableSubtitleManagement": false,
+     "EnableLyricManagement": false,
+     "IsDisabled": false,
+     "BlockedTags": [],
+     "AllowedTags": [],
+     "EnableUserPreferenceAccess": true,
+     "AccessSchedules": [],
+     "BlockUnratedItems": [],
+     "EnableRemoteControlOfOtherUsers": false,
+     "EnableSharedDeviceControl": true,
+     "EnableRemoteAccess": true,
+     "EnableLiveTvManagement": false,
+     "EnableLiveTvAccess": true,
+     "EnableMediaPlayback": true,
+     "EnableAudioPlaybackTranscoding": true,
+     "EnableVideoPlaybackTranscoding": true,
+     "EnablePlaybackRemuxing": true,
+     "ForceRemoteSourceTranscoding": false,
+     "EnableContentDeletion": false,
+     "EnableContentDeletionFromFolders": [],
+     "EnableContentDownloading": true,
+     "EnableSyncTranscoding": true,
+     "EnableMediaConversion": true,
+     "EnabledDevices": [],
+     "EnableAllDevices": true,
+     "EnabledChannels": [],
+     "EnableAllChannels": true,
+     "EnabledFolders": [],
+     "EnableAllFolders": true,
+     "InvalidLoginAttemptCount": 0,
+     "LoginAttemptsBeforeLockout": -1,
+     "MaxActiveSessions": 0,
+     "EnablePublicSharing": true,
+     "BlockedMediaFolders": [],
+     "BlockedChannels": [],
+     "RemoteClientBitrateLimit": 0,
+     "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+     "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+     "SyncPlayAccess": "CreateAndJoinGroups"
+    }
+   }
+  },
+  {
+   "section": "on",
+   "name": "connect after redemption",
+   "action": "request",
+   "method": "GET",
+   "path": "/QuickConnect/Connect?Secret={secret:tv1}",
+   "headers": {},
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": true,
+    "Secret": "{secret:tv1}",
+    "Code": "{code:tv1}",
+    "DeviceId": "dev-tv1",
+    "DeviceName": "TV-tv1",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:40:53.7598119Z"
+   }
+  },
+  {
+   "section": "on",
+   "name": "approve after redemption",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:tv1}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-viewer\", DeviceId=\"dev-approver-viewer\", Version=\"1.0\", Token=\"{token:viewer}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 500,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "initiate",
+   "name": "initiate without Client",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Device=\"TV-field\", DeviceId=\"dev-field\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 400,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "initiate",
+   "name": "initiate with an empty Client",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"\", Device=\"TV-field\", DeviceId=\"dev-field\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 400,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "initiate",
+   "name": "initiate without Device",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", DeviceId=\"dev-field\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 400,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "initiate",
+   "name": "initiate with an empty Device",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"\", DeviceId=\"dev-field\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 400,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "initiate",
+   "name": "initiate without DeviceId",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-field\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 400,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "initiate",
+   "name": "initiate with an empty DeviceId",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-field\", DeviceId=\"\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 400,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "initiate",
+   "name": "initiate without Version",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-field\", DeviceId=\"dev-field\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 400,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "initiate",
+   "name": "initiate with an empty Version",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-field\", DeviceId=\"dev-field\", Version=\"\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 400,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "initiate",
+   "name": "initiate with no Authorization",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {},
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 400,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "initiate",
+   "name": "password_signin 36",
+   "action": "password_signin",
+   "user": "viewer",
+   "device": "to-revoke",
+   "token": "revoked"
+  },
+  {
+   "section": "initiate",
+   "name": "sign the token out",
+   "action": "request",
+   "method": "POST",
+   "path": "/Sessions/Logout",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-to-revoke\", DeviceId=\"dev-to-revoke\", Version=\"1.0\", Token=\"{token:revoked}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 204,
+   "response_headers": {},
+   "response": ""
+  },
+  {
+   "section": "initiate",
+   "name": "initiate with the unknown token",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-stale-unknown\", DeviceId=\"dev-stale-unknown\", Version=\"1.0\", Token=\"{token:unknown}\""
+   },
+   "body": null,
+   "saves": "stale-unknown",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:stale-unknown}",
+    "Code": "{code:stale-unknown}",
+    "DeviceId": "dev-stale-unknown",
+    "DeviceName": "TV-stale-unknown",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:53.914729Z"
+   }
+  },
+  {
+   "section": "initiate",
+   "name": "connect with the unknown token",
+   "action": "request",
+   "method": "GET",
+   "path": "/QuickConnect/Connect?Secret={secret:stale-unknown}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-stale-unknown\", DeviceId=\"dev-stale-unknown\", Version=\"1.0\", Token=\"{token:unknown}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:stale-unknown}",
+    "Code": "{code:stale-unknown}",
+    "DeviceId": "dev-stale-unknown",
+    "DeviceName": "TV-stale-unknown",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:53.914729Z"
+   }
+  },
+  {
+   "section": "initiate",
+   "name": "approve the code initiated with the unknown token",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:stale-unknown}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-viewer\", DeviceId=\"dev-approver-viewer\", Version=\"1.0\", Token=\"{token:viewer}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": true
+  },
+  {
+   "section": "initiate",
+   "name": "redeem with the unknown token",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "X-Emby-Token": "{token:unknown}",
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-stale-unknown\", DeviceId=\"dev-stale-unknown\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"{secret:stale-unknown}\"}",
+   "saves": "stale-unknown",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "User": {
+     "Name": "viewer",
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "Id": "{userid:viewer}",
+     "HasPassword": true,
+     "HasConfiguredPassword": true,
+     "HasConfiguredEasyPassword": false,
+     "EnableAutoLogin": false,
+     "LastLoginDate": "2026-11-26T13:39:53.8942515Z",
+     "LastActivityDate": "2026-11-26T13:39:53.8942515Z",
+     "Configuration": {
+      "PlayDefaultAudioTrack": true,
+      "SubtitleLanguagePreference": "",
+      "DisplayMissingEpisodes": false,
+      "GroupedFolders": [],
+      "SubtitleMode": "Default",
+      "DisplayCollectionsView": false,
+      "EnableLocalPassword": false,
+      "OrderedViews": [],
+      "LatestItemsExcludes": [],
+      "MyMediaExcludes": [],
+      "HidePlayedInLatest": true,
+      "RememberAudioSelections": true,
+      "RememberSubtitleSelections": true,
+      "EnableNextEpisodeAutoPlay": true,
+      "CastReceiverId": "F007D354"
+     },
+     "Policy": {
+      "IsAdministrator": false,
+      "IsHidden": true,
+      "EnableCollectionManagement": false,
+      "EnableSubtitleManagement": false,
+      "EnableLyricManagement": false,
+      "IsDisabled": false,
+      "BlockedTags": [],
+      "AllowedTags": [],
+      "EnableUserPreferenceAccess": true,
+      "AccessSchedules": [],
+      "BlockUnratedItems": [],
+      "EnableRemoteControlOfOtherUsers": false,
+      "EnableSharedDeviceControl": true,
+      "EnableRemoteAccess": true,
+      "EnableLiveTvManagement": false,
+      "EnableLiveTvAccess": true,
+      "EnableMediaPlayback": true,
+      "EnableAudioPlaybackTranscoding": true,
+      "EnableVideoPlaybackTranscoding": true,
+      "EnablePlaybackRemuxing": true,
+      "ForceRemoteSourceTranscoding": false,
+      "EnableContentDeletion": false,
+      "EnableContentDeletionFromFolders": [],
+      "EnableContentDownloading": true,
+      "EnableSyncTranscoding": true,
+      "EnableMediaConversion": true,
+      "EnabledDevices": [],
+      "EnableAllDevices": true,
+      "EnabledChannels": [],
+      "EnableAllChannels": true,
+      "EnabledFolders": [],
+      "EnableAllFolders": true,
+      "InvalidLoginAttemptCount": 0,
+      "LoginAttemptsBeforeLockout": -1,
+      "MaxActiveSessions": 0,
+      "EnablePublicSharing": true,
+      "BlockedMediaFolders": [],
+      "BlockedChannels": [],
+      "RemoteClientBitrateLimit": 0,
+      "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+      "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+      "SyncPlayAccess": "CreateAndJoinGroups"
+     }
+    },
+    "SessionInfo": {
+     "PlayState": {
+      "CanSeek": false,
+      "IsPaused": false,
+      "IsMuted": false,
+      "RepeatMode": "RepeatNone",
+      "PlaybackOrder": "Default"
+     },
+     "AdditionalUsers": [],
+     "Capabilities": {
+      "PlayableMediaTypes": [],
+      "SupportedCommands": [],
+      "SupportsMediaControl": false,
+      "SupportsPersistentIdentifier": true
+     },
+     "PlayableMediaTypes": [],
+     "Id": "431663ac6324d5a233719338c9cf5c1e",
+     "UserId": "{userid:viewer}",
+     "UserName": "viewer",
+     "Client": "capture",
+     "LastActivityDate": "2026-11-26T13:39:53.9243359Z",
+     "LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+     "DeviceName": "TV-stale-unknown",
+     "DeviceId": "dev-stale-unknown",
+     "ApplicationVersion": "1.0",
+     "IsActive": true,
+     "SupportsMediaControl": false,
+     "SupportsRemoteControl": false,
+     "NowPlayingQueue": [],
+     "HasCustomDeviceName": false,
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "SupportedCommands": []
+    },
+    "AccessToken": "{token:stale-unknown}",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0"
+   }
+  },
+  {
+   "section": "initiate",
+   "name": "initiate with the revoked token",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-stale-revoked\", DeviceId=\"dev-stale-revoked\", Version=\"1.0\", Token=\"{token:revoked}\""
+   },
+   "body": null,
+   "saves": "stale-revoked",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:stale-revoked}",
+    "Code": "{code:stale-revoked}",
+    "DeviceId": "dev-stale-revoked",
+    "DeviceName": "TV-stale-revoked",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:53.9270685Z"
+   }
+  },
+  {
+   "section": "initiate",
+   "name": "connect with the revoked token",
+   "action": "request",
+   "method": "GET",
+   "path": "/QuickConnect/Connect?Secret={secret:stale-revoked}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-stale-revoked\", DeviceId=\"dev-stale-revoked\", Version=\"1.0\", Token=\"{token:revoked}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:stale-revoked}",
+    "Code": "{code:stale-revoked}",
+    "DeviceId": "dev-stale-revoked",
+    "DeviceName": "TV-stale-revoked",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:53.9270685Z"
+   }
+  },
+  {
+   "section": "initiate",
+   "name": "approve the code initiated with the revoked token",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:stale-revoked}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-viewer\", DeviceId=\"dev-approver-viewer\", Version=\"1.0\", Token=\"{token:viewer}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": true
+  },
+  {
+   "section": "initiate",
+   "name": "redeem with the revoked token",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "X-Emby-Token": "{token:revoked}",
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-stale-revoked\", DeviceId=\"dev-stale-revoked\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"{secret:stale-revoked}\"}",
+   "saves": "stale-revoked",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "User": {
+     "Name": "viewer",
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "Id": "{userid:viewer}",
+     "HasPassword": true,
+     "HasConfiguredPassword": true,
+     "HasConfiguredEasyPassword": false,
+     "EnableAutoLogin": false,
+     "LastLoginDate": "2026-11-26T13:39:53.8942515Z",
+     "LastActivityDate": "2026-11-26T13:39:53.8942515Z",
+     "Configuration": {
+      "PlayDefaultAudioTrack": true,
+      "SubtitleLanguagePreference": "",
+      "DisplayMissingEpisodes": false,
+      "GroupedFolders": [],
+      "SubtitleMode": "Default",
+      "DisplayCollectionsView": false,
+      "EnableLocalPassword": false,
+      "OrderedViews": [],
+      "LatestItemsExcludes": [],
+      "MyMediaExcludes": [],
+      "HidePlayedInLatest": true,
+      "RememberAudioSelections": true,
+      "RememberSubtitleSelections": true,
+      "EnableNextEpisodeAutoPlay": true,
+      "CastReceiverId": "F007D354"
+     },
+     "Policy": {
+      "IsAdministrator": false,
+      "IsHidden": true,
+      "EnableCollectionManagement": false,
+      "EnableSubtitleManagement": false,
+      "EnableLyricManagement": false,
+      "IsDisabled": false,
+      "BlockedTags": [],
+      "AllowedTags": [],
+      "EnableUserPreferenceAccess": true,
+      "AccessSchedules": [],
+      "BlockUnratedItems": [],
+      "EnableRemoteControlOfOtherUsers": false,
+      "EnableSharedDeviceControl": true,
+      "EnableRemoteAccess": true,
+      "EnableLiveTvManagement": false,
+      "EnableLiveTvAccess": true,
+      "EnableMediaPlayback": true,
+      "EnableAudioPlaybackTranscoding": true,
+      "EnableVideoPlaybackTranscoding": true,
+      "EnablePlaybackRemuxing": true,
+      "ForceRemoteSourceTranscoding": false,
+      "EnableContentDeletion": false,
+      "EnableContentDeletionFromFolders": [],
+      "EnableContentDownloading": true,
+      "EnableSyncTranscoding": true,
+      "EnableMediaConversion": true,
+      "EnabledDevices": [],
+      "EnableAllDevices": true,
+      "EnabledChannels": [],
+      "EnableAllChannels": true,
+      "EnabledFolders": [],
+      "EnableAllFolders": true,
+      "InvalidLoginAttemptCount": 0,
+      "LoginAttemptsBeforeLockout": -1,
+      "MaxActiveSessions": 0,
+      "EnablePublicSharing": true,
+      "BlockedMediaFolders": [],
+      "BlockedChannels": [],
+      "RemoteClientBitrateLimit": 0,
+      "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+      "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+      "SyncPlayAccess": "CreateAndJoinGroups"
+     }
+    },
+    "SessionInfo": {
+     "PlayState": {
+      "CanSeek": false,
+      "IsPaused": false,
+      "IsMuted": false,
+      "RepeatMode": "RepeatNone",
+      "PlaybackOrder": "Default"
+     },
+     "AdditionalUsers": [],
+     "Capabilities": {
+      "PlayableMediaTypes": [],
+      "SupportedCommands": [],
+      "SupportsMediaControl": false,
+      "SupportsPersistentIdentifier": true
+     },
+     "PlayableMediaTypes": [],
+     "Id": "d286bcbcd237abecca37524b92f0d077",
+     "UserId": "{userid:viewer}",
+     "UserName": "viewer",
+     "Client": "capture",
+     "LastActivityDate": "2026-11-26T13:39:53.9370293Z",
+     "LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+     "DeviceName": "TV-stale-revoked",
+     "DeviceId": "dev-stale-revoked",
+     "ApplicationVersion": "1.0",
+     "IsActive": true,
+     "SupportsMediaControl": false,
+     "SupportsRemoteControl": false,
+     "NowPlayingQueue": [],
+     "HasCustomDeviceName": false,
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "SupportedCommands": []
+    },
+    "AccessToken": "{token:stale-revoked}",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0"
+   }
+  },
+  {
+   "section": "initiate",
+   "name": "initiate with the other token",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-stale-other\", DeviceId=\"dev-stale-other\", Version=\"1.0\", Token=\"{token:other}\""
+   },
+   "body": null,
+   "saves": "stale-other",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:stale-other}",
+    "Code": "{code:stale-other}",
+    "DeviceId": "dev-stale-other",
+    "DeviceName": "TV-stale-other",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:53.9444559Z"
+   }
+  },
+  {
+   "section": "initiate",
+   "name": "connect with the other token",
+   "action": "request",
+   "method": "GET",
+   "path": "/QuickConnect/Connect?Secret={secret:stale-other}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-stale-other\", DeviceId=\"dev-stale-other\", Version=\"1.0\", Token=\"{token:other}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:stale-other}",
+    "Code": "{code:stale-other}",
+    "DeviceId": "dev-stale-other",
+    "DeviceName": "TV-stale-other",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:53.9444559Z"
+   }
+  },
+  {
+   "section": "initiate",
+   "name": "approve the code initiated with the other token",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:stale-other}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-viewer\", DeviceId=\"dev-approver-viewer\", Version=\"1.0\", Token=\"{token:viewer}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": true
+  },
+  {
+   "section": "initiate",
+   "name": "redeem with the other token",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "X-Emby-Token": "{token:other}",
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-stale-other\", DeviceId=\"dev-stale-other\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"{secret:stale-other}\"}",
+   "saves": "stale-other",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "User": {
+     "Name": "viewer",
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "Id": "{userid:viewer}",
+     "HasPassword": true,
+     "HasConfiguredPassword": true,
+     "HasConfiguredEasyPassword": false,
+     "EnableAutoLogin": false,
+     "LastLoginDate": "2026-11-26T13:39:53.8942515Z",
+     "LastActivityDate": "2026-11-26T13:39:53.8942515Z",
+     "Configuration": {
+      "PlayDefaultAudioTrack": true,
+      "SubtitleLanguagePreference": "",
+      "DisplayMissingEpisodes": false,
+      "GroupedFolders": [],
+      "SubtitleMode": "Default",
+      "DisplayCollectionsView": false,
+      "EnableLocalPassword": false,
+      "OrderedViews": [],
+      "LatestItemsExcludes": [],
+      "MyMediaExcludes": [],
+      "HidePlayedInLatest": true,
+      "RememberAudioSelections": true,
+      "RememberSubtitleSelections": true,
+      "EnableNextEpisodeAutoPlay": true,
+      "CastReceiverId": "F007D354"
+     },
+     "Policy": {
+      "IsAdministrator": false,
+      "IsHidden": true,
+      "EnableCollectionManagement": false,
+      "EnableSubtitleManagement": false,
+      "EnableLyricManagement": false,
+      "IsDisabled": false,
+      "BlockedTags": [],
+      "AllowedTags": [],
+      "EnableUserPreferenceAccess": true,
+      "AccessSchedules": [],
+      "BlockUnratedItems": [],
+      "EnableRemoteControlOfOtherUsers": false,
+      "EnableSharedDeviceControl": true,
+      "EnableRemoteAccess": true,
+      "EnableLiveTvManagement": false,
+      "EnableLiveTvAccess": true,
+      "EnableMediaPlayback": true,
+      "EnableAudioPlaybackTranscoding": true,
+      "EnableVideoPlaybackTranscoding": true,
+      "EnablePlaybackRemuxing": true,
+      "ForceRemoteSourceTranscoding": false,
+      "EnableContentDeletion": false,
+      "EnableContentDeletionFromFolders": [],
+      "EnableContentDownloading": true,
+      "EnableSyncTranscoding": true,
+      "EnableMediaConversion": true,
+      "EnabledDevices": [],
+      "EnableAllDevices": true,
+      "EnabledChannels": [],
+      "EnableAllChannels": true,
+      "EnabledFolders": [],
+      "EnableAllFolders": true,
+      "InvalidLoginAttemptCount": 0,
+      "LoginAttemptsBeforeLockout": -1,
+      "MaxActiveSessions": 0,
+      "EnablePublicSharing": true,
+      "BlockedMediaFolders": [],
+      "BlockedChannels": [],
+      "RemoteClientBitrateLimit": 0,
+      "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+      "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+      "SyncPlayAccess": "CreateAndJoinGroups"
+     }
+    },
+    "SessionInfo": {
+     "PlayState": {
+      "CanSeek": false,
+      "IsPaused": false,
+      "IsMuted": false,
+      "RepeatMode": "RepeatNone",
+      "PlaybackOrder": "Default"
+     },
+     "AdditionalUsers": [],
+     "Capabilities": {
+      "PlayableMediaTypes": [],
+      "SupportedCommands": [],
+      "SupportsMediaControl": false,
+      "SupportsPersistentIdentifier": true
+     },
+     "PlayableMediaTypes": [],
+     "Id": "aa24f155781ca667b64a54cec07c4487",
+     "UserId": "{userid:viewer}",
+     "UserName": "viewer",
+     "Client": "capture",
+     "LastActivityDate": "2026-11-26T13:39:53.9562073Z",
+     "LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+     "DeviceName": "TV-stale-other",
+     "DeviceId": "dev-stale-other",
+     "ApplicationVersion": "1.0",
+     "IsActive": true,
+     "SupportsMediaControl": false,
+     "SupportsRemoteControl": false,
+     "NowPlayingQueue": [],
+     "HasCustomDeviceName": false,
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "SupportedCommands": []
+    },
+    "AccessToken": "{token:stale-other}",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0"
+   }
+  },
+  {
+   "section": "initiate",
+   "name": "the other account's token after being sent along",
+   "action": "request",
+   "method": "GET",
+   "path": "/Users/Me",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-probe\", DeviceId=\"dev-probe\", Version=\"1.0\", Token=\"{token:other}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Name": "other",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+    "Id": "{userid:other}",
+    "HasPassword": true,
+    "HasConfiguredPassword": true,
+    "HasConfiguredEasyPassword": false,
+    "EnableAutoLogin": false,
+    "LastLoginDate": "2026-11-26T13:39:53.6972688Z",
+    "LastActivityDate": "2026-11-26T13:39:53.6972688Z",
+    "Configuration": {
+     "PlayDefaultAudioTrack": true,
+     "SubtitleLanguagePreference": "",
+     "DisplayMissingEpisodes": false,
+     "GroupedFolders": [],
+     "SubtitleMode": "Default",
+     "DisplayCollectionsView": false,
+     "EnableLocalPassword": false,
+     "OrderedViews": [],
+     "LatestItemsExcludes": [],
+     "MyMediaExcludes": [],
+     "HidePlayedInLatest": true,
+     "RememberAudioSelections": true,
+     "RememberSubtitleSelections": true,
+     "EnableNextEpisodeAutoPlay": true,
+     "CastReceiverId": "F007D354"
+    },
+    "Policy": {
+     "IsAdministrator": false,
+     "IsHidden": true,
+     "EnableCollectionManagement": false,
+     "EnableSubtitleManagement": false,
+     "EnableLyricManagement": false,
+     "IsDisabled": false,
+     "BlockedTags": [],
+     "AllowedTags": [],
+     "EnableUserPreferenceAccess": true,
+     "AccessSchedules": [],
+     "BlockUnratedItems": [],
+     "EnableRemoteControlOfOtherUsers": false,
+     "EnableSharedDeviceControl": true,
+     "EnableRemoteAccess": true,
+     "EnableLiveTvManagement": false,
+     "EnableLiveTvAccess": true,
+     "EnableMediaPlayback": true,
+     "EnableAudioPlaybackTranscoding": true,
+     "EnableVideoPlaybackTranscoding": true,
+     "EnablePlaybackRemuxing": true,
+     "ForceRemoteSourceTranscoding": false,
+     "EnableContentDeletion": false,
+     "EnableContentDeletionFromFolders": [],
+     "EnableContentDownloading": true,
+     "EnableSyncTranscoding": true,
+     "EnableMediaConversion": true,
+     "EnabledDevices": [],
+     "EnableAllDevices": true,
+     "EnabledChannels": [],
+     "EnableAllChannels": true,
+     "EnabledFolders": [],
+     "EnableAllFolders": true,
+     "InvalidLoginAttemptCount": 0,
+     "LoginAttemptsBeforeLockout": -1,
+     "MaxActiveSessions": 0,
+     "EnablePublicSharing": true,
+     "BlockedMediaFolders": [],
+     "BlockedChannels": [],
+     "RemoteClientBitrateLimit": 0,
+     "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+     "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+     "SyncPlayAccess": "CreateAndJoinGroups"
+    }
+   }
+  },
+  {
+   "section": "naming",
+   "name": "initiate for the administrator",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-adm-self\", DeviceId=\"dev-adm-self\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": "adm-self",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:adm-self}",
+    "Code": "{code:adm-self}",
+    "DeviceId": "dev-adm-self",
+    "DeviceName": "TV-adm-self",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:53.9666902Z"
+   }
+  },
+  {
+   "section": "naming",
+   "name": "administrator approves naming themselves",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:adm-self}&userId={userid:admin}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-admin\", DeviceId=\"dev-approver-admin\", Version=\"1.0\", Token=\"{token:admin}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": true
+  },
+  {
+   "section": "naming",
+   "name": "redeem the administrator's own approval",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-adm-self\", DeviceId=\"dev-adm-self\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"{secret:adm-self}\"}",
+   "saves": "adm-self",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "User": {
+     "Name": "admin",
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "Id": "{userid:admin}",
+     "HasPassword": true,
+     "HasConfiguredPassword": true,
+     "HasConfiguredEasyPassword": false,
+     "EnableAutoLogin": false,
+     "LastLoginDate": "2026-11-26T13:39:53.5267904Z",
+     "LastActivityDate": "2026-11-26T13:39:53.5267904Z",
+     "Configuration": {
+      "PlayDefaultAudioTrack": true,
+      "SubtitleLanguagePreference": "",
+      "DisplayMissingEpisodes": false,
+      "GroupedFolders": [],
+      "SubtitleMode": "Default",
+      "DisplayCollectionsView": false,
+      "EnableLocalPassword": false,
+      "OrderedViews": [],
+      "LatestItemsExcludes": [],
+      "MyMediaExcludes": [],
+      "HidePlayedInLatest": true,
+      "RememberAudioSelections": true,
+      "RememberSubtitleSelections": true,
+      "EnableNextEpisodeAutoPlay": true,
+      "CastReceiverId": "F007D354"
+     },
+     "Policy": {
+      "IsAdministrator": true,
+      "IsHidden": true,
+      "EnableCollectionManagement": false,
+      "EnableSubtitleManagement": false,
+      "EnableLyricManagement": false,
+      "IsDisabled": false,
+      "BlockedTags": [],
+      "AllowedTags": [],
+      "EnableUserPreferenceAccess": true,
+      "AccessSchedules": [],
+      "BlockUnratedItems": [],
+      "EnableRemoteControlOfOtherUsers": true,
+      "EnableSharedDeviceControl": true,
+      "EnableRemoteAccess": true,
+      "EnableLiveTvManagement": false,
+      "EnableLiveTvAccess": true,
+      "EnableMediaPlayback": true,
+      "EnableAudioPlaybackTranscoding": true,
+      "EnableVideoPlaybackTranscoding": true,
+      "EnablePlaybackRemuxing": true,
+      "ForceRemoteSourceTranscoding": false,
+      "EnableContentDeletion": true,
+      "EnableContentDeletionFromFolders": [],
+      "EnableContentDownloading": true,
+      "EnableSyncTranscoding": true,
+      "EnableMediaConversion": true,
+      "EnabledDevices": [],
+      "EnableAllDevices": true,
+      "EnabledChannels": [],
+      "EnableAllChannels": true,
+      "EnabledFolders": [],
+      "EnableAllFolders": true,
+      "InvalidLoginAttemptCount": 0,
+      "LoginAttemptsBeforeLockout": -1,
+      "MaxActiveSessions": 0,
+      "EnablePublicSharing": true,
+      "BlockedMediaFolders": [],
+      "BlockedChannels": [],
+      "RemoteClientBitrateLimit": 0,
+      "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+      "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+      "SyncPlayAccess": "CreateAndJoinGroups"
+     }
+    },
+    "SessionInfo": {
+     "PlayState": {
+      "CanSeek": false,
+      "IsPaused": false,
+      "IsMuted": false,
+      "RepeatMode": "RepeatNone",
+      "PlaybackOrder": "Default"
+     },
+     "AdditionalUsers": [],
+     "Capabilities": {
+      "PlayableMediaTypes": [],
+      "SupportedCommands": [],
+      "SupportsMediaControl": false,
+      "SupportsPersistentIdentifier": true
+     },
+     "PlayableMediaTypes": [],
+     "Id": "5a6acbf9a4617b1bb82d55b54a60289d",
+     "UserId": "{userid:admin}",
+     "UserName": "admin",
+     "Client": "capture",
+     "LastActivityDate": "2026-11-26T13:39:53.975092Z",
+     "LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+     "DeviceName": "TV-adm-self",
+     "DeviceId": "dev-adm-self",
+     "ApplicationVersion": "1.0",
+     "IsActive": true,
+     "SupportsMediaControl": false,
+     "SupportsRemoteControl": false,
+     "NowPlayingQueue": [],
+     "HasCustomDeviceName": false,
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "SupportedCommands": []
+    },
+    "AccessToken": "{token:adm-self}",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0"
+   }
+  },
+  {
+   "section": "naming",
+   "name": "initiate for naming another",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-adm-other\", DeviceId=\"dev-adm-other\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": "adm-other",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:adm-other}",
+    "Code": "{code:adm-other}",
+    "DeviceId": "dev-adm-other",
+    "DeviceName": "TV-adm-other",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:53.9770166Z"
+   }
+  },
+  {
+   "section": "naming",
+   "name": "administrator names another user",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:adm-other}&userId={userid:other}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-admin\", DeviceId=\"dev-approver-admin\", Version=\"1.0\", Token=\"{token:admin}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": true
+  },
+  {
+   "section": "naming",
+   "name": "connect after the administrator named another",
+   "action": "request",
+   "method": "GET",
+   "path": "/QuickConnect/Connect?Secret={secret:adm-other}",
+   "headers": {},
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": true,
+    "Secret": "{secret:adm-other}",
+    "Code": "{code:adm-other}",
+    "DeviceId": "dev-adm-other",
+    "DeviceName": "TV-adm-other",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:40:53.9828893Z"
+   }
+  },
+  {
+   "section": "naming",
+   "name": "redeem the approval naming another",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-adm-other\", DeviceId=\"dev-adm-other\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"{secret:adm-other}\"}",
+   "saves": "adm-other",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "User": {
+     "Name": "other",
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "Id": "{userid:other}",
+     "HasPassword": true,
+     "HasConfiguredPassword": true,
+     "HasConfiguredEasyPassword": false,
+     "EnableAutoLogin": false,
+     "LastLoginDate": "2026-11-26T13:39:53.6972688Z",
+     "LastActivityDate": "2026-11-26T13:39:53.6972688Z",
+     "Configuration": {
+      "PlayDefaultAudioTrack": true,
+      "SubtitleLanguagePreference": "",
+      "DisplayMissingEpisodes": false,
+      "GroupedFolders": [],
+      "SubtitleMode": "Default",
+      "DisplayCollectionsView": false,
+      "EnableLocalPassword": false,
+      "OrderedViews": [],
+      "LatestItemsExcludes": [],
+      "MyMediaExcludes": [],
+      "HidePlayedInLatest": true,
+      "RememberAudioSelections": true,
+      "RememberSubtitleSelections": true,
+      "EnableNextEpisodeAutoPlay": true,
+      "CastReceiverId": "F007D354"
+     },
+     "Policy": {
+      "IsAdministrator": false,
+      "IsHidden": true,
+      "EnableCollectionManagement": false,
+      "EnableSubtitleManagement": false,
+      "EnableLyricManagement": false,
+      "IsDisabled": false,
+      "BlockedTags": [],
+      "AllowedTags": [],
+      "EnableUserPreferenceAccess": true,
+      "AccessSchedules": [],
+      "BlockUnratedItems": [],
+      "EnableRemoteControlOfOtherUsers": false,
+      "EnableSharedDeviceControl": true,
+      "EnableRemoteAccess": true,
+      "EnableLiveTvManagement": false,
+      "EnableLiveTvAccess": true,
+      "EnableMediaPlayback": true,
+      "EnableAudioPlaybackTranscoding": true,
+      "EnableVideoPlaybackTranscoding": true,
+      "EnablePlaybackRemuxing": true,
+      "ForceRemoteSourceTranscoding": false,
+      "EnableContentDeletion": false,
+      "EnableContentDeletionFromFolders": [],
+      "EnableContentDownloading": true,
+      "EnableSyncTranscoding": true,
+      "EnableMediaConversion": true,
+      "EnabledDevices": [],
+      "EnableAllDevices": true,
+      "EnabledChannels": [],
+      "EnableAllChannels": true,
+      "EnabledFolders": [],
+      "EnableAllFolders": true,
+      "InvalidLoginAttemptCount": 0,
+      "LoginAttemptsBeforeLockout": -1,
+      "MaxActiveSessions": 0,
+      "EnablePublicSharing": true,
+      "BlockedMediaFolders": [],
+      "BlockedChannels": [],
+      "RemoteClientBitrateLimit": 0,
+      "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+      "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+      "SyncPlayAccess": "CreateAndJoinGroups"
+     }
+    },
+    "SessionInfo": {
+     "PlayState": {
+      "CanSeek": false,
+      "IsPaused": false,
+      "IsMuted": false,
+      "RepeatMode": "RepeatNone",
+      "PlaybackOrder": "Default"
+     },
+     "AdditionalUsers": [],
+     "Capabilities": {
+      "PlayableMediaTypes": [],
+      "SupportedCommands": [],
+      "SupportsMediaControl": false,
+      "SupportsPersistentIdentifier": true
+     },
+     "PlayableMediaTypes": [],
+     "Id": "fffaf6b26089b20dcd567ffd1046af74",
+     "UserId": "{userid:other}",
+     "UserName": "other",
+     "Client": "capture",
+     "LastActivityDate": "2026-11-26T13:39:53.985981Z",
+     "LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+     "DeviceName": "TV-adm-other",
+     "DeviceId": "dev-adm-other",
+     "ApplicationVersion": "1.0",
+     "IsActive": true,
+     "SupportsMediaControl": false,
+     "SupportsRemoteControl": false,
+     "NowPlayingQueue": [],
+     "HasCustomDeviceName": false,
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "SupportedCommands": []
+    },
+    "AccessToken": "{token:adm-other}",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0"
+   }
+  },
+  {
+   "section": "naming",
+   "name": "initiate for no userId",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-adm-none\", DeviceId=\"dev-adm-none\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": "adm-none",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:adm-none}",
+    "Code": "{code:adm-none}",
+    "DeviceId": "dev-adm-none",
+    "DeviceName": "TV-adm-none",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:53.9885819Z"
+   }
+  },
+  {
+   "section": "naming",
+   "name": "administrator approves with no userId",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:adm-none}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-admin\", DeviceId=\"dev-approver-admin\", Version=\"1.0\", Token=\"{token:admin}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": true
+  },
+  {
+   "section": "naming",
+   "name": "redeem with no userId named",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-adm-none\", DeviceId=\"dev-adm-none\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"{secret:adm-none}\"}",
+   "saves": "adm-none",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "User": {
+     "Name": "admin",
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "Id": "{userid:admin}",
+     "HasPassword": true,
+     "HasConfiguredPassword": true,
+     "HasConfiguredEasyPassword": false,
+     "EnableAutoLogin": false,
+     "LastLoginDate": "2026-11-26T13:39:53.5267904Z",
+     "LastActivityDate": "2026-11-26T13:39:53.5267904Z",
+     "Configuration": {
+      "PlayDefaultAudioTrack": true,
+      "SubtitleLanguagePreference": "",
+      "DisplayMissingEpisodes": false,
+      "GroupedFolders": [],
+      "SubtitleMode": "Default",
+      "DisplayCollectionsView": false,
+      "EnableLocalPassword": false,
+      "OrderedViews": [],
+      "LatestItemsExcludes": [],
+      "MyMediaExcludes": [],
+      "HidePlayedInLatest": true,
+      "RememberAudioSelections": true,
+      "RememberSubtitleSelections": true,
+      "EnableNextEpisodeAutoPlay": true,
+      "CastReceiverId": "F007D354"
+     },
+     "Policy": {
+      "IsAdministrator": true,
+      "IsHidden": true,
+      "EnableCollectionManagement": false,
+      "EnableSubtitleManagement": false,
+      "EnableLyricManagement": false,
+      "IsDisabled": false,
+      "BlockedTags": [],
+      "AllowedTags": [],
+      "EnableUserPreferenceAccess": true,
+      "AccessSchedules": [],
+      "BlockUnratedItems": [],
+      "EnableRemoteControlOfOtherUsers": true,
+      "EnableSharedDeviceControl": true,
+      "EnableRemoteAccess": true,
+      "EnableLiveTvManagement": false,
+      "EnableLiveTvAccess": true,
+      "EnableMediaPlayback": true,
+      "EnableAudioPlaybackTranscoding": true,
+      "EnableVideoPlaybackTranscoding": true,
+      "EnablePlaybackRemuxing": true,
+      "ForceRemoteSourceTranscoding": false,
+      "EnableContentDeletion": true,
+      "EnableContentDeletionFromFolders": [],
+      "EnableContentDownloading": true,
+      "EnableSyncTranscoding": true,
+      "EnableMediaConversion": true,
+      "EnabledDevices": [],
+      "EnableAllDevices": true,
+      "EnabledChannels": [],
+      "EnableAllChannels": true,
+      "EnabledFolders": [],
+      "EnableAllFolders": true,
+      "InvalidLoginAttemptCount": 0,
+      "LoginAttemptsBeforeLockout": -1,
+      "MaxActiveSessions": 0,
+      "EnablePublicSharing": true,
+      "BlockedMediaFolders": [],
+      "BlockedChannels": [],
+      "RemoteClientBitrateLimit": 0,
+      "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+      "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+      "SyncPlayAccess": "CreateAndJoinGroups"
+     }
+    },
+    "SessionInfo": {
+     "PlayState": {
+      "CanSeek": false,
+      "IsPaused": false,
+      "IsMuted": false,
+      "RepeatMode": "RepeatNone",
+      "PlaybackOrder": "Default"
+     },
+     "AdditionalUsers": [],
+     "Capabilities": {
+      "PlayableMediaTypes": [],
+      "SupportedCommands": [],
+      "SupportsMediaControl": false,
+      "SupportsPersistentIdentifier": true
+     },
+     "PlayableMediaTypes": [],
+     "Id": "1ed8572cdcb95a7922d917c6bda619b8",
+     "UserId": "{userid:admin}",
+     "UserName": "admin",
+     "Client": "capture",
+     "LastActivityDate": "2026-11-26T13:39:53.9976587Z",
+     "LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+     "DeviceName": "TV-adm-none",
+     "DeviceId": "dev-adm-none",
+     "ApplicationVersion": "1.0",
+     "IsActive": true,
+     "SupportsMediaControl": false,
+     "SupportsRemoteControl": false,
+     "NowPlayingQueue": [],
+     "HasCustomDeviceName": false,
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "SupportedCommands": []
+    },
+    "AccessToken": "{token:adm-none}",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0"
+   }
+  },
+  {
+   "section": "naming",
+   "name": "initiate for an empty userId",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-adm-empty\", DeviceId=\"dev-adm-empty\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": "adm-empty",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:adm-empty}",
+    "Code": "{code:adm-empty}",
+    "DeviceId": "dev-adm-empty",
+    "DeviceName": "TV-adm-empty",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:53.9997422Z"
+   }
+  },
+  {
+   "section": "naming",
+   "name": "administrator approves with an empty userId",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:adm-empty}&userId=",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-admin\", DeviceId=\"dev-approver-admin\", Version=\"1.0\", Token=\"{token:admin}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": true
+  },
+  {
+   "section": "naming",
+   "name": "redeem the administrator's empty userId",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-adm-empty\", DeviceId=\"dev-adm-empty\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"{secret:adm-empty}\"}",
+   "saves": "adm-empty",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "User": {
+     "Name": "admin",
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "Id": "{userid:admin}",
+     "HasPassword": true,
+     "HasConfiguredPassword": true,
+     "HasConfiguredEasyPassword": false,
+     "EnableAutoLogin": false,
+     "LastLoginDate": "2026-11-26T13:39:53.5267904Z",
+     "LastActivityDate": "2026-11-26T13:39:53.5267904Z",
+     "Configuration": {
+      "PlayDefaultAudioTrack": true,
+      "SubtitleLanguagePreference": "",
+      "DisplayMissingEpisodes": false,
+      "GroupedFolders": [],
+      "SubtitleMode": "Default",
+      "DisplayCollectionsView": false,
+      "EnableLocalPassword": false,
+      "OrderedViews": [],
+      "LatestItemsExcludes": [],
+      "MyMediaExcludes": [],
+      "HidePlayedInLatest": true,
+      "RememberAudioSelections": true,
+      "RememberSubtitleSelections": true,
+      "EnableNextEpisodeAutoPlay": true,
+      "CastReceiverId": "F007D354"
+     },
+     "Policy": {
+      "IsAdministrator": true,
+      "IsHidden": true,
+      "EnableCollectionManagement": false,
+      "EnableSubtitleManagement": false,
+      "EnableLyricManagement": false,
+      "IsDisabled": false,
+      "BlockedTags": [],
+      "AllowedTags": [],
+      "EnableUserPreferenceAccess": true,
+      "AccessSchedules": [],
+      "BlockUnratedItems": [],
+      "EnableRemoteControlOfOtherUsers": true,
+      "EnableSharedDeviceControl": true,
+      "EnableRemoteAccess": true,
+      "EnableLiveTvManagement": false,
+      "EnableLiveTvAccess": true,
+      "EnableMediaPlayback": true,
+      "EnableAudioPlaybackTranscoding": true,
+      "EnableVideoPlaybackTranscoding": true,
+      "EnablePlaybackRemuxing": true,
+      "ForceRemoteSourceTranscoding": false,
+      "EnableContentDeletion": true,
+      "EnableContentDeletionFromFolders": [],
+      "EnableContentDownloading": true,
+      "EnableSyncTranscoding": true,
+      "EnableMediaConversion": true,
+      "EnabledDevices": [],
+      "EnableAllDevices": true,
+      "EnabledChannels": [],
+      "EnableAllChannels": true,
+      "EnabledFolders": [],
+      "EnableAllFolders": true,
+      "InvalidLoginAttemptCount": 0,
+      "LoginAttemptsBeforeLockout": -1,
+      "MaxActiveSessions": 0,
+      "EnablePublicSharing": true,
+      "BlockedMediaFolders": [],
+      "BlockedChannels": [],
+      "RemoteClientBitrateLimit": 0,
+      "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+      "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+      "SyncPlayAccess": "CreateAndJoinGroups"
+     }
+    },
+    "SessionInfo": {
+     "PlayState": {
+      "CanSeek": false,
+      "IsPaused": false,
+      "IsMuted": false,
+      "RepeatMode": "RepeatNone",
+      "PlaybackOrder": "Default"
+     },
+     "AdditionalUsers": [],
+     "Capabilities": {
+      "PlayableMediaTypes": [],
+      "SupportedCommands": [],
+      "SupportsMediaControl": false,
+      "SupportsPersistentIdentifier": true
+     },
+     "PlayableMediaTypes": [],
+     "Id": "08fec3f70efdbb7d4efb1f9ffb2fee52",
+     "UserId": "{userid:admin}",
+     "UserName": "admin",
+     "Client": "capture",
+     "LastActivityDate": "2026-11-26T13:39:54.0089837Z",
+     "LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+     "DeviceName": "TV-adm-empty",
+     "DeviceId": "dev-adm-empty",
+     "ApplicationVersion": "1.0",
+     "IsActive": true,
+     "SupportsMediaControl": false,
+     "SupportsRemoteControl": false,
+     "NowPlayingQueue": [],
+     "HasCustomDeviceName": false,
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "SupportedCommands": []
+    },
+    "AccessToken": "{token:adm-empty}",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0"
+   }
+  },
+  {
+   "section": "naming",
+   "name": "initiate for the viewer's empty userId",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-view-empty\", DeviceId=\"dev-view-empty\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": "view-empty",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:view-empty}",
+    "Code": "{code:view-empty}",
+    "DeviceId": "dev-view-empty",
+    "DeviceName": "TV-view-empty",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:54.0109137Z"
+   }
+  },
+  {
+   "section": "naming",
+   "name": "viewer approves with an empty userId",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:view-empty}&userId=",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-viewer\", DeviceId=\"dev-approver-viewer\", Version=\"1.0\", Token=\"{token:viewer}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": true
+  },
+  {
+   "section": "naming",
+   "name": "redeem the viewer's empty userId",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-view-empty\", DeviceId=\"dev-view-empty\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"{secret:view-empty}\"}",
+   "saves": "view-empty",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "User": {
+     "Name": "viewer",
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "Id": "{userid:viewer}",
+     "HasPassword": true,
+     "HasConfiguredPassword": true,
+     "HasConfiguredEasyPassword": false,
+     "EnableAutoLogin": false,
+     "LastLoginDate": "2026-11-26T13:39:53.8942515Z",
+     "LastActivityDate": "2026-11-26T13:39:53.8942515Z",
+     "Configuration": {
+      "PlayDefaultAudioTrack": true,
+      "SubtitleLanguagePreference": "",
+      "DisplayMissingEpisodes": false,
+      "GroupedFolders": [],
+      "SubtitleMode": "Default",
+      "DisplayCollectionsView": false,
+      "EnableLocalPassword": false,
+      "OrderedViews": [],
+      "LatestItemsExcludes": [],
+      "MyMediaExcludes": [],
+      "HidePlayedInLatest": true,
+      "RememberAudioSelections": true,
+      "RememberSubtitleSelections": true,
+      "EnableNextEpisodeAutoPlay": true,
+      "CastReceiverId": "F007D354"
+     },
+     "Policy": {
+      "IsAdministrator": false,
+      "IsHidden": true,
+      "EnableCollectionManagement": false,
+      "EnableSubtitleManagement": false,
+      "EnableLyricManagement": false,
+      "IsDisabled": false,
+      "BlockedTags": [],
+      "AllowedTags": [],
+      "EnableUserPreferenceAccess": true,
+      "AccessSchedules": [],
+      "BlockUnratedItems": [],
+      "EnableRemoteControlOfOtherUsers": false,
+      "EnableSharedDeviceControl": true,
+      "EnableRemoteAccess": true,
+      "EnableLiveTvManagement": false,
+      "EnableLiveTvAccess": true,
+      "EnableMediaPlayback": true,
+      "EnableAudioPlaybackTranscoding": true,
+      "EnableVideoPlaybackTranscoding": true,
+      "EnablePlaybackRemuxing": true,
+      "ForceRemoteSourceTranscoding": false,
+      "EnableContentDeletion": false,
+      "EnableContentDeletionFromFolders": [],
+      "EnableContentDownloading": true,
+      "EnableSyncTranscoding": true,
+      "EnableMediaConversion": true,
+      "EnabledDevices": [],
+      "EnableAllDevices": true,
+      "EnabledChannels": [],
+      "EnableAllChannels": true,
+      "EnabledFolders": [],
+      "EnableAllFolders": true,
+      "InvalidLoginAttemptCount": 0,
+      "LoginAttemptsBeforeLockout": -1,
+      "MaxActiveSessions": 0,
+      "EnablePublicSharing": true,
+      "BlockedMediaFolders": [],
+      "BlockedChannels": [],
+      "RemoteClientBitrateLimit": 0,
+      "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+      "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+      "SyncPlayAccess": "CreateAndJoinGroups"
+     }
+    },
+    "SessionInfo": {
+     "PlayState": {
+      "CanSeek": false,
+      "IsPaused": false,
+      "IsMuted": false,
+      "RepeatMode": "RepeatNone",
+      "PlaybackOrder": "Default"
+     },
+     "AdditionalUsers": [],
+     "Capabilities": {
+      "PlayableMediaTypes": [],
+      "SupportedCommands": [],
+      "SupportsMediaControl": false,
+      "SupportsPersistentIdentifier": true
+     },
+     "PlayableMediaTypes": [],
+     "Id": "306d94d096d9aa634ca8be745e1ea6b5",
+     "UserId": "{userid:viewer}",
+     "UserName": "viewer",
+     "Client": "capture",
+     "LastActivityDate": "2026-11-26T13:39:54.0200579Z",
+     "LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+     "DeviceName": "TV-view-empty",
+     "DeviceId": "dev-view-empty",
+     "ApplicationVersion": "1.0",
+     "IsActive": true,
+     "SupportsMediaControl": false,
+     "SupportsRemoteControl": false,
+     "NowPlayingQueue": [],
+     "HasCustomDeviceName": false,
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "SupportedCommands": []
+    },
+    "AccessToken": "{token:view-empty}",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0"
+   }
+  },
+  {
+   "section": "naming",
+   "name": "initiate for unknown users",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-unknown-user\", DeviceId=\"dev-unknown-user\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": "unknown-user",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:unknown-user}",
+    "Code": "{code:unknown-user}",
+    "DeviceId": "dev-unknown-user",
+    "DeviceName": "TV-unknown-user",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:54.0222463Z"
+   }
+  },
+  {
+   "section": "naming",
+   "name": "administrator names a user nobody is",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:unknown-user}&userId=11111111111111111111111111111111",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-admin\", DeviceId=\"dev-approver-admin\", Version=\"1.0\", Token=\"{token:admin}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 400,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "naming",
+   "name": "initiate for the viewer naming unknown users",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-unknown-user2\", DeviceId=\"dev-unknown-user2\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": "unknown-user2",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:unknown-user2}",
+    "Code": "{code:unknown-user2}",
+    "DeviceId": "dev-unknown-user2",
+    "DeviceName": "TV-unknown-user2",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:54.0309137Z"
+   }
+  },
+  {
+   "section": "naming",
+   "name": "viewer names a user nobody is",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:unknown-user2}&userId=11111111111111111111111111111111",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-viewer\", DeviceId=\"dev-approver-viewer\", Version=\"1.0\", Token=\"{token:viewer}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 403,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "naming",
+   "name": "viewer names a malformed userId",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:unknown-user2}&userId=zzz",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-viewer\", DeviceId=\"dev-approver-viewer\", Version=\"1.0\", Token=\"{token:viewer}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 400,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+    "title": "One or more validation errors occurred.",
+    "status": 400,
+    "errors": {
+     "userId": [
+      "The value 'zzz' is not valid."
+     ]
+    }
+   }
+  },
+  {
+   "section": "naming",
+   "name": "initiate for a dashed userId",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-view-dashed\", DeviceId=\"dev-view-dashed\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": "view-dashed",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:view-dashed}",
+    "Code": "{code:view-dashed}",
+    "DeviceId": "dev-view-dashed",
+    "DeviceName": "TV-view-dashed",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:54.0445798Z"
+   }
+  },
+  {
+   "section": "naming",
+   "name": "viewer names themselves dashed and in capitals",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:view-dashed}&userId={userid-dashed:viewer}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-viewer\", DeviceId=\"dev-approver-viewer\", Version=\"1.0\", Token=\"{token:viewer}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": true
+  },
+  {
+   "section": "naming",
+   "name": "initiate for a spaced code",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-spaced\", DeviceId=\"dev-spaced\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": "spaced",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:spaced}",
+    "Code": "{code:spaced}",
+    "DeviceId": "dev-spaced",
+    "DeviceName": "TV-spaced",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:54.0551097Z"
+   }
+  },
+  {
+   "section": "naming",
+   "name": "approve a code with a space in it",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:spaced-out}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-viewer\", DeviceId=\"dev-approver-viewer\", Version=\"1.0\", Token=\"{token:viewer}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 404,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "devices",
+   "name": "password_signin 76",
+   "action": "password_signin",
+   "user": "viewer",
+   "device": "same-account",
+   "token": "same-old"
+  },
+  {
+   "section": "devices",
+   "name": "initiate on a device signed in to the same account",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-same-account\", DeviceId=\"dev-same-account\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": "same-account",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:same-account}",
+    "Code": "{code:same-account}",
+    "DeviceId": "dev-same-account",
+    "DeviceName": "TV-same-account",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:54.1466599Z"
+   }
+  },
+  {
+   "section": "devices",
+   "name": "approve the same account",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:same-account}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-viewer\", DeviceId=\"dev-approver-viewer\", Version=\"1.0\", Token=\"{token:viewer}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": true
+  },
+  {
+   "section": "devices",
+   "name": "redeem on a device signed in to the same account",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-same-account\", DeviceId=\"dev-same-account\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"{secret:same-account}\"}",
+   "saves": "same-new",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "User": {
+     "Name": "viewer",
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "Id": "{userid:viewer}",
+     "HasPassword": true,
+     "HasConfiguredPassword": true,
+     "HasConfiguredEasyPassword": false,
+     "EnableAutoLogin": false,
+     "LastLoginDate": "2026-11-26T13:39:54.1445931Z",
+     "LastActivityDate": "2026-11-26T13:39:54.1445931Z",
+     "Configuration": {
+      "PlayDefaultAudioTrack": true,
+      "SubtitleLanguagePreference": "",
+      "DisplayMissingEpisodes": false,
+      "GroupedFolders": [],
+      "SubtitleMode": "Default",
+      "DisplayCollectionsView": false,
+      "EnableLocalPassword": false,
+      "OrderedViews": [],
+      "LatestItemsExcludes": [],
+      "MyMediaExcludes": [],
+      "HidePlayedInLatest": true,
+      "RememberAudioSelections": true,
+      "RememberSubtitleSelections": true,
+      "EnableNextEpisodeAutoPlay": true,
+      "CastReceiverId": "F007D354"
+     },
+     "Policy": {
+      "IsAdministrator": false,
+      "IsHidden": true,
+      "EnableCollectionManagement": false,
+      "EnableSubtitleManagement": false,
+      "EnableLyricManagement": false,
+      "IsDisabled": false,
+      "BlockedTags": [],
+      "AllowedTags": [],
+      "EnableUserPreferenceAccess": true,
+      "AccessSchedules": [],
+      "BlockUnratedItems": [],
+      "EnableRemoteControlOfOtherUsers": false,
+      "EnableSharedDeviceControl": true,
+      "EnableRemoteAccess": true,
+      "EnableLiveTvManagement": false,
+      "EnableLiveTvAccess": true,
+      "EnableMediaPlayback": true,
+      "EnableAudioPlaybackTranscoding": true,
+      "EnableVideoPlaybackTranscoding": true,
+      "EnablePlaybackRemuxing": true,
+      "ForceRemoteSourceTranscoding": false,
+      "EnableContentDeletion": false,
+      "EnableContentDeletionFromFolders": [],
+      "EnableContentDownloading": true,
+      "EnableSyncTranscoding": true,
+      "EnableMediaConversion": true,
+      "EnabledDevices": [],
+      "EnableAllDevices": true,
+      "EnabledChannels": [],
+      "EnableAllChannels": true,
+      "EnabledFolders": [],
+      "EnableAllFolders": true,
+      "InvalidLoginAttemptCount": 0,
+      "LoginAttemptsBeforeLockout": -1,
+      "MaxActiveSessions": 0,
+      "EnablePublicSharing": true,
+      "BlockedMediaFolders": [],
+      "BlockedChannels": [],
+      "RemoteClientBitrateLimit": 0,
+      "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+      "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+      "SyncPlayAccess": "CreateAndJoinGroups"
+     }
+    },
+    "SessionInfo": {
+     "PlayState": {
+      "CanSeek": false,
+      "IsPaused": false,
+      "IsMuted": false,
+      "RepeatMode": "RepeatNone",
+      "PlaybackOrder": "Default"
+     },
+     "AdditionalUsers": [],
+     "Capabilities": {
+      "PlayableMediaTypes": [],
+      "SupportedCommands": [],
+      "SupportsMediaControl": false,
+      "SupportsPersistentIdentifier": true
+     },
+     "PlayableMediaTypes": [],
+     "Id": "c2290c1fe3aaef2509af23ff41aca020",
+     "UserId": "{userid:viewer}",
+     "UserName": "viewer",
+     "Client": "capture",
+     "LastActivityDate": "2026-11-26T13:39:54.1618061Z",
+     "LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+     "DeviceName": "TV-same-account",
+     "DeviceId": "dev-same-account",
+     "ApplicationVersion": "1.0",
+     "IsActive": true,
+     "SupportsMediaControl": false,
+     "SupportsRemoteControl": false,
+     "NowPlayingQueue": [],
+     "HasCustomDeviceName": false,
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "SupportedCommands": []
+    },
+    "AccessToken": "{token:same-new}",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0"
+   }
+  },
+  {
+   "section": "devices",
+   "name": "the device's old token of the same account",
+   "action": "request",
+   "method": "GET",
+   "path": "/Users/Me",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-probe\", DeviceId=\"dev-probe\", Version=\"1.0\", Token=\"{token:same-old}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 401,
+   "response_headers": {},
+   "response": ""
+  },
+  {
+   "section": "devices",
+   "name": "the device's new token",
+   "action": "request",
+   "method": "GET",
+   "path": "/Users/Me",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-probe\", DeviceId=\"dev-probe\", Version=\"1.0\", Token=\"{token:same-new}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Name": "viewer",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+    "Id": "{userid:viewer}",
+    "HasPassword": true,
+    "HasConfiguredPassword": true,
+    "HasConfiguredEasyPassword": false,
+    "EnableAutoLogin": false,
+    "LastLoginDate": "2026-11-26T13:39:54.1445931Z",
+    "LastActivityDate": "2026-11-26T13:39:54.1445931Z",
+    "Configuration": {
+     "PlayDefaultAudioTrack": true,
+     "SubtitleLanguagePreference": "",
+     "DisplayMissingEpisodes": false,
+     "GroupedFolders": [],
+     "SubtitleMode": "Default",
+     "DisplayCollectionsView": false,
+     "EnableLocalPassword": false,
+     "OrderedViews": [],
+     "LatestItemsExcludes": [],
+     "MyMediaExcludes": [],
+     "HidePlayedInLatest": true,
+     "RememberAudioSelections": true,
+     "RememberSubtitleSelections": true,
+     "EnableNextEpisodeAutoPlay": true,
+     "CastReceiverId": "F007D354"
+    },
+    "Policy": {
+     "IsAdministrator": false,
+     "IsHidden": true,
+     "EnableCollectionManagement": false,
+     "EnableSubtitleManagement": false,
+     "EnableLyricManagement": false,
+     "IsDisabled": false,
+     "BlockedTags": [],
+     "AllowedTags": [],
+     "EnableUserPreferenceAccess": true,
+     "AccessSchedules": [],
+     "BlockUnratedItems": [],
+     "EnableRemoteControlOfOtherUsers": false,
+     "EnableSharedDeviceControl": true,
+     "EnableRemoteAccess": true,
+     "EnableLiveTvManagement": false,
+     "EnableLiveTvAccess": true,
+     "EnableMediaPlayback": true,
+     "EnableAudioPlaybackTranscoding": true,
+     "EnableVideoPlaybackTranscoding": true,
+     "EnablePlaybackRemuxing": true,
+     "ForceRemoteSourceTranscoding": false,
+     "EnableContentDeletion": false,
+     "EnableContentDeletionFromFolders": [],
+     "EnableContentDownloading": true,
+     "EnableSyncTranscoding": true,
+     "EnableMediaConversion": true,
+     "EnabledDevices": [],
+     "EnableAllDevices": true,
+     "EnabledChannels": [],
+     "EnableAllChannels": true,
+     "EnabledFolders": [],
+     "EnableAllFolders": true,
+     "InvalidLoginAttemptCount": 0,
+     "LoginAttemptsBeforeLockout": -1,
+     "MaxActiveSessions": 0,
+     "EnablePublicSharing": true,
+     "BlockedMediaFolders": [],
+     "BlockedChannels": [],
+     "RemoteClientBitrateLimit": 0,
+     "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+     "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+     "SyncPlayAccess": "CreateAndJoinGroups"
+    }
+   }
+  },
+  {
+   "section": "devices",
+   "name": "password_signin 82",
+   "action": "password_signin",
+   "user": "other",
+   "device": "two-accounts",
+   "token": "two-other"
+  },
+  {
+   "section": "devices",
+   "name": "initiate on a device signed in to another account",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-two-accounts\", DeviceId=\"dev-two-accounts\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": "two-accounts",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:two-accounts}",
+    "Code": "{code:two-accounts}",
+    "DeviceId": "dev-two-accounts",
+    "DeviceName": "TV-two-accounts",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:54.2571142Z"
+   }
+  },
+  {
+   "section": "devices",
+   "name": "approve a different account",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:two-accounts}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-viewer\", DeviceId=\"dev-approver-viewer\", Version=\"1.0\", Token=\"{token:viewer}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": true
+  },
+  {
+   "section": "devices",
+   "name": "redeem on a device signed in to another account",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-two-accounts\", DeviceId=\"dev-two-accounts\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"{secret:two-accounts}\"}",
+   "saves": "two-new",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "User": {
+     "Name": "viewer",
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "Id": "{userid:viewer}",
+     "HasPassword": true,
+     "HasConfiguredPassword": true,
+     "HasConfiguredEasyPassword": false,
+     "EnableAutoLogin": false,
+     "LastLoginDate": "2026-11-26T13:39:54.1445931Z",
+     "LastActivityDate": "2026-11-26T13:39:54.1445931Z",
+     "Configuration": {
+      "PlayDefaultAudioTrack": true,
+      "SubtitleLanguagePreference": "",
+      "DisplayMissingEpisodes": false,
+      "GroupedFolders": [],
+      "SubtitleMode": "Default",
+      "DisplayCollectionsView": false,
+      "EnableLocalPassword": false,
+      "OrderedViews": [],
+      "LatestItemsExcludes": [],
+      "MyMediaExcludes": [],
+      "HidePlayedInLatest": true,
+      "RememberAudioSelections": true,
+      "RememberSubtitleSelections": true,
+      "EnableNextEpisodeAutoPlay": true,
+      "CastReceiverId": "F007D354"
+     },
+     "Policy": {
+      "IsAdministrator": false,
+      "IsHidden": true,
+      "EnableCollectionManagement": false,
+      "EnableSubtitleManagement": false,
+      "EnableLyricManagement": false,
+      "IsDisabled": false,
+      "BlockedTags": [],
+      "AllowedTags": [],
+      "EnableUserPreferenceAccess": true,
+      "AccessSchedules": [],
+      "BlockUnratedItems": [],
+      "EnableRemoteControlOfOtherUsers": false,
+      "EnableSharedDeviceControl": true,
+      "EnableRemoteAccess": true,
+      "EnableLiveTvManagement": false,
+      "EnableLiveTvAccess": true,
+      "EnableMediaPlayback": true,
+      "EnableAudioPlaybackTranscoding": true,
+      "EnableVideoPlaybackTranscoding": true,
+      "EnablePlaybackRemuxing": true,
+      "ForceRemoteSourceTranscoding": false,
+      "EnableContentDeletion": false,
+      "EnableContentDeletionFromFolders": [],
+      "EnableContentDownloading": true,
+      "EnableSyncTranscoding": true,
+      "EnableMediaConversion": true,
+      "EnabledDevices": [],
+      "EnableAllDevices": true,
+      "EnabledChannels": [],
+      "EnableAllChannels": true,
+      "EnabledFolders": [],
+      "EnableAllFolders": true,
+      "InvalidLoginAttemptCount": 0,
+      "LoginAttemptsBeforeLockout": -1,
+      "MaxActiveSessions": 0,
+      "EnablePublicSharing": true,
+      "BlockedMediaFolders": [],
+      "BlockedChannels": [],
+      "RemoteClientBitrateLimit": 0,
+      "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+      "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+      "SyncPlayAccess": "CreateAndJoinGroups"
+     }
+    },
+    "SessionInfo": {
+     "PlayState": {
+      "CanSeek": false,
+      "IsPaused": false,
+      "IsMuted": false,
+      "RepeatMode": "RepeatNone",
+      "PlaybackOrder": "Default"
+     },
+     "AdditionalUsers": [],
+     "Capabilities": {
+      "PlayableMediaTypes": [],
+      "SupportedCommands": [],
+      "SupportsMediaControl": false,
+      "SupportsPersistentIdentifier": true
+     },
+     "PlayableMediaTypes": [],
+     "Id": "cc73eeb41e197ea3f041506872f7b3e5",
+     "UserId": "{userid:viewer}",
+     "UserName": "viewer",
+     "Client": "capture",
+     "LastActivityDate": "2026-11-26T13:39:54.2658039Z",
+     "LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+     "DeviceName": "TV-two-accounts",
+     "DeviceId": "dev-two-accounts",
+     "ApplicationVersion": "1.0",
+     "IsActive": true,
+     "SupportsMediaControl": false,
+     "SupportsRemoteControl": false,
+     "NowPlayingQueue": [],
+     "HasCustomDeviceName": false,
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "SupportedCommands": []
+    },
+    "AccessToken": "{token:two-new}",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0"
+   }
+  },
+  {
+   "section": "devices",
+   "name": "the device's token of the other account",
+   "action": "request",
+   "method": "GET",
+   "path": "/Users/Me",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-probe\", DeviceId=\"dev-probe\", Version=\"1.0\", Token=\"{token:two-other}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Name": "other",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+    "Id": "{userid:other}",
+    "HasPassword": true,
+    "HasConfiguredPassword": true,
+    "HasConfiguredEasyPassword": false,
+    "EnableAutoLogin": false,
+    "LastLoginDate": "2026-11-26T13:39:54.2545794Z",
+    "LastActivityDate": "2026-11-26T13:39:54.2545794Z",
+    "Configuration": {
+     "PlayDefaultAudioTrack": true,
+     "SubtitleLanguagePreference": "",
+     "DisplayMissingEpisodes": false,
+     "GroupedFolders": [],
+     "SubtitleMode": "Default",
+     "DisplayCollectionsView": false,
+     "EnableLocalPassword": false,
+     "OrderedViews": [],
+     "LatestItemsExcludes": [],
+     "MyMediaExcludes": [],
+     "HidePlayedInLatest": true,
+     "RememberAudioSelections": true,
+     "RememberSubtitleSelections": true,
+     "EnableNextEpisodeAutoPlay": true,
+     "CastReceiverId": "F007D354"
+    },
+    "Policy": {
+     "IsAdministrator": false,
+     "IsHidden": true,
+     "EnableCollectionManagement": false,
+     "EnableSubtitleManagement": false,
+     "EnableLyricManagement": false,
+     "IsDisabled": false,
+     "BlockedTags": [],
+     "AllowedTags": [],
+     "EnableUserPreferenceAccess": true,
+     "AccessSchedules": [],
+     "BlockUnratedItems": [],
+     "EnableRemoteControlOfOtherUsers": false,
+     "EnableSharedDeviceControl": true,
+     "EnableRemoteAccess": true,
+     "EnableLiveTvManagement": false,
+     "EnableLiveTvAccess": true,
+     "EnableMediaPlayback": true,
+     "EnableAudioPlaybackTranscoding": true,
+     "EnableVideoPlaybackTranscoding": true,
+     "EnablePlaybackRemuxing": true,
+     "ForceRemoteSourceTranscoding": false,
+     "EnableContentDeletion": false,
+     "EnableContentDeletionFromFolders": [],
+     "EnableContentDownloading": true,
+     "EnableSyncTranscoding": true,
+     "EnableMediaConversion": true,
+     "EnabledDevices": [],
+     "EnableAllDevices": true,
+     "EnabledChannels": [],
+     "EnableAllChannels": true,
+     "EnabledFolders": [],
+     "EnableAllFolders": true,
+     "InvalidLoginAttemptCount": 0,
+     "LoginAttemptsBeforeLockout": -1,
+     "MaxActiveSessions": 0,
+     "EnablePublicSharing": true,
+     "BlockedMediaFolders": [],
+     "BlockedChannels": [],
+     "RemoteClientBitrateLimit": 0,
+     "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+     "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+     "SyncPlayAccess": "CreateAndJoinGroups"
+    }
+   }
+  },
+  {
+   "section": "devices",
+   "name": "the device's new token beside it",
+   "action": "request",
+   "method": "GET",
+   "path": "/Users/Me",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-probe\", DeviceId=\"dev-probe\", Version=\"1.0\", Token=\"{token:two-new}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Name": "viewer",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+    "Id": "{userid:viewer}",
+    "HasPassword": true,
+    "HasConfiguredPassword": true,
+    "HasConfiguredEasyPassword": false,
+    "EnableAutoLogin": false,
+    "LastLoginDate": "2026-11-26T13:39:54.1445931Z",
+    "LastActivityDate": "2026-11-26T13:39:54.1445931Z",
+    "Configuration": {
+     "PlayDefaultAudioTrack": true,
+     "SubtitleLanguagePreference": "",
+     "DisplayMissingEpisodes": false,
+     "GroupedFolders": [],
+     "SubtitleMode": "Default",
+     "DisplayCollectionsView": false,
+     "EnableLocalPassword": false,
+     "OrderedViews": [],
+     "LatestItemsExcludes": [],
+     "MyMediaExcludes": [],
+     "HidePlayedInLatest": true,
+     "RememberAudioSelections": true,
+     "RememberSubtitleSelections": true,
+     "EnableNextEpisodeAutoPlay": true,
+     "CastReceiverId": "F007D354"
+    },
+    "Policy": {
+     "IsAdministrator": false,
+     "IsHidden": true,
+     "EnableCollectionManagement": false,
+     "EnableSubtitleManagement": false,
+     "EnableLyricManagement": false,
+     "IsDisabled": false,
+     "BlockedTags": [],
+     "AllowedTags": [],
+     "EnableUserPreferenceAccess": true,
+     "AccessSchedules": [],
+     "BlockUnratedItems": [],
+     "EnableRemoteControlOfOtherUsers": false,
+     "EnableSharedDeviceControl": true,
+     "EnableRemoteAccess": true,
+     "EnableLiveTvManagement": false,
+     "EnableLiveTvAccess": true,
+     "EnableMediaPlayback": true,
+     "EnableAudioPlaybackTranscoding": true,
+     "EnableVideoPlaybackTranscoding": true,
+     "EnablePlaybackRemuxing": true,
+     "ForceRemoteSourceTranscoding": false,
+     "EnableContentDeletion": false,
+     "EnableContentDeletionFromFolders": [],
+     "EnableContentDownloading": true,
+     "EnableSyncTranscoding": true,
+     "EnableMediaConversion": true,
+     "EnabledDevices": [],
+     "EnableAllDevices": true,
+     "EnabledChannels": [],
+     "EnableAllChannels": true,
+     "EnabledFolders": [],
+     "EnableAllFolders": true,
+     "InvalidLoginAttemptCount": 0,
+     "LoginAttemptsBeforeLockout": -1,
+     "MaxActiveSessions": 0,
+     "EnablePublicSharing": true,
+     "BlockedMediaFolders": [],
+     "BlockedChannels": [],
+     "RemoteClientBitrateLimit": 0,
+     "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+     "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+     "SyncPlayAccess": "CreateAndJoinGroups"
+    }
+   }
+  },
+  {
+   "section": "devices",
+   "name": "password_signin 88",
+   "action": "password_signin",
+   "user": "viewer",
+   "device": "by-password",
+   "token": "pw-viewer-old"
+  },
+  {
+   "section": "devices",
+   "name": "password_signin 89",
+   "action": "password_signin",
+   "user": "other",
+   "device": "by-password",
+   "token": "pw-other"
+  },
+  {
+   "section": "devices",
+   "name": "password_signin 90",
+   "action": "password_signin",
+   "user": "viewer",
+   "device": "by-password",
+   "token": "pw-viewer-new"
+  },
+  {
+   "section": "devices",
+   "name": "password: the first token of the account signed in again",
+   "action": "request",
+   "method": "GET",
+   "path": "/Users/Me",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-probe\", DeviceId=\"dev-probe\", Version=\"1.0\", Token=\"{token:pw-viewer-old}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 401,
+   "response_headers": {},
+   "response": ""
+  },
+  {
+   "section": "devices",
+   "name": "password: another account's token on the device",
+   "action": "request",
+   "method": "GET",
+   "path": "/Users/Me",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-probe\", DeviceId=\"dev-probe\", Version=\"1.0\", Token=\"{token:pw-other}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Name": "other",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+    "Id": "{userid:other}",
+    "HasPassword": true,
+    "HasConfiguredPassword": true,
+    "HasConfiguredEasyPassword": false,
+    "EnableAutoLogin": false,
+    "LastLoginDate": "2026-11-26T13:39:54.4497802Z",
+    "LastActivityDate": "2026-11-26T13:39:54.4497802Z",
+    "Configuration": {
+     "PlayDefaultAudioTrack": true,
+     "SubtitleLanguagePreference": "",
+     "DisplayMissingEpisodes": false,
+     "GroupedFolders": [],
+     "SubtitleMode": "Default",
+     "DisplayCollectionsView": false,
+     "EnableLocalPassword": false,
+     "OrderedViews": [],
+     "LatestItemsExcludes": [],
+     "MyMediaExcludes": [],
+     "HidePlayedInLatest": true,
+     "RememberAudioSelections": true,
+     "RememberSubtitleSelections": true,
+     "EnableNextEpisodeAutoPlay": true,
+     "CastReceiverId": "F007D354"
+    },
+    "Policy": {
+     "IsAdministrator": false,
+     "IsHidden": true,
+     "EnableCollectionManagement": false,
+     "EnableSubtitleManagement": false,
+     "EnableLyricManagement": false,
+     "IsDisabled": false,
+     "BlockedTags": [],
+     "AllowedTags": [],
+     "EnableUserPreferenceAccess": true,
+     "AccessSchedules": [],
+     "BlockUnratedItems": [],
+     "EnableRemoteControlOfOtherUsers": false,
+     "EnableSharedDeviceControl": true,
+     "EnableRemoteAccess": true,
+     "EnableLiveTvManagement": false,
+     "EnableLiveTvAccess": true,
+     "EnableMediaPlayback": true,
+     "EnableAudioPlaybackTranscoding": true,
+     "EnableVideoPlaybackTranscoding": true,
+     "EnablePlaybackRemuxing": true,
+     "ForceRemoteSourceTranscoding": false,
+     "EnableContentDeletion": false,
+     "EnableContentDeletionFromFolders": [],
+     "EnableContentDownloading": true,
+     "EnableSyncTranscoding": true,
+     "EnableMediaConversion": true,
+     "EnabledDevices": [],
+     "EnableAllDevices": true,
+     "EnabledChannels": [],
+     "EnableAllChannels": true,
+     "EnabledFolders": [],
+     "EnableAllFolders": true,
+     "InvalidLoginAttemptCount": 0,
+     "LoginAttemptsBeforeLockout": -1,
+     "MaxActiveSessions": 0,
+     "EnablePublicSharing": true,
+     "BlockedMediaFolders": [],
+     "BlockedChannels": [],
+     "RemoteClientBitrateLimit": 0,
+     "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+     "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+     "SyncPlayAccess": "CreateAndJoinGroups"
+    }
+   }
+  },
+  {
+   "section": "devices",
+   "name": "password: the account's new token",
+   "action": "request",
+   "method": "GET",
+   "path": "/Users/Me",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-probe\", DeviceId=\"dev-probe\", Version=\"1.0\", Token=\"{token:pw-viewer-new}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Name": "viewer",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+    "Id": "{userid:viewer}",
+    "HasPassword": true,
+    "HasConfiguredPassword": true,
+    "HasConfiguredEasyPassword": false,
+    "EnableAutoLogin": false,
+    "LastLoginDate": "2026-11-26T13:39:54.5323677Z",
+    "LastActivityDate": "2026-11-26T13:39:54.5323677Z",
+    "Configuration": {
+     "PlayDefaultAudioTrack": true,
+     "SubtitleLanguagePreference": "",
+     "DisplayMissingEpisodes": false,
+     "GroupedFolders": [],
+     "SubtitleMode": "Default",
+     "DisplayCollectionsView": false,
+     "EnableLocalPassword": false,
+     "OrderedViews": [],
+     "LatestItemsExcludes": [],
+     "MyMediaExcludes": [],
+     "HidePlayedInLatest": true,
+     "RememberAudioSelections": true,
+     "RememberSubtitleSelections": true,
+     "EnableNextEpisodeAutoPlay": true,
+     "CastReceiverId": "F007D354"
+    },
+    "Policy": {
+     "IsAdministrator": false,
+     "IsHidden": true,
+     "EnableCollectionManagement": false,
+     "EnableSubtitleManagement": false,
+     "EnableLyricManagement": false,
+     "IsDisabled": false,
+     "BlockedTags": [],
+     "AllowedTags": [],
+     "EnableUserPreferenceAccess": true,
+     "AccessSchedules": [],
+     "BlockUnratedItems": [],
+     "EnableRemoteControlOfOtherUsers": false,
+     "EnableSharedDeviceControl": true,
+     "EnableRemoteAccess": true,
+     "EnableLiveTvManagement": false,
+     "EnableLiveTvAccess": true,
+     "EnableMediaPlayback": true,
+     "EnableAudioPlaybackTranscoding": true,
+     "EnableVideoPlaybackTranscoding": true,
+     "EnablePlaybackRemuxing": true,
+     "ForceRemoteSourceTranscoding": false,
+     "EnableContentDeletion": false,
+     "EnableContentDeletionFromFolders": [],
+     "EnableContentDownloading": true,
+     "EnableSyncTranscoding": true,
+     "EnableMediaConversion": true,
+     "EnabledDevices": [],
+     "EnableAllDevices": true,
+     "EnabledChannels": [],
+     "EnableAllChannels": true,
+     "EnabledFolders": [],
+     "EnableAllFolders": true,
+     "InvalidLoginAttemptCount": 0,
+     "LoginAttemptsBeforeLockout": -1,
+     "MaxActiveSessions": 0,
+     "EnablePublicSharing": true,
+     "BlockedMediaFolders": [],
+     "BlockedChannels": [],
+     "RemoteClientBitrateLimit": 0,
+     "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+     "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+     "SyncPlayAccess": "CreateAndJoinGroups"
+    }
+   }
+  },
+  {
+   "section": "devices",
+   "name": "initiate for another header at redemption",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-asker\", DeviceId=\"dev-asker\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": "asker",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:asker}",
+    "Code": "{code:asker}",
+    "DeviceId": "dev-asker",
+    "DeviceName": "TV-asker",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:54.5552908Z"
+   }
+  },
+  {
+   "section": "devices",
+   "name": "approve the asker",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:asker}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-viewer\", DeviceId=\"dev-approver-viewer\", Version=\"1.0\", Token=\"{token:viewer}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": true
+  },
+  {
+   "section": "devices",
+   "name": "redeem with another device's header",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-someone-else\", DeviceId=\"dev-someone-else\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"{secret:asker}\"}",
+   "saves": "asker",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "User": {
+     "Name": "viewer",
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "Id": "{userid:viewer}",
+     "HasPassword": true,
+     "HasConfiguredPassword": true,
+     "HasConfiguredEasyPassword": false,
+     "EnableAutoLogin": false,
+     "LastLoginDate": "2026-11-26T13:39:54.5323677Z",
+     "LastActivityDate": "2026-11-26T13:39:54.5323677Z",
+     "Configuration": {
+      "PlayDefaultAudioTrack": true,
+      "SubtitleLanguagePreference": "",
+      "DisplayMissingEpisodes": false,
+      "GroupedFolders": [],
+      "SubtitleMode": "Default",
+      "DisplayCollectionsView": false,
+      "EnableLocalPassword": false,
+      "OrderedViews": [],
+      "LatestItemsExcludes": [],
+      "MyMediaExcludes": [],
+      "HidePlayedInLatest": true,
+      "RememberAudioSelections": true,
+      "RememberSubtitleSelections": true,
+      "EnableNextEpisodeAutoPlay": true,
+      "CastReceiverId": "F007D354"
+     },
+     "Policy": {
+      "IsAdministrator": false,
+      "IsHidden": true,
+      "EnableCollectionManagement": false,
+      "EnableSubtitleManagement": false,
+      "EnableLyricManagement": false,
+      "IsDisabled": false,
+      "BlockedTags": [],
+      "AllowedTags": [],
+      "EnableUserPreferenceAccess": true,
+      "AccessSchedules": [],
+      "BlockUnratedItems": [],
+      "EnableRemoteControlOfOtherUsers": false,
+      "EnableSharedDeviceControl": true,
+      "EnableRemoteAccess": true,
+      "EnableLiveTvManagement": false,
+      "EnableLiveTvAccess": true,
+      "EnableMediaPlayback": true,
+      "EnableAudioPlaybackTranscoding": true,
+      "EnableVideoPlaybackTranscoding": true,
+      "EnablePlaybackRemuxing": true,
+      "ForceRemoteSourceTranscoding": false,
+      "EnableContentDeletion": false,
+      "EnableContentDeletionFromFolders": [],
+      "EnableContentDownloading": true,
+      "EnableSyncTranscoding": true,
+      "EnableMediaConversion": true,
+      "EnabledDevices": [],
+      "EnableAllDevices": true,
+      "EnabledChannels": [],
+      "EnableAllChannels": true,
+      "EnabledFolders": [],
+      "EnableAllFolders": true,
+      "InvalidLoginAttemptCount": 0,
+      "LoginAttemptsBeforeLockout": -1,
+      "MaxActiveSessions": 0,
+      "EnablePublicSharing": true,
+      "BlockedMediaFolders": [],
+      "BlockedChannels": [],
+      "RemoteClientBitrateLimit": 0,
+      "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+      "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+      "SyncPlayAccess": "CreateAndJoinGroups"
+     }
+    },
+    "SessionInfo": {
+     "PlayState": {
+      "CanSeek": false,
+      "IsPaused": false,
+      "IsMuted": false,
+      "RepeatMode": "RepeatNone",
+      "PlaybackOrder": "Default"
+     },
+     "AdditionalUsers": [],
+     "Capabilities": {
+      "PlayableMediaTypes": [],
+      "SupportedCommands": [],
+      "SupportsMediaControl": false,
+      "SupportsPersistentIdentifier": true
+     },
+     "PlayableMediaTypes": [],
+     "Id": "887ca9f9dac03231500f1b46a7307b4b",
+     "UserId": "{userid:viewer}",
+     "UserName": "viewer",
+     "Client": "capture",
+     "LastActivityDate": "2026-11-26T13:39:54.564565Z",
+     "LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+     "DeviceName": "TV-asker",
+     "DeviceId": "dev-asker",
+     "ApplicationVersion": "1.0",
+     "IsActive": true,
+     "SupportsMediaControl": false,
+     "SupportsRemoteControl": false,
+     "NowPlayingQueue": [],
+     "HasCustomDeviceName": false,
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "SupportedCommands": []
+    },
+    "AccessToken": "{token:asker}",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0"
+   }
+  },
+  {
+   "section": "devices",
+   "name": "the asker's session",
+   "action": "request",
+   "method": "GET",
+   "path": "/Sessions",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-admin\", DeviceId=\"dev-approver-admin\", Version=\"1.0\", Token=\"{token:admin}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": "dev-asker",
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": [
+    {
+     "DeviceId": "dev-asker",
+     "DeviceName": "TV-asker",
+     "Client": "capture",
+     "ApplicationVersion": "1.0",
+     "UserName": "viewer"
+    }
+   ]
+  },
+  {
+   "section": "devices",
+   "name": "the other header's session",
+   "action": "request",
+   "method": "GET",
+   "path": "/Sessions",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-admin\", DeviceId=\"dev-approver-admin\", Version=\"1.0\", Token=\"{token:admin}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": "dev-someone-else",
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": []
+  },
+  {
+   "section": "devices",
+   "name": "initiate for a redemption with no Authorization",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-bare\", DeviceId=\"dev-bare\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": "bare",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:bare}",
+    "Code": "{code:bare}",
+    "DeviceId": "dev-bare",
+    "DeviceName": "TV-bare",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:54.5895216Z"
+   }
+  },
+  {
+   "section": "devices",
+   "name": "approve the bare redemption",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:bare}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-viewer\", DeviceId=\"dev-approver-viewer\", Version=\"1.0\", Token=\"{token:viewer}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": true
+  },
+  {
+   "section": "devices",
+   "name": "redeem with no Authorization",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"{secret:bare}\"}",
+   "saves": "bare",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "User": {
+     "Name": "viewer",
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "Id": "{userid:viewer}",
+     "HasPassword": true,
+     "HasConfiguredPassword": true,
+     "HasConfiguredEasyPassword": false,
+     "EnableAutoLogin": false,
+     "LastLoginDate": "2026-11-26T13:39:54.5323677Z",
+     "LastActivityDate": "2026-11-26T13:39:54.5323677Z",
+     "Configuration": {
+      "PlayDefaultAudioTrack": true,
+      "SubtitleLanguagePreference": "",
+      "DisplayMissingEpisodes": false,
+      "GroupedFolders": [],
+      "SubtitleMode": "Default",
+      "DisplayCollectionsView": false,
+      "EnableLocalPassword": false,
+      "OrderedViews": [],
+      "LatestItemsExcludes": [],
+      "MyMediaExcludes": [],
+      "HidePlayedInLatest": true,
+      "RememberAudioSelections": true,
+      "RememberSubtitleSelections": true,
+      "EnableNextEpisodeAutoPlay": true,
+      "CastReceiverId": "F007D354"
+     },
+     "Policy": {
+      "IsAdministrator": false,
+      "IsHidden": true,
+      "EnableCollectionManagement": false,
+      "EnableSubtitleManagement": false,
+      "EnableLyricManagement": false,
+      "IsDisabled": false,
+      "BlockedTags": [],
+      "AllowedTags": [],
+      "EnableUserPreferenceAccess": true,
+      "AccessSchedules": [],
+      "BlockUnratedItems": [],
+      "EnableRemoteControlOfOtherUsers": false,
+      "EnableSharedDeviceControl": true,
+      "EnableRemoteAccess": true,
+      "EnableLiveTvManagement": false,
+      "EnableLiveTvAccess": true,
+      "EnableMediaPlayback": true,
+      "EnableAudioPlaybackTranscoding": true,
+      "EnableVideoPlaybackTranscoding": true,
+      "EnablePlaybackRemuxing": true,
+      "ForceRemoteSourceTranscoding": false,
+      "EnableContentDeletion": false,
+      "EnableContentDeletionFromFolders": [],
+      "EnableContentDownloading": true,
+      "EnableSyncTranscoding": true,
+      "EnableMediaConversion": true,
+      "EnabledDevices": [],
+      "EnableAllDevices": true,
+      "EnabledChannels": [],
+      "EnableAllChannels": true,
+      "EnabledFolders": [],
+      "EnableAllFolders": true,
+      "InvalidLoginAttemptCount": 0,
+      "LoginAttemptsBeforeLockout": -1,
+      "MaxActiveSessions": 0,
+      "EnablePublicSharing": true,
+      "BlockedMediaFolders": [],
+      "BlockedChannels": [],
+      "RemoteClientBitrateLimit": 0,
+      "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+      "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+      "SyncPlayAccess": "CreateAndJoinGroups"
+     }
+    },
+    "SessionInfo": {
+     "PlayState": {
+      "CanSeek": false,
+      "IsPaused": false,
+      "IsMuted": false,
+      "RepeatMode": "RepeatNone",
+      "PlaybackOrder": "Default"
+     },
+     "AdditionalUsers": [],
+     "Capabilities": {
+      "PlayableMediaTypes": [],
+      "SupportedCommands": [],
+      "SupportsMediaControl": false,
+      "SupportsPersistentIdentifier": true
+     },
+     "PlayableMediaTypes": [],
+     "Id": "af5481b01b3b26eb4338b1e9923b447d",
+     "UserId": "{userid:viewer}",
+     "UserName": "viewer",
+     "Client": "capture",
+     "LastActivityDate": "2026-11-26T13:39:54.5985596Z",
+     "LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+     "DeviceName": "TV-bare",
+     "DeviceId": "dev-bare",
+     "ApplicationVersion": "1.0",
+     "IsActive": true,
+     "SupportsMediaControl": false,
+     "SupportsRemoteControl": false,
+     "NowPlayingQueue": [],
+     "HasCustomDeviceName": false,
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "SupportedCommands": []
+    },
+    "AccessToken": "{token:bare}",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0"
+   }
+  },
+  {
+   "section": "devices",
+   "name": "the approver's own token afterwards",
+   "action": "request",
+   "method": "GET",
+   "path": "/Users/Me",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-probe\", DeviceId=\"dev-probe\", Version=\"1.0\", Token=\"{token:viewer}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Name": "viewer",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+    "Id": "{userid:viewer}",
+    "HasPassword": true,
+    "HasConfiguredPassword": true,
+    "HasConfiguredEasyPassword": false,
+    "EnableAutoLogin": false,
+    "LastLoginDate": "2026-11-26T13:39:54.5323677Z",
+    "LastActivityDate": "2026-11-26T13:39:54.5323677Z",
+    "Configuration": {
+     "PlayDefaultAudioTrack": true,
+     "SubtitleLanguagePreference": "",
+     "DisplayMissingEpisodes": false,
+     "GroupedFolders": [],
+     "SubtitleMode": "Default",
+     "DisplayCollectionsView": false,
+     "EnableLocalPassword": false,
+     "OrderedViews": [],
+     "LatestItemsExcludes": [],
+     "MyMediaExcludes": [],
+     "HidePlayedInLatest": true,
+     "RememberAudioSelections": true,
+     "RememberSubtitleSelections": true,
+     "EnableNextEpisodeAutoPlay": true,
+     "CastReceiverId": "F007D354"
+    },
+    "Policy": {
+     "IsAdministrator": false,
+     "IsHidden": true,
+     "EnableCollectionManagement": false,
+     "EnableSubtitleManagement": false,
+     "EnableLyricManagement": false,
+     "IsDisabled": false,
+     "BlockedTags": [],
+     "AllowedTags": [],
+     "EnableUserPreferenceAccess": true,
+     "AccessSchedules": [],
+     "BlockUnratedItems": [],
+     "EnableRemoteControlOfOtherUsers": false,
+     "EnableSharedDeviceControl": true,
+     "EnableRemoteAccess": true,
+     "EnableLiveTvManagement": false,
+     "EnableLiveTvAccess": true,
+     "EnableMediaPlayback": true,
+     "EnableAudioPlaybackTranscoding": true,
+     "EnableVideoPlaybackTranscoding": true,
+     "EnablePlaybackRemuxing": true,
+     "ForceRemoteSourceTranscoding": false,
+     "EnableContentDeletion": false,
+     "EnableContentDeletionFromFolders": [],
+     "EnableContentDownloading": true,
+     "EnableSyncTranscoding": true,
+     "EnableMediaConversion": true,
+     "EnabledDevices": [],
+     "EnableAllDevices": true,
+     "EnabledChannels": [],
+     "EnableAllChannels": true,
+     "EnabledFolders": [],
+     "EnableAllFolders": true,
+     "InvalidLoginAttemptCount": 0,
+     "LoginAttemptsBeforeLockout": -1,
+     "MaxActiveSessions": 0,
+     "EnablePublicSharing": true,
+     "BlockedMediaFolders": [],
+     "BlockedChannels": [],
+     "RemoteClientBitrateLimit": 0,
+     "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+     "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+     "SyncPlayAccess": "CreateAndJoinGroups"
+    }
+   }
+  },
+  {
+   "section": "gone",
+   "name": "password_signin 103",
+   "action": "password_signin",
+   "user": "gone",
+   "device": "approver-gone",
+   "token": "gone"
+  },
+  {
+   "section": "gone",
+   "name": "initiate for an account to delete",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-gone\", DeviceId=\"dev-gone\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": "gone",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:gone}",
+    "Code": "{code:gone}",
+    "DeviceId": "dev-gone",
+    "DeviceName": "TV-gone",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:54.6928646Z"
+   }
+  },
+  {
+   "section": "gone",
+   "name": "the account to delete approves",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:gone}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-gone\", DeviceId=\"dev-approver-gone\", Version=\"1.0\", Token=\"{token:gone}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": true
+  },
+  {
+   "section": "gone",
+   "name": "delete_user 106",
+   "action": "delete_user",
+   "user": "gone"
+  },
+  {
+   "section": "gone",
+   "name": "connect after the approver is deleted",
+   "action": "request",
+   "method": "GET",
+   "path": "/QuickConnect/Connect?Secret={secret:gone}",
+   "headers": {},
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": true,
+    "Secret": "{secret:gone}",
+    "Code": "{code:gone}",
+    "DeviceId": "dev-gone",
+    "DeviceName": "TV-gone",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:40:54.6986657Z"
+   }
+  },
+  {
+   "section": "gone",
+   "name": "redeem after the approver is deleted",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-gone\", DeviceId=\"dev-gone\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"{secret:gone}\"}",
+   "saves": "gone-redeemed",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "User": {
+     "Name": "gone",
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "Id": "{userid:gone}",
+     "HasPassword": true,
+     "HasConfiguredPassword": true,
+     "HasConfiguredEasyPassword": false,
+     "EnableAutoLogin": false,
+     "LastLoginDate": "2026-11-26T13:39:54.6908538Z",
+     "LastActivityDate": "2026-11-26T13:39:54.6908538Z",
+     "Configuration": {
+      "PlayDefaultAudioTrack": true,
+      "SubtitleLanguagePreference": "",
+      "DisplayMissingEpisodes": false,
+      "GroupedFolders": [],
+      "SubtitleMode": "Default",
+      "DisplayCollectionsView": false,
+      "EnableLocalPassword": false,
+      "OrderedViews": [],
+      "LatestItemsExcludes": [],
+      "MyMediaExcludes": [],
+      "HidePlayedInLatest": true,
+      "RememberAudioSelections": true,
+      "RememberSubtitleSelections": true,
+      "EnableNextEpisodeAutoPlay": true,
+      "CastReceiverId": "F007D354"
+     },
+     "Policy": {
+      "IsAdministrator": false,
+      "IsHidden": true,
+      "EnableCollectionManagement": false,
+      "EnableSubtitleManagement": false,
+      "EnableLyricManagement": false,
+      "IsDisabled": false,
+      "BlockedTags": [],
+      "AllowedTags": [],
+      "EnableUserPreferenceAccess": true,
+      "AccessSchedules": [],
+      "BlockUnratedItems": [],
+      "EnableRemoteControlOfOtherUsers": false,
+      "EnableSharedDeviceControl": true,
+      "EnableRemoteAccess": true,
+      "EnableLiveTvManagement": false,
+      "EnableLiveTvAccess": true,
+      "EnableMediaPlayback": true,
+      "EnableAudioPlaybackTranscoding": true,
+      "EnableVideoPlaybackTranscoding": true,
+      "EnablePlaybackRemuxing": true,
+      "ForceRemoteSourceTranscoding": false,
+      "EnableContentDeletion": false,
+      "EnableContentDeletionFromFolders": [],
+      "EnableContentDownloading": true,
+      "EnableSyncTranscoding": true,
+      "EnableMediaConversion": true,
+      "EnabledDevices": [],
+      "EnableAllDevices": true,
+      "EnabledChannels": [],
+      "EnableAllChannels": true,
+      "EnabledFolders": [],
+      "EnableAllFolders": true,
+      "InvalidLoginAttemptCount": 0,
+      "LoginAttemptsBeforeLockout": -1,
+      "MaxActiveSessions": 0,
+      "EnablePublicSharing": true,
+      "BlockedMediaFolders": [],
+      "BlockedChannels": [],
+      "RemoteClientBitrateLimit": 0,
+      "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+      "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+      "SyncPlayAccess": "CreateAndJoinGroups"
+     }
+    },
+    "SessionInfo": {
+     "PlayState": {
+      "CanSeek": false,
+      "IsPaused": false,
+      "IsMuted": false,
+      "RepeatMode": "RepeatNone",
+      "PlaybackOrder": "Default"
+     },
+     "AdditionalUsers": [],
+     "Capabilities": {
+      "PlayableMediaTypes": [],
+      "SupportedCommands": [],
+      "SupportsMediaControl": false,
+      "SupportsPersistentIdentifier": true
+     },
+     "PlayableMediaTypes": [],
+     "Id": "df00c90acfc58721f8109d56a4c779b3",
+     "UserId": "{userid:gone}",
+     "UserName": "gone",
+     "Client": "capture",
+     "LastActivityDate": "2026-11-26T13:39:54.7018504Z",
+     "LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+     "DeviceName": "TV-gone",
+     "DeviceId": "dev-gone",
+     "ApplicationVersion": "1.0",
+     "IsActive": true,
+     "SupportsMediaControl": false,
+     "SupportsRemoteControl": false,
+     "NowPlayingQueue": [],
+     "HasCustomDeviceName": false,
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "SupportedCommands": []
+    },
+    "AccessToken": "{token:gone-redeemed}",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0"
+   }
+  },
+  {
+   "section": "gone",
+   "name": "the token redeemed after deletion",
+   "action": "request",
+   "method": "GET",
+   "path": "/Users/Me",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-probe\", DeviceId=\"dev-probe\", Version=\"1.0\", Token=\"{token:gone-redeemed}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 401,
+   "response_headers": {},
+   "response": ""
+  },
+  {
+   "section": "gone",
+   "name": "initiate for an account to disable",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-disabled\", DeviceId=\"dev-disabled\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": "disabled",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:disabled}",
+    "Code": "{code:disabled}",
+    "DeviceId": "dev-disabled",
+    "DeviceName": "TV-disabled",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:54.7679702Z"
+   }
+  },
+  {
+   "section": "gone",
+   "name": "the account to disable approves",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:disabled}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-other\", DeviceId=\"dev-approver-other\", Version=\"1.0\", Token=\"{token:other}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": true
+  },
+  {
+   "section": "gone",
+   "name": "set_disabled 112",
+   "action": "set_disabled",
+   "user": "other",
+   "disabled": true
+  },
+  {
+   "section": "gone",
+   "name": "redeem after the approver is disabled",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-disabled\", DeviceId=\"dev-disabled\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"{secret:disabled}\"}",
+   "saves": "disabled-redeemed",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "User": {
+     "Name": "other",
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "Id": "{userid:other}",
+     "HasPassword": true,
+     "HasConfiguredPassword": true,
+     "HasConfiguredEasyPassword": false,
+     "EnableAutoLogin": false,
+     "LastLoginDate": "2026-11-26T13:39:54.4497802Z",
+     "LastActivityDate": "2026-11-26T13:39:54.4497802Z",
+     "Configuration": {
+      "PlayDefaultAudioTrack": true,
+      "SubtitleLanguagePreference": "",
+      "DisplayMissingEpisodes": false,
+      "GroupedFolders": [],
+      "SubtitleMode": "Default",
+      "DisplayCollectionsView": false,
+      "EnableLocalPassword": false,
+      "OrderedViews": [],
+      "LatestItemsExcludes": [],
+      "MyMediaExcludes": [],
+      "HidePlayedInLatest": true,
+      "RememberAudioSelections": true,
+      "RememberSubtitleSelections": true,
+      "EnableNextEpisodeAutoPlay": true,
+      "CastReceiverId": "F007D354"
+     },
+     "Policy": {
+      "IsAdministrator": false,
+      "IsHidden": true,
+      "EnableCollectionManagement": false,
+      "EnableSubtitleManagement": false,
+      "EnableLyricManagement": false,
+      "IsDisabled": false,
+      "BlockedTags": [],
+      "AllowedTags": [],
+      "EnableUserPreferenceAccess": true,
+      "AccessSchedules": [],
+      "BlockUnratedItems": [],
+      "EnableRemoteControlOfOtherUsers": false,
+      "EnableSharedDeviceControl": true,
+      "EnableRemoteAccess": true,
+      "EnableLiveTvManagement": false,
+      "EnableLiveTvAccess": true,
+      "EnableMediaPlayback": true,
+      "EnableAudioPlaybackTranscoding": true,
+      "EnableVideoPlaybackTranscoding": true,
+      "EnablePlaybackRemuxing": true,
+      "ForceRemoteSourceTranscoding": false,
+      "EnableContentDeletion": false,
+      "EnableContentDeletionFromFolders": [],
+      "EnableContentDownloading": true,
+      "EnableSyncTranscoding": true,
+      "EnableMediaConversion": true,
+      "EnabledDevices": [],
+      "EnableAllDevices": true,
+      "EnabledChannels": [],
+      "EnableAllChannels": true,
+      "EnabledFolders": [],
+      "EnableAllFolders": true,
+      "InvalidLoginAttemptCount": 0,
+      "LoginAttemptsBeforeLockout": -1,
+      "MaxActiveSessions": 0,
+      "EnablePublicSharing": true,
+      "BlockedMediaFolders": [],
+      "BlockedChannels": [],
+      "RemoteClientBitrateLimit": 0,
+      "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+      "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+      "SyncPlayAccess": "CreateAndJoinGroups"
+     }
+    },
+    "SessionInfo": {
+     "PlayState": {
+      "CanSeek": false,
+      "IsPaused": false,
+      "IsMuted": false,
+      "RepeatMode": "RepeatNone",
+      "PlaybackOrder": "Default"
+     },
+     "AdditionalUsers": [],
+     "Capabilities": {
+      "PlayableMediaTypes": [],
+      "SupportedCommands": [],
+      "SupportsMediaControl": false,
+      "SupportsPersistentIdentifier": true
+     },
+     "PlayableMediaTypes": [],
+     "Id": "2bdbaa1f6c12650e7ff6917d2605f939",
+     "UserId": "{userid:other}",
+     "UserName": "other",
+     "Client": "capture",
+     "LastActivityDate": "2026-11-26T13:39:54.7781889Z",
+     "LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+     "DeviceName": "TV-disabled",
+     "DeviceId": "dev-disabled",
+     "ApplicationVersion": "1.0",
+     "IsActive": true,
+     "SupportsMediaControl": false,
+     "SupportsRemoteControl": false,
+     "NowPlayingQueue": [],
+     "HasCustomDeviceName": false,
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "SupportedCommands": []
+    },
+    "AccessToken": "{token:disabled-redeemed}",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0"
+   }
+  },
+  {
+   "section": "gone",
+   "name": "the token redeemed after the approver was disabled",
+   "action": "request",
+   "method": "GET",
+   "path": "/Users/Me",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-probe\", DeviceId=\"dev-probe\", Version=\"1.0\", Token=\"{token:disabled-redeemed}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 401,
+   "response_headers": {},
+   "response": ""
+  },
+  {
+   "section": "gone",
+   "name": "set_disabled 115",
+   "action": "set_disabled",
+   "user": "other",
+   "disabled": false
+  },
+  {
+   "section": "off",
+   "name": "initiate before turning off, left pending",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-off-pending\", DeviceId=\"dev-off-pending\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": "off-pending",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:off-pending}",
+    "Code": "{code:off-pending}",
+    "DeviceId": "dev-off-pending",
+    "DeviceName": "TV-off-pending",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:54.9014701Z"
+   }
+  },
+  {
+   "section": "off",
+   "name": "initiate before turning off, approved",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-off-approved\", DeviceId=\"dev-off-approved\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": "off-approved",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:off-approved}",
+    "Code": "{code:off-approved}",
+    "DeviceId": "dev-off-approved",
+    "DeviceName": "TV-off-approved",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:54.9021484Z"
+   }
+  },
+  {
+   "section": "off",
+   "name": "approve before turning off",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:off-approved}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-viewer\", DeviceId=\"dev-approver-viewer\", Version=\"1.0\", Token=\"{token:viewer}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": true
+  },
+  {
+   "section": "off",
+   "name": "set_enabled 119",
+   "action": "set_enabled",
+   "enabled": false
+  },
+  {
+   "section": "off",
+   "name": "enabled when off",
+   "action": "request",
+   "method": "GET",
+   "path": "/QuickConnect/Enabled",
+   "headers": {},
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": false
+  },
+  {
+   "section": "off",
+   "name": "initiate when off",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-off-new\", DeviceId=\"dev-off-new\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 401,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": "Quick connect is disabled"
+  },
+  {
+   "section": "off",
+   "name": "initiate when off with no Authorization",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Initiate",
+   "headers": {},
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 400,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "off",
+   "name": "connect a pending code when off",
+   "action": "request",
+   "method": "GET",
+   "path": "/QuickConnect/Connect?Secret={secret:off-pending}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-off-pending\", DeviceId=\"dev-off-pending\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 401,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": "Quick connect is disabled"
+  },
+  {
+   "section": "off",
+   "name": "connect an approved code when off",
+   "action": "request",
+   "method": "GET",
+   "path": "/QuickConnect/Connect?Secret={secret:off-approved}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-off-approved\", DeviceId=\"dev-off-approved\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 401,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": "Quick connect is disabled"
+  },
+  {
+   "section": "off",
+   "name": "connect an unknown secret when off",
+   "action": "request",
+   "method": "GET",
+   "path": "/QuickConnect/Connect?Secret=0000deadbeef",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-off-new\", DeviceId=\"dev-off-new\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 401,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": "Quick connect is disabled"
+  },
+  {
+   "section": "off",
+   "name": "approve a pending code when off",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:off-pending}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-viewer\", DeviceId=\"dev-approver-viewer\", Version=\"1.0\", Token=\"{token:viewer}\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 401,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": "Quick connect is disabled"
+  },
+  {
+   "section": "off",
+   "name": "approve without a token when off",
+   "action": "request",
+   "method": "POST",
+   "path": "/QuickConnect/Authorize?code={code:off-pending}",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-approver-anon\", DeviceId=\"dev-approver-anon\", Version=\"1.0\""
+   },
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 401,
+   "response_headers": {},
+   "response": ""
+  },
+  {
+   "section": "off",
+   "name": "redeem a code approved before turning off",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-off-approved\", DeviceId=\"dev-off-approved\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"{secret:off-approved}\"}",
+   "saves": null,
+   "pick": null,
+   "status": 401,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "off",
+   "name": "redeem a pending code when off",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-off-pending\", DeviceId=\"dev-off-pending\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"{secret:off-pending}\"}",
+   "saves": null,
+   "pick": null,
+   "status": 401,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "off",
+   "name": "redeem an unknown secret when off",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-off-new\", DeviceId=\"dev-off-new\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"0000deadbeef\"}",
+   "saves": null,
+   "pick": null,
+   "status": 401,
+   "response_headers": {
+    "content-type": "text/plain"
+   },
+   "response": "Error processing request."
+  },
+  {
+   "section": "off",
+   "name": "set_enabled 131",
+   "action": "set_enabled",
+   "enabled": true
+  },
+  {
+   "section": "off",
+   "name": "redeem the approved code once turned on again",
+   "action": "request",
+   "method": "POST",
+   "path": "/Users/AuthenticateWithQuickConnect",
+   "headers": {
+    "Authorization": "MediaBrowser Client=\"capture\", Device=\"TV-off-approved\", DeviceId=\"dev-off-approved\", Version=\"1.0\"",
+    "Content-Type": "application/json"
+   },
+   "body": "{\"Secret\":\"{secret:off-approved}\"}",
+   "saves": "off-approved",
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "User": {
+     "Name": "viewer",
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "Id": "{userid:viewer}",
+     "HasPassword": true,
+     "HasConfiguredPassword": true,
+     "HasConfiguredEasyPassword": false,
+     "EnableAutoLogin": false,
+     "LastLoginDate": "2026-11-26T13:39:54.5323677Z",
+     "LastActivityDate": "2026-11-26T13:39:54.5323677Z",
+     "Configuration": {
+      "PlayDefaultAudioTrack": true,
+      "SubtitleLanguagePreference": "",
+      "DisplayMissingEpisodes": false,
+      "GroupedFolders": [],
+      "SubtitleMode": "Default",
+      "DisplayCollectionsView": false,
+      "EnableLocalPassword": false,
+      "OrderedViews": [],
+      "LatestItemsExcludes": [],
+      "MyMediaExcludes": [],
+      "HidePlayedInLatest": true,
+      "RememberAudioSelections": true,
+      "RememberSubtitleSelections": true,
+      "EnableNextEpisodeAutoPlay": true,
+      "CastReceiverId": "F007D354"
+     },
+     "Policy": {
+      "IsAdministrator": false,
+      "IsHidden": true,
+      "EnableCollectionManagement": false,
+      "EnableSubtitleManagement": false,
+      "EnableLyricManagement": false,
+      "IsDisabled": false,
+      "BlockedTags": [],
+      "AllowedTags": [],
+      "EnableUserPreferenceAccess": true,
+      "AccessSchedules": [],
+      "BlockUnratedItems": [],
+      "EnableRemoteControlOfOtherUsers": false,
+      "EnableSharedDeviceControl": true,
+      "EnableRemoteAccess": true,
+      "EnableLiveTvManagement": false,
+      "EnableLiveTvAccess": true,
+      "EnableMediaPlayback": true,
+      "EnableAudioPlaybackTranscoding": true,
+      "EnableVideoPlaybackTranscoding": true,
+      "EnablePlaybackRemuxing": true,
+      "ForceRemoteSourceTranscoding": false,
+      "EnableContentDeletion": false,
+      "EnableContentDeletionFromFolders": [],
+      "EnableContentDownloading": true,
+      "EnableSyncTranscoding": true,
+      "EnableMediaConversion": true,
+      "EnabledDevices": [],
+      "EnableAllDevices": true,
+      "EnabledChannels": [],
+      "EnableAllChannels": true,
+      "EnabledFolders": [],
+      "EnableAllFolders": true,
+      "InvalidLoginAttemptCount": 0,
+      "LoginAttemptsBeforeLockout": -1,
+      "MaxActiveSessions": 0,
+      "EnablePublicSharing": true,
+      "BlockedMediaFolders": [],
+      "BlockedChannels": [],
+      "RemoteClientBitrateLimit": 0,
+      "AuthenticationProviderId": "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider",
+      "PasswordResetProviderId": "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider",
+      "SyncPlayAccess": "CreateAndJoinGroups"
+     }
+    },
+    "SessionInfo": {
+     "PlayState": {
+      "CanSeek": false,
+      "IsPaused": false,
+      "IsMuted": false,
+      "RepeatMode": "RepeatNone",
+      "PlaybackOrder": "Default"
+     },
+     "AdditionalUsers": [],
+     "Capabilities": {
+      "PlayableMediaTypes": [],
+      "SupportedCommands": [],
+      "SupportsMediaControl": false,
+      "SupportsPersistentIdentifier": true
+     },
+     "PlayableMediaTypes": [],
+     "Id": "37d9b17aeff67b09a2afb890a0b6b129",
+     "UserId": "{userid:viewer}",
+     "UserName": "viewer",
+     "Client": "capture",
+     "LastActivityDate": "2026-11-26T13:39:54.9116274Z",
+     "LastPlaybackCheckIn": "0001-01-01T00:00:00.0000000Z",
+     "DeviceName": "TV-off-approved",
+     "DeviceId": "dev-off-approved",
+     "ApplicationVersion": "1.0",
+     "IsActive": true,
+     "SupportsMediaControl": false,
+     "SupportsRemoteControl": false,
+     "NowPlayingQueue": [],
+     "HasCustomDeviceName": false,
+     "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0",
+     "SupportedCommands": []
+    },
+    "AccessToken": "{token:off-approved}",
+    "ServerId": "fb9e33d940c444ea90a1ab14aa30ebc0"
+   }
+  },
+  {
+   "section": "off",
+   "name": "connect the pending code once turned on again",
+   "action": "request",
+   "method": "GET",
+   "path": "/QuickConnect/Connect?Secret={secret:off-pending}",
+   "headers": {},
+   "body": null,
+   "saves": null,
+   "pick": null,
+   "status": 200,
+   "response_headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "response": {
+    "Authenticated": false,
+    "Secret": "{secret:off-pending}",
+    "Code": "{code:off-pending}",
+    "DeviceId": "dev-off-pending",
+    "DeviceName": "TV-off-pending",
+    "AppName": "capture",
+    "AppVersion": "1.0",
+    "DateAdded": "2026-11-26T13:39:54.9014701Z"
+   }
+  },
+  {
+   "section": "off",
+   "name": "password_signin 134",
+   "action": "password_signin",
+   "user": "viewer",
+   "device": "approver-viewer",
+   "token": "viewer"
+  }
+ ],
+ "web": {
+  "on": {
+   "login_page": {
+    "route": "#/login",
+    "quick_connect_button": "Use Quick Connect",
+    "dialogs": [],
+    "page_text": "Please sign in\nUser\nPassword\nRemember Me\nSign In\nUse Quick Connect\nForgot Password",
+    "sign_in_form": true,
+    "user_select": [],
+    "code_input": false,
+    "quick_connect_links": []
+   },
+   "login_dialog": {
+    "route": "#/login",
+    "quick_connect_button": "Use Quick Connect",
+    "dialogs": [
+     "Quick Connect\nEnter code <code> to login\nGot It"
+    ],
+    "page_text": "Please sign in\nUser\nPassword\nRemember Me\nSign In\nUse Quick Connect\nForgot Password",
+    "sign_in_form": true,
+    "user_select": [],
+    "code_input": false,
+    "quick_connect_links": []
+   },
+   "poll_seconds": [
+    5
+   ],
+   "viewer_menu": {
+    "route": "#/mypreferencesmenu",
+    "quick_connect_button": null,
+    "dialogs": [],
+    "page_text": "viewer\nProfile\nDisplay\nHome\nPlayback\nSubtitles\nControls",
+    "sign_in_form": false,
+    "user_select": [],
+    "code_input": false,
+    "quick_connect_links": [
+     ""
+    ]
+   },
+   "viewer_page": {
+    "route": "#/quickconnect",
+    "quick_connect_button": null,
+    "dialogs": [],
+    "page_text": "Quick Connect\nTo sign in with Quick Connect, select the 'Quick Connect' button on the device you are logging in from and enter the displayed code below.\n\n\nQuick Connect code\nAuthorize",
+    "sign_in_form": false,
+    "user_select": [],
+    "code_input": true,
+    "quick_connect_links": [
+     ""
+    ]
+   },
+   "viewer_unknown_code": {
+    "route": "#/quickconnect",
+    "quick_connect_button": null,
+    "dialogs": [],
+    "page_text": "Quick Connect\nTo sign in with Quick Connect, select the 'Quick Connect' button on the device you are logging in from and enter the displayed code below.\n\n\nUnknown Quick Connect code\nQuick Connect code\nAuthorize",
+    "sign_in_form": false,
+    "user_select": [],
+    "code_input": true,
+    "quick_connect_links": [
+     ""
+    ]
+   },
+   "viewer_approved": {
+    "route": "#/quickconnect",
+    "quick_connect_button": null,
+    "dialogs": [],
+    "page_text": "Quick Connect\nTo sign in with Quick Connect, select the 'Quick Connect' button on the device you are logging in from and enter the displayed code below.\n\n\n\nYou have successfully authenticated your device!\n\nGo Home",
+    "sign_in_form": false,
+    "user_select": [],
+    "code_input": false,
+    "quick_connect_links": [
+     ""
+    ]
+   },
+   "tv_after": {
+    "route": "#/home",
+    "quick_connect_button": null,
+    "dialogs": [],
+    "page_text": "Nothing here.\n\nAsk an administrator to create a library.",
+    "sign_in_form": false,
+    "user_select": [],
+    "code_input": false,
+    "quick_connect_links": [
+     ""
+    ],
+    "signed_in_as": "viewer"
+   },
+   "admin_menu": {
+    "route": "#/mypreferencesmenu",
+    "quick_connect_button": null,
+    "dialogs": [],
+    "page_text": "admin\nProfile\nDisplay\nHome\nPlayback\nSubtitles\nControls",
+    "sign_in_form": false,
+    "user_select": [],
+    "code_input": false,
+    "quick_connect_links": [
+     ""
+    ]
+   },
+   "admin_page": {
+    "route": "#/quickconnect",
+    "quick_connect_button": null,
+    "dialogs": [],
+    "page_text": "Quick Connect\nTo sign in with Quick Connect, select the 'Quick Connect' button on the device you are logging in from and enter the displayed code below.\n\n\nUser\nadmin\nother\nviewer\nQuick Connect code\nAuthorize",
+    "sign_in_form": false,
+    "user_select": [
+     {
+      "selected": "admin",
+      "options": [
+       "admin",
+       "other",
+       "viewer"
+      ]
+     }
+    ],
+    "code_input": true,
+    "quick_connect_links": [
+     ""
+    ]
+   },
+   "admin_approved": {
+    "route": "#/quickconnect",
+    "quick_connect_button": null,
+    "dialogs": [],
+    "page_text": "Quick Connect\nTo sign in with Quick Connect, select the 'Quick Connect' button on the device you are logging in from and enter the displayed code below.\n\n\n\nYou have successfully authenticated your device!\n\nGo Home",
+    "sign_in_form": false,
+    "user_select": [],
+    "code_input": false,
+    "quick_connect_links": [
+     ""
+    ]
+   },
+   "tv2_signed_in_as": "admin",
+   "refused_initiate": [
+    {
+     "status": 401,
+     "retry_after": null,
+     "dialogs": [
+      "Error\nQuick Connect is not active on this server\nGot It"
+     ],
+     "sign_in_form": true
+    },
+    {
+     "status": 403,
+     "retry_after": null,
+     "dialogs": [
+      "Error\nQuick Connect is not active on this server\nGot It"
+     ],
+     "sign_in_form": true
+    },
+    {
+     "status": 403,
+     "retry_after": "60",
+     "dialogs": [
+      "Error\nQuick Connect is not active on this server\nGot It"
+     ],
+     "sign_in_form": true
+    },
+    {
+     "status": 429,
+     "retry_after": null,
+     "dialogs": [
+      "Error\nQuick Connect is not active on this server\nGot It"
+     ],
+     "sign_in_form": true
+    },
+    {
+     "status": 429,
+     "retry_after": "60",
+     "dialogs": [
+      "Error\nQuick Connect is not active on this server\nGot It"
+     ],
+     "sign_in_form": true
+    },
+    {
+     "status": 500,
+     "retry_after": null,
+     "dialogs": [
+      "Error\nQuick Connect is not active on this server\nGot It"
+     ],
+     "sign_in_form": true
+    },
+    {
+     "status": 503,
+     "retry_after": null,
+     "dialogs": [
+      "Error\nQuick Connect is not active on this server\nGot It"
+     ],
+     "sign_in_form": true
+    },
+    {
+     "status": 503,
+     "retry_after": "60",
+     "dialogs": [
+      "Error\nQuick Connect is not active on this server\nGot It"
+     ],
+     "sign_in_form": true
+    }
+   ],
+   "requests": [
+    {
+     "browser": "tv",
+     "method": "GET",
+     "path": "/QuickConnect/Enabled",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "tv",
+     "method": "POST",
+     "path": "/QuickConnect/Initiate",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "tv",
+     "method": "GET",
+     "path": "/QuickConnect/Connect",
+     "query": {
+      "Secret": "<secret>"
+     },
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "viewer",
+     "method": "GET",
+     "path": "/QuickConnect/Enabled",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "viewer",
+     "method": "GET",
+     "path": "/QuickConnect/Enabled",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": true,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "viewer",
+     "method": "POST",
+     "path": "/QuickConnect/Authorize",
+     "query": {
+      "code": "000000"
+     },
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": true,
+     "other_token_headers": [],
+     "body": null,
+     "status": 404
+    },
+    {
+     "browser": "viewer",
+     "method": "POST",
+     "path": "/QuickConnect/Authorize",
+     "query": {
+      "code": "447983"
+     },
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": true,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "tv",
+     "method": "POST",
+     "path": "/Users/AuthenticateWithQuickConnect",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": "{\"Secret\":\"<secret>\"}",
+     "status": 200
+    },
+    {
+     "browser": "tv",
+     "method": "GET",
+     "path": "/QuickConnect/Enabled",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": true,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "tv2",
+     "method": "GET",
+     "path": "/QuickConnect/Enabled",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "tv2",
+     "method": "POST",
+     "path": "/QuickConnect/Initiate",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "admin",
+     "method": "GET",
+     "path": "/QuickConnect/Enabled",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "admin",
+     "method": "GET",
+     "path": "/QuickConnect/Enabled",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": true,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "tv2",
+     "method": "GET",
+     "path": "/QuickConnect/Connect",
+     "query": {
+      "Secret": "<secret>"
+     },
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "admin",
+     "method": "POST",
+     "path": "/QuickConnect/Authorize",
+     "query": {
+      "code": "974279",
+      "userId": "942f84977a0d406d811f1e5b5e8e7960"
+     },
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": true,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "tv2",
+     "method": "POST",
+     "path": "/Users/AuthenticateWithQuickConnect",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": "{\"Secret\":\"<secret>\"}",
+     "status": 200
+    },
+    {
+     "browser": "tv2",
+     "method": "GET",
+     "path": "/QuickConnect/Enabled",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": true,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "refused-401",
+     "method": "GET",
+     "path": "/QuickConnect/Enabled",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "refused-401",
+     "method": "POST",
+     "path": "/QuickConnect/Initiate",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": null,
+     "status": 401
+    },
+    {
+     "browser": "refused-403",
+     "method": "GET",
+     "path": "/QuickConnect/Enabled",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "refused-403",
+     "method": "POST",
+     "path": "/QuickConnect/Initiate",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": null,
+     "status": 403
+    },
+    {
+     "browser": "refused-429",
+     "method": "GET",
+     "path": "/QuickConnect/Enabled",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "refused-429",
+     "method": "POST",
+     "path": "/QuickConnect/Initiate",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": null,
+     "status": 429
+    },
+    {
+     "browser": "refused-500",
+     "method": "GET",
+     "path": "/QuickConnect/Enabled",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "refused-500",
+     "method": "POST",
+     "path": "/QuickConnect/Initiate",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": null,
+     "status": 500
+    },
+    {
+     "browser": "refused-503",
+     "method": "GET",
+     "path": "/QuickConnect/Enabled",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "refused-503",
+     "method": "POST",
+     "path": "/QuickConnect/Initiate",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": null,
+     "status": 503
+    }
+   ]
+  },
+  "off": {
+   "login_page": {
+    "route": "#/login",
+    "quick_connect_button": null,
+    "dialogs": [],
+    "page_text": "Please sign in\nUser\nPassword\nRemember Me\nSign In\nForgot Password",
+    "sign_in_form": true,
+    "user_select": [],
+    "code_input": false,
+    "quick_connect_links": []
+   },
+   "viewer_menu": {
+    "route": "#/mypreferencesmenu",
+    "quick_connect_button": null,
+    "dialogs": [],
+    "page_text": "viewer\nProfile\nDisplay\nHome\nPlayback\nSubtitles\nControls",
+    "sign_in_form": false,
+    "user_select": [],
+    "code_input": false,
+    "quick_connect_links": []
+   },
+   "viewer_page": {
+    "route": "#/quickconnect",
+    "quick_connect_button": null,
+    "dialogs": [],
+    "page_text": "Quick Connect\nTo sign in with Quick Connect, select the 'Quick Connect' button on the device you are logging in from and enter the displayed code below.\n\n\nQuick Connect code\nAuthorize",
+    "sign_in_form": false,
+    "user_select": [],
+    "code_input": true,
+    "quick_connect_links": []
+   },
+   "viewer_submit": {
+    "route": "#/quickconnect",
+    "quick_connect_button": null,
+    "dialogs": [],
+    "page_text": "Quick Connect\nTo sign in with Quick Connect, select the 'Quick Connect' button on the device you are logging in from and enter the displayed code below.\n\n\nUnknown Quick Connect code\nQuick Connect code\nAuthorize",
+    "sign_in_form": false,
+    "user_select": [],
+    "code_input": true,
+    "quick_connect_links": []
+   },
+   "requests": [
+    {
+     "browser": "off-tv",
+     "method": "GET",
+     "path": "/QuickConnect/Enabled",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "viewer",
+     "method": "GET",
+     "path": "/QuickConnect/Enabled",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": false,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "viewer",
+     "method": "GET",
+     "path": "/QuickConnect/Enabled",
+     "query": {},
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": true,
+     "other_token_headers": [],
+     "body": null,
+     "status": 200
+    },
+    {
+     "browser": "viewer",
+     "method": "POST",
+     "path": "/QuickConnect/Authorize",
+     "query": {
+      "code": "123456"
+     },
+     "authorization_scheme": "MediaBrowser",
+     "sends_token": true,
+     "other_token_headers": [],
+     "body": null,
+     "status": 401
+    }
+   ]
+  }
+ },
+ "expiry": [
+  {
+   "code": "early-a",
+   "call": "approve",
+   "at_seconds": 1,
+   "status": 200,
+   "body": "true"
+  },
+  {
+   "code": "early-b",
+   "call": "approve",
+   "at_seconds": 1,
+   "status": 200,
+   "body": "true"
+  },
+  {
+   "code": "early-c",
+   "call": "approve",
+   "at_seconds": 1,
+   "status": 200,
+   "body": "true"
+  },
+  {
+   "code": "early-d",
+   "call": "approve",
+   "at_seconds": 1,
+   "status": 200,
+   "body": "true"
+  },
+  {
+   "code": "early-a",
+   "call": "connect",
+   "at_seconds": 2,
+   "status": 200,
+   "Authenticated": true,
+   "date_added_moved_seconds": 61
+  },
+  {
+   "code": "pending",
+   "call": "connect",
+   "at_seconds": 2,
+   "status": 200,
+   "Authenticated": false,
+   "date_added_moved_seconds": 0
+  },
+  {
+   "code": "late-a",
+   "call": "approve",
+   "at_seconds": 540,
+   "status": 200,
+   "body": "true"
+  },
+  {
+   "code": "late-b",
+   "call": "approve",
+   "at_seconds": 540,
+   "status": 200,
+   "body": "true"
+  },
+  {
+   "code": "late-a",
+   "call": "connect",
+   "at_seconds": 541,
+   "status": 200,
+   "Authenticated": true,
+   "date_added_moved_seconds": 600
+  },
+  {
+   "code": "pending",
+   "call": "connect",
+   "at_seconds": 590,
+   "status": 200,
+   "Authenticated": false,
+   "date_added_moved_seconds": 0
+  },
+  {
+   "code": "early-a",
+   "call": "redeem",
+   "at_seconds": 590,
+   "status": 200
+  },
+  {
+   "code": "pending",
+   "call": "connect",
+   "at_seconds": 612,
+   "status": 404,
+   "body": "\"Unknown secret\""
+  },
+  {
+   "code": "early-b",
+   "call": "redeem",
+   "at_seconds": 612,
+   "status": 404,
+   "body": "Error processing request."
+  },
+  {
+   "code": "pending",
+   "call": "approve",
+   "at_seconds": 613,
+   "status": 404,
+   "body": "Error processing request."
+  },
+  {
+   "code": "early-b",
+   "call": "connect",
+   "at_seconds": 613,
+   "status": 200,
+   "Authenticated": true,
+   "date_added_moved_seconds": 61
+  },
+  {
+   "code": "pending",
+   "call": "redeem",
+   "at_seconds": 614,
+   "status": 404,
+   "body": "Error processing request."
+  },
+  {
+   "code": "early-a",
+   "call": "redeem",
+   "at_seconds": 615,
+   "status": 404,
+   "body": "Error processing request."
+  },
+  {
+   "code": "early-c",
+   "call": "connect",
+   "at_seconds": 650,
+   "status": 200,
+   "Authenticated": true,
+   "date_added_moved_seconds": 61
+  },
+  {
+   "code": "early-d",
+   "call": "connect",
+   "at_seconds": 675,
+   "status": 404,
+   "body": "\"Unknown secret\""
+  },
+  {
+   "code": "early-d",
+   "call": "redeem",
+   "at_seconds": 676,
+   "status": 404,
+   "body": "Error processing request."
+  },
+  {
+   "code": "late-a",
+   "call": "redeem",
+   "at_seconds": 1130,
+   "status": 200
+  },
+  {
+   "code": "late-b",
+   "call": "redeem",
+   "at_seconds": 1152,
+   "status": 404,
+   "body": "Error processing request."
+  },
+  {
+   "code": "late-b",
+   "call": "connect",
+   "at_seconds": 1153,
+   "status": 200,
+   "Authenticated": true,
+   "date_added_moved_seconds": 600
+  },
+  {
+   "code": "late-b",
+   "call": "connect",
+   "at_seconds": 1215,
+   "status": 404,
+   "body": "\"Unknown secret\""
+  }
+ ]
+}

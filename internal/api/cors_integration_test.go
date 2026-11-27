@@ -68,7 +68,7 @@ func (a *accessSite) corsRoutes(t *testing.T) (map[string]accHandler, []Route) {
 
 // Every answer of every route to a request that carries an Origin allows that origin, whatever the answer, with a
 // token in any of the seven spellings, with an unknown one and with none; and none of them allows credentials or sets
-// a cookie. The count is held: 92 routes, so a new route is asked too.
+// a cookie. The count is held: 96 routes, so a new route is asked too.
 func TestEveryAnswerOfEveryRouteToARequestWithAnOriginAllowsIt(t *testing.T) {
 	a := newAccessSite(t)
 	handlers, routes := a.corsRoutes(t)
@@ -134,11 +134,11 @@ func TestEveryAnswerOfEveryRouteToARequestWithAnOriginAllowsIt(t *testing.T) {
 			}
 		}
 	}
-	if heads != 66*4 {
-		t.Fatalf("%d HEADs asked, want 66 GET routes x 2 origins x 2 credentials", heads)
+	if heads != 67*4 {
+		t.Fatalf("%d HEADs asked, want 67 GET routes x 2 origins x 2 credentials", heads)
 	}
-	if len(routes) != 92 {
-		t.Fatalf("%d routes asked, want 92", len(routes))
+	if len(routes) != 96 {
+		t.Fatalf("%d routes asked, want 96", len(routes))
 	}
 	t.Logf("%d answers, by status: %v", asked, statuses)
 	if len(bad) > 0 {
@@ -323,8 +323,8 @@ func TestNoRouteSetsACookieAndACookieIsNoToken(t *testing.T) {
 			}
 		}
 	}
-	if viewers != 81 || cookied != 81*6 {
-		t.Errorf("asked %d viewer routes and %d cookies, want 81 and 486", viewers, cookied)
+	if viewers != 82 || cookied != 82*6 {
+		t.Errorf("asked %d viewer routes and %d cookies, want 82 and 492", viewers, cookied)
 	}
 	if len(bad) > 0 {
 		sort.Strings(bad)
