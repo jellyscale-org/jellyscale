@@ -1,7 +1,10 @@
 # A jellyscale with a small synthetic library and a known user, for a client's tests (docs/client-testing.md).
 #   JELLYSCALE_IMAGE=ghcr.io/jellyscale-org/jellyscale:X.Y.Z-fixtures docker compose up -d --wait
-# The server's port is on 127.0.0.1 at a port Docker picks: `docker compose port jellyscale 8096`.
-# Everything is kept inside the containers and goes with `docker compose down`. For tests only: the password is public.
+# JELLYSCALE_IMAGE may also be a main-<12 hex>-fixtures tag. The server's port is on 127.0.0.1 at a port Docker picks:
+# `docker compose port jellyscale 8096`. Everything is kept inside the containers and goes with `docker compose down -v`.
+# For tests only: the password and the S3 keys are public. The S3 libraries' copies are in a SeaweedFS bucket that the
+# seed service fills before the server starts. The seed runs on every `up` and copies only what the bucket lacks, so a
+# second `up` copies nothing; `down -v` empties the bucket.
 services:
   postgres:
     image: postgres:18-alpine
@@ -12,18 +15,44 @@ services:
       interval: 2s
       retries: 30
 
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.50
+    command: server -s3 -s3.config=/s3.json -volume.max=20 -dir=/data
+    configs:
+      - source: s3config
+        target: /s3.json
+
+  seed:
+    image: ${JELLYSCALE_IMAGE:?set JELLYSCALE_IMAGE to the fixtures image, such as ghcr.io/jellyscale-org/jellyscale:X.Y.Z-fixtures}
+    entrypoint: [seed]
+    environment:
+      JELLYSCALE_S3_ACCESS_KEY: jellyscale-fixtures
+      JELLYSCALE_S3_SECRET_KEY: jellyscale-fixtures-secret
+    depends_on:
+      seaweedfs:
+        condition: service_started
+
   jellyscale:
     image: ${JELLYSCALE_IMAGE:?set JELLYSCALE_IMAGE to the fixtures image, such as ghcr.io/jellyscale-org/jellyscale:X.Y.Z-fixtures}
     environment:
       JELLYSCALE_DATABASE_URL: postgres://postgres:dev@postgres:5432/postgres
       JELLYSCALE_ADMIN_PASSWORD: jellyscale-fixtures
+      JELLYSCALE_S3_ACCESS_KEY: jellyscale-fixtures
+      JELLYSCALE_S3_SECRET_KEY: jellyscale-fixtures-secret
     ports:
       - 127.0.0.1::8096
     depends_on:
       postgres:
         condition: service_healthy
+      seed:
+        condition: service_completed_successfully
     # /readyz needs the database; /healthz answers from the process alone.
     healthcheck:
       test: [CMD, wget, -q, -O, /dev/null, "http://127.0.0.1:8096/readyz"]
       interval: 2s
       retries: 40
+
+configs:
+  s3config:
+    content: |
+      {"identities":[{"name":"jellyscale","credentials":[{"accessKey":"jellyscale-fixtures","secretKey":"jellyscale-fixtures-secret"}],"actions":["Admin","Read","Write","List"]}]}

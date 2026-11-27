@@ -55,12 +55,10 @@ if [[ ! -f $returnfilm ]]; then
     -c:a aac "$returnfilm" || exit 1
 fi
 
-# Films whose video Chrome plays and whose audio it doesn't, with keyframes at
-# the irregular times of the captured fixture (compat/captures/transcode-12.4.md),
-# so a copied stream's playlist is no fixed grid: Matroska and MP4 (moov at the
+# Films whose video Chrome plays and whose audio it doesn't: Matroska and MP4 (moov at the
 # end, with an edit list, as ffmpeg writes it), and a Matroska with no Cues,
-# which has no index to cut on and is re-encoded.
-keyframes=0,3,7,13,18,26,31,39,44,52,57,65,70,78,83
+# which has no index to cut on and is re-encoded. codec.sh has their keyframes.
+source "$repo/test/fixtures/codec.sh"
 rho="$work/media/transcode/Rho Film (2041)/Rho Film (2041).mkv"
 if [[ ! -f $rho ]]; then
   mkdir -p "$(dirname "$rho")"
@@ -78,16 +76,6 @@ qoppa="$work/media/transcode/Qoppa Film (2042)/Qoppa Film (2042).mp4"
 # AV1 in software, so Sampi and San are copied and Heth plays as it is; it plays
 # HEVC only with a hardware decoder, which CI doesn't have (Yot, Lamed).
 # x265 and SVT-AV1 print their configuration on stderr whatever -v says.
-codec_film() { # file container video_encoder_args audio_codec
-  local file="$work/media/transcode/$1/$1.$2"
-  [[ -f $file ]] && return
-  mkdir -p "$(dirname "$file")"
-  # shellcheck disable=SC2086
-  ffmpeg -nostdin -v error -y \
-    -f lavfi -i "testsrc2=size=640x360:rate=24000/1001:duration=90" \
-    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=90" \
-    -map 0:v -map 1:a $3 -force_key_frames "$keyframes" -c:a "$4" -metadata:s:a:0 language=eng "$file" 2>/dev/null || { echo "could not make $file" >&2; exit 1; }
-}
 # SVT-AV1 in ffmpeg 6.1 (Ubuntu 24.04, which CI runs) ignores -force_key_frames and
 # keeps the first frame's keyframe alone, which is a film with no index to cut a
 # copy on. So the video is encoded in pieces that each start at a keyframe time
@@ -119,15 +107,12 @@ hevc="-c:v libx265 -preset veryfast -x265-params keyint=2000:log-level=error"
 av1_film "Sampi Film (2080)" mkv ac3
 av1_film "San Film (2081)" mp4 ac3
 av1_film "Heth Film (2082)" mp4 aac
-codec_film "Yot Film (2083)" mp4 "$hevc" aac
-codec_film "Lamed Film (2084)" mkv "$hevc" ac3
-# HDR: 10-bit HEVC in PQ (Resh) and HLG (Shin), and H.264 in PQ (Tav), which a
-# copy would send to the client as washed-out SDR. All are re-encoded to SDR
-# BT.709 by a tone-mapping transcode, whatever Chrome plays.
-hdr="-pix_fmt yuv420p10le -x265-params keyint=2000:log-level=error:colorprim=bt2020:colormatrix=bt2020nc"
-codec_film "Resh Film (2085)" mkv "-c:v libx265 -preset veryfast $hdr:transfer=smpte2084" ac3
-codec_film "Shin Film (2086)" mp4 "-c:v libx265 -preset veryfast $hdr:transfer=arib-std-b67" aac
-codec_film "Tav Film (2087)" mkv "-pix_fmt yuv420p10le -c:v libx264 -preset veryfast -x264-params colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc" aac
+codec_film "$work/media" "Yot Film (2083)" mp4 "$hevc" aac
+codec_film "$work/media" "Lamed Film (2084)" mkv "$hevc" ac3
+# HDR (codec.sh's hdr): all are re-encoded to SDR BT.709 by a tone-mapping transcode, whatever Chrome plays.
+codec_film "$work/media" "Resh Film (2085)" mkv "-c:v libx265 -preset veryfast $hdr:transfer=smpte2084" ac3
+codec_film "$work/media" "Shin Film (2086)" mp4 "-c:v libx265 -preset veryfast $hdr:transfer=arib-std-b67" aac
+codec_film "$work/media" "Tav Film (2087)" mkv "-pix_fmt yuv420p10le -c:v libx264 -preset veryfast -x264-params colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc" aac
 # ffmpeg writes the Cues last, so cutting the file where they start leaves a
 # film with its duration and no Cues; the SeekHead still points to them.
 nocues="$work/media/transcode/Digamma Film (2045)/Digamma Film (2045).mkv"

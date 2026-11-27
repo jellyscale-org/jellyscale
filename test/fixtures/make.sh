@@ -157,3 +157,20 @@ fontfilm "Plain Film (2064)"
 # for good (test/e2e/run.sh), and one whose font the gate takes from the store.
 fontfilm "Cracked Fonts Film (2068)" -attach "$font" -metadata:s:t:0 mimetype=font/ttf
 fontfilm "Vanishing Fonts Film (2069)" -attach "$font" -metadata:s:t:0 mimetype=font/ttf
+
+# A film a client that plays H.264 and AAC gets re-encoded: HEVC, with a PGS track and a second audio track that is not
+# the default (image.sh picks them with AudioStreamIndex and SubtitleStreamIndex). The picture is re-encoded to H.264,
+# and the subtitle is burnt in when a client picks it.
+source "$here/codec.sh"
+hevc="$root/transcode/Pgs Hevc Film (2090)/Pgs Hevc Film (2090).mkv"
+if [[ ! -f $hevc ]]; then
+  mkdir -p "$(dirname "$hevc")"
+  ffmpeg -nostdin -v error -y -f lavfi -i "color=c=black:size=640x360:rate=24:duration=120" \
+    -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=120" -f lavfi -i "sine=frequency=880:sample_rate=48000:duration=120" \
+    -fix_sub_duration -i "$tmp/image.sup" \
+    -map 0:v -map 1:a -map 2:a -map 3 -c:v libx265 -preset ultrafast -x265-params keyint=48:log-level=error \
+    -c:a:0 aac -c:a:1 ac3 -c:s copy -metadata:s:a:0 language=eng -metadata:s:a:1 language=deu -metadata:s:s:0 language=eng \
+    -disposition:a:0 default -disposition:a:1 0 -disposition:s:0 0 "$hevc" || exit 1
+fi
+# HDR: 10-bit HEVC in PQ, which a client gets as SDR BT.709 from a tone-mapping transcode (codec.sh's hdr).
+codec_film "$root" "Resh Film (2085)" mkv "-c:v libx265 -preset veryfast $hdr:transfer=smpte2084" ac3
