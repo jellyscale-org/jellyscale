@@ -34,9 +34,16 @@ fi
 for f in /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list; do
   if [[ -f $f ]]; then sudo sed -i 's|http://azure.archive.ubuntu.com|http://archive.ubuntu.com|g' "$f"; fi
 done
+# Only Ubuntu's own source may decide this install. The runner carries other
+# sources (packages.microsoft.com answered 403 on run 46059827953), and apt
+# reads every source in sources.list.d on update; one of them failing must not
+# fail ours. sourceparts=- ignores the other files, including a broken one.
+sources=/etc/apt/sources.list.d/ubuntu.sources
+[[ -f $sources ]] || sources=/etc/apt/sources.list
+apt_only=(-o "Dir::Etc::sourcelist=$sources" -o Dir::Etc::sourceparts=-)
 # So that the archive holds only what this install downloads.
 [[ -n $debs ]] && sudo apt-get clean
-sudo apt-get -o Acquire::Retries=3 update
+sudo apt-get "${apt_only[@]}" -o Acquire::Retries=3 update
 # --reinstall: a package the runner image already has (fontconfig, fonts-dejavu-core) is
 # otherwise never downloaded, so it would leave no .deb and every later run would miss.
 # A cached .deb can carry an older Mesa VA driver whose exact mesa-libgallium
@@ -47,7 +54,7 @@ sudo apt-get -o Acquire::Retries=3 update
 # mirror download inside the job's 5-minute bound.
 sudo dpkg --purge --force-all mesa-va-drivers va-driver-all >/dev/null 2>&1 || true
 # Keep the mirror install inside the job's five-minute bound: required packages only.
-sudo apt-get -o Acquire::Retries=3 install -y --reinstall --no-install-recommends "$@"
+sudo apt-get "${apt_only[@]}" -o Acquire::Retries=3 install -y --reinstall --no-install-recommends "$@"
 if [[ -n $debs ]]; then
   mkdir -p "$debs"
   cp "$archives"/*.deb "$debs"/
