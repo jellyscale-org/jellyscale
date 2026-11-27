@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"jellyscale/internal/contract"
@@ -37,6 +38,7 @@ const (
 	reasonInvalidBody      Reason = "invalid-body"
 	reasonLanguageNotSaved Reason = "language-not-saved"
 	reasonNoCapacity       Reason = "no-capacity"
+	reasonNothingToPlay    Reason = "nothing-to-play"
 	reasonServerFailure    Reason = "server-failure"
 )
 
@@ -50,6 +52,7 @@ var reasonActions = map[Reason]string{
 	reasonInvalidBody:      "none",
 	reasonLanguageNotSaved: "choose-another",
 	reasonNoCapacity:       "retry",
+	reasonNothingToPlay:    "choose-another",
 	reasonServerFailure:    "retry",
 }
 
@@ -84,14 +87,78 @@ func refusalEnvelope(w http.ResponseWriter, status int, reason Reason) {
 	}{Reason: reason, Action: reasonActions[reason]}) //nolint:errcheck
 }
 
+// patternOperation reads the method and path template the mux matched, which is the operation that answered.
+func patternOperation(pattern string) (method, path string, ok bool) {
+	method, path, ok = strings.Cut(pattern, " ")
+	return method, path, ok
+}
+
+func reasonDeclared(reasons []string, reason Reason) bool {
+	return slices.Contains(reasons, string(reason))
+}
+
+// declaredForRequest is the one gate on answers: a v1 answer may carry only a status and reason its operation declares.
+// A dispatcher answer has no matched mux pattern, so every operation sharing the path is allowed to declare it; an unknown
+// path has no operation and is answered not-found.
+func (s *Server) declaredForRequest(r *http.Request, status int, reason Reason) bool {
+	document := s.contractOf()
+	method, path, matched := patternOperation(r.Pattern)
+	if matched {
+		return reasonDeclared(document.DeclaredReasons(method, path, strconv.Itoa(status)), reason)
+	}
+	foundOperation := false
+	for template, methods := range document.Paths {
+		if !matchV1Path(template, strings.ToLower(r.URL.Path)) {
+			continue
+		}
+		for name := range methods {
+			if !slices.Contains(contractMethods, name) {
+				continue
+			}
+			foundOperation = true
+			if reasonDeclared(document.DeclaredReasons(name, template, strconv.Itoa(status)), reason) {
+				return true
+			}
+		}
+	}
+	return !foundOperation && status == http.StatusNotFound && reason == reasonNotFound
+}
+
+// undeclared logs the answer the contract did not allow and sends the one refusal every served operation declares.
+func (s *Server) undeclared(w http.ResponseWriter, r *http.Request, status int, reason Reason) {
+	method, path, matched := patternOperation(r.Pattern)
+	if !matched {
+		method, path = r.Method, r.URL.Path
+	}
+	s.Log.Error(undeclaredAnswerLog, "method", method, "path", path, "status", status, "reason", reason)
+	refusalEnvelope(w, http.StatusInternalServerError, reasonServerFailure)
+}
+
 // refuseV1 answers a v1 request from the contract's reasons, and a Jellyfin request as it always has.
 func (s *Server) refuseV1(w http.ResponseWriter, r *http.Request, status int, reason Reason, text string) {
-	if isV1Path(r.URL.Path) {
-		refusalEnvelope(w, status, reason)
+	if !isV1Path(r.URL.Path) {
+		refuse(w, r, status, text)
 		return
 	}
-	refuse(w, r, status, text)
+	if !s.declaredForRequest(r, status, reason) {
+		s.undeclared(w, r, status, reason)
+		return
+	}
+	refusalEnvelope(w, status, reason)
 }
+
+// bodyReason gates a reason carried in a 200 body by the same contract rule as a refusal of its own. It says whether
+// the caller may put the reason in its answer; on no it has already written the 500 the contract allows instead.
+func (s *Server) bodyReason(w http.ResponseWriter, r *http.Request, reason Reason) (Reason, bool) {
+	if s.declaredForRequest(r, http.StatusOK, reason) {
+		return reason, true
+	}
+	s.undeclared(w, r, http.StatusOK, reason)
+	return "", false
+}
+
+// matrixLogLine is the line an answer the contract does not allow leaves in the operator's log.
+const undeclaredAnswerLog = "undeclared answer"
 
 var embeddedContract = contract.Default()
 
@@ -135,15 +202,62 @@ func contractRouteKey(method, path string) string {
 
 var contractMethods = []string{"get", "put", "post", "delete", "patch", "head", "options"}
 
-// checkContract stops a server whose routes and contract disagree, and one that would serve a stable capability before
-// the check that guards it exists. A stream replica serves no v1 route, so whatever the contract says there is not its
-// business; it starts as it did before this release.
+// checkContract stops a server whose contract disagrees with itself or with the routes it serves. The document's own
+// rules hold for every replica, a stream one included: the contract is one artifact. Only the route rules belong to the
+// api role, which is the one that serves them.
 func (s *Server) checkContract() {
 	document := s.contractOf()
 	for code, action := range reasonActions {
 		entry, ok := document.Reasons[string(code)]
 		if !ok || entry.Kind != "refusal" || entry.Action != action {
 			panic("contract does not list the refusal " + string(code) + " with its kind and action")
+		}
+	}
+	capabilityUsed := map[string]bool{}
+	v1Operations := 0
+	for path, methods := range document.Paths {
+		if !strings.HasPrefix(path, v1Prefix) {
+			continue
+		}
+		for method, operation := range methods {
+			if !slices.Contains(contractMethods, method) {
+				continue
+			}
+			v1Operations++
+			if operation.State != "declared" && operation.State != "preview" {
+				panic("contract marks " + method + " " + path + " " + operation.State + ", which has no compatibility gate")
+			}
+			if operation.Capability != "" {
+				capability, ok := document.Capabilities[operation.Capability]
+				if !ok {
+					panic("operation " + method + " " + path + " names the unlisted capability " + operation.Capability)
+				}
+				if capability.State != operation.State {
+					panic("operation " + method + " " + path + " disagrees with the state of its capability")
+				}
+				capabilityUsed[operation.Capability] = true
+			}
+			for status, response := range operation.Responses {
+				for _, reason := range document.ResponseReasons(response) {
+					if _, ok := document.Reasons[reason]; !ok {
+						panic("response " + status + " of " + method + " " + path + " declares the reason " + reason + ", which the list lacks")
+					}
+				}
+			}
+		}
+	}
+	// A replica with no v1 contract at all has no v1 API to describe: a stream replica may start with that document.
+	if v1Operations > 0 {
+		for id, capability := range document.Capabilities {
+			if capability.ID != id {
+				panic("the capability " + id + " says its id is " + capability.ID)
+			}
+			if !capabilityUsed[id] {
+				panic("the capability " + id + " has no operation")
+			}
+			if capability.State != "declared" && capability.State != "preview" {
+				panic("the capability " + id + " is " + capability.State + ", which has no compatibility gate")
+			}
 		}
 	}
 	if !slices.Contains(s.Roles, RoleAPI) {
@@ -155,8 +269,8 @@ func (s *Server) checkContract() {
 			served[contractRouteKey(route.Method, route.Path)] = true
 		}
 	}
-	// A capability's state is as binding as the state of the operations that make it: a declared one must have no
-	// served operation, a preview one must have one, and a stable one needs the compatibility gate no release has yet.
+	// A capability's state is as binding as its operations': a declared one has no served operation and a preview one
+	// has one. The contract's own checks above already reject a stable one and a disagreement between their states.
 	servedCapability := map[string]bool{}
 	for path, methods := range document.Paths {
 		if !strings.HasPrefix(path, v1Prefix) {
@@ -176,8 +290,6 @@ func (s *Server) checkContract() {
 				if !served[key] {
 					panic("contract marks " + key + " preview but the server does not serve it")
 				}
-			default:
-				panic("contract marks " + key + " " + operation.State + ", which has no compatibility gate")
 			}
 			if operation.Capability != "" && operation.State != "declared" {
 				servedCapability[operation.Capability] = true
@@ -189,17 +301,11 @@ func (s *Server) checkContract() {
 		panic("the server serves " + key + ", which the contract does not describe")
 	}
 	for id, capability := range document.Capabilities {
-		switch capability.State {
-		case "declared":
-			if servedCapability[id] {
-				panic("contract declares the capability " + id + " but the server serves it")
-			}
-		case "preview":
-			if !servedCapability[id] {
-				panic("contract marks the capability " + id + " preview but the server serves none of it")
-			}
-		default:
-			panic("contract marks the capability " + id + " " + capability.State + ", which has no compatibility gate")
+		if capability.State == "declared" && servedCapability[id] {
+			panic("contract declares the capability " + id + " but the server serves it")
+		}
+		if capability.State == "preview" && !servedCapability[id] {
+			panic("contract marks the capability " + id + " preview but the server serves none of it")
 		}
 	}
 }
@@ -247,25 +353,34 @@ func (s *Server) v1Dispatch(next http.Handler) http.Handler {
 				matched = append(matched, operation)
 			}
 		}
+		if len(matched) > 0 {
+			allDeclared := true
+			for _, operation := range matched {
+				if operation.state != "declared" {
+					allDeclared = false
+					break
+				}
+			}
+			if allDeclared {
+				s.refuseV1(w, r, http.StatusNotFound, reasonNotServed, "not served")
+				return
+			}
+		}
 		for _, operation := range matched {
 			if operation.method != method {
 				continue
 			}
-			if operation.state == "declared" {
-				refusalEnvelope(w, http.StatusNotFound, reasonNotServed)
-			} else {
-				next.ServeHTTP(w, r)
-			}
+			next.ServeHTTP(w, r)
 			return
 		}
 		for _, operation := range matched {
 			if operation.state != "declared" {
 				w.Header().Set("Allow", strings.Join(servedMethods[operation.path], ", "))
-				refusalEnvelope(w, http.StatusMethodNotAllowed, reasonMethodNotAllowed)
+				s.refuseV1(w, r, http.StatusMethodNotAllowed, reasonMethodNotAllowed, "method not allowed")
 				return
 			}
 		}
-		refusalEnvelope(w, http.StatusNotFound, reasonNotFound)
+		s.refuseV1(w, r, http.StatusNotFound, reasonNotFound, "not found")
 	})
 }
 

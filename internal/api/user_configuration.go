@@ -211,7 +211,9 @@ func (s *Server) patchConfiguration(w http.ResponseWriter, r *http.Request) {
 	err = s.Pool.QueryRow(r.Context(), `UPDATE users SET configuration = COALESCE(configuration, '{}'::jsonb) || $2::jsonb
 		WHERE id = $1::uuid RETURNING configuration`, session.User.ID, string(body)).Scan(&stored)
 	if errors.Is(err, pgx.ErrNoRows) {
-		s.refuseV1(w, r, http.StatusNotFound, reasonNotFound, "404 page not found")
+		// The account went away between the token check and the write. From the caller's side that is the same state
+		// as a token Postgres does not know: sign in again, rather than hunt for a title that never existed.
+		s.refuseV1(w, r, http.StatusUnauthorized, reasonUnauthorized, "unauthorized")
 		return
 	}
 	if err != nil {

@@ -329,8 +329,13 @@ func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, mark
 			s.logDecisions(decision) // Alone: no other source of a refused reply is said to play.
 			reply := map[string]any{"MediaSources": []media.MediaSource{}, "PlaySessionId": playSession, "ErrorCode": "RateLimitExceeded"}
 			if marked {
-				// Jellyfin's ErrorCode stays for the player; jellyscale's own API also says what the viewer can do.
-				reply["Reason"], reply["Action"] = string(reasonNoCapacity), reasonActions[reasonNoCapacity]
+				// Jellyfin's ErrorCode stays for the player; jellyscale's own API also says what the viewer can do,
+				// through the same contract check a refusal of its own passes.
+				allowed, ok := s.bodyReason(w, r, reasonNoCapacity)
+				if !ok {
+					return
+				}
+				reply["Reason"], reply["Action"] = string(allowed), reasonActions[allowed]
 			}
 			writeJSON(w, reply)
 			return
@@ -370,16 +375,34 @@ func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, mark
 	}
 	s.logDecisions(decisions...)
 	if len(result) == 0 {
-		// A source the request names but the item does not have is a refusal as much as an unknown item: a viewer who
-		// edits MediaSourceId must be told why nothing plays, not given an empty answer with no reason.
+		// A series or a season exists but has no file of its own; a named source that is not on this item does not exist
+		// here. Both leave nothing to play, but only the second says the viewer named nothing.
+		reason := reasonNotFound
+		if s.nothingToPlay(r, id) {
+			reason = reasonNothingToPlay
+		}
 		reply := map[string]any{"MediaSources": []media.MediaSource{}, "PlaySessionId": playSession}
 		if marked {
-			reply["Reason"], reply["Action"] = string(reasonNotFound), reasonActions[reasonNotFound]
+			allowed, ok := s.bodyReason(w, r, reason)
+			if !ok {
+				return
+			}
+			reply["Reason"], reply["Action"] = string(allowed), reasonActions[allowed]
 		}
 		writeJSON(w, reply)
 		return
 	}
 	writeJSON(w, map[string]any{"MediaSources": result, "PlaySessionId": playSession})
+}
+
+// nothingToPlay tells a title that exists from one that does not: a series or a season has no media source of its own,
+// and is told to choose one of its episodes or films rather than told it does not exist.
+func (s *Server) nothingToPlay(r *http.Request, id string) bool {
+	var kind string
+	if err := s.Pool.QueryRow(r.Context(), "SELECT type FROM items WHERE id = $1::uuid", id).Scan(&kind); err != nil {
+		return false
+	}
+	return kind == "Series" || kind == "Season"
 }
 
 // storedStreams is the file's own track list, empty when the row is gone.

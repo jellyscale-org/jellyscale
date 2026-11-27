@@ -5,6 +5,8 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -24,10 +26,23 @@ func Default() *Contract {
 	return parsed
 }
 
+// Response is one answer an operation declares. A response may be a $ref to components/responses, but either way it
+// names the reasons a server may send with that status, including reasons in a 200 body.
+type Response struct {
+	Ref     string   `yaml:"$ref"`
+	Reasons []string `yaml:"x-reasons"`
+}
+
 // Operation is one method of one path. State is declared, preview or stable (D-134).
 type Operation struct {
-	State      string `yaml:"x-state"`
-	Capability string `yaml:"x-capability"`
+	State      string              `yaml:"x-state"`
+	Capability string              `yaml:"x-capability"`
+	Responses  map[string]Response `yaml:"responses"`
+}
+
+// Components holds the responses operations refer to by $ref.
+type Components struct {
+	Responses map[string]Response `yaml:"responses"`
 }
 
 // Reason is one entry of the closed list of reasons a client may be told.
@@ -46,9 +61,49 @@ type Capability struct {
 type Contract struct {
 	OpenAPI      string                          `yaml:"openapi"`
 	Paths        map[string]map[string]Operation `yaml:"paths"`
+	Components   Components                      `yaml:"components"`
 	Reasons      map[string]Reason               `yaml:"x-reasons"`
 	Capabilities map[string]Capability           `yaml:"x-capabilities"`
 	Raw          []byte                          `yaml:"-"`
+}
+
+// ResponseReasons follows a response's $ref and returns the reasons it declares.
+func (c *Contract) ResponseReasons(response Response) []string {
+	reasons := slices.Clone(response.Reasons)
+	for range 8 {
+		if response.Ref == "" {
+			return reasons
+		}
+		name := strings.TrimPrefix(response.Ref, "#/components/responses/")
+		found, ok := c.Components.Responses[name]
+		if !ok {
+			return reasons
+		}
+		for _, reason := range found.Reasons {
+			if !slices.Contains(reasons, reason) {
+				reasons = append(reasons, reason)
+			}
+		}
+		response = found
+	}
+	return reasons
+}
+
+// DeclaredReasons is the closed set of reasons one status of one operation may carry.
+func (c *Contract) DeclaredReasons(method, path, status string) []string {
+	methods, ok := c.Paths[path]
+	if !ok {
+		return nil
+	}
+	operation, ok := methods[strings.ToLower(method)]
+	if !ok {
+		return nil
+	}
+	response, ok := operation.Responses[status]
+	if !ok {
+		return nil
+	}
+	return c.ResponseReasons(response)
 }
 
 // Parse reads a contract. A replica that serves no v1 route may hold one with no paths at all, but every document needs

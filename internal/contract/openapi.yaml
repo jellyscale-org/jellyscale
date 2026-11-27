@@ -13,6 +13,7 @@ paths:
       responses:
         "200":
           description: The contract the server holds, byte for byte as the repository and image carry it.
+          x-reasons: []
           content:
             application/yaml:
               schema:
@@ -29,6 +30,7 @@ paths:
       responses:
         "200":
           description: Identity, including every capability and its state.
+          x-reasons: []
           content:
             application/json:
               schema:
@@ -46,12 +48,15 @@ paths:
       responses:
         "200":
           description: The stored choices.
+          x-reasons: []
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/TrackPreferences'
         "401":
           $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
         "405":
           $ref: '#/components/responses/MethodNotAllowed'
         "500":
@@ -69,6 +74,7 @@ paths:
       responses:
         "200":
           description: The choices as stored.
+          x-reasons: []
           content:
             application/json:
               schema:
@@ -77,6 +83,8 @@ paths:
           $ref: '#/components/responses/InvalidBody'
         "401":
           $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
         "409":
           $ref: '#/components/responses/LanguageNotSaved'
         "405":
@@ -97,6 +105,7 @@ paths:
       responses:
         "200":
           description: The configuration as stored.
+          x-reasons: []
           content:
             application/json:
               schema:
@@ -105,6 +114,8 @@ paths:
           $ref: '#/components/responses/InvalidBody'
         "401":
           $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
         "405":
           $ref: '#/components/responses/MethodNotAllowed'
         "500":
@@ -129,6 +140,7 @@ paths:
       responses:
         "200":
           description: The media sources, or a refusal in the body beside Jellyfin's ErrorCode.
+          x-reasons: [no-capacity, not-found, nothing-to-play]
           content:
             application/json:
               schema:
@@ -158,48 +170,56 @@ components:
   responses:
     Unauthorized:
       description: No valid token. Sign in and try again.
+      x-reasons: [unauthorized]
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Refusal'
     Forbidden:
       description: The token may not act on what the request names.
+      x-reasons: [forbidden]
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Refusal'
     NotFound:
       description: No such item.
+      x-reasons: [not-found]
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Refusal'
     NotServed:
       description: A declared operation this server does not serve yet.
+      x-reasons: [not-served]
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Refusal'
     InvalidBody:
       description: The body is not one this operation accepts.
+      x-reasons: [invalid-body]
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Refusal'
     MethodNotAllowed:
       description: The path exists but takes another method; Allow names the ones it takes.
+      x-reasons: [method-not-allowed]
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Refusal'
     ServerFailure:
       description: Something inside the server failed; retry shortly.
+      x-reasons: [server-failure]
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Refusal'
     LanguageNotSaved:
       description: A switch needs a saved language first.
+      x-reasons: [language-not-saved]
       content:
         application/json:
           schema:
@@ -371,6 +391,10 @@ x-reasons:
     kind: refusal
     action: retry
     meaning: No worker can play this film now; retry shortly.
+  nothing-to-play:
+    kind: refusal
+    action: choose-another
+    meaning: This title has no file of its own to play, as a series or a season has none; choose one of its episodes or films.
   server-failure:
     kind: refusal
     action: retry
