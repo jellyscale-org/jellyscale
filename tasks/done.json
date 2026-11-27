@@ -2578,6 +2578,405 @@
       "notes": "/Configuration moved to JS-116 (2026-11-15). Access criteria from the access model (2026-11-16). Refine with care: a throttle per client address needs a trusted-proxy setting first (behind an ingress every request has its address), and a lockout by user name lets anyone lock a known account out. State what start-up does when the configured administrator was deleted or demoted through the API. D-069: named mutants are shown failing once by hand in the Spec step and recorded in the task's record; no mutant table or script is committed.",
       "core": true,
       "ux": true
+    },
+    {
+      "id": "JS-038",
+      "phase": "ID",
+      "title": "Forgot password answers ContactAdmin",
+      "description": "POST /Users/ForgotPassword says the operator resets passwords.",
+      "acceptanceCriteria": [
+        "Answer shape as Jellyfin 12.4"
+      ],
+      "priority": 73,
+      "status": "dropped",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md identity",
+      "notes": "Dropped (D-126 and the pivot, D-107): A Jellyfin route and shape (mandate rule 3). Telling a viewer to ask the operator is part of JS-184's sign-in answers."
+    },
+    {
+      "id": "JS-040",
+      "phase": "ID",
+      "title": "Signed URLs inside playlists",
+      "description": "Playlists stop carrying the viewer's token as ApiKey (DOMAINS 17).",
+      "acceptanceCriteria": [
+        "No viewer token in any playlist or segment URL",
+        "Kodi's TranscodingUrl editing still works",
+        "Whatever replaces the token in a URL never ends a film: a film longer than the replacement's lifetime, a pause longer than it, a seek, a move to another stream replica and a Postgres outage served from the snapshot each go on playing with no action by the viewer, in jellyfin-web (e2e) and with a client that sends its token in a header",
+        "Before building: a trade-off brief to the product owner on whether TranscodingUrl and the subtitle and attachment DeliveryUrls lose the account token too (#222), against DOMAINS 17 ('TranscodingUrl stays Jellyfin-shaped and unsigned'), the Kodi criterion above and D-005 (a PlaybackInfo-based grant was set aside); until it is answered this task covers the URLs inside playlists only. A replacement is never logged and is redacted wherever tokens are, and a media request with neither still answers 401 (D-026)"
+      ],
+      "priority": 57,
+      "status": "dropped",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md identity",
+      "notes": "JS-128: header requests already carry none in master.m3u8 and main.m3u8; the criteria stand for query requests, TranscodingUrl and the subtitle playlist. Issue #222 asks for every media URL; not accepted without the brief (D-032). Dropped (D-126 and the pivot, D-107): Merged into JS-185: the media link opens one playback and carries no account credential."
+    },
+    {
+      "id": "JS-044",
+      "phase": "ID",
+      "title": "User avatars",
+      "description": "User images: get, upload, delete.",
+      "acceptanceCriteria": [
+        "jellyfin-web shows and changes avatars"
+      ],
+      "priority": 77,
+      "status": "dropped",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md identity",
+      "notes": "Access: avatars by id are open to whoever holds the id, as item pictures. (access model, 2026-11-16) Dropped (D-126 and the pivot, D-107): Avatars: no outcome PRODUCT.md promises (rule 1). Moved to the backlog until Octave asks."
+    },
+    {
+      "id": "JS-046",
+      "phase": "P5",
+      "title": "Genres, studios and persons",
+      "description": "Their lists, pages and images through GET /Items filters, /Genres, /Studios, /Persons.",
+      "acceptanceCriteria": [
+        "Matches a Jellyfin 12.4 capture where a client calls it",
+        "Played or browsed in jellyfin-web"
+      ],
+      "priority": 56,
+      "status": "dropped",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase5-library",
+      "notes": "Requested by Fluster, the client that ships with jellyscale: #107. Access: pictures by name (persons, genres, studios) need a token. (access model, 2026-11-16) Dropped (D-126 and the pivot, D-107): Merged into JS-203 (genre and person filters) and JS-205 (collections). Jellyfin routes (rule 3)."
+    },
+    {
+      "id": "JS-047",
+      "phase": "P5",
+      "title": "Next Up and filters",
+      "description": "GET /Shows/NextUp, /Items/Filters and Filters2.",
+      "acceptanceCriteria": [
+        "Matches a Jellyfin 12.4 capture where a client calls it",
+        "Played or browsed in jellyfin-web",
+        "GET /Shows/NextUp answers in Jellyfin 12.4's shape for the signed-in user, honours nextUpDateCutoff, and brings back a series the viewer had caught up on once a new episode is added (#101)",
+        "GET /Items/Filters2 answers with the filters the library can match where this task's capture shows jellyfin-web or an app docs/status.md lists as supported calling it; otherwise it stays as it is (#108, D-032)",
+        "An episode's own answer and the episode lists (Next Up, Continue Watching, Latest, a season's episodes) carry SeriesName as the Jellyfin 12.4 capture does, and jellyfin-web's episode card names the series (#288, D-087)."
+      ],
+      "priority": 31,
+      "status": "dropped",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase5-library",
+      "notes": "Requested by Fluster, the client that ships with jellyscale: #101. Filters2: #108. Dropped (D-126 and the pivot, D-107): Next up is in JS-186 (Continue watching with each show's next episode); filters are JS-203."
+    },
+    {
+      "id": "JS-048",
+      "phase": "P5",
+      "title": "Collections and playlists",
+      "description": "Create, edit and play collections and playlists of films and episodes.",
+      "acceptanceCriteria": [
+        "Matches a Jellyfin 12.4 capture where a client calls it",
+        "Played or browsed in jellyfin-web"
+      ],
+      "priority": 78,
+      "status": "dropped",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase5-library",
+      "notes": "Dropped (D-126 and the pivot, D-107): Merged into JS-205, collections in kinds (D-124)."
+    },
+    {
+      "id": "JS-049",
+      "phase": "P5",
+      "title": "Similar items and recommendations",
+      "description": "/Items/{id}/Similar and variants, /Movies/Recommendations (empty first), /Shows/Upcoming, /Items/Suggestions.",
+      "acceptanceCriteria": [
+        "Matches a Jellyfin 12.4 capture where a client calls it",
+        "Played or browsed in jellyfin-web"
+      ],
+      "priority": 79,
+      "status": "dropped",
+      "passes": false,
+      "dependsOn": [],
+      "source": "PRODUCT.md phase5-library",
+      "notes": "Requested by Fluster, the client that ships with jellyscale: #107. Dropped (D-126 and the pivot, D-107): Merged into JS-101, more like this with reasons (D-124)."
+    },
+    {
+      "id": "JS-065",
+      "phase": "OPS",
+      "title": "Record and replay real client traffic",
+      "description": "Capture sessions of clients Playwright cannot drive and that send their token on media requests (Swiftfin, Streamyfin, Moonfin and Fladder as read from source, D-030; Infuse once a capture shows it does) against a real Jellyfin through a recording proxy, store them sanitized in compat/, and replay them against jellyscale in the integration tier.",
+      "acceptanceCriteria": [
+        "A recording proxy captures a session and strips tokens and personal data",
+        "At least one TV client and one iOS client whose captured media requests each carry a token are captured browsing, playing, seeking and stopping; an app whose player sends none (Findroid, and Android TV's direct play, as read from source) is not a target and is not captured (D-026)",
+        "Replays run in CI and fail on a response a client would reject (status, missing field, wrong shape)",
+        "No titles or paths from a real library in the captures (synthetic fixtures only)"
+      ],
+      "priority": 69,
+      "status": "dropped",
+      "passes": false,
+      "dependsOn": [
+        "JS-064"
+      ],
+      "source": "workflow research 2026-11-07; project plan (cassettes)",
+      "notes": "TV and iOS clients are untested today; Quick Connect and OIDC in Identity need their traffic most. Moved up 2026-11-08: Findroid failed on the dogfood twice where jellyfin-web worked (#44, #47); captures of real non-web clients catch what SDK models alone don't (call order, headers, routes). Scheduled after the web-client work (user, 2026-11-08: focus on the web client first, then pivot to other clients). Findroid and Android TV are no longer capture targets: only clients that send their token on media requests are (owner, 2026-11-20, D-026). Dropped (D-126 and the pivot, D-107): Third-party Jellyfin apps against Jellyfin (rules 3 and 4)."
+    },
+    {
+      "id": "JS-068",
+      "phase": "OPS",
+      "title": "Close the browse and playback-start differences the differential tier lists as gaps",
+      "description": "compat/differences.yaml lists, with kind gap and this task, the fields Jellyfin 12.4 sends that jellyscale leaves out (stream details from ffprobe, flags and counters, UserData.Key), the container names, how Items/Latest groups episodes, the master playlist's bandwidth and codecs, and the oldest-first order of SortBy=PremiereDate descending. Decide for each whether to match Jellyfin or to keep the difference as an improvement, and shrink the list.",
+      "acceptanceCriteria": [
+        "Each entry with task JS-068 in compat/differences.yaml is fixed and removed, or becomes an improvement or non-goal with its reason",
+        "test/differential/run.sh passes with the entries removed",
+        "GET /Items/Latest honours groupItems as Jellyfin 12.4 does (default true): new episodes of one series are one entry with Jellyfin's count field, limit counts entries after grouping, groupItems=false keeps today's answer; this entry is matched, not kept as an improvement (#234, D-039)"
+      ],
+      "priority": 70,
+      "status": "dropped",
+      "passes": false,
+      "dependsOn": [
+        "JS-064"
+      ],
+      "source": "first run of the differential tier (JS-064)",
+      "notes": "Dropped (D-126 and the pivot, D-107): Jellyfin differences go with Jellyfin's API (rule 3)."
+    },
+    {
+      "id": "JS-075",
+      "phase": "OPS",
+      "title": "Real players on the dogfood: ExoPlayer and AVPlayer play jellyscale's own streams",
+      "description": "Every streaming decision so far was checked on hls.js in Chromium only. No ExoPlayer client or AVPlayer client (Swiftfin) has played a jellyscale stream (Findroid and Android TV's direct play send no token on media requests and are not targets, D-026), which the Phase 0 report left open (spikes/README.md, remaining risks 1 and 2), and the decision engine answers direct play to any client whose profile has no fMP4 HLS entry (internal/playback/decide.go). Before more is built on the segment format (JS-054), the owner plays films on real devices against the dogfood, and the lead records what each client asked for and what it played. Web-first stays the plan; this is a check that the format holds.",
+      "acceptanceCriteria": [
+        "The owner plays, against the dogfood, on Jellyfin for Android with its built-in ExoPlayer player (not the web player in its WebView, and with the external player option off) and on Swiftfin with its native AVPlayer player, both read from source as sending their token on every media request (D-030): a direct play, an HEVC or 4K film that transcodes, a seek, an audio switch, a text and an image subtitle. The record names the engine that played each, from the app's setting and the server's log; a run on any other player the app offers proves nothing about the family and is recorded as such (a family left without a run on its engine falls under the next criterion)",
+        "An app whose player sends no token is recorded as refused (D-005) and not supported (D-026), never as a failure to chase, and no task comes of it; a player family with no client that sends a token is listed in docs/status.md as not proven (no client that sends a token), not a pass",
+        "Each client's PlaybackInfo request and the server's decision are recorded from the dogfood's logs, taken from JS-153's decision line (no titles or paths in the record), with what the viewer saw; for each client, whether its request carries an AudioStreamIndex the viewer did not pick (taken from the item's named track) and which track played when the viewer's saved language is not the file's default (D-034)",
+        "Each failure becomes a task in tasks/prd.json, placed before JS-054 when it concerns the segment format",
+        "docs/status.md says which clients have played which paths",
+        "An HEVC HDR copy and its fallback are played once in a browser with an HEVC decoder (E2E_HEVC=1) and recorded; until then docs/status.md says 'checked with ffmpeg only'",
+        "Streamyfin's player entries in compat/clients.yaml are corrected from what the device sends",
+        "On each client played: a server address typed with a trailing slash still signs in; whether it asks for the subtitle playlist, and what its viewer sees, is recorded; what its viewer reads when a sign-in is refused by JS-145 (403 with Retry-After, D-020) is recorded in docs/access.md, and no task comes of an app's wording",
+        "Whether each device's profile declares Dolby Vision is recorded. On one that does: a profile 5 film and a profile 8.1 film from the dogfood are played, with what PlaybackInfo decided (direct play, copy or re-encode) and what the viewer saw. A profile 5 film re-encoded for a client that declares it becomes a task. If neither device declares it, or the dogfood holds no profile 5 film, docs/status.md says profile 5 on a client that declares Dolby Vision is not proven (D-021)",
+        "Each played app's direct-play, HLS, subtitle and download requests seen on the dogfood are compared with what was read from source (D-030): a media request that arrives with no token from an app listed as sending one moves that app to not supported in docs/status.md (D-026), and no task comes of it",
+        "For each app played: whether it asked for a Trickplay route, and whether its sign-in screen offered a code (Quick Connect), with what the server answered and what the viewer saw (nothing, a missing preview, an error); an error a viewer sees is brought to the product owner (BL-222), and no route is built in this task",
+        "Moonfin on an Android TV device signs in and plays one direct play and one film that transcodes, recorded like the others with the engine that played; if it is not run, docs/status.md says no Android TV app has played; on a film with several subtitle tracks, the subtitle index Moonfin asked for and the track it resolved to are recorded, with its subtitle mode (finding 5, D-038)"
+      ],
+      "priority": 25,
+      "status": "dropped",
+      "passes": false,
+      "dependsOn": [
+        "JS-145"
+      ],
+      "source": "Fable 5.2 state review, 2026-11-10",
+      "notes": "Needs the owner's devices and about an hour; the lead prepares the test list and reads the logs. Widened by the product owner's direction review (2026-11-19): goals 1 and 3 are claimed for every client and proven for one. Findroid and Android TV are not targets (owner, 2026-11-20, D-026); The ExoPlayer client is Jellyfin for Android's built-in player and the AVPlayer client is Swiftfin's native player, both read from source as sending their token (product owner, 2026-11-20, D-030); a device still has to show it. No Fluster run is part of this task (owner, 2026-11-20, D-027). D-073: moved up; needs the owner's hour and no build slot. First slice: criteria 1 to 5 and 10. Criteria 6 to 9, 11 and 12 are recorded where the same hour shows them, and otherwise left open in docs/status.md, not chased. Dropped (D-126 and the pivot, D-107): Jellyfin apps on real players (rules 3 and 4). Octave's players are JS-190 and JS-199."
+    },
+    {
+      "id": "JS-092",
+      "phase": "OPS",
+      "title": "A stated Postgres connection budget, warned about and measured with many processes",
+      "description": "Each worker holds its liveness connection and a hint-listener connection for good plus its pool, so a stock Postgres (max_connections 100) is reached near 45 workers, not the 90 ARCHITECTURE.md states (an estimate from the code, unmeasured). The control-plane ladder ran in one process.",
+      "acceptanceCriteria": [
+        "docs/running.md gives the connection formula per role",
+        "A process warns at startup when the cluster's registered processes approach max_connections",
+        "A multi-process variant of test/stress.sh measures connections and Postgres load at 50 workers"
+      ],
+      "priority": 62,
+      "status": "dropped",
+      "passes": false,
+      "dependsOn": [],
+      "source": "Fable 5.2 architecture review, 2026-11-12 (.results/architecture-review-2026-11-12.md); owner's answers 2026-11-12",
+      "notes": "Dropped (D-126 and the pivot, D-107): Rule 14: no failure seen now (the 45-worker figure is an estimate). Moved to the backlog, to return when a deployment nears it."
+    },
+    {
+      "id": "JS-097",
+      "phase": "OPS",
+      "title": "CI's required checks cannot pass by being skipped, and protection has one source",
+      "description": "roles has no aggregator, so a skipped roles satisfies the requirement; branch protection lives in both a ruleset and a classic rule that can drift; a pull request touching .github/ or test/**/*.sh is first exercised in the queue; any label restarts a pull request's run.",
+      "acceptanceCriteria": [
+        "roles gets the same decide step as integration and e2e, which fails when its job was skipped for a reason other than a docs-only change",
+        "Branch protection is the ruleset alone; the classic rule is removed",
+        "A pull request touching .github/ or test/**/*.sh runs the media tiers as ci:full does, and only the ci:full label restarts a run"
+      ],
+      "priority": 94,
+      "status": "dropped",
+      "passes": false,
+      "dependsOn": [],
+      "source": "Fable 5.2 CI review, 2026-11-12 (.results/ci-review-2026-11-12.md); owner approved A, B, C, D and the later items",
+      "notes": "D-069: BL-269 comes to triage before criterion 1 is built. Dropped (D-126 and the pivot, D-107): Rule 14: no failure seen now. Moved to the backlog; JS-175 brings it back if a skipped check is found to have let a failure through."
+    },
+    {
+      "id": "JS-122",
+      "phase": "ID",
+      "title": "A settings page for viewers whose app has no place for their track languages",
+      "description": "jellyfin-web has no place to turn on hiding tracks outside a viewer's languages, to name the languages to keep, or to show all tracks (JS-118). A small page jellyscale serves, linked from jellyfin-web's user menu, gives a browser-only viewer the same switches through the /jellyscale/v1/ settings JS-118 adds.",
+      "acceptanceCriteria": [
+        "A signed-in viewer reaches the page from jellyfin-web's user menu and sees their two opt-ins, their kept languages and 'show all tracks' as saved",
+        "Turning an opt-in on with no default language set asks for one first; the page saves through the /jellyscale/v1/ track-preferences route (JS-118), and the next PlaybackInfo in jellyfin-web reflects it",
+        "A viewer whose audio language is saved and whose PlayDefaultAudioTrack is on is told on the page that a film whose default track is in another language still starts in that track (Jellyfin's rule, and its default for every new user), and can turn it off there with one switch, saved through PATCH /jellyscale/v1/users/configuration (JS-123); the next PlaybackInfo in jellyfin-web then names the track in their language",
+        "A viewer changes only their own settings; another viewer's are untouched, and an unsigned request is refused",
+        "The page works at phone width and in light and dark, with no route outside /jellyscale/v1/ and no change to jellyfin-web's files",
+        "The page serves Octave Web viewers first and stays broadly compatible with jellyfin-web viewers; where the two conflict, Octave Web's viewers come first (D-090)."
+      ],
+      "dependsOn": [
+        "JS-118",
+        "JS-119"
+      ],
+      "notes": "Owner, 2026-11-15: a page, after the track-language batch. Moved up (D-028): the settings are built and no browser viewer can reach them. 2026-11-17 (JS-121's UX review): PlayDefaultAudioTrack defaults to true, so a viewer who only saves a language keeps hearing a film's flagged track, usually its original; the page says so and offers the switch. Dropped (D-126 and the pivot, D-107): A page for jellyfin-web viewers (rules 3 and 4); Octave has the settings.",
+      "passes": false,
+      "priority": 45,
+      "source": "owner 2026-11-15",
+      "status": "dropped"
+    },
+    {
+      "id": "JS-140",
+      "phase": "P3",
+      "title": "An image subtitle copy that a slow store cannot finish within the hour still arrives",
+      "description": "D-002 accepted that a film whose image-track copy (JS-089) misses the one-hour limit keeps today's costly seeks into long cues, retried daily, on condition that a task closes the gap. How many films miss the hour, and the dogfood store's read speed, are unmeasured.",
+      "acceptanceCriteria": [
+        "A design is chosen with the product owner, reading JS-143's count, from: a limit that scales with the file's size, a no-progress limit in place of a wall-clock one (a hung store is not a slow one), and a read that resumes where it stopped so retries add up",
+        "With a store slow enough that a film's copy needs more than an hour, the copy completes and the film's seeks into long cues then cost what any seek does; a store that hangs still frees its background slot within the no-progress bound",
+        "docs/running.md and DOMAINS 51 state the new rule; D-002's remembered failure applies only to what the new rule still cannot finish"
+      ],
+      "priority": 64,
+      "dependsOn": [
+        "JS-089",
+        "JS-143"
+      ],
+      "source": "decision D-002",
+      "status": "dropped",
+      "passes": false,
+      "notes": "Dropped (D-126 and the pivot, D-107): Rule 14, and JS-188 decides how image subtitles reach Octave's players. Moved to the backlog with D-002's condition carried (D-127)."
+    },
+    {
+      "id": "JS-141",
+      "phase": "P3",
+      "title": "Spike: copy a film's image subtitles without reading the whole film",
+      "description": "D-003 accepted one whole-film read per film version to copy its image tracks, and the .sup copy reads the film once per track. The scan already keeps the image tracks' cue points (media_sources.image_cues, DOMAINS 51). Can the tracks be copied by ranged reads at those points instead, and for which films?",
+      "acceptanceCriteria": [
+        "For Matroska films with Cues for the subtitle track, and for those without: whether ranged reads at the stored cue points copy every packet of the track, measured against today's whole-film copy (bytes read, time, packets equal)",
+        "The same answer for the .sup copy",
+        "The same answer for text-track extraction, which today also reads the whole film (it decides what JS-091's background extraction would cost)",
+        "A recommendation with what each kind of film would then cost, recorded in spikes/; a follow-up task if it works"
+      ],
+      "priority": 65,
+      "dependsOn": [
+        "JS-089"
+      ],
+      "source": "decision D-003; product-owner direction review 2026-11-19 (no further whole-film-read trade-off until it reports)",
+      "status": "dropped",
+      "passes": false,
+      "notes": "D-070: a 4K HDR re-encode ran 16% to 18% slower for as long as its worker's PGS copy ran (JS-177's spike), and 0.85x to about 0.6x on the dogfood (JS-154). Moves to directly after JS-177 on: the own-extraction slow-job reason counted on the dogfood more than twice in a week; an operator report of it; or JS-143's count showing more than a few image-track reads a week. Dropped (D-126 and the pivot, D-107): Rule 14, and JS-188 first. Moved to the backlog (D-127)."
+    },
+    {
+      "id": "JS-143",
+      "phase": "P3",
+      "title": "Measure how many films miss the image-subtitle copy's hour, and the store's read speed",
+      "description": "A condition of D-002: the gap-closing task (JS-140) must rest on numbers. Measured on the dogfood once JS-089 is deployed.",
+      "acceptanceCriteria": [
+        "Recorded in docs/subtitles.md: the dogfood store's read speed for a large film, and how many of its films with image tracks missed the hour (counts only, no titles)",
+        "The figures are cited by JS-140's design choice",
+        "Over the same days, how many image-track reads plays started, their total bytes, and how many of those plays ended within five minutes (D-038); and for each such read, how long it ran and the lowest speed of a re-encode on the same worker during it, where the records still tell (D-070)"
+      ],
+      "status": "dropped",
+      "passes": false,
+      "dependsOn": [
+        "JS-089"
+      ],
+      "source": "decision D-002; product-owner plan review 2026-11-19",
+      "priority": 46,
+      "notes": "Dropped (D-126 and the pivot, D-107): Rule 14, and JS-188 first. Moved to the backlog (D-127)."
+    },
+    {
+      "id": "JS-151",
+      "phase": "OPS",
+      "title": "GET /Users/{userId}/Views lists the caller's libraries, for the apps that still ask there",
+      "description": "The Kodi add-on, Plezy and Tsukimi list a viewer's libraries through GET /Users/{userId}/Views, the user-scoped form of GET /UserViews, and jellyscale answers 404, so their viewers see no library. The owner decided (2026-11-20, D-033) to serve it as an exception to PRODUCT.md's rule that aliases exist only for routes jellyfin-web calls.",
+      "acceptanceCriteria": [
+        "Observed first on a real Jellyfin 12.4, recorded in compat/captures: whether its OpenAPI document marks GET /Users/{userId}/Views obsolete; its answer for the caller's own id beside GET /UserViews?userId= for the same user, with each query parameter /UserViews takes; and its status for another user's id, an id that is no user and a malformed id",
+        "If 12.4 does not mark the route obsolete it is served as an ordinary route, is not flagged alias, and PRODUCT.md's alias rule is left as it was; if it does, the route is flagged alias in compat/endpoints.yaml naming the Kodi add-on, Plezy and Tsukimi, and PRODUCT.md carries the exception (D-033; the owner reviews the text)",
+        "With the caller's own id (dashed or compact, any letter case) the route answers the same body as GET /UserViews?userId={userId}, for every query parameter /UserViews honours, with two libraries as well as one",
+        "A user id in the path that is not the caller's answers 403 by JS-127's guard, administrators included, and nothing is read for the other user; no token answers 401; TestAccess covers the route as an 'own' viewer route",
+        "Read from source first, as D-030 did, with commit and line: whether Plezy's and Tsukimi's players send their token on every media request. docs/status.md lists each under 'sends its token' or 'not supported (D-026)' accordingly and never says either works; no further work goes in for an app whose player sends none",
+        "The differential tier asks both servers the route with the signed-in user's id, and any kept difference is in compat/differences.yaml with its reason; compat/coverage-12.4.tsv and docs/status.md name the route and the three clients",
+        "docs/access.md's 'Stricter than Jellyfin' table lists every difference compat/captures/user-scope-12.4.md holds (D-087)."
+      ],
+      "priority": 68,
+      "status": "dropped",
+      "passes": false,
+      "dependsOn": [
+        "JS-127"
+      ],
+      "source": "issue #220; owner, 2026-11-20 (D-033); PRODUCT.md goal 3",
+      "notes": "No route beyond this one is added for these apps. Kodi stays not a gate; mpv-shim's browser may benefit and is not a target. Dropped (D-126 and the pivot, D-107): An alias for Jellyfin apps (rules 3 and 4). Both auditors agreed."
+    },
+    {
+      "id": "JS-156",
+      "phase": "OPS",
+      "title": "The differential tier fails on a listed difference that no longer differs",
+      "description": "13 entries in compat/differences.yaml no longer differed and the tier only printed a note, so they went unnoticed; left in, a regression back to the old behaviour would pass. The lead removed the closed gaps (DefaultAudioStreamIndex in two 'flags and counters' entries, HasSubtitles) in D-039's pull request; the rest are deliberate differences and need a verdict. D-039.",
+      "acceptanceCriteria": [
+        "A listed difference the tier finds equal fails the run and names the entry; shown failing on a planted stale entry",
+        "Each remaining stale entry gets a verdict and is fixed accordingly: 'sessions during a transcode' (EncodeSpeed, IsBelowRealTime: improvement); the hide-tracks requests for the opted-in viewer (MediaStreams, MediaSources[].MediaStreams: improvement); 'a sign-in with a wrong password' ((status): improvement; LoginAttemptsBeforeLockout: non-goal), whose single wrong password gets 401 from both servers and -1 from both, so the request never shows what the entries describe. A vanished deliberate difference is investigated, not deleted: either the request is changed so the difference shows (and internal/api/signin_test.go's requirement still holds), or the entry moves to a request that shows it, or the loss is brought to the product owner",
+        "POST PlaybackInfo with a MediaSourceId in upper-case compact form, in dashed form and as an id of no source are added to test/differential/requests.yaml, as observed on Jellyfin 12.4 during JS-153: the upper-case compact id answers the same on both and is no listed difference; the dashed id (refused by Jellyfin, accepted here) and the unknown id (NoCompatibleStream on Jellyfin, an empty list here) are listed in compat/differences.yaml, each with a verdict and its reason. No answer changes unless a capture shows an app docs/status.md lists as supported sending that form (D-041)",
+        "No viewer-visible change"
+      ],
+      "priority": 43,
+      "status": "dropped",
+      "passes": false,
+      "dependsOn": [],
+      "source": "JS-147 Verify minor; D-039",
+      "notes": "Dropped (D-126 and the pivot, D-107): The differential tier against Jellyfin (rule 3)."
+    },
+    {
+      "id": "JS-179",
+      "title": "A scanned Quick Connect QR opens the approval with the code filled in",
+      "description": "TV apps draw a Quick Connect QR that links to <server>/web/#/quickconnect?code= (D-089).",
+      "priority": 38,
+      "phase": "ID",
+      "status": "dropped",
+      "passes": false,
+      "dependsOn": [
+        "JS-037",
+        "JS-039"
+      ],
+      "source": "issue #118; BL-229; D-083, D-089",
+      "notes": "If the observation shows jellyfin-web already does criteria 2 and 3, the task closes on the capture and the docs line. Dropped (D-126 and the pivot, D-107): A Quick Connect QR for jellyfin-web (rule 3). Replaced by JS-191. Both auditors agreed.",
+      "acceptanceCriteria": [
+        "Observed first, against Jellyfin 12.4 and jellyfin-web 12.4, recorded in compat/captures: what Moonfin 3.1.1's QR decodes to, and whether jellyfin-web's page at that address fills the code in, signed in and signed out.",
+        "A phone that scans Moonfin's QR, on a jellyscale serving jellyfin-web, reaches the approval with the code filled in. Signed out, it signs in by password or by the provider (JS-039) and returns to the approval with the code kept.",
+        "The approval names the device and app, and approves only on an explicit confirmation, never on opening the link.",
+        "The link carries Quick Connect's own code: one code, JS-037's expiry and guessing bound, no second pending-code flow, and no route that takes a code without a signed-in approver.",
+        "docs/status.md says which apps draw the QR and what a viewer does where no web client is served (type the digits).",
+        "If the observation shows jellyfin-web 12.4 does not fill the code in or loses it across sign-in, the lead returns with a brief before building. No file of jellyfin-web is changed."
+      ]
+    },
+    {
+      "id": "JS-180",
+      "title": "Octave Web signs in through the household's provider by a one-time code only its own tab can redeem",
+      "description": "Octave Web, jellyscale's browser client (D-089), needs single sign-on without a cookie (#296).",
+      "priority": 37,
+      "phase": "ID",
+      "status": "dropped",
+      "passes": false,
+      "dependsOn": [
+        "JS-039"
+      ],
+      "source": "issue #296; D-099",
+      "notes": "Waits for an Octave Web build that starts the sign-in, as JS-150 waits for one (D-099). Dropped (D-126 and the pivot, D-107): Merged into JS-039, single sign-on for Octave on every platform.",
+      "acceptanceCriteria": [
+        "The provider's tokens never reach the page. The return carries only a one-time code that expires in about 60 seconds. The code is redeemed once, by the verifier of the tab that started the sign-in, and a second redemption or a wrong verifier is refused.",
+        "No route reads or sets a cookie (invariant 63). The journey is over HTTPS only. With real processes, start, return and redemption are each answered by a different api replica.",
+        "A threat review of the handoff is recorded before Build. Its guessing bound follows JS-039's.",
+        "Octave Web, as built, signs in through the provider and plays. The device holds an ordinary token, as JS-039's criterion 2 describes."
+      ]
+    },
+    {
+      "id": "JS-181",
+      "title": "Re-encoded audio that loses channels says so, and the default for a profile that names none follows Jellyfin 12.4",
+      "description": "A 5.1 track re-encoded for a profile with no MaxAudioChannels arrives as stereo with no reason given (#295).",
+      "priority": 34,
+      "phase": "P4",
+      "status": "dropped",
+      "passes": false,
+      "dependsOn": [],
+      "source": "issue #295; D-099",
+      "notes": "Dropped (D-126 and the pivot, D-107): Merged into JS-185: a playback that loses channels says so. The 'default follows Jellyfin' half is dropped (rule 3).",
+      "acceptanceCriteria": [
+        "Observed first: what Jellyfin 12.4 sends for a surround track, and what reasons it gives, when the HLS transcoding profile has no MaxAudioChannels.",
+        "Whenever the output has fewer channels than the source, re-encoded or refused a copy, TranscodeReasons includes AudioChannelsNotSupported, whether the limit came from the profile or from the default. If Jellyfin does not, the difference is listed in compat/differences.yaml.",
+        "The default number of channels is the observed one, and it applies to the copy test (invariant 52) and to the encode alike."
+      ]
     }
   ]
 }

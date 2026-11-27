@@ -58,7 +58,7 @@ const SPEC = {
         required: ['criterion', 'file', 'name', 'command', 'failsToday'],
       },
     },
-    observed: { type: 'string', description: 'What was observed on a real Jellyfin 12.4 or client, and where it is recorded; or why nothing needed observing' },
+    observed: { type: 'string', description: 'What was observed on a player, client or (only for the frozen routes or import) Jellyfin, and where it is recorded; or why nothing needed observing' },
     unchecked: { type: 'array', items: { type: 'string' }, description: 'Criteria with no executable check, and why' },
     answers: { type: 'array', items: { type: 'string' }, description: 'For a revision after review: each finding, and the check that now covers it, or why you disagree, with evidence' },
   },
@@ -274,7 +274,7 @@ const reviewers = (round) => {
   ]
   if (resolved?.light) return list
   if (core) list.push({ key: 'architecture', file: 'architecture-reviewer', focus: 'This change touches the scan, a store or job semantics: decide whether it is the right design, now that it is built.' })
-  if (ux) list.push({ key: 'ux', file: 'ux-reviewer', focus: 'Review what viewers and operators experience. Check the affected flow in jellyfin-web once if you need to see it.' })
+  if (ux) list.push({ key: 'ux', file: 'ux-reviewer', focus: 'Review what viewers and operators experience. Check the affected flow once, in the app or API a viewer would use, if you need to see it.' })
   return list
 }
 // only: the reviewers to ask. Round 2 asks only those whose findings were fixed

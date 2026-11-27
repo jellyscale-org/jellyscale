@@ -30,8 +30,8 @@
       "reviewer": "ux",
       "severity": "minor",
       "title": "GET /Sessions shows a helper's worker and speed as the viewer's",
-      "status": "open",
-      "notes": ""
+      "status": "closed",
+      "notes": "Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
     },
     {
       "id": "BL-004",
@@ -39,8 +39,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "helpers spawn helpers",
-      "status": "open",
-      "notes": " Re-read against JS-162's end-to-end figures; close those the figures answer (D-045)."
+      "status": "closed",
+      "notes": "Re-read against JS-162's end-to-end figures; close those the figures answer (D-045). Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-005",
@@ -84,8 +84,8 @@
       "reviewer": "check",
       "severity": "minor",
       "title": "No check covers the PlaybackInfo admission path (Jobs.Unavailable)",
-      "status": "open",
-      "notes": ""
+      "status": "closed",
+      "notes": "Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
     },
     {
       "id": "BL-010",
@@ -93,8 +93,8 @@
       "reviewer": "check",
       "severity": "minor",
       "title": "transcodeHelpers reaching Worker.NoHelpers has no executable check",
-      "status": "open",
-      "notes": ""
+      "status": "closed",
+      "notes": "Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-011",
@@ -102,8 +102,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "transcodeHelpers is per worker, so mixed settings leave helpers running",
-      "status": "open",
-      "notes": ""
+      "status": "closed",
+      "notes": "Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-012",
@@ -120,8 +120,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "Every ensure takes one cluster-wide advisory lock",
-      "status": "open",
-      "notes": ""
+      "status": "closed",
+      "notes": "Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-014",
@@ -138,8 +138,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "Every running helper beats on any preempt hint",
-      "status": "open",
-      "notes": ""
+      "status": "closed",
+      "notes": "Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-016",
@@ -147,8 +147,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "No check drives the transcodeHelpers config key to the worker",
-      "status": "open",
-      "notes": ""
+      "status": "closed",
+      "notes": "Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-017",
@@ -156,8 +156,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "A helper preempted during pre-ffmpeg setup sees the cancel only after ffmpeg starts",
-      "status": "open",
-      "notes": ""
+      "status": "closed",
+      "notes": "Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-018",
@@ -174,8 +174,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "DV 7 fixture has no enhancement-layer NALs",
-      "status": "open",
-      "notes": ""
+      "status": "closed",
+      "notes": "Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-020",
@@ -183,8 +183,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "Roll-order check pins docs wording, not behaviour",
-      "status": "open",
-      "notes": ""
+      "status": "closed",
+      "notes": "Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-021",
@@ -210,8 +210,8 @@
       "reviewer": "ux",
       "severity": "minor",
       "title": "AV1 HDR copies have no ffmpeg-path test",
-      "status": "open",
-      "notes": ""
+      "status": "closed",
+      "notes": "Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-024",
@@ -228,8 +228,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "SecondaryAudioNotSupported not named for a track pick",
-      "status": "open",
-      "notes": ""
+      "status": "closed",
+      "notes": "Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
     },
     {
       "id": "BL-026",
@@ -237,8 +237,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "MP3 under Chrome re-encoded where Jellyfin copies (fMP4 only)",
-      "status": "open",
-      "notes": ""
+      "status": "closed",
+      "notes": "Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
     },
     {
       "id": "BL-027",
@@ -246,8 +246,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "Copied audio list taken from the h264 HLS profile for HEVC/AV1 copies",
-      "status": "open",
-      "notes": ""
+      "status": "closed",
+      "notes": "Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-028",
@@ -255,8 +255,8 @@
       "reviewer": "check",
       "severity": "minor",
       "title": "No check pins the re-encoded-audio copy to two inputs",
-      "status": "open",
-      "notes": ""
+      "status": "closed",
+      "notes": "Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-029",
@@ -300,8 +300,8 @@
       "reviewer": "ux",
       "severity": "minor",
       "title": "docs/subtitles.md gives no number for a proxy's read timeout during a subtitle pass (up to twice SubtitleTimeout)",
-      "status": "open",
-      "notes": ""
+      "status": "closed",
+      "notes": "Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-034",
@@ -354,8 +354,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "Worker.encode is a 400-line function whose loop interleaves six concerns; split before JS-029 next changes it",
-      "status": "open",
-      "notes": ""
+      "status": "closed",
+      "notes": "Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-040",
@@ -372,8 +372,8 @@
       "reviewer": "product",
       "severity": "minor",
       "title": "JS-021 is too large and blocks JS-057; JS-062's gate is undefined for a 4-CPU homelab",
-      "status": "open",
-      "notes": ""
+      "status": "closed",
+      "notes": "Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-042",
@@ -390,8 +390,8 @@
       "reviewer": "product",
       "severity": "minor",
       "title": "Nothing plans for the next Jellyfin release: jellyfin/jellyfin:12.4 is pinned in three places with no procedure to move",
-      "status": "open",
-      "notes": ""
+      "status": "closed",
+      "notes": "Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
     },
     {
       "id": "BL-044",
@@ -453,8 +453,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "Helper-kill replacement check allows a replacement starting after the first missing segment",
-      "status": "open",
-      "notes": "TestAKilledHelpersChunk... only requires replacement.Start >= dead.Next (no duplicates). A replacement starting several segments after the first missing one passes if another job made the gap, so the 'from the first segment missing' property is not enforced."
+      "status": "closed",
+      "notes": "TestAKilledHelpersChunk... only requires replacement.Start >= dead.Next (no duplicates). A replacement starting several segments after the first missing one passes if another job made the gap, so the 'from the first segment missing' property is not enforced. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-051",
@@ -462,8 +462,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "TestMoreWorkersFinishTheFilmSooner drops the 3-worker case on fewer than 3 cores",
-      "status": "open",
-      "notes": "On a 2-CPU runner counts is reduced to {1,2} and the 3-worker measurement is logged as not measured. This is a case dropped for core count in a test that still exists; the replacement mechanism test runs 2 and 3 workers regardless of cores, so the replacement's verdict is unaffected."
+      "status": "closed",
+      "notes": "On a 2-CPU runner counts is reduced to {1,2} and the 3-worker measurement is logged as not measured. This is a case dropped for core count in a test that still exists; the replacement mechanism test runs 2 and 3 workers regardless of cores, so the replacement's verdict is unaffected. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-052",
@@ -471,8 +471,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "Shown speed vs recorded speed uses a 25 percent tolerance",
-      "status": "open",
-      "notes": "TestAWorkersShownSpeedIsTheOneItRecordedAndHoldsAcrossAPause compares shown speed with the recorded value using before < recorded*0.75 || before > recorded*1.25. This is a comparison of two measured speeds with a bound; it is not in timing-bounds.txt. It is probably stable on a paused job, but it is not exact and was not exercised under load."
+      "status": "closed",
+      "notes": "TestAWorkersShownSpeedIsTheOneItRecordedAndHoldsAcrossAPause compares shown speed with the recorded value using before < recorded*0.75 || before > recorded*1.25. This is a comparison of two measured speeds with a bound; it is not in timing-bounds.txt. It is probably stable on a paused job, but it is not exact and was not exercised under load. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-053",
@@ -480,8 +480,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "TestSeekBackBeforeTheResumePoint keeps a 20 s bound that is under ten times a right build under load",
-      "status": "open",
-      "notes": "queue_integration_test.go (`time.Since(began) > 20*time.Second`, listed in test/timing-bounds.txt as a hang bound of 'a few seconds'). On a right build with one contended CPU (taskset -c 0 plus 4 busy loops) the seek took 4.27 s, so the bound is about 4.7x. docs/testing.md says a bound closer than ten times a right build is a bar. A slower runner can exceed it. A wait-for-event with a context dead Same family as JS-171's seek bound (D-050); promote if it fails the merge queue."
+      "status": "closed",
+      "notes": "queue_integration_test.go (`time.Since(began) > 20*time.Second`, listed in test/timing-bounds.txt as a hang bound of 'a few seconds'). On a right build with one contended CPU (taskset -c 0 plus 4 busy loops) the seek took 4.27 s, so the bound is about 4.7x. docs/testing.md says a bound closer than ten times a right build is a bar. A slower runner can exceed it. A wait-for-event with a context dead Same family as JS-171's seek bound (D-050); promote if it fails the merge queue. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-054",
@@ -489,8 +489,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "Flag check on the 3x job cannot fail the 'kept above 1' half, and the recorded-speed equality can race a heartbeat",
-      "status": "open",
-      "notes": "TestSessionsDoNotFlagAJobThatKeepsUp and TestSessionsFlagFollowsTheShownSpeedOfAJobThatMayKeepUp only compare the flag with the speed in the same answer. A 3x throttle is a ceiling, so on a slow runner the job is below 1 and a build that always sets IsBelowRealTime passes. The task asks for one job kept above 1. Separately, TestSessionsShowTheSpeedTheWorkerRecordedAndHoldItAcrossAPauseAtTheLead (t"
+      "status": "closed",
+      "notes": "TestSessionsDoNotFlagAJobThatKeepsUp and TestSessionsFlagFollowsTheShownSpeedOfAJobThatMayKeepUp only compare the flag with the speed in the same answer. A 3x throttle is a ceiling, so on a slow runner the job is below 1 and a build that always sets IsBelowRealTime passes. The task asks for one job kept above 1. Separately, TestSessionsShowTheSpeedTheWorkerRecordedAndHoldItAcrossAPauseAtTheLead (t Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-055",
@@ -498,8 +498,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "A sleep sets the pause-time speed baseline in the metrics test",
-      "status": "open",
-      "notes": "TestAWorkerReportsItsJobWhileItRuns (metrics_integration_test.go) sleeps 1 s after jobs pauses, scrapes the speed, sleeps 5 s, scrapes again and requires them equal to 1e-9. On a slow runner ffmpeg progress still in the pipe after the 1 s can change the speed between the two scrapes, which fails a right build. The comment says it is read 'by now'. Reading only."
+      "status": "closed",
+      "notes": "TestAWorkerReportsItsJobWhileItRuns (metrics_integration_test.go) sleeps 1 s after jobs pauses, scrapes the speed, sleeps 5 s, scrapes again and requires them equal to 1e-9. On a slow runner ffmpeg progress still in the pipe after the 1 s can change the speed between the two scrapes, which fails a right build. The comment says it is read 'by now'. Reading only. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-056",
@@ -507,8 +507,8 @@
       "reviewer": "lead",
       "severity": "minor",
       "title": "QA runs every touched ffmpeg test under ffmpeg 6.1, not a sample",
-      "status": "open",
-      "notes": "JS-071 took four merge-queue runs: two fixture artifacts of ffmpeg 6.1 (sparse subtitle packets muxed ahead of their video) were found by CI, not by QA's 6.1 runs."
+      "status": "closed",
+      "notes": "JS-071 took four merge-queue runs: two fixture artifacts of ffmpeg 6.1 (sparse subtitle packets muxed ahead of their video) were found by CI, not by QA's 6.1 runs. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-057",
@@ -543,8 +543,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "A staged segment file is no longer removed when the final UPDATE fails for a non-outage reason",
-      "status": "open",
-      "notes": "In Worker.upload, os.Remove(name) moved after the UPDATE and only the IsAway error returns before it. A non-away error now leaves the file on disk until the job's working directory is cleaned up. Alternative: remove the file only on success or on errWaiting."
+      "status": "closed",
+      "notes": "In Worker.upload, os.Remove(name) moved after the UPDATE and only the IsAway error returns before it. A non-away error now leaves the file on disk until the job's working directory is cleaned up. Alternative: remove the file only on success or on errWaiting. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-061",
@@ -597,8 +597,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "Process-global sync.Map keyed by pool, and a tracker that learns only from failures",
-      "status": "open",
-      "notes": "db.Of(pool) looks the tracker up in a package-level sync.Map that Open fills and nothing removes. Every caller that was handed some other pool (tests, tools) silently gets a nil tracker that never says 'away'. Holding the tracker on a small wrapper type or in Server/Jobs/Worker fields would cost a few constructor changes and would make the missing-tracker case a compile error, not a silent no-op."
+      "status": "closed",
+      "notes": "db.Of(pool) looks the tracker up in a package-level sync.Map that Open fills and nothing removes. Every caller that was handed some other pool (tests, tools) silently gets a nil tracker that never says 'away'. Holding the tracker on a small wrapper type or in Server/Jobs/Worker fields would cost a few constructor changes and would make the missing-tracker case a compile error, not a silent no-op. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-067",
@@ -633,8 +633,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "e2e response recorder can drop bodies still in flight when a gate ends",
-      "status": "open",
-      "notes": "test/e2e/conform.mjs appends a response only after response.text() resolves, and returns silently on error. If the browser context closes before a body is read, that response is never checked, so the gate can pass without holding it to the schema."
+      "status": "closed",
+      "notes": "test/e2e/conform.mjs appends a response only after response.text() resolves, and returns silently on error. If the browser context closes before a body is read, that response is never checked, so the gate can pass without holding it to the schema. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
     },
     {
       "id": "BL-071",
@@ -642,8 +642,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "Schema check skips error statuses that carry no JSON body",
-      "status": "open",
-      "notes": "checker.go returns nil for a non-2xx answer whose content type is not JSON, before counting it. A 4xx or 5xx text body where the schema declares a JSON type for that status is not reported, although the spec says 'no JSON body where the schema gives one'."
+      "status": "closed",
+      "notes": "checker.go returns nil for a non-2xx answer whose content type is not JSON, before counting it. A 4xx or 5xx text body where the schema declares a JSON type for that status is not reported, although the spec says 'no JSON body where the schema gives one'. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
     },
     {
       "id": "BL-072",
@@ -651,8 +651,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "Client sweep excuses a non-2xx answer whenever Jellyfin gives the same status",
-      "status": "open",
-      "notes": "test/differential/run/clients.go sweep(): a listed request answered 400/404 by jellyscale passes if Jellyfin, asked the same, gives the same status. The criterion says each listed request must answer 2xx. A listed request built with a wrong fixture (id, body) that both servers reject therefore never fails. A real route that jellyscale breaks into a 404 for a client body Jellyfin also rejects stays"
+      "status": "closed",
+      "notes": "test/differential/run/clients.go sweep(): a listed request answered 400/404 by jellyscale passes if Jellyfin, asked the same, gives the same status. The criterion says each listed request must answer 2xx. A listed request built with a wrong fixture (id, body) that both servers reject therefore never fails. A real route that jellyscale breaks into a 404 for a client body Jellyfin also rejects stays Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
     },
     {
       "id": "BL-073",
@@ -669,8 +669,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "Stub GET /Items/{itemId}/ThemeMedia is not on any differential request, and echoes a malformed id as OwnerId",
-      "status": "open",
-      "notes": "internal/api/items.go themeMedia sets OwnerId from CompactID(r.PathValue(\"itemId\")) with no validation, and test/differential/requests.yaml has no ThemeMedia request. Calling the handler directly with no path value (an empty id) makes the checker report `$.ThemeSongsResult field OwnerId: \"\" is not a uuid`. The same route with a malformed id such as /Items/abc/ThemeMedia gives OwnerId \"abc\", which "
+      "status": "closed",
+      "notes": "internal/api/items.go themeMedia sets OwnerId from CompactID(r.PathValue(\"itemId\")) with no validation, and test/differential/requests.yaml has no ThemeMedia request. Calling the handler directly with no path value (an empty id) makes the checker report `$.ThemeSongsResult field OwnerId: \"\" is not a uuid`. The same route with a malformed id such as /Items/abc/ThemeMedia gives OwnerId \"abc\", which  Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
     },
     {
       "id": "BL-075",
@@ -678,8 +678,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "e2e recorder drops every non-JSON response, so 'no JSON body where the schema gives one' cannot fire in e2e",
-      "status": "open",
-      "notes": "The recorder returns early unless content-type matches /json/. If a route the schema types as JSON answers 200 with text/html (such as an SPA fallback) or an empty body with another content type, jellyfin-web receives it, nothing is recorded, and the gate passes. The differential tier does pass the content type, so only e2e has the hole. Reading evidence only: the filter sits at conform.mjs:14."
+      "status": "closed",
+      "notes": "The recorder returns early unless content-type matches /json/. If a route the schema types as JSON answers 200 with text/html (such as an SPA fallback) or an empty body with another content type, jellyfin-web receives it, nothing is recorded, and the gate passes. The differential tier does pass the content type, so only e2e has the hole. Reading evidence only: the filter sits at conform.mjs:14. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
     },
     {
       "id": "BL-076",
@@ -687,8 +687,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "Sweep sends every listed request, startup included, with the signed-in token, and ignores each row's auth field",
-      "status": "open",
-      "notes": "Startup requests (/System/Info/Public, /Users/Public, /QuickConnect/Enabled) are sent by clients before sign-in with no Token. The sweep always sends the user's token and never reads the row's `auth` field, so a regression that makes those routes require auth passes. This is the criterion's 'Authorization header form' item: it is listed but never sent."
+      "status": "closed",
+      "notes": "Startup requests (/System/Info/Public, /Users/Public, /QuickConnect/Enabled) are sent by clients before sign-in with no Token. The sweep always sends the user's token and never reads the row's `auth` field, so a regression that makes those routes require auth passes. This is the criterion's 'Authorization header form' item: it is listed but never sent. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
     },
     {
       "id": "BL-077",
@@ -714,8 +714,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "/Search/Hints ignores startIndex",
-      "status": "open",
-      "notes": "The note says Jellyfin takes startIndex after the limit cut (limit=3&startIndex=3 gives no hints). internal/api/search_hints.go never reads it. Fluster does not send it."
+      "status": "closed",
+      "notes": "The note says Jellyfin takes startIndex after the limit cut (limit=3&startIndex=3 gives no hints). internal/api/search_hints.go never reads it. Fluster does not send it. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
     },
     {
       "id": "BL-080",
@@ -723,8 +723,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "/Search/Hints reads a non-numeric limit as 0 and ignores a malformed userId",
-      "status": "open",
-      "notes": "limit, _ = strconv.Atoi(value): limit=abc answers 200 with no hints. The note says Jellyfin answers 400 for userId=zzz. Observe Jellyfin's answer for limit=abc first."
+      "status": "closed",
+      "notes": "limit, _ = strconv.Atoi(value): limit=abc answers 200 with no hints. The note says Jellyfin answers 400 for userId=zzz. Observe Jellyfin's answer for limit=abc first. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
     },
     {
       "id": "BL-081",
@@ -732,8 +732,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "/Search/Hints with no limit or no includeItemTypes answers unobserved behaviour",
-      "status": "open",
-      "notes": "defaultHintLimit = 100 is a guess (the code says so); with no includeItemTypes seasons and collections may come back. Observe both on Jellyfin 12.4."
+      "status": "closed",
+      "notes": "defaultHintLimit = 100 is a guess (the code says so); with no includeItemTypes seasons and collections may come back. Observe both on Jellyfin 12.4. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
     },
     {
       "id": "BL-082",
@@ -741,8 +741,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "Hint order beyond episodes is not backed by a capture, and episode order is never compared with Jellyfin",
-      "status": "open",
-      "notes": "HintOrder puts names starting with the term first and mixes films and series by sort name; no capture covers a series sorting before a film. The three-type differential request is allowlisted element by element (names differ under JS-068), so season/number order is checked only by the integration test. Once JS-068 aligns names, drop the allowlist so order is compared."
+      "status": "closed",
+      "notes": "HintOrder puts names starting with the term first and mixes films and series by sort name; no capture covers a series sorting before a film. The three-type differential request is allowlisted element by element (names differ under JS-068), so season/number order is checked only by the integration test. Once JS-068 aligns names, drop the allowlist so order is compared. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
     },
     {
       "id": "BL-083",
@@ -750,8 +750,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "As-you-type search sends one- and two-letter terms the trigram index cannot serve",
-      "status": "open",
-      "notes": "A trigram index needs three characters; shorter terms scan items. Promote when measured: server time for 1-, 2- and 3-letter terms on GET /Items?searchTerm= (what jellyfin-web's search page sends, docs/status.md) and on /Search/Hints, on a library the size of the dogfood's and on 10,000 items. If a viewer waits long enough to notice (the bound is set from the measurement, not from the request's 50 ms), plan a prefix index. Issue #228."
+      "status": "closed",
+      "notes": "A trigram index needs three characters; shorter terms scan items. Promote when measured: server time for 1-, 2- and 3-letter terms on GET /Items?searchTerm= (what jellyfin-web's search page sends, docs/status.md) and on /Search/Hints, on a library the size of the dogfood's and on 10,000 items. If a viewer waits long enough to notice (the bound is set from the measurement, not from the request's 50 ms), plan a prefix index. Issue #228. Closed at the pivot: Covered by JS-204: search from the first letters."
     },
     {
       "id": "BL-084",
@@ -759,8 +759,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "Series on an episode hint is observed but not required or checked",
-      "status": "open",
-      "notes": "Jellyfin 12.4 sends Series (the show's name) on each episode hint; a client shows it under the episode. No check holds jellyscale to it."
+      "status": "closed",
+      "notes": "Jellyfin 12.4 sends Series (the show's name) on each episode hint; a client shows it under the episode. No check holds jellyscale to it. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
     },
     {
       "id": "BL-085",
@@ -822,8 +822,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "The docs check for the rollback order accepts any sentence naming rollback, api, stream and worker",
-      "status": "open",
-      "notes": "TestRunningMdGivesTheUpgradeAndRollbackOrderForWorkersStreamAndApi passed a rollback order that left the old api with no old worker (fixed in the fix round). Pin the order, not the words."
+      "status": "closed",
+      "notes": "TestRunningMdGivesTheUpgradeAndRollbackOrderForWorkersStreamAndApi passed a rollback order that left the old api with no old worker (fixed in the fix round). Pin the order, not the words. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-092",
@@ -840,8 +840,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "The sockets WaitGroup Add can race with Wait during drain",
-      "status": "open",
-      "notes": "A socket accepted as the drain starts may Add after Wait began."
+      "status": "closed",
+      "notes": "A socket accepted as the drain starts may Add after Wait began. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-094",
@@ -876,8 +876,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "ws_replica can stay NULL on a live device after a Postgres outage until its next keepalive",
-      "status": "open",
-      "notes": "Up to 30 s with jellyfin-web's keepalive."
+      "status": "closed",
+      "notes": "Up to 30 s with jellyfin-web's keepalive. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
     },
     {
       "id": "BL-098",
@@ -885,8 +885,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "The empty-list worker test says a tick runs, but no scan loop starts for an empty list",
-      "status": "open",
-      "notes": "TestAWorkerListingNoLibrariesChangesNothingAndSaysSoOnce: the comment and the refined criterion speak of a tick; main.go starts scanLoop only when the list is not empty. The removal assertion still guards it."
+      "status": "closed",
+      "notes": "TestAWorkerListingNoLibrariesChangesNothingAndSaysSoOnce: the comment and the refined criterion speak of a tick; main.go starts scanLoop only when the list is not empty. The removal assertion still guards it. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-099",
@@ -930,8 +930,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "DBProxy.Delay sleeps once per read chunk, not once per round trip",
-      "status": "open",
-      "notes": "A result larger than one 32K read is delayed several times, so the schedules' 'up to 300 ms' is approximate."
+      "status": "closed",
+      "notes": "A result larger than one 32K read is delayed several times, so the schedules' 'up to 300 ms' is approximate. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-104",
@@ -948,8 +948,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "An offline HLS segment with no mediasourceid answers 200 where the online route answers 404",
-      "status": "open",
-      "notes": "session.pick(itemID, \"\") takes the first film; hlsRequestFor rejects an invalid source id."
+      "status": "closed",
+      "notes": "session.pick(itemID, \"\") takes the first film; hlsRequestFor rejects an invalid source id. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
     },
     {
       "id": "BL-106",
@@ -993,8 +993,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "The item DTO is still a map[string]any that holds the typed sources",
-      "status": "open",
-      "notes": "internal/items/repo.go typeMedia and internal/api/items.go put media.MediaSource values into a map[string]any item. A typed BaseItemDto would carry the same guarantee to the rest of the item."
+      "status": "closed",
+      "notes": "internal/items/repo.go typeMedia and internal/api/items.go put media.MediaSource values into a map[string]any item. A typed BaseItemDto would carry the same guarantee to the rest of the item. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-111",
@@ -1020,8 +1020,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "keepRow's registration bound is the caller's heartbeat argument, not a table row",
-      "status": "open",
-      "notes": "context.WithTimeout(held, every) and the warning throttle use the heartbeat main.go passes; the table has no registration row."
+      "status": "closed",
+      "notes": "context.WithTimeout(held, every) and the warning throttle use the heartbeat main.go passes; the table has no registration row. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-114",
@@ -1038,8 +1038,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "Two of the state-permission actions are never consulted by code",
-      "status": "open",
-      "notes": "actForget and actReadOwnRow are in liveState.allows but keepRow's switch decides them; drive the switch from allows() or drop them."
+      "status": "closed",
+      "notes": "actForget and actReadOwnRow are in liveState.allows but keepRow's switch decides them; drive the switch from allows() or drop them. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-116",
@@ -1056,8 +1056,8 @@
       "reviewer": "lead",
       "severity": "minor",
       "title": "TestBeingServedFromTheSnapshotIsNotAValidation failed once in two full runs of JS-085's outage tests",
-      "status": "open",
-      "notes": "internal/api/outage_memory_integration_test.go; passed alone and in the next full run. A flake to hunt before it reaches the queue often."
+      "status": "closed",
+      "notes": "internal/api/outage_memory_integration_test.go; passed alone and in the next full run. A flake to hunt before it reaches the queue often. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-118",
@@ -1146,8 +1146,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "A HEAD for a segment opens the body and reads 32 KiB to send headers",
-      "status": "open",
-      "notes": "openSegment always Stats, Opens and reads the first chunk; a HEAD needs Stat only. On S3 every HEAD costs a ranged GET."
+      "status": "closed",
+      "notes": "openSegment always Stats, Opens and reads the first chunk; a HEAD needs Stat only. On S3 every HEAD costs a ranged GET. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-128",
@@ -1155,8 +1155,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "Stat then Open is two store requests for a size Open already has",
-      "status": "open",
-      "notes": "An Open that returns the size of what it opened (S3 GET's ContentLength, Posix fstat) halves segment requests and closes the replace race between Stat and Open. A Store interface change."
+      "status": "closed",
+      "notes": "An Open that returns the size of what it opened (S3 GET's ContentLength, Posix fstat) halves segment requests and closes the replace race between Stat and Open. A Store interface change. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-129",
@@ -1164,8 +1164,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "The waiting poll's EXISTS over transcode_jobs has no index covering finished jobs",
-      "status": "open",
-      "notes": "The spec_hash index is partial (queued, running) and done rows are not pruned for a day; each waiter scans per 250 ms poll. Not measured."
+      "status": "closed",
+      "notes": "The spec_hash index is partial (queued, running) and done rows are not pruned for a day; each waiter scans per 250 ms poll. Not measured. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-130",
@@ -1173,8 +1173,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "A row that says a segment is stored but whose object is gone makes every poll Stat the store",
-      "status": "open",
-      "notes": "case state.Stored has no memo; remember the state already looked at."
+      "status": "closed",
+      "notes": "case state.Stored has no memo; remember the state already looked at. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-131",
@@ -1182,8 +1182,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "A truncated segment is aborted only by returning short of Content-Length",
-      "status": "open",
-      "notes": "panic(http.ErrAbortHandler) would state the intent and survive a wrapping middleware."
+      "status": "closed",
+      "notes": "panic(http.ErrAbortHandler) would state the intent and survive a wrapping middleware. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-132",
@@ -1191,8 +1191,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "The cut, failure and replace cases of the segment response run only on the store without a local path",
-      "status": "open",
-      "notes": "segment_stream_integration_test.go skips needsStore cases for the local-path replica."
+      "status": "closed",
+      "notes": "segment_stream_integration_test.go skips needsStore cases for the local-path replica. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-133",
@@ -1218,8 +1218,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "The no-config drain test checks a 3 s lead, not the 5 s docs/running.md gives",
-      "status": "open",
-      "notes": "TestOnSIGTERMWithoutAConfigFileReadinessFailsAndRequestsAreAnsweredForTheLead loops for readinessLead (3 s); a drainLead of 4 s passes it. Loop for the documented lead."
+      "status": "closed",
+      "notes": "TestOnSIGTERMWithoutAConfigFileReadinessFailsAndRequestsAreAnsweredForTheLead loops for readinessLead (3 s); a drainLead of 4 s passes it. Loop for the documented lead. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-136",
@@ -1227,8 +1227,8 @@
       "reviewer": "lead",
       "severity": "minor",
       "title": "TestStressDriverCallsEveryOperationAtItsRate: one Reap error on an idle database",
-      "status": "open",
-      "notes": "Seen once in a merge-queue run (log in ~/.cache/jellyscale/js104-evidence/stress-reap-error-queue-run.log). The driver does not print the error; print it. Possibly the multi-row-write deadlock Fable 5.2 flagged in the JS-105 design review (risk 8), which JS-105's contention check now covers."
+      "status": "closed",
+      "notes": "Seen once in a merge-queue run (log in ~/.cache/jellyscale/js104-evidence/stress-reap-error-queue-run.log). The driver does not print the error; print it. Possibly the multi-row-write deadlock Fable 5.2 flagged in the JS-105 design review (risk 8), which JS-105's contention check now covers. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-137",
@@ -1245,8 +1245,8 @@
       "reviewer": "lead",
       "severity": "minor",
       "title": "roles: 'the stream role counts the waits for segments' found no reencode/ok/started wait once",
-      "status": "open",
-      "notes": "test/roles.sh:301 greps jellyscale_segment_wait_seconds_count{kind=\"reencode\",outcome=\"ok\",source=\"started\"} [1-9]; got none once in 25 queue runs (PR 157, which changes no stream or metrics code; PR 155 passed it with JS-105 on main). Likely the wait was counted under another source label (the segment already stored). Print the scraped segment_wait lines on failure, then decide whether the check should accept any source."
+      "status": "closed",
+      "notes": "test/roles.sh:301 greps jellyscale_segment_wait_seconds_count{kind=\"reencode\",outcome=\"ok\",source=\"started\"} [1-9]; got none once in 25 queue runs (PR 157, which changes no stream or metrics code; PR 155 passed it with JS-105 on main). Likely the wait was counted under another source label (the segment already stored). Print the scraped segment_wait lines on failure, then decide whether the check should accept any source. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-139",
@@ -1263,8 +1263,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "The keeper's two tables are renewed one after the other on one goroutine",
-      "status": "open",
-      "notes": "A transcode renewal that blocks on a row lock or a slow answer takes up to bound (half a heartbeat) before the subtitle table is tried, and the keeper's connect can take up to lease/2 before either table is tried. The cut timers are independent, so the lease stays safe. The cost is less margin for the subtitle table, and a slow connect delays a fence answer for up to half a lease. Alternative: connect in a separate goroutine, or renew the tables concurrently on two connections. That adds a third connection per worker and conflicts with the 'two connections' design."
+      "status": "closed",
+      "notes": "A transcode renewal that blocks on a row lock or a slow answer takes up to bound (half a heartbeat) before the subtitle table is tried, and the keeper's connect can take up to lease/2 before either table is tried. The cut timers are independent, so the lease stays safe. The cost is less margin for the subtitle table, and a slow connect delays a fence answer for up to half a lease. Alternative: connect in a separate goroutine, or renew the tables concurrently on two connections. That adds a third connection per worker and conflicts with the 'two connections' design. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-141",
@@ -1272,8 +1272,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "Per-job lost reason is queried on the keeper's connection inside the single loop",
-      "status": "open",
-      "notes": "When several jobs are found lost in one renewal, attempt() calls j.lost for each in turn, each bounded by half a heartbeat on the keeper's connection. With k lost jobs and a slow database, the keeper's next renewal for the other jobs is delayed by up to k half-heartbeats. The cut timers still protect the lease. Alternative: fetch the reasons in one query or afterwards, off the renewal path."
+      "status": "closed",
+      "notes": "When several jobs are found lost in one renewal, attempt() calls j.lost for each in turn, each bounded by half a heartbeat on the keeper's connection. With k lost jobs and a slow database, the keeper's next renewal for the other jobs is delayed by up to k half-heartbeats. The cut timers still protect the lease. Alternative: fetch the reasons in one query or afterwards, off the renewal path. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-142",
@@ -1290,8 +1290,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "Per-put fence adds one keeper renewal round trip per put",
-      "status": "open",
-      "notes": "upload() used to fence once per upload and now fences before each put (init, then segment). Each fence asks the keeper to renew the job's lease, so a segment upload makes two renewal round trips where it made one. Doing the fence once per upload and checking it against a fresh clock before each put would not do: a put can now outlast a lease, so the second put needs a fresh fence. The cost is small and the choice is sound."
+      "status": "closed",
+      "notes": "upload() used to fence once per upload and now fences before each put (init, then segment). Each fence asks the keeper to renew the job's lease, so a segment upload makes two renewal round trips where it made one. Doing the fence once per upload and checking it against a fresh clock before each put would not do: a put can now outlast a lease, so the second put needs a fresh fence. The cost is small and the choice is sound. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-144",
@@ -1326,8 +1326,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "timing-bounds.txt loses the failover.mjs entry rather than moving it",
-      "status": "open",
-      "notes": "Base test/timing-bounds.txt had one entry for test/e2e/failover.mjs (the ws.on('close') Date.now() line, reason: records when the socket closed, nothing compared). Head removes it and the line now reads socket.closedAt = clock() in test/e2e/player.mjs with no entry. The file gains no entry, so the criterion holds, but the entry is dropped rather than moved with its line. The lost note is not a bound."
+      "status": "closed",
+      "notes": "Base test/timing-bounds.txt had one entry for test/e2e/failover.mjs (the ws.on('close') Date.now() line, reason: records when the socket closed, nothing compared). Head removes it and the line now reads socket.closedAt = clock() in test/e2e/player.mjs with no entry. The file gains no entry, so the criterion holds, but the entry is dropped rather than moved with its line. The lost note is not a bound. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-148",
@@ -1344,8 +1344,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "Default unanswered mode for play and browse changed from hls to none",
-      "status": "open",
-      "notes": "gate.unanswered default in player.mjs is now \"none\" (was \"hls\"), so play and browse viewers no longer record HLS failures in seen.failed. No scenario in play, browse or subtitles reads seen.failed, so no check changes, but the record differs from the base."
+      "status": "closed",
+      "notes": "gate.unanswered default in player.mjs is now \"none\" (was \"hls\"), so play and browse viewers no longer record HLS failures in seen.failed. No scenario in play, browse or subtitles reads seen.failed, so no check changes, but the record differs from the base. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
     },
     {
       "id": "BL-150",
@@ -1380,8 +1380,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "List entries in braces or urn:uuid form are accepted and stored; Jellyfin's answer for them is not in the capture",
-      "status": "open",
-      "notes": "POST /Users/Configuration with GroupedFolders [\"{1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f4}\"] or [\"urn:uuid:1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f4\"] is parsed by uuid.Parse and saved as the compact id (204, then read back in the list). The capture records only plain dashed, compact and upper-case ids and a non-id word (400), so whether Jellyfin 12.4 answers 400 for these forms is unobserved; the criterion 'a list entry that is not an id' is not clearly met for them."
+      "status": "closed",
+      "notes": "POST /Users/Configuration with GroupedFolders [\"{1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f4}\"] or [\"urn:uuid:1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f4\"] is parsed by uuid.Parse and saved as the compact id (204, then read back in the list). The capture records only plain dashed, compact and upper-case ids and a non-id word (400), so whether Jellyfin 12.4 answers 400 for these forms is unobserved; the criterion 'a list entry that is not an id' is not clearly met for them. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
     },
     {
       "id": "BL-154",
@@ -1389,8 +1389,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "SubtitleMode given as 1.0 is accepted as Always; the capture does not record non-integer numbers",
-      "status": "open",
-      "notes": "POST /Users/Configuration with {\"SubtitleMode\":1.0} answers 204 and stores SubtitleMode Always. subtitleModeOf accepts any float equal to an integer. The capture records only integer numbers (3 gives None, 0 gives Default). Jellyfin's answer for 1.0 is unobserved."
+      "status": "closed",
+      "notes": "POST /Users/Configuration with {\"SubtitleMode\":1.0} answers 204 and stores SubtitleMode Always. subtitleModeOf accepts any float equal to an integer. The capture records only integer numbers (3 gives None, 0 gives Default). Jellyfin's answer for 1.0 is unobserved. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
     },
     {
       "id": "BL-155",
@@ -1398,8 +1398,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "The differential tier never saves through POST /Users/Configuration naming nobody",
-      "status": "open",
-      "notes": "test/differential/requests.yaml saves through POST /Users/{userId}/Configuration (path) and POST /Users/Configuration?userId={{User/admin}} (query). The form that names nobody, which the capture records as its own route=none case, is covered only by the Go replay (cmd/jellyscale/user_configuration_integration_test.go), not by the tier the criteria name ('a save through each route')."
+      "status": "closed",
+      "notes": "test/differential/requests.yaml saves through POST /Users/{userId}/Configuration (path) and POST /Users/Configuration?userId={{User/admin}} (query). The form that names nobody, which the capture records as its own route=none case, is covered only by the Go replay (cmd/jellyscale/user_configuration_integration_test.go), not by the tier the criteria name ('a save through each route'). Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
     },
     {
       "id": "BL-156",
@@ -1416,8 +1416,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "Partial push of a version leaves it unrepairable",
-      "status": "open",
-      "notes": "On a tag run, publish.sh pushes X.Y.Z first, then X.Y.Z-fixtures and the main tags. If a later push fails (network, quota), a rerun finds X.Y.Z already exists and fails by design, so the release can never get its -fixtures tag; the only way out is a new version. Pushing the -fixtures tag and the main tags before the bare version tag would shorten the window."
+      "status": "closed",
+      "notes": "On a tag run, publish.sh pushes X.Y.Z first, then X.Y.Z-fixtures and the main tags. If a later push fails (network, quota), a rerun finds X.Y.Z already exists and fails by design, so the release can never get its -fixtures tag; the only way out is a new version. Pushing the -fixtures tag and the main tags before the bare version tag would shorten the window. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-158",
@@ -1425,8 +1425,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "Concurrency group per sha lets a pending run be replaced",
-      "status": "open",
-      "notes": "Group image-${{ github.sha }} with cancel-in-progress false holds one running and at most one pending run. If two version tags are pushed on one commit while the main run is still running, the second pending tag run cancels the first, so a tag's image is never published."
+      "status": "closed",
+      "notes": "Group image-${{ github.sha }} with cancel-in-progress false holds one running and at most one pending run. If two version tags are pushed on one commit while the main run is still running, the second pending tag run cancels the first, so a tag's image is never published. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-159",
@@ -1434,8 +1434,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "Fixed image names collide when two runs keep their images",
-      "status": "open",
-      "notes": "With JELLYSCALE_BUILT_AS set, two simultaneous test/image.sh runs on one machine both tag <name>:server and <name>:fixtures; the second build retags the first run's images, so publish.sh may push the wrong run's image. CI runs one job per VM, so only local use is affected."
+      "status": "closed",
+      "notes": "With JELLYSCALE_BUILT_AS set, two simultaneous test/image.sh runs on one machine both tag <name>:server and <name>:fixtures; the second build retags the first run's images, so publish.sh may push the wrong run's image. CI runs one job per VM, so only local use is affected. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-160",
@@ -1452,8 +1452,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "A viewer sees the worker's name in their own TranscodingInfo",
-      "status": "open",
-      "notes": "transcoding_info.go:69-70; Jellyfin shows the hardware acceleration type to administrators only (SessionManager.cs:2156-2170). Show it to administrators only."
+      "status": "closed",
+      "notes": "transcoding_info.go:69-70; Jellyfin shows the hardware acceleration type to administrators only (SessionManager.cs:2156-2170). Show it to administrators only. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
     },
     {
       "id": "BL-162",
@@ -1461,8 +1461,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "The worker-alone heartbeat-first stall subtest can end as a harness error",
-      "status": "open",
-      "notes": "ffmpeg keeps running while the worker is stopped and can finish a segment between the deletion and SIGCONT; stopping ffmpeg for the deletion only would close the window. Reading only; all runs passed."
+      "status": "closed",
+      "notes": "ffmpeg keeps running while the worker is stopped and can finish a segment between the deletion and SIGCONT; stopping ffmpeg for the deletion only would close the window. Reading only; all runs passed. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-163",
@@ -1470,8 +1470,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "The burn-in kit's size is written twice",
-      "status": "open",
-      "notes": "cueFilm.write has a literal size=640x360 while kitFilmWidth/kitFilmHeight feed the specs; build the ffmpeg size from the constants."
+      "status": "closed",
+      "notes": "cueFilm.write has a literal size=640x360 while kitFilmWidth/kitFilmHeight feed the specs; build the ffmpeg size from the constants. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-164",
@@ -1497,8 +1497,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "The 10 s bound for a remade first segment is logged, not asserted",
-      "status": "open",
-      "notes": "Measured 0.37 to 1.1 s; a hang bound could pin it."
+      "status": "closed",
+      "notes": "Measured 0.37 to 1.1 s; a hang bound could pin it. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-167",
@@ -1569,8 +1569,8 @@
       "reviewer": "lead",
       "severity": "minor",
       "title": "The differential tier's Kotlin decode fetches the SDK from Maven Central each run; a 429 fails the tier",
-      "status": "open",
-      "notes": "Cache or pin the SDK when it next fails a queue run"
+      "status": "closed",
+      "notes": "Cache or pin the SDK when it next fails a queue run Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
     },
     {
       "id": "BL-175",
@@ -1596,8 +1596,8 @@
       "reviewer": "lead",
       "severity": "minor",
       "title": "TestTheScanReadsNoMoreOfAFilmForItsImageTrackAndNothingThatGrowsWithTheFilm failed again (PGS with no Cues): the scan's byte count varies with load",
-      "status": "open",
-      "notes": "Second sighting; a third makes it a task"
+      "status": "closed",
+      "notes": "Second sighting; a third makes it a task Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-178",
@@ -1623,8 +1623,8 @@
       "reviewer": "lead",
       "severity": "minor",
       "title": "Re-show JS-105's forced deadlock check's mutants with a one-second sleep before holder.Exec(low)",
-      "status": "open",
-      "notes": "Check weaker than its criterion: fix when that test is next touched"
+      "status": "closed",
+      "notes": "Check weaker than its criterion: fix when that test is next touched Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-181",
@@ -1632,8 +1632,8 @@
       "reviewer": "",
       "severity": "minor",
       "title": "TestAChapterFrameEndsWhenItsContextEndsEvenIfAnotherProcessHoldsItsOutput allows 60 s where the criterion says 5 s (a 30 s WaitDelay passes)",
-      "status": "open",
-      "notes": "Check weaker than its criterion: fix when that test is next touched"
+      "status": "closed",
+      "notes": "Check weaker than its criterion: fix when that test is next touched Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-182",
@@ -1650,8 +1650,8 @@
       "reviewer": "",
       "severity": "minor",
       "title": "PATCH /jellyscale/v1/users/configuration parses values with a second copy of POST's per-field reading (and a third copy of the 15 names)",
-      "status": "open",
-      "notes": "Fix when a field is next added"
+      "status": "closed",
+      "notes": "Fix when a field is next added Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-184",
@@ -1668,8 +1668,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "Capture body classifier records a 2xx error body as non-empty for stream.mkv, segment and image subtitle",
-      "status": "open",
-      "notes": "Low"
+      "status": "closed",
+      "notes": "Low Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
     },
     {
       "id": "BL-186",
@@ -1713,8 +1713,8 @@
       "reviewer": "adversarial",
       "severity": "minor",
       "title": "fragmentCommand HDR audio-drop code is convoluted",
-      "status": "open",
-      "notes": "Fix when that function is next changed"
+      "status": "closed",
+      "notes": "Fix when that function is next changed Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-191",
@@ -1785,8 +1785,8 @@
       "reviewer": "lead",
       "severity": "minor",
       "title": "e2e: jellyfin-web failed to load its own CSS chunk mid-scenario ('Loading CSS chunk 91737 failed')",
-      "status": "open",
-      "notes": "Product owner asks (evidence): Which status did the server answer for the CSS chunk, or was it the test router?"
+      "status": "closed",
+      "notes": "Product owner asks (evidence): Which status did the server answer for the CSS chunk, or was it the test router? Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
     },
     {
       "id": "BL-199",
@@ -1803,8 +1803,8 @@
       "reviewer": "lead",
       "severity": "minor",
       "title": "DefaultAudioStreamIndex does not follow a named AudioStreamIndex; observe Jellyfin 12.4 and settle it in JS-121",
-      "status": "open",
-      "notes": "Product owner asks (evidence): Did JS-121 observe Jellyfin and settle this? Name the capture line."
+      "status": "closed",
+      "notes": "Product owner asks (evidence): Did JS-121 observe Jellyfin and settle this? Name the capture line. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
     },
     {
       "id": "BL-201",
@@ -1812,8 +1812,8 @@
       "reviewer": "architecture",
       "severity": "minor",
       "title": "The subtitle playlist still writes the token for a header request",
-      "status": "open",
-      "notes": "Product owner asks (evidence): does any client JS-075 runs ask for the subtitle playlist, and what does its viewer see? JS-075 records it."
+      "status": "closed",
+      "notes": "Product owner asks (evidence): does any client JS-075 runs ask for the subtitle playlist, and what does its viewer see? JS-075 records it. Closed at the pivot: Covered by JS-185: media links carry no account credential."
     },
     {
       "id": "BL-202",
@@ -1875,8 +1875,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "Transcode e2e scenarios fail in full gate runs on a loaded machine; each passes 5 of 5 alone",
-      "status": "open",
-      "notes": "Not the BL-100 stall. The three: the dashboard card and Playback info panel (timed out after 44 s, panel empty); jellyfin-web after a segment fails, answered 500, once (timed out waiting for the player to ask for the failing segment, 65 s); a slow re-encode shared by three workers (browser closed after 92 s, then the gate printed no shard line). Host had about 2 GB free RAM. Product owner asks (evidence): does any of them fail in the merge queue or on CI's runners? Second sighting (JS-145 verify, D-023): the 500-segment scenario timed out in a full gate run, with Postgres refusing connections near the end of the gate; 5 of 5 alone. Promote if it fails on the merge queue, a third time locally, or if jellyscale itself (not the test stack) is shown to have used up the connections (then with JS-092). D-042: if the e2e scenario that failed the merge queue on 2026-11-20 is one of these three, the promote rule is met; it is then JS-155's seventh sighting and this item becomes promoted. If it is another scenario, this item is unchanged."
+      "status": "closed",
+      "notes": "Not the BL-100 stall. The three: the dashboard card and Playback info panel (timed out after 44 s, panel empty); jellyfin-web after a segment fails, answered 500, once (timed out waiting for the player to ask for the failing segment, 65 s); a slow re-encode shared by three workers (browser closed after 92 s, then the gate printed no shard line). Host had about 2 GB free RAM. Product owner asks (evidence): does any of them fail in the merge queue or on CI's runners? Second sighting (JS-145 verify, D-023): the 500-segment scenario timed out in a full gate run, with Postgres refusing connections near the end of the gate; 5 of 5 alone. Promote if it fails on the merge queue, a third time locally, or if jellyscale itself (not the test stack) is shown to have used up the connections (then with JS-092). D-042: if the e2e scenario that failed the merge queue on 2026-11-20 is one of these three, the promote rule is met; it is then JS-155's seventh sighting and this item becomes promoted. If it is another scenario, this item is unchanged. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
     },
     {
       "id": "BL-209",
@@ -1884,8 +1884,8 @@
       "reviewer": "product-owner",
       "severity": "minor",
       "title": "jellyfin-web cannot say \"try again later\" on a refused sign-in",
-      "status": "open",
-      "notes": "Observe whether the sign-in page's branding disclaimer can carry it for a refused address. Promote with the OIDC task, which makes Branding real."
+      "status": "closed",
+      "notes": "Observe whether the sign-in page's branding disclaimer can carry it for a refused address. Promote with the OIDC task, which makes Branding real. Closed at the pivot: Covered by JS-184: a refused sign-in carries a reason Octave can explain."
     },
     {
       "id": "BL-210",
@@ -1911,8 +1911,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "Two capture records state a figure their stored JSON does not hold",
-      "status": "open",
-      "notes": "compat/captures/hdr-tonemap-12.4.md gives MaxStreamingBitrate 1440987881, which is not in its JSON; compat/captures/av1-fallback-12.4.md says '389 of 384', and 384 is not stored. No viewer or operator notices; a reader of the record cannot tell an observed figure from a typed one. Correct each when its capture is next taken again or its task next touches the record. Promote if a build or a decision is found to rest on either figure."
+      "status": "closed",
+      "notes": "compat/captures/hdr-tonemap-12.4.md gives MaxStreamingBitrate 1440987881, which is not in its JSON; compat/captures/av1-fallback-12.4.md says '389 of 384', and 384 is not stored. No viewer or operator notices; a reader of the record cannot tell an observed figure from a typed one. Correct each when its capture is next taken again or its task next touches the record. Promote if a build or a decision is found to rest on either figure. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
     },
     {
       "id": "BL-213",
@@ -1956,8 +1956,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "A filtered e2e run (E2E_ONLY) of the refused-sign-in scenario fails the cors gate's 'checked no JSON responses' summary",
-      "status": "open",
-      "notes": "Beside BL-075. Cause, from round 4 (reading only): responses are recorded for the gate's main page alone, and the scenario opens a page of its own, so the JSON jellyfin-web gets during a refused sign-in is neither written nor held to the schema; run alone, the gate has checked nothing and the run-level check fails. No viewer notices; the refusal's answer as jellyfin-web receives it is not held to Jellyfin's schema in e2e. Promote when a second task's filtered command fails the same way, or a refused sign-in's body is found to differ from the schema."
+      "status": "closed",
+      "notes": "Beside BL-075. Cause, from round 4 (reading only): responses are recorded for the gate's main page alone, and the scenario opens a page of its own, so the JSON jellyfin-web gets during a refused sign-in is neither written nor held to the schema; run alone, the gate has checked nothing and the run-level check fails. No viewer notices; the refusal's answer as jellyfin-web receives it is not held to Jellyfin's schema in e2e. Promote when a second task's filtered command fails the same way, or a refused sign-in's body is found to differ from the schema. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
     },
     {
       "id": "BL-218",
@@ -1983,8 +1983,8 @@
       "reviewer": "qa",
       "severity": "minor",
       "title": "The unknown-name flood check drives a function no sign-in calls",
-      "status": "open",
-      "notes": "Reading only. JS-145's criterion 6 says the flood drives the one function the handler calls to count a failed sign-in for a name; the check drives FailName and NameRefusal, which only tests call, while a sign-in goes through Begin (said to reach the same counting step, with the address and device steps before it). So the memory bound is shown on the counting step, not on a sign-in. Fix when a task next touches sign-in (JS-037 or JS-033): the flood goes through what a sign-in calls and the test-only pair goes. Promote sooner if the two paths are shown to count differently."
+      "status": "closed",
+      "notes": "Reading only. JS-145's criterion 6 says the flood drives the one function the handler calls to count a failed sign-in for a name; the check drives FailName and NameRefusal, which only tests call, while a sign-in goes through Begin (said to reach the same counting step, with the address and device steps before it). So the memory bound is shown on the counting step, not on a sign-in. Fix when a task next touches sign-in (JS-037 or JS-033): the flood goes through what a sign-in calls and the test-only pair goes. Promote sooner if the two paths are shown to count differently. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-221",
@@ -1998,17 +1998,17 @@
     {
       "id": "BL-222",
       "title": "Apps ask for trickplay tiles, which are not built; what their viewers see is not known",
-      "notes": "Roku, Streamyfin, Fladder and Jellyfin for Android request Trickplay routes and get 404 (read from source). Whether they show no preview or an error is unverified. /QuickConnect/Enabled answers false today (internal/api/system.go, read by the lead), so apps should not offer a code. JS-075 records both. Promote: if an app shows an error or offers a code that fails, plan the smallest answer that makes it quiet (an item that advertises no trickplay) ahead of JS-053 and JS-037; if apps are quiet, close. D-101: sign-in by code is built (JS-037); narrowed to trickplay tiles, which come back with JS-053.",
+      "notes": "Roku, Streamyfin, Fladder and Jellyfin for Android request Trickplay routes and get 404 (read from source). Whether they show no preview or an error is unverified. /QuickConnect/Enabled answers false today (internal/api/system.go, read by the lead), so apps should not offer a code. JS-075 records both. Promote: if an app shows an error or offers a code that fails, plan the smallest answer that makes it quiet (an item that advertises no trickplay) ahead of JS-053 and JS-037; if apps are quiet, close. D-101: sign-in by code is built (JS-037); narrowed to trickplay tiles, which come back with JS-053. Closed at the pivot: Third-party apps asking for trickplay (rule 4); previews are JS-053.",
       "reviewer": "product-owner",
       "severity": "minor",
       "source": "client research 2026-11-20",
-      "status": "open"
+      "status": "closed"
     },
     {
       "id": "BL-223",
       "title": "The two saved Remember settings (audio, subtitle selections) may do nothing; a per-series memory across devices is beyond Jellyfin",
-      "notes": "Issue #117. Audio half planned in JS-157 (D-039); subtitle half planned in JS-157 criterion 3 (D-068). Stays open only for memory beyond Jellyfin, which waits for data that viewers re-pick tracks episode after episode.",
-      "status": "open",
+      "notes": "Issue #117. Audio half planned in JS-157 (D-039); subtitle half planned in JS-157 criterion 3 (D-068). Stays open only for memory beyond Jellyfin, which waits for data that viewers re-pick tracks episode after episode. Closed at the pivot: Covered by JS-157: a pick is remembered on every device.",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "product-owner",
       "source": "issue triage 2026-11-20"
@@ -2016,8 +2016,8 @@
     {
       "id": "BL-224",
       "title": "PlaybackInfo may ignore EnableDirectPlay, EnableDirectStream, AllowVideoStreamCopy and AllowAudioStreamCopy",
-      "notes": "Issue #224; unverified at runtime. Evidence: (1) JS-075's records of each client's PlaybackInfo request: does any played app send one of these as false, and what did its viewer see; (2) the lead observes jellyfin-web 12.4 on a film the browser accepts but cannot play: what its second PlaybackInfo carries and what Jellyfin answers. If a supported client sends them and its viewer is left with a film that does not play, plan a task ahead of JS-054 (goal 1), with a brief on the CPU a client can then demand. If none sends them, close.",
-      "status": "open",
+      "notes": "Issue #224; unverified at runtime. Evidence: (1) JS-075's records of each client's PlaybackInfo request: does any played app send one of these as false, and what did its viewer see; (2) the lead observes jellyfin-web 12.4 on a film the browser accepts but cannot play: what its second PlaybackInfo carries and what Jellyfin answers. If a supported client sends them and its viewer is left with a film that does not play, plan a task ahead of JS-054 (goal 1), with a brief on the CPU a client can then demand. If none sends them, close. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3).",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "product-owner",
       "source": "issue triage 2026-11-20"
@@ -2025,8 +2025,8 @@
     {
       "id": "BL-225",
       "title": "GET /Items may ignore nameLessThan and nameStartsWithOrGreater",
-      "notes": "Issue #227. Evidence, by the lead: what jellyfin-web 12.4's letter picker sends for '#' and for a letter, and whether jellyscale's answer to those requests matches Jellyfin's in the differential tier. If jellyfin-web sends a parameter jellyscale ignores, add it to JS-068 (goal 3). A count-only jump for TV grids waits for a supported app recorded sending it (JS-075, JS-065).",
-      "status": "open",
+      "notes": "Issue #227. Evidence, by the lead: what jellyfin-web 12.4's letter picker sends for '#' and for a letter, and whether jellyscale's answer to those requests matches Jellyfin's in the differential tier. If jellyfin-web sends a parameter jellyscale ignores, add it to JS-068 (goal 3). A count-only jump for TV grids waits for a supported app recorded sending it (JS-075, JS-065). Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3).",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "product-owner",
       "source": "issue triage 2026-11-20"
@@ -2034,8 +2034,8 @@
     {
       "id": "BL-226",
       "title": "Hard-of-hearing and audio-description tracks: flags on a film's own tracks, and whether a film can start in audio description",
-      "notes": "Issue #114. External files already carry IsHearingImpaired (DOMAINS). Evidence, by the lead: (1) whether compat/differences.yaml lists IsHearingImpaired on a film's own subtitle tracks under JS-068; if so it is already planned there; (2) how many dogfood films carry an audio track marked for the visually impaired, and whether JS-121's rule makes any of them the default for a viewer's language. If one does, plan a task after JS-041 (goal 1: playback never surprises). If none, labelling waits for a supported app that shows it. Generated audio description is dropped as research-grade (D-036). A generated subtitle would lack sound cues, so it is not a hard-of-hearing track and must not be flagged as one (BL-232).",
-      "status": "open",
+      "notes": "Issue #114. External files already carry IsHearingImpaired (DOMAINS). Evidence, by the lead: (1) whether compat/differences.yaml lists IsHearingImpaired on a film's own subtitle tracks under JS-068; if so it is already planned there; (2) how many dogfood films carry an audio track marked for the visually impaired, and whether JS-121's rule makes any of them the default for a viewer's language. If one does, plan a task after JS-041 (goal 1: playback never surprises). If none, labelling waits for a supported app that shows it. Generated audio description is dropped as research-grade (D-036). A generated subtitle would lack sound cues, so it is not a hard-of-hearing track and must not be flagged as one (BL-232). Closed at the pivot: Covered by JS-203: audio description and SDH as filters and badges.",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "product-owner",
       "source": "issue triage 2026-11-20"
@@ -2043,8 +2043,8 @@
     {
       "id": "BL-227",
       "title": "Sort by running time on GET /Items is unobserved; a running-time range filter is beyond what any supported app shows",
-      "notes": "Issue #115. Evidence, by the lead: one differential request with SortBy=Runtime, both directions, against Jellyfin 12.4. A wrong order goes to JS-068 (jellyfin-web offers the sort). The range filter is not planned: no goal, and no supported app shows one.",
-      "status": "open",
+      "notes": "Issue #115. Evidence, by the lead: one differential request with SortBy=Runtime, both directions, against Jellyfin 12.4. A wrong order goes to JS-068 (jellyfin-web offers the sort). The range filter is not planned: no goal, and no supported app shows one. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3).",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "product-owner",
       "source": "issue triage 2026-11-20"
@@ -2052,8 +2052,8 @@
     {
       "id": "BL-228",
       "title": "Search finds nothing for a misspelled title",
-      "notes": "Issue #116; beyond Jellyfin. Promote on data: the share of searches on the dogfood that answer no item and are followed by another search within a minute. No measure exists today and none is planned for this alone. Typo tolerance needs no model (pg_trgm, a trusted extension, no new service). Search by description is dropped until JS-045 shows what share of titles has a synopsis, and it needs pgvector, which an operator would have to install (goal 5) (D-036).",
-      "status": "open",
+      "notes": "Issue #116; beyond Jellyfin. Promote on data: the share of searches on the dogfood that answer no item and are followed by another search within a minute. No measure exists today and none is planned for this alone. Typo tolerance needs no model (pg_trgm, a trusted extension, no new service). Search by description is dropped until JS-045 shows what share of titles has a synopsis, and it needs pgvector, which an operator would have to install (goal 5) (D-036). Closed at the pivot: Covered by JS-204's search; a misspelling is weighed in its Refine.",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "product-owner",
       "source": "issue triage 2026-11-20"
@@ -2070,8 +2070,8 @@
     {
       "id": "BL-231",
       "title": "Trailer files beside a film are not offered (GET /Items/{itemId}/LocalTrailers)",
-      "notes": "Moved out of JS-080 (D-032); issue #108. docs/status.md lists extras as out of scope and PRODUCT.md promises none. JS-080 still keeps them out of the film list. Promote if JS-080's observation of Jellyfin 12.4 shows jellyfin-web offering a trailer for a film with one beside it and viewers are shown to use it.",
-      "status": "open",
+      "notes": "Moved out of JS-080 (D-032); issue #108. docs/status.md lists extras as out of scope and PRODUCT.md promises none. JS-080 still keeps them out of the film list. Promote if JS-080's observation of Jellyfin 12.4 shows jellyfin-web offering a trailer for a film with one beside it and viewers are shown to use it. Closed at the pivot: A Jellyfin route (LocalTrailers), both auditors (rule 3). Reopen as an Octave outcome if a viewer asks for trailers.",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "product-owner",
       "source": "issue triage 2026-11-20"
@@ -2097,26 +2097,26 @@
     {
       "id": "BL-234",
       "title": "A client that turns on an image subtitle by default starts a whole-film read on the first play of each such film",
-      "notes": "Dogfood report 2026-11-20 (D-038): one sighting, 46.7 GB read for one film when Moonfin's default subtitle mode chose an image track. D-003 accepts the read; JS-141 and JS-143 cover it. Promote JS-141 ahead of JS-135 if JS-143's count shows more than a few such reads a week, or most of those plays abandoned early. JS-154: job 82 ran at 0.6x beside this extraction on the same 4 cores, against 0.85x alone; the dogfood's log shows the extraction starting beside jobs 82 and 85, and job 83 within its run. JS-161's design review decides whether an extraction counts against capacity (D-044). JS-177's pre-Spec spike measures a 4K job beside an image-track extraction after JS-161 (D-066). JS-041 widens who triggers this: any viewer whose mode picks an image track, on jellyfin-web too. JS-143's count is taken after JS-041 lands. Bring a brief at once if the dogfood shows a mode-picked image subtitle (subtitle_asked=none, subtitle_kind=image) refused, or more than a few re-encoded a week. (D-068) D-070: the spike row is taken (16% to 18%, CPU limit, synthetic, 24 to 28 s on a local disk). Option A stands. JS-141's promotion triggers are on JS-141's notes.",
+      "notes": "Dogfood report 2026-11-20 (D-038): one sighting, 46.7 GB read for one film when Moonfin's default subtitle mode chose an image track. D-003 accepts the read; JS-141 and JS-143 cover it. Promote JS-141 ahead of JS-135 if JS-143's count shows more than a few such reads a week, or most of those plays abandoned early. JS-154: job 82 ran at 0.6x beside this extraction on the same 4 cores, against 0.85x alone; the dogfood's log shows the extraction starting beside jobs 82 and 85, and job 83 within its run. JS-161's design review decides whether an extraction counts against capacity (D-044). JS-177's pre-Spec spike measures a 4K job beside an image-track extraction after JS-161 (D-066). JS-041 widens who triggers this: any viewer whose mode picks an image track, on jellyfin-web too. JS-143's count is taken after JS-041 lands. Bring a brief at once if the dogfood shows a mode-picked image subtitle (subtitle_asked=none, subtitle_kind=image) refused, or more than a few re-encoded a week. (D-068) D-070: the spike row is taken (16% to 18%, CPU limit, synthetic, 24 to 28 s on a local disk). Option A stands. JS-141's promotion triggers are on JS-141's notes. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3).",
       "source": "dogfood report 2026-11-20",
-      "status": "open",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "product-owner"
     },
     {
       "id": "BL-235",
       "title": "Moonfin asked for a subtitle index its own rules should not pick, on two films",
-      "notes": "Dogfood report 2026-11-20 (D-038): index 4 (a Chinese PGS track) where its rules pick English index 3; index 5 (the second English track) where index 4 exists. Possibly the index numbering of main's item, which hides non-default audio tracks (JS-147 lists them). Promote to a goal-1 task at once if JS-153's line shows the asked index differs from what the item listed; drop if it matches Moonfin's own rules. JS-075 records it.",
+      "notes": "Dogfood report 2026-11-20 (D-038): index 4 (a Chinese PGS track) where its rules pick English index 3; index 5 (the second English track) where index 4 exists. Possibly the index numbering of main's item, which hides non-default audio tracks (JS-147 lists them). Promote to a goal-1 task at once if JS-153's line shows the asked index differs from what the item listed; drop if it matches Moonfin's own rules. JS-075 records it. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3).",
       "source": "dogfood report 2026-11-20",
-      "status": "open",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "product-owner"
     },
     {
       "id": "BL-236",
       "title": "Where no transcode can run, the details item names the browser's track for every client, though a client that switches tracks itself could play the saved language",
-      "notes": "D-029, D-034 (JS-147): in the lasting states (no transcodeStore, no probed duration, no live worker that runs transcodes, differing stores) the item names and lists the track a browser will hear; PlaybackInfo for a self-switching client still names and plays the saved-language track. Promote to a task ahead of other open work if JS-075 records a supported client starting from the item's track; drop if none does. The design-around to assess then is an item answer that depends on the client.",
-      "status": "open",
+      "notes": "D-029, D-034 (JS-147): in the lasting states (no transcodeStore, no probed duration, no live worker that runs transcodes, differing stores) the item names and lists the track a browser will hear; PlaybackInfo for a self-switching client still names and plays the saved-language track. Promote to a task ahead of other open work if JS-075 records a supported client starting from the item's track; drop if none does. The design-around to assess then is an item answer that depends on the client. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3).",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "product-owner",
       "source": "JS-147 Verify 2026-11-20"
@@ -2124,18 +2124,18 @@
     {
       "id": "BL-237",
       "title": "A viewer cannot take an abandoned film or show off Continue Watching or Next Up without losing its position",
-      "notes": "Issue #233. An extension beyond Jellyfin; whether any supported app could show the control is unverified. Promote when the dogfood shows resume rows holding items with no progress for 30 days or more on several accounts, and a supported app (docs/status.md) can show the control; D-027: no work for one client alone.",
+      "notes": "Issue #233. An extension beyond Jellyfin; whether any supported app could show the control is unverified. Promote when the dogfood shows resume rows holding items with no progress for 30 days or more on several accounts, and a supported app (docs/status.md) can show the control; D-027: no work for one client alone. Closed at the pivot: Covered by JS-186: removing a title from Continue watching keeps the viewer's place.",
       "source": "issue #233",
-      "status": "open",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "product-owner"
     },
     {
       "id": "BL-238",
       "title": "A viewer who seeks mid-play into a part of a film that cannot be made sees a stopped picture and no reason (jellyfin-web)",
-      "notes": "D-040, invariant 37. Probe, before any build: does any honest signal reach jellyfin-web's dialog or a message after playback has begun: a server-to-session message over the WebSocket jellyfin-web opens (/socket; whether jellyscale sends anything on it is unverified), or the offered duration or seek range ending where the file's readable part ends (invariant 40), so the seek cannot be made at all. 403 and 410 are expected to behave as 500 (the handler destroys the player on any answer of 400 or more) and need one observation at most. Promote when: the dogfood's log shows the once-per-job line for a file-caused segment failure after playback began at all (one occurrence schedules the probe; a repeat makes it a task ahead of new features), or a probe finds a working signal cheaply. Drop if: JS-075's native-client captures show they explain it themselves and the dogfood count stays at zero over a month of use.",
+      "notes": "D-040, invariant 37. Probe, before any build: does any honest signal reach jellyfin-web's dialog or a message after playback has begun: a server-to-session message over the WebSocket jellyfin-web opens (/socket; whether jellyscale sends anything on it is unverified), or the offered duration or seek range ending where the file's readable part ends (invariant 40), so the seek cannot be made at all. 403 and 410 are expected to behave as 500 (the handler destroys the player on any answer of 400 or more) and need one observation at most. Promote when: the dogfood's log shows the once-per-job line for a file-caused segment failure after playback began at all (one occurrence schedules the probe; a repeat makes it a task ahead of new features), or a probe finds a working signal cheaply. Drop if: JS-075's native-client captures show they explain it themselves and the dogfood count stays at zero over a month of use. Closed at the pivot: Covered by JS-185 and JS-197: a failure carries a reason Octave can explain.",
       "source": "D-040",
-      "status": "open",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "product-owner"
     },
@@ -2240,12 +2240,12 @@
     },
     {
       "id": "BL-250",
-      "status": "open",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "qa",
       "source": "JS-172; D-059",
       "title": "test/integration.sh given a package path runs the whole tier unless -run is given",
-      "notes": "Nobody who watches or operates notices. It costs whoever runs it about 40 minutes and can make a run look like it covered only one package. Promote when .results/tasks.jsonl shows it cost a run (a QA or build phase that ran the whole tier by mistake) twice, or fix it when test/integration.sh is next changed for another reason. The fix, when made, is that a path it cannot honour is refused at once, as test/e2e/run.sh refuses a missing web-dist."
+      "notes": "Nobody who watches or operates notices. It costs whoever runs it about 40 minutes and can make a run look like it covered only one package. Promote when .results/tasks.jsonl shows it cost a run (a QA or build phase that ran the whole tier by mistake) twice, or fix it when test/integration.sh is next changed for another reason. The fix, when made, is that a path it cannot honour is refused at once, as test/e2e/run.sh refuses a missing web-dist. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-251",
@@ -2375,30 +2375,30 @@
     },
     {
       "id": "BL-265",
-      "status": "open",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "product-owner",
       "source": "JS-041 design review; D-068",
       "title": "e2e scenarios share an admin that cannot return to a never-saved configuration, so their initial subtitle mode depends on gate order",
-      "notes": "Test-only; no failure seen. Restoring {} creates mode Default rather than the never-saved state. Promote on a queue failure, or a JS-175 verdict, traced to gate order. It closes when JS-033 gives the harness fresh users."
+      "notes": "Test-only; no failure seen. Restoring {} creates mode Default rather than the never-saved state. Promote on a queue failure, or a JS-175 verdict, traced to gate order. It closes when JS-033 gives the harness fresh users. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
     },
     {
       "id": "BL-266",
-      "status": "open",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "product-owner",
       "source": "JS-041 triage; D-068",
       "title": "A client with no SubtitleProfiles has a mode-picked text subtitle burnt in, so its film re-encodes",
-      "notes": "Accepted by D-068 because the alternative ignores the viewer's saved mode. Promote to a brief with the design-arounds if dogfood decision lines show SubtitleCodecNotSupported with subtitle_asked=none and method=reencode or refused from a supported client other than jellyfin-web under burn-all. Drop if JS-075's clients all send SubtitleProfiles."
+      "notes": "Accepted by D-068 because the alternative ignores the viewer's saved mode. Promote to a brief with the design-arounds if dogfood decision lines show SubtitleCodecNotSupported with subtitle_asked=none and method=reencode or refused from a supported client other than jellyfin-web under burn-all. Drop if JS-075's clients all send SubtitleProfiles. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
     },
     {
       "id": "BL-267",
-      "status": "open",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "product-owner",
       "source": "D-069; test and CI strategy review",
       "title": "api and transcode tests share one database reset by TRUNCATE; a test's own database from a migrated template would remove the class",
-      "notes": "Three queue runs deadlocked on it; JS-158 fixed those causes in the kits. Per-test creation cost unmeasured. No viewer or operator effect. Promote on: a 40P01, or a test failing on another test's rows, in JS-175's 10 counted runs or any queue run after JS-158; then a task cut to the kit that failed."
+      "notes": "Three queue runs deadlocked on it; JS-158 fixed those causes in the kits. Per-test creation cost unmeasured. No viewer or operator effect. Promote on: a 40P01, or a test failing on another test's rows, in JS-175's 10 counted runs or any queue run after JS-158; then a task cut to the kit that failed. Closed at the pivot: Covered by JS-175, which records and fixes recurring queue failures at their cause."
     },
     {
       "id": "BL-268",
@@ -2537,12 +2537,12 @@
     },
     {
       "id": "BL-283",
-      "status": "open",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "product-owner",
       "source": "JS-127; D-087",
       "title": "No committed check that a request naming the caller's own id is served during a Postgres outage",
-      "notes": "It works today, shown by hand by two reviewers. Add the check when the outage snapshot or JS-127's rule next changes."
+      "notes": "It works today, shown by hand by two reviewers. Add the check when the outage snapshot or JS-127's rule next changes. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
     },
     {
       "id": "BL-284",
@@ -2555,12 +2555,12 @@
     },
     {
       "id": "BL-285",
-      "status": "open",
+      "status": "closed",
       "severity": "minor",
       "reviewer": "adversarial",
       "source": "JS-037",
       "title": "A shutdown that cuts a successful approval's release leaves it counted as a failure",
-      "notes": "Ticket.Release is not cut at the grace; with its rows locked it logged 'reservation was not given back: closed pool' (D-097's re-review, by command). D-101: backlog; comes back with JS-079 or an operator's report of a false failure count."
+      "notes": "Ticket.Release is not cut at the grace; with its rows locked it logged 'reservation was not given back: closed pool' (D-097's re-review, by command). D-101: backlog; comes back with JS-079 or an operator's report of a false failure count. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
     },
     {
       "id": "BL-286",
@@ -2624,6 +2624,141 @@
       "source": "JS-033",
       "title": "A viewer disabled mid-film sees no message or sign-in prompt",
       "notes": "Playback stops within about 22 s; the page stays on the player. Awaits the product owner."
+    },
+    {
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-044",
+      "title": "A viewer's picture (avatar) on their account",
+      "notes": "From JS-044, dropped by D-126: no PRODUCT.md outcome. Back when Octave asks for it.",
+      "id": "BL-293"
+    },
+    {
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-092",
+      "title": "A stated Postgres connection budget, warned about and measured with many processes",
+      "notes": "From JS-092 (rule 14: the 45-worker figure is an estimate). Back when a deployment nears it or JS-062 measures it.",
+      "id": "BL-294"
+    },
+    {
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-097",
+      "title": "CI's required checks cannot pass by being skipped, and protection has one source",
+      "notes": "From JS-097 (rule 14). Back when JS-175 finds a skipped check let a failure through.",
+      "id": "BL-295"
+    },
+    {
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-140",
+      "title": "An image subtitle copy that a slow store cannot finish within the hour still arrives",
+      "notes": "From JS-140, with D-002's condition carried (D-127). Back after JS-188 decides how image subtitles reach Octave's players, if a copy is still needed.",
+      "id": "BL-296"
+    },
+    {
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-141",
+      "title": "Copy a film's image subtitles without reading the whole film",
+      "notes": "From JS-141 (D-127). Back with JS-140.",
+      "id": "BL-297"
+    },
+    {
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-143",
+      "title": "How many films miss the image-subtitle copy's hour, and the store's read speed",
+      "notes": "From JS-143 (D-127). Back with JS-140.",
+      "id": "BL-298"
+    },
+    {
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-095",
+      "title": "One leased job queue for work that is not a segment",
+      "notes": "The refactor half of JS-095 (rule 14). Back when a failure it would end is seen.",
+      "id": "BL-299"
+    },
+    {
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "JS-091",
+      "title": "Text tracks extracted ahead of time, by the operator's choice",
+      "notes": "The second half of JS-091, under D-120's opt-in rule. Back when a viewer's first subtitle pick is seen to wait.",
+      "id": "BL-300"
+    },
+    {
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "pivot-plan.md",
+      "title": "Versions made ahead in idle time beyond the titles the operator chose",
+      "notes": "From the streaming report (rank 7); storage. Back on the operator's request.",
+      "id": "BL-301"
+    },
+    {
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "pivot-plan.md",
+      "title": "AV1 versions",
+      "notes": "From the streaming report. Back with hardware encoding that makes them affordable.",
+      "id": "BL-302"
+    },
+    {
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "pivot-plan.md",
+      "title": "A cache near remote viewers",
+      "notes": "From the streaming report (rank 10); low at private scale.",
+      "id": "BL-303"
+    },
+    {
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "pivot-plan.md",
+      "title": "Audio modes (night, dialogue)",
+      "notes": "From the streaming report (rank 11); no evidence of demand.",
+      "id": "BL-304"
+    },
+    {
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "pivot-plan.md",
+      "title": "Watching offline on a phone, at a lighter version",
+      "notes": "Owner: second to streaming (PRODUCT.md, Later).",
+      "id": "BL-305"
+    },
+    {
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "Self hosted viewing experience.md",
+      "title": "Watching with co-viewers recorded, and 'unwatched by everyone here'",
+      "notes": "From the catalog research; an idea to test on the dogfood.",
+      "id": "BL-306"
+    },
+    {
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "Self hosted viewing experience.md",
+      "title": "A named person's picks, shared on purpose",
+      "notes": "From the catalog research; no source evaluates it.",
+      "id": "BL-307"
     }
   ]
 }

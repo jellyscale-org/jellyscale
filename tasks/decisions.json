@@ -1156,6 +1156,248 @@
       "decision": "change",
       "entry": "The owner: \"If one model fails, you can always swap to another one. Just try to, as much as you can, use some sort of reviews or feedback on which of the free models are superior so you can kind of create a tier list and work your way down.\" A graded benchmark (a race and logic fix with hidden tests; two CI logs with verified answers) ranked beam, hy4 and seaglass-alpha first (all hidden tests passed); deepseek, mimo, iceman, nemotron super and flint each missed one bug; nemotron lightning fixed one of four and reported success; tidepool was unavailable. Build/Fix is beam, QA hy4, helpers mimo; failures move down the list before Sonnet.",
       "serves": "Owner, 2026-11-27."
+    },
+    {
+      "id": "D-107",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "PRODUCT.md; the plan",
+      "brief": "brief-pivot-2026-11-27.md, brief-pivot2-2026-11-27.md",
+      "tradeoff": "Every viewer's Jellyfin app goes; Octave becomes the only client.",
+      "decision": "change",
+      "entry": "The owner: abandon Jellyfin parity and make jellyscale new software for a private collection of films and shows for a household, friends and family, or a community (\"we are putting Jellyfin in the rear view mirror and thinking of this as a net new piece of software\"). Octave need not work with Jellyfin servers; no 'keep your apps' promise; stop checking behaviour against Jellyfin. Better playback first, with storage a constraint: the original on top, a handful of steps, 720p the usual floor, 480p where the content suits it. Offline viewing second. A short time without a working client is acceptable, but Octave must always have something to build against. A clean cutover: Octave adapts; first get Octave fetching films and TV and starting playback. Never music or photo libraries.",
+      "serves": "Owner, 2026-11-27."
+    },
+    {
+      "id": "D-108",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "PRODUCT.md",
+      "brief": "po/pivot-plan.md",
+      "tradeoff": "§2 of the plan lists every guarantee removed or weakened.",
+      "decision": "change",
+      "entry": "PRODUCT.md rewritten for D-107, D-118 and D-124, as outcomes only.",
+      "serves": "D-091."
+    },
+    {
+      "id": "D-109",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-194",
+      "brief": "po/pivot-plan.md",
+      "tradeoff": "Viewers on Jellyfin apps lose them at the cutover; no adapter.",
+      "decision": "change",
+      "entry": "Clean cutover: Jellyfin's API is frozen now and removed by JS-194 as soon as milestone 1 passes on jellyscale's side, without waiting for Octave. No adapter.",
+      "serves": "D-107."
+    },
+    {
+      "id": "D-110",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "AGENTS.md; test tiers",
+      "brief": "po/pivot-plan.md",
+      "tradeoff": "Jellyfin stops being the test oracle.",
+      "decision": "change",
+      "entry": "The quality bar is jellyscale's own published contract and its conformance check, real players observed, and Octave's e2e. Jellyfin observation, the differential tier and the Jellyfin schema check are retired now; the jellyfin-web gate at the cutover.",
+      "serves": "PRODUCT.md, Quality bar."
+    },
+    {
+      "id": "D-111",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-039, JS-150, JS-191",
+      "brief": "po/pivot-plan.md",
+      "tradeoff": "Quick Connect goes; invariant 63 is split for Octave Web.",
+      "decision": "change",
+      "entry": "D-082 and D-083 are superseded. A TV is approved from a phone (JS-191). Octave Web's sign-in can be neither read by page scripts nor used by another site, splitting invariant 63. Passkeys come from the IdP (D-119).",
+      "serves": "\"Joining and signing in are easy and safe.\""
+    },
+    {
+      "id": "D-112",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "tasks/prd.json, tasks/backlog.json",
+      "brief": "po/pivot-plan.md; po/pivot-apply.json",
+      "tradeoff": "None beyond the tasks dropped.",
+      "decision": "plan",
+      "entry": "The task changes, drops, new tasks, order and backlog closures in pivot-apply.json.",
+      "serves": "D-107."
+    },
+    {
+      "id": "D-113",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-033",
+      "brief": "po/pivot-plan.md",
+      "tradeoff": "None.",
+      "decision": "accept",
+      "entry": "JS-033 lands as built and freezes with the Jellyfin API; its account rules carry to JS-192.",
+      "serves": "D-107."
+    },
+    {
+      "id": "D-114",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "Octave issue",
+      "brief": "po/pivot-plan.md",
+      "tradeoff": "None.",
+      "decision": "plan",
+      "entry": "One issue to Octave, as the plan's §10 words it.",
+      "serves": "Goal 3."
+    },
+    {
+      "id": "D-115",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-198, JS-183",
+      "brief": "po/pivot-plan.md",
+      "tradeoff": "None.",
+      "decision": "keep",
+      "entry": "Octave always has a working jellyscale to build and test against: a server for every change to main (Octave #190, JS-198), jellyfin-final kept for good, and each capability in the contract before it is built.",
+      "serves": "The owner: \"We are going to need something for Octave to build against.\""
+    },
+    {
+      "id": "D-116",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-190, JS-194",
+      "brief": "po/pivot-plan.md",
+      "tradeoff": "Browser viewers on the dogfood have no app until Octave Web ships.",
+      "decision": "change",
+      "entry": "The dogfood runs main until the cutover, jellyfin-final until Octave Android TV browses and plays on main, then main.",
+      "serves": "D-107."
+    },
+    {
+      "id": "D-117",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-186",
+      "brief": "po/pivot-plan.md",
+      "tradeoff": "Libraries and collections stop being what viewers browse.",
+      "decision": "change",
+      "entry": "Jellyfin's libraries and collections are not the catalog; settled by D-124.",
+      "serves": "The owner, on research before a catalog model."
+    },
+    {
+      "id": "D-118",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "PRODUCT.md; JS-187, JS-201",
+      "brief": "The owner's approval with changes",
+      "tradeoff": "None.",
+      "decision": "change",
+      "entry": "The owner approved the direction with changes: automatic stepping with a manual override as on YouTube; 720p the usual floor, 480p only when a title is SD or nothing higher keeps it playing; object storage and the filesystem both first-class; video only; passkeys through the IdP; versions made ahead by the operator's choice; Apple TV later; Android TV and phones first.",
+      "serves": "Owner, 2026-11-27."
+    },
+    {
+      "id": "D-119",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "JS-039",
+      "brief": "po/pivot-plan.md",
+      "tradeoff": "None: the IdP provides passkeys.",
+      "decision": "change",
+      "entry": "No passkeys or second factors in jellyscale; the household's IdP provides them through single sign-on.",
+      "serves": "Owner: \"probably an identity we can pass off to the IDP\"."
+    },
+    {
+      "id": "D-120",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "JS-201",
+      "brief": "po/pivot-plan.md",
+      "tradeoff": "Storage the operator chooses to spend.",
+      "decision": "change",
+      "entry": "Versions made ahead: opt-in, off by default, the operator's titles, qualities and storage share; never slowing anything a viewer or operator waits for; never evicted by on-demand work; served exactly as made on request. When and how is the design's (the owner declined to tie it to scanning).",
+      "serves": "\"Storage stays bounded.\""
+    },
+    {
+      "id": "D-121",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "JS-190, JS-199, JS-150",
+      "brief": "po/pivot-plan.md",
+      "tradeoff": "Browser viewers wait for the third step; Apple TV deferred.",
+      "decision": "change",
+      "entry": "Platform focus: Android TV, then Android and iOS phones, then Octave Web shipped with the server. Apple TV deferred.",
+      "serves": "Owner, 2026-11-27."
+    },
+    {
+      "id": "D-122",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "JS-200",
+      "brief": "po/pivot-plan.md",
+      "tradeoff": "None until the names are cleared.",
+      "decision": "change",
+      "entry": "The owner chose Zoetrope for the server and Praxi for the viewer apps (\"Zoetrope and praxei make sense to me\"), a naming convention for all of the project's software after the early moving-picture devices. A first proposal was set aside after the lead found it collides with existing media software. JS-200 renames only after a name check clears both and the owner approves; the organisation's rename and logo are the owner's, in the web interface. PRODUCT.md names them as chosen and keeps the working names until the rename lands.",
+      "serves": "Owner, 2026-11-27."
+    },
+    {
+      "id": "D-123",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "tasks/prd.json, tasks/backlog.json",
+      "brief": "po/pivot-plan.md §13",
+      "tradeoff": "None.",
+      "decision": "plan",
+      "entry": "The mandate (plan §13) is applied by free-model auditors to every open task and backlog item; the product owner decides on their reports.",
+      "serves": "The owner: \"have a free agent go through it with a very hard codified mandate\"."
+    },
+    {
+      "id": "D-124",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-186, JS-036, JS-202 to JS-206, JS-101, JS-050",
+      "brief": "study-native-api/reports/Self hosted viewing experience.md, approved by the owner",
+      "tradeoff": "Viewers no longer browse by library; collections wait for stage 6.",
+      "decision": "change",
+      "entry": "The catalog: one collection, never the places files are kept. Films and Shows are the ways in, each spanning everything the viewer may see. One watch history per person per title; Continue watching decided by the server. Access is one rule apart from organisation, applied everywhere; organising grants or hides nothing. Milestone 1: Films, Shows, one history, Continue watching with next episodes. Stage 6 in order: My list; filters and badges; search; collections in kinds (franchise with watch orders, list, saved rule) from files or configuration; the operator's own ways in; more like this from the titles with reasons; versions versus editions; server-wide rows opt-in. No recommendations learned from other viewers.",
+      "serves": "The owner: \"I love all the recommended experiences that you're providing.\""
+    },
+    {
+      "id": "D-125",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "PRODUCT.md; the mandate (rule 18)",
+      "brief": "po/pivot-plan.md",
+      "tradeoff": "None.",
+      "decision": "change",
+      "entry": "PRODUCT.md and the plan state outcomes, not mechanisms; how new films are found and when made versions are produced are design questions.",
+      "serves": "The owner: \"I don't want a solution for these things.\""
+    },
+    {
+      "id": "D-126",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "tasks/prd.json, tasks/backlog.json",
+      "brief": "audit/combined.json (beam and hy4); po/pivot-plan.md",
+      "tradeoff": "21 tasks dropped or merged; 109 backlog items closed and 15 added.",
+      "decision": "change",
+      "entry": "Audit reconciled. Where the auditors disagreed: JS-038, JS-048, JS-065, JS-068, JS-075, JS-156 dropped; JS-157 changed (kept as a viewer outcome); JS-169 changed (a measurement for hardware the operator already gives, with a failure seen now); JS-021, JS-036, JS-054, JS-056, JS-059, JS-079 (split into JS-079 and JS-208), JS-091, JS-093, JS-101, JS-149 and JS-165 changed at the cause each auditor named; JS-092 and JS-097 to the backlog (rule 14). Every task over 8 criteria is cut to 8 or fewer. Backlog rule: an item whose only failing is a missing frequency (rule 17) stays open as it is, and states its frequency when it is promoted; an item that names nothing a viewer or operator would notice is closed; one tied to Jellyfin is closed.",
+      "serves": "The mandate."
+    },
+    {
+      "id": "D-127",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-140, JS-141, JS-143",
+      "brief": "po/pivot-plan.md",
+      "tradeoff": "D-002's costly seeks into long image cues stay until JS-188.",
+      "decision": "defer",
+      "entry": "D-002's gap-closing condition is carried by backlog items (from JS-140, JS-141, JS-143), which return after JS-188 decides how image subtitles reach Octave's players: a player that draws the track itself may not need the copy at all.",
+      "serves": "\"Subtitles never cost the picture.\""
+    },
+    {
+      "id": "D-128",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-200",
+      "brief": "po/pivot-plan.md",
+      "tradeoff": "None.",
+      "decision": "change",
+      "entry": "The rename comes right after JS-033 and before JS-198, so the image and contract are named once; if its name check is not done when it is next, JS-198 goes first.",
+      "serves": "D-122."
     }
   ]
 }
