@@ -18,6 +18,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"golang.org/x/crypto/bcrypt"
 
 	"jellyscale/internal/db"
 )
@@ -113,13 +114,10 @@ func names(users []userDTO) []string {
 	return out
 }
 
-// created is a user made through POST /Users/New by the administrator. A password of "-" sends no Password field.
+// created is a user made through POST /Users/New by the administrator.
 func (u *usersSite) created(admin qcAccount, name, password string) userDTO {
 	u.t.Helper()
-	fields := map[string]any{"Name": name}
-	if password != "-" {
-		fields["Password"] = password
-	}
+	fields := map[string]any{"Name": name, "Password": password}
 	return decodeUser(u.t, u.must(200, 0, admin.token, "POST", "/Users/New", body(fields), "making a user"), "POST /Users/New")
 }
 
@@ -158,6 +156,21 @@ func (u *usersSite) userCount(name string) int {
 		u.t.Fatal(err)
 	}
 	return n
+}
+
+// withNoPassword is an account that already exists with no password: its stored hash is the empty password's. No route
+// makes one (D-100), so it is written as the accounts there are were.
+func (u *usersSite) withNoPassword() (id, name string) {
+	u.t.Helper()
+	id, name = uuid.NewString(), "bare-"+uuid.NewString()[:8]
+	hash, err := bcrypt.GenerateFromPassword(nil, bcrypt.MinCost)
+	if err != nil {
+		u.t.Fatal(err)
+	}
+	if _, err := u.pool.Exec(context.Background(), `INSERT INTO users (id, name, password_hash, is_admin) VALUES ($1, $2, $3, false)`, id, name, string(hash)); err != nil {
+		u.t.Fatal(err)
+	}
+	return id, name
 }
 
 // onlyThese deletes every other user, so that "the last administrator" means one of the accounts the test made.

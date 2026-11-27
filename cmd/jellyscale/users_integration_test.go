@@ -90,11 +90,6 @@ func TestNewUserAnswersAsCapturedAndMakesAnEnabledNonAdministrator(t *testing.T)
 		t.Errorf("%d users named %q in some case, want 1", n, name)
 	}
 	u.check(403, u.as(0, viewer.token, "POST", "/Users/New", body(map[string]any{"Name": "by-viewer", "Password": strong()})), "a viewer making a user")
-
-	bare := "bare-" + uuid.NewString()[:8]
-	u.created(admin, bare, "-")
-	signedIn(t, "a user made without a Password signing in with an empty one", u.try(0, newDevice(), bare, ""))
-	u.check(401, u.try(0, newDevice(), bare, "something"), "a user made without a Password signing in with one")
 }
 
 // Criterion 6, forced: both processes have read that the name is free before either writes. users is held in EXCLUSIVE
@@ -206,6 +201,7 @@ func TestTheProviderListsAndTheProfileSaveAnswerAsCaptured(t *testing.T) {
 			t.Errorf("%s: %s, want %s", path, normal, want)
 		}
 		u.check(401, u.as(0, "", "GET", path, ""), path+" with no token")
+		u.check(403, u.as(0, viewer.token, "GET", path, ""), path+" as a viewer")
 	}
 
 	rename := func(replica int, token, id, name string, policy map[string]any) signInReply {
@@ -244,6 +240,8 @@ func TestTheProviderListsAndTheProfileSaveAnswerAsCaptured(t *testing.T) {
 	}
 }
 
+const zeroID = "00000000000000000000000000000000"
+
 // Criterion 4: the ids of the routes an administrator may use for another account.
 func TestTheAccountRoutesTakeAnotherUsersIdOnlyFromAnAdministrator(t *testing.T) {
 	u := newUsersSite(t, 1, nil)
@@ -265,6 +263,7 @@ func TestTheAccountRoutesTakeAnotherUsersIdOnlyFromAnAdministrator(t *testing.T)
 		u.check(404, u.as(0, admin.token, r.method, path(nobody), r.body), what+": an administrator naming nobody")
 		u.check(400, u.as(0, viewer.token, r.method, path("not-a-guid"), r.body), what+": a viewer with a malformed id")
 		u.check(400, u.as(0, admin.token, r.method, path("not-a-guid"), r.body), what+": an administrator with a malformed id")
+		u.check(404, u.as(0, admin.token, r.method, path(zeroID), r.body), what+": an administrator naming the zero id")
 	}
 	disagree := "?userId=" + viewer.id
 	u.check(400, u.as(0, admin.token, "POST", "/Users/"+other.id+"/Password"+disagree, password), "the password alias with path and query disagreeing")
@@ -280,6 +279,10 @@ func TestDeleteAndPolicyAnswerUnknownAndMalformedIdsAsCaptured(t *testing.T) {
 	nobody := "0f0f0f0f0f0f40408f8f0f0f0f0f0f0f"
 	u.check(404, u.as(0, admin.token, "DELETE", "/Users/"+nobody, ""), "DELETE of a user nobody has")
 	u.check(400, u.as(0, admin.token, "DELETE", "/Users/not-a-guid", ""), "DELETE of a malformed id")
+	u.check(404, u.as(0, admin.token, "DELETE", "/Users/"+zeroID, ""), "DELETE of the zero id")
+	u.check(404, u.policy(0, admin.token, zeroID, map[string]any{"IsDisabled": false}), "Policy of the zero id")
+	u.check(403, u.as(0, viewer.token, "DELETE", "/Users/not-a-guid", ""), "a viewer's DELETE of a malformed id")
+	u.check(403, u.policy(0, viewer.token, "not-a-guid", map[string]any{"IsDisabled": false}), "a viewer's Policy of a malformed id")
 	u.check(403, u.as(0, viewer.token, "DELETE", "/Users/"+gone.id, ""), "a viewer's DELETE")
 	u.check(204, u.as(0, admin.token, "DELETE", "/Users/"+gone.id, ""), "DELETE of a viewer")
 	u.check(404, u.as(1, admin.token, "DELETE", "/Users/"+gone.id, ""), "DELETE of a deleted user")

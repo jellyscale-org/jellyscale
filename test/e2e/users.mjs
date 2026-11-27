@@ -95,6 +95,18 @@ export async function userSteps({ browser, base, user, adminPassword, step }) {
     if (!(await named(disabled))) throw new Error("the user was not made");
   });
 
+  // D-100. jellyfin-web 12.4 sends an empty password as it is and shows a 400 for it with its own words, not the
+  // server's (compat/captures/users-empty-password-12.4.md).
+  await step("users: New User with an empty password is refused, the page says so and no user is made", async () => {
+    const { page } = admin;
+    await open(page, "dashboard/users/add");
+    await page.fill("#txtUsername", "users-empty");
+    await tick(page, ".chkEnableAllFolders", true);
+    await save(page);
+    await shows(page, "There was an error processing the request. Please try again later.");
+    if (await named("users-empty")) throw new Error("the user was made");
+  });
+
   await step("users: the profile page saves with nothing changed", async () => {
     await profile(targetId, target);
     const before = JSON.stringify(await policy(target));
@@ -132,6 +144,15 @@ export async function userSteps({ browser, base, user, adminPassword, step }) {
     });
   }
 
+  await step("users: an administrator's empty new password is refused, the page says so and the old one stays", async () => {
+    const { page } = admin;
+    await open(page, `dashboard/users/${targetId}/password`);
+    await page.locator("#txtNewPassword").waitFor();
+    await save(page, /^Save Password$/);
+    await shows(page, "Invalid username or password. Please try again.");
+    if ((await signIn(target, password)).status !== 200) throw new Error("the old password no longer signs in");
+  });
+
   await step("users: the password page sets another user's password", async () => {
     const { page } = admin;
     await open(page, `dashboard/users/${targetId}/password`);
@@ -145,16 +166,19 @@ export async function userSteps({ browser, base, user, adminPassword, step }) {
   await step("users: a viewer changes their own password on their profile page", async () => {
     const viewer = await newPage(target, `${password}-two`);
     const { page } = viewer;
-    const change = async (current) => {
+    const change = async (current, next = `${password}-three`) => {
       await open(page, `userprofile?userId=${targetId}`);
       await page.fill("#txtCurrentPassword", current);
-      await page.fill("#txtNewPassword", `${password}-three`);
-      await page.fill("#txtNewPasswordConfirm", `${password}-three`);
+      await page.fill("#txtNewPassword", next);
+      await page.fill("#txtNewPasswordConfirm", next);
       await save(page, /^Save Password$/);
     };
     try {
       await change("wrong");
       await shows(page, "Invalid username or password. Please try again.");
+      await change(`${password}-two`, "");
+      await shows(page, "Invalid username or password. Please try again.");
+      if ((await signIn(target, `${password}-two`)).status !== 200) throw new Error("an empty new password was taken");
       await change(`${password}-two`);
       await shows(page, "Password saved.");
       if ((await signIn(target, `${password}-three`)).status !== 200) throw new Error("the new password does not sign in");

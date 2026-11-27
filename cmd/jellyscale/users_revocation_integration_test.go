@@ -5,8 +5,10 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"net"
 	"net/http"
 	"slices"
@@ -18,6 +20,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"jellyscale/internal/testenv"
 )
 
 // JS-033: what ends when a user is disabled, deleted or changes a password, and the forced races (criteria 9, 12,
@@ -429,5 +433,172 @@ func TestARunningDirectPlayStopsWhenItsTokenEnds(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// holdAtCommit makes the transaction in which a session of the application name changes a user or ends a device's token
+// wait at its commit: every write of it made, none to be seen. It is a deferred trigger waiting on an advisory lock the
+// test holds; release gives the lock up. The trigger goes with the test.
+func (u *usersSite) holdAtCommit(application string) (release func()) {
+	u.t.Helper()
+	ctx := context.Background()
+	key := rand.Int64()
+	exec := func(sql string) {
+		u.t.Helper()
+		if _, err := u.pool.Exec(ctx, sql); err != nil {
+			u.t.Fatal(err)
+		}
+	}
+	u.t.Cleanup(func() {
+		for _, sql := range []string{"DROP TRIGGER IF EXISTS users_test_hold ON users", "DROP TRIGGER IF EXISTS users_test_hold ON devices", "DROP FUNCTION IF EXISTS users_test_hold()"} {
+			if _, err := u.pool.Exec(ctx, sql); err != nil {
+				u.t.Error(err)
+			}
+		}
+	})
+	exec(fmt.Sprintf("CREATE FUNCTION users_test_hold() RETURNS trigger LANGUAGE plpgsql AS 'BEGIN PERFORM pg_advisory_xact_lock(%d); RETURN NULL; END'", key))
+	holder, err := u.pool.Begin(ctx)
+	if err != nil {
+		u.t.Fatal(err)
+	}
+	// Registered after the drop, so that it runs before it: a failing test lets go first.
+	u.t.Cleanup(func() { holder.Rollback(context.Background()) }) //nolint:errcheck
+	if _, err := holder.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", key); err != nil {
+		u.t.Fatal(err)
+	}
+	for table, events := range map[string]string{"users": "UPDATE", "devices": "UPDATE OR DELETE"} {
+		exec(fmt.Sprintf(`CREATE CONSTRAINT TRIGGER users_test_hold AFTER %s ON %s DEFERRABLE INITIALLY DEFERRED
+			FOR EACH ROW WHEN (current_setting('application_name') = '%s') EXECUTE FUNCTION users_test_hold()`, events, table, application))
+	}
+	return func() {
+		if err := holder.Rollback(ctx); err != nil {
+			u.t.Fatal(err)
+		}
+	}
+}
+
+// whileHeldAtCommit starts the change, which a session of the application name makes, holds it at its commit, sends
+// the racers to the replica, waits until each has answered or waits on a lock, and lets the change commit.
+func (u *usersSite) whileHeldAtCommit(application string, change func() signInReply, replica int, racers ...func() signInReply) (changed signInReply, raced []signInReply) {
+	u.t.Helper()
+	release := u.holdAtCommit(application)
+	done := make(chan signInReply, 1)
+	go func() { done <- change() }()
+	deadline := time.Now().Add(30 * time.Second)
+	for held := 0; held == 0; time.Sleep(20 * time.Millisecond) {
+		select {
+		case got := <-done:
+			u.t.Fatalf("the disable answered %d %.100q without its transaction reaching a commit that changes a user or a token", got.status, got.body)
+		default:
+		}
+		if err := u.pool.QueryRow(context.Background(), `SELECT count(*) FROM pg_stat_activity
+			WHERE application_name = $1 AND wait_event_type = 'Lock' AND wait_event = 'advisory'`, application).Scan(&held); err != nil {
+			u.t.Fatal(err)
+		}
+		if time.Now().After(deadline) {
+			u.t.Fatal("the disable did not come to its commit")
+		}
+	}
+	raced = make([]signInReply, len(racers))
+	var wg sync.WaitGroup
+	var answered atomic.Int64
+	for n, racer := range racers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			raced[n] = racer()
+			answered.Add(1)
+		}()
+	}
+	u.settle([]int{replica}, len(racers), &answered)
+	release()
+	wg.Wait()
+	return <-done, raced
+}
+
+// No token outlives a disable. The disable is held at its commit, every write made and none to be seen, while through
+// another process the user signs in, a code they approved is redeemed and their password is changed by a device that
+// keeps its token. Afterwards no token any of them holds is accepted, also once the account is enabled again. The wrong
+// build: reading "enabled" without the user's row locked, and writing the token afterwards.
+func TestNoTokenOutlivesADisableThatRacesASignInARedemptionAndAPasswordChange(t *testing.T) {
+	u := newUsersSite(t, 2, nil)
+	admin, who := u.member(true), u.member(false)
+	code := u.start(1, newTV())
+	u.approve(1, who, code)
+	disabled, raced := u.whileHeldAtCommit(u.names[0],
+		func() signInReply { return u.policy(0, admin.token, who.id, map[string]any{"IsDisabled": true}) }, 1,
+		func() signInReply { return u.quiet(1, newDevice(), who.name, rightPassword) },
+		func() signInReply { return u.redeem(1, code.device, code.Secret) },
+		func() signInReply {
+			return u.as(1, who.token, "POST", "/Users/Password?userId="+who.id, body(map[string]any{"CurrentPw": rightPassword, "NewPw": strong()}))
+		})
+	if disabled.status != 204 {
+		t.Fatalf("the disable: %d %.200q, want 204", disabled.status, disabled.body)
+	}
+	tokens := map[string]string{"the device that changed its password": who.token}
+	for n, name := range []string{"the racing sign-in", "the racing redemption"} {
+		var reply struct{ AccessToken string }
+		if raced[n].status >= 500 || raced[n].status == 0 {
+			t.Errorf("%s: %d %.200q", name, raced[n].status, raced[n].body)
+		}
+		if raced[n].status == 200 && json.Unmarshal(raced[n].body, &reply) == nil {
+			tokens[name] = reply.AccessToken
+		}
+	}
+	if got := raced[2].status; got >= 500 || got == 0 {
+		t.Errorf("the racing password change: %d %.200q", got, raced[2].body)
+	}
+	u.wantPolicy(admin, who.id, "after the race", map[string]any{"IsDisabled": true})
+	for name, token := range tokens {
+		u.check(401, u.as(1, token, "GET", "/Users/Me", ""), "the token of "+name+" after the disable")
+	}
+	u.setPolicy(admin, who.id, map[string]any{"IsDisabled": false})
+	for name, token := range tokens {
+		u.check(401, u.as(1, token, "GET", "/Users/Me", ""), "the token of "+name+" once the account is enabled again")
+	}
+}
+
+// Stopping a running play costs Postgres a poll, not a question for each piece sent. Two stream processes, each on a
+// proxy that keeps every statement, one of them serving a play read at 160 KB/s for 15 seconds (some 75 pieces of
+// 32 KB): what the playing one sends beyond what the idle one sends in the same time is at most a handful. Then the
+// token is signed out and the play must stop as in TestARunningDirectPlayStopsWhenItsTokenEnds, so a build with no
+// check at all does not pass.
+func TestStoppingARunningPlayCostsPostgresNoMoreThanAPoll(t *testing.T) {
+	const size, handful = 256 << 20, 10
+	u := newUsersSite(t, 1, nil)
+	viewer := u.member(false)
+	film := u.film(size)
+	processes := map[string]*proc{}
+	proxies := map[string]*testenv.DBProxy{}
+	for _, name := range []string{"idle", "playing"} {
+		proxies[name] = testenv.NewDBProxy(t, u.dsn)
+		// Every statement's text is sent each time, so that the proxy sees each one.
+		processes[name] = start(t, "stream", proxies[name].DSN()+"&default_query_exec_mode=exec", map[string]any{"adminUser": ""})
+	}
+	play := startSlowPlay(t, processes["playing"], film, viewer.token)
+	statements := func(name string) (count int) {
+		for _, sql := range proxies[name].Statements() {
+			switch strings.ToLower(strings.TrimSpace(sql)) {
+			case "begin", "commit", "rollback":
+			default:
+				count++
+			}
+		}
+		return count
+	}
+	idleBefore, playingBefore := statements("idle"), statements("playing")
+	play.slowly(t, 15*time.Second)
+	idle, playing := statements("idle")-idleBefore, statements("playing")-playingBefore
+	t.Logf("in 15 s the idle stream process sent %d statements and the playing one %d", idle, playing)
+	if idle == 0 {
+		t.Fatal("the proxy saw no statement of the idle process, which refreshes its snapshot every 5 s: it is not counting")
+	}
+	if playing-idle > handful {
+		t.Errorf("15 s of a slow play added %d statements, want at most %d", playing-idle, handful)
+	}
+	u.logout(0, viewer.token)
+	play.slowly(t, 15*time.Second)
+	if got := play.rest(); got >= size {
+		t.Errorf("15 s after sign-out the play went on and sent the whole %d bytes", got)
 	}
 }
