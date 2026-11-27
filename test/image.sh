@@ -168,6 +168,15 @@ auth="Authorization: $client, Token=\"$token\""
 api() { curl -s -m 30 -H "$auth" "$@"; }
 items() { api "$base/Items?Recursive=true&IncludeItemTypes=$1&Limit=500" | jq -r '.Items[] | [.Name, .Id] | @tsv'; }
 
+# --- JS-183: with no token, the server reports the version its image is labelled with and serves the contract its build made.
+reported=$(curl -s -m 10 "$base/jellyscale/v1/server" | jq -r '.Version // empty')
+label_version=$(label "$fixtures_img" version)
+[[ -n $label_version && $reported == "$label_version" ]] || fail "GET /jellyscale/v1/server reports Version '$reported', want the image's version label '$label_version'"
+[[ $(curl -s -m 10 -o "$work/contract.yaml" -w '%{http_code}' "$base/jellyscale/v1/contract") == 200 ]] || fail "GET /jellyscale/v1/contract with no token did not answer 200"
+if [[ -n ${ctx:-} ]]; then
+  cmp -s "$work/contract.yaml" "$ctx/internal/contract/openapi.yaml" || fail "the contract the image serves differs from internal/contract/openapi.yaml of this build"
+fi
+
 # --- the scan: /readyz answers before it is done, so wait, up to 60 seconds, for the documented counts.
 want_films=$(( $(tsv films) + $(awk -F'\t' '$1 == "twin"' "$expect" | grep -c .) )) want_episodes=$(( $(tsv episodes) + $(awk -F'\t' '$1 == "episodecopy"' "$expect" | grep -c .) ))
 deadline=$((SECONDS + 60))

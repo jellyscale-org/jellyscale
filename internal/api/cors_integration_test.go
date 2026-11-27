@@ -134,11 +134,12 @@ func TestEveryAnswerOfEveryRouteToARequestWithAnOriginAllowsIt(t *testing.T) {
 			}
 		}
 	}
-	if heads != 74*4 {
-		t.Fatalf("%d HEADs asked, want 74 GET routes x 2 origins x 2 credentials", heads)
+	// JS-183 adds two GET routes, the contract and the identity.
+	if heads != 76*4 {
+		t.Fatalf("%d HEADs asked, want 76 GET routes x 2 origins x 2 credentials", heads)
 	}
-	if len(routes) != 109 {
-		t.Fatalf("%d routes asked, want 109", len(routes))
+	if len(routes) != 111 {
+		t.Fatalf("%d routes asked, want 111", len(routes))
 	}
 	t.Logf("%d answers, by status: %v", asked, statuses)
 	if len(bad) > 0 {

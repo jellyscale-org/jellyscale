@@ -414,7 +414,12 @@ func (a *accessSite) judge(u *accUniform, route Route, what string, r accReply, 
 		return
 	}
 	if !head {
-		if strings.TrimSpace(string(r.body)) != "unauthorized" || len(r.body) >= 64 {
+		// JS-183: jellyscale's own API answers the sign-in refusal as JSON (contract_integration_test.go); Jellyfin's routes keep the text.
+		if strings.HasPrefix(route.Path, "/jellyscale/v1/") {
+			if !isSignInRefusal(r.body) {
+				a.fail("%s: the body is %q, want the sign-in refusal as JSON", name, r.body)
+			}
+		} else if strings.TrimSpace(string(r.body)) != "unauthorized" || len(r.body) >= 64 {
 			a.fail("%s: the body is %q, want unauthorized, under 64 bytes", name, r.body)
 		}
 		u.seen[accShape(r)] = append(u.seen[accShape(r)], name)
@@ -695,6 +700,10 @@ func TestAccess(t *testing.T) {
 	}
 	// Every route was asked, on every accHandler that serves it, and a route that no accHandler serves is a failure.
 	for _, route := range routes {
+		// JS-183: an open route says why (Route.Why, docs/access.md); nothing else reads it.
+		if route.Access == AccessAnyone && route.Why == "" {
+			t.Errorf("%s is open and says no why", routeName(route))
+		}
 		for _, h := range []accHandler{both, apiOnly, streamOnly} {
 			if h.serves(route) && a.asked[h.name+" "+routeName(route)] == 0 {
 				t.Errorf("%s was not asked on the accHandler with roles %s", routeName(route), h.name)

@@ -115,7 +115,8 @@ func newEnvOn(t *testing.T, s3Target string) *env {
 			t.Fatal(err)
 		}
 		e.replicas = append(e.replicas, pool)
-		s := &Server{Pool: pool, Items: &items.Repo{Pool: pool, ServerID: "srv"}, Roles: []string{RoleAPI, RoleStream},
+		// Name and ServerID as cmd/jellyscale sets them (JS-183): the identity and /System/Info/Public answer them.
+		s := &Server{Name: "jellyscale", ServerID: "srv", Pool: pool, Items: &items.Repo{Pool: pool, ServerID: "srv"}, Roles: []string{RoleAPI, RoleStream},
 			Log: failureLog(t), SocketIdle: 700 * time.Millisecond}
 		server := httptest.NewServer(s.Handler())
 		e.apis = append(e.apis, s)

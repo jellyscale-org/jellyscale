@@ -22,6 +22,9 @@ var openList = []string{
 	"GET /System/Info/Public",
 	"GET /System/Ping",
 	"POST /System/Ping",
+	// JS-183: jellyscale's own contract and identity, served to anyone; neither holds a secret.
+	"GET /jellyscale/v1/contract",
+	"GET /jellyscale/v1/server",
 	"GET /Branding/Configuration",
 	"GET /Branding/Css",
 	"GET /Branding/Css.css",
