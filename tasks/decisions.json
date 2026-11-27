@@ -1046,6 +1046,17 @@
       "decision": "change",
       "entry": "BL-284 dropped. BL-285 kept until JS-079 or an operator report. BL-222 narrowed to trickplay now that JS-037 is done.",
       "serves": "Nothing outruns the product."
+    },
+    {
+      "id": "D-106",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "AGENTS.md, build.js; amends D-086",
+      "brief": "The owner, on free models.",
+      "tradeoff": "None.",
+      "decision": "change",
+      "entry": "The owner: \"If one model fails, you can always swap to another one. Just try to, as much as you can, use some sort of reviews or feedback on which of the free models are superior so you can kind of create a tier list and work your way down.\" A graded benchmark (a race and logic fix with hidden tests; two CI logs with verified answers) ranked beam, hy4 and seaglass-alpha first (all hidden tests passed); deepseek, mimo, iceman, nemotron super and flint each missed one bug; nemotron lightning fixed one of four and reported success; tidepool was unavailable. Build/Fix is beam, QA hy4, helpers mimo; failures move down the list before Sonnet.",
+      "serves": "Owner, 2026-11-27."
     }
   ]
 }

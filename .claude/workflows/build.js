@@ -137,13 +137,13 @@ const brief = `## Task${id ? ` ${id}` : ''}\n${task}\n\n## Acceptance criteria\n
 // the same step twice, is replaced by Sonnet 5.5; say so in the task record.
 const MODELS = {
   'spec-writer': { model: 'claude-agent/sonnet', effort: 'high' },
-  implementer: { model: 'opencode/deepseek-v4.1-flash-free', effort: 'high' },
+  implementer: { model: 'opencode/beam-free', effort: 'high' },
   'architecture-reviewer': { model: 'claude-agent/sonnet', effort: 'high' },
   // Check reads only the spec and its checks, and a gap it misses costs a
   // whole build and Verify (about 1M tokens), so it gets the strongest model.
   check: { model: 'claude-agent/opus', effort: 'high' },
   'adversarial-reviewer': { model: 'claude-agent/sonnet', effort: 'high' },
-  qa: { model: 'opencode/beam-free', effort: 'high' },
+  qa: { model: 'opencode/hy4-flash-free', effort: 'high' },
   'ux-reviewer': { model: 'claude-agent/sonnet', effort: 'high' },
   'product-owner': { model: 'claude-agent/opus', effort: 'high' },
   advisor: { model: 'claude-agent/opus', effort: 'high' },

@@ -78,9 +78,11 @@ The workflow's steps:
   - Refine and Check: `claude-agent/opus` (Opus 5.5), high effort.
   - Spec, architecture, adversarial and UX: `claude-agent/sonnet` (Sonnet 5.5), high effort.
   - Product owner and advisor: `claude-agent/opus` (Opus 5.5), high effort. Fable only as below (D-098).
-  - Build/Fix: `opencode/deepseek-v4.1-flash-free`, high effort. QA: `opencode/beam-free`, high effort. Snapshot helpers: `opencode/mimo-v2.6-flash-free`.
+  - Build/Fix: `opencode/beam-free`, high effort. QA: `opencode/hy4-flash-free`, high effort. Snapshot helpers: `opencode/mimo-v2.6-flash-free`.
+- Work down the free models in this order (D-106): `beam-free`, `hy4-flash-free`, `seaglass-alpha-free`, `deepseek-v4.1-flash-free`, `mimo-v2.6-flash-free`, `iceman-free`, `nemotron-3.5-super-vl-free`, `flint-40b-free`. Don't use `nemotron-3.5-lightning-free`. Re-rank on a graded task with hidden checks, and on how each does on real work.
+- Give a free model a small, well-scoped, low-context job: reading logs, one failing test, running tests, a fix with a clear failing test, a mechanical edit. Keep large builds, test writing and reviews on the models above, and check a free model's key claims.
 - Use an OpenCode Zen free model (`opencode/...-free`) for any other work that doesn't judge quality: searching, reading logs, running checks, captures, test diagnostics.
-- Replace a free model with `claude-agent/sonnet` when it is unavailable or fails the same step twice, and record it in the task record. Check a free model on a task with a known answer before routing a role to it.
+- When a free model is unavailable or fails the same step twice, try the next one down; use `claude-agent/sonnet` when the list runs out or the job doesn't suit a free model, and record it in the task record. Check a new free model on a task with a known answer before ranking it.
 - Never give a free model a credential, or work on the homelab or the dogfood: a free tier may keep what it is sent.
 - The `claude-agent/` models use the weekly Claude agent allowance, not the Anthropic API balance. Don't use `anthropic/` or paid `opencode-go/` models.
 - Keep reviewers blind: they see the task, the checks, the diff and the docs, never the implementer's reasoning or another reviewer's findings.
