@@ -15,7 +15,7 @@ No tag moves: a tag names one image for good, and a version is never published t
 
 ## Start it
 
-Copy [`deploy/fixtures/compose.yaml`](../deploy/fixtures/compose.yaml) next to your tests, as `compose.yaml`. It starts Postgres and the image, with no build, volume or file besides itself:
+Copy [`deploy/fixtures/compose.yaml`](../deploy/fixtures/compose.yaml) next to your tests, as `compose.yaml`. It starts Postgres, the image, and a SeaweedFS bucket that a one-shot `seed` service of the image fills before the server starts, with no build, volume or file besides itself:
 
 ```sh
 export JELLYSCALE_IMAGE=ghcr.io/jellyscale-org/jellyscale:X.Y.Z-fixtures
@@ -23,7 +23,7 @@ docker compose up -d --wait
 port=$(docker compose port jellyscale 8096 | sed 's/.*://')   # Docker picks it; the server listens on 127.0.0.1 only
 ```
 
-Two projects of the file can run side by side. `docker compose down -v` removes everything. With `JELLYSCALE_IMAGE` unset or empty, Compose stops and names it.
+The same command starts a `main-<12 hex>-fixtures` tag with `JELLYSCALE_IMAGE` set to it. Two projects of the file can run side by side. `docker compose down -v` removes everything. With `JELLYSCALE_IMAGE` unset or empty, Compose stops and names it.
 
 Sign in as user `test` with password `jellyscale-fixtures` (`POST /Users/AuthenticateByName` with `{"Username": "test", "Pw": "jellyscale-fixtures"}`). That user is an administrator and the only one; a second, non-administrator user is not there yet. The password is in the compose file, not the image: the image refuses to start without `JELLYSCALE_ADMIN_PASSWORD`.
 
@@ -37,12 +37,12 @@ auth='X-Emby-Authorization: MediaBrowser Client="test", Device="test", DeviceId=
 token=$(curl -s -H "$auth" -H 'Content-Type: application/json' -d '{"Username":"test","Pw":"jellyscale-fixtures"}' $base/Users/AuthenticateByName | jq -r .AccessToken)
 count() { curl -s -H "$auth, Token=\"$token\"" "$base/Items?Recursive=true&IncludeItemTypes=$1&Limit=500" | jq .TotalRecordCount; }
 for _ in $(seq 60); do   # 60 seconds, then give up
-  [ "$(count Movie)" = 24 ] && [ "$(count Episode)" = 3 ] && break
+  [ "$(count Movie)" = 31 ] && [ "$(count Episode)" = 3 ] && break
   sleep 1
 done
 ```
 
-The library has 24 films and 3 episodes. test/image.sh waits the same 60 seconds.
+The library has 26 films and 3 episodes, and the S3 library holds five copies of films (see Libraries), so 31 films in all. test/image.sh waits the same 60 seconds.
 
 ## What is in it
 
@@ -95,11 +95,11 @@ Every track list below is what `POST /Items/{id}/PlaybackInfo?UserId={user}` ans
 }
 ```
 
-Each track is `- <index>: <Type> <language> <codec>`, and `, default` (audio only), `, forced` or `, external` (a file beside the film) when set. `Index` is the position in the list, from 0. A language of `none` is a track with no language tag. A film that says `Plays: direct` answers with no `TranscodingUrl` for this request, and its file is served as it is, with byte ranges (`GET /Videos/{id}/stream?static=true&mediaSourceId={source}` with a `Range` header answers 206). A film that says `Plays: transcode` has AC3 audio: it answers a `TranscodingUrl` whose master playlist leads to H.264 and AAC segments made inside the container by its ffmpeg. Babel Film's text tracks answer as WebVTT: `GET /Videos/{id}/{source}/Subtitles/{index}/Stream.vtt` begins `WEBVTT`, and its one cue says which track it is (`Babel track 5` for track 5), so a client can tell that it got the track it asked for.
+Each track is `- <index>: <Type> <language> <codec>`, and `, default` (audio only), `, forced` or `, external` (a file beside the film) when set. `Index` is the position in the list, from 0. A language of `none` is a track with no language tag. A film that says `Plays: direct` answers with no `TranscodingUrl` for this request, and its file is served as it is, with byte ranges (`GET /Videos/{id}/stream?static=true&mediaSourceId={source}` with a `Range` header answers 206). A film that says `Plays: transcode` answers a `TranscodingUrl` whose master playlist leads to H.264 and AAC segments made inside the container by its ffmpeg. A film that says `Plays: transcode, copying the video` (Tau Film) answers a `TranscodingUrl` that says `VideoCodec=copy`. Babel Film's text tracks answer as WebVTT: `GET /Videos/{id}/{source}/Subtitles/{index}/Stream.vtt` begins `WEBVTT`, and its one cue says which track it is (`Babel track 5` for track 5), so a client can tell that it got the track it asked for.
 
 ## The films without the image
 
-`test/fixtures/client.sh <dir>` makes the same files under `<dir>`: it needs ffmpeg, Go (one recipe is a Go program) and a serif font, and exits non-zero, saying what failed, when a film is missing. Point libraries of your own at the folders `movies`, `shows`, `transcode` and `languages` under it. The recipes of the two language films are `test/fixtures/babel.sh` and `test/fixtures/kino.sh`, each of which runs alone.
+`test/fixtures/client.sh <dir>` makes the same files under `<dir>`: it needs ffmpeg, Go (one recipe is a Go program) and a serif font, and exits non-zero, saying what failed, when a film is missing. Point libraries of your own at the folders `movies`, `shows`, `transcode` and `languages` under it. The recipes of the two language films are `test/fixtures/babel.sh` and `test/fixtures/kino.sh`, each of which runs alone. The HDR film is made by `codec_film` in `test/fixtures/codec.sh`, which the e2e films share; the HEVC film with a PGS track is in `test/fixtures/make.sh`, and it needs ffmpeg with libx265.
 
 ## Libraries
 
@@ -107,6 +107,7 @@ Each track is `- <index>: <Type> <language> <codec>`, and `, default` (audio onl
 - Shows (tvshows)
 - Transcode (movies)
 - Languages (movies)
+- S3 (movies), in the bucket: copies of five films, each renamed with ` S3` after its title (Alpha Film S3, Tau Film S3, Pgs Hevc Film S3, Resh Film S3 and Babel Film S3). Each copy lists the tracks of its film and plays as the film does.
 
 ## Episodes
 
@@ -228,6 +229,17 @@ Plays: direct
 - 1: Audio eng aac, default
 - 2: Subtitle eng PGSSUB
 
+### Pgs Hevc Film
+
+Plays: transcode
+
+- 0: Video none hevc
+- 1: Audio eng aac, default
+- 2: Audio deu ac3
+- 3: Subtitle eng PGSSUB
+
+The client does not play HEVC, so the picture is re-encoded to H.264. A request that picks track 2 (`AudioStreamIndex=2`) and track 3 (`SubtitleStreamIndex=3`) gets a `TranscodingUrl` that names both, whose first segment holds H.264 and AAC, with track 3 burnt into the picture.
+
 ### Pgs Long Cue Film
 
 Plays: direct
@@ -261,6 +273,15 @@ Plays: direct
 - 1: Audio none aac
 - 2: Subtitle jpn ass
 
+### Resh Film
+
+Plays: transcode
+
+- 0: Video none hevc
+- 1: Audio eng ac3
+
+The picture is HDR10 (PQ, BT.2020, 10 bit). A client that does not show HDR gets it tone-mapped to SDR BT.709: its first segment is tagged BT.709.
+
 ### Sigma Film
 
 Plays: direct
@@ -288,7 +309,7 @@ Plays: transcode
 
 ### Tau Film
 
-Plays: transcode
+Plays: transcode, copying the video
 
 - 0: Video none h264
 - 1: Audio eng ac3

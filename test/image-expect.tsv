@@ -1,16 +1,21 @@
 # What test/image.sh checks the fixtures image against, and what docs/client-testing.md says (a unit test holds the two equal).
 # Tab-separated. A track is: track, film, index, type, language (none for no tag), codec, flags (default for audio, forced,
 # external, comma-separated; - for none) as PlaybackInfo lists it for the request on the page.
+# A plays row's fourth column is copy where the master URL must copy the video. A twin row names a film's copy in the S3
+# library, which lists the film's tracks and plays as the film does. A segment row asks for a film and its twin with AudioStreamIndex
+# and SubtitleStreamIndex (- for the defaults) and checks the first segment: its codecs and, where the row gives one, the colours
+# of its video (bt709 for a tone-mapped picture).
 image	ghcr.io/jellyscale-org/jellyscale
 compose	deploy/fixtures/compose.yaml
 user	test
 password	test
-films	24
+films	26
 episodes	3
 library	Movies	movies	movies
 library	Shows	tvshows	shows
 library	Transcode	movies	transcode
 library	Languages	movies	languages
+s3library	S3	movies
 film	Alpha Film
 film	Babel Film
 film	Burn Sub Film
@@ -23,10 +28,12 @@ film	Idx Beside Film
 film	Kino Film
 film	Orphan Beside Film
 film	Pgs Film
+film	Pgs Hevc Film
 film	Pgs Long Cue Film
 film	Pgs Transcode Film
 film	Phi Film
 film	Plain Film
+film	Resh Film
 film	Sigma Film
 film	Sup Beside Film
 film	Sup Beside Transcode Film
@@ -38,6 +45,11 @@ film	Vobsub Film
 episode	Pilot
 episode	Return
 episode	Second
+twin	Alpha Film	Alpha Film S3
+twin	Tau Film	Tau Film S3
+twin	Pgs Hevc Film	Pgs Hevc Film S3
+twin	Resh Film	Resh Film S3
+twin	Babel Film	Babel Film S3
 plays	Alpha Film	direct
 plays	Babel Film	direct
 plays	Burn Sub Film	direct
@@ -50,14 +62,16 @@ plays	Idx Beside Film	direct
 plays	Kino Film	direct
 plays	Orphan Beside Film	direct
 plays	Pgs Film	direct
+plays	Pgs Hevc Film	transcode
 plays	Pgs Long Cue Film	direct
 plays	Pgs Transcode Film	transcode
 plays	Phi Film	direct
 plays	Plain Film	direct
+plays	Resh Film	transcode
 plays	Sigma Film	direct
 plays	Sup Beside Film	direct
 plays	Sup Beside Transcode Film	transcode
-plays	Tau Film	transcode
+plays	Tau Film	transcode	copy
 plays	The Beta Film	direct
 plays	Transcode Sub Film	transcode
 plays	Vanishing Fonts Film	direct
@@ -112,6 +126,10 @@ track	Orphan Beside Film	1	Audio	eng	aac	-
 track	Pgs Film	0	Video	none	h264	-
 track	Pgs Film	1	Audio	eng	aac	default
 track	Pgs Film	2	Subtitle	eng	PGSSUB	-
+track	Pgs Hevc Film	0	Video	none	hevc	-
+track	Pgs Hevc Film	1	Audio	eng	aac	default
+track	Pgs Hevc Film	2	Audio	deu	ac3	-
+track	Pgs Hevc Film	3	Subtitle	eng	PGSSUB	-
 track	Pgs Long Cue Film	0	Video	none	h264	-
 track	Pgs Long Cue Film	1	Audio	eng	aac	default
 track	Pgs Long Cue Film	2	Subtitle	eng	PGSSUB	-
@@ -125,6 +143,8 @@ track	Phi Film	3	Subtitle	jpn	ass	-
 track	Plain Film	0	Video	none	h264	-
 track	Plain Film	1	Audio	none	aac	-
 track	Plain Film	2	Subtitle	jpn	ass	-
+track	Resh Film	0	Video	none	hevc	-
+track	Resh Film	1	Audio	eng	ac3	-
 track	Sigma Film	0	Video	none	h264	-
 track	Sigma Film	1	Audio	eng	aac	-
 track	Sigma Film	2	Subtitle	eng	subrip	-
@@ -151,3 +171,7 @@ track	Vanishing Fonts Film	2	Subtitle	jpn	ass	-
 track	Vobsub Film	0	Video	none	h264	-
 track	Vobsub Film	1	Audio	eng	aac	default
 track	Vobsub Film	2	Subtitle	eng	DVDSUB	-
+segment	Pgs Transcode Film	-	-	aac h264	-
+segment	Tau Film	-	-	aac h264	-
+segment	Pgs Hevc Film	2	3	aac h264	-
+segment	Resh Film	-	-	aac h264	bt709

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Makes the library of the fixtures image (docs/client-testing.md) under <dir>: make.sh's 22 films and 3 episodes, and
-# Babel Film and Kino Film. Needs ffmpeg, Go (the PGS recipe is a Go program) and a serif font (make.sh's font films).
+# Makes the library of the fixtures image (docs/client-testing.md) under <dir>: make.sh's films and episodes, and Babel
+# Film and Kino Film. Needs ffmpeg with libx265, Go (the PGS recipe is a Go program) and a serif font (make.sh's font films).
 # Exits non-zero, saying what failed, unless every film is there. Usage: client.sh <dir>
 set -uo pipefail
 dir=${1:?usage: client.sh <dir>}
@@ -17,4 +17,4 @@ while IFS= read -r -d '' film; do
   [[ -s $film ]] || { echo "client.sh: film missing or empty: $film" >&2; exit 1; }
   films=$((films + 1))
 done < <(find "$dir" -type f \( -name '*.mkv' -o -name '*.mp4' \) -print0)
-[[ $films -eq 27 ]] || { echo "client.sh: $films films and episodes under $dir, want 27 (24 films, 3 episodes): a film is missing" >&2; exit 1; }
+[[ $films -eq 29 ]] || { echo "client.sh: $films films and episodes under $dir, want 29 (26 films, 3 episodes): a film is missing" >&2; exit 1; }
