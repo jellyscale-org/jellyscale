@@ -273,7 +273,7 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	defer pool.Close()
+	defer closePool(pool, log)
 
 	serverID, err := api.EnsureServerID(ctx, pool)
 	if err != nil {
@@ -354,6 +354,23 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 	cancel()
 	<-transcodes.stopped // ffmpeg is gone before we exit.
 	return nil
+}
+
+// poolCloseLimit is how long a stopping process waits for the pool. Closing says goodbye on every connection, and pgx
+// gives a Postgres that answers nothing 15 seconds for each, which would outlast the shutdown grace.
+const poolCloseLimit = 2 * time.Second
+
+func closePool(pool *pgxpool.Pool, log *slog.Logger) {
+	closed := make(chan struct{})
+	go func() {
+		pool.Close()
+		close(closed)
+	}()
+	select {
+	case <-closed:
+	case <-time.After(poolCloseLimit):
+		log.Warn("the database connections did not close in time; exiting without them", "limit", poolCloseLimit)
+	}
 }
 
 // drain stops serving within grace of the signal. Readiness fails first and
