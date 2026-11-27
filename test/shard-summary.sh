@@ -7,7 +7,7 @@
 # rest is printed, not compared: test/shard.sh does not deal it.
 # A shard with no tests.json is named as missing, never counted as 0 seconds.
 # It is a notice and always exits 0.
-#   shard-summary.sh <dir> <shard name>...     e.g. shard-logs 0of4 1of4 rest
+#   shard-summary.sh <dir> <shard name>...     e.g. shard-logs 0of6 1of6 rest
 dir=${1:-}
 [[ -d $dir ]] || { sed -n '2,/^# *shard-summary/p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 0; }
 shift
