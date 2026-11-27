@@ -221,7 +221,9 @@ export async function userSteps({ browser, base, user, adminPassword, step }) {
       await open(page, "dashboard/users");
       await page.locator(".cardBox").filter({ hasText: name }).locator(".btnUserMenu").click();
       await page.locator(".actionSheetMenuItem").filter({ hasText: "Delete" }).click();
-      await page.locator(".dialogContainer button, [role=dialog] button").filter({ hasText: "Delete" }).last().click();
+      // The card menu's own "Delete" entry can still match the combined confirm locator until the menu is gone.
+      await page.locator(".actionSheetMenuItem").filter({ hasText: "Delete" }).waitFor({ state: "hidden" });
+      await page.locator(".dialogContainer, [role=dialog]").filter({ hasText: "Delete" }).locator("button").filter({ hasText: "Delete" }).last().click();
       await waitFor(`${name} to be gone`, async () => !(await named(name)), 15000);
     }
   });
