@@ -6,6 +6,7 @@ import { wholeLine } from "./shard.mjs";
 import { recordResponses } from "./conform.mjs";
 import { configure, login } from "./player.mjs";
 import { keepFailure, watch } from "./evidence.mjs";
+import { userSteps } from "./users.mjs";
 
 const require = createRequire(`${process.cwd()}/`);
 const { chromium } = require("playwright-core");
@@ -200,6 +201,9 @@ if (originalConfiguration) {
     if (status !== 204) throw new Error(`putting the settings back answered ${status}`);
   });
 }
+
+// JS-033: the administrator's user pages.
+await userSteps({ browser, base, user, adminPassword: password, step });
 
 // Shows E2E_REPEAT reporting a scenario that passes only some of the time: this
 // fails on odd iterations. It runs only when E2E_FLAKY_DEMO is set, never in CI.

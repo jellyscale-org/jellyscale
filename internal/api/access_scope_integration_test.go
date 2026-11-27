@@ -212,10 +212,15 @@ func scopeMixed(route Route, self, other string) []scopePlace {
 	return places
 }
 
+// scopeUserManagement are JS-033's routes: the administrators' own and the admin-any ones it adds. The sweep leaves
+// them out; users_access_integration_test.go holds who may call them and what a refusal reads.
+var scopeUserManagement = []string{"GET /Users", "POST /Users", "POST /Users/Password", "POST /Users/{userId}/Password",
+	"POST /Users/New", "DELETE /Users/{userId}", "POST /Users/{userId}/Policy", "GET /Auth/Providers"}
+
 // scopeOwnRoutes are the viewer routes of the handler that are not admin-any.
 func scopeRoutes(h accHandler) (own, adminAny []Route) {
 	for _, route := range (&Server{}).Routes() {
-		if accOpen(route) || !h.serves(route) {
+		if accOpen(route) || !h.serves(route) || slices.Contains(scopeUserManagement, routeName(route)) {
 			continue
 		}
 		if slices.Contains(scopeAdminAny, routeName(route)) {
