@@ -25,6 +25,14 @@ type Token struct {
 // was checked.
 var ErrNoAccount = errors.New("no account to issue a token for")
 
+// LockDevice holds the user and device pair until the transaction ends. A transaction takes it before it locks the
+// account's row.
+func LockDevice(ctx context.Context, tx pgx.Tx, userID, deviceID string) error {
+	// Prefixed so it cannot meet one of the bounds' locks, which are named by bound and key.
+	_, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "token "+userID+" "+deviceID)
+	return err
+}
+
 // Issue writes the one token for a user and device pair. Sign-ins from every replica and both sign-in paths meet on a
 // Postgres advisory lock on the pair, which waits rather than retries; the old row is deleted and the new one inserted
 // inside that lock, in the caller's transaction. The caller can therefore make anything depending on the new token
@@ -42,9 +50,7 @@ func Issue(ctx context.Context, tx pgx.Tx, userID, checkedHash string, device De
 	issued.Value = hex.EncodeToString(raw[:])
 	issued.LoginAt = time.Now().UTC()
 
-	// Prefixed so it cannot meet one of the bounds' locks, which are named by bound and key.
-	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`,
-		"token "+userID+" "+device.ID); err != nil {
+	if err := LockDevice(ctx, tx, userID, device.ID); err != nil {
 		return issued, err
 	}
 	tag, err := tx.Exec(ctx, `UPDATE users SET last_login_at = $2

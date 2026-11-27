@@ -121,14 +121,19 @@ func (s *Server) newUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var user User
-	err := s.Pool.QueryRow(r.Context(), `INSERT INTO users AS u (id, name, password_hash) VALUES ($1, $2, $3)
-		ON CONFLICT (lower(name)) DO NOTHING RETURNING `+userColumns, uuid.NewString(), body.Name, hash).Scan(user.fields()...)
-	if errors.Is(err, pgx.ErrNoRows) {
-		http.Error(w, nameTaken, http.StatusBadRequest)
-		return
-	}
+	err := pgx.BeginFunc(r.Context(), s.Pool, func(tx pgx.Tx) error {
+		if err := s.lockAdminChange(r.Context(), tx, sessionOf(r)); err != nil {
+			return err
+		}
+		err := tx.QueryRow(r.Context(), `INSERT INTO users AS u (id, name, password_hash) VALUES ($1, $2, $3)
+			ON CONFLICT (lower(name)) DO NOTHING RETURNING `+userColumns, uuid.NewString(), body.Name, hash).Scan(user.fields()...)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return accountRefusal{http.StatusBadRequest, nameTaken}
+		}
+		return err
+	})
 	if err != nil {
-		s.fail(w, r, err)
+		s.finishAccountChange(w, r, err)
 		return
 	}
 	s.Log.Info("user created", "user", user.Name, "by", sessionOf(r).User.Name)
@@ -140,9 +145,14 @@ func hashPassword(password string) (string, error) {
 	return string(hash), err
 }
 
-// isConfiguredAdmin says whether the configuration names the account.
-func (s *Server) isConfiguredAdmin(name string) bool {
-	return s.AdminUser != "" && strings.EqualFold(name, s.AdminUser)
+// isConfiguredAdmin says whether the configuration names the account. Postgres compares the names, as it does to keep
+// them unique and as a start does to find the account: its lower() is not Go's case folding.
+func (s *Server) isConfiguredAdmin(ctx context.Context, tx pgx.Tx, name string) (named bool, err error) {
+	if s.AdminUser == "" {
+		return false, nil
+	}
+	err = tx.QueryRow(ctx, "SELECT lower($1) = lower($2)", name, s.AdminUser).Scan(&named)
+	return named, err
 }
 
 // refuseConfigured is the refusal to delete or rename the configured administrator (D-095).
@@ -171,20 +181,32 @@ func (s *Server) updateUser(w http.ResponseWriter, r *http.Request) {
 		text := string(stored)
 		configuration = &text
 	}
-	s.finishAccountChange(w, r, s.saveUser(r.Context(), sessionOf(r).Target, body.Name, configuration))
+	session := sessionOf(r)
+	s.finishAccountChange(w, r, pgx.BeginFunc(r.Context(), s.Pool, func(tx pgx.Tx) error {
+		if !sameUser(session.Target.ID, session.User.ID) {
+			if err := s.lockAdminChange(r.Context(), tx, session); err != nil {
+				return err
+			}
+		}
+		return s.saveUser(r.Context(), tx, session.Target, body.Name, configuration)
+	}))
 }
 
-func (s *Server) saveUser(ctx context.Context, target User, name string, configuration *string) error {
+func (s *Server) saveUser(ctx context.Context, tx pgx.Tx, target User, name string, configuration *string) error {
 	// An existing name is kept as it is, whatever it holds.
 	if name != target.Name {
-		if s.isConfiguredAdmin(target.Name) {
+		configured, err := s.isConfiguredAdmin(ctx, tx, target.Name)
+		if err != nil {
+			return err
+		}
+		if configured {
 			return s.refuseConfigured(target.Name, "rename")
 		}
 		if !validUserName(name) {
 			return accountRefusal{http.StatusBadRequest, invalidName}
 		}
 	}
-	tag, err := s.Pool.Exec(ctx, "UPDATE users SET name = $2, configuration = COALESCE($3::jsonb, configuration) WHERE id = $1::uuid",
+	tag, err := tx.Exec(ctx, "UPDATE users SET name = $2, configuration = COALESCE($3::jsonb, configuration) WHERE id = $1::uuid",
 		target.ID, name, configuration)
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
@@ -196,49 +218,82 @@ func (s *Server) saveUser(ctx context.Context, target User, name string, configu
 	return err
 }
 
-// lockAccount reads the account and holds its row, after the rows of the enabled administrators, which every change
-// that could leave none holds in the same order: of two such changes at once, the second sees what the first left.
-// lastAdmin says the account is the only enabled administrator. The lock leaves foreign key checks alone.
+// lockAdminChange begins every change an administrator makes to the accounts. The lock makes such changes one at a
+// time, so that each sees what the others committed. The caller was an administrator with this token when the request
+// came in; it must still be one now that nothing else can change that: its row is held, and the token is looked for in
+// a statement after it.
+func (s *Server) lockAdminChange(ctx context.Context, tx pgx.Tx, session Session) error {
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended('administrators', 0))"); err != nil {
+		return err
+	}
+	administrator, err := tx.Exec(ctx, "SELECT 1 FROM users WHERE id = $1::uuid AND is_admin AND NOT is_disabled FOR NO KEY UPDATE", session.User.ID)
+	if err != nil {
+		return err
+	}
+	var held bool
+	if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM devices WHERE token = $1)", session.Token).Scan(&held); err != nil {
+		return err
+	}
+	if administrator.RowsAffected() == 1 && held {
+		return nil
+	}
+	const reason = "you are no longer a signed-in, enabled administrator"
+	s.Log.Warn("an administrator's change was refused", "user", session.User.Name, "reason", reason)
+	return accountRefusal{http.StatusForbidden, reason}
+}
+
+// lockAccount reads the account and holds its row until the commit. lastAdmin says it is the only enabled
+// administrator, which is exact under lockAdminChange: every change that can take that from an account holds it.
 func lockAccount(ctx context.Context, tx pgx.Tx, id string) (account User, lastAdmin bool, err error) {
-	rows, err := tx.Query(ctx, "SELECT id::text FROM users WHERE is_admin AND NOT is_disabled ORDER BY id FOR NO KEY UPDATE")
-	if err != nil {
+	if err := tx.QueryRow(ctx, "SELECT "+userColumns+" FROM users u WHERE u.id = $1::uuid FOR NO KEY UPDATE", id).Scan(account.fields()...); err != nil {
 		return account, false, err
 	}
-	admins, err := pgx.CollectRows(rows, pgx.RowTo[string])
-	if err != nil {
-		return account, false, err
-	}
-	err = tx.QueryRow(ctx, "SELECT "+userColumns+" FROM users u WHERE u.id = $1::uuid FOR NO KEY UPDATE", id).Scan(account.fields()...)
-	return account, len(admins) == 1 && admins[0] == account.ID, err
+	var another bool
+	err = tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM users WHERE is_admin AND NOT is_disabled AND id <> $1::uuid)", id).Scan(&another)
+	return account, account.IsAdmin && !account.IsDisabled && !another, err
 }
 
 const lastAdministrator = "there must be at least one enabled administrator"
 
+// refuseLastAdministrator is the refusal of a change that would leave no enabled administrator.
+func (s *Server) refuseLastAdministrator(name, change string) error {
+	s.Log.Warn("refused to "+change+" the last enabled administrator", "user", name, "reason", lastAdministrator)
+	return accountRefusal{http.StatusForbidden, lastAdministrator}
+}
+
 // deleteUser removes the account and everything it holds, in one transaction.
 func (s *Server) deleteUser(w http.ResponseWriter, r *http.Request) {
-	id := sessionOf(r).Target.ID
+	session := sessionOf(r)
+	id := session.Target.ID
 	var name string
 	err := pgx.BeginFunc(r.Context(), s.Pool, func(tx pgx.Tx) error {
-		// The codes have no foreign key; every other row goes with the user's.
-		if err := quickconnect.Forget(r.Context(), tx, id, ""); err != nil {
+		if err := s.lockAdminChange(r.Context(), tx, session); err != nil {
 			return err
 		}
 		account, lastAdmin, err := lockAccount(r.Context(), tx, id)
 		if err != nil {
 			return err
 		}
-		if s.isConfiguredAdmin(account.Name) {
+		configured, err := s.isConfiguredAdmin(r.Context(), tx, account.Name)
+		if err != nil {
+			return err
+		}
+		if configured {
 			return s.refuseConfigured(account.Name, "delete")
 		}
 		if lastAdmin {
-			return accountRefusal{http.StatusForbidden, lastAdministrator}
+			return s.refuseLastAdministrator(account.Name, "delete")
 		}
 		name = account.Name
+		// The codes have no foreign key; every other row goes with the user's.
+		if err := quickconnect.Forget(r.Context(), tx, id, ""); err != nil {
+			return err
+		}
 		_, err = tx.Exec(r.Context(), "DELETE FROM users WHERE id = $1::uuid", id)
 		return err
 	})
 	if err == nil {
-		s.Log.Info("user deleted", "user", name, "by", sessionOf(r).User.Name)
+		s.Log.Info("user deleted", "user", name, "by", session.User.Name)
 	}
 	s.finishAccountChange(w, r, err)
 }
@@ -262,9 +317,13 @@ func (s *Server) setPolicy(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	id := sessionOf(r).Target.ID
+	session := sessionOf(r)
+	id := session.Target.ID
 	var changed User
 	err := pgx.BeginFunc(r.Context(), s.Pool, func(tx pgx.Tx) (err error) {
+		if err := s.lockAdminChange(r.Context(), tx, session); err != nil {
+			return err
+		}
 		changed, err = s.changePolicy(r.Context(), tx, id, body)
 		return err
 	})
@@ -276,12 +335,6 @@ func (s *Server) setPolicy(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) changePolicy(ctx context.Context, tx pgx.Tx, id string, body map[string]any) (User, error) {
-	disabling := body["IsDisabled"] == true
-	if disabling {
-		if err := quickconnect.Forget(ctx, tx, id, ""); err != nil {
-			return User{}, err
-		}
-	}
 	account, lastAdmin, err := lockAccount(ctx, tx, id)
 	if err != nil {
 		return account, err
@@ -300,17 +353,29 @@ func (s *Server) changePolicy(ctx context.Context, tx pgx.Tx, id string, body ma
 			*stored = value
 		}
 	}
-	if lastAdmin && (!account.IsAdmin || account.IsDisabled) {
-		return account, accountRefusal{http.StatusForbidden, lastAdministrator}
+	if lastAdmin && !account.IsAdmin {
+		return account, s.refuseLastAdministrator(account.Name, "demote")
+	}
+	if lastAdmin && account.IsDisabled {
+		return account, s.refuseLastAdministrator(account.Name, "disable")
 	}
 	if _, err := tx.Exec(ctx, "UPDATE users SET is_admin = $2, is_disabled = $3, allow_download = $4 WHERE id = $1::uuid",
 		id, account.IsAdmin, account.IsDisabled, account.AllowDownload); err != nil {
 		return account, err
 	}
-	if !disabling {
+	if body["IsDisabled"] != true {
 		return account, nil
 	}
-	return account, signin.EndTokens(ctx, tx, id, "")
+	return account, endTokens(ctx, tx, id, "")
+}
+
+// endTokens ends every token of the account but keep ("" keeps none), and every sign-in it has approved and not yet
+// given out. The caller's transaction holds the account's row.
+func endTokens(ctx context.Context, tx pgx.Tx, userID, keep string) error {
+	if err := quickconnect.Forget(ctx, tx, userID, keep); err != nil {
+		return err
+	}
+	return signin.EndTokens(ctx, tx, userID, keep)
 }
 
 // unenforcedChanges names, in order, the fields of body that are not enforced and differ from what the Policy answers.
@@ -380,7 +445,7 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	err := s.storePassword(r.Context(), change)
+	err := s.storePassword(r.Context(), session, change)
 	if err == nil {
 		s.Log.Info("password saved", "user", session.Target.Name, "by", session.User.Name, "reset", body.ResetPassword)
 	}
@@ -419,10 +484,13 @@ type passwordChange struct {
 	userID, hash, checkedHash, keep string
 }
 
-func (s *Server) storePassword(ctx context.Context, change passwordChange) error {
+func (s *Server) storePassword(ctx context.Context, session Session, change passwordChange) error {
 	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		if err := quickconnect.Forget(ctx, tx, change.userID, change.keep); err != nil {
-			return err
+		// Only an administrator changing another's keeps no token.
+		if change.keep == "" {
+			if err := s.lockAdminChange(ctx, tx, session); err != nil {
+				return err
+			}
 		}
 		// An account disabled, or given another password, since the caller proved theirs stores nothing.
 		tag, err := tx.Exec(ctx, `UPDATE users SET password_hash = $2
@@ -443,7 +511,7 @@ func (s *Server) storePassword(ctx context.Context, change passwordChange) error
 		if !held {
 			return accountRefusal{http.StatusUnauthorized, "unauthorized"}
 		}
-		return signin.EndTokens(ctx, tx, change.userID, change.keep)
+		return endTokens(ctx, tx, change.userID, change.keep)
 	})
 }
 

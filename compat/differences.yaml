@@ -1279,7 +1279,7 @@
     - "users: a commonly guessed new password"
     - "users: an empty new password"
   kind: improvement
-  reason: "a new or changed password that is empty or on the shipped list of commonly guessed ones is 400 with the reason, and one over 72 bytes too; Jellyfin 12.4 stores it. A user made with no or an empty Password is not refused (D-100, D-103)"
+  reason: "a new or changed password that is empty or on the shipped list of commonly guessed ones is 400 with the reason, and one over 72 bytes or holding a NUL byte too; Jellyfin 12.4 stores it. A user made with no or an empty Password is not refused (D-100, D-103)"
   paths:
     - "(status)"
 

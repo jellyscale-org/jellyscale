@@ -26,11 +26,12 @@ const maxPasswordBytes = 72
 func CommonlyGuessed(password string) bool { return common[strings.ToLower(password)] }
 
 // Unacceptable says why a new password may not be set, or "" if it may. An empty one is answered as a guessed one
-// (D-100).
+// (D-100), and so is one with a NUL byte: bcrypt reads a key over and over with a NUL after it, so that
+// "password\x00password" would be the key of "password".
 func Unacceptable(password string) string {
 	switch {
-	case password == "" || CommonlyGuessed(password):
-		return "this password is empty or commonly guessed; choose another"
+	case password == "" || strings.ContainsRune(password, 0) || CommonlyGuessed(password):
+		return "this password is empty, commonly guessed or holds a NUL byte; choose another"
 	case len(password) > maxPasswordBytes:
 		return "a password may be at most 72 bytes long"
 	}
