@@ -5,12 +5,12 @@ The terms, boundaries and invariants of the system. Reviewers check changes agai
 ## Vocabulary
 
 - **Role:** what a process does, chosen by `--roles`: `api`, `stream` or `worker`. One binary, many Deployments.
-- **Library:** a configured collection with a media store and an asset store. Clients see it as a `CollectionFolder`.
+- **Library:** one of the operator's places where films are kept, with a media store and an asset store; never something viewers browse (D-124). Until the cutover the Jellyfin routes show it as a `CollectionFolder`.
 - **Item:** a Movie, Series, Season or Episode. Identified by a stable UUID.
 - **Media source:** the playable object behind an item.
 - **Store:** a POSIX or S3-compatible backend, reached only through `internal/store`.
 - **Session:** a device's token, plus what it's playing.
-- **Alias:** an obsolete route kept only for jellyfin-web.
+- **Alias:** an obsolete route kept only for jellyfin-web, until the cutover.
 - **Hint:** a NOTIFY wakeup. Lossy by design.
 - **Spec hash:** identifies one transcode output: item, source and its ETag, audio track, video and audio bitrate and resolution as ffmpeg will use them, segment length, encoder family and the output settings version. A burnt-in subtitle track joins it, and so does whether the video is copied, and the transfer function of an HDR picture that is tone mapped (invariant 53). When that track is a subtitle file beside the film, the file's fingerprint joins it too (invariant 50).
 - **Segment:** a 4 second piece of a transcode, stored as `segments/{spec_hash}/{n}.mp4`, with `init.mp4` beside them. In a copied stream it runs from a keyframe to the next one that makes it 4 seconds long, or to the last one that keeps it within 12 seconds, so it can be shorter than 4 seconds (invariant 47).
@@ -40,6 +40,8 @@ The terms, boundaries and invariants of the system. Reviewers check changes agai
 | `internal/db` | Pool and migrations | Hold queries for other domains |
 
 ## Invariants
+
+jellyscale is moving to its own API (D-107). Until the cutover (D-109), invariants 16 to 20 and 62, and the Jellyfin parts of 32, 37 and 43, apply to the Jellyfin routes only and go with them. Invariants that conflict with a server-owned playback, separate audio and subtitle streams, Octave Web's sign-in or artwork behind sign-in (34, 44, 52, 61, 63) are rewritten as those designs land.
 
 ### Scaling
 

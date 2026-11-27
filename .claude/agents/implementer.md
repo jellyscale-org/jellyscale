@@ -9,7 +9,7 @@ You implement one scoped change in jellyscale.
 Read PRODUCT.md and DOMAINS.md first, and the code you'll touch. Keep to the task: don't refactor around it or add features it didn't ask for.
 
 - Write the simplest code that meets the task, for a human to read and maintain. No speculative abstractions, options or generality.
-- Where a protocol is involved, work from captured evidence in the task or a real Jellyfin 12.4.
+- Where a protocol is involved, work from the API contract and what you observe on the players it must work with (D-107). The Jellyfin routes are frozen until the cutover (D-109).
 - Add tests that could fail. For concurrency, use real contention.
 - Run `go vet ./...`, `gofmt -l .`, `go test ./...` (the unit tier: about a minute, and it holds the tests that read the docs, which a change to docs/status.md can break), the task's checks, the test commands it names, and the tests of the packages you changed (with `-run` for `internal/transcode`, whose whole package outlasts the 30-minute timeout), and fix what fails. Don't run whole tiers or repeat passing runs: the merge queue runs every tier on CI, and a failure there is fixed on a new commit.
 - A test you add never passes or fails on a duration or a ratio of durations measured on this machine (CI runners are slower and shared); assert the mechanism, and use a duration only to bound a hang, with a tenfold margin.

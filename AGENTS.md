@@ -1,6 +1,6 @@
 # jellyscale
 
-A horizontally scalable, Jellyfin-compatible video server in Go.
+A horizontally scalable video server in Go for a private collection of films and shows, with its own API for its own apps (D-107). The Jellyfin API it began with is frozen until the cutover removes it (D-109). The chosen names, Zoetrope for the server and Praxi for the apps, wait for a name check (D-122, JS-200).
 
 - Read [PRODUCT.md](PRODUCT.md) for what to build, [docs/status.md](docs/status.md) for what is built, [DOMAINS.md](DOMAINS.md) for the invariants, [ARCHITECTURE.md](ARCHITECTURE.md) for the design, and [spikes/README.md](spikes/README.md) for Phase 0 evidence.
 
@@ -29,7 +29,9 @@ compat/gen-schema.sh                        # compat/schema-12.4.json from the j
 
 - Prefer retrieval-led reasoning over training-led reasoning.
 - Write the simplest code that works, readable and maintainable by people. Add an abstraction only when something real needs it.
-- Observe a real Jellyfin 12.4 before implementing a protocol.
+- Put a capability in the API contract from the viewer's outcome first, and observe the players a design depends on (D-107).
+- Do no work on the Jellyfin routes, except to keep the gate green, until the cutover (D-109).
+- Write criteria as outcomes, not mechanisms; cite Jellyfin as no requirement; a task that makes media states its storage figure (D-125).
 - Don't port Jellyfin code.
 - Match the surrounding code. Write comments that explain why, not what.
 - Test only application behaviour: prove what the server does for a viewer or operator. Never write a test for documentation, prose, static content, generated manifests, CI or workflow YAML, source or AST shape, fixture inventories, capture-evidence completeness, coverage tables, or the test harness and test scripts themselves. Test tools prove themselves by running. Record historical test failures in [docs/testing.md](docs/testing.md).
@@ -110,7 +112,7 @@ The workflow's steps:
 
 ## Octave
 
-[Octave](https://github.com/jellyscale-org/octave) is jellyscale's front end, on the web, TVs and native devices; jellyscale is the back end and is to ship Octave Web as its browser client (owner, D-088). Focus on the back end and on what Octave's features need from it (owner, D-091). The two projects ask each other for work through GitHub issues.
+[Octave](https://github.com/jellyscale-org/octave) is jellyscale's front end, on the web, TVs and native devices; jellyscale is the back end and is to ship Octave Web as its browser client (owner, D-088). Focus on the back end and on what Octave's features need from it (owner, D-091). jellyscale designs for no other client (D-107); Android TV and phones come first (D-121). The two projects ask each other for work through GitHub issues.
 
 - Octave files an issue on this repository when it wants a feature or finds a gap, labelled `from:fluster` (its former name).
 - When jellyscale wants a feature or a change from Octave, or finds a bug in it, file an issue on `jellyscale-org/octave`, labelled `from:jellyscale` (create the label if it is missing). Don't work around it here.
