@@ -2,6 +2,63 @@
 
 The terms, boundaries and invariants of the system. Reviewers check changes against this file. If a change needs one of these to bend, update this file in the same change and say why.
 
+## Domains
+
+Seven domains and one edge. A domain owns its tables: only its package writes them. Each domain's words, owned tables and must-nots are in its own file, `docs/domains/<domain>.md`; `docs/domains/platform.md` covers shared infrastructure. AGENTS.md maps each kind of task to the files it reads.
+
+| Domain | Responsible for | Words | Owns (tables) | Must not |
+|---|---|---|---|---|
+| **Collection** | What exists: finding files, naming, probing, keeping identity | title, version, track, cut, place films are kept | `items` (titles), `media_sources` (versions), `libraries` (places), `scan_objects`, new `title_aliases` | Serve requests; decide access; know a viewer |
+| **Finding** | Every read of titles for a viewer: Films, Shows, details, search, filters, lists, the change log | home, my list, collection kind, filter | later `my_list`, `collections`, `catalog_changes` | Read a title without a viewer; write a title; rank by other people's viewing |
+| **Playback** | One viewing from Play to stop: the decision, the plan, the link, steps, track switches, refusals, limits, moves | playback, plan, step, media link, reason | new `playbacks`, `events` | Run media tools; write history rules; build a spec from a URL |
+| **Making** | Everything made from a film: segments, extracted tracks, fonts, pictures; jobs, workers, capacity, the storage budget | made version, job, spec, segment, budget, machine | `transcode_*`, `subtitle_jobs`, `chapter_images`, `sweeps`, `sweep_evictions` | Know HTTP, viewers' accounts or access; refuse a viewer (it reports capacity, Playback refuses) |
+| **Place** | One history per person and title; what "played", "continue" and "next episode" mean | place, played, continue watching, next episode | `user_item_data` | Know devices, playbacks or HTTP; show one person another's history |
+| **People** | Who someone is and what they may see and when | account, profile, device, invitation, circle, limits | `users` (accounts), new `profiles`, `devices`, `signin_*`, `device_approvals` (today's `quickconnect_codes`), new `access_rules` | Query titles; put a credential in a cookie readable by scripts, or in a link |
+| **Together** (stage 8) | Groups in step, moving a film between devices | group | later `groups` | Give a member anything Playback would refuse them alone |
+| **Contract** (the edge) | HTTP, the OpenAPI contract, the one refusal writer, conformance | capability, reason, action | none | Hold domain logic or SQL |
+
+Platform, not a domain: `db`, `store`, `metrics`, configuration, roles.
+
+**How domains talk.** Inside a process: plain Go calls in one direction: Contract → {Finding, Playback, Place, People, Together} → Collection's types. Playback calls Making (ensure a job, read capacity) and Place (report a position). Between processes: only Postgres rows, hints and the stores (ARCHITECTURE rule 2). No event bus; the two logs (`events`, `catalog_changes`) are for clients.
+
+**Words accepted** (D-20261127-domains-check): title, version, track, playback, plan (a viewer is shown it as "how this plays and why", never as "plan"), profile (a person, the holder of a history), place and reason. Making replaces Operating.
+
+**Nothing in this section changes or moves an invariant below: invariants 1 to 67 stand as written until the cutover (JS-194).** The old invariants move into the domain files at JS-093b, after JS-194.
+
+## Rules at the cutover
+
+New rules 68 to 78 (decisions D-20261127-domains-check and D-20261127-domains-followup). A rule marked as rewritten replaces the named invariant at the cutover (JS-194); the invariant below is unchanged until then. Each domain file repeats its own rules, marked as at the cutover.
+
+- **68.** A playback is a row; any replica serves any request of it; nothing about it lives only in memory.
+- **69.** A media link opens one playback, is stored hashed, and ends with it.
+- **70.** No title is read for a viewer except through the access-scoped handle. Access is re-read on every request.
+- **71.** Server-sent messages are an append-only log per audience; a reconnect replays from the last seen; a lost hint only delays.
+- **72.** A track id names one track of one file revision or nothing. A pick is stored as a description.
+- **73.** One history per profile and title; only Place writes it.
+- **74.** Every answer and refusal is declared in the contract, with a reason from one list (JS-183).
+- **75.** Limits count held playbacks, under one lock per account; a refusal names the devices playing. Limits (hours, streams, upload share) are enforced by Playback at Play and while playing, with a reason.
+- **76.** A plan is read only by replicas that understand its version.
+- **77.** A playback lives while its app reports. Silent for the hold window (90 seconds), it has ended; an ended playback never revives; Play without a position starts at the place.
+- **78.** Access rules read only marks, rating and title id. No configuration, metadata or rule names a place films are kept or a directory.
+
+**Rewritten at the cutover (JS-194; invariants below unchanged until then).**
+
+- **Remove:** 16–20, and the socket and jellyfin-web parts of 31, 32, 37 and 43. Tables only Jellyfin's API used are listed in docs/ for removal one release later (invariant 8).
+- **Rewritten, mechanism unchanged (names only):** 25; 38 (a job ends with its playback, idleness or its lease); 28–30 and 49 (Place's rules, fed by playback reports); 43, 50, 51, 54 and 55 (delivery shapes only); 65 (TV approval keeps the code-and-secret bounds); 66.
+- **5.** A title's id survives renames, rescans and absence; a version is one file of a title; merging titles leaves an alias. Readers see titles only through `shown_items`.
+- **6.** Filtering and sorting use indexed columns. Answers are shaped at the edge from stored neutral facts.
+- **32.** Every track is listed as itself with its id; none is dropped or replaced. A plan offers only what the server can deliver now, and each track it cannot deliver carries a reason. Each track says whether it is hidden for the calling profile.
+- **34.** A playback's stored plan is the only source of a spec. A media URL carries a rendition and a segment number, both bounds-checked.
+- **37.** Refusal happens at Play with a reason and a retry time (the serving part is kept). The outage snapshot holds live playbacks, not tokens.
+- **44.** A subtitle is drawn into the picture only for a player that can show none of it.
+- **45.** The copy decision reads Octave's device statement; its gates are unchanged.
+- **52.** Audio is its own rendition; one picture serves every language. Its splice proof is made again (JS-182).
+- **61.** Every operation declares its access in the contract; no content is open, pictures included.
+- **62 (rewritten, not removed).** A profile that asked has tracks outside its languages marked hidden in details and plans, by one function; nothing is removed, written or made for it. Its settings belong to People.
+- **63.** A native app's credential travels in a header. Octave Web's session is a cookie scripts cannot read, never accepted on media routes. A media link carries no account credential.
+
+**Kept:** 1–4, 7–15, 21–24, 26, 27, 33, 35, 36, 39–42, 46–48, 53, 56–60, 64, 67 (JS-093 shortens the text; meaning unchanged).
+
 ## Vocabulary
 
 - **Role:** what a process does, chosen by `--roles`: `api`, `stream` or `worker`. One binary, many Deployments.

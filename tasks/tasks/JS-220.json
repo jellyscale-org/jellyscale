@@ -9,7 +9,7 @@
     "AGENTS.md gains a table from each domain to the files a task touching it reads, and the build workflow gives a task's agents only its domains' files.",
     "No existing invariant moves or changes."
   ],
-  "status": "todo",
+  "status": "done",
   "dependsOn": [],
   "source": "po-check.md §B and §F; D-20261127-domains-tasks",
   "notes": "Phase OPS chosen (sibling JS-093, OPS); ux flag left unset."
