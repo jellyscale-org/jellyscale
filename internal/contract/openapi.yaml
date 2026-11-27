@@ -392,7 +392,7 @@ x-reasons:
   language-not-saved:
     kind: refusal
     action: choose-another
-    meaning: Choose the language you want to listen in first.
+    meaning: Choose your language first, then try again.
   no-capacity:
     kind: refusal
     action: retry
