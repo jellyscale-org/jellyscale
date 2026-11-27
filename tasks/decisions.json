@@ -1079,6 +1079,28 @@
       "decision": "keep",
       "entry": "jellyfin-web's generic message for a refused password is accepted, and the reason is in the body. An administrator's reset of another user leaves no password that signs in and ends the user's tokens. Resetting your own password is refused for everyone.",
       "serves": "'Signing in is easy and safe'; D-096."
+    },
+    {
+      "id": "D-102",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-039",
+      "brief": "The owner preferred OIDC only unless there was a good reason to keep passwords.",
+      "tradeoff": "Households that turn passwords off: no typing a password into an app; new devices sign in by Quick Connect, and an app without it cannot sign in.",
+      "decision": "change",
+      "entry": "Password sign-in stays. With no provider it is on. Once a provider is declared it is off for everyone but the configured adminUser (break-glass), unless passwordSignIn is true. Issued tokens survive the switch. The refusal is D-020's 403, logged with its reason. JS-039 gains these criteria; JS-033, JS-060, JS-180, JS-179 and the order are unchanged. OIDC only would make a provider a required service against goal 5, leave no way to make the first admin, and no first sign-in without a shipped web client.",
+      "serves": "PRODUCT.md goals 3 and 5; 'Signing in is easy and safe'."
+    },
+    {
+      "id": "D-104",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "JS-033, JS-039",
+      "brief": "After weighing OIDC only against D-102.",
+      "tradeoff": "jellyscale keeps owning password sign-in.",
+      "decision": "keep",
+      "entry": "The owner: \"You know what? Forget it. Let's keep basic auth and OIDC?\" Password sign-in and OIDC both stay, as D-102 plans them.",
+      "serves": "Owner, 2026-11-27."
     }
   ]
 }

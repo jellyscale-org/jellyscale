@@ -313,7 +313,10 @@
         "A first sign-in links the local user whose name equals the provider's username claim, a migrated user without a password included, and keeps its watch state. After that the subject is the identity, and email never links.",
         "Provisioning is a configuration switch, off by default. On, an unmatched first sign-in creates a viewer with the policy a new local user gets; off, it is refused with its reason on the page and in the log.",
         "A user disabled or deleted in jellyscale is refused through the provider too. Removal at the provider stops new sign-ins only, and docs/access.md says so.",
-        "The journey's routes are bounded per address (D-020). The client secret comes from the environment and is never in configuration or logs."
+        "The journey's routes are bounded per address (D-020). The client secret comes from the environment and is never in configuration or logs.",
+        "With a provider declared and passwordSignIn unset, AuthenticateByName refuses every user except adminUser (break-glass): a right and a wrong password get the same answer, the 403 jellyfin-web shows as 'not authorized … contact your administrator' (D-020), it counts toward JS-145's bounds, and it is logged at info with the reason 'password sign-in off'. A password set while it is off does not let that user sign in (D-102).",
+        "With passwordSignIn true, passwords work for everyone; removing the provider turns them back on; tokens issued before the switch keep working; forced with two api replicas, both answer alike (D-102).",
+        "docs/running.md gives the two setups, 'Postgres only' and 'with your provider', and names the break-glass account; docs/status.md lists the apps verified by a live run to sign in by Quick Connect (D-102)."
       ],
       "priority": 35,
       "status": "todo",
