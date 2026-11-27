@@ -329,7 +329,7 @@ func run(roleList, listen, configPath string, log *slog.Logger) error {
 
 	server := &api.Server{
 		Pool: pool, Items: &items.Repo{Pool: pool, ServerID: serverID}, ServerID: serverID,
-		Name: cfg.Name, WebDir: cfg.WebDir, Roles: enabled, Log: log, Transcode: transcodes.jobs, Hub: transcodes.hub,
+		Name: cfg.Name, AdminUser: cfg.AdminUser, WebDir: cfg.WebDir, Roles: enabled, Log: log, Transcode: transcodes.jobs, Hub: transcodes.hub,
 		Proxies: cfg.proxies, QuickConnectOff: cfg.QuickConnect != nil && !*cfg.QuickConnect,
 		AuditLog: slog.New(slog.NewJSONHandler(os.Stderr, nil)),
 	}

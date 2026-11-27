@@ -18,15 +18,21 @@ One binary, chosen with `--roles`:
 docker create --name jf jellyfin/jellyfin:12.4
 docker cp jf:/jellyfin/jellyfin-web web-dist && docker rm -v jf
 
-MEDIA_DIR=/path/to/media JELLYSCALE_ADMIN_PASSWORD=change-me \
-  docker compose -f deploy/compose/compose.yaml up --build
+read -rs JELLYSCALE_ADMIN_PASSWORD && export JELLYSCALE_ADMIN_PASSWORD   # type the administrator's password
+MEDIA_DIR=/path/to/media docker compose -f deploy/compose/compose.yaml up --build
 ```
 
 `MEDIA_DIR` needs `movies/` and `shows/` folders. Segments are kept in the `transcode` volume. Open http://127.0.0.1:8096/web/ and sign in as `admin`. The stack's Caddy ingress sends media and images to `stream` and the rest to `api`. Libraries on S3 need `JELLYSCALE_S3_ACCESS_KEY` and `JELLYSCALE_S3_SECRET_KEY` exported on the host; compose passes them to every service. Add one to `deploy/compose/config.json` such as `{"name": "Cloud", "kind": "movies", "media": "s3://bucket/movies?endpoint=https://s3.example.com", "assets": "s3://bucket/assets?endpoint=https://s3.example.com"}`. For a single process, run `--roles=all`.
 
 A client's tests that want a server with a small known library, started with one Compose file and no setup, use the published fixtures image: [Testing a client](client-testing.md).
 
+## Users and the configured administrator
+
+`adminUser` names an account that a start creates, as an administrator with the password in `JELLYSCALE_ADMIN_PASSWORD`, when no account has that name. A start that would create it with a commonly guessed password (docs/access.md) stops, naming the variable and never the value. An account that exists keeps its password, which is never checked, so no upgrade stops. While the key names it, no client can delete or rename it: both are 403 naming the key, logged at warn. It can be demoted or disabled, and a restart revives neither; remove the key and it is an ordinary account. Give every `api` replica the same value. Users are managed in jellyfin-web's user pages (docs/access.md, Accounts and passwords).
+
 ## Rolling update
+
+Finish replacing every `api` and `stream` replica before you disable or delete a user, reset a password or turn downloads off. A replica from before user management does not read `IsDisabled` or the download setting, so an old `api` replica would sign a disabled account in, and an old `stream` replica ends no running stream and allows its downloads.
 
 Replace the `stream` replicas first, then the `api` replicas. An `api` replica of this release offers a copy of HDR10, HDR10+ and HLG video, and a `stream` replica of the previous release refuses that copy, so a viewer who is sent to it fails to play. A new `stream` replica serves every copy the previous `api` offered, so it is safe to be first.
 

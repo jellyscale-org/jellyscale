@@ -33,8 +33,8 @@ From the repository root, with Docker Compose:
 docker create --name jf jellyfin/jellyfin:12.4
 docker cp jf:/jellyfin/jellyfin-web web-dist && docker rm -v jf
 
-MEDIA_DIR=/path/to/media JELLYSCALE_ADMIN_PASSWORD=change-me \
-  docker compose -f deploy/compose/compose.yaml up --build
+read -rs JELLYSCALE_ADMIN_PASSWORD && export JELLYSCALE_ADMIN_PASSWORD   # type the administrator's password
+MEDIA_DIR=/path/to/media docker compose -f deploy/compose/compose.yaml up --build
 ```
 
 `MEDIA_DIR` needs `movies/` and `shows/` folders. Open http://127.0.0.1:8096/web/ and sign in as `admin`. For more than one machine, the roles, the ingress and configuration, see [docs/running.md](docs/running.md).

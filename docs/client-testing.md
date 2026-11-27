@@ -25,7 +25,7 @@ port=$(docker compose port jellyscale 8096 | sed 's/.*://')   # Docker picks it;
 
 Two projects of the file can run side by side. `docker compose down -v` removes everything. With `JELLYSCALE_IMAGE` unset or empty, Compose stops and names it.
 
-Sign in as user `test` with password `test` (`POST /Users/AuthenticateByName` with `{"Username": "test", "Pw": "test"}`). That user is an administrator and the only one; a second, non-administrator user is not there yet. The password is in the compose file, not the image: the image refuses to start without `JELLYSCALE_ADMIN_PASSWORD`.
+Sign in as user `test` with password `jellyscale-fixtures` (`POST /Users/AuthenticateByName` with `{"Username": "test", "Pw": "jellyscale-fixtures"}`). That user is an administrator and the only one; a second, non-administrator user is not there yet. The password is in the compose file, not the image: the image refuses to start without `JELLYSCALE_ADMIN_PASSWORD`.
 
 ## Wait for the scan
 
@@ -34,7 +34,7 @@ Sign in as user `test` with password `test` (`POST /Users/AuthenticateByName` wi
 ```sh
 base=http://127.0.0.1:$port
 auth='X-Emby-Authorization: MediaBrowser Client="test", Device="test", DeviceId="test", Version="1"'
-token=$(curl -s -H "$auth" -H 'Content-Type: application/json' -d '{"Username":"test","Pw":"test"}' $base/Users/AuthenticateByName | jq -r .AccessToken)
+token=$(curl -s -H "$auth" -H 'Content-Type: application/json' -d '{"Username":"test","Pw":"jellyscale-fixtures"}' $base/Users/AuthenticateByName | jq -r .AccessToken)
 count() { curl -s -H "$auth, Token=\"$token\"" "$base/Items?Recursive=true&IncludeItemTypes=$1&Limit=500" | jq .TotalRecordCount; }
 for _ in $(seq 60); do   # 60 seconds, then give up
   [ "$(count Movie)" = 24 ] && [ "$(count Episode)" = 3 ] && break

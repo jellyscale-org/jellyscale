@@ -40,6 +40,10 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 // download sends an item's file to be saved, through the same path as direct
 // play. Jellyfin refuses HEAD here; this answers it like GET, harmlessly.
 func (s *Server) download(w http.ResponseWriter, r *http.Request) {
+	if !sessionOf(r).User.AllowDownload {
+		http.Error(w, "this account may not download", http.StatusForbidden)
+		return
+	}
 	if !db.ValidID(r.PathValue("itemId")) {
 		http.Error(w, "invalid item id", http.StatusBadRequest)
 		return

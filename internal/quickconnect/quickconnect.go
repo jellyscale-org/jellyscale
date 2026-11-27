@@ -60,6 +60,7 @@ type Code struct {
 type Account struct {
 	ID, Name      string
 	IsAdmin       bool
+	AllowDownload bool
 	LastLoginAt   *time.Time
 	Configuration []byte
 }
@@ -222,14 +223,10 @@ func Redeem(ctx context.Context, pool *pgxpool.Pool, secret string) (Code, Accou
 				return ErrUnknownSecret
 			}
 		} else {
-			var exists bool
-			if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM users WHERE id = $1)`, code.Approver).Scan(&exists); err != nil {
-				return err
-			}
-			if !exists {
+			issued, err := signin.Issue(ctx, tx, code.Approver, "", code.Device)
+			if errors.Is(err, signin.ErrNoAccount) {
 				return ErrUnknownSecret
 			}
-			issued, err := signin.Issue(ctx, tx, code.Approver, code.Device)
 			if err != nil {
 				return err
 			}
@@ -252,11 +249,19 @@ func Redeem(ctx context.Context, pool *pgxpool.Pool, secret string) (Code, Accou
 // secret's answer, never a server error.
 func readAccount(ctx context.Context, tx pgx.Tx, userID string) (Account, error) {
 	var account Account
-	err := tx.QueryRow(ctx, `SELECT id::text, name, is_admin, last_login_at, configuration
+	err := tx.QueryRow(ctx, `SELECT id::text, name, is_admin, allow_download, last_login_at, configuration
 		FROM users WHERE id = $1`, userID).
-		Scan(&account.ID, &account.Name, &account.IsAdmin, &account.LastLoginAt, &account.Configuration)
+		Scan(&account.ID, &account.Name, &account.IsAdmin, &account.AllowDownload, &account.LastLoginAt, &account.Configuration)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Account{}, ErrUnknownSecret
 	}
 	return account, err
+}
+
+// Forget removes the codes the account approved, so that none signs a device in later. keep is the token that stays
+// signed in ("" keeps none). It comes first in a transaction that ends tokens: a redemption locks its code and then the
+// account's row, and the same order here cannot deadlock with it.
+func Forget(ctx context.Context, tx pgx.Tx, userID, keep string) error {
+	_, err := tx.Exec(ctx, `DELETE FROM quickconnect_codes WHERE approved_by = $1 AND token IS DISTINCT FROM $2`, userID, keep)
+	return err
 }

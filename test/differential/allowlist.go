@@ -107,9 +107,14 @@ const replayedByTheSubtitleDefaultCheck = "subtitle default: "
 // which cmd/jellyscale/quickconnect_capture_integration_test.go replays (JS-037).
 const replayedByTheQuickConnectCheck = "quick connect: "
 
+// heldByTheUsersChecks is the start of the names of the cases of compat/captures/users-admin-12.4.json where jellyscale
+// answers otherwise than Jellyfin, which cmd/jellyscale's users checks hold (JS-033).
+const heldByTheUsersChecks = "users: "
+
 func replayed(name string) bool {
 	return strings.HasPrefix(name, replayedElsewhere) || strings.HasPrefix(name, replayedByTheCorsCheck) ||
-		strings.HasPrefix(name, replayedByTheSubtitleDefaultCheck) || strings.HasPrefix(name, replayedByTheQuickConnectCheck)
+		strings.HasPrefix(name, replayedByTheSubtitleDefaultCheck) || strings.HasPrefix(name, replayedByTheQuickConnectCheck) ||
+		strings.HasPrefix(name, heldByTheUsersChecks)
 }
 
 // CheckRequests fails if an entry names a request that reqs does not have.

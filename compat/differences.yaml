@@ -15,9 +15,8 @@
     - "the signed-in user"
     - "the signed-in user after saving through the path route"
     - "the signed-in user after saving through the SDK route"
-  kind: gap
-  task: JS-033
-  reason: "user management: a hidden flag that Jellyfin keeps for each user and jellyscale does not"
+  kind: non-goal
+  reason: "Policy says only what is enforced (D-093): Jellyfin keeps a hidden flag for each user; jellyscale hides nobody, since GET /Users/Public lists nobody, and answers false"
   paths:
     - "Policy.IsHidden"
 
@@ -1250,3 +1249,142 @@
   reason: "an account deleted after it approved redeems nothing: there is no account to sign the device into, so the device gets the unknown-secret answer; Jellyfin 12.4 answers with a 200 sign-in whose token then answers 401 (JS-037)"
   paths:
     - "(status)"
+
+# JS-033: where user management answers otherwise than compat/captures/users-admin-12.4.md. cmd/jellyscale's users checks
+# hold these, not the differential tier, so none of the names is a request of requests.yaml.
+- requests:
+    - "users: a viewer lists the users"
+  kind: improvement
+  reason: "a viewer's GET /Users holds only their own account; Jellyfin 12.4 gives a viewer every account (D-075, D-096)"
+  paths:
+    - "body"
+
+- requests:
+    - "users: the list filtered by isHidden"
+  kind: non-goal
+  reason: "no account is hidden, so isHidden=true lists nobody and isHidden=false everybody (D-093)"
+  paths:
+    - "body"
+
+- requests:
+    - "users: new user with no Password"
+    - "users: new user with an empty Password"
+  kind: improvement
+  reason: "the account is made with no password, and every password sign-in for it, the empty one included, gets a wrong password's 401 until an administrator sets one; Jellyfin 12.4 signs it in with the empty password (D-105)"
+  paths:
+    - "(status of the sign-in)"
+
+- requests:
+    - "users: new user with a commonly guessed password"
+    - "users: a commonly guessed new password"
+    - "users: an empty new password"
+  kind: improvement
+  reason: "a new or changed password that is empty or on the shipped list of commonly guessed ones is 400 with the reason, and one over 72 bytes too; Jellyfin 12.4 stores it. A user made with no or an empty Password is not refused (D-100, D-103)"
+  paths:
+    - "(status)"
+
+- requests:
+    - "users: reset of one's own password"
+  kind: improvement
+  reason: "resetting your own password is refused for everyone, with or without CurrentPw, and changes nothing; Jellyfin 12.4 answers 204 (D-103)"
+  paths:
+    - "(status)"
+
+- requests:
+    - "users: an administrator resets another's password"
+  kind: improvement
+  reason: "the account is left with no password that signs in, the empty one included, and its tokens end; Jellyfin 12.4 keeps the tokens and takes the empty password (D-103)"
+  paths:
+    - "(tokens)"
+    - "(status of the sign-in)"
+
+- requests:
+    - "users: a user with no password changes their own"
+  kind: improvement
+  reason: "an account with no password has no current password to prove, so its own change is refused 403 until an administrator sets one; Jellyfin 12.4 takes it with no or an empty CurrentPw (D-105)"
+  paths:
+    - "(status)"
+
+- requests:
+    - "users: a disabled account signs in"
+  kind: improvement
+  reason: "a disabled account's sign-in is answered as a wrong password is, 401, and the log names the reason; Jellyfin 12.4 answers 403 (D-096)"
+  paths:
+    - "(status)"
+
+- requests:
+    - "users: an administrator is disabled"
+  kind: improvement
+  reason: "an administrator may be disabled, by themselves too, while another enabled administrator remains; Jellyfin 12.4 refuses every administrator (D-095)"
+  paths:
+    - "(status)"
+
+- requests:
+    - "users: the last administrator deletes themselves"
+  kind: improvement
+  reason: "403, and nothing changes; Jellyfin 12.4 answers 400 after it has ended the caller's token"
+  paths:
+    - "(status)"
+    - "(tokens)"
+
+- requests:
+    - "users: an administrator names the zero id"
+  kind: improvement
+  reason: "an administrator naming the zero id gets the 404 of an id nobody has (JS-127); Jellyfin 12.4 answers 400"
+  paths:
+    - "(status)"
+
+- requests:
+    - "users: a Policy body without every field"
+  kind: improvement
+  reason: "a Policy changes only the fields its body names, and the two provider ids are optional; Jellyfin 12.4 refuses a body without the ids and resets every other missing field (D-094)"
+  paths:
+    - "(status)"
+    - "Policy"
+
+- requests:
+    - "users: a Policy that changes a field that is not enforced"
+  kind: non-goal
+  reason: "only IsAdministrator, IsDisabled and EnableContentDownloading are stored; a change to any other field is 400 naming each, stores nothing and is logged, where Jellyfin 12.4 stores it. null where the Policy answers an empty list is no change (D-093)"
+  paths:
+    - "(status)"
+    - "Policy"
+
+- requests:
+    - "users: a Policy that names a channel field"
+  kind: non-goal
+  reason: "no channels exist: any value of EnableAllChannels, EnabledChannels and BlockedChannels is accepted and not stored (D-093)"
+  paths:
+    - "Policy.EnableAllChannels"
+    - "Policy.EnabledChannels"
+    - "Policy.BlockedChannels"
+
+- requests:
+    - "users: failed sign-ins and the lockout fields"
+  kind: non-goal
+  reason: "no account is disabled by failed sign-ins: LoginAttemptsBeforeLockout stays -1 and InvalidLoginAttemptCount 0, and a Policy changing either is 400 (D-020, D-093)"
+  paths:
+    - "(status)"
+    - "Policy.LoginAttemptsBeforeLockout"
+    - "Policy.InvalidLoginAttemptCount"
+
+- requests:
+    - "users: a rename with only a Name"
+  kind: improvement
+  reason: "POST /Users takes a body with a Name and no Configuration or Policy; Jellyfin 12.4 requires the whole user"
+  paths:
+    - "(status)"
+
+- requests:
+    - "users: the configured administrator is deleted or renamed"
+  kind: improvement
+  reason: "while the adminUser key names the account, deleting or renaming it is 403 naming the key; Jellyfin has no configured account (D-095)"
+  paths:
+    - "(status)"
+
+- requests:
+    - "users: the lists the user pages read"
+  kind: non-goal
+  reason: "GET /Channels and GET /Localization/ParentalRatings are valid empty lists; GET /Library/MediaFolders holds the libraries and GET /Devices each signed-in device's id, name, app, version, last user and last sign-in, with empty Capabilities, for administrators"
+  paths:
+    - "body"

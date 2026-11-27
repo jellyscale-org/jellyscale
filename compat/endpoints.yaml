@@ -2,9 +2,13 @@
 baseline: "12.4.0"
 routes:
   - {method: GET, path: "/Artists", status: stub, role: api, access: viewer, user: own}
+  - {method: GET, path: "/Auth/PasswordResetProviders", status: stub, role: api, access: admin, user: admin-any}
+  - {method: GET, path: "/Auth/Providers", status: stub, role: api, access: admin, user: admin-any}
   - {method: GET, path: "/Branding/Configuration", status: stub, role: api, access: anyone}
   - {method: GET, path: "/Branding/Css", status: stub, role: api, access: anyone}
   - {method: GET, path: "/Branding/Css.css", status: stub, role: api, access: anyone}
+  - {method: GET, path: "/Channels", status: stub, role: api, access: viewer, user: own}
+  - {method: GET, path: "/Devices", status: implemented, role: api, access: admin, user: own}
   - {method: GET, path: "/DisplayPreferences/{preferenceId}", status: implemented, role: api, access: viewer, user: own}
   - {method: POST, path: "/DisplayPreferences/{preferenceId}", status: implemented, role: api, access: viewer, user: own}
   - {method: GET, path: "/Genres", status: stub, role: api, access: viewer, user: own}
@@ -29,9 +33,11 @@ routes:
   - {method: GET, path: "/jellyscale/v1/track-preferences", status: implemented, role: api, access: viewer, user: own}
   - {method: PATCH, path: "/jellyscale/v1/track-preferences", status: implemented, role: api, access: viewer, user: own}
   - {method: PATCH, path: "/jellyscale/v1/users/configuration", status: implemented, role: api, access: viewer, user: own}
+  - {method: GET, path: "/Library/MediaFolders", status: implemented, role: api, access: admin, user: own}
   - {method: GET, path: "/LiveTv/Programs", status: stub, role: api, access: viewer, user: own}
   - {method: GET, path: "/LiveTv/Programs/Recommended", status: stub, role: api, access: viewer, user: own}
   - {method: GET, path: "/Localization/Cultures", status: implemented, role: api, access: viewer, user: own}
+  - {method: GET, path: "/Localization/ParentalRatings", status: stub, role: api, access: viewer, user: own}
   - {method: GET, path: "/MediaSegments/{itemId}", status: stub, role: api, access: viewer, user: own}
   - {method: GET, path: "/Persons", status: stub, role: api, access: viewer, user: own}
   - {method: GET, path: "/Playback/BitrateTest", status: implemented, role: stream, access: viewer, user: own}
@@ -67,11 +73,16 @@ routes:
   - {method: POST, path: "/UserItems/{itemId}/UserData", status: implemented, role: api, access: viewer, user: admin-any}
   - {method: DELETE, path: "/UserPlayedItems/{itemId}", status: implemented, role: api, access: viewer, user: own}
   - {method: POST, path: "/UserPlayedItems/{itemId}", status: implemented, role: api, access: viewer, user: own}
+  - {method: GET, path: "/Users", status: implemented, role: api, access: viewer, user: admin-any}
+  - {method: POST, path: "/Users", status: implemented, role: api, access: viewer, user: admin-any}
   - {method: POST, path: "/Users/AuthenticateByName", status: implemented, role: api, access: anyone}
   - {method: POST, path: "/Users/AuthenticateWithQuickConnect", status: implemented, role: api, access: anyone}
   - {method: POST, path: "/Users/Configuration", status: implemented, role: api, access: viewer, user: admin-any}
   - {method: GET, path: "/Users/Me", status: implemented, role: api, access: viewer, user: own}
+  - {method: POST, path: "/Users/New", status: implemented, role: api, access: admin, user: admin-any}
+  - {method: POST, path: "/Users/Password", status: implemented, role: api, access: viewer, user: admin-any}
   - {method: GET, path: "/Users/Public", status: implemented, role: api, access: anyone}
+  - {method: DELETE, path: "/Users/{userId}", status: implemented, role: api, access: admin, user: admin-any}
   - {method: GET, path: "/Users/{userId}", status: implemented, role: api, access: viewer, user: admin-any}
   - {method: POST, path: "/Users/{userId}/Configuration", status: alias, role: api, access: viewer, user: admin-any}
   - {method: DELETE, path: "/Users/{userId}/FavoriteItems/{itemId}", status: alias, role: api, access: viewer, user: own}
@@ -85,8 +96,10 @@ routes:
   - {method: GET, path: "/Users/{userId}/Items/{itemId}/Intros", status: alias, role: api, access: viewer, user: own}
   - {method: GET, path: "/Users/{userId}/Items/{itemId}/LocalTrailers", status: alias, role: api, access: viewer, user: own}
   - {method: GET, path: "/Users/{userId}/Items/{itemId}/SpecialFeatures", status: alias, role: api, access: viewer, user: own}
+  - {method: POST, path: "/Users/{userId}/Password", status: alias, role: api, access: viewer, user: admin-any}
   - {method: DELETE, path: "/Users/{userId}/PlayedItems/{itemId}", status: alias, role: api, access: viewer, user: own}
   - {method: POST, path: "/Users/{userId}/PlayedItems/{itemId}", status: alias, role: api, access: viewer, user: own}
+  - {method: POST, path: "/Users/{userId}/Policy", status: implemented, role: api, access: admin, user: admin-any}
   - {method: GET, path: "/UserViews", status: implemented, role: api, access: viewer, user: own}
   - {method: GET, path: "/UserViews/GroupingOptions", status: stub, role: api, access: viewer, user: own}
   - {method: DELETE, path: "/Videos/ActiveEncodings", status: implemented, role: stream, access: viewer, user: own}

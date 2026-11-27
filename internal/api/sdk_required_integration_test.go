@@ -51,10 +51,10 @@ func object(t *testing.T, where string, v any) map[string]any {
 
 func TestSignInAndSessionsCarryTheFieldsSDKClientsRequire(t *testing.T) {
 	e := newEnv(t)
-	if err := EnsureAdmin(t.Context(), e.pool, "sdk", "secret"); err != nil {
+	if err := EnsureAdmin(t.Context(), e.pool, "sdk", "sdk-fixture-secret"); err != nil {
 		t.Fatal(err)
 	}
-	resp, body := e.do(t, 0, "POST", "/Users/AuthenticateByName", "", map[string]string{"Username": "sdk", "Pw": "secret"},
+	resp, body := e.do(t, 0, "POST", "/Users/AuthenticateByName", "", map[string]string{"Username": "sdk", "Pw": "sdk-fixture-secret"},
 		"Authorization", `MediaBrowser Client="Findroid", Device="phone", DeviceId="sdk-test", Version="0.15"`)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("sign-in: %d %s", resp.StatusCode, body)

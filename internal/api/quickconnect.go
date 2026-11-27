@@ -250,7 +250,7 @@ func (s *Server) authenticateWithQuickConnect(w http.ResponseWriter, r *http.Req
 	// The account was read in the transaction that issued the token, so a sign-in or sign-out that ends the token
 	// after its commit cannot turn this answer into a server error.
 	user := User{
-		ID: account.ID, Name: account.Name, IsAdmin: account.IsAdmin,
+		ID: account.ID, Name: account.Name, IsAdmin: account.IsAdmin, AllowDownload: account.AllowDownload,
 		LastLoginAt: account.LastLoginAt, Configuration: account.Configuration,
 	}
 	writeJSON(w, s.signInJSON(user, code.Token, compat.ClientInfo{

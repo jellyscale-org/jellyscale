@@ -16,7 +16,7 @@ services:
     image: ${JELLYSCALE_IMAGE:?set JELLYSCALE_IMAGE to the fixtures image, such as ghcr.io/jellyscale-org/jellyscale:X.Y.Z-fixtures}
     environment:
       JELLYSCALE_DATABASE_URL: postgres://postgres:dev@postgres:5432/postgres
-      JELLYSCALE_ADMIN_PASSWORD: test
+      JELLYSCALE_ADMIN_PASSWORD: jellyscale-fixtures
     ports:
       - 127.0.0.1::8096
     depends_on:
