@@ -1398,6 +1398,237 @@
       "decision": "change",
       "entry": "The rename comes right after JS-033 and before JS-198, so the image and contract are named once; if its name check is not done when it is next, JS-198 goes first.",
       "serves": "D-122."
+    },
+    {
+      "id": "D-129",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "JS-200; supersedes D-122 and D-128",
+      "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+      "tradeoff": "None.",
+      "decision": "change",
+      "entry": "Names settled. The server stays jellyscale: \"We're going to stick with Jellyscale as the name.\" The apps stay Octave: \"And then we can keep Octave as the client.\" JS-200 and every rename and name check are dropped. Octave was told on #385 not to plan a rename.",
+      "serves": "Owner, 2026-11-27."
+    },
+    {
+      "id": "D-130",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "ASK-1",
+      "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+      "tradeoff": "None.",
+      "decision": "change",
+      "entry": "Every Octave app native: \"I think we should do the clients all natively for all the platforms.\" Kotlin for Android TV and phones, Swift for Apple's phones and tablets, and a web app; Apple TV deferred. New React Native UI work is paused (octave#388). Octave's product owner plans it; jellyscale asks (ASK-1).",
+      "serves": "Owner, 2026-11-27."
+    },
+    {
+      "id": "D-131",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "JS-198, JS-190",
+      "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+      "tradeoff": "None.",
+      "decision": "change",
+      "entry": "Two repositories, jellyscale and Octave: \"Octave already exists as a separate repo, so we just need to figure out how to communicate to the clients building those apps.\"",
+      "serves": "Owner, 2026-11-27."
+    },
+    {
+      "id": "D-132",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "PRODUCT.md; JS-183, JS-198; supersedes D-092's one-product reading; restores D-085's issue routing",
+      "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+      "tradeoff": "None.",
+      "decision": "change",
+      "entry": "Two separate products, one product owner each: \"let's have one product owner for each because these are going to be two separate products launched independently.\" jellyscale's product owner plans jellyscale only; Octave keeps its own PRODUCT.md, product owner, plan and releases. The contract in jellyscale is the source of truth for what the server offers: each capability is published with example answers before the server serves it, a server is published for every merge, and every contract change reaches Octave as a from:jellyscale issue saying what changed and what each platform must do. Octave's requests come to jellyscale as from:fluster issues labelled by platform, triaged by jellyscale's product owner, as before. What jellyscale's own milestones need from Octave is stated as cross-project needs (the asks), never as tasks jellyscale controls.",
+      "serves": "Owner, 2026-11-27."
+    },
+    {
+      "id": "D-133",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-209",
+      "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+      "tradeoff": "None.",
+      "decision": "change",
+      "entry": "One file per task, backlog item and decision in jellyscale, with one order file only the product owner changes; no priority field; done is a status. New decisions are named D-<YYYYMMDD>-<slug>; D-129 to D-149 are the last sequential ids. Octave chooses its own.",
+      "serves": "Seen: hot plan files and parallel conflicts (monorepo study §1)."
+    },
+    {
+      "id": "D-134",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-183, JS-185, JS-190, JS-194; amends D-116",
+      "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+      "tradeoff": "The dogfood exercises no new server work between the cutover and Octave's Android TV app.",
+      "decision": "change",
+      "entry": "M1's exit criteria stand: the Android check is Media3 on an emulator through a minimal player in the server's test tree, and the cutover does not wait for Octave. Criterion 8 reads 'Octave is told by a from:jellyscale issue'. The dogfood moves from jellyfin-final to main when Octave's Android TV app browses and plays there (ASK-4). JS-183 gains a 'declared, not yet served' state; JS-190 pins Octave's test build by digest.",
+      "serves": "D-109."
+    },
+    {
+      "id": "D-135",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "the Octave issue",
+      "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+      "tradeoff": "None.",
+      "decision": "plan",
+      "entry": "Nothing is done to Octave's repository, plan, issues or releases from jellyscale; every request is an issue Octave's product owner triages.",
+      "serves": "D-132."
+    },
+    {
+      "id": "D-136",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "ASK-2",
+      "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+      "tradeoff": "None.",
+      "decision": "change",
+      "entry": "A codified design language: \"Given that these are all going to be written for different platforms, we should have a very well-codified design language.\" It is Octave's, asked of Octave (ASK-2). jellyscale owns each reason code's meaning and the action it suggests; Octave owns the words.",
+      "serves": "Owner, 2026-11-27."
+    },
+    {
+      "id": "D-137",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-182, JS-199",
+      "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+      "tradeoff": "None.",
+      "decision": "change",
+      "entry": "Apple is Octave's: JS-182's AVPlayer half waits for Octave's Apple playback (ASK-7); JS-199 covers Android phones. Apple TV is deferred.",
+      "serves": "D-130."
+    },
+    {
+      "id": "D-138",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "the roles; the build workflow",
+      "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+      "tradeoff": "None.",
+      "decision": "change",
+      "entry": "Two agents: \"One, a design agent that handles design using the Anthropic front end design skill and Impeccable, and then another UX review agent that just makes sure that the UX for our clients meets our standards. And we should probably run UX prior to any kind of building.\" In jellyscale they serve jellyscale's own experienced work; Octave runs its own. The lead writes jellyscale's role files and workflow.",
+      "serves": "Owner, 2026-11-27."
+    },
+    {
+      "id": "D-139",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "every task in ux_tasks; JS-183",
+      "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+      "tradeoff": "None.",
+      "decision": "change",
+      "entry": "Delivery rule for jellyscale's own experienced work (what an operator sees, reads or does, and each reason's meaning and action): goal, design, UX review of the design (blockers and majors go back), Spec and work, build, UX review of what was built. Work no one experiences skips both gates. Where the experience is inside Octave's apps, Octave's design leads: jellyscale's contract follows Octave's approved designs where they exist (octave_design_needed), and ships as preview until Octave confirms otherwise. It is a delivery rule, not extra criteria.",
+      "serves": "\"What can't be done is said plainly.\"; \"Nothing is hidden.\""
+    },
+    {
+      "id": "D-140",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "ASK-1",
+      "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+      "tradeoff": "None.",
+      "decision": "change",
+      "entry": "Octave's apps are built side by side: \"in the Octave repo we're handling the development of those applications in tandem consecutively so that we're not waiting for each one to be built.\" Asked of Octave (ASK-1); Octave's owner plans it. For jellyscale, platform order is only which gate comes first (Android TV).",
+      "serves": "Owner, 2026-11-27."
+    },
+    {
+      "id": "D-141",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "JS-150",
+      "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+      "tradeoff": "None.",
+      "decision": "change",
+      "entry": "jellyscale ships a specific, tested Octave Web release in its image (the owner: \"I think the answer to all your questions is yes.\"). The release is pinned and passes jellyscale's browser check before it ships.",
+      "serves": "Owner, 2026-11-27."
+    },
+    {
+      "id": "D-142",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "JS-150; ASK-15",
+      "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+      "tradeoff": "None.",
+      "decision": "change",
+      "entry": "Licence: GPL-3.0-or-later for both, as the owner would like; jellyscale already is. Octave's side is Octave's owner's, including whether its code can be relicensed. Shipping Octave Web in jellyscale's image is distributing it alongside: the image carries Octave's licence notice and offers its source, whichever GPL-3.0 form Octave uses.",
+      "serves": "Owner, 2026-11-27."
+    },
+    {
+      "id": "D-143",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "JS-210; PRODUCT.md; ASK-8",
+      "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+      "tradeoff": "None.",
+      "decision": "change",
+      "entry": "Profiles on a shared TV, with an optional PIN. PRODUCT.md's 'a device stays signed in' gains: a shared TV holds the household's profiles, each with its own history, languages and limits; a PIN is a parental gate, stored hashed.",
+      "serves": "Owner, 2026-11-27."
+    },
+    {
+      "id": "D-144",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "JS-211; ASK-12",
+      "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+      "tradeoff": "None.",
+      "decision": "change",
+      "entry": "Parental viewing hours and simultaneous-stream limits, set by the operator, refused with a reason that says which and when.",
+      "serves": "Owner, 2026-11-27."
+    },
+    {
+      "id": "D-145",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "JS-212; PRODUCT.md; ASK-11",
+      "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+      "tradeoff": "A viewer who opts in lets Apple or Google learn that something new is waiting, and when.",
+      "decision": "change",
+      "entry": "New-episode notifications may pass through Apple's and Google's notification services: opt-in and off by default, carrying no title, no detail and nothing about what the viewer watches; the app fetches details from the operator's server. PRODUCT.md's 'nothing is sent outside the operator's servers' now names this one exception exactly.",
+      "serves": "Owner, 2026-11-27."
+    },
+    {
+      "id": "D-146",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "JS-213; PRODUCT.md",
+      "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+      "tradeoff": "None.",
+      "decision": "change",
+      "entry": "Disc images and disc folders count as films that must play. A spike comes first (JS-213), since format support is unresearched.",
+      "serves": "Owner, 2026-11-27."
+    },
+    {
+      "id": "D-147",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "PRODUCT.md; ASK-9, ASK-10; JS-210",
+      "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+      "tradeoff": "None.",
+      "decision": "change",
+      "entry": "The roadmap gains profiles (JS-210, ASK-8), Continue watching on the Android TV home screen (ASK-9) and playback speed (ASK-10). The client parts are Octave's, asked by issue; jellyscale plans its server parts.",
+      "serves": "Owner, 2026-11-27."
+    },
+    {
+      "id": "D-148",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-183, JS-197, JS-204, JS-214, JS-021, JS-169, JS-170, JS-054",
+      "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+      "tradeoff": "None.",
+      "decision": "accept",
+      "entry": "Technology, from 'Technology and top features' §2: keep Go; Postgres the only required service; the contract is OpenAPI 3.1 (JS-183); live messages to a running playback are server-sent and one-way (JS-197); the catalog stays in step through a change log in Postgres, with no broker (JS-214); search is Postgres first, with a typo rule (JS-204); playback tracing carries the trace through the job row (JS-021). Hardware encoding stays gated on measurement (JS-169, JS-170, JS-054); the measured 31 times x264's bytes on the HD 530 against JS-054's twice-x264 rule is noted for JS-170.",
+      "serves": "Goal 5: \"Operating it stays boring.\""
+    },
+    {
+      "id": "D-149",
+      "date": "2026-11-27",
+      "by": "owner",
+      "task": "native-plan.md; the Octave issue",
+      "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+      "tradeoff": "None.",
+      "decision": "accept",
+      "entry": "The owner approved the native plan (\"I think the answer to all your questions is yes.\"). The lead sends Octave the coordination request (native-plan.md §6) once these decisions are on main.",
+      "serves": "Owner, 2026-11-27."
     }
   ]
 }

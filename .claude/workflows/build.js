@@ -137,6 +137,8 @@ const brief = `## Task${id ? ` ${id}` : ''}\n${task}\n\n## Acceptance criteria\n
 // the same step twice, is replaced by Sonnet 5.5; say so in the task record.
 const MODELS = {
   'spec-writer': { model: 'claude-agent/sonnet', effort: 'high' },
+  // The lead runs design and its UX review before the workflow (D-139).
+  designer: { model: 'claude-agent/sonnet', effort: 'high' },
   implementer: { model: 'opencode/beam-free', effort: 'high' },
   'architecture-reviewer': { model: 'claude-agent/sonnet', effort: 'high' },
   // Check reads only the spec and its checks, and a gap it misses costs a

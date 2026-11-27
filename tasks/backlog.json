@@ -2759,6 +2759,33 @@
       "title": "A named person's picks, shared on purpose",
       "notes": "From the catalog research; no source evaluates it.",
       "id": "BL-307"
+    },
+    {
+      "id": "BL-308",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "Technology and top features §3",
+      "title": "Subtitles generated on the operator's servers for films with none",
+      "notes": "Deaf and hard-of-hearing viewers find nothing in films without subtitles. Compute per film is unsized: measure first, and only on the operator's servers."
+    },
+    {
+      "id": "BL-309",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "Technology and top features §3",
+      "title": "Viewing history charts for operators",
+      "notes": "JS-043 covers the raw log only. Back on an operator's request."
+    },
+    {
+      "id": "BL-310",
+      "status": "open",
+      "severity": "minor",
+      "reviewer": "product-owner",
+      "source": "Technology and top features §3",
+      "title": "A viewer's wish list for films the collection lacks, with no fetching",
+      "notes": "Interest is shown (Seerr), but fetching media is out. Back if viewers ask."
     }
   ]
 }
