@@ -571,16 +571,20 @@ func TestOutputVersionAcrossProcesses(t *testing.T) {
 		if c.storedUnder(j.Hash) {
 			t.Errorf("an object is stored under hash %s of a job no worker of its version ran", j.Hash)
 		}
-		// The log names the cause: another version's worker had a slot.
+		// The log names the cause: another version's worker had a slot. The
+		// process's log reaches the test through a pipe copied by another
+		// goroutine, so a line written just before the answer can arrive a
+		// moment after it; wait for it instead of reading the pipe too early.
 		var line string
-		for _, l := range strings.Split(r5.log.String(), "\n") {
-			if strings.Contains(l, "spec="+j.Hash) && strings.Contains(l, "level=ERROR") {
-				line = l
+		waitUntil(t, "the stream replica's error for spec "+j.Hash, func() bool {
+			for _, l := range strings.Split(r5.log.String(), "\n") {
+				if strings.Contains(l, "spec="+j.Hash) && strings.Contains(l, "level=ERROR") {
+					line = l
+					return true
+				}
 			}
-		}
-		if line == "" {
-			t.Fatalf("the stream replica logged no error for spec %s:\n%s", j.Hash, r5.log.String())
-		}
+			return false
+		})
 		for _, wrong := range []string{"slot", "no worker", "no transcode worker"} {
 			if strings.Contains(strings.ToLower(line), wrong) {
 				t.Errorf("the log line says %q, which is not the cause (a worker of another version had a free slot): %s", wrong, line)
