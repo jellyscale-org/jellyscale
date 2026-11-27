@@ -1057,6 +1057,28 @@
       "decision": "plan",
       "entry": "JS-037 bounds an in-flight approval by the shutdown grace and logs a failed approval.",
       "serves": "docs/running.md: the process exits within seconds of the grace; 'every failure is reported with its reason'."
+    },
+    {
+      "id": "D-100",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-033",
+      "brief": "May a viewer set an empty password?",
+      "tradeoff": "A viewer's choice of an account with no password.",
+      "decision": "keep",
+      "entry": "JS-033 refuses an empty password, set by anyone, as it refuses a commonly guessed one. This departs from Jellyfin 12.4 and is listed. Refine briefs if jellyfin-web cannot show the refusal.",
+      "serves": "'Signing in is easy and safe'."
+    },
+    {
+      "id": "D-103",
+      "date": "2026-11-27",
+      "by": "product-owner",
+      "task": "JS-033",
+      "brief": "jellyfin-web shows a generic message for a refused password; what ResetPassword does under D-100.",
+      "tradeoff": "A viewer's Reset button does nothing; after an admin reset the user cannot sign in by password until one is set.",
+      "decision": "keep",
+      "entry": "jellyfin-web's generic message for a refused password is accepted, and the reason is in the body. An administrator's reset of another user leaves no password that signs in and ends the user's tokens. Resetting your own password is refused for everyone.",
+      "serves": "'Signing in is easy and safe'; D-096."
     }
   ]
 }
