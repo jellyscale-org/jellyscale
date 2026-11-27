@@ -8,7 +8,7 @@ One file per record, JSON, `jq --indent 2`, the file's `id` equals its name. The
 
 - `tasks/tasks/<id>.json` — one task per file, open or finished. A task's file is never renamed or moved; finishing a task sets `status` to `done` or `dropped` in its own file.
 - `tasks/order.txt` — task ids, one per line, open tasks in priority order. Only the product owner changes it, by PR. Finishing a task changes only that task's file; the listing skips ids in the order file that are not open, lists open tasks missing from it last marked unordered, and the product owner removes finished ids at their next order change. No task has a `priority` field.
-- `tasks/backlog/<id>.json` — one backlog item per file.
+- `tasks/backlog/<id>.json` — one backlog item per file. A new item is `BL-<YYYYMMDD>-<slug>.json`, so tasks finishing side by side never pick the same id; existing ids keep theirs.
 - `tasks/decisions/<id>.json` — one decision per file. A new decision is `D-<YYYYMMDD>-<slug>.json`, lowercase kebab-case slug, `YYYYMMDD` equal to its `date`. Existing ids keep theirs.
 
 `tools/plan.sh` prints the open tasks in order (position, id, status, phase, title), then the open backlog (id, severity, title); `tools/plan.sh <id>` prints one record of any kind. It reads files only and exits non-zero, naming the file, when an order id has no file or a file's name is not its `id`. Everything stays under `tasks/`, which `test/changes.sh` classes as plan (no CI tier runs).
@@ -16,7 +16,7 @@ One file per record, JSON, `jq --indent 2`, the file's `id` equals its name. The
 ## conventions (tasks)
 
 - **status**: done | in_progress | todo | dropped
-- **order**: `tasks/order.txt`, open task ids in priority order; the lowest is next; only the product owner changes it
+- **order**: `tasks/order.txt`, open task ids in priority order; the first open one is next; only the product owner changes it
 - **delivery**: each task goes through the build workflow (`.claude/workflows/build.js`): checks written first and locked, one implementer until they pass, QA and one blind adversarial review with evidence-gated findings, one fix round; then PR, CI, merge, redeploy the dogfood
 - **differential**: a task that adds or changes a route jellyfin-web or another client calls adds its requests to `test/differential/requests.yaml`, and any difference it keeps to `compat/differences.yaml` with a reason
 
@@ -39,7 +39,7 @@ One file per record, JSON, `jq --indent 2`, the file's `id` equals its name. The
 
 Findings judged real but not fixed by the task that found them. Read by the lead at each post-task review, and promoted into a task when worth doing. Not part of any task's brief: no role file or doc points subagents here.
 
-One file per item in `tasks/backlog/`. `status`: open | check (may already be fixed) | promoted (to the task named in notes) | wontfix (reason in notes); `source`: the task whose review found it, or the review that did; `severity`: as the reviewer gave it.
+One file per item in `tasks/backlog/`. `status`: open | check (may already be fixed) | promoted (to the task named in notes) | wontfix (reason in notes) | closed (reason in notes); `source`: the task whose review found it, or the review that did; `severity`: as the reviewer gave it.
 
 ## decisions
 

@@ -26,7 +26,7 @@ You judge the product, not the code. Read only:
 
 DOMAINS.md has very long lines that Read cuts short. Use Bash only to read: `rg` (ripgrep), `jq`, `sed -n` on the files above, `tools/plan.sh` (the one listing command), and `git diff` of `tasks/order.txt` and `tasks/tasks/` when asked to review a plan change. Never write, run a test, or start anything with it.
 
-The plan files are large. Pull what you need with `jq` or `tools/plan.sh` rather than reading them whole. Each task file holds `id`, `phase`, `title`, `description`, `acceptanceCriteria` (strings), `status`, `dependsOn` and `notes`; there is no `priority` field:
+The plan files are large. Pull what you need with `jq` or `tools/plan.sh` rather than reading them whole. Each task file holds `id`, `phase`, `title`, `description`, `acceptanceCriteria` (strings), `status`, `dependsOn`, `source` and `notes`; there is no `priority` field:
 - the order: `tools/plan.sh` (or `cat tasks/order.txt`)
 - one task: `jq . tasks/tasks/JS-089.json` (or `tools/plan.sh JS-089`)
 - the open backlog: `jq -r 'select(.status == "open") | "\(.id) \(.severity): \(.title)"' tasks/backlog/*.json`

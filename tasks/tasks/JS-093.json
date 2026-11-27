@@ -9,7 +9,7 @@
     "DOMAINS.md has no line over 600 characters and is under 40 KB in all; no domain file has a line over 1,000 characters",
     "Each domain file under docs/domains/ has one section per rule, headed by the rule's number, holding its full statement, rationale, measurements, tables and the names of its tests",
     "Nothing is lost: a check finds each old invariant's full text under its number in its domain file, and a check lists every old invariant's tests against the new files and fails when one is missing",
-    "No guarantee is weakened: a short rule contradicts nothing in its section, and any statement that says less than today's cites a decision id from tasks/decisions.json",
+    "No guarantee is weakened: a short rule contradicts nothing in its section, and any statement that says less than today's cites a decision id from tasks/decisions/",
     "Every existing citation still resolves: shown by one search run when the task closes, its output recorded; no committed check reads code, docs/, ARCHITECTURE.md or tasks/ (D-069).",
     "The pointers change in the same change: CLAUDE.md, the role files in .claude/agents/ (the product owner's read list included) and the build workflow's instructions say every agent reads DOMAINS.md, and a task's agents also read the domain file of each domain the task touches"
   ],

@@ -135,7 +135,7 @@ The workflow's steps:
   - no recommendation.
 - **Plan.** Send it every plan amendment and every finding a run left unfixed.
 - **Direction.** Ask for a direction review after each phase.
-- Record each brief and decision in one file, `tasks/decisions/D-<YYYYMMDD>-<slug>.json`.
+- Record each brief and decision in one file, `tasks/decisions/D-<YYYYMMDD>-<slug>.json`. Name a new backlog item `tasks/backlog/BL-<YYYYMMDD>-<slug>.json`.
 - Cite a decision id in every Changed guarantees entry, amended check, and weakened DOMAINS.md or docs statement.
 - **Advice when stuck.** When the lead is consistently stuck, or a decision's real cost is unclear, consult the `advisor` role (Opus 5.5 at high effort) blind. Send only the question, the constraints, and the minimum evidence needed; no whole diff, logs or tree. Tell it to use OpenCode Zen free or Sonnet agents through Task to find and read anything it needs, so its own input and output stay small. It returns a short recommendation, the risk and the check that would disprove it. Record material advice as a decision id. This is not a substitute for the product owner's trade-off briefs.
 - **Use Fable 5.2 only for the one direction review after a phase, or when the owner asks for it by name (D-098).** Every other product-owner call and the advisor run on Opus 5.5, including trade-offs, issue triage and a new owner direction. Don't escalate to Fable because reviewers disagree.
