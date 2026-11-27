@@ -51,6 +51,8 @@ compat/gen-schema.sh                        # compat/schema-12.4.json from the j
 - Build each task in [tasks/prd.json](tasks/prd.json) with the `build` workflow (`.claude/workflows/build.js`), highest priority first.
 - Build independent tasks side by side, each in its own worktree under `~/.cache/jellyscale/` (`args.root`).
 - Keep each task to one capability, its checks and its docs.
+- Before building a task a viewer or operator experiences (its `ux` flag; server-only changes such as failure reasons included), have the `designer` design it and the `ux-reviewer` review the design; send blockers and majors back. After Build, the `ux-reviewer` reviews what was built (D-138, D-139). The lead runs these around the workflow.
+- Tell a role to load a skill it needs by name; don't rely on it choosing one.
 
 The workflow's steps:
 
@@ -78,7 +80,7 @@ The workflow's steps:
 
 - Run the roles on these models (D-076, D-086):
   - Refine and Check: `claude-agent/opus` (Opus 5.5), high effort.
-  - Spec, architecture, adversarial and UX: `claude-agent/sonnet` (Sonnet 5.5), high effort.
+  - Spec, design, architecture, adversarial and UX: `claude-agent/sonnet` (Sonnet 5.5), high effort.
   - Product owner and advisor: `claude-agent/opus` (Opus 5.5), high effort. Fable only as below (D-098).
   - Build/Fix: `opencode/beam-free`, high effort. QA: `opencode/hy4-flash-free`, high effort. Snapshot helpers: `opencode/mimo-v2.6-flash-free`.
 - Work down the free models in this order (D-106): `beam-free`, `hy4-flash-free`, `seaglass-alpha-free`, `deepseek-v4.1-flash-free`, `mimo-v2.6-flash-free`, `iceman-free`, `nemotron-3.5-super-vl-free`, `flint-40b-free`. Don't use `nemotron-3.5-lightning-free`. Re-rank on a graded task with hidden checks, and on how each does on real work.
@@ -112,10 +114,11 @@ The workflow's steps:
 
 ## Octave
 
-[Octave](https://github.com/jellyscale-org/octave) is jellyscale's front end, on the web, TVs and native devices; jellyscale is the back end and is to ship Octave Web as its browser client (owner, D-088). Focus on the back end and on what Octave's features need from it (owner, D-091). jellyscale designs for no other client (D-107); Android TV and phones come first (D-121). The two projects ask each other for work through GitHub issues.
+[Octave](https://github.com/jellyscale-org/octave) is a separate product with its own product owner, plan and releases: the client jellyscale is designed for, with native apps for Android TV, Android phones, the web and Apple's phones and tablets, built side by side (D-129 to D-132). jellyscale's product owner plans jellyscale only. jellyscale's API contract is the source of truth for the server, and jellyscale ships a specific, tested release of Octave Web (D-141). jellyscale designs for no other client (D-107); Android TV and phones come first (D-121).
 
-- Octave files an issue on this repository when it wants a feature or finds a gap, labelled `from:fluster` (its former name).
-- When jellyscale wants a feature or a change from Octave, or finds a bug in it, file an issue on `jellyscale-org/octave`, labelled `from:jellyscale` (create the label if it is missing). Don't work around it here.
+- Change nothing in Octave's repository, plan, issues or releases without its lead agreeing on an issue there.
+- Send Octave an issue labelled `from:jellyscale` for each API contract change, saying what each platform must do, and for anything jellyscale needs from it (create the label if it is missing). Don't work around it here.
+- Octave files requests here labelled `from:fluster` (its former name), by platform.
 - In such an issue, say what a viewer or operator needs, why, and how to see it. Search Octave's issues first. Never include a credential, a name, a real film title, a path or a homelab address.
 - Send every issue that comes from Octave to the product owner before any work on it. Batch all untriaged ones into one triage brief after a task; with none, make no call. D-084's once-per-phase cap doesn't hold back this triage.
 - The lead labels each triaged issue, posts the product owner's comment and closes declined ones.
