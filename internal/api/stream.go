@@ -369,6 +369,16 @@ func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, mark
 		result = append(result, source)
 	}
 	s.logDecisions(decisions...)
+	if len(result) == 0 {
+		// A source the request names but the item does not have is a refusal as much as an unknown item: a viewer who
+		// edits MediaSourceId must be told why nothing plays, not given an empty answer with no reason.
+		reply := map[string]any{"MediaSources": []media.MediaSource{}, "PlaySessionId": playSession}
+		if marked {
+			reply["Reason"], reply["Action"] = string(reasonNotFound), reasonActions[reasonNotFound]
+		}
+		writeJSON(w, reply)
+		return
+	}
 	writeJSON(w, map[string]any{"MediaSources": result, "PlaySessionId": playSession})
 }
 

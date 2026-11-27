@@ -18,6 +18,12 @@ var buildVersion = "dev"
 // answers them with the reason and action from the contract.
 const v1Prefix = "/jellyscale/v1/"
 
+// isV1Path includes the namespace root without its last slash, so a client that asks for the namespace itself gets
+// the same refusal as one that asks for a path in it.
+func isV1Path(path string) bool {
+	return path == strings.TrimSuffix(v1Prefix, "/") || strings.HasPrefix(path, v1Prefix)
+}
+
 // Reason is one code on the contract's closed list. Within a version a reason is added, never removed or renamed, so a
 // client generated from an older copy can decode one it does not know (criterion 3).
 type Reason string
@@ -80,7 +86,7 @@ func refusalEnvelope(w http.ResponseWriter, status int, reason Reason) {
 
 // refuseV1 answers a v1 request from the contract's reasons, and a Jellyfin request as it always has.
 func (s *Server) refuseV1(w http.ResponseWriter, r *http.Request, status int, reason Reason, text string) {
-	if strings.HasPrefix(r.URL.Path, v1Prefix) {
+	if isV1Path(r.URL.Path) {
 		refusalEnvelope(w, status, reason)
 		return
 	}
@@ -149,6 +155,9 @@ func (s *Server) checkContract() {
 			served[contractRouteKey(route.Method, route.Path)] = true
 		}
 	}
+	// A capability's state is as binding as the state of the operations that make it: a declared one must have no
+	// served operation, a preview one must have one, and a stable one needs the compatibility gate no release has yet.
+	servedCapability := map[string]bool{}
 	for path, methods := range document.Paths {
 		if !strings.HasPrefix(path, v1Prefix) {
 			continue
@@ -170,11 +179,28 @@ func (s *Server) checkContract() {
 			default:
 				panic("contract marks " + key + " " + operation.State + ", which has no compatibility gate")
 			}
+			if operation.Capability != "" && operation.State != "declared" {
+				servedCapability[operation.Capability] = true
+			}
 			delete(served, key)
 		}
 	}
 	for key := range served {
 		panic("the server serves " + key + ", which the contract does not describe")
+	}
+	for id, capability := range document.Capabilities {
+		switch capability.State {
+		case "declared":
+			if servedCapability[id] {
+				panic("contract declares the capability " + id + " but the server serves it")
+			}
+		case "preview":
+			if !servedCapability[id] {
+				panic("contract marks the capability " + id + " preview but the server serves none of it")
+			}
+		default:
+			panic("contract marks the capability " + id + " " + capability.State + ", which has no compatibility gate")
+		}
 	}
 }
 
@@ -207,7 +233,7 @@ func (s *Server) v1Dispatch(next http.Handler) http.Handler {
 		slices.Sort(servedMethods[path])
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasPrefix(r.URL.Path, v1Prefix) {
+		if !isV1Path(r.URL.Path) {
 			next.ServeHTTP(w, r)
 			return
 		}

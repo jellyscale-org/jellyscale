@@ -150,11 +150,17 @@ type InvalidBody = Refusal
 // LanguageNotSaved defines model for LanguageNotSaved.
 type LanguageNotSaved = Refusal
 
+// MethodNotAllowed defines model for MethodNotAllowed.
+type MethodNotAllowed = Refusal
+
 // NotFound defines model for NotFound.
 type NotFound = Refusal
 
 // NotServed defines model for NotServed.
 type NotServed = Refusal
+
+// ServerFailure defines model for ServerFailure.
+type ServerFailure = Refusal
 
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = Refusal

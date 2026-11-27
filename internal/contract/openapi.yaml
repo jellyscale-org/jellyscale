@@ -12,11 +12,15 @@ paths:
       summary: This document, served to anyone.
       responses:
         "200":
-          description: The contract the server holds.
+          description: The contract the server holds, byte for byte as the repository and image carry it.
           content:
-            application/json:
+            application/yaml:
               schema:
                 type: string
+        "405":
+          $ref: '#/components/responses/MethodNotAllowed'
+        "500":
+          $ref: '#/components/responses/ServerFailure'
   /jellyscale/v1/server:
     get:
       operationId: getServer
@@ -29,6 +33,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Identity'
+        "405":
+          $ref: '#/components/responses/MethodNotAllowed'
+        "500":
+          $ref: '#/components/responses/ServerFailure'
   /jellyscale/v1/track-preferences:
     get:
       operationId: getTrackPreferences
@@ -44,6 +52,10 @@ paths:
                 $ref: '#/components/schemas/TrackPreferences'
         "401":
           $ref: '#/components/responses/Unauthorized'
+        "405":
+          $ref: '#/components/responses/MethodNotAllowed'
+        "500":
+          $ref: '#/components/responses/ServerFailure'
     patch:
       operationId: patchTrackPreferences
       x-state: preview
@@ -67,6 +79,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         "409":
           $ref: '#/components/responses/LanguageNotSaved'
+        "405":
+          $ref: '#/components/responses/MethodNotAllowed'
+        "500":
+          $ref: '#/components/responses/ServerFailure'
   /jellyscale/v1/users/configuration:
     patch:
       operationId: patchConfiguration
@@ -89,6 +105,10 @@ paths:
           $ref: '#/components/responses/InvalidBody'
         "401":
           $ref: '#/components/responses/Unauthorized'
+        "405":
+          $ref: '#/components/responses/MethodNotAllowed'
+        "500":
+          $ref: '#/components/responses/ServerFailure'
   /jellyscale/v1/items/{itemId}/playback-info:
     post:
       operationId: playbackInfo
@@ -117,8 +137,14 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         "403":
           $ref: '#/components/responses/Forbidden'
+        "400":
+          $ref: '#/components/responses/InvalidBody'
         "404":
           $ref: '#/components/responses/NotFound'
+        "405":
+          $ref: '#/components/responses/MethodNotAllowed'
+        "500":
+          $ref: '#/components/responses/ServerFailure'
   /jellyscale/v1/sign-in:
     post:
       operationId: signIn
@@ -156,6 +182,18 @@ components:
             $ref: '#/components/schemas/Refusal'
     InvalidBody:
       description: The body is not one this operation accepts.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Refusal'
+    MethodNotAllowed:
+      description: The path exists but takes another method; Allow names the ones it takes.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Refusal'
+    ServerFailure:
+      description: Something inside the server failed; retry shortly.
       content:
         application/json:
           schema:
