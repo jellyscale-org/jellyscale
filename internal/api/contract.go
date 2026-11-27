@@ -138,6 +138,22 @@ func (s *Server) undeclared(w http.ResponseWriter, r *http.Request, status int, 
 	refusalEnvelope(w, http.StatusInternalServerError, reasonServerFailure)
 }
 
+// logRefusal writes the operator's detail once, beside the route, status and reason. A viewer's own mistake is a warning;
+// a failure inside the server is an error. The detail comes from the caller, and is never a credential or the body: only
+// fixed strings reach it.
+func (s *Server) logRefusal(r *http.Request, status int, reason Reason, detail string) {
+	method, path, matched := patternOperation(r.Pattern)
+	if !matched {
+		method, path = r.Method, r.URL.Path
+	}
+	attrs := []any{"route", method + " " + path, "status", status, "reason", string(reason), "detail", detail}
+	if status >= http.StatusInternalServerError {
+		s.Log.Error("v1 refusal", attrs...)
+	} else {
+		s.Log.Warn("v1 refusal", attrs...)
+	}
+}
+
 // refuseV1 answers a v1 request from the contract's reasons, and a Jellyfin request as it always has.
 func (s *Server) refuseV1(w http.ResponseWriter, r *http.Request, status int, reason Reason, text string) {
 	if !isV1Path(r.URL.Path) {
@@ -148,6 +164,7 @@ func (s *Server) refuseV1(w http.ResponseWriter, r *http.Request, status int, re
 		s.undeclared(w, r, status, reason)
 		return
 	}
+	s.logRefusal(r, status, reason, text)
 	refusalEnvelope(w, status, reason)
 }
 

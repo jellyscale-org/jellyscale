@@ -202,7 +202,8 @@ func (s *Server) patchConfiguration(w http.ResponseWriter, r *http.Request) {
 	}
 	patch, names, err := parseConfigurationPatch(raw)
 	if err != nil {
-		s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, err.Error())
+		// A parser error can quote a value from the request; the operator's log gets a fixed detail instead.
+		s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, "the body is not valid for user configuration")
 		return
 	}
 	body, _ := json.Marshal(patch)

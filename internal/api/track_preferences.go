@@ -63,7 +63,8 @@ func (s *Server) patchTrackPreferences(w http.ResponseWriter, r *http.Request) {
 	}
 	patch, err := parseTrackPreferencesPatch(raw)
 	if err != nil {
-		s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, err.Error())
+		// The parser's error names fields and can echo a value the viewer sent; the operator's log gets a fixed detail.
+		s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, "the body is not valid for track preferences")
 		return
 	}
 	// A switch is asked for only once its language is saved; a language cleared later leaves the switch as it was.
