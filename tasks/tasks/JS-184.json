@@ -5,13 +5,14 @@
   "description": "Serves \"Joining and signing in are easy and safe.\". ",
   "acceptanceCriteria": [
     "A password gives a device its own sign-in, which signing out ends.",
-    "A wrong password, an unknown name and a disabled account get the same answer, in the same time, bounded per account with the bounds built today.",
-    "A refused sign-in carries a reason Octave can explain (try later, or ask the operator).",
+    "A wrong password, an unknown name and a disabled account given a wrong password get the same answer, in the same time. Tries are bounded per name, with the bounds built today, and a name that does not exist is bounded the same way.",
+    "A refused sign-in carries a reason Octave can explain: name or password not accepted (retry), try later (with how long), or, only after the right password on a disabled account, ask the operator. No answer tells a viewer which names exist.",
     "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
   ],
   "status": "todo",
   "dependsOn": [
-    "JS-183"
+    "JS-183",
+    "JS-216"
   ],
   "source": "pivot-plan.md; D-107 to D-128",
   "notes": "",

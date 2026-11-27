@@ -1,0 +1,11 @@
+{
+  "id": "D-20261127-build-models",
+  "date": "2026-11-27",
+  "by": "owner",
+  "task": "model routing",
+  "brief": "owner, in conversation",
+  "tradeoff": "None.",
+  "serves": "",
+  "decision": "change",
+  "entry": "The owner: \"We can use Sonnet 5.5 for most building things, but I think we should use free models as much as we can. And where latency doesn't matter, or we can accept some latency, we can use NVIDIA for that too.\" Build stays free-first; when free models can't do it, Sonnet 5.5 builds. NVIDIA's free models may do latency-tolerant jobs. Amends D-151."
+}

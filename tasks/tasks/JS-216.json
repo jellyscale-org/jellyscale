@@ -1,0 +1,19 @@
+{
+  "id": "JS-216",
+  "phase": "M1",
+  "title": "The first milestone is in the contract, with examples Octave can mock against",
+  "description": "Serves Goal 3: \"Octave's features have the server they need.\" D-110, D-148. Split from JS-183.",
+  "acceptanceCriteria": [
+    "The contract declares all of M1: sign-in, devices and sign-out, TV approval, Films and Shows, seasons and episodes, a title's details with its tracks, chapters and artwork, artwork, Continue watching, playback and its media link, and progress. Each has its request, its answer, who may call it, the reasons it can refuse with, and at least one example answer that Octave can mock against.",
+    "Each M1 capability is in the state its design supports: declared until served, preview until Octave confirms it.",
+    "The conformance check of JS-183 passes on the whole contract.",
+    "The change reaches Octave as a from:jellyscale issue before anything in it is served (D-132)."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-183"
+  ],
+  "source": "D-20261127-contract-split",
+  "notes": "Follows Octave's approved M1 designs where they exist. A capability no design confirms ships declared or preview, so the contract never waits on another product.",
+  "ux": true
+}
