@@ -1,0 +1,9 @@
+{
+  "id": "BL-047",
+  "source": "JS-071 verify",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "A DVB cue that ends by its page time-out, with no clear packet, is treated as showing forever",
+  "status": "open",
+  "notes": "imagecues.go classify ignores page_time_out; a run long after such a cue opens at its start and reads the gap. Reading only."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "BL-258",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "lead",
+  "source": "JS-159/JS-161 triage; D-061",
+  "title": "A held film stays held up to 60 s after its viewer leaves without a Stopped report",
+  "notes": "In a two-viewer household the second viewer is refused for up to a minute after the first closes a tab or app. Promote on: a dogfood decision line refusing for a held film whose last segment request was more than 10 s earlier. Kin to BL-243 and BL-247."
+}

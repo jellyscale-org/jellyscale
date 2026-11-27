@@ -1,0 +1,9 @@
+{
+  "id": "BL-112",
+  "source": "JS-086 verify",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "The #94/#95 acceptance mutants rename a tag on the whole type, so they no longer exercise a field missing on later streams only",
+  "status": "wontfix",
+  "notes": "subject removed by the behaviour-only cleanup (D-069)"
+}

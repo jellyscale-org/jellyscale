@@ -1,0 +1,11 @@
+{
+  "id": "D-144",
+  "date": "2026-11-27",
+  "by": "owner",
+  "task": "JS-211; ASK-12",
+  "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+  "tradeoff": "None.",
+  "decision": "change",
+  "entry": "Parental viewing hours and simultaneous-stream limits, set by the operator, refused with a reason that says which and when.",
+  "serves": "Owner, 2026-11-27."
+}

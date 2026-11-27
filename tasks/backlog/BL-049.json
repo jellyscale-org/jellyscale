@@ -1,0 +1,9 @@
+{
+  "id": "BL-049",
+  "source": "JS-071 verify",
+  "reviewer": "lead",
+  "severity": "minor",
+  "title": "A seek inside a long-showing image cue pays the cue's whole age, uncapped",
+  "status": "promoted",
+  "notes": "Measured 0.3 MB and 0.04 s per second of age at 640x360; a 4K film costs more and is unmeasured. A cap would drop a cue on screen, so it needs a viewer-visible decision. Promoted to JS-089 (2026-11-12)."
+}

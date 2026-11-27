@@ -1,0 +1,11 @@
+{
+  "id": "D-150",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "tasks/prd.json (the whole order)",
+  "brief": "po/replan/replan.md",
+  "tradeoff": "None: nothing is built yet; no guarantee is given up.",
+  "decision": "change",
+  "entry": "Replan from the new direction (the owner: \"the product owner ought to make the list determination based off of our new direction\"). The order follows PRODUCT.md's road, with goal 1 first inside each stage, and with what runs in parallel stated. Changes: the contract (JS-183) no longer waits for the image task; the TV approved from a phone (JS-191) and the device list (JS-042) move into M1, so Quick Connect is not removed with nothing in its place, and the cutover waits for them; file naming and real titles, synopses and artwork from files (JS-080, JS-045) move into M1's parallel work (#299) without blocking the cutover; the ladder and live messages no longer wait for Octave's gate (JS-190); the preset in the spec (JS-135) comes before the ladder; the cutover's M1 exit criteria are written into JS-194 itself instead of a plan file outside the repository; JS-185 builds the Media3 and browser players the gate uses; Octave Web's sign-in becomes its own task (JS-215, #301), and approving a device needs a fresh sign-in (JS-191, #301); JS-186, JS-157 and JS-204 take the standing needs of #101, #117, #227, #228, #233, #234 and #288; JS-035 goes to the backlog; the phases list is replaced by the road's stages.",
+  "serves": "PRODUCT.md, The road there; Goals."
+}

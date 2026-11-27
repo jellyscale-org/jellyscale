@@ -1,0 +1,9 @@
+{
+  "id": "BL-111",
+  "source": "JS-086 verify",
+  "reviewer": "qa",
+  "severity": "minor",
+  "title": "An unchecked type assertion on PlayState is left in internal/api/sessions.go",
+  "status": "closed",
+  "notes": "sessions.go: info[\"PlayState\"].(map[string]any)[\"PlayMethod\"] = method. Outside JS-086's media scope. Closed at the replan: The PlayState it reads is on a Jellyfin sessions route, which goes at the cutover (D-109)."
+}

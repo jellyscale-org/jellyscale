@@ -1,0 +1,15 @@
+{
+  "id": "JS-094",
+  "phase": "OPS",
+  "title": "A playback id in every log line, from the play request to each segment",
+  "description": "Debugging real-device and failover findings needs to follow one playback through api, stream and worker logs. The first slice of JS-021 and JS-022, moved up.",
+  "acceptanceCriteria": [
+    "PlaybackInfo, the stream requests, the job and the worker's ffmpeg log lines of one playback carry the same id",
+    "docs/running.md shows how to follow one playback"
+  ],
+  "status": "todo",
+  "dependsOn": [],
+  "source": "Fable 5.2 architecture review, 2026-11-12 (.results/architecture-review-2026-11-12.md); owner's answers 2026-11-12",
+  "notes": "JS-153's decision line already carries the play session id (D-038).",
+  "ux": true
+}

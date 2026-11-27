@@ -1,0 +1,9 @@
+{
+  "id": "BL-138",
+  "source": "merge queue run 43796439005 (PR 157)",
+  "reviewer": "lead",
+  "severity": "minor",
+  "title": "roles: 'the stream role counts the waits for segments' found no reencode/ok/started wait once",
+  "status": "closed",
+  "notes": "test/roles.sh:301 greps jellyscale_segment_wait_seconds_count{kind=\"reencode\",outcome=\"ok\",source=\"started\"} [1-9]; got none once in 25 queue runs (PR 157, which changes no stream or metrics code; PR 155 passed it with JS-105 on main). Likely the wait was counted under another source label (the segment already stored). Print the scraped segment_wait lines on failure, then decide whether the check should accept any source. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

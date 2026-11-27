@@ -1,0 +1,23 @@
+{
+  "id": "JS-178",
+  "phase": "S4",
+  "title": "A worker that starts or restarts does not stall its first heavy film",
+  "description": "Serves Goal 1: \"Playback never surprises a viewer.\"; \"Play starts in seconds and keeps up.\". JS-177 learns a worker's capacity from the jobs it runs, but every start and restart begins at the processors again and overstates the worker until it converges, so the first heavy play after each pod start or rolling upgrade runs under real time. D-066: keep the learned figure in Postgres by hardware class as a start only, and take JS-177's criterion 5, so a newly started pair carries a heavy film.",
+  "acceptanceCriteria": [
+    "An idle worker helps. A watched re-encode under 1.2x, on a worker whose learned capacity is below the job's price, becomes a shared play. A helper is claimed on a worker with 0.65 of the price free, and the viewer returns to real time within JS-168's bound. Checked with two newly started, undeclared workers throttled to the i5-6500's speed.",
+    "The learned figure is kept in Postgres by hardware class (CPU model and the processors the process may use), naming no host, pod, film or viewer. A worker that finds one registers at once with it, and D-062's 9 tests pass unamended. Its source reads `remembered` in the log and on `/metrics`.",
+    "With real processes: a converged throttled worker is stopped and started. The first 4K HDR play after is refused within seconds with its reason, or admitted shared, as before the stop.",
+    "The kept figure is a start only. The worker's own jobs move it by JS-177's rules, both ways and within JS-177's stated times, and it never exceeds `transcodeCores`. The record also states what a timed rise returns the figure to once one is kept, and what the viewer of a play admitted then gets; a kept figure that still admits a play above it by time alone returns as a brief before Spec (D-072).",
+    "It is kept while a worker of its class has run in the last 30 days. Every worker starting at once is safe (invariant 2), and a worker of the release before is unharmed.",
+    "With nothing kept, the worker starts from its processors. `docs/running.md` says what the first heavy play then gets, for how long, and that an optional ceiling avoids it.",
+    "Docs and DOMAINS.md are updated, with the cost stated: one row per class, written at most once a minute on a move of 5% or more.",
+    "After it merges, the lead offers the owner dropping the 4-core worker's declared figure, with the dogfood's counters since JS-177 was deployed. The 12-thread worker keeps its ceiling while its CPU request is below its limit, as 'Sizing workers' advises for a shared host (D-072)."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-177"
+  ],
+  "core": true,
+  "source": "D-066; brief-js177-design.md",
+  "notes": "ux: true. Moves to directly after JS-177 on: the dogfood, undeclared, showing a heavy play under 1.0x within 5 minutes of a worker start; or the no_room slow-job reason counted while another worker had 0.65 of the price free. D-073: directly before JS-056. Refine says whether criterion 1 is already what JS-177 built (docs/transcoding.md, 'The first viewer, and a restart', third row); if so it stays a check and adds no build. If the unhelped trigger fires first, criterion 1 alone is split out and built at once. The first trigger can fire only if the owner drops a figure."
+}

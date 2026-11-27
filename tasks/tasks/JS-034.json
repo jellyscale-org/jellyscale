@@ -1,0 +1,14 @@
+{
+  "id": "JS-034",
+  "phase": "S5",
+  "title": "Sign-in tokens are stored hashed",
+  "description": "Serves \"Access is enforced everywhere.\". Tokens stored hashed. Operator keys are JS-035's, from configuration.",
+  "acceptanceCriteria": [
+    "No plain token in the database",
+    "A token read from the database does not sign anyone in: shown by trying one."
+  ],
+  "status": "todo",
+  "dependsOn": [],
+  "source": "PRODUCT.md identity",
+  "notes": "Access: an operator key is never a user: an administrator's reads and account management, no playback or watch state. (access model, 2026-11-16)"
+}

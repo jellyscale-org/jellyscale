@@ -1,0 +1,9 @@
+{
+  "id": "BL-113",
+  "source": "JS-084 verify",
+  "reviewer": "qa",
+  "severity": "minor",
+  "title": "keepRow's registration bound is the caller's heartbeat argument, not a table row",
+  "status": "closed",
+  "notes": "context.WithTimeout(held, every) and the warning throttle use the heartbeat main.go passes; the table has no registration row. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

@@ -1,0 +1,11 @@
+{
+  "id": "D-086",
+  "date": "2026-11-26",
+  "by": "owner",
+  "task": "model routing; every task",
+  "brief": "Owner, 2026-11-26: the OpenCode Go allowance is spent; use Anthropic through Claude Agent where needed, and use OpenCode Zen free models where possible to reduce Anthropic cost.",
+  "tradeoff": "Free models may be weaker or disappear without notice, and a free tier may keep what it is sent. The judgement roles stay on Claude as the quality gate.",
+  "decision": "accept",
+  "entry": "Build/Fix on opencode/deepseek-v4.1-flash-free, QA on opencode/beam-free, snapshot helpers on opencode/mimo-v2.6-flash-free, and other non-judging work on a free model; each was checked on a task with a known answer. A free model that is unavailable or fails the same step twice is replaced by claude-agent/sonnet and recorded. No credential, homelab or dogfood work goes to a free model. Refine, Check, Spec, the blind reviewers, the product owner and the advisor are unchanged. Replaces D-076's and D-084's use of OpenCode Go.",
+  "serves": "Owner, 2026-11-26; PRODUCT.md quality bar."
+}

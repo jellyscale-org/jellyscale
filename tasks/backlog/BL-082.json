@@ -1,0 +1,9 @@
+{
+  "id": "BL-082",
+  "source": "JS-100 verify",
+  "reviewer": "qa",
+  "severity": "minor",
+  "title": "Hint order beyond episodes is not backed by a capture, and episode order is never compared with Jellyfin",
+  "status": "closed",
+  "notes": "HintOrder puts names starting with the term first and mixes films and series by sort name; no capture covers a series sorting before a film. The three-type differential request is allowlisted element by element (names differ under JS-068), so season/number order is checked only by the integration test. Once JS-068 aligns names, drop the allowlist so order is compared. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
+}

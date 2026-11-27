@@ -48,7 +48,7 @@ compat/gen-schema.sh                        # compat/schema-12.4.json from the j
 
 ## Delivery
 
-- Build each task in [tasks/prd.json](tasks/prd.json) with the `build` workflow (`.claude/workflows/build.js`), highest priority first.
+- Build each task in `tasks/tasks/<id>.json`, open tasks in `tasks/order.txt` order (`tools/plan.sh`), with the `build` workflow (`.claude/workflows/build.js`), highest priority first.
 - Build independent tasks side by side, each in its own worktree under `~/.cache/jellyscale/` (`args.root`).
 - Keep each task to one capability, its checks and its docs.
 - Before building a task a viewer or operator experiences (its `ux` flag; server-only changes such as failure reasons included), have the `designer` design it and the `ux-reviewer` review the design; send blockers and majors back. After Build, the `ux-reviewer` reviews what was built (D-138, D-139). The lead runs these around the workflow.
@@ -56,7 +56,7 @@ compat/gen-schema.sh                        # compat/schema-12.4.json from the j
 
 The workflow's steps:
 
-0. **Refine.** Opus 5.5 at high effort sharpens the acceptance criteria against the code. It may make a criterion more exact, never weaker. The lead records the refined criteria in `tasks/prd.json`.
+0. **Refine.** Opus 5.5 at high effort sharpens the acceptance criteria against the code. It may make a criterion more exact, never weaker. The lead records the refined criteria in the task's file.
 1. **Spec.** A spec writer turns the criteria into checks (tests, e2e scenarios, capture-based tests) and shows each fails today.
 2. **Check.** An architecture reviewer reviews the design and the checks.
    - A blocker or major sends the run back to Spec once.
@@ -108,9 +108,9 @@ The workflow's steps:
   - `reviewer`: `check`, `qa`, `adversarial`, `architecture`, `ux` or `lead`.
   - `evidence`: `test`, `command`, `capture` or `reading`.
   - `caught_by`: `merge-queue`, `ci`, `dogfood` or `user`.
-- Move the finished task from `tasks/prd.json` to `tasks/done.json`.
+- Set the finished task's `status` to `done` in its file; a task dropped without building gets `dropped`.
 - Bring the product owner the run's unfixed findings and what the application now needs.
-- Amend `tasks/prd.json` by pull request as the product owner decides.
+- Change task files and `tasks/order.txt` by pull request as the product owner decides.
 
 ## Octave
 
@@ -135,12 +135,12 @@ The workflow's steps:
   - no recommendation.
 - **Plan.** Send it every plan amendment and every finding a run left unfixed.
 - **Direction.** Ask for a direction review after each phase.
-- Record each brief and decision in `tasks/decisions.json`.
+- Record each brief and decision in one file, `tasks/decisions/D-<YYYYMMDD>-<slug>.json`.
 - Cite a decision id in every Changed guarantees entry, amended check, and weakened DOMAINS.md or docs statement.
 - **Advice when stuck.** When the lead is consistently stuck, or a decision's real cost is unclear, consult the `advisor` role (Opus 5.5 at high effort) blind. Send only the question, the constraints, and the minimum evidence needed; no whole diff, logs or tree. Tell it to use OpenCode Zen free or Sonnet agents through Task to find and read anything it needs, so its own input and output stay small. It returns a short recommendation, the risk and the check that would disprove it. Record material advice as a decision id. This is not a substitute for the product owner's trade-off briefs.
 - **Use Fable 5.2 only for the one direction review after a phase, or when the owner asks for it by name (D-098).** Every other product-owner call and the advisor run on Opus 5.5, including trade-offs, issue triage and a new owner direction. Don't escalate to Fable because reviewers disagree.
 - **Keep product-owner calls few (D-084).** Batch every pending question into one brief. Don't call for a routine priority confirmation or a decision a recorded decision id already covers; cite the id. Consult the advisor once per task at most, and only after two attempts have failed on the same question.
 - **Per-task quality comes from cheaper checks.** Opus 5.5 is the per-task Check and Refine model; Sonnet 5.5 carries architecture, adversarial and UX review; OpenCode Zen's free models carry Build/Fix, QA and helpers.
-- **Priorities and plan order are the product owner's alone.** The lead never edits a task's priority, moves a task in `tasks/prd.json`, or decides what is built next without the product owner's decision. Bring a brief with the options and costs (D-080).
+- **Priorities and plan order are the product owner's alone.** The lead never edits `tasks/order.txt`, moves a task, or decides what is built next without the product owner's decision. Bring a brief with the options and costs (D-080).
 - Follow its decisions.
 - Let the product owner edit PRODUCT.md, which holds only the product and its direction; leave a change in what the product is for to the owner (D-091).

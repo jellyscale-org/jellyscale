@@ -1,0 +1,9 @@
+{
+  "id": "BL-069",
+  "source": "JS-029 verify",
+  "reviewer": "ux",
+  "severity": "minor",
+  "title": "Silent failures for abandoned requests also hide real errors from operators",
+  "status": "open",
+  "notes": "fail() now returns without any log whenever r.Context().Err() != nil, for every error and not only outage errors. A player that abandons a request after 10 seconds, and a request that fails for a bug (not Postgres), now both leave no 'request failed' line. Operators lose the diagnostic for real failures on abandoned requests. Reading only."
+}

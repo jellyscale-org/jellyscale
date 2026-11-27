@@ -1,0 +1,9 @@
+{
+  "id": "BL-081",
+  "source": "JS-100 verify",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "/Search/Hints with no limit or no includeItemTypes answers unobserved behaviour",
+  "status": "closed",
+  "notes": "defaultHintLimit = 100 is a guess (the code says so); with no includeItemTypes seasons and collections may come back. Observe both on Jellyfin 12.4. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
+}

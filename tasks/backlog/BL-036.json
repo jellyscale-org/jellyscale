@@ -1,0 +1,9 @@
+{
+  "id": "BL-036",
+  "source": "state review 2026-11-10",
+  "reviewer": "architecture",
+  "severity": "minor",
+  "title": "The 1600-stream control-plane ceiling was measured on empty tables; ended-job lookups and the sweep's delete by created_at are unindexed (amend JS-030)",
+  "status": "open",
+  "notes": "D-050: also measure the WAL and vacuum cost of the heartbeat, lease, viewer-position and reaper tables (none is UNLOGGED), and rerun test/stress.sh with several helpers per heavy viewer (each helper reads the viewers every 500 ms since JS-167). Promote on Postgres load from polling on the dogfood (JS-164's metrics), JS-092's many-process measurement, or a target past a few thousand streams. Any timeout on the viewers read needs another way to give up a job on a dead pool first (DOMAINS 25; one failed its check twice in JS-167's queue runs)."
+}

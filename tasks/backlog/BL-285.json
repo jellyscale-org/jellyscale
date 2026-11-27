@@ -1,0 +1,9 @@
+{
+  "id": "BL-285",
+  "status": "closed",
+  "severity": "minor",
+  "reviewer": "adversarial",
+  "source": "JS-037",
+  "title": "A shutdown that cuts a successful approval's release leaves it counted as a failure",
+  "notes": "Ticket.Release is not cut at the grace; with its rows locked it logged 'reservation was not given back: closed pool' (D-097's re-review, by command). D-101: backlog; comes back with JS-079 or an operator's report of a false failure count. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
+}

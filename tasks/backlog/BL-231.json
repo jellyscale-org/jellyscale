@@ -1,0 +1,9 @@
+{
+  "id": "BL-231",
+  "title": "Trailer files beside a film are not offered (GET /Items/{itemId}/LocalTrailers)",
+  "notes": "Moved out of JS-080 (D-032); issue #108. docs/status.md lists extras as out of scope and PRODUCT.md promises none. JS-080 still keeps them out of the film list. Promote if JS-080's observation of Jellyfin 12.4 shows jellyfin-web offering a trailer for a film with one beside it and viewers are shown to use it. Closed at the pivot: A Jellyfin route (LocalTrailers), both auditors (rule 3). Reopen as an Octave outcome if a viewer asks for trailers.",
+  "status": "closed",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "issue triage 2026-11-20"
+}

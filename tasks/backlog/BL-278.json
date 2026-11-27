@@ -1,0 +1,9 @@
+{
+  "id": "BL-278",
+  "status": "closed",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "JS-160",
+  "title": "An e2e failure found only after its pages close keeps no screenshot",
+  "notes": "The 'ffmpeg still running afterwards' check runs after the scenario has closed its pages; it keeps the viewer record and console but cannot take a screenshot. All failures observed while a page is open keep one. The owner chose fix/simplify/land after three blind reviews of the evidence code; this remaining diagnostic gap is recorded rather than expanding that work. (D-087) Dropped: test tooling that protects no viewer outcome. It returns if a queue failure goes undiagnosed for want of the screenshot."
+}

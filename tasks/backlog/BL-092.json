@@ -1,0 +1,9 @@
+{
+  "id": "BL-092",
+  "source": "JS-031 verify",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "A live api replica whose beat is delayed over 3 s loses ownership of its devices",
+  "status": "open",
+  "notes": "ws_replica names only replicas that beat in the last 3 s; a GC pause or a slow commit longer than that hands devices to no one until the next frame."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "BL-222",
+  "title": "Apps ask for trickplay tiles, which are not built; what their viewers see is not known",
+  "notes": "Roku, Streamyfin, Fladder and Jellyfin for Android request Trickplay routes and get 404 (read from source). Whether they show no preview or an error is unverified. /QuickConnect/Enabled answers false today (internal/api/system.go, read by the lead), so apps should not offer a code. JS-075 records both. Promote: if an app shows an error or offers a code that fails, plan the smallest answer that makes it quiet (an item that advertises no trickplay) ahead of JS-053 and JS-037; if apps are quiet, close. D-101: sign-in by code is built (JS-037); narrowed to trickplay tiles, which come back with JS-053. Closed at the pivot: Third-party apps asking for trickplay (rule 4); previews are JS-053.",
+  "reviewer": "product-owner",
+  "severity": "minor",
+  "source": "client research 2026-11-20",
+  "status": "closed"
+}

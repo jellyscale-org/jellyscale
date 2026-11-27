@@ -1,0 +1,20 @@
+{
+  "id": "JS-165",
+  "phase": "S2",
+  "title": "A worker removed while films play costs no viewer a stall",
+  "description": "Serves \"Failures are invisible.\"; \"Growing is adding machines.\". An autoscaler removes workers without knowing which are busy, and a rolling upgrade stops every one. docs/transcoding.md says a worker that stops gracefully and is replaced within six seconds is not noticed; whether that holds for a worker that is removed and not replaced, with other workers already running, is unverified. PRODUCT.md: failures are invisible; the cluster can grow and shrink with demand by itself. D-045.",
+  "acceptanceCriteria": [
+    "Observed first, with real processes and the native browser check: a worker holding a watched re-encode, a watched copy, a helper and a subtitle extraction gets SIGTERM while another worker has room and no new worker starts. Recorded: what each viewer sees and the longest segment wait. If every criterion below already holds, only the checks and the docs land",
+    "From the signal the stopping worker claims no new job",
+    "With room on another worker: no segment request over 5 seconds, no dialog, the resume position kept; repeated 10 times in e2e with none failing",
+    "With no room on any other worker: what the viewer sees is measured and brought to the product owner as a brief before anything is built for it; it is never a stall without a reason",
+    "An interrupted extraction is taken up by another worker and no subtitle request is refused for it",
+    "The job's end is counted as interrupted and the log says the worker was stopping",
+    "docs/running.md gives the worker's termination grace and what it bounds",
+    "No start of play or seek is slower: time to first segment measured before and after"
+  ],
+  "status": "todo",
+  "dependsOn": [],
+  "source": "owner direction 2026-11-21; D-045",
+  "notes": "core: true."
+}

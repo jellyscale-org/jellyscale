@@ -1,0 +1,9 @@
+{
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "JS-143",
+  "title": "How many films miss the image-subtitle copy's hour, and the store's read speed",
+  "notes": "From JS-143 (D-127). Back with JS-140.",
+  "id": "BL-298"
+}

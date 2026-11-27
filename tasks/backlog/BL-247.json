@@ -1,0 +1,9 @@
+{
+  "id": "BL-247",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "JS-168 criterion 5 measurement; D-050",
+  "title": "A cheap second play is refused on a cluster one shared film fills, though it might run beside the helper",
+  "notes": "Under D-050 a 1080p second play is refused while a helper the first viewer needs holds the cores; measured, it would have started in 2.6 s and played at 1.00x, but the first viewer fell to about 0.8x. Whether a helper on the cores left beside a 0.8-core job keeps the first viewer at real time is unverified. Promote when the dogfood counts such a refusal with the helper-held reason, or a measurement (rule lifted for the measurement only, beside other work) shows both viewers within JS-168's bound, 3 of 3."
+}

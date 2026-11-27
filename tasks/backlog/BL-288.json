@@ -1,0 +1,9 @@
+{
+  "id": "BL-288",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "architecture",
+  "source": "JS-033",
+  "title": "A WebSocket stays open after its token ends, and logs an ERROR on every keepalive",
+  "notes": "openPlays covers stream routes only; touchSocket fails by the foreign key. By reading. Awaits the product owner."
+}

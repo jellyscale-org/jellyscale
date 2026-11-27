@@ -1,0 +1,23 @@
+{
+  "id": "JS-041",
+  "phase": "ID",
+  "title": "Default subtitle by the viewer's subtitle mode and language",
+  "description": "SubtitleMode and SubtitleLanguagePreference (saved by JS-116) pick DefaultSubtitleStreamIndex as Jellyfin 12.4 does. compat/captures/subtitles-default-12.4.json already holds 19 films x 5 modes x 3 languages; no code reproduces it.",
+  "acceptanceCriteria": [
+    "The capture is extended first: AudioLanguagePreference ('', eng, jpn) varied for Smart on at least 6 films, a film tagged ger and one tagged deu, an untagged track, a PGS track, and whether a progress report that names a subtitle track changes the next default when RememberSubtitleSelections is on; the rule for each mode, Smart included, is written down or the capture says why it cannot be",
+    "For the 19 captured films, the 5 modes and the 3 languages (285 answers), and the new cells, jellyscale answers the captured track (Jellyfin numbers files first, jellyscale after the film's own tracks, so tracks are matched by what they are), except cells listed in compat/differences.yaml with a reason",
+    "With transcoding on, no answer is -1 where the capture has a track",
+    "With JS-119's hiding on, the mode's rule is applied to the listed subtitle tracks only and the default is never a placeholder: film A5 (a French file, eng inside, deu default) with language eng and mode Default no longer starts in French",
+    "Mode None, and a viewer who has saved nothing, answer as today",
+    "A track the request names still wins over the mode",
+    "In real jellyfin-web (e2e): with mode Always and language English a film starts with its English subtitle on screen; with None it starts with none",
+    "The pull request lists, under Changed guarantees, which modes now start an image subtitle by default and so a re-encode with burn-in, and docs/status.md's 4K burn-in gap names it (D-038)"
+  ],
+  "status": "done",
+  "dependsOn": [
+    "JS-116",
+    "JS-117"
+  ],
+  "source": "PRODUCT.md identity; owner request 2026-11-15",
+  "notes": "Moved up from 48: once JS-116 saves the mode, a mode that chooses nothing is a setting that does nothing. In the existing capture, Jellyfin with language eng and mode Default starts a non-English track on 7 of 19 films; hiding removes those for viewers who opt in."
+}

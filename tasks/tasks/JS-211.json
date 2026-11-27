@@ -1,0 +1,21 @@
+{
+  "id": "JS-211",
+  "phase": "S5",
+  "title": "Viewing hours and stream limits",
+  "description": "Serves \"They see only what they may.\"; \"What can't be done is said plainly.\". The owner: parental viewing hours and simultaneous-stream limits (D-144).",
+  "acceptanceCriteria": [
+    "The operator sets, for an account or a profile, the hours it may watch, and for an account how many streams it may play at once.",
+    "A play outside the hours, or beyond the limit, is refused with a reason that says which, and when it can play.",
+    "When the hours end mid-film, the next request for the film is refused with that reason, and the app is told (JS-197).",
+    "A stream that stops frees its place within a stated time, so a viewer who stops on one device can start on another.",
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-036",
+    "JS-197"
+  ],
+  "source": "native-plan.md; D-129 to D-149",
+  "notes": "",
+  "ux": true
+}

@@ -1,0 +1,21 @@
+{
+  "id": "JS-167",
+  "phase": "P3",
+  "title": "A helper whose viewers have all seeked away stops within seconds, and its worker is free for the film's new place",
+  "description": "JS-162: on three workers a 4K HDR re-encode holds real time until the viewer seeks; the helper that was running then goes on alone with no viewer to bound it (5 min 25 s here, to the film's end in another run), holding a worker, and the film stalls at 0.72 to 0.84x. A viewer's own job is already cancelled within a second when its viewers seek away; a helper is not. PRODUCT.md: seeking and resuming just work; a heavy film uses the whole cluster's processors. D-046.",
+  "acceptanceCriteria": [
+    "Observed first with real processes and recorded in docs/transcoding.md: three equal workers, a watched re-encode under 1.2 times real time with a helper running, a forward seek past the helper and a backward seek: how long the helper runs on and the last segment it stores. The check that follows fails today.",
+    "A helper that no viewer's place bounds (every viewer of its spec is past its chunk or has seeked away from it) is stopped within 5 seconds of the seek's first segment request, its cores are free at once, and it stores nothing more than one lead (transcodeLead) past the furthest segment any viewer at or before its chunk asked for.",
+    "A helper that still has a viewer at or before its chunk is never stopped by this: with two viewers of one spec, one seeks away and the other's helper runs on.",
+    "With three equal workers each making the job under 0.9 times real time, in jellyfin-web, with and without a burned-in PGS track: 10 minutes from the start, a seek to the middle, 10 minutes more, a seek back to the first minute, 5 minutes more. In each part: speed at or above 1.0 after its first 30 seconds, no more than 3 freezes of 0.5 seconds or more per 10 minutes, none over 2 seconds (JS-162 measured 2 of about 1 second in the 10 minutes from the start). Run three times; every run within the bound. B alone after a seek is unverified (JS-162 inferred it): if three workers do not hold it, the figures come back as a brief and nothing is weakened. These long runs are a measurement made on the build and recorded in docs/transcoding.md with machine and command, as JS-162's was, not a locked check; the locked check is the short form: with throttled workers and a fixture film, after a seek a helper for the film's new place is running within 10 seconds and the helper left behind is gone within 5.",
+    "A viewer who seeks back into a stopped helper's chunk gets the first frame no more than 1 second later than a seek to a place nothing was made; measured and recorded.",
+    "A helper ended because no viewer was left for it is counted on /metrics by that reason and logged once with the job's id; no label names a job, film, account or device.",
+    "No start of play and no seek is slower with one worker or with helpers off: time to first segment measured before and after.",
+    "DOMAINS.md invariant 58 and docs/transcoding.md say what bounds a helper; docs/status.md's parallel transcoding line is updated."
+  ],
+  "status": "done",
+  "dependsOn": [],
+  "source": "D-046",
+  "notes": "ux: true. Merged 30af59c (#246).",
+  "core": true
+}

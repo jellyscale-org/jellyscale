@@ -1,0 +1,9 @@
+{
+  "id": "BL-214",
+  "source": "JS-145 verify / D-023",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "The memory of unknown sign-in names forgets more than its bound needs under parallel floods, and never ages",
+  "status": "open",
+  "notes": "Two sightings. Round 3 (command): bound 200, 24 workers, 4,800 names left 153 rows; the striped counter is summed without a lock. Round 4 (reading only): signin_unknown keeps up to 100,000 rows of invented names for good, counters included, after their failures have aged out; a later flood evicts by fewest failures, then oldest, so stale high-count names outlive fresh ones. The stated bound holds and no viewer is refused by it; an operator sees a small table that fills and stays full. Promote when someone shows, at the shipped bound, a real name told from an invented one with fewer requests than the documented bound implies, or a stale row changing who is refused."
+}

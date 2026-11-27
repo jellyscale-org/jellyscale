@@ -1,0 +1,9 @@
+{
+  "id": "BL-125",
+  "source": "JS-087 verify",
+  "reviewer": "architecture",
+  "severity": "minor",
+  "title": "Every worker reads all capacity rows each second while a queued job fits nowhere",
+  "status": "open",
+  "notes": "readCapacity runs two queries per worker per second during an unfit job's queueTimeout. Skip the read when free cores are below the smallest queued cost. Promote when JS-092's 50-worker measurement or an autoscaled deployment shows a queued job refused while a worker that fits exists, or the capacity reads loading Postgres (D-045)."
+}

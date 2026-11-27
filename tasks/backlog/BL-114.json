@@ -1,0 +1,9 @@
+{
+  "id": "BL-114",
+  "source": "JS-084 verify",
+  "reviewer": "qa",
+  "severity": "minor",
+  "title": "No check that a SIGKILLed worker's job is claimed before its 10 s lease runs out",
+  "status": "open",
+  "notes": "TestAKilledWorkerIsReplacedWithinSeconds only logs the time; the before-lease claim is asserted at a 30 s lease only."
+}

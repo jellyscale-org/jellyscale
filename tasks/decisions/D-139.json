@@ -1,0 +1,11 @@
+{
+  "id": "D-139",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "every task in ux_tasks; JS-183",
+  "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+  "tradeoff": "None.",
+  "decision": "change",
+  "entry": "Delivery rule for jellyscale's own experienced work (what an operator sees, reads or does, and each reason's meaning and action): goal, design, UX review of the design (blockers and majors go back), Spec and work, build, UX review of what was built. Work no one experiences skips both gates. Where the experience is inside Octave's apps, Octave's design leads: jellyscale's contract follows Octave's approved designs where they exist (octave_design_needed), and ships as preview until Octave confirms otherwise. It is a delivery rule, not extra criteria.",
+  "serves": "\"What can't be done is said plainly.\"; \"Nothing is hidden.\""
+}

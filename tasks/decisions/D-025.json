@@ -1,0 +1,10 @@
+{
+  "id": "D-025",
+  "date": "2026-11-20",
+  "task": "JS-041, JS-093, JS-149, JS-056",
+  "decision": "change",
+  "by": "product-owner",
+  "tradeoff": "After JS-145: a viewer's saved subtitle language and mode is told 'Settings saved' and no film obeys it (BL-151), while the task that fixes it (JS-041) sat behind three measurements, a docs-only move and a profile 5 task no dogfood viewer needs.",
+  "entry": "JS-041 moves to directly after JS-147 (a saved subtitle setting that does nothing is felt by every viewer who sets it, BL-151); JS-093 sits after JS-148 and before JS-149, amending D-017's 'directly after JS-136', which D-021 displaced without a reason; JS-056 gains a criterion for the proxy-confirmation procedure when no address is counted (BL-221). Conditions: JS-093 still starts from a main holding JS-135 and JS-136's DOMAINS edits; close BL-151 when JS-041 ships.",
+  "serves": "PRODUCT.md: Their languages come first; every film starts that way where it can."
+}

@@ -1,0 +1,22 @@
+{
+  "id": "JS-194",
+  "phase": "M1",
+  "title": "The cutover: jellyscale serves only its own API",
+  "description": "Serves Goal 3: \"Octave's features have the server they need.\". D-109. It merges as soon as M1's exit criteria pass on jellyscale's side (plan §5), without waiting for Octave.",
+  "acceptanceCriteria": [
+    "The M1 exit criteria all pass on main's server before this merges: the conformance check passes for every M1 capability; a client using only the new API signs in with a password, lists Films and Shows, walks a show to an episode and fetches a poster, with no answer naming where a file is kept; on Media3 on an emulator and in a browser, a title played as it is, one whose container is converted, and one re-encoded with a non-default audio track and an image subtitle each start, play 30 seconds and seek, right from the first frame; progress on one device is the resume point and Continue watching on another; a play refused for want of capacity returns its reason and a retry time; a worker killed mid-film costs no picture; a title hidden from an account appears nowhere for it and its media are refused.",
+    "The commit before it is published for good as `jellyfin-final`.",
+    "Every Jellyfin route and Quick Connect are removed, with their tooling; nothing answers a Jellyfin path but 404.",
+    "The native browser check is the e2e gate, covering every outcome the jellyfin-web gate covered that still applies.",
+    "The Jellyfin-only invariants are deleted from DOMAINS.md, and docs/status.md is rewritten against PRODUCT.md.",
+    "Octave is told by a from:jellyscale issue, with the tag to test."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-185",
+    "JS-191",
+    "JS-042"
+  ],
+  "source": "pivot-plan.md; D-107 to D-128",
+  "notes": ""
+}

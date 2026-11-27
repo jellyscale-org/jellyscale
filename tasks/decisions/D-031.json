@@ -1,0 +1,10 @@
+{
+  "id": "D-031",
+  "date": "2026-11-20",
+  "task": "docs",
+  "decision": "change",
+  "by": "owner",
+  "tradeoff": "The client that ships with jellyscale is renamed from Fluster to Octave (owner: a scale spans an octave, so the client takes its name from the server's). Given up: nothing a viewer had.",
+  "entry": "Fluster is renamed Octave. Any list of clients names Octave first, as jellyscale's own client (owner, 2026-11-20: 'we ought to say that Fluster is the first class citizen'); first-class names its place, not jellyscale work for it, which D-027 rules out. The docs say 'Octave (formerly Fluster)' at first mention until the client's repository is renamed; the docs checks that matched 'Fluster' in docs/status.md and docs/access.md match 'Octave', with the same meaning. Decisions, done tasks, backlog items and issue labels keep the name they were written with.",
+  "serves": "PRODUCT.md: jellyscale ships with Octave, a desktop client that plays the original file whenever it can."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "BL-260",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "lead",
+  "source": "JS-158 record; D-063",
+  "title": "A job end aborted by a deadlock with the dead-node reap leaves the job running until its lease ends",
+  "notes": "The viewers waiting on that job stall for up to the lease (about 30 s, unverified), with no reason shown; it needs a worker forgotten while it still lives (BL-249). Read from two statements, seen in no run. Promote on: a 40P01 on a job end in the dogfood's logs, a fault schedule or JS-175's counted runs, or JS-165 criterion 1's observation; it then becomes a criterion of JS-165."
+}

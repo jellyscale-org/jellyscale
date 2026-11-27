@@ -1,0 +1,9 @@
+{
+  "id": "BL-200",
+  "source": "JS-119",
+  "reviewer": "lead",
+  "severity": "minor",
+  "title": "DefaultAudioStreamIndex does not follow a named AudioStreamIndex; observe Jellyfin 12.4 and settle it in JS-121",
+  "status": "closed",
+  "notes": "Product owner asks (evidence): Did JS-121 observe Jellyfin and settle this? Name the capture line. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
+}

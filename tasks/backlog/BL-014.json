@@ -1,0 +1,9 @@
+{
+  "id": "BL-014",
+  "source": "JS-072",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "Preempting a helper when it cannot free a slot for the viewer",
+  "status": "promoted",
+  "notes": "Promoted into JS-161 criterion 11 (D-050)."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "BL-106",
+  "source": "JS-085 verify",
+  "reviewer": "qa",
+  "severity": "minor",
+  "title": "A stream replica started during an outage has no snapshot and serves no token until Postgres returns",
+  "status": "open",
+  "notes": "By design no refresh runs while Postgres is away. A replica could ask a peer for its snapshot; decide whether it matters for pod restarts during an outage."
+}

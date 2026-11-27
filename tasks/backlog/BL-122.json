@@ -1,0 +1,9 @@
+{
+  "id": "BL-122",
+  "source": "JS-103 lead",
+  "reviewer": "lead",
+  "severity": "minor",
+  "title": "No check that every stream-role route is routed to stream by the shipped Caddyfile, test/e2e/router.mjs and docs/running.md",
+  "status": "open",
+  "notes": "No static comparison is written (D-069). Promote on a stream route answered by the wrong role on the shipped compose stack or on any deployment."
+}

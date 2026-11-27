@@ -1,6 +1,6 @@
 # Status
 
-Where jellyscale stands against [PRODUCT.md](../PRODUCT.md), which says what it should be. This file is the record of what is built, partial and not built, and of the route audit against Jellyfin 12.4; `compat/coverage-12.4.tsv` is that audit. The work still to do is in [tasks/prd.json](../tasks/prd.json).
+Where jellyscale stands against [PRODUCT.md](../PRODUCT.md), which says what it should be. This file is the record of what is built, partial and not built, and of the route audit against Jellyfin 12.4; `compat/coverage-12.4.tsv` is that audit. The work still to do is in [tasks/order.txt](../tasks/order.txt) order, one record per task in `tasks/tasks/`.
 
 ## Roadmap and slices
 

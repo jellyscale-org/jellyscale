@@ -1,0 +1,11 @@
+{
+  "id": "D-137",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "JS-182, JS-199",
+  "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+  "tradeoff": "None.",
+  "decision": "change",
+  "entry": "Apple is Octave's: JS-182's AVPlayer half waits for Octave's Apple playback (ASK-7); JS-199 covers Android phones. Apple TV is deferred.",
+  "serves": "D-130."
+}

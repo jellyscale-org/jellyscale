@@ -1,0 +1,9 @@
+{
+  "id": "BL-110",
+  "source": "JS-086 verify",
+  "reviewer": "qa",
+  "severity": "minor",
+  "title": "The item DTO is still a map[string]any that holds the typed sources",
+  "status": "closed",
+  "notes": "internal/items/repo.go typeMedia and internal/api/items.go put media.MediaSource values into a map[string]any item. A typed BaseItemDto would carry the same guarantee to the rest of the item. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "BL-063",
+  "source": "JS-029 verify",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "db.IsAway treats any net.Error as Postgres being away, so job.run marks non-database network errors as cancelled, not failed",
+  "status": "open",
+  "notes": "IsAway returns true for any net.Error, including S3 or segment-store timeouts. worker.run now adds `|| db.IsAway(err)` to the cancelled branch, so a store outage that returns a net error ends the job as `cancelled`. Such jobs are never refused, and viewers restart them without limit instead of seeing the last-attempt-failed protection. The same IsAway test would also start an outage tracker and pr"
+}

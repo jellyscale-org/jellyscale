@@ -1,0 +1,9 @@
+{
+  "id": "BL-097",
+  "source": "JS-031 verify",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "ws_replica can stay NULL on a live device after a Postgres outage until its next keepalive",
+  "status": "closed",
+  "notes": "Up to 30 s with jellyfin-web's keepalive. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
+}

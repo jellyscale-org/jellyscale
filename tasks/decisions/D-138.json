@@ -1,0 +1,11 @@
+{
+  "id": "D-138",
+  "date": "2026-11-27",
+  "by": "owner",
+  "task": "the roles; the build workflow",
+  "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+  "tradeoff": "None.",
+  "decision": "change",
+  "entry": "Two agents: \"One, a design agent that handles design using the Anthropic front end design skill and Impeccable, and then another UX review agent that just makes sure that the UX for our clients meets our standards. And we should probably run UX prior to any kind of building.\" In jellyscale they serve jellyscale's own experienced work; Octave runs its own. The lead writes jellyscale's role files and workflow.",
+  "serves": "Owner, 2026-11-27."
+}

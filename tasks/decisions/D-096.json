@@ -1,0 +1,11 @@
+{
+  "id": "D-096",
+  "date": "2026-11-26",
+  "by": "product-owner",
+  "task": "JS-033",
+  "brief": "JS-033's open questions after Refine and the Jellyfin 12.4 capture.",
+  "tradeoff": "A signed-in user picker lists one account; a disabled viewer reads 'invalid password'; after a reset every device signs in again.",
+  "decision": "keep",
+  "entry": "Confirmed: a viewer's GET /Users lists only themselves; a disabled account answers 401 like a wrong password; a password change or reset ends the user's other tokens.",
+  "serves": "Invariants 26 and 61."
+}

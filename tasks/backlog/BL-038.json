@@ -1,0 +1,9 @@
+{
+  "id": "BL-038",
+  "source": "state review 2026-11-10",
+  "reviewer": "architecture",
+  "severity": "minor",
+  "title": "The Store interface has no Stat (callers open to check existence), and S3 has one credential pair for every store (JS-055, JS-056)",
+  "status": "open",
+  "notes": ""
+}

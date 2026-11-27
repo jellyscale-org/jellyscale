@@ -1,0 +1,11 @@
+{
+  "id": "JS-011",
+  "phase": "P3",
+  "title": "HDR10 and HLG tone mapping to SDR in re-encodes",
+  "description": "Built and tested; see the source.",
+  "acceptanceCriteria": [],
+  "status": "done",
+  "dependsOn": [],
+  "source": "PRODUCT.md phase3, DOMAINS 53",
+  "notes": ""
+}

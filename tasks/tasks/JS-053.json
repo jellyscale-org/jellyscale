@@ -1,0 +1,18 @@
+{
+  "id": "JS-053",
+  "phase": "S6",
+  "title": "Trickplay",
+  "description": "Serves \"Seeking and resuming just work.\". A preview of where the viewer is jumping to.",
+  "acceptanceCriteria": [
+    "A viewer scrubbing in Octave sees a preview picture of where they will land, for any film, at most a stated number of seconds apart.",
+    "Previews are made when a title is first watched, or ahead by the operator's choice (JS-201's rule), within the storage budget, with storage per film-hour stated, on local disk and S3.",
+    "Making them never slows a playback or anything the operator waits for.",
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-194"
+  ],
+  "source": "PRODUCT.md phase5-library",
+  "notes": "Requested by Fluster, the client that ships with jellyscale: #105. Access: trickplay needs a token. (access model, 2026-11-16) Roku, Streamyfin, Fladder and Jellyfin for Android ask for tiles (read from source, 2026-11-20); what an app shows on today's 404 is recorded by JS-075 (BL-222)."
+}

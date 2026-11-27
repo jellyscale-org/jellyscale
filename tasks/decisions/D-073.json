@@ -1,0 +1,11 @@
+{
+  "id": "D-073",
+  "date": "2026-11-24",
+  "by": "product-owner",
+  "task": "JS-174, JS-160, JS-127, JS-075, JS-178, JS-056, JS-164, JS-169, JS-156, JS-170, JS-122, JS-143, JS-135, JS-136, JS-148, JS-165; BL-275",
+  "brief": "brief-after-js177.md item 3, and a direction review after JS-041 and JS-177.",
+  "tradeoff": "Given up: the quiet-machine measurement of the first 30 seconds of a shared re-encode (D-051's question stays open), by viewers of a shared play, of whom there are none today. GPU, preset, autoscaling-signal and measurement tasks each wait two places longer, by operators. Nothing a viewer has.",
+  "decision": "change",
+  "entry": "JS-174 leaves the plan as dropped, its design kept in BL-275: no deployment plays a shared re-encode, its two-2-CPU rig is now refused the play, and it needs a machine no build can share. D-051's 2 s bound is kept and docs/status.md's gap line reads 'no task'. It returns when the dogfood claims helpers more than twice in a week, JS-056's example sizes would share a 4K film, or a household reports it. JS-160 and JS-127 start together, JS-160 first if the machine holds one (D-058's condition is met by PR 270's runs). JS-075 moves to 25, first slice criteria 1 to 5 and 10. JS-178 moves to 35 and JS-056 to 36, after JS-150; JS-164, JS-169, JS-156, JS-170, JS-122, JS-143, JS-135, JS-136, JS-148, JS-165 take 37 to 46. JS-178 does not go ahead of the household set; its criterion 1 alone is split out if the unhelped trigger fires. No capacity or test task enters before JS-150 unless the dogfood read of D-072 shows a viewer stalled or refused. Reopens on: that read; a cores-short refusal on the dogfood with every worker running more than twice in a week (JS-170 returns ahead, D-047); a second household waiting (D-056).",
+  "serves": "Owner, 2026-11-22: nothing outruns the product. PRODUCT.md: 'A viewer opens the Jellyfin app they already use'; goal 3; 'Signing in is easy and safe'; 'Installing is boring'; 'A claim of working means a real client or a real store exercised it.' D-051, D-056."
+}

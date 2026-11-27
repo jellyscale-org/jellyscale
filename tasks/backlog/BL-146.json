@@ -1,0 +1,9 @@
+{
+  "id": "BL-146",
+  "source": "JS-111 verify",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "PlaybackInfo's one read fetches the keyframe index for every source with a runtime",
+  "status": "open",
+  "notes": "internal/items/repo.go source(): the keyframes are read even for sources that are never copied, and on replicas with no transcodeStore. Read them only when the copy decision can use them."
+}

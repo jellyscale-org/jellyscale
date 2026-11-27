@@ -1,0 +1,9 @@
+{
+  "id": "BL-213",
+  "source": "JS-145 / D-022",
+  "reviewer": "product-owner",
+  "severity": "minor",
+  "title": "An operator who declares proxies while every client still arrives from one upstream address gets all viewers refused together",
+  "status": "open",
+  "notes": "Every viewer shares the counted address, so they are refused together. The server could notice many devices and names behind one counted address and warn, or keep a known device out of the address refusal. Beside BL-210; needs its own brief. Promote when an operator reports viewers refused together, or with JS-056 if its ingress is shown to pass one address for all clients."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "BL-187",
+  "source": "JS-130",
+  "reviewer": "",
+  "severity": "minor",
+  "title": "A killed test/scripts_test.sh run leaks its JS-130 stand-in listener processes and its /tmp/tmp.* directory",
+  "status": "wontfix",
+  "notes": "subject removed by the behaviour-only cleanup (D-069)"
+}

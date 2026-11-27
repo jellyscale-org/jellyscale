@@ -1,0 +1,21 @@
+{
+  "id": "JS-212",
+  "phase": "S6",
+  "title": "New-episode notifications",
+  "description": "Serves \"They hear when something new arrives.\"; \"Their data is theirs.\". The owner: alerts may pass through Apple's and Google's notification services (D-145): opt-in, off by default, with no title or detail.",
+  "acceptanceCriteria": [
+    "A new episode of a show a viewer follows is marked for them in the app.",
+    "A viewer who turns notifications on gets one through their device's notification service; it is off until they turn it on, and the operator can turn it off for the server.",
+    "A notification carries no title, no detail and nothing about what the viewer watches, only that something new is waiting; the app fetches the details from the operator's server. A test reads what is sent.",
+    "docs/access.md states exactly what leaves the operator's servers, and when.",
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-186",
+    "JS-214"
+  ],
+  "source": "native-plan.md; D-129 to D-149",
+  "notes": "",
+  "ux": true
+}

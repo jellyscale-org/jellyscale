@@ -1,0 +1,22 @@
+{
+  "id": "JS-129",
+  "phase": "OPS",
+  "title": "The integration tier fits its limits, and a queue run stops paying for waste",
+  "description": "On 2026-11-16, 6 merge-queue runs were cancelled because the rest shard hit its 40-minute job limit (2417 s) and at least 3 failed because shard 0of4 hit go test's 30-minute limit (run 43892801970). test/shard-times.txt lacks 135 of main's 362 transcode tests, 1836 s on CI, the three slowest among them; each counts as 4.2 s. rest runs internal/api (1226 s) and cmd/jellyscale (630 s) in turn in one job. 13 jobs install ffmpeg from a mirror (7.5 to 13.8 runner-minutes a run; the step timed out in run 43909360415). test/e2e/failover.mjs waits out a 180 s timer after its last scenario (161 s). The differential tier fetches its jars from Maven Central every run (429 in run 43919042492).",
+  "acceptanceCriteria": [
+    "test/shard-times.txt is made by test/shard-times.sh from the tests.json of at least three green merge-queue runs (its header names the run ids and says CI's runners) and holds every test that go test -tags integration -list finds in the packages test/shard.sh deals by test",
+    "test/shard.sh deals internal/api's tests by time as it deals internal/transcode's, so no shard is one package's serial run; test/check-shards.sh integration still fails when a test is in no shard or in two, and test/scripts_test.sh shows it for a second dealt package",
+    "test/scripts_test.sh fails, naming the shard, when the times in test/shard-times.txt for any shard add up to more than two thirds of the go test limit set in test/integration.sh (today 0of4 holds 29.2 minutes of tests against 30)",
+    "The integration job's summary prints each shard's test seconds and the line 'refresh test/shard-times.txt' when the slowest shard's are more than 1.25 times the fastest's; it is a notice and fails nothing",
+    "In the first three merge-queue runs after the change no integration job takes over 27 minutes (today 38.5 to 39.9) and none is cancelled or stopped by a time limit",
+    "ffmpeg, fontconfig and the font are installed from .deb files restored by actions/cache (keyed on the runner image version and the package list); on a hit the install step makes no request to an Ubuntu mirror and takes under 30 s in every job of a queue run; a miss installs as today and saves; the step that fails a job whose ffmpeg is not 6.1 is unchanged",
+    "test/e2e/failover.mjs ends when its last scenario has: in the failover shard's log under 5 s pass between 'shard 0/1: ran 5 of 5' and the conform line (today 161 s); a test with a stand-in replica that never exits still fails with 'the replica that got SIGTERM was still running 180 s later'",
+    "The jars test/sdkjvm/decode.sh needs are restored by actions/cache keyed on jars.txt; with the cache warm the differential shard makes no request to Maven Central",
+    "No file matching *_integration_test.go changes, and the tier's test count from go test -list is the same before and after",
+    "When lint-and-unit fails in a run, that run's integration, e2e, roles and differential jobs are cancelled at once (owner, 2026-11-16); the required checks still report failure"
+  ],
+  "dependsOn": [],
+  "notes": "Priority 1. As a stopgap in the first commit, raise the job limit to 50 minutes and go test's to 40 so the queue stops killing runs while the split lands; set them back to 30 and 40 in the last. Planned by Fable 5.2 (.results/test-time-fable-2026-11-16.md). Owner's decisions 2026-11-16: skip the media tiers for .claude/ and tasks/ changes with a guard test (JS-132); cancel media shards when lint-and-unit fails; the merge queue builds 2 entries (back to 3 once a run costs under ~150 runner-minutes and under a fifth of runs fail) with a 90-minute check timeout, set by the lead. 2026-11-16: four dealt shards could not meet 27 minutes (6953 s of dealt tests, 29 min each), so CI deals over five plus rest, and lint fails when a dealt shard's recorded tests pass 1500 s. The lead checks the first three queue runs after merge.",
+  "status": "done",
+  "source": "owner 2026-11-16, Fable 5.2 test-time audit"
+}

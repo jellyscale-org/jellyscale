@@ -1,0 +1,9 @@
+{
+  "id": "BL-043",
+  "source": "state review 2026-11-10",
+  "reviewer": "product",
+  "severity": "minor",
+  "title": "Nothing plans for the next Jellyfin release: jellyfin/jellyfin:12.4 is pinned in three places with no procedure to move",
+  "status": "closed",
+  "notes": "Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
+}

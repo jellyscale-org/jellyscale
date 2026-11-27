@@ -1,0 +1,9 @@
+{
+  "id": "BL-265",
+  "status": "closed",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "JS-041 design review; D-068",
+  "title": "e2e scenarios share an admin that cannot return to a never-saved configuration, so their initial subtitle mode depends on gate order",
+  "notes": "Test-only; no failure seen. Restoring {} creates mode Default rather than the never-saved state. Promote on a queue failure, or a JS-175 verdict, traced to gate order. It closes when JS-033 gives the harness fresh users. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
+}

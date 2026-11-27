@@ -1,0 +1,9 @@
+{
+  "id": "BL-037",
+  "source": "state review 2026-11-10",
+  "reviewer": "architecture",
+  "severity": "minor",
+  "title": "No way to ask for a scan, a re-probe or an asset rebuild, which a restore needs (amend JS-059)",
+  "status": "open",
+  "notes": ""
+}

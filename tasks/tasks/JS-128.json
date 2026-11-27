@@ -1,0 +1,21 @@
+{
+  "id": "JS-128",
+  "phase": "ID",
+  "title": "A playlist carries the token only when the request carried it in the URL",
+  "description": "jellyscale writes the caller's token as ApiKey into every line of master.m3u8 and main.m3u8, however the request was authenticated (internal/api/transcode.go:99-104, internal/playback/spec.go:314-326). Fluster sends its token only in a header and refuses, by design, any playlist that carries a credential (its src-tauri/src/player/hls/session.rs:69-75, decision 0002), so it cannot play a jellyscale conversion at all (read from both sources, not run). jellyfin-web's player loads TranscodingUrl as a URL and needs the token in it. So the playlist follows the request: the token goes into its lines only when the request carried it in the query.",
+  "acceptanceCriteria": [
+    "Observed first: compat/captures records what Jellyfin 12.4 writes in the lines of master.m3u8 and main.m3u8 when the master is requested with the token in the Authorization header and when with ApiKey in the query",
+    "A master or main playlist requested with the token only in a header (Authorization MediaBrowser, X-Emby-Authorization, X-Emby-Token or X-MediaBrowser-Token) carries no ApiKey, api_key or token in any line; every URI in it, requested with that same header and no query token, answers as today (the variant playlist, the init segment, every media segment)",
+    "Requested with ApiKey or api_key in the query, every line carries ApiKey as today; jellyfin-web's transcode e2e scenarios pass unchanged",
+    "A request that carries the token in both a header and the query is treated as a query request (lines keep ApiKey), so no client that relies on today's lines loses them",
+    "Every segment and playlist route still refuses a request with no token (JS-125's TestAccess unchanged)",
+    "A test sends the master with each of the four header spellings and fails if any line of the master or the variant playlist contains the token's value",
+    "docs/access.md ('What a client must send') and docs/transcoding.md say which requests get the token in playlist lines; JS-040 (signed URLs) notes that header requests already carry none"
+  ],
+  "dependsOn": [
+    "JS-125"
+  ],
+  "notes": "Found 2026-11-16 while drafting Fluster issues (the owner wants Fluster first-class). Fluster also strips ApiKey from subtitle DeliveryUrls (gateway.ts:178-195); PlaybackInfo's TranscodingUrl and DeliveryUrls keep ApiKey here, because jellyfin-web loads them as URLs. Fewer tokens in URLs is also safer (DOMAINS invariant 17).",
+  "source": "lead 2026-11-16, from the Fluster issue research",
+  "status": "done"
+}

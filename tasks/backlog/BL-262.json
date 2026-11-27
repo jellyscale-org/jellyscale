@@ -1,0 +1,9 @@
+{
+  "id": "BL-262",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "D-066, option B; JS-177 design review",
+  "title": "A heavy re-encode slows while its worker's own extraction runs, and nothing shares, caps or prices the extraction",
+  "notes": "D-070 rejected counting it (B). Held here: a CPU cap (C), a price (D), and placing a read nobody waits on (the image-track read, chapter pictures) on a worker with room. Before any is built, measure why the job lost twice the speed its CPU share lost, and the same row under contention without a CPU limit. Promote as a brief on JS-141's first two triggers, or on JS-141 reporting that ranged reads do not work."
+}

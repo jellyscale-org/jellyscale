@@ -1,0 +1,26 @@
+{
+  "id": "JS-133",
+  "phase": "P3",
+  "title": "An AV1 copy whose keyframe index is found wrong goes on as a re-encode",
+  "description": "JS-088 made a copy whose index is found wrong go on as an x264 or x265 encode cut on the playlist's layout, so the viewer never sees the failure. An AV1 copy still fails as before and the picture freezes mid-film, because no restart-safe AV1 encode was built; the workers' ffmpeg has SVT-AV1. PRODUCT.md says no codec is second-class, so the gap is closed here: an AV1 fallback that splices on the playlist's layout like the other two, or an H.264 fallback a client that played AV1 can take (with its own init, as JS-088 sends one), whichever the observation shows works in jellyfin-web.",
+  "acceptanceCriteria": [
+    "Observed in jellyfin-web 12.4 (its hls.js 1.6.16) in Chromium and recorded beside compat/captures/segment-errors-12.4.md with the script that reproduces it: an AV1 copy's playlist whose later segments are H.264, each led by its own init, played forward across the change and then seeked back into an AV1 segment and forward across the change again; for each direction the record says the frames shown, video.error, whether a dialog shows and whether currentTime keeps its place",
+    "The fallback's codec follows that record and is the same for every AV1 copy: H.264 only if both directions showed frames with no video.error and no dialog, otherwise AV1 (SVT-AV1); the record names the choice and the checks below hold the build to it",
+    "In the e2e tier, jellyfin-web in Chromium plays an AV1 film with keyframes 5 to 7 s apart as a copy (VideoCodec=copy, CODECS av01), its index is found wrong, and the viewer reaches 30 s past the bad point with no Playback Error dialog, no /Videos/ request answered 400 or more, no playlist or segment request abandoned, no video.error, no corrupted frames, at least 480 of those 30 s' 720 frames shown, and currentTime never going back by more than 4 s or forward by more than 1 s; the index is then recorded dropped and a worker's ffmpeg encoded the picture",
+    "That holds in two scenarios, each on a film of its own, one 8-bit AV1 and one 10-bit: the viewer seeks into the bad segment before any job has reached it, and the job finds the index wrong while the viewer is still more than 4 s before the bad point on stored copy segments and then plays across it",
+    "With a real worker and ffmpeg, for an AV1 film whose copy layout differs from the 4 s grid in count and in every start after the first, fetched both with the stored segments first and with the bad segment first: every segment starts on a keyframe, starts within 0.05 s of the playlist's start and lasts within 0.1 s of its EXTINF, each fallback segment holds the frames of its length to within 1, and the segments together hold the film's frames with none skipped or played twice",
+    "Every segment answered after the fallback, the stored AV1 copy segments included, leads with the init segment of its own stream and decodes under it with no error; a fallback segment's init is of the codec the second criterion fixed",
+    "A fallback run begun at segment 1, at a middle segment and at the last one, as a restart begins, splices with the earlier segments of a run from the start: the same number of frames, frame times within 1 ms, audio packet times within 0.5 ms, no decoder warning across the join and the same init segment, at 24000/1001 and 25 fps, on Ubuntu 24.04's ffmpeg 6.1 and on ffmpeg 9",
+    "When the worker making an AV1 copy's fallback is killed mid-job, another worker makes the rest from the first missing segment and the waiting request is answered with no error status; the two workers' segments join as in the criterion before (invariant 22)",
+    "The fallback of a 4K AV1 copy (3840x2160) is 1920x1080, a wider one keeps its aspect ratio within 1080 lines, and a copy of 1080 lines or fewer keeps its size",
+    "The fallback's price is at least the CPU time (user plus system) its own ffmpeg command uses per second of film, measured for a 1080p and a 4K 24 fps AV1 source, and a tone-mapped one is priced no lower than the SDR one of the same source; docs/transcoding.md records the machine, the ffmpeg and encoder versions, the CPU and wall-clock figures (wall-clock no slower than the film plays) and the cost table's rows",
+    "One viewer of an AV1 copy that falls back and fetches at least 5 fallback segments raises jellyscale_playback_copy_fallbacks_total, summed over the stream replicas, by exactly 1 and gets one log line with item, source and reason; two viewers of the same AV1 copy raise it by exactly 2",
+    "A worker of the release before (output version 5) never claims an AV1 copy's fallback job: OutputVersion is raised, so the job waits for a worker that makes it (invariant 59)"
+  ],
+  "status": "done",
+  "dependsOn": [
+    "JS-088"
+  ],
+  "source": "JS-088 post-task review (2026-11-17)",
+  "notes": "JS-088's docs say SVT-AV1 is present but a restart-safe AV1 encode is not built. Cost: an SVT-AV1 encode is CPU-heavy; measure before pricing."
+}

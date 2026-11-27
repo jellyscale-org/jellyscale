@@ -1,0 +1,18 @@
+{
+  "id": "JS-157",
+  "phase": "S4",
+  "title": "A viewer's audio and subtitle pick for a title is what it starts with when they return, on every device",
+  "description": "Serves \"Their languages come first.\". ",
+  "acceptanceCriteria": [
+    "A viewer's audio and subtitle pick, Off included, is the one a film starts with when they return, and the one each next episode of a show starts with (#117): after a reload, a new sign-in and on another device. Their saved languages still decide a title they have never picked for.",
+    "Shown in Octave (or, until JS-190 and JS-150, the native browser check): a pick, a reload, a new sign-in and a second device each start the title with the pick.",
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-185",
+    "JS-194"
+  ],
+  "source": "BL-223; D-039",
+  "notes": "Subtitle twin made firm by JS-041's capture (D-068). If one build cannot carry both halves it splits, subtitle half first: JS-041 now starts a subtitle the viewer turned off."
+}

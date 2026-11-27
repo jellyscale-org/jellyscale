@@ -1,0 +1,10 @@
+{
+  "id": "D-041",
+  "date": "2026-11-20",
+  "task": "JS-153, JS-156; BL-239",
+  "decision": "change",
+  "by": "product-owner",
+  "tradeoff": "JS-153's run left two minors: PlaybackInfo's MediaSourceId match was observed equal to Jellyfin 12.4 for an upper-case compact id and different for a dashed and an unknown id, recorded nowhere; a refused decision line does not say whether a copy or a re-encode was refused.",
+  "entry": "JS-156 gains a criterion: the three MediaSourceId requests enter the differential tier, the equal one unlisted, the two differences listed with a verdict, no answer changed unless a supported app is captured sending that form (the plan's differential rule; no viewer is shown noticing). The refused line's missing method is BL-239: refusals on the dogfood are unverified and no open criterion needs the split; it is promoted by a refusal count above zero on the dogfood for a reason that does not name the method, or by JS-154's decision choosing to refuse with a reason. Given up meanwhile, by an operator: telling a refused copy from a refused re-encode without looking up the film. No change of order: JS-148's 14-day count runs from 2026-11-20 and cannot close before 2026-12-04; BL-235 is read from the live line at the next Moonfin play. D-040 is JS-152's, in its own pull request.",
+  "serves": "PRODUCT.md: Nothing is hidden: every failure is reported with its reason, never silent. Compatibility policy: Target: the current Jellyfin release, currently 12.4."
+}

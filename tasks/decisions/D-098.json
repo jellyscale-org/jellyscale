@@ -1,0 +1,11 @@
+{
+  "id": "D-098",
+  "date": "2026-11-27",
+  "by": "owner",
+  "task": "AGENTS.md, build.js, the product-owner and advisor roles",
+  "brief": "The owner, on model use.",
+  "tradeoff": "Product judgement runs on a cheaper model between phase reviews.",
+  "decision": "change",
+  "entry": "The owner: \"We need to reduce my Fable usage.\" The product owner and advisor run on Opus 5.5 at high effort. Fable 5.2 is used only for the one direction review after a phase, or when the owner asks for it by name. Replaces D-076's and D-084's Fable routing; D-084's batching stands.",
+  "serves": "Owner, 2026-11-27."
+}

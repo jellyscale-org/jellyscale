@@ -1,0 +1,21 @@
+{
+  "id": "JS-155",
+  "phase": "OPS",
+  "title": "Each test that failed the merge queue on 2026-11-20 has a verdict from its log, and a named cause where a bounded reproduction finds one",
+  "description": "Four merge-queue runs on 2026-11-20 failed on six internal/transcode integration tests, each on a PR that could not affect them (docs, plan, a CI action, a module bump), each passing on the next run. Whether any is a product race in a lease, a retry bound or a seek read is unverified. PRODUCT.md: failures are invisible; seeking and resuming just work. D-039. Reshaped by D-042: this task reads, measures within a box and briefs; the product owner's decision on its brief names the fix tasks. The TRUNCATE deadlock is JS-158.",
+  "acceptanceCriteria": [
+    "The sightings are these seven, each named with its queue run: TestAWorkerForgottenWhileItLivesEndsItsExtractionAndItsLateRenewalMovesNoCutLeaseLater, TestAfterTheFileIsReplacedAMidFilmRunDrawsAndReadsByTheNewFilesTrack, TestACauseThatPersistsStartsAtMostThreeFreshJobsAndThenFails/the_source_store_cuts_a_read, TestWithTheTrackStoredASeekIntoALongCueReadsNoMoreOfTheFilmThanAnySeek/DVB, TestAJobThatStartsPastTheEndEndsDoneWithNoFFmpeg, BL-197's TestAnyReplicaServesAnySegmentAndOneJobStarts, and the e2e scenario that failed the queue that day",
+    "For every sighting, from its merge-queue log and before any reproduction, the record says what failed, and what a viewer would have seen had the same thing happened on a production cluster (nothing, a rebuffer, a wrong picture or subtitle, no film), or that the log cannot tell. BL-197's question is answered there: would a loaded production worker miss a heartbeat 0.7 s after a job starts and have the job restarted, or is that the test's short lease",
+    "Reproduction is bounded: under CI's shape (ffmpeg 6.1, 2 CPUs), at most 2 hours of wall-clock per sighting and 10 hours in all, the sightings whose log points at a lease, a retry bound or a seek read first; at least one attempt per sighting runs under load like the queue's (its shard beside it), not only the test alone. Runs, failures and minutes are recorded per sighting Amended by D-043: no reproduction is run; each named cause's fix task forces its condition with a check that fails first.",
+    "Each sighting ends with one of three verdicts: product (cause named), test (cause named), or cause unknown. Not reproducing is never a verdict of test and never rules a product cause out",
+    "No fix lands in this task. Each named cause goes to the product owner in one brief, with what a viewer would have seen and the size of the fix; the decision names the fix tasks, each of which has a check that forces the named condition and fails before the fix",
+    "No retry wrapper, no skip, and no raised timeout anywhere, for a named cause or an unknown one",
+    "Each cause-unknown sighting is in the same brief with what was read and tried, and what the next failing run's log would need to show; it is promoted when the same test fails the merge queue again, with that run's log",
+    "Recorded as a short table in docs/testing.md (sighting, queue run, runs and failures, verdict, cause, what a viewer would have seen); nothing checks the table's form by machine Amended by D-043: the runs column reads 'none run (D-043)'.",
+    "No viewer-visible change"
+  ],
+  "status": "done",
+  "dependsOn": [],
+  "source": "merge queue failures 2026-11-20; D-039",
+  "notes": "Closes BL-197 when its question is answered in the record. Reproduction runs wait until JS-154's measurements are off the machine; the log reading does not wait."
+}

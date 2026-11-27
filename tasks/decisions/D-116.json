@@ -1,0 +1,11 @@
+{
+  "id": "D-116",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "JS-190, JS-194",
+  "brief": "po/pivot-plan.md",
+  "tradeoff": "Browser viewers on the dogfood have no app until Octave Web ships.",
+  "decision": "change",
+  "entry": "The dogfood runs main until the cutover, jellyfin-final until Octave Android TV browses and plays on main, then main.",
+  "serves": "D-107."
+}

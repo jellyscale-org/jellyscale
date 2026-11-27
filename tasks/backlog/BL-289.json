@@ -1,0 +1,9 @@
+{
+  "id": "BL-289",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "ux",
+  "source": "JS-033",
+  "title": "A refused name or common password shows a generic error and logs nothing",
+  "notes": "Duplicate name, invalid name, common password. By the running UI. Awaits the product owner."
+}

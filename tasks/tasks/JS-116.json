@@ -1,0 +1,21 @@
+{
+  "id": "JS-116",
+  "phase": "ID",
+  "title": "A viewer's playback settings are saved",
+  "description": "jellyfin-web saves a viewer's settings by posting the whole Configuration object to POST /Users/{userId}/Configuration (legacy ApiClient.updateUserConfiguration), SDK clients post to POST /Users/Configuration, and both settings pages fill their language lists from GET /Localization/Cultures. None of the three exists: internal/api/users.go:188-193 answers fixed values. This task saves and returns the settings and changes no track choice; JS-121 and JS-041 make them act.",
+  "acceptanceCriteria": [
+    "Observed first: compat/captures/user-configuration-12.4.md and .json record, from a real Jellyfin 12.4, the status and effect of both Configuration routes for a full body, a body with only SubtitleMode, a body with an unknown field, a SubtitleMode outside the enum, a body that is not JSON, another user's id as a non-administrator and as an administrator, an unknown user id and no token, with GET /Users/Me after each; and GET /Localization/Cultures (the count of entries and the three-letter codes)",
+    "After POST /Users/{userId}/Configuration with all 16 fields of UserConfiguration changed from their defaults (each of the 5 SubtitleMode values in turn), GET /Users/Me, GET /Users/{userId} and the User of the next AuthenticateByName return every one of the 16 as saved, asked of a second api process, and again after both processes restart",
+    "A body with one field, and a body with an unknown field, have the effect the capture records (merge or reset; the unknown field stored nowhere and returned nowhere)",
+    "Two users: saving one's settings leaves the other's 16 fields as they were; a new user has the defaults the capture shows for a new Jellyfin user",
+    "Each refusal answers the captured status and stores nothing: another user's id as a non-administrator, an unknown id, a malformed id, a SubtitleMode outside the enum, a body that is not JSON, a body over 64 KB, no token; an administrator naming another user writes that user's settings",
+    "GET /Localization/Cultures answers the captured list in CultureDto's shape: the same count and the same set of ThreeLetterISOLanguageName values",
+    "In real jellyfin-web (e2e): the Subtitles settings page lists more than one language; a viewer picks German and Always, saves, reloads, and both are still selected; the Playback settings page does the same for the audio language and 'Play default audio track'",
+    "PlaybackInfo's DefaultAudioStreamIndex and DefaultSubtitleStreamIndex for 3 films are the same before and after every saved setting",
+    "The requests are in test/differential/requests.yaml and any kept difference in compat/differences.yaml with a reason; the three routes are done in compat/coverage-12.4.tsv; docs/status.md says which saved settings act and which do not yet"
+  ],
+  "status": "done",
+  "dependsOn": [],
+  "source": "Owner request 2026-11-15 (track languages); carved out of JS-033",
+  "notes": "Carved out of JS-033, which keeps user management. The settings ride on the row every request reads to authenticate (users.go:51-57), so no route gains a query. jellyfin-web posts back the object it was given with fields changed, so every field of the schema must be accepted, including the lists of ids nothing acts on yet."
+}

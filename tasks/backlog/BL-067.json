@@ -1,0 +1,9 @@
+{
+  "id": "BL-067",
+  "source": "JS-029 verify",
+  "reviewer": "ux",
+  "severity": "minor",
+  "title": "Worker logs an ERROR for a Postgres switchover it survives",
+  "status": "promoted",
+  "notes": "JS-022 criterion 2 (D-069)."
+}

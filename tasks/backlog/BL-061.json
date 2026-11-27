@@ -1,0 +1,9 @@
+{
+  "id": "BL-061",
+  "source": "JS-029 verify",
+  "reviewer": "ux",
+  "severity": "minor",
+  "title": "An idle api or stream replica logs nothing about an outage",
+  "status": "open",
+  "notes": "With no scanInterval set (the default), api and stream replicas run no periodic query. internal/db/outage.go logs 'Postgres is away' and 'Postgres is back' only from the tracer, which needs a failing query or connection. A replica with no viewers during a switchover never logs either line, although the criteria require each stream and api replica to say so. An operator comparing replica logs sees "
+}

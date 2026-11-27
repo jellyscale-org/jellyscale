@@ -1,0 +1,9 @@
+{
+  "id": "BL-239",
+  "title": "A refused playback decision line does not say whether a copy or a re-encode was refused",
+  "notes": "JS-153 minor. The refused line carries one refusal reason and no asked method, where a direct play that gave up a transcode carries asked and asked_reasons. WorkersAtCopyBound implies a copy; NoWorkerWithFreeCores, NoWorkerRunning and RememberedFailure do not say. An operator sizing workers cannot tell a cheap copy refused from a re-encode refused without looking up the film. Refusals on the dogfood: unverified. Promote as a criterion (the refused line and jellyscale_playbackinfo_refusals_total carry what was asked, with its reasons) when jellyscale_playbackinfo_refusals_total on the dogfood is above zero for a reason that does not name the method, or when JS-154's decision chooses refusing with a reason: the task that does it carries the criterion. D-041.",
+  "source": "JS-153 run",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "product-owner"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "BL-254",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "lead",
+  "source": "JS-159/JS-161 triage; D-061",
+  "title": "A segment that cannot be measured is held until its successor appears or ffmpeg exits, and nothing says so",
+  "notes": "Promote on: a start or seek over 5 s in JS-174's time to first frame, or on the dogfood, with no other cause in the log; first criterion then the log line and counted reason. JS-166 recorded none (D-067)."
+}

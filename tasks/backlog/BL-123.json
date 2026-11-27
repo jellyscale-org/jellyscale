@@ -1,0 +1,9 @@
+{
+  "id": "BL-123",
+  "source": "merge queue run 43606031119 (lead)",
+  "reviewer": "lead",
+  "severity": "minor",
+  "title": "TestConcurrentStaleSyncsKeepTheNewestPosition: one of 40 concurrent UserData writes answered non-200 in CI",
+  "status": "open",
+  "notes": "internal/api/smallroutes_integration_test.go:480 'writer 26: <nil>' (status not printed). Passed 30 of 30 locally under 4 CPUs. A non-200 there is a viewer's position save failing: print the status and body, then look for a deadlock or serialization error in the UserData upsert. Log saved in ~/.cache/jellyscale/js104-evidence/. Print the status and body; a second sighting makes it a task (goal 1)."
+}

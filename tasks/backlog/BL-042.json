@@ -1,0 +1,9 @@
+{
+  "id": "BL-042",
+  "source": "state review 2026-11-10",
+  "reviewer": "product",
+  "severity": "minor",
+  "title": "Start and seek times have no stated target and no recorded trend (first-frame times are logged in test/e2e/transcode.mjs, not recorded)",
+  "status": "promoted",
+  "notes": "Promoted to JS-062 (D-015)."
+}

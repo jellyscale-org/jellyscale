@@ -1,0 +1,9 @@
+{
+  "id": "BL-267",
+  "status": "closed",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "D-069; test and CI strategy review",
+  "title": "api and transcode tests share one database reset by TRUNCATE; a test's own database from a migrated template would remove the class",
+  "notes": "Three queue runs deadlocked on it; JS-158 fixed those causes in the kits. Per-test creation cost unmeasured. No viewer or operator effect. Promote on: a 40P01, or a test failing on another test's rows, in JS-175's 10 counted runs or any queue run after JS-158; then a task cut to the kit that failed. Closed at the pivot: Covered by JS-175, which records and fixes recurring queue failures at their cause."
+}

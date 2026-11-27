@@ -1,0 +1,18 @@
+{
+  "id": "JS-202",
+  "phase": "S6",
+  "title": "My list",
+  "description": "Serves \"Finding something to watch is easy.\". ",
+  "acceptanceCriteria": [
+    "A viewer saves a title from anywhere; the list is ordered by when each title was added, and one press removes one.",
+    "It is apart from Continue watching, per account and on every device.",
+    "Only titles the viewer may see are listed.",
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-194"
+  ],
+  "source": "pivot-plan.md; D-107 to D-128",
+  "notes": ""
+}

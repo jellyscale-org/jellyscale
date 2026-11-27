@@ -1,0 +1,10 @@
+{
+  "id": "D-027",
+  "date": "2026-11-20",
+  "task": "JS-075, JS-037, JS-122, JS-101",
+  "decision": "change",
+  "by": "owner",
+  "tradeoff": "jellyscale is not developed for Fluster: Fluster is engineered to work with jellyscale, by its own project. No task, criterion or backlog item aims to make Fluster work, records what Fluster shows, or runs Fluster against jellyscale. Given up, by Fluster's users: jellyscale's own proof that Fluster signs in, lists and plays, and a place ahead of other work when it does not; that proof is Fluster's to give.",
+  "entry": "Lifts D-006's 'Fluster second' and D-007's 'its compatibility ranks right after jellyfin-web's' and 'adopts first' as anything jellyscale works toward; lifts D-019's conditions that JS-075 records a Fluster run, that issue #202 stays open until that record exists, and that a failed Fluster run goes ahead of everything open; lifts D-020's Fluster reading in JS-075 and D-026's naming of Fluster in JS-037. D-016 stands: any origin may call the API, never with credentials, for any browser-engine client. JS-075 loses its Fluster run and keeps its checks on the clients it plays; JS-037 names one TV app that sends its token; JS-122 and JS-101 no longer cite Fluster as the first adopter; BL-207 is closed, BL-201 and BL-205 no longer wait on a Fluster run. Features a from:fluster issue proposed stay where they serve viewers on jellyfin-web or any client (JS-032, JS-037, JS-046, JS-047, JS-049, JS-052, JS-053, JS-080). Conditions: PRODUCT.md's 'Clients in order' line no longer ranks Fluster (the owner reviews the text); docs/status.md's Fluster row, docs/access.md and docs/client-testing.md stop promising a Fluster run.",
+  "serves": "owner, 2026-11-20: 'We don't want to develop for Fluster though. Fluster will work; it will be engineered to work with Jellyscale.'"
+}

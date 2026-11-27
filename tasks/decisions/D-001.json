@@ -1,0 +1,10 @@
+{
+  "id": "D-001",
+  "date": "2026-11-19",
+  "task": "JS-135, JS-136",
+  "tradeoff": "Operators choose the x264 preset; faster by default: a better picture for about 1.4 times the CPU per viewer and up to about a second more before a start on a full worker",
+  "decision": "accept",
+  "by": "owner",
+  "serves": "owner decision 2026-11-19 (PR #198)",
+  "brief": "spikes/picture-quality/README.md"
+}

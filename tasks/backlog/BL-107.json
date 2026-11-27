@@ -1,0 +1,9 @@
+{
+  "id": "BL-107",
+  "source": "JS-085 verify",
+  "reviewer": "ux",
+  "severity": "minor",
+  "title": "A paused film in a background tab may drop out of the 60 s window",
+  "status": "promoted",
+  "notes": "jellyfin-web reports progress every 10 s (setInterval 1e4); a throttled hidden tab may report less often. A wider window (minutes) costs nothing but snapshot size, since revocation exposure is the refresh interval. Unverified that throttling reaches 60 s. Promoted to JS-103, done (#139)."
+}

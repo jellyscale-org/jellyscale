@@ -1,0 +1,26 @@
+{
+  "id": "JS-123",
+  "phase": "ID",
+  "title": "A client changes one setting without overwriting the rest",
+  "description": "Jellyfin's POST /Users/Configuration replaces the whole Configuration (compat/captures/user-configuration-12.4.md), so a client reads it, changes a field and posts everything back, and two apps saving close together undo each other (issue #159, from Fluster). PATCH /jellyscale/v1/users/configuration changes only the fields its body names, merged in one statement onto what is stored, so no client that uses it overwrites a field it did not name. Jellyfin's two routes stay as JS-116 built them.",
+  "acceptanceCriteria": [
+    "PATCH /jellyscale/v1/users/configuration with a JSON object naming any of the 15 savable fields of UserConfiguration changes exactly those fields for the caller and answers 200 with the whole Configuration as GET /Users/Me then answers it. For each of the 15 in turn, starting from a document with all 15 changed from their defaults, a body with that one field leaves the other 14 as they were, read through GET /Users/Me on a second api process and again after both restart",
+    "A viewer who has saved nothing and patches one field reads that field and the new user's value for the other 14 (AudioLanguagePreference absent); {} answers 200 with the document and changes nothing",
+    "One parser with POST /Users/Configuration: every value the capture shows accepted for a field is accepted here and reads back the same (SubtitleMode 'always' and 1 read back 'Always'; a dashed upper-case id reads back compact; AudioLanguagePreference '' reads back ''), and every value it shows refused is 400 here",
+    "400 naming the field, and nothing stored: an unknown field, CastReceiverId, null for any field, a value of the wrong type, a SubtitleMode outside the enum, a list entry that is not an id. 400 and nothing stored: a body that is not a JSON object, an empty body, a body over 64 KB. A body with one good field and one refused field stores neither",
+    "The caller only: the route takes no user id, an administrator's PATCH changes the administrator's settings alone, a second viewer's 16 fields are as they were, and no token answers 401",
+    "Forced, different fields: the test holds the viewer's users row (SELECT ... FOR UPDATE in an open transaction), sends PATCH {SubtitleMode: 'Always'} through one api process and PATCH {AudioLanguagePreference: 'deu'} through another, waits until pg_stat_activity shows two statements waiting on a lock, and commits. Both answer 200 and GET /Users/Me has both changes with the other 13 fields untouched. Named mutant, which must fail every run: merge in the process from the row read at authentication and write the document whole",
+    "Forced, against Jellyfin's save: the PATCH {AudioLanguagePreference: 'deu'} statement is held at the database proxy (testenv.DBProxy.OnStatement) after its request authenticated; a full-body POST /Users/Configuration that sets SubtitleLanguagePreference 'fra' and carries the old audio language answers 204; the held statement is released. The result is the POST's 15 fields with AudioLanguagePreference 'deu'",
+    "Forced, the same field: PATCH {SubtitleMode: 'Always'} is held at the proxy, PATCH {SubtitleMode: 'None'} answers 200 with None, the first is released and answers 200 with Always; the stored mode is Always and the other 14 fields are untouched",
+    "The limit, as a test: a full-body POST built from a read taken before a PATCH, sent after it, wins whole, as on Jellyfin 12.4",
+    "No Jellyfin route answers differently: JS-116's replay of the 124 captured cases passes unchanged and the differential tier passes with no new entry in compat/differences.yaml",
+    "A change is logged at Info with the user id and the names of the fields sent. The route is in compat/endpoints.yaml, in the jellyscale-only list of compat/coverage_test.go, and in compat/conform.yaml with its answer held to UserConfiguration's schema. docs/api.md documents it with a request and an answer, how a concurrent save of the same field is decided, and that a whole-object save from an older read (jellyfin-web's) can still undo a change while the track preferences are out of its reach"
+  ],
+  "status": "done",
+  "dependsOn": [
+    "JS-116",
+    "JS-118"
+  ],
+  "source": "Issue #159 (from:fluster), 2026-11-16",
+  "notes": "One statement: configuration = coalesce(configuration, '{}') || patch, RETURNING. configurationOf already lays a stored document over the defaults (user_configuration.go:50-57). A version check (ETag/If-Match) was rejected: it needs a column Jellyfin's POST also bumps and a retry loop in every client, jellyfin-web never sends it, and its only gain is two edits of one list field; an optional If-Match can be added later. Folding Jellyfin's fields into track-preferences was rejected: two owners in one document. null is refused, not 'back to default', so a body has one meaning; a language is cleared with ''. JS-118's own write should be this same PATCH; if JS-118 keeps PUT, add PATCH /jellyscale/v1/track-preferences here with the same merge and forced check."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "BL-158",
+  "source": "JS-124 verify",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "Concurrency group per sha lets a pending run be replaced",
+  "status": "closed",
+  "notes": "Group image-${{ github.sha }} with cancel-in-progress false holds one running and at most one pending run. If two version tags are pushed on one commit while the main run is still running, the second pending tag run cancels the first, so a tag's image is never published. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

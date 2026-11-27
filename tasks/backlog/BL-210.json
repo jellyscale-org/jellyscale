@@ -1,0 +1,9 @@
+{
+  "id": "BL-210",
+  "source": "JS-145 / D-020",
+  "reviewer": "product-owner",
+  "severity": "minor",
+  "title": "With proxies declared, an address the account signed in from recently could count as known",
+  "status": "open",
+  "notes": "So a new device at home is not a stranger during guessing. Promote if an operator reports a viewer kept out."
+}

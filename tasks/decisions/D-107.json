@@ -1,0 +1,11 @@
+{
+  "id": "D-107",
+  "date": "2026-11-27",
+  "by": "owner",
+  "task": "PRODUCT.md; the plan",
+  "brief": "brief-pivot-2026-11-27.md, brief-pivot2-2026-11-27.md",
+  "tradeoff": "Every viewer's Jellyfin app goes; Octave becomes the only client.",
+  "decision": "change",
+  "entry": "The owner: abandon Jellyfin parity and make jellyscale new software for a private collection of films and shows for a household, friends and family, or a community (\"we are putting Jellyfin in the rear view mirror and thinking of this as a net new piece of software\"). Octave need not work with Jellyfin servers; no 'keep your apps' promise; stop checking behaviour against Jellyfin. Better playback first, with storage a constraint: the original on top, a handful of steps, 720p the usual floor, 480p where the content suits it. Offline viewing second. A short time without a working client is acceptable, but Octave must always have something to build against. A clean cutover: Octave adapts; first get Octave fetching films and TV and starting playback. Never music or photo libraries.",
+  "serves": "Owner, 2026-11-27."
+}

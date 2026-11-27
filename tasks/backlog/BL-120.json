@@ -1,0 +1,9 @@
+{
+  "id": "BL-120",
+  "source": "JS-104 verify",
+  "reviewer": "architecture",
+  "severity": "minor",
+  "title": "The fenced put checks the clock before each put, so a slow put that began in time can finish after the lease",
+  "status": "open",
+  "notes": "Bounded by put duration, not by the 350 ms allowance; a context deadline at ownedUntil on the put would close it."
+}

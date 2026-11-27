@@ -1,0 +1,9 @@
+{
+  "id": "BL-185",
+  "source": "JS-126",
+  "reviewer": "qa",
+  "severity": "minor",
+  "title": "Capture body classifier records a 2xx error body as non-empty for stream.mkv, segment and image subtitle",
+  "status": "closed",
+  "notes": "Low Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
+}

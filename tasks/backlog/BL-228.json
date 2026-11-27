@@ -1,0 +1,9 @@
+{
+  "id": "BL-228",
+  "title": "Search finds nothing for a misspelled title",
+  "notes": "Issue #116; beyond Jellyfin. Promote on data: the share of searches on the dogfood that answer no item and are followed by another search within a minute. No measure exists today and none is planned for this alone. Typo tolerance needs no model (pg_trgm, a trusted extension, no new service). Search by description is dropped until JS-045 shows what share of titles has a synopsis, and it needs pgvector, which an operator would have to install (goal 5) (D-036). Closed at the pivot: Covered by JS-204's search; a misspelling is weighed in its Refine.",
+  "status": "closed",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "issue triage 2026-11-20"
+}

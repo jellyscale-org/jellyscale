@@ -1,0 +1,9 @@
+{
+  "id": "BL-102",
+  "source": "JS-066 verify",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "A Stop that matches no viewer row no longer sweeps jobs with no unstopped viewer",
+  "status": "open",
+  "notes": "Jobs.Stop cancels only jobs of the specs its UPDATE returned. An orphan job then runs until its lease or the viewer-expiry sweep ends it. Listed as a changed guarantee in the PR."
+}

@@ -1,0 +1,15 @@
+{
+  "id": "JS-113",
+  "phase": "OPS",
+  "title": "A pure timing plan for the transcode command",
+  "description": "Command mixes timing, probing and arguments, so the seam arithmetic that every segment relies on is tested only through ffmpeg runs.",
+  "acceptanceCriteria": [
+    "A function with no I/O takes the source's start, frame duration, keyframe, audio grid and segment, and returns the video seek, audio seek and drop filter",
+    "Table tests reproduce the values the seam tests rely on, for a source starting at 0, at a positive start and at a negative one",
+    "Command takes an encoder description, and the seam integration tests pass unchanged"
+  ],
+  "status": "done",
+  "dependsOn": [],
+  "source": "Fable 5.2 blind audit, 2026-11-14 (.results/audit-2026-11-14.md)",
+  "notes": ""
+}

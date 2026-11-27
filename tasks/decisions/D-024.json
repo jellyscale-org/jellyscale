@@ -1,0 +1,10 @@
+{
+  "id": "D-024",
+  "date": "2026-11-20",
+  "task": "JS-145",
+  "decision": "accept",
+  "by": "product-owner",
+  "tradeoff": "JS-145's criterion on the unknown-name memory (a flood of 100,000 invented names) is shown on the counting step the flood check drives, not through the function a sign-in calls (QA, reading only).",
+  "entry": "JS-145 criterion 6 is accepted as shown on the counting step FailName drives, not through Begin as a sign-in calls it (QA, reading only); BL-220 puts the flood through the sign-in path with JS-037 or JS-033, sooner if the paths are shown to count differently. Given up, by operators: proof that a flood through real sign-ins holds the same bound, until BL-220 is fixed.",
+  "serves": "PRODUCT.md: Signing in is easy and safe."
+}

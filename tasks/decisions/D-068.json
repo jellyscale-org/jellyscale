@@ -1,0 +1,11 @@
+{
+  "id": "D-068",
+  "date": "2026-11-23",
+  "by": "product-owner",
+  "task": "JS-041, JS-157; BL-151, BL-223, BL-234, BL-264, BL-265, BL-266",
+  "brief": "Backlog triage after JS-041: a dropped subtitle can remain in the decision line; RememberSubtitleSelections is saved but not acting; two test-only limits; German spelling comparison; and a mode-picked text subtitle burns on a client with no SubtitleProfiles.",
+  "tradeoff": "Given up, by a viewer on a client with no SubtitleProfiles who saved a mode other than None: a film that direct played with no subtitle is now re-encoded with the mode's text track burnt in (at most 1080 lines, SDR, a worker's cores, and it can be refused at capacity). Which supported clients send that profile is unverified.",
+  "decision": "accept",
+  "entry": "A subtitle the saved mode picks follows the same burn-in rule as one the viewer picks by hand (invariant 44); ignoring the mode for those clients was rejected as a saved setting that does nothing. Saved languages compare by language, not spelling (invariant 60), as jellyscale's own choice; Jellyfin's handling of ger/de/DEU stays unobserved. JS-157 criterion 3 is firm and its priority unchanged. BL-151 closes when JS-041 merges; BL-264 to BL-266 are added. Conditions met in JS-041's PR: its Changed guarantees entry cites D-068; docs/status.md names the text case beside the image one and RememberSubtitleSelections as JS-157; docs/subtitles.md gives mode None and Off as the way out; docs/running.md no longer says the server picks no subtitle. JS-157 moves directly after JS-041 on a viewer report of subtitles returning after being turned off, or JS-075 showing supported apps do not send their remembered index.",
+  "serves": "PRODUCT.md: 'with the audio and subtitles they chose'; 'Their languages come first ... every film starts that way where it can'; DOMAINS.md invariants 44 and 60."
+}

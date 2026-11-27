@@ -1,0 +1,21 @@
+{
+  "id": "JS-122",
+  "phase": "ID",
+  "title": "A settings page for viewers whose app has no place for their track languages",
+  "description": "jellyfin-web has no place to turn on hiding tracks outside a viewer's languages, to name the languages to keep, or to show all tracks (JS-118). A small page jellyscale serves, linked from jellyfin-web's user menu, gives a browser-only viewer the same switches through the /jellyscale/v1/ settings JS-118 adds.",
+  "acceptanceCriteria": [
+    "A signed-in viewer reaches the page from jellyfin-web's user menu and sees their two opt-ins, their kept languages and 'show all tracks' as saved",
+    "Turning an opt-in on with no default language set asks for one first; the page saves through the /jellyscale/v1/ track-preferences route (JS-118), and the next PlaybackInfo in jellyfin-web reflects it",
+    "A viewer whose audio language is saved and whose PlayDefaultAudioTrack is on is told on the page that a film whose default track is in another language still starts in that track (Jellyfin's rule, and its default for every new user), and can turn it off there with one switch, saved through PATCH /jellyscale/v1/users/configuration (JS-123); the next PlaybackInfo in jellyfin-web then names the track in their language",
+    "A viewer changes only their own settings; another viewer's are untouched, and an unsigned request is refused",
+    "The page works at phone width and in light and dark, with no route outside /jellyscale/v1/ and no change to jellyfin-web's files",
+    "The page serves Octave Web viewers first and stays broadly compatible with jellyfin-web viewers; where the two conflict, Octave Web's viewers come first (D-090)."
+  ],
+  "dependsOn": [
+    "JS-118",
+    "JS-119"
+  ],
+  "notes": "Owner, 2026-11-15: a page, after the track-language batch. Moved up (D-028): the settings are built and no browser viewer can reach them. 2026-11-17 (JS-121's UX review): PlayDefaultAudioTrack defaults to true, so a viewer who only saves a language keeps hearing a film's flagged track, usually its original; the page says so and offers the switch. Dropped (D-126 and the pivot, D-107): A page for jellyfin-web viewers (rules 3 and 4); Octave has the settings.",
+  "source": "owner 2026-11-15",
+  "status": "dropped"
+}

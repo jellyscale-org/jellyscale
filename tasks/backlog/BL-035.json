@@ -1,0 +1,9 @@
+{
+  "id": "BL-035",
+  "source": "state review 2026-11-10",
+  "reviewer": "architecture",
+  "severity": "minor",
+  "title": "The scan decides what to re-probe from stored JSON with a special case per feature (internal/library/scan.go); a probe_version would replace the shims, before JS-045",
+  "status": "wontfix",
+  "notes": "Closed by the product owner: JS-086 built probe_version."
+}

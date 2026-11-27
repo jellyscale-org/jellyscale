@@ -1,0 +1,18 @@
+{
+  "id": "JS-042",
+  "phase": "M1",
+  "title": "A viewer sees and signs out their devices; an operator revokes any",
+  "description": "Serves \"Joining and signing in are easy and safe.\"; \"Access is enforced everywhere.\". Each sign-in belongs to a device (D-082).",
+  "acceptanceCriteria": [
+    "A viewer lists their signed-in devices (name, app, last seen) and signs any of them out; an administrator does the same for any account.",
+    "A device signed out answers 401 on its next request through any api or stream replica, shown with real processes.",
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-184"
+  ],
+  "source": "PRODUCT.md identity",
+  "notes": "",
+  "ux": true
+}

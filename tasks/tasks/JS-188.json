@@ -1,0 +1,18 @@
+{
+  "id": "JS-188",
+  "phase": "S4",
+  "title": "Subtitles never cost the picture",
+  "description": "Serves \"Their languages come first.\"; \"Any film plays, and plays well.\". ",
+  "acceptanceCriteria": [
+    "A subtitle the player can show (text, and image subtitles on Android) is shown by the player, so choosing it changes nothing in the picture.",
+    "The picture is converted to carry a subtitle only for a player that can show none of it.",
+    "Switching subtitles mid-film is quick and doesn't restart the picture.",
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-187"
+  ],
+  "source": "pivot-plan.md; D-107 to D-128",
+  "notes": ""
+}

@@ -1,0 +1,18 @@
+{
+  "id": "JS-140",
+  "phase": "P3",
+  "title": "An image subtitle copy that a slow store cannot finish within the hour still arrives",
+  "description": "D-002 accepted that a film whose image-track copy (JS-089) misses the one-hour limit keeps today's costly seeks into long cues, retried daily, on condition that a task closes the gap. How many films miss the hour, and the dogfood store's read speed, are unmeasured.",
+  "acceptanceCriteria": [
+    "A design is chosen with the product owner, reading JS-143's count, from: a limit that scales with the file's size, a no-progress limit in place of a wall-clock one (a hung store is not a slow one), and a read that resumes where it stopped so retries add up",
+    "With a store slow enough that a film's copy needs more than an hour, the copy completes and the film's seeks into long cues then cost what any seek does; a store that hangs still frees its background slot within the no-progress bound",
+    "docs/running.md and DOMAINS 51 state the new rule; D-002's remembered failure applies only to what the new rule still cannot finish"
+  ],
+  "dependsOn": [
+    "JS-089",
+    "JS-143"
+  ],
+  "source": "decision D-002",
+  "status": "dropped",
+  "notes": "Dropped (D-126 and the pivot, D-107): Rule 14, and JS-188 decides how image subtitles reach Octave's players. Moved to the backlog with D-002's condition carried (D-127)."
+}

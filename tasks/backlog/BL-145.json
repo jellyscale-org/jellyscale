@@ -1,0 +1,9 @@
+{
+  "id": "BL-145",
+  "source": "JS-111 verify",
+  "reviewer": "qa",
+  "severity": "minor",
+  "title": "A subtitle warning logs the media source id under the item key",
+  "status": "open",
+  "notes": "internal/api/subtitles.go deliverable: 'cannot check cached subtitles' logs stored.ID (a source id) as item=. Log it as source=, or log the item id."
+}

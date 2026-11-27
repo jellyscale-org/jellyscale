@@ -1,0 +1,9 @@
+{
+  "id": "BL-149",
+  "source": "JS-114 verify",
+  "reviewer": "qa",
+  "severity": "minor",
+  "title": "Default unanswered mode for play and browse changed from hls to none",
+  "status": "closed",
+  "notes": "gate.unanswered default in player.mjs is now \"none\" (was \"hls\"), so play and browse viewers no longer record HLS failures in seen.failed. No scenario in play, browse or subtitles reads seen.failed, so no check changes, but the record differs from the base. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
+}

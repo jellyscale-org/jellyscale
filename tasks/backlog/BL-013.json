@@ -1,0 +1,9 @@
+{
+  "id": "BL-013",
+  "source": "JS-072",
+  "reviewer": "qa",
+  "severity": "minor",
+  "title": "Every ensure takes one cluster-wide advisory lock",
+  "status": "closed",
+  "notes": "Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

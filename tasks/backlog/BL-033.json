@@ -1,0 +1,9 @@
+{
+  "id": "BL-033",
+  "source": "JS-028",
+  "reviewer": "ux",
+  "severity": "minor",
+  "title": "docs/subtitles.md gives no number for a proxy's read timeout during a subtitle pass (up to twice SubtitleTimeout)",
+  "status": "closed",
+  "notes": "Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

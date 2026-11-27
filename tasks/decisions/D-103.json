@@ -1,0 +1,11 @@
+{
+  "id": "D-103",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "JS-033",
+  "brief": "jellyfin-web shows a generic message for a refused password; what ResetPassword does under D-100.",
+  "tradeoff": "A viewer's Reset button does nothing; after an admin reset the user cannot sign in by password until one is set.",
+  "decision": "keep",
+  "entry": "jellyfin-web's generic message for a refused password is accepted, and the reason is in the body. An administrator's reset of another user leaves no password that signs in and ends the user's tokens. Resetting your own password is refused for everyone.",
+  "serves": "'Signing in is easy and safe'; D-096."
+}

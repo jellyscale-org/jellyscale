@@ -1,0 +1,9 @@
+{
+  "id": "BL-130",
+  "source": "JS-077 verify",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "A row that says a segment is stored but whose object is gone makes every poll Stat the store",
+  "status": "closed",
+  "notes": "case state.Stored has no memo; remember the state already looked at. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

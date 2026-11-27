@@ -1,0 +1,9 @@
+{
+  "id": "BL-160",
+  "source": "JS-125 plan (Fable 5.2 access model)",
+  "reviewer": "architecture",
+  "severity": "minor",
+  "title": "Two sign-ins at once with one DeviceId can leave two tokens for the device",
+  "status": "open",
+  "notes": "users.go:107-117 deletes then inserts with no unique index on (user_id, device_id); two concurrent AuthenticateByName for one device both insert. A unique index and an upsert make one token per device."
+}

@@ -1,0 +1,18 @@
+{
+  "id": "JS-208",
+  "phase": "S3",
+  "title": "Mixed versions play, and an older Octave keeps working",
+  "description": "Serves \"Nothing breaks the viewers' evening.\"; \"Their app keeps working.\". Split from JS-079 (D-063).",
+  "acceptanceCriteria": [
+    "A worker of the previous version and one of this version serve the same stream, in a real-process test, without a spec hash disagreement breaking playback (or the job is refused by the older one)",
+    "With a stream replica of the previous decision version registered and an api replica of the new one, PlaybackInfo offers nothing the old replica would refuse (a real-process test), and docs/running.md no longer requires an order between api and stream",
+    "A worker of the previous release is never counted as a partner for a shared play unless it has said it can help: during a rolling upgrade no play is admitted as shared and then left without a helper, in a real-process test (D-061).",
+    "An Octave release built against an earlier stable contract keeps working against this server: the conformance check of the previous contract version passes."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-194"
+  ],
+  "source": "pivot-plan.md; D-107 to D-128",
+  "notes": ""
+}

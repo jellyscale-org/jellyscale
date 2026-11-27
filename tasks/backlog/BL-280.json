@@ -1,0 +1,9 @@
+{
+  "id": "BL-280",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "D-082",
+  "title": "Removing a user at the OIDC provider stops new sign-ins but not the tokens already issued",
+  "notes": "Accepted for JS-039: docs/access.md says so, and disabling or deleting the user in jellyscale stops the token. Promote on an operator report of provider offboarding not cutting access; options include provider-driven revocation, a shorter token life, or checking the provider on each refresh."
+}

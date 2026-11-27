@@ -1,0 +1,15 @@
+{
+  "id": "JS-092",
+  "phase": "OPS",
+  "title": "A stated Postgres connection budget, warned about and measured with many processes",
+  "description": "Each worker holds its liveness connection and a hint-listener connection for good plus its pool, so a stock Postgres (max_connections 100) is reached near 45 workers, not the 90 ARCHITECTURE.md states (an estimate from the code, unmeasured). The control-plane ladder ran in one process.",
+  "acceptanceCriteria": [
+    "docs/running.md gives the connection formula per role",
+    "A process warns at startup when the cluster's registered processes approach max_connections",
+    "A multi-process variant of test/stress.sh measures connections and Postgres load at 50 workers"
+  ],
+  "status": "dropped",
+  "dependsOn": [],
+  "source": "Fable 5.2 architecture review, 2026-11-12 (.results/architecture-review-2026-11-12.md); owner's answers 2026-11-12",
+  "notes": "Dropped (D-126 and the pivot, D-107): Rule 14: no failure seen now (the 45-worker figure is an estimate). Moved to the backlog, to return when a deployment nears it."
+}

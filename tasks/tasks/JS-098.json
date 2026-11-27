@@ -1,0 +1,14 @@
+{
+  "id": "JS-098",
+  "phase": "OPS",
+  "title": "e2e and roles run under ffmpeg 6.1 locally",
+  "description": "Serves \"Nothing breaks the viewers' evening.\". It reproduces the merge-queue failures JS-175 records. test/ffmpeg61.sh runs Go tests under Ubuntu 24.04's ffmpeg 6.1, but e2e and roles need Node and Chrome, so they run locally on ffmpeg 9 and meet 6.1 first in CI. Used after a queue failure to reproduce it, not as a gate before the queue.",
+  "acceptanceCriteria": [
+    "An image with ffmpeg 6.1, Node and Chrome runs the e2e tier (the native browser check after JS-194) and test/roles.sh locally, to reproduce a merge-queue failure",
+    "Its versions match CI's"
+  ],
+  "status": "todo",
+  "dependsOn": [],
+  "source": "Fable 5.2 CI review, 2026-11-12 (.results/ci-review-2026-11-12.md); owner approved A, B, C, D and the later items",
+  "notes": ""
+}

@@ -1,0 +1,9 @@
+{
+  "id": "BL-103",
+  "source": "JS-066 verify",
+  "reviewer": "architecture",
+  "severity": "minor",
+  "title": "DBProxy.Delay sleeps once per read chunk, not once per round trip",
+  "status": "closed",
+  "notes": "A result larger than one 32K read is delayed several times, so the schedules' 'up to 300 ms' is approximate. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

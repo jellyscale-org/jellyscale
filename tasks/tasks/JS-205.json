@@ -1,0 +1,21 @@
+{
+  "id": "JS-205",
+  "phase": "S6",
+  "title": "Collections in kinds",
+  "description": "Serves \"Finding something to watch is easy.\"; \"Their data is theirs.\". D-124. Absorbs JS-048.",
+  "acceptanceCriteria": [
+    "A franchise shows as one title in the grid once the collection holds enough of it, with its watch orders across films and shows, and its next title appears in Continue watching.",
+    "A list never collapses; a saved rule is a collection that keeps itself up to date.",
+    "Collections can nest without cycles, and a title says which collections it is part of.",
+    "Collections and their orders come from files beside the films or from configuration.",
+    "A collection never counts or reveals a member the viewer may not see.",
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-186",
+    "JS-036"
+  ],
+  "source": "pivot-plan.md; D-107 to D-128",
+  "notes": ""
+}

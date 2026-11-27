@@ -1,0 +1,17 @@
+{
+  "id": "JS-058",
+  "phase": "S7",
+  "title": "Upgrades without downtime",
+  "description": "Workers before stream and api; migrations old replicas survive; workers report their spec fields. The mixed-version safety of migrations and spec hashes is split out to JS-079, which comes much earlier.",
+  "acceptanceCriteria": [
+    "A rolling upgrade under playback loses no picture",
+    "docs/running.md's upgrade section says what an OutputVersion bump costs (every film playing is re-encoded once and its stored segments orphaned), and a bump touches only the specs whose output changed, or the pull request says why it cannot"
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-056"
+  ],
+  "source": "PRODUCT.md phase6-k8s",
+  "notes": "",
+  "ux": true
+}

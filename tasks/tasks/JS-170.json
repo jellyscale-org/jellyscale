@@ -1,0 +1,25 @@
+{
+  "id": "JS-170",
+  "phase": "S6",
+  "title": "A worker finds its Intel GPU by itself and uses it for the re-encodes it does right; the operator sets nothing",
+  "description": "Serves \"Growing is adding machines.\"; \"Play starts in seconds and keeps up.\". The first hardware slice (BL-040): one family, Intel VAAPI/QSV, on GPUs that do the whole job. The worker detects, chooses by D-047's rule and falls back to the processor; operators may turn it off, never need to tune it. NVIDIA, AMD, hardware decode for processor-encoded streams and outputs above 1080 lines stay in JS-054. PRODUCT.md: any film plays, and plays well; play starts in seconds and keeps up; operators want the server to be something they set up once and then mostly forget. D-047.",
+  "acceptanceCriteria": [
+    "Design reviewed before building: how a family is chosen for a stream; helpers and failover within the family; what a viewer sees when the last worker of their stream's family is lost mid-film (playing on is the goal; anything else is measured and briefed to the product owner before it is built, never a stall or a stop without a reason); how a hardware job is priced against a worker's capacity (JS-161); and whether the task splits (detection and choice; placement and failover).",
+    "With nothing configured, a worker tests at start each stage it would use (10-bit HEVC decode, the tone map, subtitle drawing, encode) by a bounded real run, not from the ffmpeg build's list or the device's presence; the bound is in docs/running.md; the result for each stage is logged with its reason and is on /metrics. A node with no GPU, or with none given to the pod, runs exactly as before and logs no error.",
+    "A job takes a hardware path only when, on that worker, the path's picture is within JS-169's bound of the processor path's, it measured at or above 1.2 times real time for that kind of job, and its encoder is within twice x264's bytes at equal quality in a quality-targeted mode; otherwise that job is made on the processor there. Checked with a negative case: a worker whose GPU fails a stage (the HD 530 itself in the hardware tier, cannot decode 10-bit HEVC) makes the 4K HDR re-encode on the processor and says why, once, in the log and on /metrics.",
+    "The tone map's curve is the one jellyscale sets, in every family; no driver video-processor tone map is used by any path or override. A film's re-encode on a GPU worker and on a processor worker, compared frame for frame on three scenes, is within the bound.",
+    "A new stream gets the hardware family when a worker of it has room and the processor otherwise; the family stays in the spec hash; helpers and failover stay in the family. With two UHD 630 workers, in Octave (or, until JS-190 and JS-150, the native browser check): a seek, a helper's chunk and a killed GPU worker each splice, no segment request over 5 seconds, no dialog, the position kept; 10 of 10.",
+    "Operators may set per worker, and only these: hardware off (default auto), the device, the most hardware jobs at once. An override the hardware cannot honour is refused at start with its reason. docs/running.md says none is needed.",
+    "Operators see the family and the worker serving each stream (Sessions, /metrics, the JS-153 decision line); every fall back to the processor is logged with its reason and counted by reason; no label names a job, film, account or device.",
+    "Tested on real hardware in its own tier, chosen explicitly and never skipped: the dogfood cluster's UHD 630s. On the dogfood, each homelab change approved by the owner first (the GPU through the device plugin, no privileged container): a 4K HDR re-encode with and without a burned-in image subtitle plays 10 minutes with a seek at speed 1.0 or above after the first 30 seconds; as many at once on one GPU as JS-169 measured to hold 1.2 times real time each do so; recorded with ids and counts only."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-169",
+    "JS-161",
+    "JS-166"
+  ],
+  "source": "D-047; BL-040",
+  "notes": "ux: true. Moves to directly after JS-166 if JS-166 returns without closing the gap on processors, or the dogfood's JS-153 counters show a refusal for lack of cores with every worker running (D-047).",
+  "core": true
+}

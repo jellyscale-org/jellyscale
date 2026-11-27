@@ -1,0 +1,11 @@
+{
+  "id": "D-141",
+  "date": "2026-11-27",
+  "by": "owner",
+  "task": "JS-150",
+  "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
+  "tradeoff": "None.",
+  "decision": "change",
+  "entry": "jellyscale ships a specific, tested Octave Web release in its image (the owner: \"I think the answer to all your questions is yes.\"). The release is pinned and passes jellyscale's browser check before it ships.",
+  "serves": "Owner, 2026-11-27."
+}

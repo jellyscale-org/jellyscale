@@ -1,0 +1,19 @@
+{
+  "id": "JS-035",
+  "phase": "ID",
+  "title": "Scoped integration keys",
+  "description": "Serves \"Access is enforced everywhere.\"; Goal 5: \"Operating it stays boring.\". Named, revocable keys that are not user accounts, with scopes (for example read-only stats), sent like a device's sign-in, declared in configuration.",
+  "acceptanceCriteria": [
+    "A key outside its scope gets 401/403",
+    "Last use time and address recorded",
+    "A read-only key is shown against the routes it may call and those it may not: each allowed route answers, each other route is refused",
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
+  ],
+  "status": "dropped",
+  "dependsOn": [
+    "JS-034"
+  ],
+  "source": "user request 2026-11-07",
+  "notes": "Jellyfin offers only per-user tokens or all-powerful admin keys, so people create throwaway accounts for integrations. Access: anything narrower than an operator key is a scope. (access model, 2026-11-16) Dropped at the replan (D-150): Scoped keys for integrations serve no PRODUCT.md outcome, and integrations are clients other than Octave, for which no work goes in (mandate rules 1 and 4). Moved to the backlog until an operator need is recorded.",
+  "ux": true
+}

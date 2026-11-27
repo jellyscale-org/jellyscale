@@ -1,0 +1,19 @@
+{
+  "id": "JS-045",
+  "phase": "M1",
+  "title": "Artwork and synopses from files beside the film",
+  "description": "Serves \"Finding something to watch is easy.\"; \"Their data is theirs.\". Poster and fanart images, .nfo files and embedded tags as the only metadata source.",
+  "acceptanceCriteria": [
+    "In Octave (or, until JS-190 and JS-150, the native browser check), a film and a show kept on local disk and on S3 each show their poster, backdrop and synopsis on the home, in Films or Shows, and on the details page; neither store is slower to first poster by more than a measured, recorded margin.",
+    "A film with no image and no .nfo beside it shows as it does today, and the scan logs no error for it.",
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-080",
+    "JS-186"
+  ],
+  "source": "PRODUCT.md phase5-library",
+  "notes": "Moved into M1's parallel work (#299): a TV home is mostly artwork and titles, and titles that look like file names fail \"Finding something to watch is easy.\" It does not block the cutover. A migration that adds a column to items recreates the shown_items view (SELECT i.* is fixed when it is made; BL-087).",
+  "ux": true
+}

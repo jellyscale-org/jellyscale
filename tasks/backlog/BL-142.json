@@ -1,0 +1,9 @@
+{
+  "id": "BL-142",
+  "source": "JS-106 verify",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "Abandoned Put goroutine can leak and may still write the segment later",
+  "status": "open",
+  "notes": "A store Put that ignores its context and never returns: worker.put returns on ctx.Done but the goroutine and the open file handle stay until the Put returns, which may be never. A Posix-like store whose Put ignores ctx can also finish later and rename the segment into place after the job was cancelled (written by a non-owner; no DB record, so harmless to correctness but visible in the store)."
+}

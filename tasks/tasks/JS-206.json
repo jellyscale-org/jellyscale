@@ -1,0 +1,18 @@
+{
+  "id": "JS-206",
+  "phase": "S6",
+  "title": "The operator's own ways in",
+  "description": "Serves \"Finding something to watch is easy.\"; Goal 5: \"Operating it stays boring.\". ",
+  "acceptanceCriteria": [
+    "Configuration declares named sets of titles (such as Anime or Christmas) shown beside Films and Shows.",
+    "A set grants and hides nothing (D-124).",
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-203"
+  ],
+  "source": "pivot-plan.md; D-107 to D-128",
+  "notes": "",
+  "ux": true
+}

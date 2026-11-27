@@ -1,0 +1,9 @@
+{
+  "id": "BL-277",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "JS-160",
+  "title": "On a fresh install every asset sweep logs an ERROR because the library's assets directories do not exist yet",
+  "notes": "Seen by the implementer and QA on a fresh e2e stack: 'a sweep of the asset store ... removed nothing more' with 'lstat ...: no such file or directory'. It looks like invariant 56's missing-root protection firing for an asset prefix that has never been created; nothing was removed wrongly. Decide whether a fresh install should create the directories or the sweep should treat an absent assets prefix as empty while a missing media root stays an error. (D-087) Backlog, minor: a false ERROR on a healthy install wears down 'every failure is reported with its reason'. Promote at JS-056's fresh-cluster run or on an operator's report."
+}

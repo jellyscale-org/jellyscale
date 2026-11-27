@@ -1,0 +1,9 @@
+{
+  "id": "BL-220",
+  "source": "JS-145 verify",
+  "reviewer": "qa",
+  "severity": "minor",
+  "title": "The unknown-name flood check drives a function no sign-in calls",
+  "status": "closed",
+  "notes": "Reading only. JS-145's criterion 6 says the flood drives the one function the handler calls to count a failed sign-in for a name; the check drives FailName and NameRefusal, which only tests call, while a sign-in goes through Begin (said to reach the same counting step, with the address and device steps before it). So the memory bound is shown on the counting step, not on a sign-in. Fix when a task next touches sign-in (JS-037 or JS-033): the flood goes through what a sign-in calls and the test-only pair goes. Promote sooner if the two paths are shown to count differently. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

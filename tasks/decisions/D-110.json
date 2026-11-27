@@ -1,0 +1,11 @@
+{
+  "id": "D-110",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "AGENTS.md; test tiers",
+  "brief": "po/pivot-plan.md",
+  "tradeoff": "Jellyfin stops being the test oracle.",
+  "decision": "change",
+  "entry": "The quality bar is jellyscale's own published contract and its conformance check, real players observed, and Octave's e2e. Jellyfin observation, the differential tier and the Jellyfin schema check are retired now; the jellyfin-web gate at the cutover.",
+  "serves": "PRODUCT.md, Quality bar."
+}

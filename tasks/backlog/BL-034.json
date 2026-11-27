@@ -1,0 +1,9 @@
+{
+  "id": "BL-034",
+  "source": "state review 2026-11-10",
+  "reviewer": "architecture",
+  "severity": "major",
+  "title": "One slot pool counts a near-free copy the same as a multi-core re-encode (internal/transcode/worker.go slots); fold into JS-054's design and before JS-057's scaling signal",
+  "status": "promoted",
+  "notes": "JS-054 design criterion Promoted to JS-087 (2026-11-12)."
+}

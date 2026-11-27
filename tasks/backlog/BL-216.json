@@ -1,0 +1,9 @@
+{
+  "id": "BL-216",
+  "source": "JS-145 verify / D-023",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "A forwarded entry with a port or brackets is accepted as its address",
+  "status": "open",
+  "notes": "Promote when a named ingress is shown to write entries that way."
+}

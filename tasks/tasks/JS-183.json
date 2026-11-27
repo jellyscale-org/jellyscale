@@ -1,0 +1,20 @@
+{
+  "id": "JS-183",
+  "phase": "M1",
+  "title": "One published contract for jellyscale's own API",
+  "description": "Serves Goal 3: \"Octave's features have the server they need.\"; \"Their app keeps working.\". D-110. All of M1 is in it before JS-184 starts, so Octave builds early. D-148: the contract is OpenAPI 3.1.",
+  "acceptanceCriteria": [
+    "One published, versioned contract describes jellyscale's API, served by the server and carried in each image.",
+    "A client learns the server's identity, version and capabilities.",
+    "Refusal and failure reasons come from a closed, versioned list, each with its meaning and what the viewer can do; a reason a client does not know yet never breaks it, checked with a client generated from the contract.",
+    "Each capability is marked preview or stable; a stable one does not change incompatibly within its version.",
+    "A conformance check runs in CI and fails on an answer outside the contract, an undeclared route, or an incompatible change to a stable capability.",
+    "The contract holds all of M1 (sign-in, Films and Shows, a title's details, artwork, Continue watching, playback and progress) with example answers Octave can mock against.",
+    "A capability declared and not yet served is marked so in the contract and in what a client learns of the server, and the conformance check accepts that state, so Octave can build against it first (D-134).",
+    "Every contract change reaches Octave as a from:jellyscale issue saying what changed and what each platform must do, before the server serves it (D-132)."
+  ],
+  "status": "todo",
+  "dependsOn": [],
+  "source": "pivot-plan.md; D-107 to D-128",
+  "notes": "Cross-project need (D-132): Its M1 part follows Octave's approved M1 designs where Octave has them (ASK-3). A capability no design has yet confirmed ships as preview and becomes stable when Octave confirms it, so the contract never waits on another product."
+}

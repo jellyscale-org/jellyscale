@@ -1,6 +1,6 @@
 # Product
 
-What jellyscale should be, and the experience it exists to give: the overall product and its direction, nothing else. It says what viewers and operators get, never how it is built; how is for the design to decide. It guides every task: a design is right when it moves the product toward what is written here. What is built is in [docs/status.md](docs/status.md), and the work still to do in [tasks/prd.json](tasks/prd.json).
+What jellyscale should be, and the experience it exists to give: the overall product and its direction, nothing else. It says what viewers and operators get, never how it is built; how is for the design to decide. It guides every task: a design is right when it moves the product toward what is written here. What is built is in [docs/status.md](docs/status.md), and the work still to do in [tasks/order.txt](tasks/order.txt) order, one record per task in `tasks/tasks/`.
 
 ## What jellyscale is
 

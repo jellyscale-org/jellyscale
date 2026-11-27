@@ -1,0 +1,20 @@
+{
+  "id": "JS-203",
+  "phase": "S6",
+  "title": "Filters and badges",
+  "description": "Serves \"Finding something to watch is easy.\"; \"Their languages come first.\". Absorbs JS-046's genres and persons and JS-047's filters.",
+  "acceptanceCriteria": [
+    "Films and Shows filter by unwatched, audio and subtitle language, audio description and SDH, 4K and HDR, genre and person, combined with AND.",
+    "Counts respect the access rule.",
+    "A viewer's filter is remembered for them.",
+    "4K, HDR, audio description and SDH show as badges on a title.",
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-186",
+    "JS-036"
+  ],
+  "source": "pivot-plan.md; D-107 to D-128",
+  "notes": ""
+}

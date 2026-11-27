@@ -1,0 +1,9 @@
+{
+  "id": "BL-071",
+  "source": "JS-070 verify",
+  "reviewer": "qa",
+  "severity": "minor",
+  "title": "Schema check skips error statuses that carry no JSON body",
+  "status": "closed",
+  "notes": "checker.go returns nil for a non-2xx answer whose content type is not JSON, before counting it. A 4xx or 5xx text body where the schema declares a JSON type for that status is not reported, although the spec says 'no JSON body where the schema gives one'. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
+}

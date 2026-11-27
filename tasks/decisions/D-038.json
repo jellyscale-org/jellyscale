@@ -1,0 +1,10 @@
+{
+  "id": "D-038",
+  "date": "2026-11-20",
+  "task": "JS-152, JS-153, JS-154, JS-148, JS-136, JS-041, JS-075, JS-143, JS-022",
+  "decision": "change",
+  "by": "product-owner",
+  "tradeoff": "Dogfood report (owner, 2026-11-20): 4K HDR films with a burned-in PGS subtitle re-encoded at 0.56 to 0.63 times real time and did not play; a seek into one failed with 500s; no log said why a play was re-encoded. The owner asked for the reason to be logged and for every metric to be on the metrics endpoint.",
+  "entry": "JS-152 (a seek anywhere into a re-encode gets its segment, whatever the audio), JS-153 (every playback decision logged and counted with its reasons; no title, file name or path in the line; counters on /metrics with no account, device or item label) and JS-154 (measure why a 4K HDR burn-in ran at 0.6x on the dogfood and price what keeps it playing) enter at 14, 15 and 16; the tasks at 14 and above each move down three, amending D-025 (JS-041 directly after JS-147) and D-028 (JS-122 at 15). The 4K HDR burn-in failure is a gap, neither accepted nor closed: refusing with a reason is a floor and not the closer, an output below 1080 lines needs a priced brief, and sharing the encode across the cluster and a hardware slice (BL-040) are weighed first; JS-154's brief decides. JS-136 waits for JS-154 and must not slow that film; JS-041 lists the modes that now start a burn-in; JS-148 reads its 14-day count from JS-153 and keeps to the 1080-line ceiling. Every metric a task adds is served on /metrics (owner, 2026-11-20); JS-022 checks it for the existing ones. Read from the dogfood by the lead: one worker (a single pod), a 4-core i5-6500 with an HD 530 iGPU not mounted in the pod, no helper job ran. Unverified when decided: the cause of the seek failure (DTS-HD), why Moonfin asked for the subtitle index it did, the client-side delay on direct play. Data that moved it: dogfood jobs 82, 83 and 85.",
+  "serves": "PRODUCT.md goal 1: Playback never surprises a viewer; 'A heavy film uses the whole cluster's processors rather than stalling on one machine'; 'Nothing is hidden ... every failure is reported with its reason, never silent'."
+}

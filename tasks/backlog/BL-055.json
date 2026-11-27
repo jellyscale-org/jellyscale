@@ -1,0 +1,9 @@
+{
+  "id": "BL-055",
+  "source": "JS-081 verify",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "A sleep sets the pause-time speed baseline in the metrics test",
+  "status": "closed",
+  "notes": "TestAWorkerReportsItsJobWhileItRuns (metrics_integration_test.go) sleeps 1 s after jobs pauses, scrapes the speed, sleeps 5 s, scrapes again and requires them equal to 1e-9. On a slow runner ffmpeg progress still in the pipe after the 1 s can change the speed between the two scrapes, which fails a right build. The comment says it is read 'by now'. Reading only. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

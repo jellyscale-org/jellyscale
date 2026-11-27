@@ -1,0 +1,9 @@
+{
+  "id": "BL-252",
+  "status": "closed",
+  "severity": "minor",
+  "reviewer": "lead",
+  "source": "JS-161 merge-queue run 45132952457; D-060",
+  "title": "A worker's measured capacity depends on what else ran on the host at its start, and is kept until the next start",
+  "notes": "One CI runner measured speed 0.19 and 0.46 on two starts minutes apart. An operator would notice the same worker admitting a 4K play after one restart and refusing it after another. Promote on either: a dogfood worker's logged capacity differing between two starts by enough to change which price-table rows it holds; or a dogfood refusal or stall traced to a start-time measurement. Closed into BL-259 by D-062."
+}

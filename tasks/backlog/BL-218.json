@@ -1,0 +1,9 @@
+{
+  "id": "BL-218",
+  "source": "JS-145 verify / D-023",
+  "reviewer": "product-owner",
+  "severity": "minor",
+  "title": "The compose stack as shipped cannot name a guessing client or bound per address",
+  "status": "open",
+  "notes": "Measure whether Docker keeps a remote client's source address on a port published to the network, and what publishing that way exposes. Promote when an operator runs the compose stack reachable from a network, or when the measurement is made."
+}

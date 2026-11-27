@@ -1,0 +1,9 @@
+{
+  "id": "BL-197",
+  "source": "flake",
+  "reviewer": "",
+  "severity": "minor",
+  "title": "TestAnyReplicaServesAnySegmentAndOneJobStarts (garage, copied): a heartbeat timed out 0.7 s after the job started under queue load, the job was given up for a lost lease and a second job started",
+  "status": "wontfix",
+  "notes": "Product owner asks (evidence): Would a loaded production worker miss a heartbeat 0.7 s after a job starts and have the job restarted (a viewer rebuffering), or is this the test's short lease? Promoted into JS-155 (D-039). D-042: answered from the queue log in JS-155's record; closed when that answer is recorded, or a fix task named. D-043: answered in JS-155's record (the rig's 3 s lease; production cuts only after 9.5 s with no renewal answered); no fix task. Reopen if the same test fails the queue again, or if the dogfood's logs show a job given up for a lost lease while Postgres was up."
+}

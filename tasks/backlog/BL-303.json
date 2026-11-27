@@ -1,0 +1,9 @@
+{
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "pivot-plan.md",
+  "title": "A cache near remote viewers",
+  "notes": "From the streaming report (rank 10); low at private scale.",
+  "id": "BL-303"
+}

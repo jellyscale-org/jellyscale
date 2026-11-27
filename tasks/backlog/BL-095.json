@@ -1,0 +1,9 @@
+{
+  "id": "BL-095",
+  "source": "JS-031 verify",
+  "reviewer": "ux",
+  "severity": "minor",
+  "title": "The first POST after a replica dies waits about 3 s before Caddy retries it",
+  "status": "open",
+  "notes": "lb_retry_match retries GET and HEAD only; a POST waits for the passive health check."
+}

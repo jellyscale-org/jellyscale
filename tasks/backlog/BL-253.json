@@ -1,0 +1,9 @@
+{
+  "id": "BL-253",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "lead",
+  "source": "JS-159/JS-161 triage; D-061",
+  "title": "While a segment waits for its successor it is re-read whole every 100 ms",
+  "notes": "Promote on BL-245's trigger (D-067). Kin to BL-245."
+}

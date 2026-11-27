@@ -1,0 +1,9 @@
+{
+  "id": "BL-096",
+  "source": "JS-031 verify",
+  "reviewer": "architecture",
+  "severity": "minor",
+  "title": "The readiness lead is not tied to the grace or the documented polling interval",
+  "status": "promoted",
+  "notes": "Nothing checks that the documented health interval is shorter than the 5 s lead. Promoted to JS-056."
+}

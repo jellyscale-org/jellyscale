@@ -1,0 +1,9 @@
+{
+  "id": "BL-058",
+  "source": "JS-029 verify",
+  "reviewer": "architecture",
+  "severity": "minor",
+  "title": "Reap hold-off is process-local, so a reaper that missed the outage can still forget live workers",
+  "status": "open",
+  "notes": "reapHold is read from db.Of(pool).Recent(10s), which is set only when that process's own queries or connections fail. A reaper that sees no failure, for example an api replica whose idle connection survived or was replaced without an error, forgets workers whose locks died with the old primary before they take them again. Alternative: record the lock gap in the database (a lock_missing_since colum"
+}
