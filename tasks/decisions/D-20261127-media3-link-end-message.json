@@ -1,0 +1,11 @@
+{
+  "id": "D-20261127-media3-link-end-message",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "JS-219",
+  "brief": "## B. JS-219: what it changes\n\nWhat it shows. Holding the link is solved on Media3. The ending of a link is not solved: a refused link leaves the player buffering with no picture. That is a stall the viewer sees, and Media3 raises no player error.\n\n- JS-217 criterion added: \"A playback's end reaches the app as a message, and in its progress-report answer, before its link is refused, so an app never learns of it only through a refused segment. A refused link answers 410 `playback-ended` with action `start-again`.\" The design must say: \"Media3 shows such a refusal only as a load error, not as a player error (docs/pathsecret-link.md).\"\n- JS-185, criterion 10: add \"On the Media3 player, a playback ended by the server while the app plays is noticed by the app within 10 seconds. If the viewer was watching, a new playback starts at their place with nothing shown, or the refusal of the new play is shown with its reason. The player is never left buffering.\"\n- Ask of Octave (from:jellyscale, with JS-217's notice): \"On Android, treat a load error of 410 `playback-ended` on the playback's link as the playback's end. Do not wait for `onPlayerError`. Start a new playback silently.\"\n- Not proven: one emulator and a stand-in server. AVPlayer stays BL-317.\n- entry: \"JS-219: a link with a secret in its path survives a 30-minute pause on Media3. A refused link stalls Media3 with no player error, so the server tells the app that a playback has ended before it refuses the link (JS-217). JS-185 proves that no player is left buffering, and Octave is asked to treat a 410 load error as the end.\"",
+  "tradeoff": "Not proven: one emulator and a stand-in server. AVPlayer stays BL-317.",
+  "serves": "",
+  "decision": "change",
+  "entry": "JS-219: a link with a secret in its path survives a 30-minute pause on Media3. A refused link stalls Media3 with no player error, so the server tells the app that a playback has ended before it refuses the link (JS-217). JS-185 proves that no player is left buffering, and Octave is asked to treat a 410 load error as the end."
+}

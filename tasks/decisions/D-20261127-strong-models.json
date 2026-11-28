@@ -1,0 +1,11 @@
+{
+  "id": "D-20261127-strong-models",
+  "date": "2026-11-27",
+  "by": "owner",
+  "task": "model routing",
+  "brief": "owner, in conversation",
+  "tradeoff": "More of the Claude allowance goes to sign-in, playback and video-player work.",
+  "serves": "",
+  "decision": "change",
+  "entry": "The owner: \"Also, Fable recommended this: Use the strongest models for sign-in, playback and the video player. Cheaper models can handle other work, with review. I read that as Opus 5.5\" and \"Let's make that a rule in our CLAUDE.md and AGENTS.md.\" For sign-in, playback and video-player work, Check, Build, Fix and the adversarial review run on Opus 5.5. The lead's reading, told to the owner: cheaper models may write the first checks (Opus checks them) and do helper work with review."
+}

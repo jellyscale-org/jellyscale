@@ -1,0 +1,16 @@
+{
+  "id": "JS-225",
+  "phase": "S6",
+  "title": "Spike: which devices an operator's own server can notify without a project-run service",
+  "description": "Serves \"Nothing about a film or a viewer … is sent outside the operator's servers, with one exception a viewer chooses\"; goal 5, \"Postgres is the only required service\". The spike comes before JS-212's Spec (D-20261127-notifications-verify-first): no commitment and no PRODUCT.md change until it reports.",
+  "acceptanceCriteria": [
+    "For each platform (iOS through APNs; Android phone and TV through FCM; Android through UnifiedPush; Octave Web through Web Push in Chrome, Firefox and Safari), it is recorded, with an app built and signed by a party other than the server's operator, whether the operator's server delivers a notification using only credentials it holds. Each record names what the operator must obtain, which outside service the message passes through, and what that service sees.",
+    "Where a platform needs the publisher's credentials or a relay, the spike says so and names the options (a relay, credentials, no notifications on that platform). It recommends none.",
+    "Recorded in docs/ with the versions and commands. The result goes to the product owner before JS-212's Spec."
+  ],
+  "status": "todo",
+  "dependsOn": [],
+  "source": "D-20261127-notifications-verify-first",
+  "notes": "Ask of Octave, relayed by the owner: \"Which push paths will your apps accept: UnifiedPush on Android, Web Push in Octave Web, APNs only on iOS? And would your published apps ever let an operator's server send to them without a relay you run?\"",
+  "ux": null
+}

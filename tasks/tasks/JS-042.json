@@ -10,9 +10,10 @@
   ],
   "status": "todo",
   "dependsOn": [
-    "JS-184"
+    "JS-184",
+    "JS-216"
   ],
   "source": "PRODUCT.md identity",
-  "notes": "",
+  "notes": "Amended 2026-11-27 by D-20261127-sign-in-first, decided by the product owner: dependsOn adds JS-216 (their operations are declared there), beside JS-184.",
   "ux": true
 }

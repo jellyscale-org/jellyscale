@@ -1,0 +1,11 @@
+{
+  "id": "D-20261127-continue-watching-no-age-window",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "JS-218",
+  "brief": "## A6. Continue watching's window: change, no automatic window\n\n- decision: `change`. Nothing leaves Continue watching because of its age. The viewer removes a title, or finishes it.\n- reason: no setting exists, and a fixed window would remove titles without the viewer acting, which is a surprise. Removal (§2.7) already gives #233 its cleanup by hand.\n- JS-218 criterion 2: replace \"a title not played for longer than the viewer's own setting leaves it\" with \"a title leaves it when the viewer removes it or finishes it; nothing leaves by age\".\n- backlog: BL-237 stays, for a window per profile. It is promoted when the dogfood shows rows on several accounts holding titles with no progress for 30 days or more.\n- entry: \"In M1 nothing leaves Continue watching by age. Removal and finishing are the only exits. A window per profile waits for dogfood data (BL-237).\"",
+  "tradeoff": "No setting exists, and a fixed window would remove titles without the viewer acting, which is a surprise. Removal (§2.7) already gives #233 its cleanup by hand.",
+  "serves": "",
+  "decision": "change",
+  "entry": "In M1 nothing leaves Continue watching by age. Removal and finishing are the only exits. A window per profile waits for dogfood data (BL-237)."
+}

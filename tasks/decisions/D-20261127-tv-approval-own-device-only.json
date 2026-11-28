@@ -1,0 +1,11 @@
+{
+  "id": "D-20261127-tv-approval-own-device-only",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "JS-191",
+  "brief": "## C1. TV approval and the per-address bound: change (exempt)\n\n- decision: `change`. The password given to approve a TV is not counted toward the per-address bound and is not refused by it. It counts only toward the bound of the signed-in phone's own known device.\n- serves: PRODUCT.md, \"Signing in is easy and safe\"; decision A3.\n- reason: one member typing a wrong password must never stop the rest of the household adding a TV. The approval already needs a signed-in token for that same account, so a guesser who has one is held by that device's own count of 10 per 15 minutes. The per-address bound still protects sign-in itself: an approval can't be used to guess across names.\n- JS-191: the criterion A3 added becomes: \"The approval's password is checked under the signed-in phone's own known-device bound only, never the bound per name or per address. Tries at the name from elsewhere, and other people's wrong passwords from the same address, never stop a viewer approving a TV.\"\n- Design §2.3 \"Server rules\": \"The approval's password counts only toward the phone's own device bound. A sign-in lock on the name or the address never blocks approval.\" Design §2.1: the lock words become \"…Devices already signed in keep working, and can approve a TV.\"\n- docs/access.md (JS-191 writes it): \"A TV approval's password counts only toward the approving device's own bound.\"\n- entry: \"A TV approval's password is bounded only by the approving phone's own device count. Locks on the name or the address never block it, so one member's typos don't stop the household's TV approvals.\"",
+  "tradeoff": "The approval already needs a signed-in token for that same account, so a guesser who has one is held by that device's own count of 10 per 15 minutes. The per-address bound still protects sign-in itself: an approval can't be used to guess across names.",
+  "serves": "PRODUCT.md, \"Signing in is easy and safe\"; D-20261127-tv-approval-phone-bound.",
+  "decision": "change",
+  "entry": "A TV approval's password is bounded only by the approving phone's own device count. Locks on the name or the address never block it, so one member's typos don't stop the household's TV approvals."
+}

@@ -1,7 +1,7 @@
 export const meta = {
   name: 'build',
   description: 'Write the acceptance checks first, build until they pass, then verify by running it and one blind adversarial review',
-  whenToUse: 'Every task in tasks/tasks/. Args: {task, acceptance: string[], tests: string[], id?: string, ux?: boolean, core?: boolean, domains?: string[]}',
+  whenToUse: 'Every task in tasks/tasks/. Args: {task, acceptance: string[], tests: string[], id?: string, ux?: boolean, core?: boolean, strong?: boolean, domains?: string[]}',
   phases: [
     { title: 'Spec', detail: 'acceptance criteria become executable checks that fail today' },
     { title: 'Check', detail: 'review the design and whether the checks can catch a wrong build' },
@@ -90,7 +90,7 @@ const LOCKED = {
 }
 
 
-const { task, tests = [], id = '', ux = false, core = false, resolved = null, refine = true } = args
+const { task, tests = [], id = '', ux = false, core = false, strong = false, resolved = null, refine = true } = args
 let { acceptance = [] } = args
 // args.root runs the task in its own worktree, so two tasks can build side by side.
 // Only the lead consults the advisor, and only when stuck (owner, 2026-11-22). Claude Code gives every
@@ -161,7 +161,10 @@ const CORE_MODELS = {
   'adversarial-reviewer': { model: 'claude-agent/sonnet', effort: 'high' },
 }
 // Roles are read from their files, so a role added in this session works too.
-const role = (name) => ({ agentType: 'general-purpose', ...MODELS[name], ...(core ? CORE_MODELS[name] : {}) })
+// Sign-in, playback and video players get the strongest models (D-20261127-strong-models).
+const OPUS = { model: 'claude-agent/opus', effort: 'high' }
+const STRONG_MODELS = { check: OPUS, implementer: OPUS, 'adversarial-reviewer': OPUS }
+const role = (name) => ({ agentType: 'general-purpose', ...MODELS[name], ...(core ? CORE_MODELS[name] : {}), ...(strong ? STRONG_MODELS[name] : {}) })
 const read = (name) => `${where}${domains}First read .claude/agents/${name}.md. It defines your role and its limits, and you must follow it exactly.\n\n`
 
 let root = null
