@@ -46,6 +46,22 @@ compat/gen-schema.sh                        # compat/schema-12.4.json from the j
 - Never start a polling loop.
 - Don't commit or push unless asked.
 
+## Domains
+
+Seven domains and one edge (DOMAINS.md "Domains"). A task names its domains; the build workflow gives each agent only its domains' files under `docs/domains/`. Per-domain files carry words, owns, must-not and rules at the cutover; today's invariants stay in DOMAINS.md until the cutover.
+
+| Touching | Read |
+|---|---|
+| Collection | `docs/domains/collection.md`, `docs/domains/platform.md` |
+| Finding | `docs/domains/finding.md`, `docs/domains/platform.md` |
+| Playback | `docs/domains/playback.md`, `docs/domains/platform.md` |
+| Making | `docs/domains/making.md`, `docs/domains/platform.md` |
+| Place | `docs/domains/place.md`, `docs/domains/platform.md` |
+| People | `docs/domains/people.md`, `docs/domains/platform.md` |
+| Together | `docs/domains/together.md`, `docs/domains/platform.md` |
+| Contract | `docs/domains/contract.md`, `docs/domains/platform.md` |
+| Platform (any task) | `docs/domains/platform.md` |
+
 ## Delivery
 
 - Build each task in `tasks/tasks/<id>.json`, open tasks in `tasks/order.txt` order (`tools/plan.sh`), with the `build` workflow (`.claude/workflows/build.js`), highest priority first.

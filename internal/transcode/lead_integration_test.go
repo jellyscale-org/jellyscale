@@ -311,6 +311,7 @@ func TestAPausedCopyFromS3ResumesAndMakesTheSameSegments(t *testing.T) {
 				}
 				return all
 			}
+			var held string
 			paused := read(12*time.Second, func(t *testing.T, j *Jobs) {
 				if _, err := r.fetch(t, j, psid(0), 0); err != nil {
 					t.Fatal(err)
@@ -321,6 +322,11 @@ func TestAPausedCopyFromS3ResumesAndMakesTheSameSegments(t *testing.T) {
 				if !r.paused() || r.stored(2) || r.count(t, "SELECT count(*) FROM transcode_jobs WHERE state = 'running'") != 1 {
 					t.Fatal("the copy did not hold at its lead")
 				}
+				// The hold itself must never cost the job a replacement.
+				if n := r.count(t, "SELECT count(*) FROM transcode_jobs"); n != 1 {
+					t.Fatalf("%d jobs during the hold, want the one that paused", n)
+				}
+				held = mustScalar(t, r, "SELECT id::text FROM transcode_jobs")
 				for n := 1; n < 9; n++ { // As a player does, one after another.
 					if _, err := r.fetch(t, j, psid(0), n); err != nil {
 						t.Fatalf("segment %d after the pause: %v", n, err)
@@ -330,8 +336,33 @@ func TestAPausedCopyFromS3ResumesAndMakesTheSameSegments(t *testing.T) {
 			if failed := r.count(t, "SELECT count(*) FROM transcode_jobs WHERE state = 'failed'"); failed != 0 {
 				t.Fatalf("%d jobs failed", failed)
 			}
-			if n := r.count(t, "SELECT count(*) FROM transcode_jobs"); n != 1 {
-				t.Fatalf("%d jobs, want the one that paused", n)
+			// A slow runner can hold a renewal past the rig's 3 s lease; the
+			// waiting viewer then rightly starts a replacement. Only that
+			// give-up may replace the job: a pause or resume bug may not.
+			if bad := r.count(t, "SELECT count(*) FROM transcode_jobs WHERE state NOT IN ('done', 'cancelled')"); bad != 0 {
+				t.Fatalf("%d jobs neither done nor cancelled", bad)
+			}
+			switch n := r.count(t, "SELECT count(*) FROM transcode_jobs"); n {
+			case 1:
+				if id := mustScalar(t, r, "SELECT id::text FROM transcode_jobs"); id != held {
+					t.Fatalf("job %s was replaced by %s without a recorded give-up", held, id)
+				}
+			case 2:
+				if r.count(t, "SELECT count(*) FROM transcode_jobs WHERE id = "+held) != 1 {
+					t.Fatalf("the job that paused (%s) is not one of the two jobs", held)
+				}
+				if state := mustScalar(t, r, "SELECT state FROM transcode_jobs WHERE id = "+held); state != "cancelled" {
+					t.Fatalf("the job that paused ended %s, want cancelled", state)
+				}
+				reason := mustScalar(t, r, "SELECT COALESCE(error, '') FROM transcode_jobs WHERE id = "+held)
+				if !strings.Contains(reason, "the lease was not renewed in time") {
+					t.Fatalf("the job that paused was replaced for %q, not an unanswered renewal", reason)
+				}
+			default:
+				t.Fatalf("%d jobs, want the one that paused or one replacement after an unanswered renewal", n)
+			}
+			if overlap := r.count(t, "SELECT count(*) FROM transcode_jobs a JOIN transcode_jobs b ON a.id < b.id WHERE COALESCE(a.ended_at, now()) > b.created_at"); overlap != 0 {
+				t.Fatalf("%d pairs of jobs overlapped, want the one that paused", overlap)
 			}
 			// A run from the start, with no bound, in a fresh store.
 			waitFor(t, "the paused job to end", 30*time.Second, func() bool { return len(r.ffmpegProcesses()) == 0 })

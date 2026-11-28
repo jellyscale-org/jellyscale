@@ -287,7 +287,8 @@ done < <(awk -F'\t' '$1 == "deliver" {print $2 "\t" $3 "\t" $4 "\t" $5}' "$expec
 
 # The tone of a segment's first audio track, in Hz: a sine crosses zero twice a cycle, so its crossings give its frequency.
 tone_of() { # file
-  ffmpeg -v error -i "$1" -map 0:a:0 -ac 1 -ar 48000 -f s16le - | od -An -v -td2 -w2 | awk '
+  # -nostdin: this runs inside a loop that reads the expectations, and ffmpeg would take bytes of them.
+  ffmpeg -nostdin -v error -i "$1" -map 0:a:0 -ac 1 -ar 48000 -f s16le - | od -An -v -td2 -w2 | awk '
     samples > 0 && ($1 < 0) != (previous < 0) { crossings++ }
     { previous = $1; samples++ }
     END { if (samples > 0) printf "%d\n", crossings / 2 / (samples / 48000) }'

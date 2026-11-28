@@ -1,7 +1,7 @@
 export const meta = {
   name: 'build',
   description: 'Write the acceptance checks first, build until they pass, then verify by running it and one blind adversarial review',
-  whenToUse: 'Every task in tasks/tasks/. Args: {task, acceptance: string[], tests: string[], id?: string, ux?: boolean, core?: boolean}',
+  whenToUse: 'Every task in tasks/tasks/. Args: {task, acceptance: string[], tests: string[], id?: string, ux?: boolean, core?: boolean, domains?: string[]}',
   phases: [
     { title: 'Spec', detail: 'acceptance criteria become executable checks that fail today' },
     { title: 'Check', detail: 'review the design and whether the checks can catch a wrong build' },
@@ -98,6 +98,12 @@ let { acceptance = [] } = args
 // for advisor calls.
 const advice = 'Never call the advisor tool, even if you have one: only the lead consults it.\n\n'
 const where = (args.root ? `Work only in the checkout at ${args.root}: cd there before anything else, run every command from it, and never read or change another checkout of this repository.\n\n` : '') + advice
+// JS-220: a task names its domains; every agent reads only those domains' files.
+const domainList = [args.domains ?? []].flat().map((d) => String(d).trim()).filter(Boolean)
+const domainFile = (d) => `docs/domains/${d.toLowerCase()}.md`
+const domains = domainList.length
+  ? `\n\nThis task names its domains: ${domainList.join(', ')}. Read only these domains' files under docs/domains/; do not read other domains' files there. Read:\n${[...domainList.map(domainFile), 'docs/domains/platform.md'].map((f) => `- ${f}`).join('\n')}\nA rule marked at the cutover applies only at the cutover; today's invariants in DOMAINS.md apply until then.\n`
+  : ''
 // Told to every later reviewer and fixer, so a corrected check is not reported or restored as tampering.
 const resolvedNote = resolved ? `\n\nThe lead corrected these locked check files after a dispute, on purpose; review the corrected version and never restore the original: ${resolved.files.join(', ')}. ${resolved.note}` : ''
 if (!task) throw new Error('build needs args.task')
@@ -116,7 +122,7 @@ const REFINED = {
   required: ['acceptance', 'changes'],
 }
 if (refine) {
-  const refined = await agent(`${where}You sharpen the acceptance criteria of one jellyscale task before its checks are written. Read PRODUCT.md, the parts of DOMAINS.md and ARCHITECTURE.md the task touches, and the code it will change (targeted reads, not whole trees). Then rewrite the criteria so a spec writer can turn each into a check that fails on a plausible wrong build:\n- Name the cases a wrong build would get wrong: counts and bounds (how many reads, runs, jobs; "at most", "each"), failures that are the file's and failures that are not (store, timeout, signal, lost lease), several of a thing as well as one, a replaced or changed file, two replicas or workers at once, and what the viewer or operator sees.\n- Split a criterion that holds several claims; state an "always" or "whatever X does" claim only with the bound it really has.\n- Keep every guarantee the criteria give: never drop, weaken or narrow one, and never add a feature the task did not ask for. If a criterion seems wrong, keep it and say why in changes.\n- Keep the criteria few and plain: one line each, no implementation.\nDo not edit any file, and do not run tests, Docker or servers.\n\n## Task${id ? ` ${id}` : ''}\n${task}\n\n## Acceptance criteria\n${acceptance.map((line) => `- ${line}`).join('\n')}`,
+  const refined = await agent(`${where}${domains}You sharpen the acceptance criteria of one jellyscale task before its checks are written. Read PRODUCT.md, the parts of DOMAINS.md and ARCHITECTURE.md the task touches, and the code it will change (targeted reads, not whole trees). Then rewrite the criteria so a spec writer can turn each into a check that fails on a plausible wrong build:\n- Name the cases a wrong build would get wrong: counts and bounds (how many reads, runs, jobs; "at most", "each"), failures that are the file's and failures that are not (store, timeout, signal, lost lease), several of a thing as well as one, a replaced or changed file, two replicas or workers at once, and what the viewer or operator sees.\n- Split a criterion that holds several claims; state an "always" or "whatever X does" claim only with the bound it really has.\n- Keep every guarantee the criteria give: never drop, weaken or narrow one, and never add a feature the task did not ask for. If a criterion seems wrong, keep it and say why in changes.\n- Keep the criteria few and plain: one line each, no implementation.\nDo not edit any file, and do not run tests, Docker or servers.\n\n## Task${id ? ` ${id}` : ''}\n${task}\n\n## Acceptance criteria\n${acceptance.map((line) => `- ${line}`).join('\n')}`,
     { label: 'refine criteria', phase: 'Spec', model: 'claude-agent/opus', effort: 'high', schema: REFINED })
   if (refined && refined.acceptance.length) {
     acceptance = refined.acceptance
@@ -156,7 +162,7 @@ const CORE_MODELS = {
 }
 // Roles are read from their files, so a role added in this session works too.
 const role = (name) => ({ agentType: 'general-purpose', ...MODELS[name], ...(core ? CORE_MODELS[name] : {}) })
-const read = (name) => `${where}First read .claude/agents/${name}.md. It defines your role and its limits, and you must follow it exactly.\n\n`
+const read = (name) => `${where}${domains}First read .claude/agents/${name}.md. It defines your role and its limits, and you must follow it exactly.\n\n`
 
 let root = null
 // note is for a snapshot whose prompt would repeat an earlier run's: on a resume
