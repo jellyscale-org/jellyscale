@@ -9,7 +9,7 @@
     "A worker of the previous release is never counted as a partner for a shared play unless it has said it can help: during a rolling upgrade no play is admitted as shared and then left without a helper, in a real-process test.",
     "An Octave release built against an earlier contract keeps working against this server: the previous contract's check passes, allowing only what a version may add (fields, reasons, actions, messages) and nothing else.",
     "The tables JS-194 listed are removed.",
-    "Its baseline is the camelCase contract of JS-216."
+    "Its baseline is the camelCase contract of JS-223."
   ],
   "status": "todo",
   "dependsOn": [
