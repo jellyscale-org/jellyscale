@@ -2,7 +2,7 @@
   "id": "D-132",
   "date": "2026-11-27",
   "by": "owner",
-  "task": "PRODUCT.md; JS-183, JS-198; supersedes D-092's one-product reading; restores D-085's issue routing",
+  "task": "PRODUCT.md; JS-183, JS-198",
   "brief": "brief-native-2026-11-27.md; the owner's later statements; po/native-plan.md",
   "tradeoff": "None.",
   "decision": "change",
