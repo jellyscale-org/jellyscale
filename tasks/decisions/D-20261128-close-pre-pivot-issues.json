@@ -1,0 +1,11 @@
+{
+  "id": "D-20261128-close-pre-pivot-issues",
+  "date": "2026-11-28",
+  "by": "owner",
+  "task": "the issue board",
+  "brief": "owner, in conversation",
+  "tradeoff": "None: each request is in the plan or the backlog.",
+  "serves": "",
+  "decision": "change",
+  "entry": "The owner: \"We should also close down any issues related to Jellyscale prior to the pivot.\" The lead closed the 19 open jellyscale issues filed before the change of direction of 2026-11-27 (#101 to #301), each with the product owner's reply."
+}
