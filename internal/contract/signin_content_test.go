@@ -328,6 +328,59 @@ func TestTheSignInAnswerNamesAnAccountProfileAndDeviceAndCarriesAToken(t *testin
 	}
 }
 
+// JS-223, the reviewer's major. Sign-in names the installation it comes from, so the server can bound wrong passwords per
+// known device (docs/access.md) and keep one token per account and device. A client built from the contract must send a
+// deviceId of at least 128 random bits as text, 22 characters of base64url or more, and the contract refuses a request
+// without one, one too short to hold them, one too long for the server to keep and one that is not text.
+func TestSignInRequestNamesTheInstallationItComesFrom(t *testing.T) {
+	document := documentOf(t, servedDocument(t))
+	media := requestMediaOf(t, document, signInPath, "post")
+	schema := schemaOf(t, document, media)
+	requests := examplesOf(t, document, media)
+	if len(requests) == 0 {
+		t.Fatalf("POST /jellyscale/v1/sign-in gives no example request for Octave to build against")
+	}
+	valid := map[string]any{
+		"username": "Alex", "password": "secret", "deviceName": "Living room TV", "appName": "Octave",
+		"deviceId": "Yq3vN0b8Tz2xKpL4mW7rAe",
+	}
+	if !accepts(t, schema, valid) {
+		t.Fatalf("the sign-in request schema refuses a request with a 22 character deviceId")
+	}
+	longest := copyOf(t, valid)
+	longest["deviceId"] = strings.Repeat("a", 128)
+	if !accepts(t, schema, longest) {
+		t.Errorf("the sign-in request schema refuses a 128 character deviceId")
+	}
+	breaks := []breakage{
+		{"has no deviceId", func(t *testing.T, request map[string]any) { delete(request, "deviceId") }},
+		{"has an empty deviceId", func(t *testing.T, request map[string]any) { request["deviceId"] = "" }},
+		{"has a deviceId of 21 characters", func(t *testing.T, request map[string]any) { request["deviceId"] = strings.Repeat("a", 21) }},
+		{"has a deviceId of 129 characters", func(t *testing.T, request map[string]any) { request["deviceId"] = strings.Repeat("a", 129) }},
+		{"has a deviceId with a space", func(t *testing.T, request map[string]any) { request["deviceId"] = "Yq3vN0b8Tz2xKpL4 mW7rAe" }},
+		{"has a numeric deviceId", func(t *testing.T, request map[string]any) { request["deviceId"] = 1234567890123456789 }},
+	}
+	for _, change := range breaks {
+		broken := copyOf(t, valid)
+		change.apply(t, broken)
+		if accepts(t, schema, broken) {
+			t.Errorf("the contract accepts a sign-in request that %s", change.name)
+		}
+	}
+	seen := map[string]string{}
+	for name, request := range requests {
+		fields, _ := request.(map[string]any)
+		if !accepts(t, schema, fields) {
+			t.Errorf("example request %s is refused by the sign-in request's own schema", name)
+		}
+		id, _ := fields["deviceId"].(string)
+		if other, repeated := seen[id]; repeated && id != "" {
+			t.Errorf("example requests %s and %s share the deviceId %s; each installation makes its own", other, name, id)
+		}
+		seen[id] = name
+	}
+}
+
 // JS-223, criterion 2. /me answers the account, the profile and the device of the caller, and no token.
 func TestMeNamesAnAccountProfileAndDeviceAndCarriesNoToken(t *testing.T) {
 	document := documentOf(t, servedDocument(t))

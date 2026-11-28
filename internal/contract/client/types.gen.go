@@ -176,6 +176,9 @@ type SignIn struct {
 type SignInRequest struct {
 	AppName string `json:"appName"`
 
+	// DeviceId A random id the app makes once per installation, from at least 128 random bits (22 characters of base64url, or a random UUID), keeps private and sends on every sign-in from that installation, for every account signed in on it. It is never shown to the viewer. The server counts wrong passwords per known device by it, so a guesser who does not hold it cannot keep the viewer out of a device that has signed in before, and a second sign-in with the same id replaces that device's token rather than adding a device, as each account holds one token per device. It is not the answer's `device.id`, which is the server's own id for the signed-in device.
+	DeviceId string `json:"deviceId"`
+
 	// DeviceName The name the viewer sees for this device in their list of devices.
 	DeviceName string `json:"deviceName"`
 	Password   string `json:"password"`

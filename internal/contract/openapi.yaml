@@ -176,7 +176,15 @@ paths:
                 value:
                   username: Alex
                   password: correct horse battery staple
+                  deviceId: Yq3vN0b8Tz2xKpL4mW7rAe
                   deviceName: Living room TV
+                  appName: Octave
+              phone:
+                value:
+                  username: Sam
+                  password: tulip lantern orbit seven
+                  deviceId: 0f8b2c6e-4d71-4a9e-b3c5-7e1d9a2f6b40
+                  deviceName: Sam's phone
                   appName: Octave
       responses:
         "200":
@@ -438,12 +446,23 @@ components:
     SignInRequest:
       type: object
       additionalProperties: false
-      required: [username, password, deviceName, appName]
+      required: [username, password, deviceId, deviceName, appName]
       properties:
         username:
           type: string
         password:
           type: string
+        deviceId:
+          type: string
+          minLength: 22
+          maxLength: 128
+          pattern: '^[A-Za-z0-9._~-]+$'
+          description: A random id the app makes once per installation, from at least 128 random bits (22 characters of
+            base64url, or a random UUID), keeps private and sends on every sign-in from that installation, for every account
+            signed in on it. It is never shown to the viewer. The server counts wrong passwords per known device by it, so a
+            guesser who does not hold it cannot keep the viewer out of a device that has signed in before, and a second
+            sign-in with the same id replaces that device's token rather than adding a device, as each account holds one token
+            per device. It is not the answer's `device.id`, which is the server's own id for the signed-in device.
         deviceName:
           type: string
           description: The name the viewer sees for this device in their list of devices.
