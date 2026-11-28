@@ -1,0 +1,17 @@
+{
+  "id": "JS-227",
+  "phase": "M1",
+  "title": "No stored value signs anyone in, tokens from before JS-184 included",
+  "description": "Serves \"Joining and signing in are easy and safe.\"",
+  "acceptanceCriteria": [
+    "On a database that holds tokens issued before JS-184, upgrading to this release hashes them while replicas of the previous release run beside it. No signed-in device is refused through either release during the upgrade or after it, shown with real processes.",
+    "Afterwards, every value read from every database table is tried as a token and as a TV-code secret, and every one is refused."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-184"
+  ],
+  "source": "D-20261127-token-hashing-upgrade",
+  "notes": "Lands only once a build with JS-184 has replaced every running replica. D-20261127-token-hashing-upgrade.",
+  "ux": false
+}
