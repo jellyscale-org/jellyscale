@@ -7,7 +7,7 @@
     "Viewers keep their history; users set a password or use OIDC",
     "Against a real Jellyfin 12.4 with two users who each have a watched film, a film stopped partway and a favourite: after the import each user signs in to jellyscale (by setting a password) and finds the same played marks, the same resume position to the second, and the same favourites.",
     "The import is run from the operator's side with a documented command, changes nothing in the Jellyfin it reads, can be run twice with the same result, and reports every user or item it could not carry, with the reason.",
-    "Migrated users arrive with no password and cannot sign in by password until an administrator sets one or the provider links them; the migration docs tell the operator so (D-105)."
+    "Migrated users arrive with no password and cannot sign in by password until an administrator sets one or the provider links them; the migration docs tell the operator so."
   ],
   "status": "todo",
   "dependsOn": [],

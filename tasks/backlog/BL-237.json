@@ -1,9 +1,0 @@
-{
-  "id": "BL-237",
-  "title": "A viewer cannot take an abandoned film or show off Continue Watching or Next Up without losing its position",
-  "notes": "Issue #233. An extension beyond Jellyfin; whether any supported app could show the control is unverified. Promote when the dogfood shows resume rows holding items with no progress for 30 days or more on several accounts, and a supported app (docs/status.md) can show the control; D-027: no work for one client alone. Closed at the pivot: Covered by JS-186: removing a title from Continue watching keeps the viewer's place.",
-  "source": "issue #233",
-  "status": "closed",
-  "severity": "minor",
-  "reviewer": "product-owner"
-}

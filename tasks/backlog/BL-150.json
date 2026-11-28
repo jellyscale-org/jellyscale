@@ -1,9 +1,0 @@
-{
-  "id": "BL-150",
-  "source": "JS-116 verify",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "A NUL character in a language string makes the save fail with a server error",
-  "status": "closed",
-  "notes": "POST /Users/Configuration with {\"SubtitleLanguagePreference\":\"\\u0000\"} (same for AudioLanguagePreference). parseConfiguration accepts it, json.Marshal writes \\u0000 into the document, and the UPDATE with $2::jsonb is rejected by Postgres, so s.fail answers a 5xx rather than the 400 that other invalid bodies get. I did not run the handler end to end; the failing step, Postgres rejecting the document, I ran. The test: docker run postgres:16, then psql -c \"select '{\\\"a\\\":\\\"\\\\u0000\\\"}'::jsonb\" gave 'DETAIL: \\u0000 cannot be converted to text.' The capture records no NUL case and no check covers one. Closed at the replan: The save route is Jellyfin's and goes at the cutover; the new API's input is held to the contract by JS-183's conformance check."
-}

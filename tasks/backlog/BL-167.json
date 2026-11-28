@@ -1,9 +1,0 @@
-{
-  "id": "BL-167",
-  "source": "JS-088 verify",
-  "reviewer": "ux",
-  "severity": "minor",
-  "title": "A recovered failure is logged at ERROR with an undocumented 'again' field and counted failed",
-  "status": "promoted",
-  "notes": "JS-022 criterion 2 (D-069)."
-}

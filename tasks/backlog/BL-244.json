@@ -1,9 +1,0 @@
-{
-  "id": "BL-244",
-  "title": "The processor tone map could run 1.1 to 1.5 times as fast with the curve jellyfin-ffmpeg's filter uses (measured 1.98x, 1.40x and 0.97x against 1.36x, 1.06x and 0.85x on the three nodes), at a picture about a quarter darker than today's and a different ffmpeg in the image",
-  "notes": "Promote when JS-169's brief shows which curve is right, or that one picture across processor and GPU needs it (D-047).",
-  "source": "JS-163",
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner"
-}

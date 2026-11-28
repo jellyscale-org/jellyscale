@@ -1,9 +1,0 @@
-{
-  "id": "BL-131",
-  "source": "JS-077 verify",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "A truncated segment is aborted only by returning short of Content-Length",
-  "status": "closed",
-  "notes": "panic(http.ErrAbortHandler) would state the intent and survive a wrapping middleware. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}

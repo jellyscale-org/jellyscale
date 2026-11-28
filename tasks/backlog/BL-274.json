@@ -1,9 +1,0 @@
-{
-  "id": "BL-274",
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "ux",
-  "source": "JS-177 verify",
-  "title": "A legacy transcodeSlots above the CPUs is counted as that many cores, so learning starts there and its floor is a quarter of it",
-  "notes": "The task leaves transcodeSlots untouched; the start line now says so (slotsNote) and docs/running.md advises transcodeCores instead. Returns as a brief at JS-056's Refine (remove the key or cap it at the CPUs), or on an operator running a large transcodeSlots on a small worker, which would make the worker admit plays it cannot hold until it learns. (D-071)"
-}

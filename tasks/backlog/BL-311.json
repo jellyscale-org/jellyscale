@@ -1,9 +1,0 @@
-{
-  "id": "BL-311",
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner",
-  "source": "#115",
-  "title": "Sort and filter by running time",
-  "notes": "From #115. Back when Octave's design for Films and Shows asks for it (D-139)."
-}

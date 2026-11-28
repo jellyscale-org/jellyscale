@@ -11,9 +11,7 @@
     "Octave's CI pulls it with no personal credential (today's images are not anonymously pullable)."
   ],
   "status": "todo",
-  "dependsOn": [
-    "JS-033"
-  ],
+  "dependsOn": [],
   "source": "pivot-plan.md; D-107 to D-128",
   "notes": ""
 }

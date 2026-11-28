@@ -1,9 +1,0 @@
-{
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner",
-  "source": "JS-092",
-  "title": "A stated Postgres connection budget, warned about and measured with many processes",
-  "notes": "From JS-092 (rule 14: the 45-worker figure is an estimate). Back when a deployment nears it or JS-062 measures it.",
-  "id": "BL-294"
-}

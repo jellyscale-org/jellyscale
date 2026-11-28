@@ -1,9 +1,0 @@
-{
-  "id": "BL-255",
-  "status": "closed",
-  "severity": "minor",
-  "reviewer": "lead",
-  "source": "JS-159/JS-161 triage; D-061",
-  "title": "A build run returned clean while the implementer listed acceptance items as unfinished",
-  "notes": "A task could merge with a viewer-facing criterion unverified. Until promoted the lead reads the unfinished list at each run's end. Promote on: a second such run, or any merged task later found with an unverified criterion; then a one-line build.js change made when no run is going. Promoted on its second occurrence (JS-161's rebuild, 2026-11-23) and fixed by #261: build.js returns unfinished items and such a run is not clean."
-}

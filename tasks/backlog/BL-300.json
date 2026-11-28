@@ -1,9 +1,0 @@
-{
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner",
-  "source": "JS-091",
-  "title": "Text tracks extracted ahead of time, by the operator's choice",
-  "notes": "The second half of JS-091, under D-120's opt-in rule. Back when a viewer's first subtitle pick is seen to wait.",
-  "id": "BL-300"
-}

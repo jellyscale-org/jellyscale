@@ -1,9 +1,0 @@
-{
-  "id": "BL-101",
-  "source": "JS-099 verify",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "The JS-099 fix was verified under ffmpeg 9 only, not CI's 6.1",
-  "status": "wontfix",
-  "notes": "The merge queue runs it under 6.1. Closed by the product owner: has since run under 6.1 in the queue."
-}

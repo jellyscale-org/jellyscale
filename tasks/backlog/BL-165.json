@@ -1,9 +1,0 @@
-{
-  "id": "BL-165",
-  "source": "JS-088 verify",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "No committed test asserts the copy-fallback metric or log line",
-  "status": "open",
-  "notes": "The behaviour was checked by a scratch test in QA's export; a regression would go unnoticed. Merged with js120:0: metrics that docs promise and no test holds."
-}

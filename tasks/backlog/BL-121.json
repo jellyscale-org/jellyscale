@@ -1,9 +1,0 @@
-{
-  "id": "BL-121",
-  "source": "JS-103 verify",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "A failed start-notification LISTEN or NOTIFY is silent, so the under-1-second gap quietly becomes the 5 s refresh",
-  "status": "promoted",
-  "notes": "listenOnce returns on a failed connect or LISTEN without logging; sessions.go discards the pg_notify error. Behind a transaction-mode pooler notifications never arrive. Log it once, and list the session-mode connection for the stream role in ARCHITECTURE.md and docs/running.md. Promoted to JS-056."
-}

@@ -1,9 +1,0 @@
-{
-  "id": "BL-080",
-  "source": "JS-100 verify",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "/Search/Hints reads a non-numeric limit as 0 and ignores a malformed userId",
-  "status": "closed",
-  "notes": "limit, _ = strconv.Atoi(value): limit=abc answers 200 with no hints. The note says Jellyfin answers 400 for userId=zzz. Observe Jellyfin's answer for limit=abc first. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
-}

@@ -1,9 +1,0 @@
-{
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner",
-  "source": "pivot-plan.md",
-  "title": "Versions made ahead in idle time beyond the titles the operator chose",
-  "notes": "From the streaming report (rank 7); storage. Back on the operator's request.",
-  "id": "BL-301"
-}

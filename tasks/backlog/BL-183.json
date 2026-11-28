@@ -1,9 +1,0 @@
-{
-  "id": "BL-183",
-  "source": "JS-123",
-  "reviewer": "",
-  "severity": "minor",
-  "title": "PATCH /jellyscale/v1/users/configuration parses values with a second copy of POST's per-field reading (and a third copy of the 15 names)",
-  "status": "closed",
-  "notes": "Fix when a field is next added Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}

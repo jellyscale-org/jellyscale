@@ -1,9 +1,0 @@
-{
-  "id": "BL-108",
-  "source": "JS-085 verify",
-  "reviewer": "ux",
-  "severity": "minor",
-  "title": "Subtitle and font requests wait during an outage",
-  "status": "promoted",
-  "notes": "The Subtitles and Attachments routes have no Offline handler; a viewer who turns subtitles on during an outage gets none until Postgres is back. docs/running.md now says so; serving stored subtitles from the snapshot would close it. Promoted to JS-103, done (#139)."
-}

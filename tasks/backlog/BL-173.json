@@ -1,9 +1,0 @@
-{
-  "id": "BL-173",
-  "source": "cors",
-  "reviewer": "",
-  "severity": "minor",
-  "title": "An operator setting restricting CORS origins to a declared list, with refused origins reported",
-  "status": "open",
-  "notes": "Decided by D-016: waits for an operator to ask"
-}

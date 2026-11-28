@@ -1,9 +1,0 @@
-{
-  "id": "BL-126",
-  "source": "JS-087 merge queue (lead)",
-  "reviewer": "lead",
-  "severity": "minor",
-  "title": "Some path queues a transcode job at or past the film's last segment",
-  "status": "open",
-  "notes": "Seen as a copy job at segment 9 of 9 in TestWorkersWhoseLockBackendsAreEndedOneByOneKeepEveryFfmpeg (queue run of #143). encode now ends such a job done; find which path queued it (a takeover at next_segment, or a helper chunk start) and stop it there."
-}

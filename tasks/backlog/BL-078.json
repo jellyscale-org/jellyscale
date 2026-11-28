@@ -1,9 +1,0 @@
-{
-  "id": "BL-078",
-  "source": "JS-100 check, verify",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "The search-hints capture note states observations its JSON does not record",
-  "status": "promoted",
-  "notes": "compat/captures/search-hints-12.4.md describes limit=0, limit=-1, limit=3&startIndex=3, userId=zzz (400) and a one-letter 'a' request; compat/captures/search-hints-12.4.json holds none of them. Re-observe on Jellyfin 12.4 and record them, or drop the claims. Promoted to JS-139."
-}

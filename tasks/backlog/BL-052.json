@@ -1,9 +1,0 @@
-{
-  "id": "BL-052",
-  "source": "JS-081 verify",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "Shown speed vs recorded speed uses a 25 percent tolerance",
-  "status": "closed",
-  "notes": "TestAWorkersShownSpeedIsTheOneItRecordedAndHoldsAcrossAPause compares shown speed with the recorded value using before < recorded*0.75 || before > recorded*1.25. This is a comparison of two measured speeds with a bound; it is not in timing-bounds.txt. It is probably stable on a paused job, but it is not exact and was not exercised under load. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}

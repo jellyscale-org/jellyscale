@@ -1,9 +1,0 @@
-{
-  "id": "BL-132",
-  "source": "JS-077 verify",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "The cut, failure and replace cases of the segment response run only on the store without a local path",
-  "status": "closed",
-  "notes": "segment_stream_integration_test.go skips needsStore cases for the local-path replica. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}

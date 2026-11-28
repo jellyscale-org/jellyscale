@@ -1,9 +1,0 @@
-{
-  "id": "BL-059",
-  "source": "JS-029 verify",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "/healthz no longer touches Postgres, so a replica with a permanently broken database stays Ready",
-  "status": "promoted",
-  "notes": "The probe was changed to return 204 with no database check, as the task asks. A replica whose database is permanently unreachable (bad credentials after a rotation, a wrong host) stays in service, and every request on it then waits in db.Retry with no upper bound except the client giving up. A cap on the wait, or a separate readiness signal such as 'away longer than N minutes', would be cheap. Promoted to JS-056."
-}

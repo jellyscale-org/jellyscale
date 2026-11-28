@@ -1,9 +1,0 @@
-{
-  "id": "BL-290",
-  "status": "closed",
-  "severity": "minor",
-  "reviewer": "ux",
-  "source": "JS-033",
-  "title": "The API answers HasPassword true for accounts without one, so an admin can't find them",
-  "notes": "Matches Jellyfin; D-105 makes such accounts unable to sign in by password. Awaits the product owner. Closed at the replan: HasPassword is on Jellyfin's user answer, which goes at the cutover; the new API's account answers are JS-184's and JS-192's."
-}

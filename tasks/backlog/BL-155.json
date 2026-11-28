@@ -1,9 +1,0 @@
-{
-  "id": "BL-155",
-  "source": "JS-116 verify",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "The differential tier never saves through POST /Users/Configuration naming nobody",
-  "status": "closed",
-  "notes": "test/differential/requests.yaml saves through POST /Users/{userId}/Configuration (path) and POST /Users/Configuration?userId={{User/admin}} (query). The form that names nobody, which the capture records as its own route=none case, is covered only by the Go replay (cmd/jellyscale/user_configuration_integration_test.go), not by the tier the criteria name ('a save through each route'). Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
-}

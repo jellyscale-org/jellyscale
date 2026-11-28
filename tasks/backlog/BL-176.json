@@ -1,9 +1,0 @@
-{
-  "id": "BL-176",
-  "source": "JS-125",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "The mutants meta-test adds about 2m18s to the integration tier's internal/api run",
-  "status": "wontfix",
-  "notes": "subject removed by the behaviour-only cleanup (D-069)"
-}

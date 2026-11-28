@@ -1,9 +1,0 @@
-{
-  "id": "BL-232",
-  "title": "A film with no subtitle in the viewer's reading language has none to offer (generated or translated subtitles)",
-  "notes": "AI research 2026-11-20 (D-036). Promote on data, in this order: (1) the share of dogfood films with no subtitle, inside or beside the file, in any account's SubtitleLanguagePreference, and the share with none at all; (2) the films' spoken languages (JS-117). If (1) is a share viewers meet weekly, plan a spike first, not a build: wall time, cores and memory per 2 h film on a dogfood worker's CPU and iGPU; invented lines over music and silence against films with human subtitles; whether a job slows a concurrent re-encode below real time (real processes); what the worker image gains in size. Any task that follows must carry: the track is labelled machine-made wherever it is listed; invented captions stay under a bound the spike measured; it is opt-in per library and the default image and install are unchanged; it never slows a viewer's re-encode below real time; languages it serves badly are written down as a gap; it runs only on the operator's servers (D-037). Translation of an existing track waits on the same count.",
-  "source": "AI research 2026-11-20",
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner"
-}

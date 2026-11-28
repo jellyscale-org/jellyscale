@@ -1,9 +1,0 @@
-{
-  "id": "BL-079",
-  "source": "JS-100 verify",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "/Search/Hints ignores startIndex",
-  "status": "closed",
-  "notes": "The note says Jellyfin takes startIndex after the limit cut (limit=3&startIndex=3 gives no hints). internal/api/search_hints.go never reads it. Fluster does not send it. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
-}

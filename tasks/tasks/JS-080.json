@@ -12,6 +12,6 @@
   "status": "todo",
   "dependsOn": [],
   "source": "Fable 5.2 state review, 2026-11-10",
-  "notes": "Local trailers moved to BL-231 (D-032): docs/status.md lists extras as out of scope. Extended from the Fable 5.2 blind audit, 2026-11-14.",
+  "notes": "Local trailers moved to BL-231: docs/status.md lists extras as out of scope. Extended from the Fable 5.2 blind audit, 2026-11-14.",
   "ux": true
 }

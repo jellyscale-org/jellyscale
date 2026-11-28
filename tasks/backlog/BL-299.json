@@ -1,9 +1,0 @@
-{
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner",
-  "source": "JS-095",
-  "title": "One leased job queue for work that is not a segment",
-  "notes": "The refactor half of JS-095 (rule 14). Back when a failure it would end is seen.",
-  "id": "BL-299"
-}

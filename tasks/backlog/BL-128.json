@@ -1,9 +1,0 @@
-{
-  "id": "BL-128",
-  "source": "JS-077 check",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "Stat then Open is two store requests for a size Open already has",
-  "status": "closed",
-  "notes": "An Open that returns the size of what it opened (S3 GET's ContentLength, Posix fstat) halves segment requests and closes the replace race between Stat and Open. A Store interface change. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}

@@ -1,9 +1,0 @@
-{
-  "id": "BL-001",
-  "source": "JS-024",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "helper slot protection is a count, not a reservation",
-  "status": "promoted",
-  "notes": " Re-read against JS-162's end-to-end figures; close those the figures answer (D-045). Answered by JS-168: no room is held back and a helper is placed by its cost in cores (D-046, D-050)."
-}

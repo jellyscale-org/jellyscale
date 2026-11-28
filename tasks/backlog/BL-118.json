@@ -1,9 +1,0 @@
-{
-  "id": "BL-118",
-  "source": "JS-104 verify",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "An idle worker returning more than reapHold after an outage began may be forgotten by a live worker's look",
-  "status": "open",
-  "notes": "lookForTheDead forgets once time.Since(lockLost) >= reapHold, and lockLost is not reset on relock. Hypothesis from reading; a scratch test was written at ~/.cache/jellyscale/agents/js104-qa/internal/transcode/scratch_late_return_integration_test.go, not run. Run it first."
-}

@@ -17,5 +17,5 @@
     "JS-194"
   ],
   "source": "Fluster issue #110; owner decision 2026-11-12",
-  "notes": "No surface is built for one client (D-027); a viewer in a browser sees the suggestions too (D-028)."
+  "notes": "No surface is built for one client; a viewer in a browser sees the suggestions too."
 }

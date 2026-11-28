@@ -1,9 +1,0 @@
-{
-  "id": "BL-090",
-  "source": "JS-076 verify",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "missingGrace set to an empty string uses the default instead of stopping the start",
-  "status": "open",
-  "notes": "newScanner parses only when cfg.MissingGrace != \"\"."
-}

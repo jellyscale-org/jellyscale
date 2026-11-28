@@ -1,9 +1,0 @@
-{
-  "id": "BL-045",
-  "source": "state review 2026-11-10",
-  "reviewer": "product",
-  "severity": "minor",
-  "title": "JS-070 derives required fields with a script instead of using the client SDKs as the oracle, and the differential tier masks playlist content",
-  "status": "promoted",
-  "notes": "JS-070 criterion"
-}

@@ -1,9 +1,0 @@
-{
-  "id": "BL-024",
-  "source": "JS-026",
-  "reviewer": "check",
-  "severity": "major",
-  "title": "Copy of both opens the source twice; one input splices the same (deferred to JS-074)",
-  "status": "wontfix",
-  "notes": "Deferred to JS-074, which is done; confirm whether it was fixed there Closed by the product owner: docs/status.md says a copy of both opens the file once."
-}

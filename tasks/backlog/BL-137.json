@@ -1,9 +1,0 @@
-{
-  "id": "BL-137",
-  "source": "JS-105 build (lead)",
-  "reviewer": "lead",
-  "severity": "minor",
-  "title": "Fault schedule seed 17371545602420011879 breaks 'resume after a Postgres restart' on main",
-  "status": "open",
-  "notes": "JELLYSCALE_TEST_FAULT_SEED=17371545602420011879, schedule 1, after step 5 (delay-past-half-lease 15.2 s): a job is done after a restart longer than a lease, want cancelled. Fails on main at 451038f (without JS-105) and with JS-105 alike; the job's worker logged only the 10.8 s short restart, never the long one. Find whether the plan or the check is wrong."
-}

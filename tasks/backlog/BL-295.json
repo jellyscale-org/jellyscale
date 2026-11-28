@@ -1,9 +1,0 @@
-{
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner",
-  "source": "JS-097",
-  "title": "CI's required checks cannot pass by being skipped, and protection has one source",
-  "notes": "From JS-097 (rule 14). Back when JS-175 finds a skipped check let a failure through.",
-  "id": "BL-295"
-}

@@ -1,9 +1,0 @@
-{
-  "id": "BL-182",
-  "source": "JS-118",
-  "reviewer": "ux",
-  "severity": "minor",
-  "title": "Log line carries the user UUID only; running.md gives no way to map it to a viewer name",
-  "status": "open",
-  "notes": "Waits for JS-033: add the docs line then"
-}

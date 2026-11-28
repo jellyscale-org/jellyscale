@@ -1,9 +1,0 @@
-{
-  "id": "BL-153",
-  "source": "JS-116 verify",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "List entries in braces or urn:uuid form are accepted and stored; Jellyfin's answer for them is not in the capture",
-  "status": "closed",
-  "notes": "POST /Users/Configuration with GroupedFolders [\"{1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f4}\"] or [\"urn:uuid:1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f4\"] is parsed by uuid.Parse and saved as the compact id (204, then read back in the list). The capture records only plain dashed, compact and upper-case ids and a non-id word (400), so whether Jellyfin 12.4 answers 400 for these forms is unobserved; the criterion 'a list entry that is not an id' is not clearly met for them. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
-}

@@ -12,8 +12,7 @@
   ],
   "status": "todo",
   "dependsOn": [
-    "JS-216",
-    "JS-219"
+    "JS-216"
   ],
   "source": "po-check.md §B and §F; D-20261127-domains-tasks",
   "notes": "Phase M1 chosen (split from JS-216, M1); ux flag chosen: true. Plus JS-216's states, conformance and issue criteria.",

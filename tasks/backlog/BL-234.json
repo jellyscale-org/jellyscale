@@ -1,9 +1,0 @@
-{
-  "id": "BL-234",
-  "title": "A client that turns on an image subtitle by default starts a whole-film read on the first play of each such film",
-  "notes": "Dogfood report 2026-11-20 (D-038): one sighting, 46.7 GB read for one film when Moonfin's default subtitle mode chose an image track. D-003 accepts the read; JS-141 and JS-143 cover it. Promote JS-141 ahead of JS-135 if JS-143's count shows more than a few such reads a week, or most of those plays abandoned early. JS-154: job 82 ran at 0.6x beside this extraction on the same 4 cores, against 0.85x alone; the dogfood's log shows the extraction starting beside jobs 82 and 85, and job 83 within its run. JS-161's design review decides whether an extraction counts against capacity (D-044). JS-177's pre-Spec spike measures a 4K job beside an image-track extraction after JS-161 (D-066). JS-041 widens who triggers this: any viewer whose mode picks an image track, on jellyfin-web too. JS-143's count is taken after JS-041 lands. Bring a brief at once if the dogfood shows a mode-picked image subtitle (subtitle_asked=none, subtitle_kind=image) refused, or more than a few re-encoded a week. (D-068) D-070: the spike row is taken (16% to 18%, CPU limit, synthetic, 24 to 28 s on a local disk). Option A stands. JS-141's promotion triggers are on JS-141's notes. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3).",
-  "source": "dogfood report 2026-11-20",
-  "status": "closed",
-  "severity": "minor",
-  "reviewer": "product-owner"
-}

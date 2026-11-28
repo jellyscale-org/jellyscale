@@ -1,9 +1,0 @@
-{
-  "id": "BL-184",
-  "source": "JS-125",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "The empty-Access named mutant is not run against TestAccess",
-  "status": "open",
-  "notes": "The access checks have holes: a criterion of the first identity task that changes the access table (JS-033); js125:1,3,5,6 merged here"
-}

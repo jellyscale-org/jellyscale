@@ -1,9 +1,0 @@
-{
-  "id": "BL-286",
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "adversarial",
-  "source": "JS-033",
-  "title": "A password change whose own token ends mid-request answers 500, not 401",
-  "notes": "checkCurrentPassword (internal/api/accounts.go) treats the missing row as an error; by command in the re-review. Awaits the product owner."
-}

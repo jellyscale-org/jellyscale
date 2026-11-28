@@ -1,9 +1,0 @@
-{
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner",
-  "source": "JS-141",
-  "title": "Copy a film's image subtitles without reading the whole film",
-  "notes": "From JS-141 (D-127). Back with JS-140.",
-  "id": "BL-297"
-}

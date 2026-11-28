@@ -1,9 +1,0 @@
-{
-  "id": "BL-281",
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner",
-  "source": "D-082",
-  "title": "OIDC provider groups, a second provider, and provider-driven policy or library mapping",
-  "notes": "Out of JS-039, which supports one provider declared in configuration and maps identity by issuer plus subject. Promote when an operator uses two providers, or needs the provider's groups to drive administrator roles or library access."
-}

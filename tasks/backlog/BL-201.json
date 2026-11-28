@@ -1,9 +1,0 @@
-{
-  "id": "BL-201",
-  "source": "JS-128",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "The subtitle playlist still writes the token for a header request",
-  "status": "closed",
-  "notes": "Product owner asks (evidence): does any client JS-075 runs ask for the subtitle playlist, and what does its viewer see? JS-075 records it. Closed at the pivot: Covered by JS-185: media links carry no account credential."
-}

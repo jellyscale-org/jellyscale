@@ -1,9 +1,0 @@
-{
-  "id": "BL-170",
-  "source": "JS-088 re-review",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "OutputVersion 5 re-encodes every film playing at the upgrade once",
-  "status": "promoted",
-  "notes": "Every stored segment hash changes; a per-spec job version in the claim would have limited it to fallback specs. Promoted to JS-058 (triage D-018)."
-}

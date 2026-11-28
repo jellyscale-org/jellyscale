@@ -1,9 +1,0 @@
-{
-  "id": "BL-012",
-  "source": "JS-072",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "A helper preempted mid-chunk leaves a gap the asking job never fills",
-  "status": "open",
-  "notes": ""
-}

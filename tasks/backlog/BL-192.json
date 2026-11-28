@@ -1,9 +1,0 @@
-{
-  "id": "BL-192",
-  "source": "picture",
-  "reviewer": "",
-  "severity": "minor",
-  "title": "Spike: veryfast with trellis=1 and rc-lookahead=20 as a cheap tier",
-  "status": "open",
-  "notes": "Waits for JS-135's real-film measurement"
-}

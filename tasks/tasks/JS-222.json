@@ -8,7 +8,7 @@
     "Each failure, whether found by these runs or by a queue run while the task is open, is fixed at its cause in the test kit or CI. Before the fix its condition is forced once with real processes or real contention and the test fails as the log shows; after the fix the same forcing passes. The procedure and both results go in docs/testing.md. If a cause is the product's, it comes to the product owner as a brief before any product change. A cause that cannot be forced or reproduced within the budget is recorded as unknown and joins BL-314.",
     "No merge-queue run reaches a third-party package source at run time: CI's packages come from a pinned or cached source, so that source answering 403 or changing cannot stop a run (D-20261127-js175-count's trigger, met by the fourth stop).",
     "After this task merges, the next 10 merge_group runs that run the integration tier are counted in docs/testing.md as in JS-175 criterion 7. If more than 1 of them fails for a cause other than the queued change, the count comes to the product owner as a brief. The task is not extended without that brief.",
-    "No retry, no skip, no raised timeout or widened bound, no lengthened lease, and no check amended to pass. No product code is changed to fit a test. No test of the kit is committed (D-069). No viewer-visible change."
+    "No retry, no skip, no raised timeout or widened bound, no lengthened lease, and no check amended to pass. No product code is changed to fit a test. No test of the kit is committed. No viewer-visible change."
   ],
   "status": "todo",
   "dependsOn": [],

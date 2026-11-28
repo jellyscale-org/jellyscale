@@ -1,9 +1,0 @@
-{
-  "id": "BL-271",
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "lead",
-  "source": "JS-177 design review",
-  "title": "A worker on a faster-than-reference CPU is counted at the reference speed, so a pair of workers at a 2-CPU limit is refused the 4K HDR job each makes alone",
-  "notes": "The learned figure never rises above its start (the lesser of the processors and transcodeCores), so a worker at a CPU limit of 2 on a fast CPU holds 2.0 where its jobs show 2.35 (17% given up), and two such workers fall under the share's 2.08. Measured once on a synthetic film (JS-177's pre-Spec record), not on a real faster CPU. The operator's remedy is a limit of 3 or more (docs/running.md 'Sizing workers'). Promote as a brief on an operator's report of a worker on a fast CPU refusing or declining to share a play it holds. (D-071) Its docs half is due now. Promote also at JS-056's Refine."
-}

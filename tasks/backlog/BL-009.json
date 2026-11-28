@@ -1,9 +1,0 @@
-{
-  "id": "BL-009",
-  "source": "JS-072",
-  "reviewer": "check",
-  "severity": "minor",
-  "title": "No check covers the PlaybackInfo admission path (Jobs.Unavailable)",
-  "status": "closed",
-  "notes": "Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
-}

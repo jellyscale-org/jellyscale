@@ -1,9 +1,0 @@
-{
-  "id": "BL-089",
-  "source": "JS-076 verify",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "A library rename is inferred from media store and kind",
-  "status": "open",
-  "notes": "Removing library A and adding B over the same store in one config change gives B A's id, items and watch state. An explicit former-name or id key would make it deliberate."
-}

@@ -1,9 +1,0 @@
-{
-  "id": "BL-175",
-  "source": "flakes",
-  "reviewer": "lead",
-  "severity": "minor",
-  "title": "The integration 'rest' shard takes 36-40 minutes; split it as internal/transcode is split",
-  "status": "promoted",
-  "notes": "Queue time: waits for the merge-queue settings to be restored to 3/60 Promoted into JS-175 criterion 5 (D-058): a shard process has now hit the timeout."
-}

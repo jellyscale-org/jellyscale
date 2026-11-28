@@ -2,10 +2,10 @@
   "id": "JS-169",
   "phase": "S6",
   "title": "Measure whether a GPU re-encode can show the picture the processor makes, in jellyscale's own image",
-  "description": "Serves \"Growing is adding machines.\"; \"Play starts in seconds and keeps up.\". Seen now: the dogfood's processors hold one 4K HDR re-encode at a time (docs/status.md, D-071); a GPU is the hardware the operator already gives it. JS-163 answered BL-040's rule in Jellyfin's image with jellyfin-ffmpeg: 4 to 5 times real time, bytes within the bound on two dark scenes, and no GPU tone map matching today's picture. This task measures what a build would rest on. No viewer-visible change. D-047.",
+  "description": "Serves \"Growing is adding machines.\"; \"Play starts in seconds and keeps up.\". Seen now: the dogfood's processors hold one 4K HDR re-encode at a time (docs/status.md); a GPU is the hardware the operator already gives it. JS-163 answered BL-040's rule in Jellyfin's image with jellyfin-ffmpeg: 4 to 5 times real time, bytes within the bound on two dark scenes, and no GPU tone map matching today's picture. This task measures what a build would rest on. No viewer-visible change.",
   "acceptanceCriteria": [
     "In jellyscale's own image: what it must gain for 10-bit HEVC decode, a GPU tone map with a set curve, subtitle drawing and H.264 encode on an Intel UHD 630 (packages, the image's size before and after), and JS-163's all-hardware and OpenCL rows repeated with it on both nodes, three runs each, in temporary pods of the same kind (own namespace, device plugin, deleted after).",
-    "Tone map: the settings tried to bring a GPU tone map whose curve jellyscale sets to the processor path's picture, on a dark, a detailed and a bright high-motion scene from at least two films; for each, brightness above black and SSIM against the processor path, against the bound (within 5% or one code value, whichever is more; at or above 0.99), with one frame of each kept for the brief. The driver video-processor tone maps are not candidates (D-047).",
+    "Tone map: the settings tried to bring a GPU tone map whose curve jellyscale sets to the processor path's picture, on a dark, a detailed and a bright high-motion scene from at least two films; for each, brightness above black and SSIM against the processor path, against the bound (within 5% or one code value, whichever is more; at or above 0.99), with one frame of each kept for the brief. The driver video-processor tone maps are not candidates.",
     "The reverse, priced: the processor path with the curve the GPU tone map and jellyfin-ffmpeg's processor tone map share, its speed on the three nodes' processors and what the image would need (JS-163: 1.98x, 1.40x and 0.97x against 1.36x, 1.06x and 0.85x).",
     "Bytes: the hardware encoder in its quality-targeted modes against x264 veryfast with the worker's 4-second keyframes, on the three scenes, at equal SSIM and by one second measure that rewards what SSIM does not (VMAF, or named otherwise).",
     "On the candidate path (GPU decode, the tone map with a set curve, GPU encode), not the video-processor one: how many jobs at once hold 1.2 times real time each on one node, the processor and the memory each takes, up to the count that fails. The same row while the node's other GPU user is working, if the owner approves a way to make it work; otherwise marked unverified in the record.",
@@ -15,6 +15,6 @@
   ],
   "status": "todo",
   "dependsOn": [],
-  "source": "D-047; BL-040",
-  "notes": "Measurement only. Each temporary pod is approved by the owner first, as JS-163's were. May run beside the builds ahead of it (D-047)."
+  "source": "BL-040",
+  "notes": "Measurement only. Each temporary pod is approved by the owner first, as JS-163's were. May run beside the builds ahead of it."
 }

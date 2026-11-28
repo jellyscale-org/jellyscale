@@ -19,8 +19,7 @@
   "dependsOn": [
     "JS-186",
     "JS-218",
-    "JS-217",
-    "JS-219"
+    "JS-217"
   ],
   "source": "pivot-plan.md; D-107 to D-128",
   "notes": "It builds the two players its criterion 3 plays on: a minimal Media3 player on an emulator and a minimal browser player, both in the server's test tree, driving only jellyscale's own API. They become the e2e gate at the cutover (JS-194) until Octave's builds take over (JS-190, JS-150). #222, #224, #295: the one-playback link, the device saying what it cannot play, and a reason when audio loses channels. Note, not a criterion: it writes end and failure messages from the start, so JS-197 adds delivery only.",

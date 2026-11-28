@@ -6,7 +6,7 @@
   "acceptanceCriteria": [
     "A schedule trigger runs every CI job on main once a day, and test/changes.sh treats it as a full run",
     "A failing nightly run opens or updates one issue naming the failed tests",
-    "The nightly run also runs, under the ffmpeg of the published image at its pinned version, the existing transcode integration checks whose result depends on ffmpeg: a restart's splice for a re-encode and for a copy, the tone map, a text and an image burn-in, and the read-ahead pause. No new check is written for it and it is never a required check of the merge queue: what an operator's viewers get is made by that ffmpeg, which the queue (6.1) does not run (D-069)."
+    "The nightly run also runs, under the ffmpeg of the published image at its pinned version, the existing transcode integration checks whose result depends on ffmpeg: a restart's splice for a re-encode and for a copy, the tone map, a text and an image burn-in, and the read-ahead pause. No new check is written for it and it is never a required check of the merge queue: what an operator's viewers get is made by that ffmpeg, which the queue (6.1) does not run."
   ],
   "status": "todo",
   "dependsOn": [],

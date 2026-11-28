@@ -1,9 +1,0 @@
-{
-  "id": "BL-044",
-  "source": "state review 2026-11-10",
-  "reviewer": "product",
-  "severity": "minor",
-  "title": "DOMAINS.md is 117 KB with lines over 14,000 characters; every role reads it",
-  "status": "promoted",
-  "notes": "Promoted to JS-093 (D-017)."
-}

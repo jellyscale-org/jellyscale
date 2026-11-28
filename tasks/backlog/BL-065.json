@@ -1,9 +1,0 @@
-{
-  "id": "BL-065",
-  "source": "JS-029 verify",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "/healthz no longer reflects the database at all, so a replica partitioned from Postgres stays in service",
-  "status": "wontfix",
-  "notes": "/healthz now always answers 204. A single pod that permanently loses its path to Postgres (wrong DSN host, a network policy) is never taken out of service. db.Retry keeps its requests waiting until each client gives up. Alternative: fail /healthz only once db.Of(pool).Total() for the current outage exceeds a bound well above a switchover, such as 2 minutes. That would still satisfy the 'whole outa Closed by the product owner: duplicate of BL-059."
-}

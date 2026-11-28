@@ -1,9 +1,0 @@
-{
-  "id": "BL-273",
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "lead",
-  "source": "JS-177 build",
-  "title": "A queued shared job counts at its full price on a lone worker for up to the 6 s queue window",
-  "notes": "At the 0.65 share (D-066) a learned figure of 2.3 can host a shared play, so the ledger's placeQueued counts a queued 3.2 job on a worker that has no partner, and a 0.8 play asked meanwhile is refused 'no worker had the cores'. Seen in the lone-worker check, whose stale queued job is its own artefact (a play admitted before convergence and never claimed); a job is normally claimed at once. Promote on a refusal on any deployment (a cores-short refusal within 10 s of another play's refusal or queue timeout on a lone worker) within seconds of a refused or queued shared play on a lone worker."
-}

@@ -1,9 +1,0 @@
-{
-  "id": "BL-119",
-  "source": "JS-104 verify",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "TestNoReplicaCodePathForgetsAWorker only catches reap called with a literal \"\" or from an exported function",
-  "status": "wontfix",
-  "notes": "subject removed by the behaviour-only cleanup (D-069)"
-}

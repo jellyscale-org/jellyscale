@@ -2,7 +2,7 @@
   "id": "JS-170",
   "phase": "S6",
   "title": "A worker finds its Intel GPU by itself and uses it for the re-encodes it does right; the operator sets nothing",
-  "description": "Serves \"Growing is adding machines.\"; \"Play starts in seconds and keeps up.\". The first hardware slice (BL-040): one family, Intel VAAPI/QSV, on GPUs that do the whole job. The worker detects, chooses by D-047's rule and falls back to the processor; operators may turn it off, never need to tune it. NVIDIA, AMD, hardware decode for processor-encoded streams and outputs above 1080 lines stay in JS-054. PRODUCT.md: any film plays, and plays well; play starts in seconds and keeps up; operators want the server to be something they set up once and then mostly forget. D-047.",
+  "description": "Serves \"Growing is adding machines.\"; \"Play starts in seconds and keeps up.\". The first hardware slice (BL-040): one family, Intel VAAPI/QSV, on GPUs that do the whole job. The worker detects, chooses by rule and falls back to the processor; operators may turn it off, never need to tune it. NVIDIA, AMD, hardware decode for processor-encoded streams and outputs above 1080 lines stay in JS-054. PRODUCT.md: any film plays, and plays well; play starts in seconds and keeps up; operators want the server to be something they set up once and then mostly forget.",
   "acceptanceCriteria": [
     "Design reviewed before building: how a family is chosen for a stream; helpers and failover within the family; what a viewer sees when the last worker of their stream's family is lost mid-film (playing on is the goal; anything else is measured and briefed to the product owner before it is built, never a stall or a stop without a reason); how a hardware job is priced against a worker's capacity (JS-161); and whether the task splits (detection and choice; placement and failover).",
     "With nothing configured, a worker tests at start each stage it would use (10-bit HEVC decode, the tone map, subtitle drawing, encode) by a bounded real run, not from the ffmpeg build's list or the device's presence; the bound is in docs/running.md; the result for each stage is logged with its reason and is on /metrics. A node with no GPU, or with none given to the pod, runs exactly as before and logs no error.",
@@ -15,11 +15,9 @@
   ],
   "status": "todo",
   "dependsOn": [
-    "JS-169",
-    "JS-161",
-    "JS-166"
+    "JS-169"
   ],
-  "source": "D-047; BL-040",
-  "notes": "ux: true. Moves to directly after JS-166 if JS-166 returns without closing the gap on processors, or the dogfood's JS-153 counters show a refusal for lack of cores with every worker running (D-047).",
+  "source": "BL-040",
+  "notes": "ux: true. Moves to directly after JS-166 if JS-166 returns without closing the gap on processors, or the dogfood's JS-153 counters show a refusal for lack of cores with every worker running.",
   "core": true
 }

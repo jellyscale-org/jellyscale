@@ -1,9 +1,0 @@
-{
-  "id": "BL-109",
-  "source": "JS-085 verify",
-  "reviewer": "ux",
-  "severity": "minor",
-  "title": "A film started in the 5 s before an outage is in no snapshot",
-  "status": "promoted",
-  "notes": "Stated in DOMAINS 37; the viewer waits for Postgres. A refresh after each PlaybackInfo, or a shorter interval, would narrow it. Promoted to JS-103, done (#139)."
-}

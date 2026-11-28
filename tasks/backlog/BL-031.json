@@ -1,9 +1,0 @@
-{
-  "id": "BL-031",
-  "source": "JS-028",
-  "reviewer": "ux",
-  "severity": "minor",
-  "title": "A track the file lacks is logged as 'ffmpeg can't extract it'",
-  "status": "open",
-  "notes": ""
-}

@@ -1,9 +1,0 @@
-{
-  "id": "BL-046",
-  "source": "state review 2026-11-10",
-  "reviewer": "product",
-  "severity": "minor",
-  "title": "JS-030 is a grab-bag; the one-reaper item is not needed at the target scale (ARCHITECTURE.md rule 6)",
-  "status": "wontfix",
-  "notes": "Closed by the product owner: JS-030 is done."
-}

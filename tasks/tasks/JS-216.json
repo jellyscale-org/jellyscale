@@ -11,9 +11,7 @@
     "The change reaches Octave as a from:jellyscale issue before anything in it is served (D-132)."
   ],
   "status": "todo",
-  "dependsOn": [
-    "JS-183"
-  ],
+  "dependsOn": [],
   "source": "D-20261127-contract-split",
   "notes": "Follows Octave's approved M1 designs where they exist. A capability no design confirms ships declared or preview, so the contract never waits on another product.",
   "ux": true

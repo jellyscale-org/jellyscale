@@ -1,9 +1,0 @@
-{
-  "id": "BL-261",
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "lead",
-  "source": "JS-166 close; D-065",
-  "title": "After the dogfood's sizing correction, a 4K HDR re-encode's seek, second burned-in start, three plays of each part, a play beside a subtitle extraction and the refusal of a second 4K play were not re-measured, and the worker's CPU request (6) is below its limit (12), so its speed under its neighbours' load is unknown",
-  "notes": "Promote on any of: a 4K re-encode job on the dogfood with encode speed under 1.0x past its first 30 seconds; a slow-job reason counted there; a household report of a stall. It closes when the dogfood's declared figures are dropped, not when JS-177 merges. The play beside an extraction is measured off the dogfood by JS-177 criterion 1's spike row (D-066). The refusal rests on JS-161's checks and a declared figure the limit did not change (reasoned). The evidence is one film, one cluster, one worker with no helper; nothing says what a shared play does on the dogfood before JS-178 criterion 8. (D-067) The play beside an extraction was measured off the dogfood (D-070); on the dogfood it stays unmeasured."
-}

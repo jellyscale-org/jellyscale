@@ -1,9 +1,0 @@
-{
-  "id": "BL-020",
-  "source": "JS-025",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "Roll-order check pins docs wording, not behaviour",
-  "status": "closed",
-  "notes": "Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}

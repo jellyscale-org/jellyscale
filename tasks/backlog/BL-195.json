@@ -1,9 +1,0 @@
-{
-  "id": "BL-195",
-  "source": "picture",
-  "reviewer": "",
-  "severity": "minor",
-  "title": "Owner decision: a bitrate ceiling that follows frame rate",
-  "status": "open",
-  "notes": "Product owner: not yet (D-018); bring a real 50 or 60 fps film measured at faster after JS-136"
-}

@@ -6,6 +6,6 @@
   "brief": "po/pivot-plan.md",
   "tradeoff": "Quick Connect goes; invariant 63 is split for Octave Web.",
   "decision": "change",
-  "entry": "D-082 and D-083 are superseded. A TV is approved from a phone (JS-191). Octave Web's sign-in can be neither read by page scripts nor used by another site, splitting invariant 63. Passkeys come from the IdP (D-119).",
+  "entry": "A TV is approved from a phone (JS-191). Octave Web's sign-in can be neither read by page scripts nor used by another site, splitting invariant 63. Passkeys come from the IdP (D-119).",
   "serves": "\"Joining and signing in are easy and safe.\""
 }

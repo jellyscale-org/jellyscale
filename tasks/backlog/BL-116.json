@@ -1,9 +1,0 @@
-{
-  "id": "BL-116",
-  "source": "JS-084 verify",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "liveTiming looks a row up by string name and panics on a missing one",
-  "status": "open",
-  "notes": "A typo in a rare path would crash a worker at run time; typed vars computed once from the table would fail the build instead. It is also called in a 2 ms poll."
-}

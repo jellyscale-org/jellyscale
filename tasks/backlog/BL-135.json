@@ -1,9 +1,0 @@
-{
-  "id": "BL-135",
-  "source": "JS-109 verify",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "The no-config drain test checks a 3 s lead, not the 5 s docs/running.md gives",
-  "status": "closed",
-  "notes": "TestOnSIGTERMWithoutAConfigFileReadinessFailsAndRequestsAreAnsweredForTheLead loops for readinessLead (3 s); a drainLead of 4 s passes it. Loop for the documented lead. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}

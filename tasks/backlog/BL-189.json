@@ -1,9 +1,0 @@
-{
-  "id": "BL-189",
-  "source": "JS-133",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "Each AV1 fallback segment repeats the input probes",
-  "status": "open",
-  "notes": "An AV1 fallback viewer on S3 pays extra probes per segment; rare; js133:2 merged here"
-}

@@ -14,9 +14,7 @@
     "With real processes: a worker given jobs whose costs add up to its measured capacity (JS-161), at faster and at medium, keeps each at 1.2 times real time or more without a helper"
   ],
   "status": "todo",
-  "dependsOn": [
-    "JS-161"
-  ],
+  "dependsOn": [],
   "source": "spikes/picture-quality (2026-11-19), owner decision 2026-11-19",
   "notes": "Bump OutputVersion only if the arguments of a veryfast spec change; a spec read from before the field must keep its hash (invariant: stored segments of a spec are its output)."
 }

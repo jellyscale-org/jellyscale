@@ -1,9 +1,0 @@
-{
-  "id": "BL-004",
-  "source": "JS-024",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "helpers spawn helpers",
-  "status": "closed",
-  "notes": "Re-read against JS-162's end-to-end figures; close those the figures answer (D-045). Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}

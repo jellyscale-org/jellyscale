@@ -1,9 +1,0 @@
-{
-  "id": "BL-219",
-  "source": "JS-145 verify",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "A right password being checked counts as a failure meanwhile, so a second sign-in in that moment can be refused for 15 minutes' worth",
-  "status": "open",
-  "notes": "Reading only, not run. With a name at 19 failures (or 9 on a known device or from one address), a right password is held as the 20th for the 80 ms or so its comparison takes; another sign-in arriving then is answered 403 with Retry-After 900, though the refusal is gone once the first completes. A viewer notices only while their name is already one short of refusal, and a retry succeeds, but jellyfin-web tells them they are not authorized. Same cause as BL-215. Promote if a test shows two right passwords together, with no wrong one in between, getting a 403, or a viewer reports being refused with the right password."
-}

@@ -1,9 +1,0 @@
-{
-  "id": "BL-151",
-  "source": "JS-116 verify",
-  "reviewer": "ux",
-  "severity": "minor",
-  "title": "Saved settings say 'Settings saved' but change no playback yet",
-  "status": "closed",
-  "notes": "A viewer opens Subtitles, picks German and Always, and gets 'Settings saved' and a reload that shows both. Playing a film with German subtitles shows none, because SubtitleMode and SubtitleLanguagePreference wait for JS-041 and AudioLanguagePreference and PlayDefaultAudioTrack wait for JS-121. The page makes no claim that the setting applies yet, and before this change the save failed outright, so this is an improvement. Flagged so the lead can confirm the intermediate state is acceptable for the sequence. Keep until JS-041, then close. Closed by D-068 after JS-041 merged."
-}

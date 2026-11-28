@@ -1,9 +1,0 @@
-{
-  "id": "BL-098",
-  "source": "JS-102 verify",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "The empty-list worker test says a tick runs, but no scan loop starts for an empty list",
-  "status": "closed",
-  "notes": "TestAWorkerListingNoLibrariesChangesNothingAndSaysSoOnce: the comment and the refined criterion speak of a tick; main.go starts scanLoop only when the list is not empty. The removal assertion still guards it. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}

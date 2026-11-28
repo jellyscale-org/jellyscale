@@ -10,12 +10,11 @@
     "In Octave (or, until JS-190 and JS-150, the native browser check), on the same worker: a start and a seek at faster get their first segment no more than 1.8 times later than at veryfast (the spike measured 1.42 to 1.49; medium is about 2.1), each time recorded in the run, and playback does not stall",
     "A picture test on every tier, with ffmpeg's own psnr and ssim filters (CI's ffmpeg 6.1 has no libvmaf): a real-film clip encoded through the worker at faster, against its source under a 4 Mbps cap, has a higher PSNR-Y (the spike measured +0.27 to +0.92 dB) and a higher SSIM than at veryfast",
     "The default change is listed under Changed guarantees: more CPU per viewer (fewer viewers per worker), up to about a second on a start on a full worker, a better picture",
-    "A 4K HDR tone mapped re-encode, with and without a burned subtitle, holds real time at the default preset on any worker whose measured capacity admits it (JS-161), or the default does not apply to it; the pull request says, from JS-154's figures, which machines hold it at veryfast and no longer at faster (D-038, D-044)"
+    "A 4K HDR tone mapped re-encode, with and without a burned subtitle, holds real time at the default preset on any worker whose measured capacity admits it (JS-161), or the default does not apply to it; the pull request says, from JS-154's figures, which machines hold it at veryfast and no longer at faster"
   ],
   "status": "todo",
   "dependsOn": [
-    "JS-135",
-    "JS-161"
+    "JS-135"
   ],
   "source": "owner decision 2026-11-19; spikes/picture-quality",
   "ux": true

@@ -702,6 +702,9 @@ for (const flavour of [
         if (seen.infos.length !== asked) throw new Error(`the client asked for PlaybackInfo again (${seen.infos.length} times, not ${asked})`);
         const refused = seen.answers.filter((x) => x.at > downAt && x.status >= 400);
         if (refused.length) throw new Error(`answers of 400 or more: ${JSON.stringify(refused.slice(0, 4).map((x) => `${x.status} ${new URL(x.url).pathname}`))}`);
+        // The ASS film lasts 30 s. Pause before waiting for recovery, which can outlast it: a player that reaches
+        // the end leaves the video page, so there is no position or Stopped report for leave() to check.
+        await page.evaluate(() => document.querySelector("video").pause());
         stopped = false;
         await postgres("start");
         await waitFor("every replica to be ready again", () => everyReplicaReady(base), 60000);

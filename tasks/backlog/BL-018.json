@@ -1,9 +1,0 @@
-{
-  "id": "BL-018",
-  "source": "JS-025",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "The e2e HDR10 copy scenario never runs in CI (needs E2E_HEVC=1)",
-  "status": "promoted",
-  "notes": "Promoted to JS-075."
-}

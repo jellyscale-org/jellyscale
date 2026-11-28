@@ -1,9 +1,0 @@
-{
-  "id": "BL-238",
-  "title": "A viewer who seeks mid-play into a part of a film that cannot be made sees a stopped picture and no reason (jellyfin-web)",
-  "notes": "D-040, invariant 37. Probe, before any build: does any honest signal reach jellyfin-web's dialog or a message after playback has begun: a server-to-session message over the WebSocket jellyfin-web opens (/socket; whether jellyscale sends anything on it is unverified), or the offered duration or seek range ending where the file's readable part ends (invariant 40), so the seek cannot be made at all. 403 and 410 are expected to behave as 500 (the handler destroys the player on any answer of 400 or more) and need one observation at most. Promote when: the dogfood's log shows the once-per-job line for a file-caused segment failure after playback began at all (one occurrence schedules the probe; a repeat makes it a task ahead of new features), or a probe finds a working signal cheaply. Drop if: JS-075's native-client captures show they explain it themselves and the dogfood count stays at zero over a month of use. Closed at the pivot: Covered by JS-185 and JS-197: a failure carries a reason Octave can explain.",
-  "source": "D-040",
-  "status": "closed",
-  "severity": "minor",
-  "reviewer": "product-owner"
-}

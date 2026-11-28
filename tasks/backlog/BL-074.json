@@ -1,9 +1,0 @@
-{
-  "id": "BL-074",
-  "source": "JS-070 verify",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "Stub GET /Items/{itemId}/ThemeMedia is not on any differential request, and echoes a malformed id as OwnerId",
-  "status": "closed",
-  "notes": "internal/api/items.go themeMedia sets OwnerId from CompactID(r.PathValue(\"itemId\")) with no validation, and test/differential/requests.yaml has no ThemeMedia request. Calling the handler directly with no path value (an empty id) makes the checker report `$.ThemeSongsResult field OwnerId: \"\" is not a uuid`. The same route with a malformed id such as /Items/abc/ThemeMedia gives OwnerId \"abc\", which  Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
-}

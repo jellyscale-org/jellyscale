@@ -1,9 +1,0 @@
-{
-  "id": "BL-171",
-  "source": "JS-088 re-review",
-  "reviewer": "ux",
-  "severity": "minor",
-  "title": "An AV1 copy with a wrong index logs 'no keyframe index to copy from' after the first failure",
-  "status": "open",
-  "notes": "After failureMemory a new copy job reads the emptied index; the log should name the dropped index, every 30 s while the viewer asks."
-}

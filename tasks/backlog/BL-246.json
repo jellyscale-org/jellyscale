@@ -1,9 +1,0 @@
-{
-  "id": "BL-246",
-  "title": "More than three hardware re-encodes on one iGPU is unmeasured (five ran out of 3 GB in the measuring pod)",
-  "notes": "Promote when JS-169 gives the memory per job, as a bound in JS-170's \"most hardware jobs at once\" default (D-047).",
-  "source": "JS-163",
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner"
-}

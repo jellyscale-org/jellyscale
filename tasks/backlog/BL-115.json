@@ -1,9 +1,0 @@
-{
-  "id": "BL-115",
-  "source": "JS-084 verify",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "Two of the state-permission actions are never consulted by code",
-  "status": "closed",
-  "notes": "actForget and actReadOwnRow are in liveState.allows but keepRow's switch decides them; drive the switch from allows() or drop them. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}
