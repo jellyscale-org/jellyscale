@@ -1,0 +1,11 @@
+{
+  "id": "D-20261127-token-hashing-upgrade",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "JS-184",
+  "brief": "po/lanes/po-js184-brief.md, trade-off 1 (A: hash all at upgrade, old replicas refuse signed-in devices; B: hash new tokens now, old ones next release; C: version gate and one pass in this release; D: write both forms, criterion 6 later)",
+  "tradeoff": "Tokens issued before JS-184 stay in the clear on the dogfood until JS-227 lands. During the rollout, a device that signs in on a new replica may be refused by an old one until every replica is replaced, and signs in again. Nobody already signed in is interrupted.",
+  "serves": "PRODUCT.md, \"Upgrades, a lost machine and a database failover happen without interrupting anyone\"; \"Joining and signing in are easy and safe.\"",
+  "decision": "accept",
+  "entry": "B. From JS-184 every token is stored hashed; tokens from before it are hashed, and the clear form is no longer read, by JS-227 once JS-184's build is on every replica. A would sign the household out at the upgrade; C's machinery belongs to JS-079 and JS-208 and protects no installation yet; D never meets the criterion. A stored hash is never accepted as a token. Revisit if an installation other than the dogfood runs before JS-227."
+}

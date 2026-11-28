@@ -169,7 +169,7 @@ api() { curl -s -m 30 -H "$auth" "$@"; }
 items() { api "$base/Items?Recursive=true&IncludeItemTypes=$1&Limit=500" | jq -r '.Items[] | [.Name, .Id] | @tsv'; }
 
 # --- JS-183: with no token, the server reports the version its image is labelled with and serves the contract its build made.
-reported=$(curl -s -m 10 "$base/jellyscale/v1/server" | jq -r '.Version // empty')
+reported=$(curl -s -m 10 "$base/jellyscale/v1/server" | jq -r '.version // empty')
 label_version=$(label "$fixtures_img" version)
 [[ -n $label_version && $reported == "$label_version" ]] || fail "GET /jellyscale/v1/server reports Version '$reported', want the image's version label '$label_version'"
 [[ $(curl -s -m 10 -o "$work/contract.yaml" -w '%{http_code}' "$base/jellyscale/v1/contract") == 200 ]] || fail "GET /jellyscale/v1/contract with no token did not answer 200"

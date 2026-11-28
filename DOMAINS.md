@@ -186,7 +186,7 @@ No replacement starts while the old ffmpeg runs: the `forgottenLease` covers the
 
 ### Security
 
-26. Tokens are random and stored per device. Passwords use bcrypt. Login failures don't reveal which usernames exist, nor which are disabled or have no password: all are a wrong password's 401 after one bcrypt comparison.
+26. Tokens are random and stored per device. Passwords use bcrypt. Login failures don't reveal which usernames exist, nor which are disabled or have no password: on the Jellyfin routes all are a wrong password's 401 after one bcrypt comparison. On jellyscale's sign-in they are the same 401 `credentials-not-accepted` after one bcrypt comparison, except that a disabled account given its right password is 403 `account-off`, which tells only someone who holds the password (D-20261127-signin-reasons).
 27. Paths built from keys can't leave the store's root.
 
 ### Play state and sessions

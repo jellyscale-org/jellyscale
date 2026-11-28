@@ -19,7 +19,7 @@ func TestAGeneratedClientDecodesAReasonItDoesNotKnow(t *testing.T) {
 	stand := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusForbidden)
-		_, _ = w.Write([]byte(`{"Reason":"` + reasonAddedLater + `","Action":"retry"}`))
+		_, _ = w.Write([]byte(`{"reason":"` + reasonAddedLater + `","action":"retry"}`))
 	}))
 	defer stand.Close()
 	response, err := http.Get(stand.URL + "/jellyscale/v1/track-preferences")
@@ -43,7 +43,7 @@ func TestAGeneratedClientDecodesAnActionItDoesNotKnow(t *testing.T) {
 	stand := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusForbidden)
-		_, _ = w.Write([]byte(`{"Reason":"forbidden","Action":"` + actionAddedLater + `"}`))
+		_, _ = w.Write([]byte(`{"reason":"forbidden","action":"` + actionAddedLater + `"}`))
 	}))
 	defer stand.Close()
 	response, err := http.Get(stand.URL + "/jellyscale/v1/track-preferences")

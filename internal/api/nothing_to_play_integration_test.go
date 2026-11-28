@@ -41,10 +41,10 @@ func TestAnExistingTitleWithNothingToPlayIsNotSaidToNotExist(t *testing.T) {
 	if err := json.Unmarshal(reply["MediaSources"], &sources); err != nil || len(sources) != 0 {
 		t.Fatalf("PlaybackInfo for the series lists sources: %.200q", raw)
 	}
-	if _, ok := reply["Reason"]; !ok {
-		t.Fatalf("PlaybackInfo for the series has no Reason: %.200q", raw)
+	if _, ok := reply["reason"]; !ok {
+		t.Fatalf("PlaybackInfo for the series has no reason: %.200q", raw)
 	}
-	reason, action := stringField(t, reply, "Reason"), stringField(t, reply, "Action")
+	reason, action := stringField(t, reply, "reason"), stringField(t, reply, "action")
 	if reason == "not-found" {
 		t.Fatalf("PlaybackInfo for an existing series says not-found, which tells the viewer it does not exist: %.200q", raw)
 	}
@@ -63,8 +63,8 @@ func TestAnUnknownTitleIsStillSaidToNotExist(t *testing.T) {
 	if response.StatusCode != http.StatusNotFound {
 		t.Fatalf("PlaybackInfo for an unknown title: %d %.120q, want 404", response.StatusCode, raw)
 	}
-	fields := exactKeys(t, raw, []string{"Reason", "Action"}, "RetryAfterSeconds")
-	if reason := stringField(t, fields, "Reason"); reason != "not-found" {
+	fields := exactKeys(t, raw, []string{"reason", "action"}, "retryAfterSeconds")
+	if reason := stringField(t, fields, "reason"); reason != "not-found" {
 		t.Fatalf("PlaybackInfo for an unknown title says %q, want not-found", reason)
 	}
 }

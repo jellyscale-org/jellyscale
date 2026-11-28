@@ -653,7 +653,7 @@ func (a *accessSite) outside(t *testing.T, h accHandler) {
 			wantStatus, wantBody := http.StatusNotFound, "404 page not found\n"
 			// JS-183: a method the contract does not give a served v1 operation answers its method-not-allowed refusal.
 			if strings.HasPrefix(path, "/jellyscale/v1/") && slices.Contains(h.roles, RoleAPI) {
-				wantStatus, wantBody = http.StatusMethodNotAllowed, `{"Reason":"method-not-allowed","Action":"none"}`+"\n"
+				wantStatus, wantBody = http.StatusMethodNotAllowed, `{"reason":"method-not-allowed","action":"none"}`+"\n"
 			}
 			for _, token := range []string{"", a.token} {
 				r := accSend(method, h.base, path, token, 3, "")

@@ -19,6 +19,6 @@
     "JS-216"
   ],
   "source": "pivot-plan.md; D-107 to D-128",
-  "notes": "Quick Connect goes at the cutover, so the server side of this lands before it. Viewers use it once Octave has an approval screen; until then a TV signs in by password. Amended 2026-11-27 by D-20261127-tv-approval-phone-bound and D-20261127-tv-approval-own-device-only, decided by the product owner: dependsOn adds JS-216 (beside JS-184), and criterion 8 is added. docs/access.md, written by this task: \"A TV approval's password counts only toward the approving device's own bound.\"",
+  "notes": "Quick Connect goes at the cutover, so the server side of this lands before it. Viewers use it once Octave has an approval screen; until then a TV signs in by password. Amended 2026-11-27 by D-20261127-tv-approval-phone-bound and D-20261127-tv-approval-own-device-only, decided by the product owner: dependsOn adds JS-216 (beside JS-184), and criterion 8 is added. docs/access.md, written by this task: \"A TV approval's password counts only toward the approving device's own bound.\" A TV whose answer was lost asks again and gets the same sign-in, as Quick Connect does (D-20261127-tv-code-token-sealed).",
   "ux": true
 }

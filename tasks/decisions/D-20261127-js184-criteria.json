@@ -1,0 +1,11 @@
+{
+  "id": "D-20261127-js184-criteria",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "JS-184",
+  "brief": "po/lanes/po-js184-brief.md, plan amendment and pending item 3",
+  "tradeoff": "None beyond D-20261127-token-hashing-upgrade. Device revocation leaves JS-184's criterion 7 because none exists before JS-042, whose criterion 2 holds it.",
+  "serves": "PRODUCT.md, \"Joining and signing in are easy and safe\"; Goal 3, \"Octave's features have the server they need\".",
+  "decision": "change",
+  "entry": "JS-184 takes the refined criteria, kept at least as strong as before (same time, no name revealed, every refusal with its action). JS-227 is added after JS-226 to hash tokens from before JS-184. Only devices signed in through the new API appear in Jellyfin's lists under the server's device id. JS-216's design \u00a7C3 follows the contract's envelope, {reason, action} plus retryAfterSeconds, detail and scope where they apply. A disabled account's 401 on Jellyfin's routes stands until the cutover; jellyscale's API answers account-off after the right password (D-20261127-signin-reasons)."
+}

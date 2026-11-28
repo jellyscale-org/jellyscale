@@ -71,7 +71,7 @@ func TestADeclaredOperationOnAServedPathAnswersNotServed(t *testing.T) {
 	if err := json.Unmarshal(raw, &fields); err != nil {
 		t.Fatal(err)
 	}
-	if len(fields) != 2 || fields["Reason"] != "not-served" || fields["Action"] != "none" {
+	if len(fields) != 2 || fields["reason"] != "not-served" || fields["action"] != "none" {
 		t.Fatalf("the answer %s is not the not-served refusal", raw)
 	}
 

@@ -95,7 +95,7 @@ func isSignInRefusal(raw []byte) bool {
 	if err := json.Unmarshal(raw, &fields); err != nil {
 		return false
 	}
-	return len(fields) == 2 && fields["Reason"] == "unauthorized" && fields["Action"] == "sign-in"
+	return len(fields) == 2 && fields["reason"] == "unauthorized" && fields["action"] == "sign-in"
 }
 
 // noCookie fails if the answer sets a cookie.
@@ -142,21 +142,21 @@ func TestServerIdentityIsAnsweredWithNoTokenWithEveryCapabilityAndItsState(t *te
 		t.Fatalf("GET /jellyscale/v1/server with no token: %d %.120q, want 200", response.StatusCode, raw)
 	}
 	noCookie(t, response)
-	fields := exactKeys(t, raw, []string{"Name", "Id", "Version", "ApiVersion", "Capabilities"})
-	if name, id, version := stringField(t, fields, "Name"), stringField(t, fields, "Id"), stringField(t, fields, "Version"); name == "" || id == "" || version == "" {
+	fields := exactKeys(t, raw, []string{"name", "id", "version", "apiVersion", "capabilities"})
+	if name, id, version := stringField(t, fields, "name"), stringField(t, fields, "id"), stringField(t, fields, "version"); name == "" || id == "" || version == "" {
 		t.Fatalf("identity has an empty name, id or version: name %q, id %q, version %q", name, id, version)
 	}
-	if apiVersion := stringField(t, fields, "ApiVersion"); apiVersion != "v1" {
-		t.Fatalf("ApiVersion %q, want v1", apiVersion)
+	if apiVersion := stringField(t, fields, "apiVersion"); apiVersion != "v1" {
+		t.Fatalf("apiVersion %q, want v1", apiVersion)
 	}
 	var entries []json.RawMessage
-	if err := json.Unmarshal(fields["Capabilities"], &entries); err != nil {
+	if err := json.Unmarshal(fields["capabilities"], &entries); err != nil {
 		t.Fatalf("Capabilities is not a list: %v", err)
 	}
 	states := map[string]string{}
 	for _, entry := range entries {
-		capability := exactKeys(t, entry, []string{"Id", "State"})
-		states[stringField(t, capability, "Id")] = stringField(t, capability, "State")
+		capability := exactKeys(t, entry, []string{"id", "state"})
+		states[stringField(t, capability, "id")] = stringField(t, capability, "state")
 	}
 	want := map[string]string{"track-preferences": "preview", "user-configuration": "preview", "playback-info": "preview", "sign-in": "declared"}
 	if !maps.Equal(states, want) {
@@ -201,8 +201,8 @@ func TestEveryV1RefusalIsJSONWithAReasonOnTheContractsList(t *testing.T) {
 					t.Fatalf("Allow %q, want the methods track preferences has: GET and PATCH", response.Header.Get("Allow"))
 				}
 			}
-			fields := exactKeys(t, raw, []string{"Reason", "Action"}, "RetryAfterSeconds", "Detail")
-			reason, action := stringField(t, fields, "Reason"), stringField(t, fields, "Action")
+			fields := exactKeys(t, raw, []string{"reason", "action"}, "retryAfterSeconds", "detail")
+			reason, action := stringField(t, fields, "reason"), stringField(t, fields, "action")
 			listed, ok := reasons[reason]
 			if !ok || reason != tc.reason {
 				t.Fatalf("reason %q, want %q, which the contract lists: %v", reason, tc.reason, ok)

@@ -39,10 +39,55 @@ func (e IdentityApiVersion) Valid() bool {
 	}
 }
 
+// Defines values for TooManyTriesReason.
+const (
+	TooManyTriesReasonTooManyTries TooManyTriesReason = "too-many-tries"
+)
+
+// Valid indicates whether the value is a known member of the TooManyTriesReason enum.
+func (e TooManyTriesReason) Valid() bool {
+	switch e {
+	case TooManyTriesReasonTooManyTries:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TooManyTriesScope.
+const (
+	TooManyTriesScopeDevice  TooManyTriesScope = "device"
+	TooManyTriesScopeName    TooManyTriesScope = "name"
+	TooManyTriesScopeNetwork TooManyTriesScope = "network"
+)
+
+// Valid indicates whether the value is a known member of the TooManyTriesScope enum.
+func (e TooManyTriesScope) Valid() bool {
+	switch e {
+	case TooManyTriesScopeDevice:
+		return true
+	case TooManyTriesScopeName:
+		return true
+	case TooManyTriesScopeNetwork:
+		return true
+	default:
+		return false
+	}
+}
+
+// Account defines model for Account.
+type Account struct {
+	Administrator bool `json:"administrator"`
+
+	// Id Opaque; never the id of a profile or a device.
+	Id   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // Capability defines model for Capability.
 type Capability struct {
-	Id    string          `json:"Id"`
-	State CapabilityState `json:"State"`
+	Id    string          `json:"id"`
+	State CapabilityState `json:"state"`
 }
 
 // CapabilityState defines model for Capability.State.
@@ -55,17 +100,31 @@ type Configuration struct {
 	SubtitleMode               *string `json:"SubtitleMode,omitempty"`
 }
 
+// Device defines model for Device.
+type Device struct {
+	// Id Opaque; never the id of an account or a profile.
+	Id   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // Identity defines model for Identity.
 type Identity struct {
-	ApiVersion   IdentityApiVersion `json:"ApiVersion"`
-	Capabilities []Capability       `json:"Capabilities"`
-	Id           string             `json:"Id"`
-	Name         string             `json:"Name"`
-	Version      string             `json:"Version"`
+	ApiVersion   IdentityApiVersion `json:"apiVersion"`
+	Capabilities []Capability       `json:"capabilities"`
+	Id           string             `json:"id"`
+	Name         string             `json:"name"`
+	Version      string             `json:"version"`
 }
 
 // IdentityApiVersion defines model for Identity.ApiVersion.
 type IdentityApiVersion string
+
+// Me defines model for Me.
+type Me struct {
+	Account Account `json:"account"`
+	Device  Device  `json:"device"`
+	Profile Profile `json:"profile"`
+}
 
 // MediaSource defines model for MediaSource.
 type MediaSource struct {
@@ -79,23 +138,74 @@ type MediaStream struct {
 
 // PlaybackInfo defines model for PlaybackInfo.
 type PlaybackInfo struct {
-	Action        *string       `json:"Action,omitempty"`
 	ErrorCode     *string       `json:"ErrorCode,omitempty"`
 	MediaSources  []MediaSource `json:"MediaSources"`
 	PlaySessionId string        `json:"PlaySessionId"`
-	Reason        *string       `json:"Reason,omitempty"`
+	Action        *string       `json:"action,omitempty"`
+	Reason        *string       `json:"reason,omitempty"`
+}
+
+// Profile defines model for Profile.
+type Profile struct {
+	// Id Opaque; never the id of an account or a device.
+	Id   string `json:"id"`
+	Name string `json:"name"`
 }
 
 // Refusal defines model for Refusal.
 type Refusal struct {
 	// Action Words for what the viewer can do. A client that does not know a value keeps the string.
-	Action string `json:"Action"`
+	Action string `json:"action"`
 
 	// Detail What went wrong, for the app developer, not shown to the viewer. Its wording may change within a version; a client must not branch on it, and the server never writes it to a log.
-	Detail            *string `json:"Detail,omitempty"`
-	Reason            string  `json:"Reason"`
-	RetryAfterSeconds *int    `json:"RetryAfterSeconds,omitempty"`
+	Detail *string `json:"detail,omitempty"`
+	Reason string  `json:"reason"`
 }
+
+// SignIn defines model for SignIn.
+type SignIn struct {
+	Account Account `json:"account"`
+	Device  Device  `json:"device"`
+	Profile Profile `json:"profile"`
+
+	// Token Sent on every later request, as `Authorization: Bearer <token>` or a spelling Jellyfin's clients use. Given once.
+	Token string `json:"token"`
+}
+
+// SignInRequest defines model for SignInRequest.
+type SignInRequest struct {
+	AppName string `json:"appName"`
+
+	// DeviceId A random id the app makes once per installation, either 22 characters of random base64url or a random UUID, keeps private and sends on every sign-in from that installation, for every account signed in on it. It is never shown to the viewer. The server counts wrong passwords per known device by it, so a guesser who does not hold it and does not share the viewer's network address cannot keep the viewer out of a device that has signed in before, and a second sign-in with the same id replaces that device's token rather than adding a device, as each account holds one token per device. It is not the answer's `device.id`, which is the server's own id for the signed-in device.
+	DeviceId string `json:"deviceId"`
+
+	// DeviceName The name the viewer sees for this device in their list of devices.
+	DeviceName string `json:"deviceName"`
+	Password   string `json:"password"`
+	Username   string `json:"username"`
+}
+
+// TooManyTries defines model for TooManyTries.
+type TooManyTries struct {
+	// Action Words for what the viewer can do. A client that does not know a value keeps the string.
+	Action string `json:"action"`
+
+	// Detail What went wrong, for the app developer, not shown to the viewer. Its wording may change within a version; a client must not branch on it, and the server never writes it to a log.
+	Detail *string            `json:"detail,omitempty"`
+	Reason TooManyTriesReason `json:"reason"`
+
+	// RetryAfterSeconds Whole seconds, rounded up, until a sign-in would no longer be refused.
+	RetryAfterSeconds int `json:"retryAfterSeconds"`
+
+	// Scope The bound that refused it. name, wrong passwords for this name from devices new to it; device, wrong passwords from this device; network, wrong passwords from this network.
+	Scope TooManyTriesScope `json:"scope"`
+}
+
+// TooManyTriesReason defines model for TooManyTries.Reason.
+type TooManyTriesReason string
+
+// TooManyTriesScope The bound that refused it. name, wrong passwords for this name from devices new to it; device, wrong passwords from this device; network, wrong passwords from this network.
+type TooManyTriesScope string
 
 // TrackPreferences defines model for TrackPreferences.
 type TrackPreferences struct {
@@ -147,6 +257,9 @@ type PatchConfigurationJSONBody = map[string]any
 
 // PlaybackInfoJSONRequestBody defines body for PlaybackInfo for application/json ContentType.
 type PlaybackInfoJSONRequestBody = PlaybackInfoJSONBody
+
+// SignInJSONRequestBody defines body for SignIn for application/json ContentType.
+type SignInJSONRequestBody = SignInRequest
 
 // PatchTrackPreferencesJSONRequestBody defines body for PatchTrackPreferences for application/json ContentType.
 type PatchTrackPreferencesJSONRequestBody = TrackPreferencesPatch

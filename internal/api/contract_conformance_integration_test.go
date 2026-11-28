@@ -168,13 +168,13 @@ func TestTheContractRejectsAWrongTypeInEachAnswerItTypes(t *testing.T) {
 		{"configuration AudioLanguagePreference", http.MethodPatch, "/jellyscale/v1/users/configuration", "/jellyscale/v1/users/configuration", kit.token,
 			map[string]any{"AudioLanguagePreference": "deu"}, http.StatusOK, func(answer map[string]any) bool { answer["AudioLanguagePreference"] = 5; return true }},
 		{"identity ApiVersion", http.MethodGet, "/jellyscale/v1/server", "/jellyscale/v1/server", "", nil, http.StatusOK,
-			func(answer map[string]any) bool { answer["ApiVersion"] = 3; return true }},
+			func(answer map[string]any) bool { answer["apiVersion"] = 3; return true }},
 		{"playback info Hidden", http.MethodPost, "/jellyscale/v1/items/" + kit.item + "/playback-info", "/jellyscale/v1/items/{itemId}/playback-info", kit.token,
 			map[string]any{}, http.StatusOK, breakAnAudioTrack},
 		{"sign-in refusal an extra key", http.MethodGet, "/jellyscale/v1/track-preferences", "/jellyscale/v1/track-preferences", "", nil, http.StatusUnauthorized,
 			func(answer map[string]any) bool { answer["Extra"] = true; return true }},
 		{"sign-in refusal a number Reason", http.MethodGet, "/jellyscale/v1/track-preferences", "/jellyscale/v1/track-preferences", "", nil, http.StatusUnauthorized,
-			func(answer map[string]any) bool { answer["Reason"] = 7; return true }},
+			func(answer map[string]any) bool { answer["reason"] = 7; return true }},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

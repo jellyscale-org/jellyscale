@@ -314,15 +314,15 @@ func matrixJudge(expected map[string]map[string]bool, key string, response *http
 			problems = append(problems, fmt.Sprintf("status %s of %s is not answered as JSON", status, key))
 		}
 		for name := range fields {
-			if name != "Reason" && name != "Action" && name != "RetryAfterSeconds" && name != "Detail" {
+			if name != "reason" && name != "action" && name != "retryAfterSeconds" && name != "detail" {
 				problems = append(problems, fmt.Sprintf("status %s of %s carries the key %s", status, key, name))
 			}
 		}
 	}
-	rawReason, hasReason := fields["Reason"]
+	rawReason, hasReason := fields["reason"]
 	if !hasReason {
 		if response.StatusCode >= 400 {
-			problems = append(problems, fmt.Sprintf("status %s of %s has no Reason", status, key))
+			problems = append(problems, fmt.Sprintf("status %s of %s has no reason", status, key))
 		}
 		return problems
 	}
@@ -330,7 +330,7 @@ func matrixJudge(expected map[string]map[string]bool, key string, response *http
 	if err := json.Unmarshal(rawReason, &reason); err != nil {
 		return append(problems, fmt.Sprintf("the Reason of %s is not a string", key))
 	}
-	_ = json.Unmarshal(fields["Action"], &action)
+	_ = json.Unmarshal(fields["action"], &action)
 	if !declared[reason] {
 		problems = append(problems, fmt.Sprintf("reason %s is not declared for status %s of %s", reason, status, key))
 	}

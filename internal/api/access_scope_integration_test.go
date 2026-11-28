@@ -724,7 +724,7 @@ func (a *accessSite) scopeAuthenticationFirst(t *testing.T, h accHandler, f *sco
 			}
 			want := "unauthorized"
 			if strings.HasPrefix(route.Path, "/jellyscale/v1/") {
-				want = `{"Reason":"unauthorized","Action":"sign-in"}`
+				want = `{"reason":"unauthorized","action":"sign-in"}`
 			}
 			for _, credential := range credentials {
 				r := accSend(route.Method, h.base, path, credential.token, credential.spelling, body, headers...)

@@ -335,7 +335,7 @@ func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, mark
 				if !ok {
 					return
 				}
-				reply["Reason"], reply["Action"] = string(allowed), reasonActions[allowed]
+				reply["reason"], reply["action"] = string(allowed), reasonActions[allowed]
 			}
 			writeJSON(w, reply)
 			return
@@ -387,7 +387,7 @@ func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, mark
 			if !ok {
 				return
 			}
-			reply["Reason"], reply["Action"] = string(allowed), reasonActions[allowed]
+			reply["reason"], reply["action"] = string(allowed), reasonActions[allowed]
 		}
 		writeJSON(w, reply)
 		return

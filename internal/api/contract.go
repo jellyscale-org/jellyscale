@@ -30,30 +30,36 @@ func isV1Path(path string) bool {
 type Reason string
 
 const (
-	reasonUnauthorized     Reason = "unauthorized"
-	reasonForbidden        Reason = "forbidden"
-	reasonNotFound         Reason = "not-found"
-	reasonMethodNotAllowed Reason = "method-not-allowed"
-	reasonNotServed        Reason = "not-served"
-	reasonInvalidBody      Reason = "invalid-body"
-	reasonLanguageNotSaved Reason = "language-not-saved"
-	reasonNoCapacity       Reason = "no-capacity"
-	reasonNothingToPlay    Reason = "nothing-to-play"
-	reasonServerFailure    Reason = "server-failure"
+	reasonUnauthorized           Reason = "unauthorized"
+	reasonForbidden              Reason = "forbidden"
+	reasonNotFound               Reason = "not-found"
+	reasonMethodNotAllowed       Reason = "method-not-allowed"
+	reasonNotServed              Reason = "not-served"
+	reasonInvalidBody            Reason = "invalid-body"
+	reasonLanguageNotSaved       Reason = "language-not-saved"
+	reasonNoCapacity             Reason = "no-capacity"
+	reasonNothingToPlay          Reason = "nothing-to-play"
+	reasonServerFailure          Reason = "server-failure"
+	reasonCredentialsNotAccepted Reason = "credentials-not-accepted"
+	reasonTooManyTries           Reason = "too-many-tries"
+	reasonAccountOff             Reason = "account-off"
 )
 
 // reasonActions is what a viewer can do about each reason. Handler refuses to start if the contract disagrees.
 var reasonActions = map[Reason]string{
-	reasonUnauthorized:     "sign-in",
-	reasonForbidden:        "none",
-	reasonNotFound:         "none",
-	reasonMethodNotAllowed: "none",
-	reasonNotServed:        "none",
-	reasonInvalidBody:      "none",
-	reasonLanguageNotSaved: "choose-another",
-	reasonNoCapacity:       "retry",
-	reasonNothingToPlay:    "choose-another",
-	reasonServerFailure:    "retry",
+	reasonUnauthorized:           "sign-in",
+	reasonForbidden:              "none",
+	reasonNotFound:               "none",
+	reasonMethodNotAllowed:       "none",
+	reasonNotServed:              "none",
+	reasonInvalidBody:            "none",
+	reasonLanguageNotSaved:       "choose-another",
+	reasonNoCapacity:             "retry",
+	reasonNothingToPlay:          "choose-another",
+	reasonServerFailure:          "retry",
+	reasonCredentialsNotAccepted: "retry",
+	reasonTooManyTries:           "retry",
+	reasonAccountOff:             "ask-operator",
 }
 
 // transportReasons are the ones a version locks: an unknown route, a wrong method, a missing sign-in and a server
@@ -87,9 +93,9 @@ func refusalEnvelope(w http.ResponseWriter, status int, reason Reason, detail st
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	answer := struct {
-		Reason Reason  `json:"Reason"`
-		Action string  `json:"Action"`
-		Detail *string `json:"Detail,omitempty"`
+		Reason Reason  `json:"reason"`
+		Action string  `json:"action"`
+		Detail *string `json:"detail,omitempty"`
 	}{Reason: reason, Action: reasonActions[reason]}
 	if detail != "" {
 		answer.Detail = &detail
@@ -214,10 +220,10 @@ func (s *Server) getServer(w http.ResponseWriter, _ *http.Request) {
 	slices.Sort(ids)
 	capabilities := make([]map[string]string, 0, len(ids))
 	for _, id := range ids {
-		capabilities = append(capabilities, map[string]string{"Id": id, "State": document.Capabilities[id].State})
+		capabilities = append(capabilities, map[string]string{"id": id, "state": document.Capabilities[id].State})
 	}
 	writeJSON(w, map[string]any{
-		"Name": s.Name, "Id": s.ServerID, "Version": buildVersion, "ApiVersion": "v1", "Capabilities": capabilities,
+		"name": s.Name, "id": s.ServerID, "version": buildVersion, "apiVersion": "v1", "capabilities": capabilities,
 	})
 }
 
