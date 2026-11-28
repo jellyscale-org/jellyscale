@@ -10,7 +10,7 @@
     "Every test that proves application behaviour and only uses a captured Jellyfin shape is kept, or rewritten to assert the behaviour directly, never deleted; the pull request lists each such test with what it still proves. The captures that invariants cite stay until JS-194's ledger decides them.",
     "AGENTS.md, docs/testing.md, docs/status.md and DOMAINS.md no longer describe or cite the retired tier or schema check; a statement that leaned on it is rewritten, citing D-110 and this task's decision."
   ],
-  "status": "todo",
+  "status": "done",
   "dependsOn": [],
   "source": "Owner, 2026-11-27: remove the Jellyfin comparisons from CI and the repo; D-110; D-20261127-retire-jellyfin-comparisons",
   "notes": "Not the cutover: Jellyfin routes, their invariants and the jellyfin-web gate leave in JS-194."
