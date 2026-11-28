@@ -8,7 +8,7 @@ Facts about `internal/store`, what reads cost, and how made things are cleaned u
 - **Credentials come from the environment.** Store locations are stored and logged, so one that carries a user, a password or a parameter named like a key, secret, token or signature is refused at startup, with an error that names the problem and not the value. A secret hidden in a path can't be told from a path and is not caught.
 - **A path built from a key can't leave the store's root.**
 - **Listing a missing root is an error on local disk**, so an unmounted volume is never read as an empty collection. A scan that finds no video at all, where some is stored, fails without removing anything. The cost: a collection emptied on purpose keeps its last films until a video is back.
-- **There is no "does this exist" call**: callers open an object to find out. One credential pair serves every store.
+- **`Stat` returns only a size**: nothing looks up one object together with its version (ETag) without listing. One credential pair serves every store.
 
 ## What S3 does
 
