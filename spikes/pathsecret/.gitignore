@@ -1,0 +1,7 @@
+assets/
+android/local.properties
+android/.gradle/
+android/build/
+android/app/build/
+android/app/src/main/assets/
+android/app/src/debug/assets/
