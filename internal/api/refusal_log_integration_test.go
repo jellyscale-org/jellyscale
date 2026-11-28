@@ -48,7 +48,7 @@ func refusalDetail(t *testing.T, raw []byte) string {
 	if err := json.Unmarshal(raw, &fields); err != nil {
 		t.Fatal(err)
 	}
-	if rawDetail, ok := fields["Detail"]; ok {
+	if rawDetail, ok := fields["detail"]; ok {
 		var detail string
 		if err := json.Unmarshal(rawDetail, &detail); err != nil {
 			t.Fatal(err)

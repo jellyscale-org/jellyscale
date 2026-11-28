@@ -169,8 +169,8 @@ func TestTheV1NamespaceRootAndUnknownPathAnswerJSONNotFounds(t *testing.T) {
 			if got := response.Header.Get("Content-Type"); !strings.HasPrefix(got, "application/json") {
 				t.Fatalf("GET %s has content type %q, want application/json: %.120q", path, got, raw)
 			}
-			fields := exactKeys(t, raw, []string{"Reason", "Action"}, "RetryAfterSeconds")
-			if reason, action := stringField(t, fields, "Reason"), stringField(t, fields, "Action"); reason != "not-found" || action != "none" {
+			fields := exactKeys(t, raw, []string{"reason", "action"}, "retryAfterSeconds")
+			if reason, action := stringField(t, fields, "reason"), stringField(t, fields, "action"); reason != "not-found" || action != "none" {
 				t.Fatalf("GET %s says reason %q and action %q, want not-found and none", path, reason, action)
 			}
 		})
@@ -202,7 +202,7 @@ func TestPlaybackInfoWithAnUnknownSourceAnswersTheNotFoundReason(t *testing.T) {
 			if err := json.Unmarshal(reply["MediaSources"], &sources); err != nil || len(sources) != 0 {
 				t.Fatalf("an unknown source listed %d sources: %.200q", len(sources), raw)
 			}
-			if reason, action := stringField(t, reply, "Reason"), stringField(t, reply, "Action"); reason != "not-found" || action != "none" {
+			if reason, action := stringField(t, reply, "reason"), stringField(t, reply, "action"); reason != "not-found" || action != "none" {
 				t.Fatalf("an unknown source says reason %q and action %q, want not-found and none: %.200q", reason, action, raw)
 			}
 		})

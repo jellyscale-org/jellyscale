@@ -317,7 +317,7 @@ func TestNoRouteSetsACookieAndACookieIsNoToken(t *testing.T) {
 			r2 := accSend(route.Method, h.base, path, "", -1, body, "Cookie", name+`=`+value+`; `+name+`="`+token+`"`, "Origin", corsA)
 			wantBody := "unauthorized"
 			if strings.HasPrefix(route.Path, "/jellyscale/v1/") {
-				wantBody = `{"Reason":"unauthorized","Action":"sign-in"}`
+				wantBody = `{"reason":"unauthorized","action":"sign-in"}`
 			}
 			for _, got := range []accReply{r, r2} {
 				if got.err != nil || got.status != 401 || strings.TrimSpace(string(got.body)) != wantBody {

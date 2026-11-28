@@ -19,8 +19,8 @@ func TestServerIdentityReportsTheVersionItWasBuiltWith(t *testing.T) {
 	if response.StatusCode != http.StatusOK {
 		t.Fatalf("GET /jellyscale/v1/server with no token: %d %.120q, want 200", response.StatusCode, raw)
 	}
-	fields := exactKeys(t, raw, []string{"Name", "Id", "Version", "ApiVersion", "Capabilities"})
-	if version := stringField(t, fields, "Version"); version != "7.8.9-check" {
+	fields := exactKeys(t, raw, []string{"name", "id", "version", "apiVersion", "capabilities"})
+	if version := stringField(t, fields, "version"); version != "7.8.9-check" {
 		t.Fatalf("Version %q, want the build's 7.8.9-check", version)
 	}
 }

@@ -398,7 +398,7 @@ func TestEachViewerRouteAskedFromAnotherOriginWithNoTokenIsA401TheOriginMayRead(
 			a := corsAsk(corsHandler(route.Role), route.Method, corsURL(route), "Origin", origin, "Cookie", "X-Emby-Token=whatever")
 			wantBody := "unauthorized"
 			if strings.HasPrefix(route.Path, "/jellyscale/v1/") {
-				wantBody = `{"Reason":"unauthorized","Action":"sign-in"}`
+				wantBody = `{"reason":"unauthorized","action":"sign-in"}`
 			}
 			if a.Code != 401 || strings.TrimSpace(a.Body.String()) != wantBody {
 				bad = append(bad, fmt.Sprintf("%s %s from %s: %d %q, want 401 %s", route.Method, route.Path, origin, a.Code, a.Body.String(), wantBody))

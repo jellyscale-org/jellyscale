@@ -44,7 +44,7 @@ func TestEveryViewerOperationRefusesNoTokenWithTheSignInRefusal(t *testing.T) {
 				t.Fatalf("content type %q, want application/json", contentType)
 			}
 			if !isSignInRefusal(raw) {
-				t.Fatalf("the body %.160q is not the sign-in refusal {Reason: unauthorized, Action: sign-in}", raw)
+				t.Fatalf("the body %.160q is not the sign-in refusal {reason: unauthorized, action: sign-in}", raw)
 			}
 		})
 	}
@@ -73,10 +73,10 @@ func TestPlaybackInfoWithNoWorkerAnswersTheCapacityReason(t *testing.T) {
 	if code := stringField(t, reply, "ErrorCode"); code != "RateLimitExceeded" {
 		t.Fatalf("ErrorCode %q, want RateLimitExceeded: %.300q", code, raw)
 	}
-	if _, ok := reply["Reason"]; !ok {
-		t.Fatalf("the capacity refusal in the 200 body has no Reason: %.300q", raw)
+	if _, ok := reply["reason"]; !ok {
+		t.Fatalf("the capacity refusal in the 200 body has no reason: %.300q", raw)
 	}
-	if reason, action := stringField(t, reply, "Reason"), stringField(t, reply, "Action"); reason != "no-capacity" || action != "retry" {
+	if reason, action := stringField(t, reply, "reason"), stringField(t, reply, "action"); reason != "no-capacity" || action != "retry" {
 		t.Fatalf("the capacity refusal says reason %q and action %q, want no-capacity and retry: %.300q", reason, action, raw)
 	}
 }
@@ -113,8 +113,8 @@ func TestAFailureInsideTheServerAnswersTheServerFailureReason(t *testing.T) {
 	if contentType := response.Header.Get("Content-Type"); !strings.HasPrefix(contentType, "application/json") {
 		t.Fatalf("content type %q, want application/json", contentType)
 	}
-	fields := exactKeys(t, raw, []string{"Reason", "Action"}, "RetryAfterSeconds")
-	if reason, action := stringField(t, fields, "Reason"), stringField(t, fields, "Action"); reason != "server-failure" || action != "retry" {
+	fields := exactKeys(t, raw, []string{"reason", "action"}, "retryAfterSeconds")
+	if reason, action := stringField(t, fields, "reason"), stringField(t, fields, "action"); reason != "server-failure" || action != "retry" {
 		t.Fatalf("the 500 says reason %q and action %q, want server-failure and retry", reason, action)
 	}
 }
