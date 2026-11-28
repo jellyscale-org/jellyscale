@@ -162,11 +162,182 @@ paths:
       operationId: signIn
       x-state: declared
       x-capability: sign-in
-      summary: Declared for Octave to build against; not served by this release.
+      summary: Sign a device in with a name and password. Anyone may call it, with no token. Declared for Octave to build
+        against; not served by this release.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignInRequest'
+            examples:
+              livingRoomTv:
+                value:
+                  username: Alex
+                  password: correct horse battery staple
+                  deviceName: Living room TV
+                  appName: Octave
       responses:
+        "200":
+          description: Signed in. The token is given once, in this answer, and is sent on every later request.
+          x-reasons: []
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignIn'
+              examples:
+                viewer:
+                  value:
+                    token: "9f2c4e1a7b3d48c6a0e5f1d2c3b4a596"
+                    account: {id: "3c1e9a0f", name: "Alex", administrator: false}
+                    profile: {id: "b7d24e61", name: "Alex"}
+                    device: {id: "e05a8c2d", name: "Living room TV"}
+                administrator:
+                  value:
+                    token: "41d7a2c9e0b84f3a9c6d5e2f1a0b7c83"
+                    account: {id: "8a51f0c3", name: "Sam", administrator: true}
+                    profile: {id: "2d9e7b14", name: "Sam"}
+                    device: {id: "c6f3a28e", name: "Sam's phone"}
+        "400":
+          $ref: '#/components/responses/InvalidBody'
+        "401":
+          description: The name or the password is not right. The answer is the same for a name that is no account.
+          x-reasons: [credentials-not-accepted]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Refusal'
+              examples:
+                wrongPassword:
+                  value: {reason: credentials-not-accepted, action: retry}
+        "403":
+          description: The account is turned off. Sent only after the right password, so it never tells a guesser that a
+            name is an account.
+          x-reasons: [account-off]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Refusal'
+              examples:
+                accountOff:
+                  value: {reason: account-off, action: ask-operator}
+        "429":
+          description: Too many wrong passwords. No password is checked until the time in Retry-After and
+            retryAfterSeconds has passed, so the right one is refused too. scope says which bound refused it. The name
+            bound counts a name that is no account exactly as an account, so `scope` name tells nothing about whether the
+            name is one.
+          x-reasons: [too-many-tries]
+          headers:
+            Retry-After:
+              description: Whole seconds until a sign-in would no longer be refused, the same as retryAfterSeconds.
+              schema:
+                type: integer
+                minimum: 1
+                maximum: 900
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TooManyTries'
+              examples:
+                device:
+                  value: {reason: too-many-tries, action: retry, retryAfterSeconds: 840, scope: device}
         "404":
           $ref: '#/components/responses/NotServed'
+        "500":
+          $ref: '#/components/responses/ServerFailure'
+  /jellyscale/v1/sign-out:
+    post:
+      operationId: signOut
+      x-state: declared
+      x-capability: sign-in
+      summary: End the calling device's sign-in. Its token is refused afterwards. A signed-in device may call it. Declared
+        for Octave to build against; not served by this release.
+      security:
+        - bearer: []
+        - authorization: []
+        - embyAuthorization: []
+        - embyToken: []
+        - mediaBrowserToken: []
+        - apiKey: []
+        - apiKeyLower: []
+      responses:
+        "204":
+          description: Signed out. There is no body.
+          x-reasons: []
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "404":
+          $ref: '#/components/responses/NotServed'
+        "500":
+          $ref: '#/components/responses/ServerFailure'
+  /jellyscale/v1/me:
+    get:
+      operationId: getMe
+      x-state: declared
+      x-capability: sign-in
+      summary: The account, profile and device the caller's token belongs to. A signed-in device may call it; an app asks at
+        launch whether its sign-in still holds. Declared for Octave to build against; not served by this release.
+      security:
+        - bearer: []
+        - authorization: []
+        - embyAuthorization: []
+        - embyToken: []
+        - mediaBrowserToken: []
+        - apiKey: []
+        - apiKeyLower: []
+      responses:
+        "200":
+          description: Who is signed in on this device. It carries no token.
+          x-reasons: []
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+              examples:
+                viewer:
+                  value:
+                    account: {id: "3c1e9a0f", name: "Alex", administrator: false}
+                    profile: {id: "b7d24e61", name: "Alex"}
+                    device: {id: "e05a8c2d", name: "Living room TV"}
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "404":
+          $ref: '#/components/responses/NotServed'
+        "500":
+          $ref: '#/components/responses/ServerFailure'
 components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      description: 'The token sign-in gives, as `Authorization: Bearer <token>`.'
+    authorization:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: 'Jellyfin''s spelling, `Authorization: MediaBrowser Token="<token>", ...`, accepted beside Bearer.'
+    embyAuthorization:
+      type: apiKey
+      in: header
+      name: X-Emby-Authorization
+      description: Jellyfin's older spelling, `MediaBrowser Token="<token>", ...`.
+    embyToken:
+      type: apiKey
+      in: header
+      name: X-Emby-Token
+    mediaBrowserToken:
+      type: apiKey
+      in: header
+      name: X-MediaBrowser-Token
+    apiKey:
+      type: apiKey
+      in: query
+      name: ApiKey
+    apiKeyLower:
+      type: apiKey
+      in: query
+      name: api_key
   responses:
     Unauthorized:
       description: No valid token. Sign in and try again.
@@ -228,45 +399,139 @@ components:
     Refusal:
       type: object
       additionalProperties: false
-      required: [Reason, Action]
+      required: [reason, action]
       properties:
-        Reason:
+        reason:
           type: string
-        Action:
+        action:
           type: string
           description: Words for what the viewer can do. A client that does not know a value keeps the string.
-        RetryAfterSeconds:
-          type: integer
-          minimum: 0
-        Detail:
+        detail:
           type: string
           description: What went wrong, for the app developer, not shown to the viewer. Its wording may change within a version;
             a client must not branch on it, and the server never writes it to a log.
+    TooManyTries:
+      type: object
+      additionalProperties: false
+      required: [reason, action, retryAfterSeconds, scope]
+      properties:
+        reason:
+          type: string
+          const: too-many-tries
+        action:
+          type: string
+          description: Words for what the viewer can do. A client that does not know a value keeps the string.
+        retryAfterSeconds:
+          type: integer
+          minimum: 1
+          maximum: 900
+          description: Whole seconds, rounded up, until a sign-in would no longer be refused.
+        scope:
+          type: string
+          enum: [name, device, network]
+          description: The bound that refused it. name, wrong passwords for this name from devices new to it; device, wrong
+            passwords from this device; network, wrong passwords from this network.
+        detail:
+          type: string
+          description: What went wrong, for the app developer, not shown to the viewer. Its wording may change within a version;
+            a client must not branch on it, and the server never writes it to a log.
+    SignInRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password, deviceName, appName]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        deviceName:
+          type: string
+          description: The name the viewer sees for this device in their list of devices.
+        appName:
+          type: string
+    Account:
+      type: object
+      additionalProperties: false
+      required: [id, name, administrator]
+      properties:
+        id:
+          type: string
+          description: Opaque; never the id of a profile or a device.
+        name:
+          type: string
+        administrator:
+          type: boolean
+    Profile:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          description: Opaque; never the id of an account or a device.
+        name:
+          type: string
+    Device:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          description: Opaque; never the id of an account or a profile.
+        name:
+          type: string
+    SignIn:
+      type: object
+      additionalProperties: false
+      required: [token, account, profile, device]
+      properties:
+        token:
+          type: string
+          description: 'Sent on every later request, as `Authorization: Bearer <token>` or a spelling Jellyfin''s clients
+            use. Given once.'
+        account:
+          $ref: '#/components/schemas/Account'
+        profile:
+          $ref: '#/components/schemas/Profile'
+        device:
+          $ref: '#/components/schemas/Device'
+    Me:
+      type: object
+      additionalProperties: false
+      required: [account, profile, device]
+      properties:
+        account:
+          $ref: '#/components/schemas/Account'
+        profile:
+          $ref: '#/components/schemas/Profile'
+        device:
+          $ref: '#/components/schemas/Device'
     Capability:
       type: object
       additionalProperties: false
-      required: [Id, State]
+      required: [id, state]
       properties:
-        Id:
+        id:
           type: string
-        State:
+        state:
           type: string
           enum: [declared, preview, stable]
     Identity:
       type: object
       additionalProperties: false
-      required: [Name, Id, Version, ApiVersion, Capabilities]
+      required: [name, id, version, apiVersion, capabilities]
       properties:
-        Name:
+        name:
           type: string
-        Id:
+        id:
           type: string
-        Version:
+        version:
           type: string
-        ApiVersion:
+        apiVersion:
           type: string
           const: v1
-        Capabilities:
+        capabilities:
           type: array
           items:
             $ref: '#/components/schemas/Capability'
@@ -341,9 +606,9 @@ components:
           type: string
         ErrorCode:
           type: string
-        Reason:
+        reason:
           type: string
-        Action:
+        action:
           type: string
 x-capabilities:
   track-preferences:
@@ -410,3 +675,15 @@ x-reasons:
     action: retry
     locked: true
     meaning: Something went wrong here; please try again.
+  credentials-not-accepted:
+    kind: refusal
+    action: retry
+    meaning: The name or password isn't right. Check and try again.
+  too-many-tries:
+    kind: refusal
+    action: retry
+    meaning: Too many tries. Wait, then try again.
+  account-off:
+    kind: refusal
+    action: ask-operator
+    meaning: This account is turned off. Ask the operator to turn it on.
