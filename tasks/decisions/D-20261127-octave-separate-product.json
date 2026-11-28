@@ -1,0 +1,21 @@
+{
+  "id": "D-20261127-octave-separate-product",
+  "date": "2026-11-27",
+  "by": "owner",
+  "task": "PRODUCT.md; AGENTS.md",
+  "brief": "owner, in conversation",
+  "tradeoff": "None.",
+  "serves": "",
+  "decision": "change",
+  "entry": "Two repositories: \"Octave already exists as a separate repo, so we just need to figure out how to communicate to the clients building those apps.\" Two products, one product owner each: \"let's have one product owner for each because these are going to be two separate products launched independently.\" Every Octave app is native: \"I think we should do the clients all natively for all the platforms.\" Built side by side: \"in the Octave repo we're handling the development of those applications in tandem consecutively so that we're not waiting for each one to be built.\" A design language of Octave's own: \"Given that these are all going to be written for different platforms, we should have a very well-codified design language.\" jellyscale owns what each reason means and the action it suggests; Octave owns the words. jellyscale ships a specific, tested Octave Web release in its image, and both are GPL-3.0-or-later as the owner would like (\"I think the answer to all your questions is yes.\"); Octave's side of the licence is Octave's owner's. jellyscale's contract is the source of truth for what the server offers; each change to it reaches Octave as an issue labelled from:jellyscale, and Octave's requests come as issues labelled from:fluster, triaged by jellyscale's product owner. What jellyscale needs from Octave is asked on Octave's issue board, never planned as jellyscale's own task. Re-recorded on 2026-11-28 from the records named in `replaces`, which the tag `pre-rebuild` keeps. Quoted words are the owner's; the rest is the lead's record of 2026-11-27.",
+  "replaces": [
+    "D-130",
+    "D-131",
+    "D-132",
+    "D-136",
+    "D-140",
+    "D-141",
+    "D-142",
+    "D-149"
+  ]
+}

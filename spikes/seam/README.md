@@ -1,5 +1,7 @@
 # Spike: segment seams
 
+> A measurement report, kept as written. Where it names a web client, another server, a task id or a document that is no longer in the tree, see [docs/engine/README.md](../../docs/engine/README.md), "Reading the code's comments". Its recommendations were for the earlier plan and are not decisions.
+
 **Question:** can a fresh ffmpeg, restarted at segment N, replace segments from an earlier run with no `EXT-X-DISCONTINUITY`?
 
 **Answer: yes, using fMP4.** It's clean on every encoder family tested, as long as the restart stays in the same family.

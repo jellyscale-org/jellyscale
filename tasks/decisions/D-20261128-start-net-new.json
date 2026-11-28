@@ -1,0 +1,11 @@
+{
+  "id": "D-20261128-start-net-new",
+  "date": "2026-11-28",
+  "by": "owner",
+  "task": "the rebuild",
+  "brief": "The lead's option B, as put to the owner: \"New plan and new server code, bringing over only the video engine. Sign-in, library, API and database are designed for your product. We keep the hard-won work on conversion, seeking, subtitles and storage, along with its tests. Costs: Octave has to wait longer before it can play video; bringing the engine over takes real work, because it's tied into the current design. In the same repository. We'd save the current version under a tag, and your test server would keep running its current build until the new one can replace it.\"",
+  "tradeoff": "Octave waits longer before it can play video. Bringing the engine over takes real work.",
+  "serves": "",
+  "decision": "change",
+  "entry": "The owner: \"I'm thinking that we actually ought to just start from scratch, plan this from all brand new, just like start.net new for the Papi, apart from our rule files and the domains and the product.md.\" (dictated; the lead read it as \"start net new for the API\") and then \"I'll go with option B\". A new plan and new server code in this repository, bringing over only the video engine and its tests; sign-in, the collection, the API and the database are designed for this product. The earlier version is the tag `pre-rebuild`, and the owner's test server keeps running that build until the new one can replace it. Octave was asked to pause building against the earlier contract."
+}

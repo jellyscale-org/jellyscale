@@ -1,0 +1,11 @@
+{
+  "id": "D-20261128-no-jellyfin-features",
+  "date": "2026-11-28",
+  "by": "owner",
+  "task": "PRODUCT.md; the rebuild",
+  "brief": "owner, in conversation",
+  "tradeoff": "None.",
+  "serves": "",
+  "decision": "change",
+  "entry": "The owner: \"We don't need to support Quick Connect in the Jellyfin sense anymore. I'm really confused why we're still moving forward on similar features to Jellyfin, unless you're referring to Quick Connect as an approval of a second client device from another client device, such as logging into an Android TV or Apple TV app from a phone.\" No feature is built because Jellyfin has it. Approving a TV from a phone stays, as jellyscale's own sign-in for a second device."
+}

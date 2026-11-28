@@ -1,0 +1,14 @@
+{
+  "id": "D-20261127-design-before-build",
+  "date": "2026-11-27",
+  "by": "owner",
+  "task": "AGENTS.md; the roles",
+  "brief": "owner, in conversation",
+  "tradeoff": "None.",
+  "serves": "",
+  "decision": "change",
+  "entry": "The owner: \"One, a design agent that handles design using the Anthropic front end design skill and Impeccable, and then another UX review agent that just makes sure that the UX for our clients meets our standards. And we should probably run UX prior to any kind of building.\" In jellyscale the two serve what jellyscale's own viewers and operators experience; Octave runs its own. Re-recorded on 2026-11-28 from the records named in `replaces`, which the tag `pre-rebuild` keeps. Quoted words are the owner's; the rest is the lead's record of 2026-11-27.",
+  "replaces": [
+    "D-138"
+  ]
+}

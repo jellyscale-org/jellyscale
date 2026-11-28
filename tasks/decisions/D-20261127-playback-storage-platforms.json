@@ -1,0 +1,17 @@
+{
+  "id": "D-20261127-playback-storage-platforms",
+  "date": "2026-11-27",
+  "by": "owner",
+  "task": "PRODUCT.md",
+  "brief": "owner, in conversation",
+  "tradeoff": "Storage the operator chooses to spend on versions made ahead. Apple TV waits.",
+  "serves": "",
+  "decision": "change",
+  "entry": "The owner approved the direction with changes: the picture steps automatically, with a manual override as on YouTube; 720p is the usual floor, 480p only when a title is SD or nothing higher keeps it playing; object storage and the filesystem are both first-class; video only; passkeys through the identity provider (\"probably an identity we can pass off to the IDP\"), so jellyscale has no passkeys or second factors of its own; versions made ahead only by the operator's choice, off by default, never slowing anything a viewer or operator waits for (the owner declined to tie when they are made to scanning); Android TV and phones first, Apple TV later. Re-recorded on 2026-11-28 from the records named in `replaces`, which the tag `pre-rebuild` keeps. Quoted words are the owner's; the rest is the lead's record of 2026-11-27.",
+  "replaces": [
+    "D-118",
+    "D-119",
+    "D-120",
+    "D-121"
+  ]
+}

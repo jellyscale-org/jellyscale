@@ -1,5 +1,5 @@
 name: Feature request
-description: Propose a change. Check the non-goals in PRODUCT.md first.
+description: Propose a change. Check PRODUCT.md first, including what is not part of the product.
 labels: [enhancement]
 body:
   - type: textarea

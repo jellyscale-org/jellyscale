@@ -1,9 +1,0 @@
-{
-  "id": "BL-308",
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner",
-  "source": "Technology and top features §3",
-  "title": "Subtitles generated on the operator's servers for films with none",
-  "notes": "Deaf and hard-of-hearing viewers find nothing in films without subtitles. Compute per film is unsized: measure first, and only on the operator's servers."
-}
