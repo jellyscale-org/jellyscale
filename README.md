@@ -41,7 +41,7 @@ MEDIA_DIR=/path/to/media docker compose -f deploy/compose/compose.yaml up --buil
 
 ## Contribute
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) first: behaviour is observed on a real Jellyfin 12.4, no Jellyfin code is ported, and a bug fix comes with a test that fails without it. `go test ./...` needs only Go; the integration, e2e and differential tiers are in [docs/testing.md](docs/testing.md).
+Read [CONTRIBUTING.md](CONTRIBUTING.md) first: behaviour is observed on a real Jellyfin 12.4, no Jellyfin code is ported, and a bug fix comes with a test that fails without it. `go test ./...` needs only Go; the integration, e2e and roles tiers are in [docs/testing.md](docs/testing.md).
 
 ## Documentation
 

@@ -1,6 +1,6 @@
 # How Jellyfin 12.4 and jellyfin-web treat failed sign-ins
 
-Observed with `jellyfin/jellyfin:12.4` (server version 12.4.0), a disposable container on a Docker-assigned port with no library, by `test/differential/capture_signin.py` (rerun with `python3 -I test/differential/capture_signin.py compat/captures/signin-12.4.json` from the repository root; its web part, `capture_signin_web.mjs`, needs `playwright-core` in `PLAYWRIGHT_DIR`). `internal/api/signin_test.go` holds the file to D-020's brief.
+Observed with `jellyfin/jellyfin:12.4` (server version 12.4.0), a disposable container on a Docker-assigned port with no library, by a real Jellyfin 12.4. `internal/api/signin_test.go` holds the file to D-020's brief.
 
 - Default (`LoginAttemptsBeforeLockout` -1): 14 wrong passwords in a row each answer 401 (`Error processing request.`, about 77 ms), and the right one then signs in (200).
 - With the limit set to 3 by an administrator: three wrong passwords answer 401 and the fourth and every later one 403, a right password too, and the account's policy reads `IsDisabled: true` (still 403 after 30 s). It signs in again only after an administrator sets `IsDisabled` false.

@@ -17,4 +17,4 @@ Library: five films (two named `Quartz ...`), `Delta Show` (a `poster.jpg` besid
 - No token and a token no device holds both answer `401` with no body.
 - An unknown `userId` of the right shape is served as if it were the caller's; `userId=zzz` is `400`.
 
-The answers pass `compat/conform` as `SearchHintResult` (11 responses, no violation).
+The answers have the shape of a `SearchHintResult`: a `SearchHints` list and a `TotalRecordCount`, with Artists, Id, ItemId, Name and Type on every hint.

@@ -15,7 +15,6 @@ import (
 	"strings"
 	"testing"
 
-	"jellyscale/compat/conform"
 	"jellyscale/internal/db"
 	"jellyscale/internal/library"
 	"jellyscale/internal/store"
@@ -25,8 +24,8 @@ import (
 // JS-086: one typed media model from the probe to every reader. These checks
 // pin what a client sees, so that moving the model from maps to types changes
 // nothing a client can tell (a key gained with a zero value, a key lost, a
-// stored-only field leaking), and that every field the schema requires of a
-// source or a stream is in every answer.
+// stored-only field leaking), and that every field a strict client reads from
+// a source or a stream is in every answer.
 
 // modelEnv scans one film with a video, two audio tracks, a SubRip track, a PGS
 // track and a font, and a subtitle file beside it, with a worker running that
@@ -170,6 +169,44 @@ func mediaSubtrees(t *testing.T, name string, body []byte) map[string]any {
 	return out
 }
 
+// checkMediaFields walks every source, stream and attachment of an answer,
+// including the streams and attachments inside a source, and holds each to
+// the fields a strict client reads. It returns the number of streams seen.
+func checkMediaFields(t *testing.T, name string, sub map[string]any) int {
+	t.Helper()
+	checkList := func(key, kind string, list []any) int {
+		n := 0
+		for i, element := range list {
+			obj, ok := element.(map[string]any)
+			if !ok {
+				t.Errorf("%s: %s[%d] is not an object", name, key, i)
+				continue
+			}
+			checkMediaFieldKinds(t, kind, obj, fmt.Sprintf("%s %s[%d]", name, key, i))
+			n++
+		}
+		return n
+	}
+	streams := checkList("MediaStreams", "stream", toList(sub["MediaStreams"]))
+	checkList("MediaAttachments", "attachment", toList(sub["MediaAttachments"]))
+	for i, source := range toList(sub["MediaSources"]) {
+		obj, ok := source.(map[string]any)
+		if !ok {
+			t.Errorf("%s: MediaSources[%d] is not an object", name, i)
+			continue
+		}
+		checkMediaFieldKinds(t, "source", obj, fmt.Sprintf("%s MediaSources[%d]", name, i))
+		streams += checkList("MediaSources[].MediaStreams", "stream", toList(obj["MediaStreams"]))
+		checkList("MediaSources[].MediaAttachments", "attachment", toList(obj["MediaAttachments"]))
+	}
+	return streams
+}
+
+func toList(value any) []any {
+	list, _ := value.([]any)
+	return list
+}
+
 // volatile fields differ from one run to the next with the bytes ffmpeg
 // writes and the directories the test makes; the golden keeps their type only.
 var volatile = map[string]bool{"Size": true, "ETag": true, "Bitrate": true, "BitRate": true, "RunTimeTicks": true, "DurationTicks": true}
@@ -295,57 +332,10 @@ func TestAnswersCarryTheSameSourcesStreamsAndAttachmentsAsBefore(t *testing.T) {
 // the audio streams a transcode offer adds from the full probe.
 func TestEveryAnswerHoldsEverySourceAndStreamFieldTheSchemaRequires(t *testing.T) {
 	f, _ := modelEnv(t)
-	raw, err := os.ReadFile("../../compat/schema-12.4.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	schema, err := conform.ParseSchema(raw)
-	if err != nil {
-		t.Fatal(err)
-	}
-	rules, err := conform.LoadRules("../../compat/conform.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	// The counts the criterion states, so a schema that changes under it is noticed.
-	for typeName, want := range map[string]int{"MediaSourceInfo": 17, "MediaStream": 10, "MediaAttachment": 1} {
-		n := 0
-		for _, field := range schema.Types[typeName].Required {
-			if schema.Requires(typeName, field) {
-				n++
-			}
-		}
-		if n != want {
-			t.Fatalf("the schema requires %d fields of %s, the criteria say %d", n, typeName, want)
-		}
-	}
-	checker := conform.NewChecker(schema, rules)
 	for _, answer := range f.modelAnswers(t) {
-		violations := checker.Check(answer.name, answer.method, strings.Replace(answer.route, "{itemId}", db.CompactID(f.text), 1), 200, "application/json", answer.body)
-		for _, v := range violations {
-			// Only what concerns a source, a stream or an attachment: other fields are other tasks'.
-			if strings.Contains(v.JSONPath, "Media") || strings.Contains(v.Field, "Media") {
-				t.Errorf("%s", v)
-			}
-		}
-		// Not only the first element: count what was held to the schema.
+		// Not only the first element: count what was checked.
 		sub := mediaSubtrees(t, answer.name, answer.body)
-		streams := 0
-		var count func(any)
-		count = func(v any) {
-			if list, ok := v.([]any); ok {
-				for _, e := range list {
-					if m, ok := e.(map[string]any); ok {
-						if _, isStream := m["Type"]; isStream && m["Index"] != nil && m["Container"] == nil {
-							streams++
-						}
-						count(m["MediaStreams"])
-					}
-				}
-			}
-		}
-		count(sub["MediaSources"])
-		count(sub["MediaStreams"])
+		streams := checkMediaFields(t, answer.name, sub)
 		if answer.name == "PlaybackInfo with a transcoding profile" {
 			// 1 video, 2 audio, 2 subtitle tracks and one file beside the film, in the source; and the same
 			// again in the item's own list when it has one.
@@ -369,30 +359,12 @@ func TestASourceStoredByThePreviousReleaseIsAnsweredWithValidRequiredFields(t *t
 	id := db.CompactID(e.item)
 	// Two audio streams in the stored sources of the probe, as the transcode offer adds from the full probe.
 	mustExec(t, e.pool, `UPDATE media_sources SET streams = '[{"Index":0,"Type":"Video","Codec":"h264"},{"Index":1,"Type":"Audio","Codec":"aac"},{"Index":2,"Type":"Audio","Codec":"aac"}]'`)
-	raw, err := os.ReadFile("../../compat/schema-12.4.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	schema, err := conform.ParseSchema(raw)
-	if err != nil {
-		t.Fatal(err)
-	}
-	rules, err := conform.LoadRules("../../compat/conform.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	checker := conform.NewChecker(schema, rules)
 	_, details := e.do(t, 0, "GET", "/Items/"+id+"?userId="+db.CompactID(e.user), e.token, nil)
 	_, info := e.do(t, 0, "POST", "/Items/"+id+"/PlaybackInfo", e.token, map[string]any{"UserId": e.user, "DeviceProfile": map[string]any{}})
 	for what, c := range map[string]struct {
-		method, route string
-		body          []byte
-	}{"details": {"GET", "/Items/" + id, details}, "PlaybackInfo": {"POST", "/Items/" + id + "/PlaybackInfo", info}} {
-		for _, v := range checker.Check(what, c.method, c.route, 200, "application/json", c.body) {
-			if strings.Contains(v.JSONPath, "Media") {
-				t.Errorf("%s", v)
-			}
-		}
+		body []byte
+	}{"details": {details}, "PlaybackInfo": {info}} {
+		checkMediaFields(t, what, mediaSubtrees(t, what, c.body))
 		var reply struct{ MediaSources []map[string]any }
 		if err := json.Unmarshal(c.body, &reply); err != nil || len(reply.MediaSources) == 0 {
 			t.Fatalf("%s: %v %s", what, err, c.body)

@@ -3,63 +3,17 @@ package media_test
 import (
 	"encoding/json"
 	"math"
-	"os"
-	"slices"
+	"strings"
 	"testing"
 
-	"jellyscale/compat/conform"
 	"jellyscale/internal/media"
+	"jellyscale/internal/testenv"
 )
 
 // JS-086: the one MediaSource, MediaStream and MediaAttachment type, in package
-// internal/media. Whatever a row holds, the answer built from it carries each
-// field compat/schema-12.4.json requires, non-null and valid for its type, and
-// no key it was not given and does not require.
-
-func schema(t *testing.T) *conform.Schema {
-	t.Helper()
-	raw, err := os.ReadFile("../../compat/schema-12.4.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	s, err := conform.ParseSchema(raw)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return s
-}
-
-// requiredFields is what the schema requires of a type.
-func requiredFields(t *testing.T, s *conform.Schema, name string) []string {
-	t.Helper()
-	return s.Types[name].Required
-}
-
-// valid says whether value is a valid JSON value for the schema node of a required field.
-func valid(node *conform.Node, value any) bool {
-	switch {
-	case value == nil:
-		return false
-	case len(node.Enum) > 0:
-		s, ok := value.(string)
-		return ok && slices.Contains(node.Enum, s)
-	}
-	switch node.Type {
-	case "boolean":
-		_, ok := value.(bool)
-		return ok
-	case "integer":
-		n, ok := value.(float64)
-		return ok && n == math.Trunc(n)
-	case "number":
-		_, ok := value.(float64)
-		return ok
-	case "string":
-		_, ok := value.(string)
-		return ok
-	}
-	return true
-}
+// internal/media. Whatever a row holds, the answer built from it carries every field a
+// strict client reads, non-null and of the kind it reads it as, and no key it was not
+// given and does not need.
 
 func roundTrip[T any](t *testing.T, in string) map[string]any {
 	t.Helper()
@@ -78,26 +32,39 @@ func roundTrip[T any](t *testing.T, in string) map[string]any {
 	return out
 }
 
-func checkRequired(t *testing.T, s *conform.Schema, typeName string, fields []string, in string, out map[string]any) {
+func checkRequired(t *testing.T, typeName string, in string, out map[string]any) {
 	t.Helper()
-	for _, field := range fields {
+	for field, want := range testenv.ClientFields[typeName] {
 		value, ok := out[field]
 		if !ok {
 			t.Errorf("%s from %s lacks %s", typeName, in, field)
 			continue
 		}
-		if !valid(s.Types[typeName].Props[field], value) {
-			t.Errorf("%s from %s has %s = %v, not valid for its schema type", typeName, in, field, value)
+		switch want {
+		case "bool":
+			if _, ok := value.(bool); !ok {
+				t.Errorf("%s from %s has %s = %v, want a boolean", typeName, in, field, value)
+			}
+		case "integer":
+			n, ok := value.(float64)
+			if !ok || n != math.Trunc(n) {
+				t.Errorf("%s from %s has %s = %v, want an integer", typeName, in, field, value)
+			}
+		default:
+			s, ok := value.(string)
+			if !ok {
+				t.Errorf("%s from %s has %s = %v, want a string", typeName, in, field, value)
+			} else if !strings.Contains(" "+want+" ", " "+s+" ") {
+				t.Errorf("%s from %s has %s = %q, want one of %s", typeName, in, field, s, want)
+			}
 		}
 	}
 }
 
 // Rows as releases stored them, from an empty one to the full probe's, give an
-// answer with all 17 fields of MediaSourceInfo that a source has, valid, and the
-// values Jellyfin sends for a file played from disk where the row has none.
+// answer with every field a strict client reads from a source, valid, and the
+// values a file played from disk has where the row has none.
 func TestASourceOfAnyStoredShapeCarriesTheRequiredFieldsAtValidValues(t *testing.T) {
-	s := schema(t)
-	fields := requiredFields(t, s, "MediaSourceInfo")
 	for _, in := range []string{
 		`{}`,
 		`{"Id":"abc"}`,
@@ -105,7 +72,7 @@ func TestASourceOfAnyStoredShapeCarriesTheRequiredFieldsAtValidValues(t *testing
 		`{"Id":"abc","Protocol":"File","Type":"Default","Container":"mkv","SupportsDirectPlay":true,"SupportsDirectStream":true,"SupportsTranscoding":true,"Bitrate":2000000,"MediaStreams":[],"MediaAttachments":[]}`,
 	} {
 		out := roundTrip[media.MediaSource](t, in)
-		checkRequired(t, s, "MediaSourceInfo", fields, in, out)
+		checkRequired(t, "source", in, out)
 		for key, want := range map[string]any{"Protocol": "File", "Type": "Default", "SupportsProbing": true, "TranscodingSubProtocol": "http"} {
 			if out[key] != want {
 				t.Errorf("a source from %s has %s = %v, want %v", in, key, out[key], want)
@@ -121,15 +88,13 @@ func TestASourceOfAnyStoredShapeCarriesTheRequiredFieldsAtValidValues(t *testing
 	if err := json.Unmarshal(raw, &zero); err != nil {
 		t.Fatal(err)
 	}
-	checkRequired(t, s, "MediaSourceInfo", fields, "the zero MediaSource", zero)
+	checkRequired(t, "source", "the zero MediaSource", zero)
 }
 
-// A stream carries the 10 fields of MediaStream the schema requires, and no key
-// it was not given and does not require: no Width or empty Language on an audio
+// A stream carries every field a strict client reads, and no key
+// it was not given and does not need: no Width or empty Language on an audio
 // stream, none lost.
 func TestAStreamCarriesTheRequiredFieldsAndNoZeroKeyItWasNotGiven(t *testing.T) {
-	s := schema(t)
-	fields := requiredFields(t, s, "MediaStream")
 	for _, in := range []string{
 		`{"Index":0,"Type":"Video"}`,
 		`{"Index":1,"Type":"Audio","Codec":"aac","IsDefault":true}`,
@@ -138,13 +103,13 @@ func TestAStreamCarriesTheRequiredFieldsAndNoZeroKeyItWasNotGiven(t *testing.T) 
 		`{"Index":0,"Type":"Video","Codec":"h264","Width":160,"Height":90,"Level":41,"IsInterlaced":false,"ColorTransfer":"","BitDepth":8,"VideoRange":"SDR","VideoRangeType":"SDR"}`,
 	} {
 		out := roundTrip[media.MediaStream](t, in)
-		checkRequired(t, s, "MediaStream", fields, in, out)
+		checkRequired(t, "stream", in, out)
 		var given map[string]any
 		if err := json.Unmarshal([]byte(in), &given); err != nil {
 			t.Fatal(err)
 		}
 		for key, value := range out {
-			if _, ok := given[key]; !ok && !slices.Contains(fields, key) {
+			if _, ok := given[key]; !ok && testenv.ClientFields["stream"][key] == "" {
 				t.Errorf("a stream from %s gained %s = %v", in, key, value)
 			}
 		}
@@ -158,17 +123,15 @@ func TestAStreamCarriesTheRequiredFieldsAndNoZeroKeyItWasNotGiven(t *testing.T) 
 
 // An attachment always has its Index, and gains nothing else.
 func TestAnAttachmentCarriesItsIndex(t *testing.T) {
-	s := schema(t)
-	fields := requiredFields(t, s, "MediaAttachment")
 	for _, in := range []string{`{}`, `{"Index":5,"FileName":"Serif.ttf","MimeType":"font/ttf"}`} {
 		out := roundTrip[media.MediaAttachment](t, in)
-		checkRequired(t, s, "MediaAttachment", fields, in, out)
+		checkRequired(t, "attachment", in, out)
 		var given map[string]any
 		if err := json.Unmarshal([]byte(in), &given); err != nil {
 			t.Fatal(err)
 		}
 		for key := range out {
-			if _, ok := given[key]; !ok && !slices.Contains(fields, key) {
+			if _, ok := given[key]; !ok && testenv.ClientFields["attachment"][key] == "" {
 				t.Errorf("an attachment from %s gained %s", in, key)
 			}
 		}

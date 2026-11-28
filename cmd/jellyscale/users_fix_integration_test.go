@@ -344,7 +344,7 @@ func TestARefusalToLeaveNoAdministratorIsLoggedWithTheUserAndTheReason(t *testin
 	}
 }
 
-// compat/differences.yaml, "users: the list filtered by isHidden": nobody is hidden.
+// the named exceptions held in the replay test, "users: the list filtered by isHidden": nobody is hidden.
 func TestNobodyIsHiddenWhenTheUserListIsFilteredByIsHidden(t *testing.T) {
 	u := newUsersSite(t, 1, nil)
 	admin, viewer, off := u.member(true), u.member(false), u.member(false)
@@ -400,7 +400,7 @@ func TestAUserWithNoPasswordCannotChangeTheirOwn(t *testing.T) {
 	}
 }
 
-// compat/differences.yaml, "users: the lists the user pages read".
+// the named exceptions held in the replay test, "users: the lists the user pages read".
 func TestTheListsTheUserPagesReadHoldWhatTheyShowAndNoToken(t *testing.T) {
 	u := newUsersSite(t, 1, nil)
 	admin, viewer := u.member(true), u.member(false)

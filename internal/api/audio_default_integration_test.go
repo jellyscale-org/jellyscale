@@ -224,7 +224,7 @@ func (p *problems) report(t *testing.T) {
 
 // ---- The capture, replayed.
 
-// The cells where jellyscale answers another index than Jellyfin 12.4, by the name compat/differences.yaml lists them
+// The cells where jellyscale answers another index than Jellyfin 12.4, by the name the named exceptions held in the replay test lists them
 // under, and the index jellyscale answers (audio-default-12.4.md, "What jellyscale does"). A cell is only ever excused
 // when it is in this table and in the file with a reason; the file may not hold more.
 var audioDefaultDifferences = func() map[string]int {
@@ -241,7 +241,7 @@ var audioDefaultDifferences = func() map[string]int {
 }()
 
 // The cells asked with no DeviceProfile where jellyscale answers another index than Jellyfin 12.4, listed in
-// compat/differences.yaml under noProfileName. Jellyfin answers these 6 one way with a profile and another without
+// the named exceptions held in the replay test under noProfileName. Jellyfin answers these 6 one way with a profile and another without
 // (audio-default-12.4.md); jellyscale answers a request with no profile as it answers one with, so they differ here.
 var noProfileDifferences = func() map[string]int {
 	out := map[string]int{}

@@ -229,7 +229,7 @@ fi
 
 
 # Dolby Vision and HDR10+ labels, under media/hdr: the films the labels are read
-# from (the HDR library of the differential tier, and the checks of JS-023).
+# from (the HDR library the e2e gates play, and the checks of JS-023).
 # test/fixtures/dovi makes them (testenv.HDRFilm): an HDR10, HLG or SDR base
 # layer, or AV1, with the Dolby Vision configuration box a server reads the
 # profile and the base layer's compatibility id from, and the HDR10+ SEI x265

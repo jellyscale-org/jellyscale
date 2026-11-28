@@ -6,7 +6,7 @@ Observed 2026-11-15, not read from source. Server: `jellyfin/jellyfin:12.4` (12.
 
 `POST /Library/VirtualFolders?name=Movies&collectionType=movies&refreshLibrary=true` with
 `{"LibraryOptions":{"EnableInternetProviders":false,"PathInfos":[{"Path":"/media/movies"}],"TypeOptions":[{"Type":"Movie","MetadataFetchers":[],"ImageFetchers":[]}]}}`.
-`GET /Library/VirtualFolders` read it back: `EnableInternetProviders` false and `MetadataFetchers` and `ImageFetchers` empty for `Movie`. The container has no outbound requests in its log for a metadata site. The wizard is as in `differential-12.4.md`; a 3 s wait after the server answers `/System/Info/Public` is needed before `POST /Startup/Configuration`, or the first calls fail.
+`GET /Library/VirtualFolders` read it back: `EnableInternetProviders` false and `MetadataFetchers` and `ImageFetchers` empty for `Movie`. The container has no outbound requests in its log for a metadata site. The server was set up through its wizard; a 3 s wait after the server answers `/System/Info/Public` is needed before `POST /Startup/Configuration`, or the first calls fail.
 
 ## The films
 
@@ -37,4 +37,4 @@ Each was asked with `GET /Items/{id}?userId=`, `GET /Users/{userId}/Items/{id}`,
 
 ## What jellyscale does, and where it differs (JS-117)
 
-The original language is a deliberate improvement on this, from the file alone (the owner's decision of 2026-11-15): the language of the default audio track, as the file wrote the tag; `IsOriginal` true on the audio streams in that language. Where Jellyfin sends `OriginalLanguage` absent and `IsOriginal` false, jellyscale sends them, so the differences are listed in `compat/differences.yaml` as improvements, under each request of the differential tier that shows them. `LocalizedOriginal` is not sent by jellyscale (an existing difference listed under JS-068).
+The original language is a deliberate improvement on this, from the file alone (the owner's decision of 2026-11-15): the language of the default audio track, as the file wrote the tag; `IsOriginal` true on the audio streams in that language. Where Jellyfin sends `OriginalLanguage` absent and `IsOriginal` false, jellyscale sends them, so the differences are listed in `the named exceptions held in the replay test` as improvements, under each request of the earlier comparison that shows them. `LocalizedOriginal` is not sent by jellyscale (an existing difference listed under JS-068).

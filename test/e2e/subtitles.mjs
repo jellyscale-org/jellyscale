@@ -11,7 +11,6 @@ import { promisify } from "node:util";
 import { existsSync, readFileSync, readdirSync, rmSync, statSync, truncateSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
-// The shared viewer records each page's responses for the checker (conform.mjs).
 import { advances, configure, ffmpegRuns, scenario, seek, sql, time, viewer, waitFor } from "./player.mjs";
 import { runLater, schedule, shardLine } from "./shard.mjs";
 import { everyReplicaReady, postgres, routerControl, withTwoStreamReplicas } from "./away.mjs";

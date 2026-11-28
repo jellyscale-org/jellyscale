@@ -14,10 +14,8 @@ test/roles.sh <workdir>                     # Each role as its own process
 test/e2e/run.sh <workdir> <playwright_dir>  # Real jellyfin-web in Chromium
 E2E_GATES=transcode E2E_SHARD=1/3 test/e2e/run.sh ...  # One slice of a gate; E2E_ONLY=regex picks scenarios
 E2E_REPEAT=5 test/e2e/run.sh ...            # Warm reruns on one stack
-test/differential/run.sh <workdir>          # Jellyfin 12.4 and jellyscale asked the same requests
 test/ffmpeg61.sh go test -tags integration ./internal/transcode -run X  # Under ffmpeg 6.1, as CI
 go run ./cmd/jellyscale --print-routes > compat/endpoints.yaml
-compat/gen-schema.sh                        # compat/schema-12.4.json from the jellyfin/jellyfin:12.4 container
 ```
 
 - Put tests that need ffmpeg, Postgres, S3 or a font in `*_integration_test.go` files tagged `//go:build integration`.

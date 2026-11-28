@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"slices"
 	"sort"
 	"strings"
@@ -18,7 +17,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"gopkg.in/yaml.v3"
 
 	"jellyscale/internal/db"
 	"jellyscale/internal/items"
@@ -469,10 +467,10 @@ func corsPreflightOn(ctx context.Context, base, path, origin, method string) acc
 	return corsDo(ctx, "OPTIONS", base, path, "Origin", origin, "Access-Control-Request-Method", method, "Access-Control-Request-Headers", "authorization,range")
 }
 
-// The capture of a real Jellyfin 12.4 (compat/captures/cors-12.4.json, test/differential/capture_cors.py) held to what
+// The capture of a real Jellyfin 12.4 (compat/captures/cors-12.4.md) held to what
 // jellyscale answers to the same requests: status, every Access-Control-* header and Vary. A difference that is not in
-// compat/differences.yaml, under the request "cors: <request>" with the path "(status)" or "header <name>", fails; so
-// does an entry that no longer matches a difference.
+// corsIntentionalAnswers below, under "cors: <request>" with the path "(status)" or "header
+// <name>", fails; so does one that no longer matches a difference.
 func TestJellyscaleAnswersTheCapturedCrossOriginRequestsAsJellyfinDoesOrSaysWhy(t *testing.T) {
 	capture := readCorsCapture(t)
 	a := newAccessSite(t)
@@ -523,44 +521,35 @@ func TestJellyscaleAnswersTheCapturedCrossOriginRequestsAsJellyfinDoesOrSaysWhy(
 			}
 		}
 	}
-	var listed []struct {
-		Requests []string `yaml:"requests"`
-		Path     string   `yaml:"path"`
-		Paths    []string `yaml:"paths"`
-		Kind     string   `yaml:"kind"`
-		Reason   string   `yaml:"reason"`
-	}
-	raw, err := os.ReadFile("../../compat/differences.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := yaml.Unmarshal(raw, &listed); err != nil {
-		t.Fatal(err)
-	}
+	// What jellyscale does on purpose: expose the range headers a page on another origin
+	// must read, omit Vary where it never varies, and refuse a method or path it does not
+	// serve instead of answering a preflight that allows anything (JS-144).
 	allowed := map[difference]bool{}
-	used := map[difference]bool{}
-	for _, entry := range listed {
-		for _, request := range entry.Requests {
-			if !strings.HasPrefix(request, "cors: ") {
-				continue
-			}
-			for _, path := range append([]string{entry.Path}, entry.Paths...) {
-				if path != "" {
-					allowed[difference{request, path}] = true
-				}
+	add := func(requests []string, paths ...string) {
+		for _, request := range requests {
+			for _, path := range paths {
+				allowed[difference{"cors: " + request, path}] = true
 			}
 		}
 	}
+	exposed := []string{"open route", "viewer route with a token", "viewer route with no token", "ranged film", "GET of an unserved path"}
+	add(exposed, "header access-control-expose-headers")
+	add([]string{"open route", "viewer route with a token"}, "header vary")
+	preflights := []string{"preflight of the sign-in", "preflight asking range", "preflight asking all six headers",
+		"preflight asking DELETE", "preflight asking PATCH", "preflight asking a header outside the six", "preflight of an unserved path"}
+	add(preflights, "(status)")
+	add([]string{"preflight asking PATCH", "preflight of an unserved path"}, "header access-control-allow-methods", "header access-control-allow-headers")
+	used := map[difference]bool{}
 	for d, what := range found {
 		if allowed[d] {
 			used[d] = true
 			continue
 		}
-		t.Errorf("%s: %s differs from Jellyfin 12.4 and compat/differences.yaml does not list it (%d times; e.g. %s)", d.request, d.path, len(what), what[0])
+		t.Errorf("%s: %s differs from Jellyfin 12.4 and not one of jellyscale's intentional answers (%d times; e.g. %s)", d.request, d.path, len(what), what[0])
 	}
 	for d := range allowed {
 		if !used[d] {
-			t.Errorf("compat/differences.yaml lists %s of %q and jellyscale answers as Jellyfin does: remove the entry", d.path, d.request)
+			t.Errorf("%s of %q is listed as different but jellyscale answers as Jellyfin does", d.path, d.request)
 		}
 	}
 }

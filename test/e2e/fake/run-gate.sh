@@ -17,9 +17,8 @@ for _ in $(seq 1 50); do [[ -s $work/state/port ]] && break; sleep 0.1; done
 sleep 3600 &
 worker=$!
 export E2E_API_REPLICA="$repo/test/e2e/fake/replica" E2E_STREAM_REPLICA="$repo/test/e2e/fake/replica"
-export E2E_SCRATCH="$work/scratch" E2E_WORKER_PID=$worker E2E_PG=fake-pg E2E_LOG="$work/server.log" E2E_RESPONSES="$work/responses.jsonl"
+export E2E_SCRATCH="$work/scratch" E2E_WORKER_PID=$worker E2E_PG=fake-pg E2E_LOG="$work/server.log"
 export E2E_MEDIA="$work/media" E2E_ASSETS="$work/assets" E2E_WORKER="$repo/test/e2e/fake/replica" E2E_NOSTORE="$repo/test/e2e/fake/replica"
-: >"$E2E_RESPONSES"
 base="http://127.0.0.1:$(cat "$work/state/port")"
 export E2E_BASE_NOSTORE=$base
 (cd "$work/play" && env "$@" node "$gate.mjs" "$base" admin pass 2>&1)

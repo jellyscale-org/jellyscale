@@ -27,8 +27,7 @@ import (
 
 // JS-116. A viewer's settings are saved by POST /Users/{userId}/Configuration and POST /Users/Configuration and
 // come back in GET /Users/Me, GET /Users/{userId} and the User of the next sign-in. Every one of the 124 cases of
-// compat/captures/user-configuration-12.4.json (a real Jellyfin 12.4, recorded by
-// test/differential/capture_user_configuration.py) is replayed against two api processes of jellyscale on one
+// compat/captures/user-configuration-12.4.md (a real Jellyfin 12.4) is replayed against two api processes of jellyscale on one
 // Postgres, and both are held to what the capture records. A replica is its own process, so what one process
 // saved is read by another that has never seen the user; the processes are then restarted and read again.
 //

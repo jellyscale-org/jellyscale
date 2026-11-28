@@ -5,7 +5,6 @@
 // Run from a directory with playwright-core installed.
 import { createRequire } from "node:module";
 import { wholeLine } from "./shard.mjs";
-import { recordResponses } from "./conform.mjs";
 import {
   login,
 } from "./player.mjs";
@@ -34,7 +33,6 @@ async function newSession() {
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   watch(context, base);
   const page = await context.newPage();
-  recordResponses(page, base);
   const seen = { videos: [], errors: [], sockets: [], frames: [] };
   page.on("pageerror", (error) => seen.errors.push(error.message));
   page.on("response", (response) => {

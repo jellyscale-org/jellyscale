@@ -372,10 +372,9 @@ jobs:
       - if: steps.cache.outputs.cache-hit != 'true'
         run: bash test/fixtures/cached.sh "$RUNNER_TEMP/fixtures"
 
-  # On main, save the .deb cache of the integration shards' package list and the jars of
-  # the differential shard when their keys are missing: a cache saved in a merge group is
-  # seen only there, and the differential shard never runs on main. (fixture-cache above
-  # does the same for the ffmpeg list, which roles and the e2e shards use.)
+  # On main, save the .deb cache of the integration shards' package list when its key is
+  # missing: a cache saved in a merge group is seen only there. (fixture-cache above does
+  # the same for the ffmpeg list, which roles and the e2e shards use.)
   deb-cache:
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
@@ -401,18 +400,6 @@ jobs:
           APT_DEBS: /home/runner/apt-debs
         timeout-minutes: 5 # A stalled mirror fails in minutes, not at the job's limit.
 
-  jars-cache:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/cache@v6
-        with:
-          path: ~/.cache/jellyscale/sdkjvm
-          key: sdkjvm-jars-${{ hashFiles('test/sdkjvm/jars.txt') }}
-      - run: bash test/sdkjvm/decode.sh --fetch
-
   # Each shard is E2E_GATES and E2E_SHARD for test/e2e/run.sh. browse and play
   # are one sequence of steps, so they go to one job; subtitles and transcode are
   # dealt out by scenario. The transcode scenarios that stop the worker run last
@@ -434,8 +421,6 @@ jobs:
           - { name: transcode-0of3, gates: transcode, shard: 0/3 }
           - { name: transcode-1of3, gates: transcode, shard: 1/3 }
           - { name: transcode-2of3, gates: transcode, shard: 2/3 }
-          # Not an e2e gate: the same stack of fixtures, asked by test/differential/run.sh.
-          - { name: differential, gates: differential, shard: 0/1 }
     env:
       E2E_FIXTURE_CACHE: /home/runner/e2e-fixtures
     steps:
@@ -478,13 +463,6 @@ jobs:
         with:
           path: /home/runner/e2e-fixtures
           key: e2e-fixtures-${{ steps.fixtures.outputs.key }}
-      # The jars of the differential shard (test/sdkjvm/jars.txt): a changed list is a miss,
-      # which fetches from Maven Central as before and saves.
-      - if: matrix.name == 'differential'
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/jellyscale/sdkjvm
-          key: sdkjvm-jars-${{ hashFiles('test/sdkjvm/jars.txt') }}
       - name: Fetch jellyfin-web from the baseline image
         run: |
           docker create --name jf jellyfin/jellyfin:12.4
@@ -496,18 +474,11 @@ jobs:
           npm init -y >/dev/null
           npm install playwright-core@1.65.0
       # Chrome, because fixtures are H.264 and AAC, which Chromium builds can omit.
-      - if: matrix.name != 'differential'
-        run: bash test/e2e/run.sh /tmp/e2e /tmp/pw
+      - run: bash test/e2e/run.sh /tmp/e2e /tmp/pw
         env:
           CHROMIUM_PATH: /usr/bin/google-chrome
           E2E_GATES: ${{ matrix.gates }}
           E2E_SHARD: ${{ matrix.shard }}
-          JELLYSCALE_LOG_DIR: ${{ runner.temp }}/logs
-      # The differential shard asks a real Jellyfin 12.4 and jellyscale the same
-      # questions; it leaves a record like a gate's.
-      - if: matrix.name == 'differential'
-        run: bash test/differential/run.sh /tmp/differential
-        env:
           JELLYSCALE_LOG_DIR: ${{ runner.temp }}/logs
       # What each gate of this shard ran: gate, shard, ran and total.
       - uses: actions/upload-artifact@v7
@@ -549,4 +520,4 @@ jobs:
           merge-multiple: true
           path: shards
       - if: steps.decide.outputs.run == 'true'
-        run: bash test/check-shards.sh e2e shards "browse play cors subtitles failover transcode differential"
+        run: bash test/check-shards.sh e2e shards "browse play cors subtitles failover transcode"

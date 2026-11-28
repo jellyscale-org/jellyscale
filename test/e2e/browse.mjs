@@ -3,7 +3,6 @@
 // Run from a directory with playwright-core installed.
 import { createRequire } from "node:module";
 import { wholeLine } from "./shard.mjs";
-import { recordResponses } from "./conform.mjs";
 import { configure, login } from "./player.mjs";
 import { keepFailure, watch } from "./evidence.mjs";
 import { userSteps } from "./users.mjs";
@@ -16,7 +15,6 @@ configure({ base, user, password });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? "/usr/bin/chromium", args: ["--disable-gpu"] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 watch(page.context(), base);
-recordResponses(page, base);
 
 const failures = [];
 let pendingEvidence = Promise.resolve();

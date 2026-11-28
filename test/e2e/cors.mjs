@@ -11,7 +11,6 @@ import http from "node:http";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { wholeLine } from "./shard.mjs";
-import { recordResponses } from "./conform.mjs";
 import { signInShown, submitSignIn } from "./player.mjs";
 import { keepFailure, rescue, watch } from "./evidence.mjs";
 
@@ -36,7 +35,6 @@ const browser = await chromium.launch({
 const context = await browser.newContext({ viewport: { width: 800, height: 600 } });
 watch(context, base);
 const page = await context.newPage();
-recordResponses(page, base);
 page.on("console", (message) => { if (process.env.E2E_DEBUG) console.log(`page: ${message.text()}`); });
 await page.goto(`${origin}/`);
 

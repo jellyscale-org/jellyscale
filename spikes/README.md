@@ -77,7 +77,7 @@ From a real Jellyfin 12.4.0 with jellyfin-web, covering login, browsing, direct 
 - Paths arrive in mixed case: `/videos/`, `/Videos/`, `/users/public`, `/Users/authenticatebyname`.
 - Direct play uses `Videos/{id}/stream.mkv?Static=true`.
 
-v12.4 hides 55 routes from the spec, 41 of them marked `[Obsolete]` and 34 of those under `/Users/{userId}/`; see `compat/hidden-routes-12.4.txt`. It's a text parse of `Jellyfin.Api/Controllers`.
+v12.4 hides 55 routes from the spec, 41 of them marked `[Obsolete]` and 34 of those under `/Users/{userId}/`; It was a text parse of `Jellyfin.Api/Controllers` (the listing was retired with the Jellyfin comparison, D-110).
 
 Client use of those obsolete routes, from source at current `HEAD`:
 
