@@ -1,0 +1,9 @@
+{
+  "id": "BL-190",
+  "source": "JS-134",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "fragmentCommand HDR audio-drop code is convoluted",
+  "status": "closed",
+  "notes": "Fix when that function is next changed Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "BL-068",
+  "source": "JS-029 verify",
+  "reviewer": "ux",
+  "severity": "minor",
+  "title": "Unwrapped api and stream writes can still answer 500 across a switchover",
+  "status": "promoted",
+  "notes": "requireAuth waits for Postgres (db.Retry on userByToken), but the handlers' own writes are not wrapped: Sessions/Playing/Progress and /Stopped/Ping (sessions.go), planPlayback writes (stream.go ~248-412), Transcode.Stop in DELETE /Videos/ActiveEncodings (stream role, transcode.go:181 -> jobs.go:243-249). A cut that lands after the token check and before the write answers 500 'request failed' (ERRO Promoted to JS-146."
+}

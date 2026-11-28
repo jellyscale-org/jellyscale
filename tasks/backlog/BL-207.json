@@ -1,0 +1,9 @@
+{
+  "id": "BL-207",
+  "source": "JS-144 / docs/client-testing.md",
+  "reviewer": "product-owner",
+  "severity": "minor",
+  "title": "Fluster's own tests against the -fixtures image as a repeating check of sign-in and listing, in place of a one-off record",
+  "status": "wontfix",
+  "notes": "wontfix (D-027): Fluster's tests are its own project's work; the -fixtures image stays for any client (docs/client-testing.md)."
+}

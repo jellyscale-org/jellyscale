@@ -1,0 +1,11 @@
+{
+  "id": "D-120",
+  "date": "2026-11-27",
+  "by": "owner",
+  "task": "JS-201",
+  "brief": "po/pivot-plan.md",
+  "tradeoff": "Storage the operator chooses to spend.",
+  "decision": "change",
+  "entry": "Versions made ahead: opt-in, off by default, the operator's titles, qualities and storage share; never slowing anything a viewer or operator waits for; never evicted by on-demand work; served exactly as made on request. When and how is the design's (the owner declined to tie it to scanning).",
+  "serves": "\"Storage stays bounded.\""
+}

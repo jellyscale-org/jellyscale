@@ -1,0 +1,15 @@
+{
+  "id": "JS-114",
+  "phase": "OPS",
+  "title": "A shared process harness and a shared e2e helper module",
+  "description": "The test machinery is about twice the product and is copied, not shared: cmd/jellyscale's test files each define their own process, log sink, free-port and sign-in helpers (several clashed when parallel tasks met), and the e2e gates each define login, viewer, scenario, sql, waitFor and time.",
+  "acceptanceCriteria": [
+    "cmd/jellyscale test files define no process type, log sink, free-port helper or sign-in helper of their own",
+    "Each of login, viewer, scenario, sql, ffmpegRuns, waitFor and time is defined once under test/e2e (a script check)",
+    "Every scenario name that ran before runs after (the recorded lists compared)"
+  ],
+  "status": "done",
+  "dependsOn": [],
+  "source": "Fable 5.2 blind audit, 2026-11-14 (.results/audit-2026-11-14.md)",
+  "notes": ""
+}

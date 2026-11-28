@@ -1,0 +1,9 @@
+{
+  "id": "BL-227",
+  "title": "Sort by running time on GET /Items is unobserved; a running-time range filter is beyond what any supported app shows",
+  "notes": "Issue #115. Evidence, by the lead: one differential request with SortBy=Runtime, both directions, against Jellyfin 12.4. A wrong order goes to JS-068 (jellyfin-web offers the sort). The range filter is not planned: no goal, and no supported app shows one. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3).",
+  "status": "closed",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "issue triage 2026-11-20"
+}

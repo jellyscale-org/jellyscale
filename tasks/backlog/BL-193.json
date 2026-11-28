@@ -1,0 +1,9 @@
+{
+  "id": "BL-193",
+  "source": "picture",
+  "reviewer": "",
+  "severity": "minor",
+  "title": "Spike: veryfast first segment after a start or seek under a faster stream",
+  "status": "open",
+  "notes": "Waits for JS-062's start-time target"
+}

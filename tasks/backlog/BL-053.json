@@ -1,0 +1,9 @@
+{
+  "id": "BL-053",
+  "source": "JS-081 verify",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "TestSeekBackBeforeTheResumePoint keeps a 20 s bound that is under ten times a right build under load",
+  "status": "closed",
+  "notes": "queue_integration_test.go (`time.Since(began) > 20*time.Second`, listed in test/timing-bounds.txt as a hang bound of 'a few seconds'). On a right build with one contended CPU (taskset -c 0 plus 4 busy loops) the seek took 4.27 s, so the bound is about 4.7x. docs/testing.md says a bound closer than ten times a right build is a bar. A slower runner can exceed it. A wait-for-event with a context dead Same family as JS-171's seek bound (D-050); promote if it fails the merge queue. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

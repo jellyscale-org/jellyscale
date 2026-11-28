@@ -1,0 +1,9 @@
+{
+  "id": "BL-166",
+  "source": "JS-088 verify",
+  "reviewer": "qa",
+  "severity": "minor",
+  "title": "The 10 s bound for a remade first segment is logged, not asserted",
+  "status": "closed",
+  "notes": "Measured 0.37 to 1.1 s; a hang bound could pin it. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

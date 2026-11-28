@@ -1,0 +1,18 @@
+{
+  "id": "JS-213",
+  "phase": "S4",
+  "title": "Spike: films kept as disc images and disc folders",
+  "description": "Serves \"Any film plays, and plays well.\". The owner: disc images and disc folders count as films that must play (D-146). Format support is unresearched, so the spike comes first. No product change.",
+  "acceptanceCriteria": [
+    "For ISO images and Blu-ray and DVD folders, on local disk and S3: whether the server can list the film, play its main title, choose its audio and subtitle tracks and seek, as it is and through a conversion.",
+    "What each path costs: reads, time to the first picture, and any storage a copy or remux would take, per film-hour.",
+    "Which menus, extras and multi-angle titles are left out, and how a viewer would choose among a disc's titles.",
+    "A recommendation reaches the product owner with each option priced, and a follow-up task if it works."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-194"
+  ],
+  "source": "native-plan.md; D-129 to D-149",
+  "notes": ""
+}

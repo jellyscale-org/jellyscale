@@ -1,0 +1,9 @@
+{
+  "id": "BL-084",
+  "source": "JS-100 check",
+  "reviewer": "architecture",
+  "severity": "minor",
+  "title": "Series on an episode hint is observed but not required or checked",
+  "status": "closed",
+  "notes": "Jellyfin 12.4 sends Series (the show's name) on each episode hint; a client shows it under the episode. No check holds jellyscale to it. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
+}

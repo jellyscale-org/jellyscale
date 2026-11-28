@@ -1,0 +1,21 @@
+{
+  "id": "JS-130",
+  "phase": "OPS",
+  "title": "A runner runs several test processes side by side, each with its own Postgres",
+  "description": "The integration tier idles: measured on four pinned cores, internal/transcode kept 0.69 of 4 CPUs busy (4887 s wall, 3364 CPU-s) and the 28 slowest tests of the other packages 0.18. The account runs 20 jobs at once (measured peak, held 96 minutes on 2026-11-16), so runner-minutes, not shards, bound the queue. Local runs on 2 cores / 4 threads: the 28 slowest rest tests as four processes in 420 s against 1510 s serial on CI, all passing; the 33 slowest transcode tests as three processes in 1390 s against 3486 s, one failure.",
+  "acceptanceCriteria": [
+    "INTEGRATION_PROCS=n makes test/integration.sh start n Postgres containers on Docker-assigned ports and run n go test processes at once, each over its own share of the shard's tests (dealt by time by test/shard.sh), with its own JELLYSCALE_TEST_DATABASE_URL, TMPDIR and tests.json; test/scripts_test.sh, with stand-in docker and go, fails if a test is in two shares or in none, or if two processes are given one database URL",
+    "A failed test, a skipped test, a process that stops partway (a panic, go test's limit) or a count that does not add up to go test -list fails the shard and names the test, as today; a stand-in process that exits early fails the script test",
+    "No *_test.go file, test/e2e/*.mjs or file under test/differential changes, other than for a test named under the next criterion but one: the checks are the ones that ran before",
+    "Every mutant of test/mutant.py fails the tier side by side on the test it fails alone (test/mutant.sh <mutant> with INTEGRATION_PROCS set), and so do three transcode regressions the spec writer names from JS-066, JS-104 and JS-105, each shown failing alone and side by side",
+    "A test that fails side by side and passes alone is fixed at its cause (the interleaving forced, the count made independent of load) or listed in test/alone.txt with its reason and run in a process of its own; none is retried, skipped or given a longer bound. TestTheScanReadsNoMoreOfAFilmForItsImageTrackAndNothingThatGrowsWithTheFilm is the first to settle (it failed once in three processes on four logical CPUs, 2026-11-16)",
+    "On the queue the integration tier is at most five jobs; in ten consecutive merge-queue runs after the change no integration job takes over 20 minutes, the tier's jobs add up to at most 85 runner-minutes (today 137 to 140), and none of the ten fails on a test that passes when run alone",
+    "docs/testing.md says how the tier is split twice (jobs, then processes), how to run one process's share locally, and that a concurrency claim still needs its own real processes or contention"
+  ],
+  "dependsOn": [
+    "JS-129"
+  ],
+  "notes": "The 20-minute and 85-runner-minute bounds come from local experiments, not from CI; if the first queue runs show a 4-vCPU runner cannot hold them at two processes for transcode and four for the rest, the lead restates them from those runs, never by removing or loosening a test. A Postgres per process, not a database per process: some transcode tests end backends chosen from pg_locks, which is cluster-wide. core: true. Planned by Fable 5.2 (.results/test-time-fable-2026-11-16.md). Owner's decisions 2026-11-16: skip the media tiers for .claude/ and tasks/ changes with a guard test (JS-132); cancel media shards when lint-and-unit fails; the merge queue builds 2 entries (back to 3 once a run costs under ~150 runner-minutes and under a fifth of runs fail) with a 90-minute check timeout, set by the lead. 2026-11-17: CI runs 0/4 to 3/4 at two processes and rest at four. Every mutant and the JS-066, JS-104 and JS-105 regressions fail side by side; the two access mutants that make Handler() panic stop the shard partway (named) and their declaration tests fail in lint-and-unit. The lead checks the ten queue runs after merge.",
+  "status": "done",
+  "source": "owner 2026-11-16, Fable 5.2 test-time audit"
+}

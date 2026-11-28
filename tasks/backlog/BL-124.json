@@ -1,0 +1,9 @@
+{
+  "id": "BL-124",
+  "source": "JS-087 verify",
+  "reviewer": "architecture",
+  "severity": "minor",
+  "title": "A queued job is counted on the worker with the most free cores, while any worker that fits may claim it",
+  "status": "open",
+  "notes": "capacity.go place/placeQueued against worker.go claim. The error is on the safe side (refuses too much, never offers too much) and lasts only while the job is queued. Promote when JS-092's 50-worker measurement or an autoscaled deployment shows a queued job refused while a worker that fits exists, or the capacity reads loading Postgres (D-045)."
+}

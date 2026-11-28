@@ -1,0 +1,18 @@
+{
+  "id": "D-002",
+  "date": "2026-11-19",
+  "task": "JS-089",
+  "tradeoff": "A film whose image subtitle track is not copied within the one hour limit keeps today's seeks into long cues (cost grows with the cue's age) until a retry succeeds; the failure is remembered and retried on a play about once a day, or at once when the file changes, not on every play",
+  "decision": "accept",
+  "by": "product-owner",
+  "serves": "PRODUCT.md: where a capability can't yet serve every film, the gap is written down and planned; every failure is reported with its reason",
+  "conditions": [
+    "a check that a film with a remembered failure draws the showing cue as before JS-089",
+    "retries only on a play, at most once per film per day, by a check",
+    "the log names the item, the source, the reason and when it is retried",
+    "docs/running.md and DOMAINS 51 state the limit, the speed it needs, what the viewer gets meanwhile and the remedy",
+    "a task closing the gap (a size-scaled limit, a no-progress limit, or a resumable read), named as a gap in docs/status.md",
+    "the dogfood's read speed and the count of films that miss the hour, measured"
+  ],
+  "brief": "# Brief: an image subtitle read that runs out of time (JS-089)\n\n**Situation today (before JS-089).** When a viewer seeks to a point where an image subtitle (PGS) cue began long before, the server reads the film from where that cue began, so the picture can show it. The longer ago the cue began, the more of the film is read, so such a seek is slower and costs more reads than an ordinary one.\n\n**After JS-089.** The first play of a film starts a background read that copies its image subtitle tracks into a small store. Seeks then read the stored track, and every seek costs the same. The background read has a fixed limit of one hour. A film is read at the speed of its store, so a 40 GB film needs about 11 MB/s to finish within the hour.\n\n**The question.** A film whose read does not finish within the hour: what then?\n\n**Options:**\n1. **Retry on every play** (the build's first behaviour). Each play of that film starts another hour of reading. If the store is too slow for one hour, it is too slow every time, so the library is read again and again: up to an hour of store reads per play, for nothing.\n2. **Remember the failure** (the build now). It is retried about once a day, at most an hour of reads a day, or at once if the file changes. The viewer still gets the subtitle drawn as before JS-089. Only that film's seeks into long cues stay as slow as today, until a retry succeeds.\n3. **A limit that grows with the file's size**, for example the hour scaled to a minimum speed. More films finish, but a very slow store could still keep a large film reading for hours. Not built; a follow-up task.\n4. **No limit.** Every film eventually finishes, but a store that hangs holds a worker slot (of 2 background slots per worker) indefinitely.\n\n**Who is affected.** Only films too large for their store's speed: unverified how many. On the dogfood's store, a 40 GB film read in well under an hour (unverified figure).\n\n**What the viewer loses with option 2:** for such a film, the JS-089 improvement (equal-cost seeks into long image cues) does not arrive. Nothing else changes from today. Logs tell the operator, and docs/running.md says what they can do (a faster store).\n"
+}

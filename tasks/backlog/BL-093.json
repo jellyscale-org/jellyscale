@@ -1,0 +1,9 @@
+{
+  "id": "BL-093",
+  "source": "JS-031 verify",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "The sockets WaitGroup Add can race with Wait during drain",
+  "status": "closed",
+  "notes": "A socket accepted as the drain starts may Add after Wait began. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

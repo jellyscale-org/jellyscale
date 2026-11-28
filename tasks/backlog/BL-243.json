@@ -1,0 +1,9 @@
+{
+  "id": "BL-243",
+  "title": "A viewer refused for lack of cores while a new worker is starting could be held for it instead of refused",
+  "notes": "Promote when JS-057 measures demand-to-ready under about 10 seconds and its 14-day count shows refusals followed by a successful retry (D-045). JS-166: pod creation to first claim 1.7 and 5.5 s on one node, 7.7, 37 and 58 s on another (unexplained).",
+  "source": "owner direction 2026-11-21",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "product-owner"
+}

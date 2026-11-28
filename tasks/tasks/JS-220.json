@@ -1,0 +1,16 @@
+{
+  "id": "JS-220",
+  "phase": "OPS",
+  "title": "Each domain has a short file an agent reads for its task.",
+  "description": "Serves delivery within the owner's usage limit (D-151) and binds JS-216 onward to the domains. No dependencies.",
+  "acceptanceCriteria": [
+    "docs/domains/ holds one file per domain of the accepted map plus platform.md, each under 6 KB, with its words, what it owns, what it must not do, and its new rules (68 to 76 as decided here).",
+    "DOMAINS.md opens with the map and the new rules.",
+    "AGENTS.md gains a table from each domain to the files a task touching it reads, and the build workflow gives a task's agents only its domains' files.",
+    "No existing invariant moves or changes."
+  ],
+  "status": "todo",
+  "dependsOn": [],
+  "source": "po-check.md §B and §F; D-20261127-domains-tasks",
+  "notes": "Phase OPS chosen (sibling JS-093, OPS); ux flag left unset."
+}

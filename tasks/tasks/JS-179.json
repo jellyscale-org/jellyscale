@@ -1,0 +1,21 @@
+{
+  "id": "JS-179",
+  "title": "A scanned Quick Connect QR opens the approval with the code filled in",
+  "description": "TV apps draw a Quick Connect QR that links to <server>/web/#/quickconnect?code= (D-089).",
+  "phase": "ID",
+  "status": "dropped",
+  "dependsOn": [
+    "JS-037",
+    "JS-039"
+  ],
+  "source": "issue #118; BL-229; D-083, D-089",
+  "notes": "If the observation shows jellyfin-web already does criteria 2 and 3, the task closes on the capture and the docs line. Dropped (D-126 and the pivot, D-107): A Quick Connect QR for jellyfin-web (rule 3). Replaced by JS-191. Both auditors agreed.",
+  "acceptanceCriteria": [
+    "Observed first, against Jellyfin 12.4 and jellyfin-web 12.4, recorded in compat/captures: what Moonfin 3.1.1's QR decodes to, and whether jellyfin-web's page at that address fills the code in, signed in and signed out.",
+    "A phone that scans Moonfin's QR, on a jellyscale serving jellyfin-web, reaches the approval with the code filled in. Signed out, it signs in by password or by the provider (JS-039) and returns to the approval with the code kept.",
+    "The approval names the device and app, and approves only on an explicit confirmation, never on opening the link.",
+    "The link carries Quick Connect's own code: one code, JS-037's expiry and guessing bound, no second pending-code flow, and no route that takes a code without a signed-in approver.",
+    "docs/status.md says which apps draw the QR and what a viewer does where no web client is served (type the digits).",
+    "If the observation shows jellyfin-web 12.4 does not fill the code in or loses it across sign-in, the lead returns with a brief before building. No file of jellyfin-web is changed."
+  ]
+}

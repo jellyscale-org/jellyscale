@@ -1,0 +1,11 @@
+{
+  "id": "D-097",
+  "date": "2026-11-26",
+  "by": "product-owner",
+  "task": "JS-037",
+  "brief": "Two minors JS-037's last review left: an approval that outlives its client delayed shutdown to 29 s with an 8 s grace and the database stalled, and one that failed after its client hung up logged nothing.",
+  "tradeoff": "Nothing given up.",
+  "decision": "plan",
+  "entry": "JS-037 bounds an in-flight approval by the shutdown grace and logs a failed approval.",
+  "serves": "docs/running.md: the process exits within seconds of the grace; 'every failure is reported with its reason'."
+}

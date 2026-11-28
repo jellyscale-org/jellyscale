@@ -1,0 +1,16 @@
+{
+  "id": "JS-062",
+  "phase": "S7",
+  "title": "Load test: 200 mixed streams on a real cluster",
+  "description": "Serves \"Growing is adding machines.\"; \"Play starts in seconds and keeps up.\". A load test of the new playback on a real cluster.",
+  "acceptanceCriteria": [
+    "200 mixed playbacks of the new API (as they are, converted, re-encoded, and stepping down and up) with a stated rebuffer ratio and p95s for starts, seeks and browsing",
+    "A stated target for time to first frame on a start and on a seek, held at 200 streams and recorded run over run, so 'play starts in seconds' is measured"
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-056"
+  ],
+  "source": "project plan Phase 6",
+  "notes": ""
+}

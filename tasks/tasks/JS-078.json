@@ -1,0 +1,17 @@
+{
+  "id": "JS-078",
+  "phase": "OPS",
+  "title": "A size budget for the transcode store and cleanup of the asset store",
+  "description": "The transcode store's segments are swept by age only, with no size budget and no metric of its size (internal/transcode/worker.go Sweep), and copies are stored at the file's own bitrate. The asset store is never cleaned: subtitle text, .sup copies and images of a changed or removed file stay for good (internal/subtitles/cache.go, sup.go, library/scan.go put with no delete).",
+  "acceptanceCriteria": [
+    "The transcode store has a configurable size budget; past it the least recently used specs no viewer is watching are removed first; its size is a metric",
+    "Assets of a file version that no longer exists are removed by a sweep, with a test for subtitles, .sup copies and images",
+    "docs/running.md says how to size the transcode volume or bucket and what the sweep removes",
+    "A sweep checks again for a viewer or a running job before every object it deletes, not only before a spec's first (adversarial review, 2026-11-17)",
+    "An image, font or subtitle asset that a scan or a job puts after the asset sweep asked about it is never deleted by that sweep (QA and adversarial review, 2026-11-17)"
+  ],
+  "status": "done",
+  "dependsOn": [],
+  "source": "Fable 5.2 state review, 2026-11-10",
+  "notes": ""
+}

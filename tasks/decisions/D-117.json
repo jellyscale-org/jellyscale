@@ -1,0 +1,11 @@
+{
+  "id": "D-117",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "JS-186",
+  "brief": "po/pivot-plan.md",
+  "tradeoff": "Libraries and collections stop being what viewers browse.",
+  "decision": "change",
+  "entry": "Jellyfin's libraries and collections are not the catalog; settled by D-124.",
+  "serves": "The owner, on research before a catalog model."
+}

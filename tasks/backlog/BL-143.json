@@ -1,0 +1,9 @@
+{
+  "id": "BL-143",
+  "source": "JS-106 verify",
+  "reviewer": "architecture",
+  "severity": "minor",
+  "title": "Per-put fence adds one keeper renewal round trip per put",
+  "status": "closed",
+  "notes": "upload() used to fence once per upload and now fences before each put (init, then segment). Each fence asks the keeper to renew the job's lease, so a segment upload makes two renewal round trips where it made one. Doing the fence once per upload and checking it against a fresh clock before each put would not do: a put can now outlast a lease, so the second put needs a fresh fence. The cost is small and the choice is sound. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

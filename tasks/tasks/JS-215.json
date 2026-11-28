@@ -1,0 +1,25 @@
+{
+  "id": "JS-215",
+  "phase": "S5",
+  "title": "Octave Web's sign-in: page scripts can't read it, other sites can't use it",
+  "description": "Serves \"Joining and signing in are easy and safe.\"; \"Access is enforced everywhere.\". D-111; #301 (Octave's web session), whose need stands and whose shapes are jellyscale's to decide.",
+  "acceptanceCriteria": [
+    "A browser signs in (by password, and by single sign-on through JS-039) and holds no credential its page's scripts can read.",
+    "A request from another site, or from another service on the same host name, is refused even when the browser sends the sign-in with it; the protection does not rest on the browser's cookie rules alone, shown with forged requests from another port on the same name.",
+    "Signing out ends it at once; it ends after stated idle and absolute times; a password change ends the account's other web sign-ins; a viewer sees and ends their own (JS-042).",
+    "Behind a proxy that ends HTTPS, it is still marked secure, from the configured external address.",
+    "No sign-in answer is kept by a cache, and no secret of it is stored unhashed or appears in a log or an error body.",
+    "The Octave Web pages the server serves carry response headers that limit what scripts and framing can do, and docs/running.md says what a proxy in front must keep.",
+    "DOMAINS invariant 63 is reworded as D-111 records; the header-token API is unchanged.",
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check.",
+    "The web sign-in is accepted on picture routes, whose answers are marked private so no shared cache keeps them, and never on any other media request (a stream, a segment, a subtitle, a font) or a media link."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-184",
+    "JS-194"
+  ],
+  "source": "replan.md; #301",
+  "notes": "",
+  "ux": true
+}

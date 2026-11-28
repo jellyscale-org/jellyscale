@@ -1,0 +1,24 @@
+{
+  "id": "JS-150",
+  "phase": "S3",
+  "title": "The image ships a specific, tested Octave Web release",
+  "description": "Serves \"Installing is boring.\". The owner: jellyscale ships a specific tested Octave Web release (D-141), so a fresh install opens in a browser with nothing copied in. Octave Web is Octave's product, released on its own schedule.",
+  "acceptanceCriteria": [
+    "The image carries a specific Octave Web release, pinned in one place and changed only by a commit, with Octave's licence notice and where its source is (D-142).",
+    "Observed first, on the dogfood's films: how many Octave Web plays as they are and how many need converting, and the worker cores that holds; docs/running.md's sizing states it.",
+    "The published image, with no webDir set, serves the pinned build at `/` with deep links, cache headers, precompressed assets and a CSP; in the e2e tier a browser signs in, browses and plays against the image as published.",
+    "docs/status.md lists, per browser (desktop Chrome, Firefox, Safari; iPhone, iPad), whether Octave's project measured it playing, or 'not known'.",
+    "docs/running.md: which build ships, how to replace it, how to turn it off; the quick start copies nothing; image size before and after; docs/access.md states the served paths are open and carry no Access-Control-* header; the served pages set no cookie of their own.",
+    "The shipped Octave Web release signs in with jellyscale's web sign-in (JS-215).",
+    "Before a jellyscale release ships an Octave Web release, that release passes jellyscale's browser check against the image (sign in, browse, play, seek, resume)."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-039",
+    "JS-194",
+    "JS-215"
+  ],
+  "source": "issue #221; owner, 2026-11-20 (D-033); PRODUCT.md operator: Installing is boring; goal 3",
+  "notes": "Cross-project need (D-132): an Octave Web release built on jellyscale's API (ASK-6).",
+  "ux": true
+}

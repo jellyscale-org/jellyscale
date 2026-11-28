@@ -1,0 +1,21 @@
+{
+  "id": "JS-101",
+  "phase": "S6",
+  "title": "More like this, from the titles themselves, with the reason shown",
+  "description": "Serves \"Finding something to watch is easy.\"; \"Their data is theirs.\". D-124: suggestions come from local metadata and from the viewer, never learned from other viewers' watching. Absorbs JS-049.",
+  "acceptanceCriteria": [
+    "For a title, the viewer sees titles like it (same franchise, director, cast, genre or decade), each with its reason, leaving out titles they have watched.",
+    "Nothing is learned from other viewers' watching, and another account's history never shapes a viewer's suggestions.",
+    "Only titles the viewer may see are suggested (JS-036).",
+    "A viewer with no history gets a sensible answer, and another account's history never shapes a viewer's suggestions",
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check. Nothing leaves the server."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-045",
+    "JS-203",
+    "JS-194"
+  ],
+  "source": "Fluster issue #110; owner decision 2026-11-12",
+  "notes": "No surface is built for one client (D-027); a viewer in a browser sees the suggestions too (D-028)."
+}

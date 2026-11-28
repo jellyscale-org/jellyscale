@@ -1,0 +1,11 @@
+{
+  "id": "JS-015",
+  "phase": "P3",
+  "title": "Read-ahead bound (transcodeLead)",
+  "description": "Built and tested; see the source.",
+  "acceptanceCriteria": [],
+  "status": "done",
+  "dependsOn": [],
+  "source": "PRODUCT.md phase3, DOMAINS 57",
+  "notes": ""
+}

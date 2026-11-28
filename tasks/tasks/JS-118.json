@@ -1,0 +1,25 @@
+{
+  "id": "JS-118",
+  "phase": "ID",
+  "title": "A viewer's track languages: the opt-ins, the languages to keep and 'show all tracks'",
+  "description": "The owner asked (2026-11-15) that a viewer can opt into hiding audio and subtitle tracks outside their languages, keep additional languages, and bring every track back with one switch. Jellyfin's API has no place for these, so they live under /jellyscale/v1/ (PRODUCT.md, Compatibility policy), as the first route there. This task stores and serves the settings; JS-119 makes them act.",
+  "acceptanceCriteria": [
+    "GET /jellyscale/v1/track-preferences answers the caller's HideOtherAudio, HideOtherSubtitles, KeepAudioLanguages, KeepSubtitleLanguages and ShowAllTracks; a viewer who has saved nothing gets false, false, [], [], false",
+    "PATCH changes only the fields its body names and answers the whole document as stored (an absent field stays as stored; null is 400); a GET from a second api process returns it, and again after both restart; two viewers' documents never affect each other",
+    "Forced: with the viewer's row locked by the test, PATCH {HideOtherAudio: true} through one api process and PATCH {KeepSubtitleLanguages: ['deu']} through another are both lock-waiting in pg_stat_activity; after release both answer 200 and GET shows both. A build that merges in the process and writes the document whole fails every run",
+    "Languages are stored once each, lowercase, as three-letter codes: ['GER', 'deu', 'de', 'fr'] is stored as ['deu', 'fra']",
+    "400, naming the value, and nothing stored: a language that does not parse, und, mis, mul or zxx, more than 20 languages in a list, an unknown field, a field of the wrong type, a body over 16 KB, a body that is not JSON",
+    "Asking for a language first: HideOtherAudio true while the viewer's AudioLanguagePreference is empty answers 409 naming AudioLanguagePreference and stores nothing; HideOtherSubtitles true while SubtitleLanguagePreference is empty answers 409 naming it; both answer 200 once the language is saved through POST /Users/Configuration; AudioLanguagePreference 'OriginalLanguage' counts as set",
+    "A language cleared afterwards leaves the stored document as it was (GET still answers true)",
+    "No token answers 401; the route acts on the caller only and takes no user id; deleting a user leaves no row behind",
+    "A change is logged at Info with the user id and the five values, and nothing is logged for a GET",
+    "The route is in compat/endpoints.yaml, in the jellyscale-only list of compat/coverage_test.go and in compat/conform.yaml with its reason; docs/api.md (new) states the namespace, its version, and this route with a request and an answer; docs/running.md says how an operator reads a viewer's settings",
+    "No Jellyfin route answers differently: the differential tier passes with no new entry in compat/differences.yaml, and PlaybackInfo for 3 films is the same before and after every setting"
+  ],
+  "status": "done",
+  "dependsOn": [
+    "JS-116"
+  ],
+  "source": "Owner request and decisions 4 and 5, 2026-11-15",
+  "notes": "Both switches are off by default. Extra fields inside UserConfiguration were rejected: SDK clients drop unknown fields on their round trip, and PRODUCT.md keeps jellyscale's additions out of Jellyfin's answers. Fluster finds jellyscale by this route answering (404 on a real Jellyfin). First route under /jellyscale/v1/, ahead of JS-101. 2026-11-15: the write is PATCH, not PUT (owner, on Fable 5.2's answer to issue #159): a whole-replace on a route only our clients call recreates the lost update."
+}

@@ -1,0 +1,22 @@
+{
+  "id": "JS-184",
+  "phase": "M1",
+  "title": "A password signs a device in to jellyscale's own API",
+  "description": "Serves \"Joining and signing in are easy and safe.\". ",
+  "acceptanceCriteria": [
+    "A password gives a device its own sign-in, which signing out ends.",
+    "A wrong password, an unknown name and a disabled account given a wrong password get the same answer, in the same time. Tries are bounded per name, with the bounds built today, and a name that does not exist is bounded the same way.",
+    "A refused sign-in carries a reason Octave can explain: name or password not accepted (retry), try later (with how long), or, only after the right password on a disabled account, ask the operator. No answer tells a viewer which names exist.",
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check.",
+    "The sign-in answer names the account, the profile and the device, each with its own id.",
+    "No sign-in credential is stored in the clear: one read from the database signs no one in, shown by trying one."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-183",
+    "JS-216"
+  ],
+  "source": "pivot-plan.md; D-107 to D-128",
+  "notes": "",
+  "ux": true
+}

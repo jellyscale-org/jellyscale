@@ -1,0 +1,9 @@
+{
+  "id": "BL-117",
+  "source": "JS-086 rebase (lead)",
+  "reviewer": "lead",
+  "severity": "minor",
+  "title": "TestBeingServedFromTheSnapshotIsNotAValidation failed once in two full runs of JS-085's outage tests",
+  "status": "closed",
+  "notes": "internal/api/outage_memory_integration_test.go; passed alone and in the next full run. A flake to hunt before it reaches the queue often. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

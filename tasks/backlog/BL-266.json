@@ -1,0 +1,9 @@
+{
+  "id": "BL-266",
+  "status": "closed",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "JS-041 triage; D-068",
+  "title": "A client with no SubtitleProfiles has a mode-picked text subtitle burnt in, so its film re-encodes",
+  "notes": "Accepted by D-068 because the alternative ignores the viewer's saved mode. Promote to a brief with the design-arounds if dogfood decision lines show SubtitleCodecNotSupported with subtitle_asked=none and method=reencode or refused from a supported client other than jellyfin-web under burn-all. Drop if JS-075's clients all send SubtitleProfiles. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
+}

@@ -1,0 +1,19 @@
+{
+  "id": "JS-050",
+  "phase": "S6",
+  "title": "Several files of a film are one title; a different cut is its own title",
+  "description": "Serves \"Finding something to watch is easy.\"; \"The picture is as good as the device and the connection allow.\"; \"Their place is always one press away.\". ",
+  "acceptanceCriteria": [
+    "Files of one film in different qualities (4K, 1080p) are one title with one watch history; playback takes the file that best suits the device and connection, and the viewer can pick another.",
+    "A different cut is its own title, with its own history, shown together with the film.",
+    "A film in several parts plays as one, in order.",
+    "Shown for films kept on local disk and on S3.",
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-194"
+  ],
+  "source": "PRODUCT.md phase5-library",
+  "notes": ""
+}

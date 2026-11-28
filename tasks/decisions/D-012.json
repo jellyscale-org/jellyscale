@@ -1,0 +1,10 @@
+{
+  "id": "D-012",
+  "date": "2026-11-19",
+  "task": "JS-061",
+  "tradeoff": "Streamystats compatibility is not part of the product's support: JS-061 is dropped",
+  "decision": "accept",
+  "by": "owner",
+  "serves": "owner: 'a tertiary consideration and probably something we shouldn't even include in our product support'",
+  "brief": "recorded from the owner's words at the time (backfilled 2026-11-19)"
+}

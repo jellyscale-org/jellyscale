@@ -1,0 +1,9 @@
+{
+  "id": "BL-161",
+  "source": "JS-125 plan (Fable 5.2 access model)",
+  "reviewer": "architecture",
+  "severity": "minor",
+  "title": "A viewer sees the worker's name in their own TranscodingInfo",
+  "status": "closed",
+  "notes": "transcoding_info.go:69-70; Jellyfin shows the hardware acceleration type to administrators only (SessionManager.cs:2156-2170). Show it to administrators only. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
+}

@@ -1,0 +1,11 @@
+{
+  "id": "D-072",
+  "date": "2026-11-24",
+  "by": "product-owner",
+  "task": "JS-177, JS-178; BL-261, BL-276",
+  "brief": "brief-after-js177.md item 2: keep the dogfood's declared figures until JS-178 (A), drop both (B), drop the 12-thread worker's (C). Not in the brief: the 12-thread worker undeclared starts at 12 against 3.4 to 3.6 measured and a single 4K job at 1.29 to 1.36x never lowers it; timed rises survive JS-178; after JS-177 a partner with 0.65 of the price free helps once the first worker's figure falls, so 'the 4-core worker can never help' is unverified.",
+  "tradeoff": "Given up by keeping: nothing a viewer has; plays between 3.2 and about 3.6 on the 12-thread worker stay refused with their reason (rare, reasoned). Rejected losses: under B or C a second or third 4K play is admitted where it is refused today and may stall, the viewer already watching included (unverified), at each start and each timed rise.",
+  "decision": "keep (option A, amended)",
+  "entry": "The dogfood's declared figures stay as ceilings; both workers are cases 'Sizing workers' tells an operator to cap (a shared host; a lone slow worker). JS-177 is deployed to the dogfood now with the figures unchanged. At the first triage on or after 2026-12-01 the lead brings one read of its log and metrics, no staged run: learned moves, unhelped jobs by reason, cores-short refusals with cost and capacities, own_extraction, plays by client and method, overlapping heavy re-encodes, and 404 or stub answers by route. JS-178 criterion 8 no longer drops both figures: the lead offers the 4-core worker's with that data, and the 12-thread worker keeps its ceiling while its request is below its limit. JS-178's Refine states what a timed rise returns to once a figure is kept. Reopens on: two or more refusals in a week of a play within 3.6 on the 12-thread worker, or its request made equal to its limit; JS-178 merged with no timed admission above a kept figure; the owner choosing otherwise, with these costs stated.",
+  "serves": "PRODUCT.md goal 1: 'Playback never surprises a viewer.' 'every failure is reported with its reason, never silent'. D-050, D-065, D-066. Owner, 2026-11-23."
+}

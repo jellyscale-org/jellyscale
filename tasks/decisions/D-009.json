@@ -1,0 +1,10 @@
+{
+  "id": "D-009",
+  "date": "2026-10-30",
+  "task": "all",
+  "tradeoff": "Improve on Jellyfin where clients allow: captures are a compatibility baseline, not a target; compatibility with current clients comes first",
+  "decision": "accept",
+  "by": "owner",
+  "serves": "PRODUCT.md: Target, Quality bar",
+  "brief": "recorded from the owner's words at the time (backfilled 2026-11-19)"
+}

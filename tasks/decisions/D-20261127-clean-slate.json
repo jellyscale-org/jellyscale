@@ -1,0 +1,11 @@
+{
+  "id": "D-20261127-clean-slate",
+  "date": "2026-11-27",
+  "by": "owner",
+  "task": "JS-209",
+  "brief": "- Owner, 2026-11-27 (clean slate): \"I think now that we've pivoted, I think we need to reconsider all of our other decisions I've made so far, since many of those decisions were for Jellyfin compatibility.\" then \"what I'm saying is we should probably dismiss any earlier decisions since those decisions are irrelevant at this point.\" Lead's reading, told to the owner: decisions before the pivot (before D-107) no longer bind anyone and aren't cited; kept as history only. Pivot-onward decisions, PRODUCT.md and the current working rules stand; behaviour doesn't change by this alone. Record it, and say so in AGENTS.md and the product-owner role.\n- Owner, same day (confirms the scope): \"I think you could probably make a similar assertion to the product owner's decisions because those were when we were looking to have a product that conformed to Jellyfin's API.\" So the clean slate covers both the owner's and the product owner's decisions before D-107.",
+  "tradeoff": "",
+  "serves": "",
+  "decision": "accept",
+  "entry": "\"I think now that we've pivoted, I think we need to reconsider all of our other decisions I've made so far, since many of those decisions were for Jellyfin compatibility.\" \"what I'm saying is we should probably dismiss any earlier decisions since those decisions are irrelevant at this point.\" \"I think you could probably make a similar assertion to the product owner's decisions because those were when we were looking to have a product that conformed to Jellyfin's API.\" Decisions before D-107, by the owner or the product owner, no longer bind and are not cited; they are kept as history; pivot-onward decisions, PRODUCT.md and the working rules stand; behaviour does not change by this alone."
+}

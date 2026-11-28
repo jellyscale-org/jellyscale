@@ -1,0 +1,11 @@
+{
+  "id": "D-20261127-order-file",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "JS-209",
+  "brief": "po/lanes/po-batch1.md",
+  "tradeoff": "None: nothing is built yet; no guarantee is given up.",
+  "serves": "Tasks side by side without conflicts; priorities stay the product owner's (D-080).",
+  "decision": "change",
+  "entry": "Finishing a task touches no shared file: the listing skips ids that are not open, lists unordered open tasks last, and the product owner removes finished ids at the next order change."
+}

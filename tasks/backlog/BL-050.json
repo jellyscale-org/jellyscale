@@ -1,0 +1,9 @@
+{
+  "id": "BL-050",
+  "source": "JS-081 verify",
+  "reviewer": "qa",
+  "severity": "minor",
+  "title": "Helper-kill replacement check allows a replacement starting after the first missing segment",
+  "status": "closed",
+  "notes": "TestAKilledHelpersChunk... only requires replacement.Start >= dead.Next (no duplicates). A replacement starting several segments after the first missing one passes if another job made the gap, so the 'from the first segment missing' property is not enforced. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

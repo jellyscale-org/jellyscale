@@ -1,7 +1,7 @@
 export const meta = {
   name: 'build',
   description: 'Write the acceptance checks first, build until they pass, then verify by running it and one blind adversarial review',
-  whenToUse: 'Every task from tasks/prd.json. Args: {task, acceptance: string[], tests: string[], id?: string, ux?: boolean, core?: boolean}',
+  whenToUse: 'Every task in tasks/tasks/. Args: {task, acceptance: string[], tests: string[], id?: string, ux?: boolean, core?: boolean}',
   phases: [
     { title: 'Spec', detail: 'acceptance criteria become executable checks that fail today' },
     { title: 'Check', detail: 'review the design and whether the checks can catch a wrong build' },
@@ -11,7 +11,7 @@ export const meta = {
   ],
 }
 
-// Why this shape (tasks/prd.json, PR "Replace deliver with build"): agents
+// Why this shape (tasks/tasks/, PR "Replace deliver with build"): agents
 // converge when they loop against checks that can fail, and reviewer comments
 // are noisy. So the checks come first and are locked, a finding blocks only
 // with executable evidence, minors never start a fix round, and a build that
@@ -106,7 +106,7 @@ if (!task) throw new Error('build needs args.task')
 // JS-028: two criteria each, five attempts between them), so before any check is
 // written a strong model sharpens them against the code. It may only make a
 // criterion more exact; the lead reads the changes it logs and records them in
-// tasks/prd.json. A later attempt passes the refined list with refine: false.
+// the task's file. A later attempt passes the refined list with refine: false.
 const REFINED = {
   type: 'object',
   properties: {
@@ -120,7 +120,7 @@ if (refine) {
     { label: 'refine criteria', phase: 'Spec', model: 'claude-agent/opus', effort: 'high', schema: REFINED })
   if (refined && refined.acceptance.length) {
     acceptance = refined.acceptance
-    log(`Refined criteria (record in tasks/prd.json): ${JSON.stringify(refined)}`)
+    log(`Refined criteria (record in the task's file): ${JSON.stringify(refined)}`)
   } else {
     log('Criteria refinement returned nothing; building on the criteria as given')
   }

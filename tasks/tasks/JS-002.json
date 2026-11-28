@@ -1,0 +1,11 @@
+{
+  "id": "JS-002",
+  "phase": "P1",
+  "title": "Auth, System/Info, users, POSIX scan, /Items, images, /web",
+  "description": "Built and tested; see the source.",
+  "acceptanceCriteria": [],
+  "status": "done",
+  "dependsOn": [],
+  "source": "PRODUCT.md Built",
+  "notes": ""
+}

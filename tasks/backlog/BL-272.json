@@ -1,0 +1,9 @@
+{
+  "id": "BL-272",
+  "status": "closed",
+  "severity": "minor",
+  "reviewer": "adversarial",
+  "source": "JS-177 verify",
+  "title": "The estimator's unit tests leave 28 one-line mutants alive: raise-side state (raise setting settled, lower setting pendingRise, a timed rise firing at figure == start), the streak resets and the copy-only void, and the gap reset that appears in both lower and confirmRise",
+  "notes": "Found by 145 one-line mutants of capacity_learn.go and the start-note lines against go test ./internal/transcode (lines named in the finding). The behaviours are pinned by reading and by the integration checks, not by a unit test that fails on the mutant. Promote when the estimator changes again (JS-178 persists the figure), as a spec-writer step for that task. (D-071) no viewer or operator outcome; JS-178's Spec writes checks for what it changes, as any task does."
+}

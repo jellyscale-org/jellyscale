@@ -1,0 +1,11 @@
+{
+  "id": "D-123",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "tasks/prd.json, tasks/backlog.json",
+  "brief": "po/pivot-plan.md §13",
+  "tradeoff": "None.",
+  "decision": "plan",
+  "entry": "The mandate (plan §13) is applied by free-model auditors to every open task and backlog item; the product owner decides on their reports.",
+  "serves": "The owner: \"have a free agent go through it with a very hard codified mandate\"."
+}

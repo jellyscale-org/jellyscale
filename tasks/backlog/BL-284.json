@@ -1,0 +1,9 @@
+{
+  "id": "BL-284",
+  "status": "closed",
+  "severity": "minor",
+  "reviewer": "adversarial",
+  "source": "JS-037",
+  "title": "An approval sent with a request body that then hangs up logs no warning naming the user",
+  "notes": "The handler never reads the body, so the hang-up goes unnoticed and only 'request failed' is logged (D-097's re-review, by command). Awaits the product owner's triage in the next batch. D-101: dropped; the failure is already logged as 'request failed' and an operator loses nothing they can act on."
+}

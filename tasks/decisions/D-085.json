@@ -1,0 +1,11 @@
+{
+  "id": "D-085",
+  "date": "2026-11-26",
+  "by": "owner",
+  "task": "the plan; Octave; #289",
+  "brief": "Owner, 2026-11-26: Octave is developing a web app that will become the default web app to use with jellyscale. Octave places issues on jellyscale's GitHub board when it wants a feature, and jellyscale does likewise on Octave's. All GitHub issues originating from Octave are reviewed by the product owner.",
+  "tradeoff": "Triage of Octave's issues can cost a Fable call outside D-084's once-per-phase cap; batching keeps it to at most one after a task. What the default web client changes in PRODUCT.md and D-027 is not decided here.",
+  "decision": "accept",
+  "entry": "Octave's web app is to become jellyscale's default web client. The two projects request work through GitHub issues on each other's boards. Every issue from Octave goes to the product owner, batched into one triage brief after a task. PRODUCT.md and D-027 stand until the changes #289 asks for are decided and the owner changes PRODUCT.md.",
+  "serves": "Owner, 2026-11-26."
+}

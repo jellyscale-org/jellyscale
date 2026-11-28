@@ -1,0 +1,13 @@
+{
+  "id": "JS-044",
+  "phase": "ID",
+  "title": "User avatars",
+  "description": "User images: get, upload, delete.",
+  "acceptanceCriteria": [
+    "jellyfin-web shows and changes avatars"
+  ],
+  "status": "dropped",
+  "dependsOn": [],
+  "source": "PRODUCT.md identity",
+  "notes": "Access: avatars by id are open to whoever holds the id, as item pictures. (access model, 2026-11-16) Dropped (D-126 and the pivot, D-107): Avatars: no outcome PRODUCT.md promises (rule 1). Moved to the backlog until Octave asks."
+}

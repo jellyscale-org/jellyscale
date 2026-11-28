@@ -1,0 +1,9 @@
+{
+  "id": "BL-099",
+  "source": "JS-099 verify",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "scripts_test.sh checks the JS-099 record in docs/testing.md only for substrings",
+  "status": "wontfix",
+  "notes": "subject removed by the behaviour-only cleanup (D-069)"
+}

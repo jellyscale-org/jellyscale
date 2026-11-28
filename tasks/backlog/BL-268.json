@@ -1,0 +1,9 @@
+{
+  "id": "BL-268",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "D-069; test and CI strategy review",
+  "title": "No race detector runs on product code",
+  "notes": "A viewer would feel a race as a replica restart, which is survived by design, or as wrong state. None seen on any deployment. Cost unmeasured; a core race run once hit 45 min in a sweep test (BL-179, merged here). Promote on: a concurrent-access fatal, a race panic or an unexplained restart of a jellyscale process in any deployment's log; BL-093 seen in a run. When JS-096 starts, one unit-tier run under the detector is timed and brought to triage as a nightly criterion. Never a required check."
+}

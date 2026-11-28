@@ -1,0 +1,9 @@
+{
+  "id": "BL-002",
+  "source": "JS-024",
+  "reviewer": "architecture",
+  "severity": "minor",
+  "title": "OutputVersion bump invalidates every stored segment",
+  "status": "promoted",
+  "notes": "Promoted to JS-058 (triage D-018)."
+}

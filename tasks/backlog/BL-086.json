@@ -1,0 +1,9 @@
+{
+  "id": "BL-086",
+  "source": "JS-076 verify",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "A scan stopped by the guard can leave a new episode shown under a hidden season and series",
+  "status": "open",
+  "notes": "Upserts run before the guard; stampParents runs only after it. Lasts until a scan passes the guard."
+}

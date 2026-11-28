@@ -1,0 +1,14 @@
+{
+  "id": "JS-059",
+  "phase": "S7",
+  "title": "Backup and restore procedure",
+  "description": "Serves \"Their data is theirs.\". Documented backup of Postgres and the object stores.",
+  "acceptanceCriteria": [
+    "Restore tested from a backup, for a collection on local disk and one on S3"
+  ],
+  "status": "todo",
+  "dependsOn": [],
+  "source": "PRODUCT.md phase6-k8s",
+  "notes": "",
+  "ux": true
+}

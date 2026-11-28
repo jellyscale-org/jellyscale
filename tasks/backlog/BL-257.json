@@ -1,0 +1,9 @@
+{
+  "id": "BL-257",
+  "status": "closed",
+  "severity": "minor",
+  "reviewer": "lead",
+  "source": "JS-159/JS-161 triage; D-061",
+  "title": "A measurement that reaches its bound counts each processor at the reference speed",
+  "notes": "Closed by D-062: no start-up measurement is left to time out."
+}

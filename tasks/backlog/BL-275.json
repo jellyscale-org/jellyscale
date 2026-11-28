@@ -1,0 +1,9 @@
+{
+  "id": "BL-275",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "JS-174; D-051, D-073",
+  "title": "A shared re-encode froze over 2 s in its first 21 s in 9 of 18 parts on a loaded machine; whether it does on a quiet one, and whether helpers asked at the start shorten it, is unmeasured",
+  "notes": "JS-174's criteria 1 to 7, kept here: on a quiet machine (load average under 1, the harness stopped before each run) two workers as in JS-168, in jellyfin-web, without a subtitle and with the PGS track burned in, play 60 s, seek to the middle, play 60 s, 10 trials of each; per part the time to first frame, each freeze's start and length, the longest freeze, the player's buffered lead at each freeze and when the first helper's first segment was stored; the same 10 trials with a helper asked at the job's start and at the seek (the rule lifted for the measurement only, nothing merged); the same two rows on a 2-CPU and a 6-CPU worker, 5 trials each; recorded in docs/transcoding.md; the figures come to the product owner as a brief with keeping the 2 s bound among the options. What each result decides (D-051): as built, no freeze over 2 s in 20 of 20 parts closes docs/status.md's gap line; a miss with helpers at the start meeting it in 20 of 20 gives JS-161 part (b) a criterion; a miss both ways returns as a brief. The rig needs workers of 3 CPUs or more since JS-177 (a 2-CPU limit counts 2.0, under the 4K HDR job's 2.08 share). Promote when the dogfood claims helpers more than twice in a week, when JS-056's example sizes would share a 4K film, or on a household report."
+}

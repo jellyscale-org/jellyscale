@@ -1,0 +1,9 @@
+{
+  "id": "BL-005",
+  "source": "JS-024",
+  "reviewer": "ux",
+  "severity": "minor",
+  "title": "no reason shown to operators when a burnt-image job gets no helpers",
+  "status": "promoted",
+  "notes": " Planned as JS-161's seventh criterion (D-044); its helper-wanted reason is also JS-164's (D-045)."
+}

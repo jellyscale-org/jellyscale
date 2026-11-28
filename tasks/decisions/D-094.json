@@ -1,0 +1,11 @@
+{
+  "id": "D-094",
+  "date": "2026-11-26",
+  "by": "product-owner",
+  "task": "JS-033",
+  "brief": "JS-033's open questions after Refine and the Jellyfin 12.4 capture.",
+  "tradeoff": "A client that omits a field in order to demote or enable does nothing; none is known.",
+  "decision": "change",
+  "entry": "A Policy POST changes only the fields it names; the provider ids are optional.",
+  "serves": "Invariant 49's rule; 'Signing in is easy and safe'."
+}

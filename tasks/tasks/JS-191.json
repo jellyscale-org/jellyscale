@@ -1,0 +1,22 @@
+{
+  "id": "JS-191",
+  "phase": "M1",
+  "title": "A TV is approved from a phone",
+  "description": "Serves \"Joining and signing in are easy and safe.\". ",
+  "acceptanceCriteria": [
+    "Only the TV starts it; the code is single-use and short-lived, and guessing it is bounded.",
+    "A phone that scans the TV's code opens the approval in Octave with the code filled in; it shows the device, the network (same as the phone or not) and the code to match, with Decline as prominent as Approve.",
+    "A viewer signed out on the phone signs in there first (password or single sign-on).",
+    "The TV gets a viewer-only sign-in of its own, listed and revocable (JS-042).",
+    "Approving a device, and any action that creates a credential or sets a password, needs a fresh sign-in the server checks: proof that covers that one action, works once and expires within minutes. A web session cannot approve a device without it (#301).",
+    "With real processes, each step is answered by a different api replica.",
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-184"
+  ],
+  "source": "pivot-plan.md; D-107 to D-128",
+  "notes": "Quick Connect goes at the cutover, so the server side of this lands before it. Viewers use it once Octave has an approval screen; until then a TV signs in by password.",
+  "ux": true
+}

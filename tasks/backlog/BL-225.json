@@ -1,0 +1,9 @@
+{
+  "id": "BL-225",
+  "title": "GET /Items may ignore nameLessThan and nameStartsWithOrGreater",
+  "notes": "Issue #227. Evidence, by the lead: what jellyfin-web 12.4's letter picker sends for '#' and for a letter, and whether jellyscale's answer to those requests matches Jellyfin's in the differential tier. If jellyfin-web sends a parameter jellyscale ignores, add it to JS-068 (goal 3). A count-only jump for TV grids waits for a supported app recorded sending it (JS-075, JS-065). Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3).",
+  "status": "closed",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "issue triage 2026-11-20"
+}

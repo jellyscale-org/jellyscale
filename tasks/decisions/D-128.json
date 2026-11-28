@@ -1,0 +1,11 @@
+{
+  "id": "D-128",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "JS-200",
+  "brief": "po/pivot-plan.md",
+  "tradeoff": "None.",
+  "decision": "change",
+  "entry": "The rename comes right after JS-033 and before JS-198, so the image and contract are named once; if its name check is not done when it is next, JS-198 goes first.",
+  "serves": "D-122."
+}

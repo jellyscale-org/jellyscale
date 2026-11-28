@@ -1,0 +1,11 @@
+{
+  "id": "D-127",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "JS-140, JS-141, JS-143",
+  "brief": "po/pivot-plan.md",
+  "tradeoff": "D-002's costly seeks into long image cues stay until JS-188.",
+  "decision": "defer",
+  "entry": "D-002's gap-closing condition is carried by backlog items (from JS-140, JS-141, JS-143), which return after JS-188 decides how image subtitles reach Octave's players: a player that draws the track itself may not need the copy at all.",
+  "serves": "\"Subtitles never cost the picture.\""
+}

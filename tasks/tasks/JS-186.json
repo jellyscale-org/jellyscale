@@ -1,0 +1,19 @@
+{
+  "id": "JS-186",
+  "phase": "M1",
+  "title": "Films and Shows, one watch history, and Continue watching from the server",
+  "description": "Serves \"Finding something to watch is easy.\"; \"Their place is always one press away.\"; \"They see only what they may.\". D-124's first stage.",
+  "acceptanceCriteria": [
+    "Films and Shows each span everything the viewer may see, paged and sorted by title and by date added, with where each first letter starts so a TV can jump to it, and recently added, where a show with several new episodes appears once with their count (#234, #227); no answer tells where a file is kept.",
+    "A show's seasons and episodes, each episode carrying its show's and season's names (#288), and one title's details: its versions (a list, of one file today), its tracks, each with an id that names one track of one file version and is refused with a reason once that file is replaced, with their language and the film's original language, chapters and artwork.",
+    "One access rule applies to every answer, count, picture and media request: a title the operator hides from an account appears in no answer, count or Continue watching, and its pictures and media are refused to that account (JS-036 gives the rule its full content).",
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check.",
+    "For a viewer the access rule restricts, Films paged by title, its count and its first-letter positions over 100,000 titles are measured under CI's shape and recorded; a 95th percentile above 500 ms comes to the product owner as a brief before merge."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-184"
+  ],
+  "source": "pivot-plan.md; D-107 to D-128",
+  "notes": ""
+}

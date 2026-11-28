@@ -1,0 +1,9 @@
+{
+  "id": "BL-054",
+  "source": "JS-081 verify",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "Flag check on the 3x job cannot fail the 'kept above 1' half, and the recorded-speed equality can race a heartbeat",
+  "status": "closed",
+  "notes": "TestSessionsDoNotFlagAJobThatKeepsUp and TestSessionsFlagFollowsTheShownSpeedOfAJobThatMayKeepUp only compare the flag with the speed in the same answer. A 3x throttle is a ceiling, so on a slow runner the job is below 1 and a build that always sets IsBelowRealTime passes. The task asks for one job kept above 1. Separately, TestSessionsShowTheSpeedTheWorkerRecordedAndHoldItAcrossAPauseAtTheLead (t Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

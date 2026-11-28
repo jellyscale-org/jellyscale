@@ -1,0 +1,9 @@
+{
+  "id": "BL-148",
+  "source": "JS-114 verify",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "e2e single-definition check misses a second definition that is not at the start of a line",
+  "status": "wontfix",
+  "notes": "subject removed by the behaviour-only cleanup (D-069)"
+}

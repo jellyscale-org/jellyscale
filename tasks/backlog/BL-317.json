@@ -1,0 +1,9 @@
+{
+  "id": "BL-317",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "JS-219",
+  "title": "Unverified for Apple's phones: the path-secret link on AVPlayer",
+  "notes": "Unverified for Apple's phones: the path-secret link on AVPlayer. Promoted when Octave's iOS build starts. (po-check.md §A; D-20261127-domains-check; JS-219 covers Media3.)"
+}

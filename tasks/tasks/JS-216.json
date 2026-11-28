@@ -1,0 +1,20 @@
+{
+  "id": "JS-216",
+  "phase": "M1",
+  "title": "The first milestone is in the contract, with examples Octave can mock against",
+  "description": "Serves Goal 3: \"Octave's features have the server they need.\" D-110, D-148. Split from JS-183.",
+  "acceptanceCriteria": [
+    "The contract declares M1's catalog and people: sign-in (its answer naming the account, the profile and the device, with different ids in every example), devices and sign-out, TV approval, Films and Shows, seasons and episodes, a title's details with its versions (a list, of one file today) and its tracks, each with an id that names one track of one file version and says whether it is hidden for the calling profile, chapters and artwork, artwork, Continue watching and taking a title off it, the place a title shows and marking it played or unplayed by hand, and a profile's languages, kept languages and hiding switches (declared until JS-157 serves them). Each has its request, its answer, who may call it, the reasons it can refuse with, and at least one example answer Octave can mock against.",
+    "Each M1 capability is in the state its design supports: declared until served, preview until Octave confirms it.",
+    "One field-name casing is chosen for the whole contract and applied before JS-184 serves anything; the operations served today are brought to it or marked as leaving at the cutover.",
+    "The conformance check of JS-183 passes on the whole contract.",
+    "The change reaches Octave as a from:jellyscale issue before anything in it is served (D-132)."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-183"
+  ],
+  "source": "D-20261127-contract-split",
+  "notes": "Follows Octave's approved M1 designs where they exist. A capability no design confirms ships declared or preview, so the contract never waits on another product.",
+  "ux": true
+}

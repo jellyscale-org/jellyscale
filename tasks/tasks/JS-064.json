@@ -1,0 +1,20 @@
+{
+  "id": "JS-064",
+  "phase": "OPS",
+  "title": "Differential compatibility tier against a real Jellyfin 12.4",
+  "description": "Run jellyfin/jellyfin:12.4 and jellyscale side by side over the same fixtures, replay the same requests to both, and diff normalized responses (JSON with ids, timestamps and ordering normalized; headers; HLS playlists). Intentional improvements on Jellyfin go in an allowlist with a reason each. This is the project plan's jfdiff, never built.",
+  "acceptanceCriteria": [
+    "A test tier starts a disposable Jellyfin 12.4 on a Docker-assigned port over the e2e fixtures and diffs every route the tier knows",
+    "Normalization of ids, tokens, timestamps and ordering is explicit and tested",
+    "An allowlist file lists each intentional deviation with its reason; an unlisted difference fails",
+    "Shows the Continue Reading bug of PR #32 as a diff when the fix is reverted",
+    "Runs in CI (sharded if needed) and locally; docs/testing.md explains adding a route",
+    "Later compatibility tasks can state acceptance as 'route X matches, apart from the allowlist'"
+  ],
+  "status": "done",
+  "dependsOn": [
+    "JS-019"
+  ],
+  "source": "workflow research 2026-11-07; project plan (jfdiff, Verification)",
+  "notes": "Evidence: agents converge when they can loop against a known-good reference (Anthropic's C compiler diffed against GCC; Ladybird's LibJS port held byte-identical output and passed 52,898 test262 tests; Airbnb and Google migrations verified every step). Compatibility with unmodified clients is jellyscale's top risk, and today it is checked only by hand-made captures and jellyfin-web in Playwright."
+}

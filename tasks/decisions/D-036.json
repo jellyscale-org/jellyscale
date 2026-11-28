@@ -1,0 +1,10 @@
+{
+  "id": "D-036",
+  "date": "2026-11-20",
+  "by": "product-owner",
+  "task": "AI research 2026-11-20; JS-052, JS-101; BL-226, BL-228, BL-232, BL-233",
+  "decision": "change",
+  "tradeoff": "Given up, by viewers: a film with no subtitle in their language keeps none, and a series with no intro chapters or operator data gets no skip button. Kept, for operators: no model file, no larger worker image, no batch load, no Postgres extension. Neither loss is measured on the dogfood.",
+  "entry": "AI is not a roadmap theme, and no use enters the plan because it is possible. Generated or translated subtitles (BL-232) and sidecar timing (BL-233) are backlog, each with the dogfood count that promotes it and what any task must carry (machine-made label, a measured bound on invented captions, opt-in, no slower playback, written language gaps, local only per D-037). JS-052 first counts how many episodes its chapter-and-operator-data design reaches. 'No fingerprinting' (docs/status.md, until now with no decision id) is reaffirmed here and reopened only by that count. JS-101 is unchanged: no method prescribed, nothing leaves the server. Dropped: generated synopses, tags, chapter titles, outside identification (PRODUCT.md non-goals), content warnings, generated audio description, ML transcode tuning and anomaly detection (JS-135/136/148, JS-021/094), search by description (no synopses before JS-045; pgvector).",
+  "serves": "PRODUCT.md: 'every film starts that way where it can'; 'Metadata comes from files beside the film, not from outside services'; goal 5, 'Operating it stays boring. Postgres is the only required service'; 'intro skipping are there as they are in Jellyfin'."
+}

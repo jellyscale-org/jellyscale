@@ -1,0 +1,9 @@
+{
+  "id": "BL-060",
+  "source": "JS-029 verify",
+  "reviewer": "architecture",
+  "severity": "minor",
+  "title": "A staged segment file is no longer removed when the final UPDATE fails for a non-outage reason",
+  "status": "closed",
+  "notes": "In Worker.upload, os.Remove(name) moved after the UPDATE and only the IsAway error returns before it. A non-away error now leaves the file on disk until the job's working directory is cleaned up. Alternative: remove the file only on success or on errWaiting. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

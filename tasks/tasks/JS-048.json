@@ -1,0 +1,14 @@
+{
+  "id": "JS-048",
+  "phase": "P5",
+  "title": "Collections and playlists",
+  "description": "Create, edit and play collections and playlists of films and episodes.",
+  "acceptanceCriteria": [
+    "Matches a Jellyfin 12.4 capture where a client calls it",
+    "Played or browsed in jellyfin-web"
+  ],
+  "status": "dropped",
+  "dependsOn": [],
+  "source": "PRODUCT.md phase5-library",
+  "notes": "Dropped (D-126 and the pivot, D-107): Merged into JS-205, collections in kinds (D-124)."
+}

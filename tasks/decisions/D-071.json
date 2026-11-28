@@ -1,0 +1,11 @@
+{
+  "id": "D-071",
+  "date": "2026-11-24",
+  "by": "product-owner",
+  "task": "JS-177, JS-056, JS-178; BL-271 to BL-276",
+  "brief": "brief-after-js177.md item 1: four findings JS-177 left unfixed.",
+  "tradeoff": "Nothing a viewer or operator has. Left: a pair of undeclared workers under a 2-CPU limit on a fast CPU is refused the 4K HDR job; a legacy transcodeSlots above the CPUs overstates a worker; a cheap play can be refused for up to 6 s behind an unclaimed shared job on a lone worker.",
+  "decision": "accept",
+  "entry": "BL-271 stays, promoted on an operator's report or at JS-056's Refine; its docs half is due now (running.md 'Sizing workers' and status.md say a 2-CPU limit counts 2.0, under the 2.08 share, and give a limit of 3 or more). BL-272 closes: no viewer or operator outcome. BL-273 stays, trigger widened to any deployment. BL-274 is re-pointed from JS-178 to JS-056's Refine as a brief (remove the key or cap it at the CPUs). BL-275 holds JS-174's measurement (D-073). BL-276 is new: a play admitted above what an overstated multi-job worker holds may take the viewer already watching under real time (unverified).",
+  "serves": "Owner, 2026-11-22: nothing outruns the product. PRODUCT.md: 'Installing is boring'; 'Nothing is hidden'."
+}

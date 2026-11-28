@@ -1,0 +1,11 @@
+{
+  "id": "D-20261127-pictures-signin",
+  "date": "2026-11-27",
+  "by": "owner",
+  "task": "JS-209",
+  "brief": "- Owner, 2026-11-27, asked whether every picture should require sign-in: \"Yes, every picture requires sign in.\" (by owner; supersedes the 2026-11-16 open-pictures decision; confirms domains-check A; releases JS-186's Spec hold.)",
+  "tradeoff": "",
+  "serves": "",
+  "decision": "accept",
+  "entry": "Owner, 2026-11-27, asked whether every picture should require sign-in: \"Yes, every picture requires sign in.\" (by owner; supersedes the 2026-11-16 open-pictures decision; confirms domains-check A; releases JS-186's Spec hold.)"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "BL-041",
+  "source": "state review 2026-11-10",
+  "reviewer": "product",
+  "severity": "minor",
+  "title": "JS-021 is too large and blocks JS-057; JS-062's gate is undefined for a 4-CPU homelab",
+  "status": "closed",
+  "notes": "Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

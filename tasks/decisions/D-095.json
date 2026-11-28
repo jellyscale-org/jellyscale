@@ -1,0 +1,11 @@
+{
+  "id": "D-095",
+  "date": "2026-11-26",
+  "by": "product-owner",
+  "task": "JS-033",
+  "brief": "JS-033's open questions after Refine and the Jellyfin 12.4 capture.",
+  "tradeoff": "Operators cannot delete or rename that account from a client while it is configured, and jellyfin-web shows nothing on the refusal.",
+  "decision": "change",
+  "entry": "The configured admin cannot be deleted or renamed through the API while configured; demote and disable are allowed; start-up refuses a commonly guessed admin password only when it creates the account.",
+  "serves": "'Settings are declared in configuration'; 'every failure is reported with its reason'."
+}

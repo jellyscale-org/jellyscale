@@ -1,0 +1,19 @@
+{
+  "id": "JS-117",
+  "phase": "P5",
+  "title": "The film's original language, from its file",
+  "description": "The owner decided (2026-11-15) that a film's original language comes from the file, with no internet and no metadata provider: the language of its default audio track (the first flagged default, else the first, as Source.DefaultAudio already defines it). Jellyfin 12.4 has a place for it: OriginalLanguage on the item and IsOriginal on a stream (jellyscale sends IsOriginal false and no OriginalLanguage today). This task also adds the one comparison of languages that hiding and the default tracks use.",
+  "acceptanceCriteria": [
+    "Observed first: compat/captures/original-language-12.4.md records what Jellyfin 12.4 answers for OriginalLanguage, IsOriginal, LocalizedOriginal and DisplayTitle for 4 films scanned with no metadata provider: (eng default, deu), (deu, eng default), (first audio untagged, eng), (no audio)",
+    "The original language is the language of the default audio track, for 6 cases: [eng default, deu] is eng; [deu, eng default] is eng; [deu, eng] with no flag is deu; [jpn default, eng default] is jpn; [untagged, eng] is none; no audio is none",
+    "Languages compare by language, not spelling: ger, deu, de, de-DE and GER are one; fre, fra and fr are one; chi, zho and zh are one; pt-br and por are one; nor, nob and nno are one; zho, cmn and yue are one; eng and deu differ; eng and enm differ",
+    "A tag with no language equals nothing, itself included: the empty tag, und, mis, mul, zxx, and a tag that does not parse (a test fails if und or an unparseable tag compares equal to eng)",
+    "GET /Items/{itemId}, its alias and PlaybackInfo answer OriginalLanguage as the default audio track's own tag, and IsOriginal true on every audio stream in that language and false on every other stream, in every source: a film with audio eng, eng (commentary), deu has IsOriginal true on exactly 2 streams; a film whose default audio is untagged has none and no OriginalLanguage; no subtitle stream is ever IsOriginal",
+    "A scan runs the same number of media tools and writes the same rows as before, and no migration is added: the value is computed when the one item is answered. Lists (/Items) are unchanged",
+    "Every difference from the capture is in compat/differences.yaml with its reason; docs/status.md and DOMAINS.md say how the original language is derived and that a film whose only audio is a dub is labelled with the dub's language"
+  ],
+  "status": "done",
+  "dependsOn": [],
+  "source": "Owner request and decision 3, 2026-11-15",
+  "notes": "golang.org/x/text/language is already a dependency (sidecars.go:17). Checked against it: und and any unparseable tag parse to base en at low confidence, so the comparison must test the parse error; nor, nob and nno have three different bases, as do zho, cmn and yue, so those two families are joined by hand. Hiding less is the safe error. An .nfo beside the film could later override the guess (JS-045)."
+}

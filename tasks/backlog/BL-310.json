@@ -1,0 +1,9 @@
+{
+  "id": "BL-310",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "Technology and top features §3",
+  "title": "A viewer's wish list for films the collection lacks, with no fetching",
+  "notes": "Interest is shown (Seerr), but fetching media is out. Back if viewers ask."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "BL-007",
+  "source": "JS-024",
+  "reviewer": "ux",
+  "severity": "minor",
+  "title": "helper jobs indistinguishable from seeks and failovers for operators",
+  "status": "open",
+  "notes": ""
+}

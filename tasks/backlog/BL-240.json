@@ -1,0 +1,9 @@
+{
+  "id": "BL-240",
+  "title": "A burnt-in seek once read 688 KiB more of the film than the same seek read before",
+  "notes": "JS-155 sighting (TestWithTheTrackStoredASeekIntoALongCueReadsNoMoreOfTheFilmThanAnySeek/DVB, #235), cause unknown. Promote when the same test fails the queue again, with the read offsets JS-160 adds, or if the dogfood's first-segment time after a seek into a burnt-in film is slower than a plain seek. D-043.",
+  "source": "JS-155 record",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "product-owner"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "BL-152",
+  "source": "JS-116 verify",
+  "reviewer": "ux",
+  "severity": "minor",
+  "title": "A picked language can read back as a different entry with the same code",
+  "status": "wontfix",
+  "notes": "A viewer picks 'Portuguese (Brazil)' and saves. The code stored is 'por', shared by 'Portuguese', 'Portuguese (Brazil)' and 'Portuguese (Portugal)'. After a reload the select shows 'Portuguese', the first entry with that value. The same happens for 'Chinese (Simplified)' under 'zho' (five entries) and for 'Spanish; Latin' under 'spa'. Jellyfin 12.4 behaves the same with this list, since jellyfin-web uses ThreeLetterISOLanguageName as the value, and the acceptance criteria require the list entry for entry, so this is inherited rather than a jellyscale defect. Inherited from jellyfin-web's own list."
+}

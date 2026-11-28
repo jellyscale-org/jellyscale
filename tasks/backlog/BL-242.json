@@ -1,0 +1,9 @@
+{
+  "id": "BL-242",
+  "title": "A helper is refused unless a whole job's room stays free elsewhere, although a new viewer stops helpers; a 6-core worker beside a 4-core one therefore helps nobody",
+  "notes": "JS-154 (reading roomForHelper, ledger.place/room). Promote from JS-162's third criterion (D-044). Promoted to JS-168 (D-046).",
+  "source": "JS-154",
+  "status": "promoted",
+  "severity": "minor",
+  "reviewer": "product-owner"
+}

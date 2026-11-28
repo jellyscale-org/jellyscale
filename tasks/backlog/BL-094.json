@@ -1,0 +1,9 @@
+{
+  "id": "BL-094",
+  "source": "JS-031 verify",
+  "reviewer": "ux",
+  "severity": "minor",
+  "title": "The compose stack never gives a replica its 30 s grace: docker stop kills it at 10 s",
+  "status": "promoted",
+  "notes": "Set stop_grace_period in compose.yaml to match shutdownGrace. Promoted to JS-056."
+}

@@ -1,0 +1,20 @@
+{
+  "id": "JS-201",
+  "phase": "S6",
+  "title": "Versions made ahead, by the operator's choice",
+  "description": "Serves \"Storage stays bounded.\"; \"Play starts in seconds and keeps up.\". D-120. When and how they are made is the design's choice (D-125).",
+  "acceptanceCriteria": [
+    "Off by default; configuration names the qualities and which titles.",
+    "They are kept within a share of the budget the operator sets, are never evicted by on-demand work, and stop being made when the share is full, saying so.",
+    "Making them never slows anything a viewer or the operator is waiting for, and yields at once to a viewer's job.",
+    "A version made ahead is served exactly as the same version made on request.",
+    "Storage is shown per version and title, on local disk and S3."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-187"
+  ],
+  "source": "pivot-plan.md; D-107 to D-128",
+  "notes": "",
+  "ux": true
+}

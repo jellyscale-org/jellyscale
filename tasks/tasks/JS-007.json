@@ -1,0 +1,11 @@
+{
+  "id": "JS-007",
+  "phase": "P3",
+  "title": "HLS re-encode to H.264 with audio and bitrate choice, seeks",
+  "description": "Built and tested; see the source.",
+  "acceptanceCriteria": [],
+  "status": "done",
+  "dependsOn": [],
+  "source": "PRODUCT.md Built",
+  "notes": ""
+}

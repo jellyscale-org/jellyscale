@@ -1,0 +1,9 @@
+{
+  "id": "BL-134",
+  "source": "JS-108 verify",
+  "reviewer": "architecture",
+  "severity": "minor",
+  "title": "The failed count is derived by subtraction",
+  "status": "open",
+  "notes": "failed = len(changed) - len(done) - skipped: a new skip path that does not bump skipped would count as a failure. Count failures where they happen."
+}

@@ -1,0 +1,15 @@
+{
+  "id": "JS-132",
+  "phase": "OPS",
+  "title": "A change no media tier can read runs no media tier",
+  "description": "21 of the last 80 merged pull requests changed only .claude/workflows, .claude/agents or tasks/backlog.json, and each ran the whole 220 runner-minutes. The tests that read those files (internal/transcode/faults_docs_test.go, test/scripts_test.sh) are in lint-and-unit, which runs on every event. test/changes.sh counts .claude/ as code on purpose, so this changes a stated rule and needs the owner's yes.",
+  "acceptanceCriteria": [
+    "test/changes.sh prints docs-only for a diff confined to .claude/ and tasks/ and to the Markdown it already accepts, and code for anything else, renames and unreadable diffs included; test/scripts_test.sh covers each case",
+    "A unit test fails, naming the file and line, when any *_integration_test.go, test/e2e file, test/roles.sh, test/differential file or script they source names a path under .claude/ or tasks/ other than tasks/prd.json",
+    "lint-and-unit runs on such a change as on any other, and the required checks integration and e2e report as they do for a docs-only change today"
+  ],
+  "dependsOn": [],
+  "notes": "Tiny; can land beside JS-129. Only if the owner agrees (decision 1). Planned by Fable 5.2 (.results/test-time-fable-2026-11-16.md). Owner's decisions 2026-11-16: skip the media tiers for .claude/ and tasks/ changes with a guard test (JS-132); cancel media shards when lint-and-unit fails; the merge queue builds 2 entries (back to 3 once a run costs under ~150 runner-minutes and under a fifth of runs fail) with a 90-minute check timeout, set by the lead. 2026-11-16: the guard denies by default (an allowlist of files that must run in lint-and-unit) after a script-walking design kept missing path forms.",
+  "status": "done",
+  "source": "owner 2026-11-16, Fable 5.2 test-time audit"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "BL-198",
+  "source": "flakes",
+  "reviewer": "lead",
+  "severity": "minor",
+  "title": "e2e: jellyfin-web failed to load its own CSS chunk mid-scenario ('Loading CSS chunk 91737 failed')",
+  "status": "closed",
+  "notes": "Product owner asks (evidence): Which status did the server answer for the CSS chunk, or was it the test router? Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
+}

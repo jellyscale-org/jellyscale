@@ -1,0 +1,9 @@
+{
+  "id": "BL-287",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "architecture",
+  "source": "JS-033",
+  "title": "The token lookup does not refuse a disabled account's token",
+  "notes": "Only issue paths check is_disabled; a token an older replica issues survives a rollback. By reading. Awaits the product owner."
+}

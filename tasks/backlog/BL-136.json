@@ -1,0 +1,9 @@
+{
+  "id": "BL-136",
+  "source": "merge queue (#148, lead)",
+  "reviewer": "lead",
+  "severity": "minor",
+  "title": "TestStressDriverCallsEveryOperationAtItsRate: one Reap error on an idle database",
+  "status": "closed",
+  "notes": "Seen once in a merge-queue run (log in ~/.cache/jellyscale/js104-evidence/stress-reap-error-queue-run.log). The driver does not print the error; print it. Possibly the multi-row-write deadlock Fable 5.2 flagged in the JS-105 design review (risk 8), which JS-105's contention check now covers. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

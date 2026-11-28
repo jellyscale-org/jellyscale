@@ -1,0 +1,17 @@
+{
+  "id": "JS-020",
+  "phase": "OPS",
+  "title": "Control-plane stress test",
+  "description": "Simulate N viewers' and workers' Postgres traffic (viewer updates per segment request, heartbeats, claims, reaps, NOTIFY) with no video against a disposable Postgres, and find where latency climbs.",
+  "acceptanceCriteria": [
+    "A script runs the load at rising N and reports p50/p99 latency per operation and the N where it degrades",
+    "The ceiling is stated in streams per Postgres primary in ARCHITECTURE.md",
+    "A recommendation on whether NATS JetStream for ephemeral state is worth considering after the MVP"
+  ],
+  "status": "done",
+  "dependsOn": [
+    "JS-019"
+  ],
+  "source": "work queue 3c",
+  "notes": "The MVP stays Postgres-only (user decision 2026-11-07). First dogfood metrics reading (2026-11-07): the pgx pool maxes at 4 connections (default for a small pod) shared by every role in one process; size the pool from the load test and make it configurable if the default limits throughput."
+}

@@ -1,0 +1,18 @@
+{
+  "id": "JS-162",
+  "phase": "P3",
+  "dependsOn": [],
+  "title": "Measure whether helpers bring a re-encode that one worker makes at 0.85x to real time in jellyfin-web",
+  "description": "JS-154 added helper speeds on paper. PRODUCT.md promises a heavy film uses the whole cluster; nothing shows it does for a job no single worker holds. Measurement only, on the developer machine: no homelab change. D-044.",
+  "acceptanceCriteria": [
+    "Three worker processes pinned to 2 CPUs each (0.88x alone on this job, JS-154) and a shared store; jellyfin-web plays a real 4K HDR film re-encoded with and without a burned PGS track: time to first frame, stalls and their seconds over 10 minutes, the speed of each job, how many helpers ran, and the same after a seek to the middle",
+    "The same with two workers, and with one 2-CPU and one 6-CPU worker",
+    "Each helper refused is recorded with the rule that refused it; in particular how often the room kept for a new viewer refused one although a new viewer stops helpers, and the speed with that rule lifted for the measurement only",
+    "Recorded in docs/transcoding.md with machine and command; no film title or path",
+    "The figures come to the product owner as a brief: whether a second and third worker close the gap as built, and if not, what would, priced",
+    "No viewer-visible change"
+  ],
+  "source": "D-044",
+  "notes": "Recorded in docs/transcoding.md (2026-11-21). Deviation, accepted by D-046: after the seek each run played 5 minutes, not 10, and each configuration ran once. jellyscale_transcode_queue_cores read 0 at the one snapshot of every run, stalling runs included. Its options became JS-167, JS-168 and JS-161's criteria 9 to 11 (D-046).",
+  "status": "done"
+}

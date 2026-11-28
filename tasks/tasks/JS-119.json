@@ -1,0 +1,29 @@
+{
+  "id": "JS-119",
+  "phase": "ID",
+  "title": "Tracks outside a viewer's languages leave the track menus, and no index moves",
+  "description": "With JS-118's switches on, PlaybackInfo and one item's details list an audio or subtitle track outside the viewer's languages as a placeholder of Type Data at its own Index. jellyfin-web builds its menus by Type and reads DefaultSubtitleStreamIndex and its remembered selections by position, so removing a track would shift every later one. Kept: the viewer's audio or subtitle language, their audio language for subtitles too, the film's original language (JS-117), the languages they chose to keep, every track with no language, and the track the request names. Nothing is deleted, and every route that takes an index still accepts any real index.",
+  "acceptanceCriteria": [
+    "Observed first: compat/captures/data-stream-12.4.md records the fields Jellyfin 12.4 lists for a real data track (an MP4 with a tmcd track) in PlaybackInfo and GET /Items/{itemId}, and that jellyfin-web's audio menu, subtitle menu and media info leave it out; the placeholder has those fields and no Language, Title, DisplayTitle, Codec or DeliveryUrl",
+    "Fixture 'Babel Film': audio 1 eng (default), 2 deu, 3 fra, 4 untagged; subtitles 5 eng, 6 eng forced, 7 eng SDH, 8 deu, 9 ger forced, 10 fra, 11 untagged, 12 jpn PGS; files beside it .de.srt (13) and .es.srt (14). For a viewer with audio eng, subtitle eng and both switches on, PlaybackInfo with a DeviceProfile lists 15 streams, stream i at position i for every i; Type Audio exactly at 1 and 4; Type Subtitle exactly at 5, 6, 7 and 11; Type Data exactly at 2, 3, 8, 9, 10, 12, 13 and 14",
+    "With KeepSubtitleLanguages ['deu'], 8, 9 and 13 are Subtitle again and 10, 12 and 14 stay Data; with KeepAudioLanguages ['fra'], 3 is Audio again and 2 stays Data",
+    "Original language, fixture 'Kino Film': audio 1 deu (default), 2 eng; subtitles 3 deu, 4 eng, 5 fra. The same viewer is listed both audio tracks and subtitles 3 and 4; 5 is Data",
+    "Never without sound: a film whose only audio is deu lists it for that viewer; a film whose audio tracks are all untagged lists all of them; for 1000 generated films and settings, every film with audio lists at least one Audio stream and lists its default audio track",
+    "Off unless asked: a viewer with both languages set and both switches off is listed the same streams as a viewer with no settings; only the audio switch hides no subtitle; only the subtitle switch hides no audio; the audio switch with the audio language cleared afterwards hides no audio; ShowAllTracks true lists what both switches off lists",
+    "A hidden track is reachable by its index: GET .../Subtitles/8/0/Stream.vtt answers 200 with its cues; PlaybackInfo with AudioStreamIndex 2 lists 2 as Audio with DefaultAudioStreamIndex 2 and a TranscodingUrl whose master playlist answers 200; PlaybackInfo with SubtitleStreamIndex 8 lists 8 as Subtitle; a transcode URL with SubtitleStreamIndex 10 is accepted",
+    "DefaultAudioStreamIndex and DefaultSubtitleStreamIndex never name a placeholder, for both fixtures and all the settings above",
+    "GET /Items/{itemId} and its alias hide the same subtitle tracks in MediaStreams and in MediaSources; lists (/Items) are unchanged",
+    "Per viewer: three viewers (eng with both switches, deu with both switches, no settings) asking the same replica for the same film each get their own list; two of them transcoding the film with the same audio track share one job",
+    "No extraction changes: PlaybackInfo for Babel Film with both switches on creates 0 subtitle jobs; picking track 5 creates exactly 1, as before",
+    "In real jellyfin-web (e2e), for that viewer: the player's audio menu has exactly 2 entries and its subtitle menu exactly 4 besides Off; the media info lists no Data stream; picking subtitle 11 by hand shows its text; after ShowAllTracks is set and the page reloaded, the menus have 4 and 10",
+    "jellyfin-sdk-kotlin's serializers decode the PlaybackInfo with placeholders (a kotlin: request in the differential tier)",
+    "PlaybackInfo logs at Debug the number of tracks it hid for each source, with the user and the item; DOMAINS.md has the rule as an invariant, docs/subtitles.md and docs/status.md describe it, and compat/differences.yaml records that an opted-in viewer's answers differ from Jellyfin's"
+  ],
+  "status": "done",
+  "dependsOn": [
+    "JS-117",
+    "JS-118"
+  ],
+  "source": "Owner request and decisions 1 to 5, 2026-11-15",
+  "notes": "Why a placeholder and not a removal: stream.go:443-459 sends DefaultSubtitleStreamIndex only where position equals Index, and subtitles sit after audio in nearly every file, so one removed audio track would cancel the default subtitle for exactly the viewers who opted in. Tracks dropped today because they cannot be delivered (items.go:278, subtitles.go:451) stay dropped. Hiding never enters the spec hash. Decision 1's 'may skip extracting' builds nothing: text tracks are read in one pass on first request (JS-028), and files and PGS tracks one at a time when asked for, so a hidden track that nobody asks for is already never read. ux: true."
+}

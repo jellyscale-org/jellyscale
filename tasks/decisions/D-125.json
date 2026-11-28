@@ -1,0 +1,11 @@
+{
+  "id": "D-125",
+  "date": "2026-11-27",
+  "by": "owner",
+  "task": "PRODUCT.md; the mandate (rule 18)",
+  "brief": "po/pivot-plan.md",
+  "tradeoff": "None.",
+  "decision": "change",
+  "entry": "PRODUCT.md and the plan state outcomes, not mechanisms; how new films are found and when made versions are produced are design questions.",
+  "serves": "The owner: \"I don't want a solution for these things.\""
+}

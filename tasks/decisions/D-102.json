@@ -1,0 +1,11 @@
+{
+  "id": "D-102",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "JS-039",
+  "brief": "The owner preferred OIDC only unless there was a good reason to keep passwords.",
+  "tradeoff": "Households that turn passwords off: no typing a password into an app; new devices sign in by Quick Connect, and an app without it cannot sign in.",
+  "decision": "change",
+  "entry": "Password sign-in stays. With no provider it is on. Once a provider is declared it is off for everyone but the configured adminUser (break-glass), unless passwordSignIn is true. Issued tokens survive the switch. The refusal is D-020's 403, logged with its reason. JS-039 gains these criteria; JS-033, JS-060, JS-180, JS-179 and the order are unchanged. OIDC only would make a provider a required service against goal 5, leave no way to make the first admin, and no first sign-in without a shipped web client.",
+  "serves": "PRODUCT.md goals 3 and 5; 'Signing in is easy and safe'."
+}

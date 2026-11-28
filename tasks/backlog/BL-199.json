@@ -1,0 +1,9 @@
+{
+  "id": "BL-199",
+  "source": "JS-030",
+  "reviewer": "",
+  "severity": "minor",
+  "title": "A subtitle claim sent between two of a worker's sessions binds to no session",
+  "status": "open",
+  "notes": "Product owner asks (evidence): What does a viewer notice: is the subtitle late by a lease, or lost?"
+}

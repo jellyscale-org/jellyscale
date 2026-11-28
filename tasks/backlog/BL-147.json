@@ -1,0 +1,9 @@
+{
+  "id": "BL-147",
+  "source": "JS-114 verify",
+  "reviewer": "qa",
+  "severity": "minor",
+  "title": "timing-bounds.txt loses the failover.mjs entry rather than moving it",
+  "status": "closed",
+  "notes": "Base test/timing-bounds.txt had one entry for test/e2e/failover.mjs (the ws.on('close') Date.now() line, reason: records when the socket closed, nothing compared). Head removes it and the line now reads socket.closedAt = clock() in test/e2e/player.mjs with no entry. The file gains no entry, so the criterion holds, but the entry is dropped rather than moved with its line. The lost note is not a bound. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

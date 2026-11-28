@@ -1,0 +1,10 @@
+{
+  "id": "D-010",
+  "date": "2026-10-30",
+  "task": "scope",
+  "tradeoff": "Video only (music and photos are out); one library on one cluster, not multi-tenant; routes Jellyfin marks obsolete are not built, except thin aliases jellyfin-web still calls; SyncPlay deferred; Kodi not a target",
+  "decision": "accept",
+  "by": "owner",
+  "serves": "PRODUCT.md: scope and non-goals",
+  "brief": "recorded from the owner's words at the time (backfilled 2026-11-19)"
+}

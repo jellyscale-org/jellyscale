@@ -1,0 +1,14 @@
+{
+  "id": "JS-219",
+  "phase": "S4",
+  "title": "Spike: a one-playback link survives a long pause on Media3.",
+  "description": "Serves Goal 1: \"Playback never surprises a viewer.\"; \"Seeking and resuming just work.\". No dependencies. Takes JS-182's first criterion. The result goes to the product owner before JS-217's Spec.",
+  "acceptanceCriteria": [
+    "On Media3 on an emulator, a link with its secret in the path and relative URLs inside its playlists, carrying no header or query credential, plays, survives a 30-minute pause and then a seek; recorded in docs/ with the player, version and command; the result goes to the product owner before JS-217's Spec.",
+    "What Media3 reports to the app when a link is refused because its playback ended, so that an app can start again with nothing shown to the viewer."
+  ],
+  "status": "todo",
+  "dependsOn": [],
+  "source": "po-check.md §B and §F; D-20261127-domains-tasks",
+  "notes": "Phase S4 chosen (spike sibling JS-182, S4); ux flag left unset. Backlog BL-317 promoted when Octave's iOS build starts covers AVPlayer."
+}

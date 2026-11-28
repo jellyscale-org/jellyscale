@@ -1,0 +1,11 @@
+{
+  "id": "JS-018",
+  "phase": "OPS",
+  "title": "README split into an overview and docs/ topic pages (PR #34)",
+  "description": "Built and tested; see the source.",
+  "acceptanceCriteria": [],
+  "status": "done",
+  "dependsOn": [],
+  "source": "README.md",
+  "notes": ""
+}

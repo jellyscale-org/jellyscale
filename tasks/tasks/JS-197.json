@@ -1,0 +1,20 @@
+{
+  "id": "JS-197",
+  "phase": "S4",
+  "title": "The server speaks to a running playback",
+  "description": "Serves \"What can't be done is said plainly.\"; \"Failures are invisible.\"; \"The picture follows the connection.\". D-148: server-sent and one-way.",
+  "acceptanceCriteria": [
+    "The server can tell a running playback to step down, that a track is ready, where to resume after a failure, and why something failed.",
+    "Messages are sent by the server only; an app that loses its connection gets every message it missed when it reconnects, and an app returning to the foreground catches up without asking for the playback again.",
+    "Octave's Android TV app, or the native browser check until it exists, acts on each.",
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-185",
+    "JS-194"
+  ],
+  "source": "pivot-plan.md; D-107 to D-128",
+  "notes": "",
+  "ux": true
+}

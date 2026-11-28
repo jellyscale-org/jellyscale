@@ -1,0 +1,9 @@
+{
+  "id": "BL-064",
+  "source": "JS-029 verify",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "Stream-role subtitle, attachment and font reads are not wrapped in Retry",
+  "status": "promoted",
+  "notes": "Items.Source in subtitles.go (lines 72, 246, 336, 457) and transcode.FetchSubtitle, FetchSup and StartFonts use the pool directly. Auth now waits, so a request that starts while Postgres is away waits as intended. A request that passes auth just before the outage, or one started after a brief blip, gets s.fail 500 on the first failed query. This is the same 500 the task forbids for the stream role Promoted to JS-146."
+}

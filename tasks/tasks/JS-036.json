@@ -1,0 +1,23 @@
+{
+  "id": "JS-036",
+  "phase": "S5",
+  "title": "Each viewer sees only what the operator allows",
+  "description": "Serves \"They see only what they may.\"; \"Access is enforced everywhere.\". One access rule, apart from how the collection is organised (D-124), decides what each account may see. JS-186 introduces the rule; this task gives it its full content. Configuration and invitations (JS-192) set it.",
+  "acceptanceCriteria": [
+    "Configuration sets, for an account, the access marks it may see or all of them, a rating ceiling, and exceptions adding or removing single titles. A title gets a mark from its own metadata file, or from configuration by its name or by a selector over title facts (kind, rating, genre, year, original language). An unmarked title is seen only by accounts that see all. A show's marks reach its seasons and episodes, so a missing mark on a season never hides or shows its episodes by surprise.",
+    "TestAccess gains a restricted viewer: every route that names a title answers as for an unknown one and sends no byte, on api and on stream; every list, search, count, Continue watching, next episode and collection holds no such title (named mutant: the stream role skipping the check).",
+    "Forced: a title is hidden from a viewer mid-film; their next segment and byte range, through another replica, are refused (the outage exception is DOMAINS 37's).",
+    "An administrator sees everything; a hidden title's watch state stays stored and is not shown.",
+    "A collection or way in never counts or reveals a hidden member, and no way of organising titles grants anything (D-124).",
+    "Every capability it adds is in the published contract (JS-183) and passes its conformance check.",
+    "No configuration, metadata file or rule can name a place films are kept or a directory: configuration with an unknown key is refused at start, and moving a film to another folder or store changes no answer of TestAccess."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-186",
+    "JS-194"
+  ],
+  "source": "PRODUCT.md identity",
+  "notes": "Moved to directly after JS-033 (owner, 2026-11-16).",
+  "ux": true
+}

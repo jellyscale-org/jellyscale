@@ -1,0 +1,14 @@
+{
+  "id": "JS-028",
+  "phase": "P3",
+  "title": "Extract all subtitle tracks of a film in one pass",
+  "description": "One worker read of the file extracts every text track, instead of one job per track.",
+  "acceptanceCriteria": [
+    "One ffmpeg run per film for all text tracks",
+    "S3 reads drop accordingly"
+  ],
+  "status": "done",
+  "dependsOn": [],
+  "source": "work queue (later)",
+  "notes": "One subtitle_jobs row and one ffmpeg run per film write every text track inside it; a later pick of another track is served from the store. ffmpeg names the streams it fails on, so any number of undecodable tracks costs two reads, each with the whole limit; streams the file lacks are dropped at setup. A mark names the file version it was read from. Known limit: a track ffmpeg hangs on until the limit keeps the other tracks unstored. Three attempts."
+}

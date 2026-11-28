@@ -1,0 +1,11 @@
+{
+  "id": "JS-005",
+  "phase": "P2",
+  "title": "Sessions, playback reporting, resume, played state, favourites, Continue Watching",
+  "description": "Built and tested; see the source.",
+  "acceptanceCriteria": [],
+  "status": "done",
+  "dependsOn": [],
+  "source": "PRODUCT.md Built",
+  "notes": ""
+}

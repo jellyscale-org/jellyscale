@@ -1,0 +1,9 @@
+{
+  "id": "BL-021",
+  "source": "JS-025",
+  "reviewer": "ux",
+  "severity": "minor",
+  "title": "4K HDR TrueHD criterion has no check (lead measured 73x on 4 CPUs)",
+  "status": "open",
+  "notes": " Closes when JS-152 lands (its TrueHD row) (D-038)."
+}

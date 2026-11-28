@@ -1,0 +1,9 @@
+{
+  "id": "BL-022",
+  "source": "JS-025",
+  "reviewer": "ux",
+  "severity": "minor",
+  "title": "Capture note cites a TrueHD observation its JSON lacks",
+  "status": "promoted",
+  "notes": "Promoted to JS-139."
+}

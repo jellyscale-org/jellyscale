@@ -1,0 +1,9 @@
+{
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "JS-140",
+  "title": "An image subtitle copy that a slow store cannot finish within the hour still arrives",
+  "notes": "From JS-140, with D-002's condition carried (D-127). Back after JS-188 decides how image subtitles reach Octave's players, if a copy is still needed.",
+  "id": "BL-296"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "BL-291",
+  "status": "closed",
+  "severity": "minor",
+  "reviewer": "ux",
+  "source": "JS-033",
+  "title": "jellyfin-web's Reset on one's own password spins",
+  "notes": "Refused under D-103; jellyfin-web shows no message. Awaits the product owner. Closed at the replan: jellyfin-web's page goes at the cutover; nothing to fix in jellyscale."
+}

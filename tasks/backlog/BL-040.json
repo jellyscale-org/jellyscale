@@ -1,0 +1,9 @@
+{
+  "id": "BL-040",
+  "source": "state review 2026-11-10",
+  "reviewer": "product",
+  "severity": "minor",
+  "title": "JS-054 is too large for one build: slice detection and one family (Intel VAAPI/QSV on a UHD 630 node, not the HD 530) from placement and failover",
+  "status": "promoted",
+  "notes": " Promote when JS-163 shows hardware decode, tone map and encode hold 1.2x with the burn-in at no more than twice x264's bytes for equal SSIM, and a worker runs on such a node (D-044). Promoted to JS-169 and JS-170 (D-047)."
+}

@@ -1,0 +1,10 @@
+{
+  "id": "D-007",
+  "date": "2026-11-12",
+  "task": "Fluster",
+  "tradeoff": "Fluster ships with jellyscale and adopts features beyond Jellyfin first, under /jellyscale/v1/; its compatibility ranks right after jellyfin-web's",
+  "decision": "accept",
+  "by": "owner",
+  "serves": "PRODUCT.md: ships with Fluster; Beyond Jellyfin",
+  "brief": "recorded from the owner's words at the time (backfilled 2026-11-19)"
+}

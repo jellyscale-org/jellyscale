@@ -1,0 +1,11 @@
+{
+  "id": "D-20261127-js198-land",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "JS-209",
+  "brief": "## E. JS-198\n\n**Option 2, with one condition: it lands now, and both gate gaps go to the backlog (BL-315, BL-316).**\n\nThe gate protects Octave's test server. The merge queue, which runs before any image is published, is meant to catch both faults. **Condition before landing:** the lead names the queued test that fails if S3 subtitle files beside a film are refused, and the one that fails if a burnt-in image subtitle draws nothing (invariants 50 and 51 name roles and e2e checks on both stores; unverified here). Either one without such a test is fixed in JS-198's gate before it lands. JS-194's ledger keeps both outcomes across the cutover.\n\nThe two backlog items are promoted when a published image ships either fault.",
+  "tradeoff": "Given up: the image gate's own check of those two outcomes.",
+  "serves": "Goal 3, \"Octave always has something to build against\".",
+  "decision": "accept",
+  "entry": "JS-198 lands with two gate gaps in the backlog (BL-315, BL-316), provided the merge queue has a test that fails on each fault, or the gap is fixed first. Given up: the image gate's own check of those two outcomes."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "BL-224",
+  "title": "PlaybackInfo may ignore EnableDirectPlay, EnableDirectStream, AllowVideoStreamCopy and AllowAudioStreamCopy",
+  "notes": "Issue #224; unverified at runtime. Evidence: (1) JS-075's records of each client's PlaybackInfo request: does any played app send one of these as false, and what did its viewer see; (2) the lead observes jellyfin-web 12.4 on a film the browser accepts but cannot play: what its second PlaybackInfo carries and what Jellyfin answers. If a supported client sends them and its viewer is left with a film that does not play, plan a task ahead of JS-054 (goal 1), with a brief on the CPU a client can then demand. If none sends them, close. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3).",
+  "status": "closed",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "issue triage 2026-11-20"
+}

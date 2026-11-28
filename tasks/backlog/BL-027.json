@@ -1,0 +1,9 @@
+{
+  "id": "BL-027",
+  "source": "JS-026",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "Copied audio list taken from the h264 HLS profile for HEVC/AV1 copies",
+  "status": "closed",
+  "notes": "Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
+}

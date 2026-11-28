@@ -1,0 +1,11 @@
+{
+  "id": "D-059",
+  "date": "2026-11-22",
+  "by": "product-owner",
+  "task": "JS-168, JS-171, JS-172, JS-173",
+  "brief": "Minors left by JS-168, JS-171, JS-172 and JS-173: the cluster-wide viewer-first gate; insert and claim judging room by different ledgers; a lease-keeper check failing 1 of 3 locally; five record and test notes on JS-172; the lead's replacement of JS-172's flat forced race check by a set-up excess; JS-171's CI timings. (brief-triage-0522.md)",
+  "tradeoff": "Given up: a forcing check for the race between writers on the sign-in name ceiling (kept as BL-251). No viewer or operator loses anything.",
+  "decision": "accept",
+  "serves": "PRODUCT.md quality bar: 'Failure modes are designed, tested and reported'; goal 1 through JS-161's existing criteria.",
+  "entry": "Both JS-168 minors are already criteria of JS-161 (D-050) and are dropped as covered. The lease-keeper check and the flood tests' time go to JS-175 (criteria 6 and 5). JS-172's replaced check is accepted as built: it fails on a build that exceeds the ceiling, and the lost race-forcing check is BL-251, promoted on any row count over the bound or the next change to the cap. BL-250 keeps test/integration.sh ignoring a package path. docs/testing.md is corrected in the plan PR: series 1 ran on 4 CPUs with 18 of 20 runs complete, the 116 rows are the same run's first total and not a separate sighting, and JS-171's timings are added. The docs word-presence finding is dropped under BL-020. BL-175 is taken by JS-175."
+}

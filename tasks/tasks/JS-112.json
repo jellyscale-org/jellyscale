@@ -1,0 +1,15 @@
+{
+  "id": "JS-112",
+  "phase": "OPS",
+  "title": "One runner for ffmpeg and ffprobe",
+  "description": "Media tools are run from eleven places in three packages, with different policies on output and on stopping.",
+  "acceptanceCriteria": [
+    "exec.Command appears in product code only in internal/mediatool",
+    "A worker killed with SIGKILL during a scan's probe and during a chapter-picture job leaves no ffmpeg or ffprobe process after one second",
+    "The 'any output is a failure' and 'warnings allowed' policies are named options, each with a unit test"
+  ],
+  "status": "done",
+  "dependsOn": [],
+  "source": "Fable 5.2 blind audit, 2026-11-14 (.results/audit-2026-11-14.md)",
+  "notes": ""
+}

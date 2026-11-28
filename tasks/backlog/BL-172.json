@@ -1,0 +1,9 @@
+{
+  "id": "BL-172",
+  "source": "JS-088 fix",
+  "reviewer": "lead",
+  "severity": "minor",
+  "title": "The HEVC fallback's x265 price is measured on synthetic testsrc2 only",
+  "status": "promoted",
+  "notes": "3.2 cores from 1080p, 4.0 from 4K; measure on a real film. Promoted to JS-148 (D-021)."
+}

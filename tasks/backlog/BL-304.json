@@ -1,0 +1,9 @@
+{
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "pivot-plan.md",
+  "title": "Audio modes (night, dialogue)",
+  "notes": "From the streaming report (rank 11); no evidence of demand.",
+  "id": "BL-304"
+}

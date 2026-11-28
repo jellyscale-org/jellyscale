@@ -1,0 +1,9 @@
+{
+  "id": "BL-032",
+  "source": "JS-028",
+  "reviewer": "architecture",
+  "severity": "minor",
+  "title": "Each text track the file lacks costs an ffmpeg start, which on S3 is an open and a header read",
+  "status": "open",
+  "notes": ""
+}

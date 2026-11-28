@@ -307,7 +307,11 @@ func TestShutdownDuringStartupIsNotAFailure(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 	close(release)
 	<-done
-	if state := mustScalar(t, r, "SELECT state FROM transcode_jobs"); state != "cancelled" {
+	// The still-waiting fetch may have queued a replacement by now. The job
+	// that was starting is the first one; that is the one shutdown must have
+	// cancelled, not failed. An unqualified read can return either row.
+	starting := mustScalar(t, r, "SELECT id::text FROM transcode_jobs ORDER BY id LIMIT 1")
+	if state := mustScalar(t, r, "SELECT state FROM transcode_jobs WHERE id = "+starting); state != "cancelled" {
 		t.Fatalf("a job cut short while starting is %s", state)
 	}
 }

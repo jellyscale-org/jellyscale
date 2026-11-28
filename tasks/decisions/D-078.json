@@ -1,0 +1,11 @@
+{
+  "id": "D-078",
+  "date": "2026-11-26",
+  "by": "product-owner",
+  "task": "JS-037",
+  "brief": "Quick Connect: a signed-in account can try 6-digit codes against approvals. Options: (A) bound failed approvals per approving account; (B) per account, and per address when trustedProxies is declared; (C) per address only; (D) no bound. Candidate limits: 10 failures in 15 minutes, 15 minutes refused, 403 with Retry-After. Polling is never refused.",
+  "tradeoff": "How approval guessing is bounded, and who an honest viewer can be locked out by. A per-address bound lets one device behind a household's NAT stop every account there approving for 15 minutes, and it exists only where proxies are declared. A per-account bound shares nothing across accounts.",
+  "decision": "accept",
+  "entry": "Option A: failed approvals are bounded per approving account only. 10 failures in any 15 minutes, then approvals by that account are refused for 15 minutes with 403 and Retry-After, the numbers of D-020's known-device bound, which are right here. The guesser is signed in, so the account is the identity; an address adds only collateral lockout. A refusal checks no code, counts toward nothing and does not lengthen itself. It touches nothing else of the account: its tokens, playback and password sign-in go on. Connect polling and redemption are never refused. The bound holds across replicas and restarts. Each refusal is logged with the account's name and counted in a metric, so the operator sees who is guessing. docs/access.md states the 960 guesses a day per account and what a hit gives. Given up: accounts share no bound, so several colluding accounts multiply the guesses. Rejected: B and C (a household locked out by one device, and Quick Connect is D-020's way around a password lockout); D (codes guessable without limit).",
+  "serves": "PRODUCT.md: 'Signing in is easy and safe. A password, a code entered on the TV from a phone'; 'Nothing is hidden… every failure is reported with its reason, never silent'; 'Installing is boring'."
+}

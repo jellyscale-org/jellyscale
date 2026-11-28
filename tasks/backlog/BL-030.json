@@ -1,0 +1,9 @@
+{
+  "id": "BL-030",
+  "source": "JS-028",
+  "reviewer": "ux",
+  "severity": "minor",
+  "title": "The first pick of a track the pass could not extract answers 'its result is missing'",
+  "status": "open",
+  "notes": ""
+}

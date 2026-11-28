@@ -1,0 +1,20 @@
+{
+  "id": "JS-154",
+  "phase": "P3",
+  "title": "Measure why a 4K HDR film with a burned-in subtitle ran at 0.6 times real time on the dogfood, and price what keeps it playing",
+  "description": "On the dogfood (2026-11-20) three plays of 4K HDR10+/Dolby Vision films with a PGS subtitle were re-encoded to 1080p SDR, tone mapped with the subtitle burned in, at 0.56 to 0.63 times real time; the viewer got no film. docs/transcoding.md prices that job at 3.2 cores and docs/status.md says a re-encode under 1.2 times real time gets helpers on other workers, burned subtitles included; neither kept it playing. Read from the dogfood by the lead: one worker only (a single pod with every role), a 4-core i5-6500 (Skylake, iGPU HD 530), pod CPU limit 4, /dev/dri not mounted, no helper job ran. PRODUCT.md goal 1, and: a heavy film uses the whole cluster's processors rather than stalling on one machine. This task measures and briefs; the product owner's decision on the brief names the task that closes it.",
+  "acceptanceCriteria": [
+    "Recorded from the dogfood for those three jobs, ids and counts only: how many workers ran and the cores each declared, the CPU model, the job's priced cost against the CPU it used, whether helpers were wanted, started or refused and why, and the speed with them. The record says why sharing across the cluster did not bring the film to real time",
+    "Measured through a worker's own command from a real 4K HDR film with a PGS track, on 2, 4 and 8 CPUs and on the dogfood worker's own CPU count, on ffmpeg 6.1 and ffmpeg 9: today's path (2160 HDR to 1080 SDR H.264, tone mapped, subtitle burned in), with CPU seconds per second of film, the speed alone and with helpers on two other workers, and where the cost goes (decoding, tone mapping, the burn-in, the encode)",
+    "The same film measured, for the measurement only, with what might make it cheaper: a faster preset, an output of 720 lines, and the dogfood's Intel iGPU decoding and encoding (its generation recorded), each with its speed and what the viewer would lose in picture",
+    "If the measured cost is above the priced 3.2 cores, the brief says what raising the price does on the dogfood: which plays are then refused within seconds with a reason instead of stalling, and how many viewers a worker holds",
+    "The figures go to the product owner as a brief with every option priced, keeping 'the film plays in real time on the dogfood' among them: making helpers lift it, a first hardware slice (BL-040), a cheaper output for a burn-in, and refusing with a reason. Whether BL-100's burn-in stall is this one is said. A change to the owner's homelab (another worker, the iGPU device in the pod) is brought to the owner before it is made",
+    "Any figure this task adds for operators is served on the existing /metrics endpoint",
+    "Recorded in docs/transcoding.md with machine and command; no film title or path anywhere",
+    "No viewer-visible change"
+  ],
+  "status": "done",
+  "dependsOn": [],
+  "source": "dogfood report, owner, 2026-11-20 (finding 2); D-038; D-021",
+  "notes": "Jobs 82, 83 and 85. The product owner's position before the figures: refusing with a reason is a floor, not the closer; an output below 1080 lines is a loss that needs the brief; sharing the encode across the cluster and hardware are weighed first."
+}

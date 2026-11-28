@@ -1,0 +1,11 @@
+{
+  "id": "D-101",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "backlog",
+  "brief": "JS-037's last two minors and open backlog due.",
+  "tradeoff": "An unread-body hang-up gets no named warning.",
+  "decision": "change",
+  "entry": "BL-284 dropped. BL-285 kept until JS-079 or an operator report. BL-222 narrowed to trickplay now that JS-037 is done.",
+  "serves": "Nothing outruns the product."
+}

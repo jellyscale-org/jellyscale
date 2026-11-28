@@ -1,0 +1,9 @@
+{
+  "id": "BL-174",
+  "source": "flakes",
+  "reviewer": "lead",
+  "severity": "minor",
+  "title": "The differential tier's Kotlin decode fetches the SDK from Maven Central each run; a 429 fails the tier",
+  "status": "closed",
+  "notes": "Cache or pin the SDK when it next fails a queue run Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
+}

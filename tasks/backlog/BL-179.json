@@ -1,0 +1,9 @@
+{
+  "id": "BL-179",
+  "source": "JS-089",
+  "reviewer": "qa",
+  "severity": "minor",
+  "title": "Core race run hit its 45 min timeout in an existing sweep test; passes alone and in the rest of the set",
+  "status": "closed",
+  "notes": "merged into BL-268."
+}

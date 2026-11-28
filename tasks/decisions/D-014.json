@@ -1,0 +1,10 @@
+{
+  "id": "D-014",
+  "date": "2026-11-16",
+  "task": "access model",
+  "tradeoff": "A viewer sees no other viewer's name, where Jellyfin lets any signed-in user list every account",
+  "decision": "accept",
+  "by": "owner",
+  "serves": "docs/access.md: compatibility never means copying Jellyfin's openings",
+  "brief": "docs/access.md (backfilled 2026-11-19)"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "BL-226",
+  "title": "Hard-of-hearing and audio-description tracks: flags on a film's own tracks, and whether a film can start in audio description",
+  "notes": "Issue #114. External files already carry IsHearingImpaired (DOMAINS). Evidence, by the lead: (1) whether compat/differences.yaml lists IsHearingImpaired on a film's own subtitle tracks under JS-068; if so it is already planned there; (2) how many dogfood films carry an audio track marked for the visually impaired, and whether JS-121's rule makes any of them the default for a viewer's language. If one does, plan a task after JS-041 (goal 1: playback never surprises). If none, labelling waits for a supported app that shows it. Generated audio description is dropped as research-grade (D-036). A generated subtitle would lack sound cues, so it is not a hard-of-hearing track and must not be flagged as one (BL-232). Closed at the pivot: Covered by JS-203: audio description and SDH as filters and badges.",
+  "status": "closed",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "issue triage 2026-11-20"
+}

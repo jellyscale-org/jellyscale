@@ -1,0 +1,9 @@
+{
+  "id": "BL-073",
+  "source": "JS-070 verify",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "e2e recorder silently drops a response whose body cannot be read",
+  "status": "wontfix",
+  "notes": "test/e2e/conform.mjs wraps `await response.text()` in try/catch and returns on any error. When a gate closes a context or the browser right after an action (play.mjs:135 `first.context.close()`, `browser.close()` at the end), responses still in flight are never recorded and never checked. A violation in such a response passes. The 'checked N responses' count cannot show the loss. Closed by the product owner: duplicate of BL-070."
+}

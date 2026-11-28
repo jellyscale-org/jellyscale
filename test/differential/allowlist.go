@@ -18,7 +18,7 @@ type Entry struct {
 	Route    string   `yaml:"-"` // not read: an entry has no route, only requests
 	Path     string   `yaml:"path"`
 	Kind     string   `yaml:"kind"` // improvement, non-goal or gap
-	Task     string   `yaml:"task"` // a gap names the task in tasks/prd.json that closes it
+	Task     string   `yaml:"task"` // a gap names the task in tasks/tasks that closes it
 	Reason   string   `yaml:"reason"`
 	// Jellyscale pins a "(ids)" path to the Ids jellyscale answers today: a
 	// different list, a dropped, extra or reordered item, is a new difference.

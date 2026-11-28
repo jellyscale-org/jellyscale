@@ -1,0 +1,18 @@
+{
+  "id": "JS-190",
+  "phase": "S3",
+  "title": "Octave's Android TV app is the server's e2e gate",
+  "description": "Serves Goal 3: \"Octave's features have the server they need.\"; Goal 1: \"Playback never surprises a viewer.\". D-134.",
+  "acceptanceCriteria": [
+    "Octave's Android TV test build, on an emulator against the change's server, is the e2e gate: sign-in, Films and Shows, play, seek, resume, a track switch, a refusal's reason, and a killed worker.",
+    "The server pins that build by digest, and a separate change moves the pin, so an app regression blocks only the pin's move, never a server change.",
+    "It runs on every merge and is never skipped.",
+    "The dogfood moves from `jellyfin-final` to main once Octave's Android TV app browses and plays there (D-116 as amended by D-134)."
+  ],
+  "status": "todo",
+  "dependsOn": [
+    "JS-194"
+  ],
+  "source": "pivot-plan.md; D-107 to D-128",
+  "notes": "Cross-project need (D-132): starts when Octave publishes an Android TV test build per commit (ASK-4). Until then the native browser check and the Media3 harness are the gate."
+}

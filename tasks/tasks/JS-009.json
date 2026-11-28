@@ -1,0 +1,11 @@
+{
+  "id": "JS-009",
+  "phase": "P3",
+  "title": "HEVC and AV1 direct play and copy to clients that list them",
+  "description": "Built and tested; see the source.",
+  "acceptanceCriteria": [],
+  "status": "done",
+  "dependsOn": [],
+  "source": "PRODUCT.md phase3",
+  "notes": ""
+}

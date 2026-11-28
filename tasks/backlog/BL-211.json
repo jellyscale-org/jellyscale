@@ -1,0 +1,9 @@
+{
+  "id": "BL-211",
+  "source": "JS-145 / D-020",
+  "reviewer": "product-owner",
+  "severity": "minor",
+  "title": "An operator-chosen permanent lock, as Jellyfin's LoginAttemptsBeforeLockout",
+  "status": "open",
+  "notes": "Promote only if an operator asks, after JS-033."
+}

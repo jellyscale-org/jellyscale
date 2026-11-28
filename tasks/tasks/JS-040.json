@@ -1,0 +1,16 @@
+{
+  "id": "JS-040",
+  "phase": "ID",
+  "title": "Signed URLs inside playlists",
+  "description": "Playlists stop carrying the viewer's token as ApiKey (DOMAINS 17).",
+  "acceptanceCriteria": [
+    "No viewer token in any playlist or segment URL",
+    "Kodi's TranscodingUrl editing still works",
+    "Whatever replaces the token in a URL never ends a film: a film longer than the replacement's lifetime, a pause longer than it, a seek, a move to another stream replica and a Postgres outage served from the snapshot each go on playing with no action by the viewer, in jellyfin-web (e2e) and with a client that sends its token in a header",
+    "Before building: a trade-off brief to the product owner on whether TranscodingUrl and the subtitle and attachment DeliveryUrls lose the account token too (#222), against DOMAINS 17 ('TranscodingUrl stays Jellyfin-shaped and unsigned'), the Kodi criterion above and D-005 (a PlaybackInfo-based grant was set aside); until it is answered this task covers the URLs inside playlists only. A replacement is never logged and is redacted wherever tokens are, and a media request with neither still answers 401 (D-026)"
+  ],
+  "status": "dropped",
+  "dependsOn": [],
+  "source": "PRODUCT.md identity",
+  "notes": "JS-128: header requests already carry none in master.m3u8 and main.m3u8; the criteria stand for query requests, TranscodingUrl and the subtitle playlist. Issue #222 asks for every media URL; not accepted without the brief (D-032). Dropped (D-126 and the pivot, D-107): Merged into JS-185: the media link opens one playback and carries no account credential."
+}

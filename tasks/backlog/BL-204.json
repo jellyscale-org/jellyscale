@@ -1,0 +1,9 @@
+{
+  "id": "BL-204",
+  "source": "JS-134",
+  "reviewer": "ux",
+  "severity": "minor",
+  "title": "Docs say an HDR fallback keeps the copy's range, but ffmpeg 6.1 writes tv for a full-range copy unless the encoder flag is given",
+  "status": "open",
+  "notes": "Product owner asks (evidence): Does the shipped fallback give the range flag on ffmpeg 6.1? If not it is a defect; docs/transcoding.md still claims the range is kept"
+}

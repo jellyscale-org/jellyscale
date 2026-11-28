@@ -1,0 +1,9 @@
+{
+  "id": "BL-168",
+  "source": "JS-088 verify",
+  "reviewer": "adversarial",
+  "severity": "minor",
+  "title": "While Postgres is away, a stream that fell back gets bare copy segments under the re-encode's init",
+  "status": "promoted",
+  "notes": "hlsRequestFor skips dropped() on the snapshot path, and hlsSegment's snapshot branch sends no init in front. Promoted to JS-146."
+}

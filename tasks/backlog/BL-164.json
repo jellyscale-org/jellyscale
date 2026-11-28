@@ -1,0 +1,9 @@
+{
+  "id": "BL-164",
+  "source": "JS-131 verify",
+  "reviewer": "architecture",
+  "severity": "minor",
+  "title": "test/mutants.sh's table is undocumented and scripts_test.sh scrapes mutant.py's usage line",
+  "status": "wontfix",
+  "notes": "subject removed by the behaviour-only cleanup (D-069)"
+}

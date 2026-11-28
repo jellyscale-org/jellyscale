@@ -1,0 +1,9 @@
+{
+  "id": "BL-279",
+  "status": "closed",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "D-082",
+  "title": "A TV client that authorizes every media request can use an OIDC device-authorization grant and a QR code",
+  "notes": "Rejected for JS-039 because no supported client calls it: unmodified Jellyfin TV apps draw Quick Connect's code, and Jellyfin's own grant no jellyscale work makes Octave use. Promote when a client that authorizes every media request draws a QR or ships the device-authorization grant; it then returns as a brief. D-083: the grant is rejected as a protocol; the QR outcome is BL-229."
+}

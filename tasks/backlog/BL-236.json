@@ -1,0 +1,9 @@
+{
+  "id": "BL-236",
+  "title": "Where no transcode can run, the details item names the browser's track for every client, though a client that switches tracks itself could play the saved language",
+  "notes": "D-029, D-034 (JS-147): in the lasting states (no transcodeStore, no probed duration, no live worker that runs transcodes, differing stores) the item names and lists the track a browser will hear; PlaybackInfo for a self-switching client still names and plays the saved-language track. Promote to a task ahead of other open work if JS-075 records a supported client starting from the item's track; drop if none does. The design-around to assess then is an item answer that depends on the client. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3).",
+  "status": "closed",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "JS-147 Verify 2026-11-20"
+}

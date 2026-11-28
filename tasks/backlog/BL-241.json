@@ -1,0 +1,9 @@
+{
+  "id": "BL-241",
+  "title": "An e2e POST failed to fetch right after a Postgres restart",
+  "notes": "JS-155 sighting (subtitles gate, 'a viewer who hides the tracks outside their languages...', #239), cause unknown. Promote when it fails again with the requestfailed text JS-160 prints. If that text or the router shows jellyscale dropped or refused the connection, it joins JS-146. D-043.",
+  "source": "JS-155 record",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "product-owner"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "BL-202",
+  "source": "JS-133",
+  "reviewer": "qa",
+  "severity": "minor",
+  "title": "Shutdown stop reason in the log changed text",
+  "status": "open",
+  "notes": "Product owner asks (evidence): What does the shutdown log line say now, and does docs/running.md quote the old text?"
+}

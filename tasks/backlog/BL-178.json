@@ -1,0 +1,9 @@
+{
+  "id": "BL-178",
+  "source": "JS-089",
+  "reviewer": "lead (from the Fable adjudication)",
+  "severity": "minor",
+  "title": "The image-store test kit's fresh() truncates transcode_nodes under live workers, so a worker kept across it is taken for dead and its job rerun (cause of two JS-089 check bugs); give fresh a variant that keeps live workers, or stop every worker before it",
+  "status": "closed",
+  "notes": "Same family as JS-158 (D-042): closed by JS-158 if its fix covers fresh(); otherwise fix when the image-store kit is next touched (JS-140). Closed by D-063: covered by JS-158's fix of the kits' fresh()."
+}

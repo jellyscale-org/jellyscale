@@ -1,0 +1,9 @@
+{
+  "id": "BL-314",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "JS-175",
+  "title": "Two unknown assertions in counted runs",
+  "notes": "The two unknown assertions go to BL-314, promoted on a second sighting, which now prints its values. (po-check.md §D; JS-175; D-20261127-js175-count.)"
+}

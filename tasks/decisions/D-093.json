@@ -1,0 +1,11 @@
+{
+  "id": "D-093",
+  "date": "2026-11-26",
+  "by": "product-owner",
+  "task": "JS-033, JS-036",
+  "brief": "JS-033's open questions after Refine and the Jellyfin 12.4 capture.",
+  "tradeoff": "Until JS-036 the operator sees a generic error and spinner on New User unless 'all libraries' is ticked; the user exists, sees every library, and the log says why.",
+  "decision": "change",
+  "entry": "Unenforced Policy changes stay 400 and are logged; null equals [] and channel fields are accepted; New User without 'all libraries' errors in jellyfin-web until JS-036, which gains the criterion.",
+  "serves": "PRODUCT.md: 'only the libraries they are allowed to see'; 'Nothing is hidden'."
+}

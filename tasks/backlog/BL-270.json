@@ -1,0 +1,9 @@
+{
+  "id": "BL-270",
+  "status": "open",
+  "severity": "minor",
+  "reviewer": "product-owner",
+  "source": "D-069; test and CI strategy review",
+  "title": "Each e2e shard spends about 165 s before its first scenario; four film recipes are outside the fixture cache",
+  "notes": "Split between ffmpeg and Go compile unmeasured. Promote on: existing queue-log timestamps showing film-making is at least 2 minutes of it and e2e is the queue's longest job; close if compile dominates."
+}
