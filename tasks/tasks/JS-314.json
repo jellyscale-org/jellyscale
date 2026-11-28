@@ -1,0 +1,24 @@
+{
+  "id": "JS-314",
+  "title": "Every text subtitle, inside the film or in a file beside it, shows as the viewer picks it",
+  "phase": 1,
+  "description": "Serves PRODUCT.md: \"each plays on the device in their hand, with the audio and subtitles they chose\" and \"Changing audio or subtitles ... never costs picture quality.\" The engine's text subtitles and fonts are carried over here, with the audit's subtitle findings addressed (D-20261128-audit-findings).",
+  "acceptanceCriteria": [
+    "Every text subtitle track inside a film, and every subtitle file kept beside it, is offered and shown by the player at the right times, after a seek too.",
+    "A styled subtitle shows in the film's own fonts.",
+    "Picking, changing or turning off a subtitle the player shows never restarts or re-makes the picture; a subtitle is drawn into the picture only for a player that can show none of it.",
+    "A subtitle file in any common text encoding reads correctly; a file whose language isn't named is read by its own content, never assumed to be one language.",
+    "A file that can't be read is said so once and not offered again until it changes; a fault of the store or of a worker is never blamed on the file.",
+    "Making a subtitle never freezes a film playing on the same worker.",
+    "Every tool reads from storage the one way JS-302 gives.",
+    "Proven on Media3 on Android TV and phone emulators and on hls.js in Chromium; the design states what is stored per film."
+  ],
+  "domains": ["Making", "Playback", "Collection"],
+  "ux": true,
+  "core": true,
+  "strong": true,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-312"],
+  "notes": "Audit group 3. A language switch that never restarts the picture for audio is stage 3 (JS-323)."
+}

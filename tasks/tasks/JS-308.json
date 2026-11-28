@@ -1,0 +1,24 @@
+{
+  "id": "JS-308",
+  "title": "A viewer presses Play and a film their device plays is sent as it is",
+  "phase": 1,
+  "description": "Serves PRODUCT.md: \"A film the device can play is sent as it is\", \"What can't be done is said plainly\", \"They can see what they get\" and \"A link to a film can't be used to act as the viewer, and stops working when its playback ends.\" There is no playback in the new server. Octave asked for media links that never carry the account (#222) and for a device to say it can't play a source the rules say it could (#224).",
+  "acceptanceCriteria": [
+    "An app asks to play a version of a title, saying what its device plays, including that it can't play a particular source; the server answers how it plays and why, or refuses with a reason and what the viewer can do.",
+    "A film the device plays is sent as it is.",
+    "Play starts at the viewer's place in the title, or where the app asks.",
+    "The link a player fetches opens this one playback only, carries no account credential, survives a 30 minute pause and a seek, and stops working when the playback ends or its device is signed out, on every replica within seconds.",
+    "An app can always find out that its playback has ended and why, even with a player that doesn't report a refused link.",
+    "Positions the app reports reach the viewer's history; a playback that stops reporting for long enough has ended and never revives, and Play then starts again at the place without an error.",
+    "A film with no sound plays.",
+    "Proven on Media3 on an Android TV and an Android phone emulator, and on hls.js in Chromium, with the time from Play to the first picture measured and stated for each."
+  ],
+  "domains": ["Playback", "Contract", "Place", "People"],
+  "ux": true,
+  "core": true,
+  "strong": true,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-304", "JS-305"],
+  "notes": "Second stop with JS-309 to JS-311. Conversions are JS-312 and JS-313, subtitles JS-314 and JS-315."
+}

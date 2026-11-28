@@ -1,0 +1,10 @@
+{
+  "id": "BL-20261128-trailers",
+  "date": "2026-11-28",
+  "title": "A trailer kept beside a film is offered on its page",
+  "source": "Octave #321",
+  "description": "A viewer would play a film's trailer from its page when one is kept beside it, without touching their place or history. PRODUCT.md doesn't promise trailers; that trailers are never listed as films is planned (JS-303).",
+  "bringBack": "When stage 5 is split into tasks, with evidence of how many films in a collection have a trailer kept beside them.",
+  "status": "open",
+  "notes": ""
+}

@@ -1,0 +1,12 @@
+{
+  "id": "D-20261128-picture-access",
+  "date": "2026-11-28",
+  "by": "owner",
+  "task": "PRODUCT.md, open question 1 (pictures); JS-306, JS-327, JS-330, JS-331",
+  "brief": "Do pictures taken from the films themselves (generated posters, chapter pictures, previews while seeking) need a sign-in? The lead set out three choices for pictures taken from videos: public, temporary links given to signed-in apps, or a sign-in on every request.",
+  "tradeoff": "Posters, backdrops and photos of people are open to anyone who holds their address, signed in or not, including someone who may no longer see that title. A temporary link to a picture taken from a film works for whoever it is shared with until it expires.",
+  "decision": "change",
+  "serves": "PRODUCT.md: \"Access is enforced everywhere. No film, and nothing personal, is reached without a signed-in person who is allowed it.\"",
+  "entry": "The owner: \"Yeah, temporary links work. I don't know exactly what the best pro approach is here. I think for me, like, images, images that are generated from videos or pulled from media, videos should be private. Whereas like posters, cast photos, those kinds of things, I'm fine with being public.\" The lead told the owner that a temporary link works for whoever it is shared with until it expires. The product owner's reading: a picture made from a film or taken out of its file (generated posters, chapter pictures, previews while seeking, pictures embedded in the file) is reached only through a link given to a signed-in person's app, which stops working after a short, stated time. Artwork kept as picture files beside the films or fetched for the operator (posters, backdrops, photos of the people in a film) may be served without a sign-in.",
+  "replaces": ["D-20261127-picture-access-open"]
+}

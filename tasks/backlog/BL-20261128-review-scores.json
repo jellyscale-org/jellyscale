@@ -1,0 +1,10 @@
+{
+  "id": "BL-20261128-review-scores",
+  "date": "2026-11-28",
+  "title": "Review scores kept in files beside a title, shown, sorted and filtered by",
+  "source": "Octave #320",
+  "description": "A viewer would see a title's review scores from the files kept beside it, and could sort or narrow Films and Shows by them. PRODUCT.md promises no scores.",
+  "bringBack": "When stage 5's metadata from files is split into tasks: evidence of how many collections' files carry scores, and whether showing them fits 'What is suggested comes from the titles themselves and from the viewer'.",
+  "status": "open",
+  "notes": ""
+}

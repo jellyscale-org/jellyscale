@@ -1,0 +1,18 @@
+{
+  "id": "JS-321",
+  "title": "A database switchover interrupts nobody's film",
+  "phase": 2,
+  "description": "Serves PRODUCT.md: \"Nothing breaks the viewers' evening. Upgrades, a lost machine and a database failover happen without interrupting anyone.\" The engine answers some requests with an error during a database switchover today.",
+  "acceptanceCriteria": [
+    "A switchover or restart of Postgres during films costs no viewer their stream, their place or a subtitle; at most a moment of buffering, shown on Media3 and in a browser.",
+    "Nothing is refused for a moment the database was away, and nothing is remembered as failed because of it."
+  ],
+  "domains": ["Playback", "Making", "Platform"],
+  "ux": true,
+  "core": true,
+  "strong": true,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-320"],
+  "notes": "Coarse: sharpened when stage 2 is planned in detail."
+}

@@ -1,0 +1,23 @@
+{
+  "id": "JS-305",
+  "title": "A person signs in to Octave's apps with a password and stays signed in until they sign out",
+  "phase": 1,
+  "description": "Serves PRODUCT.md: \"A viewer signs in with a password ... A device stays signed in until the viewer or the operator signs it out.\" and \"Access is enforced everywhere.\" The new server has no accounts and no sign-in.",
+  "acceptanceCriteria": [
+    "An operator gives a person an account without an administration screen, and no password is kept in configuration.",
+    "A person signs in to a native app with their name and password; the device stays signed in until the person or the operator signs it out.",
+    "A failed sign-in says nothing about which accounts exist, and guessing is bounded without locking the real person out.",
+    "Nothing the server stores of a sign-in can be used to sign in.",
+    "A sign-in belongs to one device and travels in a header, never in a link.",
+    "Signing out, an account turned off or removed, and a changed password end that device's sign-in at once on every replica; changing one's own password signs out the person's other devices.",
+    "The operator can turn an account off and sign out all of its devices."
+  ],
+  "domains": ["People", "Contract", "Platform"],
+  "ux": true,
+  "core": true,
+  "strong": true,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-301"],
+  "notes": "Octave Web's sign-in is JS-310 and TV approval JS-311. Invitations, single sign-on, profiles and the device list are stage 4 (JS-326)."
+}

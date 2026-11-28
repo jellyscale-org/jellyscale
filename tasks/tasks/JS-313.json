@@ -1,0 +1,22 @@
+{
+  "id": "JS-313",
+  "title": "A film no device can play as it is is re-encoded, and an HDR film looks right on an ordinary screen",
+  "phase": 1,
+  "description": "Serves PRODUCT.md: \"Only when nothing else works is the picture re-encoded, and an HDR film then looks right on an ordinary screen\", \"No codec, HDR format or subtitle kind is second-class\" and \"Play starts in seconds and keeps up.\" The engine's re-encode, tone mapping and sharing of slow films across workers are carried over here.",
+  "acceptanceCriteria": [
+    "A film whose picture the device can't play is re-encoded to one it plays; HDR10, HDR10+, HLG and Dolby Vision films, profile 5 included, look right on an ordinary screen, observed on a real player.",
+    "A film one worker can't make as fast as it is watched is shared across workers, so it keeps up; a viewer waiting for a worker takes room from that sharing at most once and only as much as it needs, and sharing starts as soon as there is room.",
+    "When the cluster can't make a film as fast as it is watched, the viewer is told why at Play, or before the picture would freeze, never left with a frozen picture.",
+    "Checking whether a piece of a film is already made reads none of it; the object-storage traffic of one film made slower than real time is measured and stated.",
+    "A seek anywhere gives the right picture and sound from its first frame.",
+    "Proven on Media3 on Android TV and phone emulators and on hls.js in Chromium; the design states the CPU and storage one re-encoded playback costs."
+  ],
+  "domains": ["Making", "Playback", "Platform"],
+  "ux": true,
+  "core": true,
+  "strong": true,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-312"],
+  "notes": "Lighter picture steps and following the connection are stage 3 (JS-322); until then a re-encode makes one quality."
+}

@@ -1,0 +1,10 @@
+{
+  "id": "BL-20261128-custom-home-rows",
+  "date": "2026-11-28",
+  "title": "A viewer arranges their own Home rows, the same on every device",
+  "source": "Octave #319",
+  "description": "A viewer would choose and order the rows of their Home, including saved filters, and see the same on every device. PRODUCT.md promises a short Home and saved rules as collections (JS-327), not Home rows a viewer arranges.",
+  "bringBack": "When stage 5 is split into tasks: evidence that viewers change Home (Octave's own measurement or the test installation's), weighed against a short Home that is the same for everyone.",
+  "status": "open",
+  "notes": "Saved filters as collections that keep themselves up to date are planned under JS-327."
+}

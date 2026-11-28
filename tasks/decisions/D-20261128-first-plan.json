@@ -1,0 +1,12 @@
+{
+  "id": "D-20261128-first-plan",
+  "date": "2026-11-28",
+  "by": "product-owner",
+  "task": "tasks/order.txt; JS-300 to JS-331",
+  "brief": "The lead's brief of 2026-11-28 after D-20261128-rewrite-approved: write the new plan, ordered for the earliest point at which Octave can build against a working server again; detail stage 1 and leave later stages coarse; place every audit finding in code that stays (D-20261128-audit-findings).",
+  "tradeoff": "Stages 2 to 7 are not detailed: four coarse tasks stand for stages 4 to 7 and must be split before any is built. Search, Home, filters, chapters and previews wait for stage 5, and synopses, other artwork and people come right after stage 1, so Octave's browsing in stage 1 has titles, years, posters, sorting and letter jumps only.",
+  "decision": "change",
+  "serves": "PRODUCT.md, The road there: \"1. Sign in and watch. Octave's apps sign in, browse Films and Shows, and play any film, with subtitles and audio, one watch history and Continue watching. Android TV and phones first.\" and The API: \"Octave always has something to build against once the new contract is published.\"",
+  "entry": "Stage 1 is JS-300 to JS-319. First stop, at JS-307: Octave runs a working server that publishes the contract, signs a person in by password and lists Films and Shows with each title's versions and tracks. Second stop, at JS-311: films a device plays are sent as they are, one watch history with Continue watching, Octave Web's sign-in and a TV approved from a signed-in device. Stage 1 then brings the engine's conversions and subtitles over (JS-312 to JS-315), languages (JS-316), Octave Web shipped in the image (JS-317), the storage budget (JS-318) and the test installation's accounts and history (JS-319). Storage comes first among the carried-over parts (JS-302), as the audit's order says. Right after stage 1 come titles' information, artwork and people from files beside the films (JS-330) and, when the operator turns it on, from The Movie Database (JS-331), taken from stage 5 because a TV home is mostly titles and artwork (D-20261128-outside-metadata). Stages 2 and 3 have coarse tasks of one capability each (JS-320 to JS-325); stages 4 to 7 one placeholder each (JS-326 to JS-329).",
+  "replaces": []
+}

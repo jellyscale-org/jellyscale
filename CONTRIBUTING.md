@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping. jellyscale is being rebuilt ([docs/status.md](docs/status.md)), so open an issue before starting anything: the plan is not written yet, and code in the tree may be about to go.
+Thanks for helping. jellyscale is being rebuilt ([docs/status.md](docs/status.md)), so open an issue before starting anything: the plan is new ([tasks/](tasks/README.md)), and code in the tree may be about to go.
 
 Read [PRODUCT.md](PRODUCT.md) for what is in scope, [DOMAINS.md](DOMAINS.md) for the rules a change must keep, and [AGENTS.md](AGENTS.md) for the rules of working here; they hold for people as for agents.
 

@@ -1,0 +1,24 @@
+{
+  "id": "JS-327",
+  "title": "Stage 5, a living collection: finding, metadata, chapters, previews and new films",
+  "phase": 5,
+  "description": "Serves PRODUCT.md's road, stage 5: \"Notifications, disc images, filters, search, lists and collections, more like this, artwork and metadata, chapters, previews, intro skipping, new films appearing on their own.\" A placeholder for the stage, to be split into tasks of one capability each before anything in it is built.",
+  "acceptanceCriteria": [
+    "A film added to storage shows up soon after with nothing for the operator to do.",
+    "Search finds a title from its first letters, in its own or another title, and answers fast at one, two and three letters on a collection of stated size; titles that start with what was typed come first, and each result says why it matched; it says plainly when the collection doesn't have it (#116, #228).",
+    "A short Home, and filters by what matters to viewers, among them unwatched, language, genre, 4K and HDR, audio description and subtitles for the deaf or hard of hearing (#107, #114).",
+    "A viewer's own list, and collections (a franchise in watch order, a list someone made, a saved rule) (#319, in part).",
+    "More like a title, from the titles themselves, with the reason shown (#107).",
+    "Chapters, previews while seeking (#105) and intro and credits skipping (#103); a chapter picture, a preview or a poster made from a film reaches an app only through a link given to a signed-in person's app, which stops working after a stated time (D-20261128-picture-access).",
+    "A new episode of a followed show is marked, and a viewer who turns it on gets a notification that says only that something new is waiting.",
+    "Films kept as disc images and disc folders play, after a spike on their formats."
+  ],
+  "domains": ["Finding", "Collection", "Making", "Playback"],
+  "ux": true,
+  "core": true,
+  "strong": false,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-319"],
+  "notes": "Coarse placeholder: never build as it stands. Split it when stage 5 is planned. Metadata and artwork, from files and from The Movie Database, were taken out of this stage's placeholder and ordered right after stage 1 (JS-330, JS-331). Chapter pictures carry the audit's chapter-picture findings when they come."
+}

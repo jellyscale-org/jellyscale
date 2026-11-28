@@ -1,0 +1,22 @@
+{
+  "id": "JS-310",
+  "title": "A viewer signs in to Octave Web without anything a page's scripts can read",
+  "phase": 1,
+  "description": "Serves PRODUCT.md: \"A viewer signs in with a password\" and \"Access is enforced everywhere\", and People rule 6: \"Octave Web's sign-in is a cookie page scripts cannot read.\" Octave Web can't sign in to the new server, and it is where a TV is approved from until Octave's phone app exists (#301, #318).",
+  "acceptanceCriteria": [
+    "A viewer signs in to Octave Web, served by the server, with a password; nothing the page's scripts can read signs anyone in.",
+    "A request from another site, or from another service on the same host name, can't act as the viewer; the protection does not rest on cookie rules alone.",
+    "Octave Web's sign-in is never accepted in a link or in place of a native app's sign-in.",
+    "Signing out ends it; it also ends after a stated idle time and a stated longest time.",
+    "Films, pictures and subtitles play in Chromium and Firefox with this sign-in, directly and behind a proxy that ends HTTPS.",
+    "The operator documentation says what address the server needs to itself and what a proxy must pass."
+  ],
+  "domains": ["People", "Contract"],
+  "ux": true,
+  "core": true,
+  "strong": true,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-305"],
+  "notes": "Octave's design input on #301 is input to the design, not a fixed shape. The list of one's own sign-ins is stage 4 (devices)."
+}

@@ -1,0 +1,24 @@
+{
+  "id": "JS-306",
+  "title": "A signed-in viewer browses Films and Shows and opens any title",
+  "phase": 1,
+  "description": "Serves PRODUCT.md: \"Films and Shows are the ways in, each holding everything the viewer may see\" and \"the whole collection one press away with sorting and filters\". Octave has nothing to list. Octave asked for letter jumps on TV grids (#227), new episodes not crowding out new films (#234), show and season names on episodes (#288) and accessibility marks on tracks (#114).",
+  "acceptanceCriteria": [
+    "A signed-in viewer lists Films and lists Shows, every title they may see, sorted by name, by year or by when it was added; a show sorts by its newest episode, so a show that gets many episodes at once appears once.",
+    "Lists come in pages with a largest page size the contract states.",
+    "In one request an app learns where each first letter starts in the current order, so a TV grid can jump to it; names are compared as people read them, and the design states and tests the rules for leading articles, accents, capitals, titles starting with a digit or a sign, and other scripts.",
+    "A title's details give its versions and, for each, every audio and subtitle track as itself, with its language and marks (default, forced, for the deaf or hard of hearing, audio description, commentary).",
+    "A show's details give its seasons and episodes in order, and every episode carries its show's and season's names.",
+    "A title's poster kept beside its files is served without a sign-in, at an address that reveals nothing else about the collection and changes when the picture does (D-20261128-picture-access).",
+    "One title that can't be read never turns a list into an error.",
+    "Answer times for a list, a letter jump and a title's details are measured on a collection of 10,000 titles and stated."
+  ],
+  "domains": ["Finding", "Collection", "Contract"],
+  "ux": true,
+  "core": false,
+  "strong": false,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-303", "JS-304", "JS-305"],
+  "notes": "Every read goes through the viewer's access (Finding rule 1); in stage 1 every account may see the whole collection, and per-viewer access is stage 4. Posters may be public and pictures taken from films reach apps only through temporary links (D-20261128-picture-access); stage 1 serves only posters kept beside the files. Search, filters and Home are stage 5 (JS-327)."
+}

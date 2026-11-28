@@ -1,0 +1,22 @@
+{
+  "id": "JS-315",
+  "title": "Image subtitles from discs play, drawn by the player or into the picture",
+  "phase": 1,
+  "description": "Serves PRODUCT.md: \"A 4K HDR disc rip with Dolby Vision and image subtitles, an old DVD rip ... each plays ... with the audio and subtitles they chose. No ... subtitle kind is second-class.\" The engine's image subtitles are carried over here, with the audit's findings on them addressed (D-20261128-audit-findings).",
+  "acceptanceCriteria": [
+    "Image subtitle tracks (from Blu-ray, DVD and broadcast) are offered; a player that draws them gets them as they are, and otherwise they are drawn into the picture.",
+    "A seek anywhere, or a worker taking over, shows the subtitle that is on screen at that moment from the first frame.",
+    "A DVD-style subtitle file kept beside a film that holds several languages is still offered after its first use, and each of its languages can be picked or says why it can't.",
+    "A film with a subtitle drawn into its picture resumes cleanly after a pause of any length.",
+    "A track found unreadable is never offered and never costs a re-encode; a damaged stored track is reported as the file's and never interrupts other films on the same worker.",
+    "Proven on Media3 on Android TV and phone emulators and on hls.js in Chromium; the design states what is stored per film."
+  ],
+  "domains": ["Making", "Playback", "Collection"],
+  "ux": true,
+  "core": true,
+  "strong": true,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-313"],
+  "notes": "Audit group 3; the several-languages file comes first within it, as the one finding that hits every affected film. That a drawn subtitle costs a re-encode is stage 3 (JS-323)."
+}

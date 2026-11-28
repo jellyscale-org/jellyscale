@@ -1,0 +1,20 @@
+{
+  "id": "JS-322",
+  "title": "The picture follows the connection, and a viewer can pick a quality",
+  "phase": 3,
+  "description": "Serves PRODUCT.md: \"The picture follows the connection ... A viewer can override it at any time: pick a quality and it stays until they choose automatic again. The versions are the original, always the best, and a few lighter steps below it. 720p is the usual floor; 480p is offered only for a film whose own picture is SD, or when nothing higher keeps it playing. No step is larger than the film itself.\" The engine makes one quality today.",
+  "acceptanceCriteria": [
+    "On a weak or crowded connection the picture steps down to a lighter version and back up when it can, while the film keeps playing, with no setting to find first.",
+    "The versions offered are the original and a few lighter steps, 720p the usual floor, 480p only for an SD film or when nothing higher keeps it playing, none larger than the film.",
+    "A viewer picks a quality and it stays until they choose automatic again; they can see which quality they are watching.",
+    "The design states the storage and CPU the steps cost."
+  ],
+  "domains": ["Playback", "Making"],
+  "ux": true,
+  "core": true,
+  "strong": true,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-313"],
+  "notes": "Coarse: sharpened when stage 3 is planned in detail."
+}

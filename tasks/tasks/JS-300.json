@@ -1,0 +1,20 @@
+{
+  "id": "JS-300",
+  "title": "The merge queue checks the video engine, not the earlier server",
+  "phase": 1,
+  "description": "Serves the rebuild (D-20261128-start-net-new, D-20261128-rewrite-approved: \"the first rebuild task retires the old server's test gates and keeps the video engine's tests\"). Today every change still runs the earlier server's gates, which check behaviour the new server will never have, and they would hold up every task of the new plan.",
+  "acceptanceCriteria": [
+    "Every change to main runs the video engine's tests against real Postgres, both kinds of storage and real media tools, and fails when one of them fails.",
+    "No gate that checks the earlier server's routes, sign-in or web client runs on a change any more.",
+    "The earlier server stays buildable from the tag pre-rebuild, so the test installation keeps running it until JS-319 replaces it.",
+    "docs/status.md says which gates run and that the earlier server's are retired."
+  ],
+  "domains": ["Platform", "Making"],
+  "ux": false,
+  "core": false,
+  "strong": false,
+  "small": true,
+  "status": "todo",
+  "dependsOn": [],
+  "notes": "A removal. Engine tests that depend only on the earlier server's recorded observations are kept running where they prove engine behaviour; any that prove nothing but the earlier server go with it."
+}

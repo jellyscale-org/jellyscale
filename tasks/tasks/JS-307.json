@@ -1,0 +1,20 @@
+{
+  "id": "JS-307",
+  "title": "Octave can run a working jellyscale of any main-line build to build against",
+  "phase": 1,
+  "description": "Serves PRODUCT.md, The API: \"Octave always has something to build against once the new contract is published: a working server for every change to it.\" Octave paused building against the earlier contract; it needs a server it can run itself. This is the first stop: with it, Octave builds sign-in and browsing again.",
+  "acceptanceCriteria": [
+    "From published instructions, an Octave developer starts a server of any main-line build on their own machine in minutes, with a small collection of films and shows and accounts to sign in with, without asking anyone and without anything private.",
+    "The collection holds the kinds of film the server handles so far, and grows as later tasks add kinds (several versions, tracks in several languages, subtitles of each kind, HDR).",
+    "Each contract change on main is served by the build that publishes it.",
+    "Octave gets an issue saying the server is ready to build against again, with what it serves so far."
+  ],
+  "domains": ["Contract", "Platform"],
+  "ux": true,
+  "core": false,
+  "strong": false,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-306"],
+  "notes": "First stop of the plan. The test films are made for the purpose, never taken from anyone's collection."
+}

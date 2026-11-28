@@ -1,0 +1,10 @@
+{
+  "id": "BL-20261128-remote-control",
+  "date": "2026-11-28",
+  "title": "Pausing or seeking a film on one device from another",
+  "source": "Octave #106",
+  "description": "A viewer would pause or seek the film on their TV from their phone. PRODUCT.md promises moving a film to another device (JS-329), not controlling one device from another.",
+  "bringBack": "When stage 7 is split into tasks, if moving a film between devices leaves viewers asking for control from a phone.",
+  "status": "open",
+  "notes": ""
+}

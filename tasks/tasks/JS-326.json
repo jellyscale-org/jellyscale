@@ -1,0 +1,23 @@
+{
+  "id": "JS-326",
+  "title": "Stage 4, People: invitations, single sign-on, profiles, access and limits",
+  "phase": 4,
+  "description": "Serves PRODUCT.md's road, stage 4: \"Invitations, single sign-on, TV sign-in from a phone, profiles, per-viewer access, viewing hours and stream limits, devices and activity.\" TV sign-in is planned in stage 1 (JS-311). A placeholder for the stage, to be split into tasks of one capability each before anything in it is built.",
+  "acceptanceCriteria": [
+    "A friend joins from an invitation that gives them exactly what the operator chose.",
+    "A viewer signs in with the household's own single sign-on; no identity provider's token reaches the app, and Octave Web gets its usual web sign-in from it (#296).",
+    "A shared TV holds the household's profiles, each with its own history, languages and limits, and a profile can ask for a PIN.",
+    "Each viewer sees only what the operator allows, everywhere.",
+    "The operator sets the hours a profile may watch and how many streams an account may play at once; a viewer outside them is told why, and a refusal for streams names the devices playing.",
+    "A viewer sees and signs out each of their devices.",
+    "A viewer can hide tracks in languages they don't use; a film is never left without sound, and one switch brings every track back."
+  ],
+  "domains": ["People", "Playback", "Finding"],
+  "ux": true,
+  "core": true,
+  "strong": true,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-319"],
+  "notes": "Coarse placeholder: never build as it stands. Split it when stage 4 is planned."
+}

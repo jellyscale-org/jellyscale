@@ -1,0 +1,20 @@
+{
+  "id": "JS-316",
+  "title": "A viewer's languages choose how every film starts, and a pick is remembered",
+  "phase": 1,
+  "description": "Serves PRODUCT.md: \"A viewer chooses the language they listen in and the language they read, once, and every film on every device starts that way where it can ... A track they pick for a film is the one it starts with when they come back.\" Octave asked for picks to carry across a show's episodes on every device (#117).",
+  "acceptanceCriteria": [
+    "A viewer sets, once, the language they listen in and the language they read; every film on every device starts with those where it has them, and otherwise with the film's own default.",
+    "A track a viewer picks for a film is the one it starts with when they come back, on any device.",
+    "A pick in a show carries to its next episodes, and to another version of the same title, by what the track is (language, forced, for the deaf or hard of hearing, audio description, commentary), not by its number.",
+    "A film is never left without sound; a pick that can't be delivered is never played as another track and says why."
+  ],
+  "domains": ["People", "Playback"],
+  "ux": true,
+  "core": true,
+  "strong": true,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-314"],
+  "notes": "Hiding tracks in languages a viewer doesn't use is stage 4 (JS-326), with profiles."
+}

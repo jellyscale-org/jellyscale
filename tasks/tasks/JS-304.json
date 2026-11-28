@@ -1,0 +1,23 @@
+{
+  "id": "JS-304",
+  "title": "What each film holds is known: its picture, its sound and every audio and subtitle track",
+  "phase": 1,
+  "description": "Serves PRODUCT.md: \"Any film plays, and plays well ... with the audio and subtitles they chose. No codec, HDR format or subtitle kind is second-class.\" Playback can't decide how a film plays, and a viewer can't pick a track, until what each file holds has been read. The engine's file reading is carried over here, with the audit's findings on reading film files addressed (D-20261128-audit-findings).",
+  "acceptanceCriteria": [
+    "For each version, the server knows its length, its picture (codec, size, HDR kind) and every audio and subtitle track inside it or kept beside it as a file, each with its language and its marks as the file gives them: default, forced, for the deaf or hard of hearing, audio description, commentary.",
+    "It knows what it needs to send the picture as it is where a device plays it, read without reading the whole film.",
+    "Reading any one file takes bounded time and memory; a file that can't be read is reported with its reason and never holds up the others.",
+    "Reading a film's index from object storage costs a bounded number of requests, whatever the file's structure.",
+    "A file is read once per revision: a rescan of an unchanged file reads nothing of it again.",
+    "After a file is replaced, a track identity from the old file is refused with a reason; it never names another track.",
+    "The design states what reading costs per film, on each kind of storage."
+  ],
+  "domains": ["Collection", "Making", "Platform"],
+  "ux": true,
+  "core": true,
+  "strong": false,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-303"],
+  "notes": "Audit group 4, before the collection's reads are relied on. Chapters may be read here if they come for free with the same read; chapter pictures are stage 5."
+}
