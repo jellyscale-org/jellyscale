@@ -197,13 +197,13 @@ func (s *Server) patchConfiguration(w http.ResponseWriter, r *http.Request) {
 	session := sessionOf(r)
 	raw, err := io.ReadAll(io.LimitReader(r.Body, maxConfigurationPatchBody+1))
 	if err != nil || len(raw) > maxConfigurationPatchBody {
-		s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, "body is unreadable or over 65,536 bytes")
+		s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, "body is unreadable or over 65,536 bytes", "body is unreadable or over 65,536 bytes")
 		return
 	}
 	patch, names, err := parseConfigurationPatch(raw)
 	if err != nil {
-		// A parser error can quote a value from the request; the operator's log gets a fixed detail instead.
-		s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, "the body is not valid for user configuration")
+		// The parser's error names the field as sent. It goes to the client's Detail, never to the log.
+		s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, "invalid body", err.Error())
 		return
 	}
 	body, _ := json.Marshal(patch)

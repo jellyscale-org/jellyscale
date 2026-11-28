@@ -89,9 +89,12 @@ type PlaybackInfo struct {
 // Refusal defines model for Refusal.
 type Refusal struct {
 	// Action Words for what the viewer can do. A client that does not know a value keeps the string.
-	Action            string `json:"Action"`
-	Reason            string `json:"Reason"`
-	RetryAfterSeconds *int   `json:"RetryAfterSeconds,omitempty"`
+	Action string `json:"Action"`
+
+	// Detail What went wrong, for the app developer, not shown to the viewer. Its wording may change within a version; a client must not branch on it, and the server never writes it to a log.
+	Detail            *string `json:"Detail,omitempty"`
+	Reason            string  `json:"Reason"`
+	RetryAfterSeconds *int    `json:"RetryAfterSeconds,omitempty"`
 }
 
 // TrackPreferences defines model for TrackPreferences.

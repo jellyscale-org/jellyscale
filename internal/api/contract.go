@@ -81,14 +81,20 @@ func reasonForStatus(status int) Reason {
 	}
 }
 
-// refusal is the one writer of an envelope on jellyscale's API. Its keys are exactly the ones the contract types.
-func refusalEnvelope(w http.ResponseWriter, status int, reason Reason) {
+// refusalEnvelope is the one writer of an envelope on jellyscale's API. Its keys are exactly the ones the contract types.
+// Detail is optional and is for the app developer: it may echo what the viewer sent, so it is never logged.
+func refusalEnvelope(w http.ResponseWriter, status int, reason Reason, detail string) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(struct {
-		Reason Reason `json:"Reason"`
-		Action string `json:"Action"`
-	}{Reason: reason, Action: reasonActions[reason]}) //nolint:errcheck
+	answer := struct {
+		Reason Reason  `json:"Reason"`
+		Action string  `json:"Action"`
+		Detail *string `json:"Detail,omitempty"`
+	}{Reason: reason, Action: reasonActions[reason]}
+	if detail != "" {
+		answer.Detail = &detail
+	}
+	json.NewEncoder(w).Encode(answer) //nolint:errcheck
 }
 
 // patternOperation reads the method and path template the mux matched, which is the operation that answered.
@@ -135,27 +141,27 @@ func (s *Server) undeclared(w http.ResponseWriter, r *http.Request, status int, 
 		method, path = r.Method, r.URL.Path
 	}
 	s.Log.Error(undeclaredAnswerLog, "method", method, "path", path, "status", status, "reason", reason)
-	refusalEnvelope(w, http.StatusInternalServerError, reasonServerFailure)
+	refusalEnvelope(w, http.StatusInternalServerError, reasonServerFailure, "")
 }
 
-// logRefusal writes the operator's detail once, beside the route, status and reason. A viewer's own mistake is a warning;
-// a failure inside the server is an error. The detail comes from the caller, and is never a credential or the body: only
-// fixed strings reach it.
-func (s *Server) logRefusal(r *http.Request, status int, reason Reason, detail string) {
+// logRefusal writes the route, status and reason of a refusal. A viewer's own mistake is below the operator's threshold;
+// a failure inside the server is an error. Detail is never logged: it can hold a value from the request.
+func (s *Server) logRefusal(r *http.Request, status int, reason Reason) {
 	method, path, matched := patternOperation(r.Pattern)
 	if !matched {
 		method, path = r.Method, r.URL.Path
 	}
-	attrs := []any{"route", method + " " + path, "status", status, "reason", string(reason), "detail", detail}
+	attrs := []any{"route", method + " " + path, "status", status, "reason", string(reason)}
 	if status >= http.StatusInternalServerError {
 		s.Log.Error("v1 refusal", attrs...)
 	} else {
-		s.Log.Warn("v1 refusal", attrs...)
+		s.Log.Debug("v1 refusal", attrs...)
 	}
 }
 
-// refuseV1 answers a v1 request from the contract's reasons, and a Jellyfin request as it always has.
-func (s *Server) refuseV1(w http.ResponseWriter, r *http.Request, status int, reason Reason, text string) {
+// refuseV1 answers a v1 request from the contract's reasons, and a Jellyfin request as it always has. An optional detail
+// goes into the JSON answer for the app developer, never into the log.
+func (s *Server) refuseV1(w http.ResponseWriter, r *http.Request, status int, reason Reason, text string, detail ...string) {
 	if !isV1Path(r.URL.Path) {
 		refuse(w, r, status, text)
 		return
@@ -164,8 +170,8 @@ func (s *Server) refuseV1(w http.ResponseWriter, r *http.Request, status int, re
 		s.undeclared(w, r, status, reason)
 		return
 	}
-	s.logRefusal(r, status, reason, text)
-	refusalEnvelope(w, status, reason)
+	s.logRefusal(r, status, reason)
+	refusalEnvelope(w, status, reason, strings.Join(detail, ""))
 }
 
 // bodyReason gates a reason carried in a 200 body by the same contract rule as a refusal of its own. It says whether

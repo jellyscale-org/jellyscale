@@ -314,7 +314,7 @@ func matrixJudge(expected map[string]map[string]bool, key string, response *http
 			problems = append(problems, fmt.Sprintf("status %s of %s is not answered as JSON", status, key))
 		}
 		for name := range fields {
-			if name != "Reason" && name != "Action" && name != "RetryAfterSeconds" {
+			if name != "Reason" && name != "Action" && name != "RetryAfterSeconds" && name != "Detail" {
 				problems = append(problems, fmt.Sprintf("status %s of %s carries the key %s", status, key, name))
 			}
 		}

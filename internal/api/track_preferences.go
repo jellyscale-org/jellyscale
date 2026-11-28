@@ -58,23 +58,23 @@ func (s *Server) patchTrackPreferences(w http.ResponseWriter, r *http.Request) {
 	session := sessionOf(r)
 	raw, err := io.ReadAll(io.LimitReader(r.Body, maxTrackPreferencesBody+1))
 	if err != nil || len(raw) > maxTrackPreferencesBody {
-		s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, "body is unreadable or over 16 KB")
+		s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, "body is unreadable or over 16 KB", "body is unreadable or over 16 KB")
 		return
 	}
 	patch, err := parseTrackPreferencesPatch(raw)
 	if err != nil {
-		// The parser's error names fields and can echo a value the viewer sent; the operator's log gets a fixed detail.
-		s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, "the body is not valid for track preferences")
+		// The parser's error names the field and the value as sent. It goes to the client's Detail, never to the log.
+		s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, "invalid body", err.Error())
 		return
 	}
 	// A switch is asked for only once its language is saved; a language cleared later leaves the switch as it was.
 	config := configurationOf(session.User.Configuration)
 	if patch["HideOtherAudio"] == true && (config.AudioLanguagePreference == nil || *config.AudioLanguagePreference == "") {
-		s.refuseV1(w, r, http.StatusConflict, reasonLanguageNotSaved, "HideOtherAudio needs AudioLanguagePreference to be saved first, with POST /Users/Configuration")
+		s.refuseV1(w, r, http.StatusConflict, reasonLanguageNotSaved, "language not saved", "HideOtherAudio needs AudioLanguagePreference to be saved first, with POST /Users/Configuration")
 		return
 	}
 	if patch["HideOtherSubtitles"] == true && config.SubtitleLanguagePreference == "" {
-		s.refuseV1(w, r, http.StatusConflict, reasonLanguageNotSaved, "HideOtherSubtitles needs SubtitleLanguagePreference to be saved first, with POST /Users/Configuration")
+		s.refuseV1(w, r, http.StatusConflict, reasonLanguageNotSaved, "language not saved", "HideOtherSubtitles needs SubtitleLanguagePreference to be saved first, with POST /Users/Configuration")
 		return
 	}
 	body, _ := json.Marshal(patch)

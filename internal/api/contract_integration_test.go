@@ -201,7 +201,7 @@ func TestEveryV1RefusalIsJSONWithAReasonOnTheContractsList(t *testing.T) {
 					t.Fatalf("Allow %q, want the methods track preferences has: GET and PATCH", response.Header.Get("Allow"))
 				}
 			}
-			fields := exactKeys(t, raw, []string{"Reason", "Action"}, "RetryAfterSeconds")
+			fields := exactKeys(t, raw, []string{"Reason", "Action"}, "RetryAfterSeconds", "Detail")
 			reason, action := stringField(t, fields, "Reason"), stringField(t, fields, "Action")
 			listed, ok := reasons[reason]
 			if !ok || reason != tc.reason {

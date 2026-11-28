@@ -238,6 +238,10 @@ components:
         RetryAfterSeconds:
           type: integer
           minimum: 0
+        Detail:
+          type: string
+          description: What went wrong, for the app developer, not shown to the viewer. Its wording may change within a version;
+            a client must not branch on it, and the server never writes it to a log.
     Capability:
       type: object
       additionalProperties: false
