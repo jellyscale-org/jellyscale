@@ -1,9 +1,0 @@
-{
-  "id": "BL-062",
-  "source": "JS-029 verify",
-  "reviewer": "ux",
-  "severity": "minor",
-  "title": "Some stream and login requests answer 500 during an outage, against the docs' 'wait rather than answer an error'",
-  "status": "promoted",
-  "notes": "Subtitle requests (internal/api/subtitles.go:72, 246, 336, 457) call s.Items.Source without db.Retry, and DELETE Videos/ActiveEncodings calls Transcode.Stop (internal/transcode/jobs.go:243-249) without it. A request that passed requireAuth just before the outage began, or a PlaybackInfo-style call in that window, gets 500 'internal error'. Login (POST Users/AuthenticateByName, internal/api/users.g Promoted to JS-146."
-}

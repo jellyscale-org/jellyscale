@@ -1,9 +1,0 @@
-{
-  "id": "BL-029",
-  "source": "JS-028",
-  "reviewer": "qa",
-  "severity": "blocker",
-  "title": "A track ffmpeg hangs on until the time limit leaves the film's good text tracks unstored (documented limit; a fallback would read the picked track alone after a timeout)",
-  "status": "check",
-  "notes": " Check against JS-090 (js090:1 merged here)."
-}

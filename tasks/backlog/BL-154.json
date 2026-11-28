@@ -1,9 +1,0 @@
-{
-  "id": "BL-154",
-  "source": "JS-116 verify",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "SubtitleMode given as 1.0 is accepted as Always; the capture does not record non-integer numbers",
-  "status": "closed",
-  "notes": "POST /Users/Configuration with {\"SubtitleMode\":1.0} answers 204 and stores SubtitleMode Always. subtitleModeOf accepts any float equal to an integer. The capture records only integer numbers (3 gives None, 0 gives Default). Jellyfin's answer for 1.0 is unobserved. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
-}

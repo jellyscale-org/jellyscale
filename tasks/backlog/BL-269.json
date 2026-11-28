@@ -1,9 +1,0 @@
-{
-  "id": "BL-269",
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner",
-  "source": "D-069; test and CI strategy review",
-  "title": "test/roles.sh is a third process harness beside cmd/jellyscale's integration tests and e2e",
-  "notes": "One task's roles-only defect reached the queue because roles.sh was not run locally. Portability of each check and CI minutes saved unverified. Promote on: a second such defect; or JS-097 starting, before its criterion 1 is built."
-}

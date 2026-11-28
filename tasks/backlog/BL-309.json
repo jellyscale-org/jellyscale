@@ -1,9 +1,0 @@
-{
-  "id": "BL-309",
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner",
-  "source": "Technology and top features §3",
-  "title": "Viewing history charts for operators",
-  "notes": "JS-043 covers the raw log only. Back on an operator's request."
-}

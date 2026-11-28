@@ -1,9 +1,0 @@
-{
-  "id": "BL-223",
-  "title": "The two saved Remember settings (audio, subtitle selections) may do nothing; a per-series memory across devices is beyond Jellyfin",
-  "notes": "Issue #117. Audio half planned in JS-157 (D-039); subtitle half planned in JS-157 criterion 3 (D-068). Stays open only for memory beyond Jellyfin, which waits for data that viewers re-pick tracks episode after episode. Closed at the pivot: Covered by JS-157: a pick is remembered on every device.",
-  "status": "closed",
-  "severity": "minor",
-  "reviewer": "product-owner",
-  "source": "issue triage 2026-11-20"
-}

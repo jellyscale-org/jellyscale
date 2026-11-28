@@ -1,9 +1,0 @@
-{
-  "id": "BL-008",
-  "source": "JS-024",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "paused helpers keep their slots; a second new viewer can queue",
-  "status": "open",
-  "notes": "Re-read against JS-162's end-to-end figures; close those the figures answer (D-045). Read in JS-161's design review (criterion 1 as amended by D-050)."
-}

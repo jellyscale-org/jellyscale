@@ -98,8 +98,8 @@ The workflow's steps:
   - Build/Fix: `opencode/beam-free`, high effort. QA: `opencode/hy4-flash-free`, high effort. Snapshot helpers: `opencode/mimo-v2.6-flash-free`.
   - Refine, Check, Spec, design, architecture, adversarial and UX: `claude-agent/haiku` (Haiku 5.5), max effort.
   - Only for a `core: true` task: Check on `claude-agent/opus` (Opus 5.5), high effort, and the adversarial review on `claude-agent/sonnet` (Sonnet 5.5), high effort.
-  - Product owner and advisor: `claude-agent/opus` (Opus 5.5), high effort, with questions batched. Fable only as below (D-098).
-- Work down the free models in this order (D-106): `beam-free`, `hy4-flash-free`, `seaglass-alpha-free`, `deepseek-v4.1-flash-free`, `mimo-v2.6-flash-free`, `iceman-free`, `nemotron-3.5-super-vl-free`, `flint-40b-free`. Don't use `nemotron-3.5-lightning-free`. Re-rank on a graded task with hidden checks, and on how each does on real work.
+  - Product owner and advisor: `claude-agent/opus` (Opus 5.5), high effort, with questions batched. Fable only as below.
+- Work down the free models in this order: `beam-free`, `hy4-flash-free`, `seaglass-alpha-free`, `deepseek-v4.1-flash-free`, `mimo-v2.6-flash-free`, `iceman-free`, `nemotron-3.5-super-vl-free`, `flint-40b-free`. Don't use `nemotron-3.5-lightning-free`. Re-rank on a graded task with hidden checks, and on how each does on real work.
 - Give a free model a small, well-scoped, low-context job: reading logs, one failing test, running tests, a fix with a clear failing test, a mechanical edit. Keep large builds, test writing and reviews on the models above, and check a free model's key claims.
 - Use an OpenCode Zen free model (`opencode/...-free`) for any other work that doesn't judge quality: searching, reading logs, running checks, captures, test diagnostics.
 - When a free model is unavailable or fails the same step twice, try the next one down. When the free models can't do a build, use `claude-agent/sonnet` at high effort (D-20261127-build-models); for other work that doesn't suit them, `claude-agent/haiku` at max effort. Record it in the task record.
@@ -138,7 +138,7 @@ The workflow's steps:
 - Send Octave an issue labelled `from:jellyscale` for each API contract change, saying what each platform must do, and for anything jellyscale needs from it (create the label if it is missing). Don't work around it here.
 - Octave files requests here labelled `from:fluster` (its former name), by platform.
 - In such an issue, say what a viewer or operator needs, why, and how to see it. Search Octave's issues first. Never include a credential, a name, a real film title, a path or a homelab address.
-- Send every issue that comes from Octave to the product owner before any work on it. Batch all untriaged ones into one triage brief after a task; with none, make no call. D-084's once-per-phase cap doesn't hold back this triage.
+- Send every issue that comes from Octave to the product owner before any work on it. Batch all untriaged ones into one triage brief after a task; with none, make no call. once-per-phase cap doesn't hold back this triage.
 - The lead labels each triaged issue, posts the product owner's comment and closes declined ones.
 
 ## Product owner
@@ -155,11 +155,11 @@ The workflow's steps:
 - **Direction.** Ask for a direction review after each phase.
 - Record each brief and decision in one file, `tasks/decisions/D-<YYYYMMDD>-<slug>.json`. Name a new backlog item `tasks/backlog/BL-<YYYYMMDD>-<slug>.json`.
 - Cite a decision id in every Changed guarantees entry, amended check, and weakened DOMAINS.md or docs statement.
-- Decisions before D-107, whoever made them, are history only: don't cite them (D-20261127-clean-slate).
+- Only the files in `tasks/decisions/` are decisions. Never present a line of PRODUCT.md, DOMAINS.md, AGENTS.md or docs as the owner's or the product owner's decision unless a decision file made for this product records it; text written before the pivot may simply have been carried over, so say that, and ask.
 - **Advice when stuck.** When the lead is consistently stuck, or a decision's real cost is unclear, consult the `advisor` role (Opus 5.5 at high effort) blind. Send only the question, the constraints, and the minimum evidence needed; no whole diff, logs or tree. Tell it to use OpenCode Zen free or Sonnet agents through Task to find and read anything it needs, so its own input and output stay small. It returns a short recommendation, the risk and the check that would disprove it. Record material advice as a decision id. This is not a substitute for the product owner's trade-off briefs.
-- **Use Fable 5.2 only for the one direction review after a phase, or when the owner asks for it by name (D-098).** Every other product-owner call and the advisor run on Opus 5.5, including trade-offs, issue triage and a new owner direction. Don't escalate to Fable because reviewers disagree.
-- **Keep product-owner calls few (D-084).** Batch every pending question into one brief. Don't call for a routine priority confirmation or a decision a recorded decision id already covers; cite the id. Consult the advisor once per task at most, and only after two attempts have failed on the same question.
+- **Use Fable 5.2 only for the one direction review after a phase, or when the owner asks for it by name.** Every other product-owner call and the advisor run on Opus 5.5, including trade-offs, issue triage and a new owner direction. Don't escalate to Fable because reviewers disagree.
+- **Keep product-owner calls few.** Batch every pending question into one brief. Don't call for a routine priority confirmation or a decision a recorded decision id already covers; cite the id. Consult the advisor once per task at most, and only after two attempts have failed on the same question.
 - **Per-task quality comes from cheaper checks.** Opus 5.5 is the per-task Check and Refine model; Sonnet 5.5 carries architecture, adversarial and UX review; OpenCode Zen's free models carry Build/Fix, QA and helpers.
-- **Priorities and plan order are the product owner's alone.** The lead never edits `tasks/order.txt`, moves a task, or decides what is built next without the product owner's decision. Bring a brief with the options and costs (D-080).
+- **Priorities and plan order are the product owner's alone.** The lead never edits `tasks/order.txt`, moves a task, or decides what is built next without the product owner's decision. Bring a brief with the options and costs.
 - Follow its decisions.
-- Let the product owner edit PRODUCT.md, which holds only the product and its direction; leave a change in what the product is for to the owner (D-091).
+- Let the product owner edit PRODUCT.md, which holds only the product and its direction; leave a change in what the product is for to the owner.

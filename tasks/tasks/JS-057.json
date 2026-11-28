@@ -2,15 +2,15 @@
   "id": "JS-057",
   "phase": "S7",
   "title": "Workers are added before the room for one more film is gone, and when encoding falls behind; removed when idle, by the cluster's own autoscaler",
-  "description": "Serves \"Growing is adding machines.\"; Goal 5: \"Operating it stays boring.\". The owner (2026-11-21): scale workers up as soon as encoding falls behind. Kubernetes' autoscaler does the scaling from JS-164's number; jellyscale never creates or removes a pod, and a cluster without an autoscaler runs as before. The example manifests (JS-056) carry it as an option. Replaces 'KEDA autoscaling'. D-045. D-048: spare room first, falling behind and refusals as the backstop and the readable reason.",
+  "description": "Serves \"Growing is adding machines.\"; Goal 5: \"Operating it stays boring.\". The owner (2026-11-21): scale workers up as soon as encoding falls behind. Kubernetes' autoscaler does the scaling from JS-164's number; jellyscale never creates or removes a pod, and a cluster without an autoscaler runs as before. The example manifests (JS-056) carry it as an option. Replaces 'KEDA autoscaling'. spare room first, falling behind and refusals as the backstop and the readable reason.",
   "acceptanceCriteria": [
-    "The example manifests ship an optional autoscaler for the worker Deployment on JS-164's two gauges; leaving it out changes nothing else. Which autoscaler (the built-in one with a metrics adapter, or KEDA) is chosen by what an operator must run beside it, and docs/running.md states that cost (D-048); a cluster that runs no autoscaler needs nothing new",
-    "On a real cluster, one worker and a play that falls behind or is refused: a second worker is ready and the film reaches real time; the time from demand to a ready worker, and what the triggering viewer saw meanwhile, are measured and recorded. Amended by D-048: this is the backstop, measured with the target at zero.",
-    "By default the example keeps room for one more job of a size the operator states in cores (the example's value is the dearest re-encode in the price table); a worker is added when the room gauge falls below it. A test on a real cluster shows a second viewer starting with no refusal and no stall while the cluster grows. docs/running.md states the cost (one worker's reservation idle at all times) and how to set the target to zero and scale on falling behind alone. (D-048: the first trigger)",
+    "The example manifests ship an optional autoscaler for the worker Deployment on JS-164's two gauges; leaving it out changes nothing else. Which autoscaler (the built-in one with a metrics adapter, or KEDA) is chosen by what an operator must run beside it, and docs/running.md states that cost; a cluster that runs no autoscaler needs nothing new",
+    "On a real cluster, one worker and a play that falls behind or is refused: a second worker is ready and the film reaches real time; the time from demand to a ready worker, and what the triggering viewer saw meanwhile, are measured and recorded. this is the backstop, measured with the target at zero.",
+    "By default the example keeps room for one more job of a size the operator states in cores (the example's value is the dearest re-encode in the price table); a worker is added when the room gauge falls below it. A test on a real cluster shows a second viewer starting with no refusal and no stall while the cluster grows. docs/running.md states the cost (one worker's reservation idle at all times) and how to set the target to zero and scale on falling behind alone. (the first trigger)",
     "After a stated idle time workers are removed down to the minimum, and no watched job stalls over 5 seconds (JS-165); demand that comes and goes changes the worker count no more than a stated number of times",
     "The maximum worker replicas stay within the Postgres connection budget (one liveness connection per worker on top of the pools), refused by the manifests' check otherwise",
     "Each scale-up can be read back with its reason from JS-164's number",
-    "Run on the dogfood for 14 days once the owner approves each homelab change; recorded, counts only: scale events by reason, refusals for lack of cores, stalls. Amended by D-048: also records the time the room was below target, and scale-ups by trigger (room, falling behind, refusal).",
+    "Run on the dogfood for 14 days once the owner approves each homelab change; recorded, counts only: scale events by reason, refusals for lack of cores, stalls. also records the time the room was below target, and scale-ups by trigger (room, falling behind, refusal).",
     "docs/running.md documents it; docs/transcoding.md no longer says an autoscaler is not built; docs/status.md is updated"
   ],
   "status": "todo",
@@ -19,7 +19,7 @@
     "JS-164",
     "JS-165"
   ],
-  "source": "project plan; owner direction 2026-11-21; D-045; D-048",
-  "notes": "JS-020 (2026-11-08): a stock Postgres (max_connections 100) is exhausted at about 90 workers; connections are the first wall when autoscaling. ux: true. JS-166 recorded pod creation to first claimed job: 1.7 and 5.5 s (12-thread node); 7.7, 37 and 58 s (4-core node, unexplained, and whether a job was waiting is not recorded). Criterion 2's measurement records the start in its parts (pod created, container ready, worker registered, first claim) so a slow one has a cause; a registered-to-ready time over 10 s returns as a brief (D-067).",
+  "source": "project plan; owner direction 2026-11-21",
+  "notes": "JS-020 (2026-11-08): a stock Postgres (max_connections 100) is exhausted at about 90 workers; connections are the first wall when autoscaling. ux: true. JS-166 recorded pod creation to first claimed job: 1.7 and 5.5 s (12-thread node); 7.7, 37 and 58 s (4-core node, unexplained, and whether a job was waiting is not recorded). Criterion 2's measurement records the start in its parts (pod created, container ready, worker registered, first claim) so a slow one has a cause; a registered-to-ready time over 10 s returns as a brief.",
   "ux": true
 }

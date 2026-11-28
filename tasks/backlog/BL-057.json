@@ -1,9 +1,0 @@
-{
-  "id": "BL-057",
-  "source": "JS-029 verify",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "Worker's pre-store ownership check treats its own 5s timeout as an interruption, so an outage where connects hang cancels the job instead of waiting",
-  "status": "open",
-  "notes": "In upload(), the check runs under context.WithTimeout(ctx, lease/2). If Postgres is away in the form where connections hang (packets dropped, as can happen behind a Service during a switchover) rather than being refused or reset, the error is context.DeadlineExceeded. db.IsAway deliberately returns false for that, so the code takes the errInterrupted path: the job is cancelled and its ffmpeg stopp"
-}

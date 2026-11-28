@@ -1,9 +1,0 @@
-{
-  "id": "BL-140",
-  "source": "JS-105 verify",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "The keeper's two tables are renewed one after the other on one goroutine",
-  "status": "closed",
-  "notes": "A transcode renewal that blocks on a row lock or a slow answer takes up to bound (half a heartbeat) before the subtitle table is tried, and the keeper's connect can take up to lease/2 before either table is tried. The cut timers are independent, so the lease stays safe. The cost is less margin for the subtitle table, and a slow connect delays a fence answer for up to half a lease. Alternative: connect in a separate goroutine, or renew the tables concurrently on two connections. That adds a third connection per worker and conflicts with the 'two connections' design. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}

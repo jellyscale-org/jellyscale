@@ -1,9 +1,0 @@
-{
-  "id": "BL-188",
-  "source": "JS-130",
-  "reviewer": "",
-  "severity": "minor",
-  "title": "The two access mutants that make Server.Handler() panic stop their integration shard partway instead of failing their named declaration tests",
-  "status": "wontfix",
-  "notes": "subject removed by the behaviour-only cleanup (D-069)"
-}

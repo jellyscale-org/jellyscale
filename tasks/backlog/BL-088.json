@@ -1,9 +1,0 @@
-{
-  "id": "BL-088",
-  "source": "JS-076 verify",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "A listed file that never probes keeps expired items of its size forever",
-  "status": "open",
-  "notes": "case item.expired && !unread[item.size]: a corrupt file of the same size holds the removal back with no log. Bound the wait or log it."
-}

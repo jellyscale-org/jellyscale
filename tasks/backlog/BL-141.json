@@ -1,9 +1,0 @@
-{
-  "id": "BL-141",
-  "source": "JS-105 verify",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "Per-job lost reason is queried on the keeper's connection inside the single loop",
-  "status": "closed",
-  "notes": "When several jobs are found lost in one renewal, attempt() calls j.lost for each in turn, each bounded by half a heartbeat on the keeper's connection. With k lost jobs and a slow database, the keeper's next renewal for the other jobs is delayed by up to k half-heartbeats. The cut timers still protect the lease. Alternative: fetch the reasons in one query or afterwards, off the renewal path. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}

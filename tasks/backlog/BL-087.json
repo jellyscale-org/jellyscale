@@ -1,9 +1,0 @@
-{
-  "id": "BL-087",
-  "source": "JS-076 verify",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "shown_items is SELECT i.*, frozen to items' columns when the view was made",
-  "status": "open",
-  "notes": "Postgres expands * at CREATE VIEW. A migration that adds a column to items must recreate shown_items, or readers never see it. JS-045 and every later items migration."
-}

@@ -1,9 +1,0 @@
-{
-  "id": "BL-133",
-  "source": "JS-108 verify",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "A scan that errors partway reports 0 failed films and overwrites the last count",
-  "status": "open",
-  "notes": "ScanCounting returns failed before it is computed on early errors (List, loadSeen, dropSeen); scanLoop sets jellyscale_scan_last_failed_films unconditionally. Success is still 0, so only the count misleads. Leave the gauge as it was when the scan errored, or compute the count before every return."
-}

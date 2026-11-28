@@ -1,9 +1,0 @@
-{
-  "id": "BL-263",
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner",
-  "source": "JS-166 close; D-067",
-  "title": "On a transcode store shared between machines, the time from a worker finishing a segment to a stream replica on another node serving it is unmeasured",
-  "notes": "JS-166 criterion 8, not taken. A viewer would feel it as wait added to every start and seek, and as a stall when the store lags a worker that keeps real time. Bounded today by two 600 s plays through S3 across nodes at 1.000 with no segment request over 5 s (one cluster). An unkept reading (p50 14 ms, max 57 ms, at most 40 stored segments, another interval) is never cited. Promote on: a segment request over 5 s or a freeze past the first 30 s while the job's encode speed is at or above 1.0 and worker and stream are on different nodes, on any deployment; an operator report of a slower S3 service; or JS-062 starting, where it becomes a criterion (100 segments, output kept)."
-}

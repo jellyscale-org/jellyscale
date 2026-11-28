@@ -1,9 +1,0 @@
-{
-  "id": "BL-056",
-  "source": "JS-071 merge queue",
-  "reviewer": "lead",
-  "severity": "minor",
-  "title": "QA runs every touched ffmpeg test under ffmpeg 6.1, not a sample",
-  "status": "closed",
-  "notes": "JS-071 took four merge-queue runs: two fixture artifacts of ffmpeg 6.1 (sparse subtitle packets muxed ahead of their video) were found by CI, not by QA's 6.1 runs. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}

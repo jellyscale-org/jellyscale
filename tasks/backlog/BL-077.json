@@ -1,9 +1,0 @@
-{
-  "id": "BL-077",
-  "source": "JS-070 verify",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "A listed request that answers non-2xx is excused when Jellyfin gives the same status",
-  "status": "wontfix",
-  "notes": "The criterion says each listed request must answer 2xx and never 404. sweep() skips a failure when `reference.answers(r, status)` returns true, meaning Jellyfin answered the same status. A route that 404s on both servers (for example because of a fixture id mismatch) is excused, and the schema check never sees its answer. Closed by the product owner: duplicate of BL-072."
-}

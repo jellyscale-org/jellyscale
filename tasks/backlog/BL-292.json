@@ -1,9 +1,0 @@
-{
-  "id": "BL-292",
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "ux",
-  "source": "JS-033",
-  "title": "A viewer disabled mid-film sees no message or sign-in prompt",
-  "notes": "Playback stops within about 22 s; the page stays on the player. Awaits the product owner."
-}

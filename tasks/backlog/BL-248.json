@@ -1,9 +1,0 @@
-{
-  "id": "BL-248",
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner",
-  "source": "JS-168 merge-queue regression; D-052",
-  "title": "A slow job on a worker with idle cores gets no helper on that worker",
-  "notes": "D-052 keeps helpers off the worker running the viewers' own job. Promote when a measurement shows a same-worker helper brings such a job to 1.0x or above, or when the dogfood (JS-166, the 12-thread node) shows a job under 1.2x on a worker with at least the job's cost free and no other worker to help. JS-166 did not fire it: the jobs under 1.2x had 0.3 declared cores free and were throttled at a CPU limit of 8; at 12 they ran at 1.285 and 1.36 (D-067). The dogfood clause stands for any later sighting."
-}

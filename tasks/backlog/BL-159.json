@@ -1,9 +1,0 @@
-{
-  "id": "BL-159",
-  "source": "JS-124 verify",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "Fixed image names collide when two runs keep their images",
-  "status": "closed",
-  "notes": "With JELLYSCALE_BUILT_AS set, two simultaneous test/image.sh runs on one machine both tag <name>:server and <name>:fixtures; the second build retags the first run's images, so publish.sh may push the wrong run's image. CI runs one job per VM, so only local use is affected. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}

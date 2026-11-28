@@ -1,9 +1,0 @@
-{
-  "id": "BL-203",
-  "source": "JS-134",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "Capture hides a timescale stall; the worker's copy and fallback timescales may differ in production",
-  "status": "open",
-  "notes": "Product owner asks (evidence): Do the copy and fallback timescales differ in production? If so it becomes a task ahead of JS-135"
-}

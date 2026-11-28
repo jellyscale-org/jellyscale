@@ -1,9 +1,0 @@
-{
-  "id": "BL-129",
-  "source": "JS-077 verify",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "The waiting poll's EXISTS over transcode_jobs has no index covering finished jobs",
-  "status": "closed",
-  "notes": "The spec_hash index is partial (queued, running) and done rows are not pruned for a day; each waiter scans per 250 ms poll. Not measured. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}

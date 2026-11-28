@@ -4,6 +4,8 @@ The plan: tasks, backlog and decisions. [PRODUCT.md](../PRODUCT.md) says what to
 
 ## Layout
 
+Ids are never reused, including those of deleted records: a new task is numbered above JS-222. New backlog items and decisions are named by date and slug.
+
 One file per record, JSON, `jq --indent 2`, the file's `id` equals its name. The tree holds no generated index.
 
 - `tasks/tasks/<id>.json` — one task per file, open or finished. A task's file is never renamed or moved; finishing a task sets `status` to `done` or `dropped` in its own file.

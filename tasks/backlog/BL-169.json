@@ -1,9 +1,0 @@
-{
-  "id": "BL-169",
-  "source": "JS-088 fix",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "Chapter pictures and subtitle jobs still observe store failures below store.Reader",
-  "status": "promoted",
-  "notes": "library/chapterimages.go and internal/subtitles (cache.go, attachments.go, sup.go) wrap the store in their own watchedStore; move them to store.InputWithFailure. At worst a healed cut fails a job or skips a chapter, never a stream. Promoted to JS-095 (2026-11-17)."
-}

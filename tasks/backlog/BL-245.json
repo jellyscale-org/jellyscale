@@ -1,9 +1,0 @@
-{
-  "id": "BL-245",
-  "title": "Two JS-162 runs made the job slower than the rest (0.6x and 0.76x) with no cause found",
-  "notes": "JS-166 did not show it: its slow jobs ran under a CPU limit of 8, reached 1.285 and 1.36 at 12, and what ran beside them was not recorded. Promote when a worker's learned figure (JS-177's logged moves of more than a fifth) falls with no job, extraction or CPU limit to explain it, on any deployment (D-067).",
-  "source": "JS-162",
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner"
-}

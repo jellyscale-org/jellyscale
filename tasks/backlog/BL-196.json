@@ -1,9 +1,0 @@
-{
-  "id": "BL-196",
-  "source": "JS-133",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "The 10-bit AV1 fallback is always 8-bit, and the capture records it as observed only for the opposite case",
-  "status": "check",
-  "notes": "check: JS-134 looked at this; confirm what a 10-bit SDR AV1 fallback now is"
-}

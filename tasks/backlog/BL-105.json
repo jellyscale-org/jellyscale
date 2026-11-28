@@ -1,9 +1,0 @@
-{
-  "id": "BL-105",
-  "source": "JS-085 verify",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "An offline HLS segment with no mediasourceid answers 200 where the online route answers 404",
-  "status": "closed",
-  "notes": "session.pick(itemID, \"\") takes the first film; hlsRequestFor rejects an invalid source id. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
-}

@@ -1,9 +1,0 @@
-{
-  "id": "BL-157",
-  "source": "JS-124 verify",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "Partial push of a version leaves it unrepairable",
-  "status": "closed",
-  "notes": "On a tag run, publish.sh pushes X.Y.Z first, then X.Y.Z-fixtures and the main tags. If a later push fails (network, quota), a rerun finds X.Y.Z already exists and fails by design, so the release can never get its -fixtures tag; the only way out is a new version. Pushing the -fixtures tag and the main tags before the bare version tag would shorten the window. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}

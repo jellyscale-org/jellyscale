@@ -1,9 +1,0 @@
-{
-  "id": "BL-162",
-  "source": "JS-131 verify",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "The worker-alone heartbeat-first stall subtest can end as a harness error",
-  "status": "closed",
-  "notes": "ffmpeg keeps running while the worker is stopped and can finish a segment between the deletion and SIGCONT; stopping ffmpeg for the deletion only would close the window. Reading only; all runs passed. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}

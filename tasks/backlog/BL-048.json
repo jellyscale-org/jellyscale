@@ -1,9 +1,0 @@
-{
-  "id": "BL-048",
-  "source": "JS-071 verify",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "A film whose image-track Cues cannot be parsed has them re-read and warned about on every scan",
-  "status": "open",
-  "notes": "No marker for unreadable; image_cues stays NULL and loadSeen selects it again."
-}

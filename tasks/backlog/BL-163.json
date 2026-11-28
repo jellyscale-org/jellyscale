@@ -1,9 +1,0 @@
-{
-  "id": "BL-163",
-  "source": "JS-131 verify",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "The burn-in kit's size is written twice",
-  "status": "closed",
-  "notes": "cueFilm.write has a literal size=640x360 while kitFilmWidth/kitFilmHeight feed the specs; build the ffmpeg size from the constants. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}

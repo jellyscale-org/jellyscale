@@ -1,7 +1,7 @@
 {
   "id": "BL-233",
   "title": "A subtitle file beside the film that is out of sync stays out of sync",
-  "notes": "AI research 2026-11-20 (D-036). Not a model: speech detection and alignment, about 20-30 s per film (the tool's own figure, unverified here), stored as an offset applied on delivery with no file touched. Promote on data: the share of dogfood sidecar text subtitles whose estimated offset is over 0.5 s, or a viewer issue with a capture. Needs JS-095's queue. A film with cuts cannot be fixed by one offset, and that would be a written gap.",
+  "notes": "AI research 2026-11-20. Not a model: speech detection and alignment, about 20-30 s per film (the tool's own figure, unverified here), stored as an offset applied on delivery with no file touched. Promote on data: the share of dogfood sidecar text subtitles whose estimated offset is over 0.5 s, or a viewer issue with a capture. Needs JS-095's queue. A film with cuts cannot be fixed by one offset, and that would be a written gap.",
   "source": "AI research 2026-11-20",
   "status": "open",
   "severity": "minor",

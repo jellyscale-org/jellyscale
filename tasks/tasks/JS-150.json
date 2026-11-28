@@ -18,7 +18,7 @@
     "JS-194",
     "JS-215"
   ],
-  "source": "issue #221; owner, 2026-11-20 (D-033); PRODUCT.md operator: Installing is boring; goal 3",
+  "source": "issue #221; owner, 2026-11-20; PRODUCT.md operator: Installing is boring; goal 3",
   "notes": "Cross-project need (D-132): an Octave Web release built on jellyscale's API (ASK-6).",
   "ux": true
 }

@@ -1,9 +1,0 @@
-{
-  "id": "BL-282",
-  "status": "closed",
-  "severity": "major",
-  "reviewer": "product-owner",
-  "source": "issue #289; D-085, D-087",
-  "title": "Serve Octave's web app as the default browser client",
-  "notes": "Returns as a trade-off brief once all four hold: (1) the owner approves PRODUCT.md's wording and says what 'default' means; (2) Octave's project publishes a pinned, licensed web build; (3) Octave's project measures high-bitrate fragmented MP4 through MSE with a header loader in desktop Chrome, Firefox and Safari and on iPhone and iPad, with start and seek times and the share of films that play as they are; (4) the lead measures on the dogfood library how many films jellyfin-web direct plays today that Octave web would need repackaged, and the cores that holds. Scope then, for the web build only: serving it (deep links, cache headers, precompressed assets), its pages' response headers including a CSP, and the e2e tier against it. D-027 otherwise stands. D-089: merged into JS-150."
-}

@@ -1,9 +1,0 @@
-{
-  "id": "BL-085",
-  "source": "JS-076 verify",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "The lost-share guard trips on a loss of exactly the share, from float rounding",
-  "status": "open",
-  "notes": "float64(len(lost)) > MaxLostShare*float64(stored): with 0.35 and 180 stored, losing exactly 63 fails the scan. The default 0.2 showed no case up to 2000 files. Compare integers."
-}

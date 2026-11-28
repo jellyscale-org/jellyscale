@@ -1,9 +1,0 @@
-{
-  "id": "BL-205",
-  "source": "JS-144 verify",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "A preflight to a double-slash path answers 204, but the real request is redirected, which a browser engine refuses",
-  "status": "open",
-  "notes": "Unverified that any client sends one; a server address with a trailing slash might. Only a browser-engine client sends a preflight, so no device in JS-075 answers this; Chromium on another origin (JS-144's evidence) can. Kept until a browser-engine client reports it; then plan: answer the path without a redirect."
-}

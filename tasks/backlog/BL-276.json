@@ -1,9 +1,0 @@
-{
-  "id": "BL-276",
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner",
-  "source": "D-072",
-  "title": "On a worker that overstates itself and holds more than one job, a play admitted above what it holds may take the viewer already watching under real time (D-050's guarantee)",
-  "notes": "Unverified; a reading of docs/transcoding.md ('an overstated figure admits no more than floor(start / price) plays of a row'). Promote before any ceiling is dropped on a worker that can hold two heavy jobs by its start figure, at JS-056's Refine, or on a dogfood sighting of a play at 1.0x or more falling under it within a minute of another's admission."
-}

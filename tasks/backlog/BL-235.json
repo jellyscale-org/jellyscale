@@ -1,9 +1,0 @@
-{
-  "id": "BL-235",
-  "title": "Moonfin asked for a subtitle index its own rules should not pick, on two films",
-  "notes": "Dogfood report 2026-11-20 (D-038): index 4 (a Chinese PGS track) where its rules pick English index 3; index 5 (the second English track) where index 4 exists. Possibly the index numbering of main's item, which hides non-default audio tracks (JS-147 lists them). Promote to a goal-1 task at once if JS-153's line shows the asked index differs from what the item listed; drop if it matches Moonfin's own rules. JS-075 records it. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3).",
-  "source": "dogfood report 2026-11-20",
-  "status": "closed",
-  "severity": "minor",
-  "reviewer": "product-owner"
-}

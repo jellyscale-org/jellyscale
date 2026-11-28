@@ -2,7 +2,7 @@
   "id": "JS-142",
   "phase": "S7",
   "title": "Helm chart, kept in step with the example manifests",
-  "description": "Serves \"Installing is boring.\". The Helm half of the packaging (D-011: both ways, no drift), after JS-056's manifests.",
+  "description": "Serves \"Installing is boring.\". The Helm half of the packaging (both ways, no drift), after JS-056's manifests.",
   "acceptanceCriteria": [
     "The Helm chart installs the same on a fresh cluster",
     "The manifests and the chart cannot drift: a test fails when they would deploy different resources (for example, the manifests are the chart rendered with its defaults, checked in)",

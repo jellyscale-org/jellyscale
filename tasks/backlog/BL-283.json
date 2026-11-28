@@ -1,9 +1,0 @@
-{
-  "id": "BL-283",
-  "status": "closed",
-  "severity": "minor",
-  "reviewer": "product-owner",
-  "source": "JS-127; D-087",
-  "title": "No committed check that a request naming the caller's own id is served during a Postgres outage",
-  "notes": "It works today, shown by hand by two reviewers. Add the check when the outage snapshot or JS-127's rule next changes. Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}

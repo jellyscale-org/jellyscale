@@ -1,9 +1,0 @@
-{
-  "id": "BL-104",
-  "source": "JS-085 verify",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "A snapshot refresh that times out while Postgres is not marked away keeps the snapshot",
-  "status": "open",
-  "notes": "keepSnapshot keeps it for db.IsAway(err) || DeadlineExceeded; DOMAINS 37 says only while Postgres is away. Align code or doc, with a test."
-}

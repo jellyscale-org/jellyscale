@@ -1,9 +1,0 @@
-{
-  "id": "BL-177",
-  "source": "flakes",
-  "reviewer": "lead",
-  "severity": "minor",
-  "title": "TestTheScanReadsNoMoreOfAFilmForItsImageTrackAndNothingThatGrowsWithTheFilm failed again (PGS with no Cues): the scan's byte count varies with load",
-  "status": "closed",
-  "notes": "Second sighting; a third makes it a task Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}

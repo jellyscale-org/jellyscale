@@ -1,9 +1,0 @@
-{
-  "id": "BL-186",
-  "source": "JS-128",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "credential check misses a valueless ApiKey as the last pair of a line",
-  "status": "open",
-  "notes": "The token-in-URL checks have holes: promote with JS-039; js128:1-3 merged here"
-}

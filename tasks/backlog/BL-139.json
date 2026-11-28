@@ -1,9 +1,0 @@
-{
-  "id": "BL-139",
-  "source": "JS-105 verify",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "Fence can answer ok for a job the keeper has just cut",
-  "status": "open",
-  "notes": "The keeper cuts a job (timer giveUp sets over) while a renewal sent before the cut is in flight. The renewal then finds the row ours, and attempt() answers pending asks with until=sent+lease, even though the job is over. The put checks only the clock, so a put can start after the job was cut. It is bounded by one round trip, and the work context is cancelled, so the put probably fails. Not reproduced."
-}

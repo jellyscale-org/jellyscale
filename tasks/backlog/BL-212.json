@@ -1,9 +1,0 @@
-{
-  "id": "BL-212",
-  "source": "JS-139 verify",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "Two capture records state a figure their stored JSON does not hold",
-  "status": "closed",
-  "notes": "compat/captures/hdr-tonemap-12.4.md gives MaxStreamingBitrate 1440987881, which is not in its JSON; compat/captures/av1-fallback-12.4.md says '389 of 384', and 384 is not stored. No viewer or operator notices; a reader of the record cannot tell an observed figure from a typed one. Correct each when its capture is next taken again or its task next touches the record. Promote if a build or a decision is found to rest on either figure. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
-}

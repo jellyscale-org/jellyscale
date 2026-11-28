@@ -1,9 +1,0 @@
-{
-  "id": "BL-100",
-  "source": "JS-099 verify",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "The burn-in stall ('timed out waiting for playback past 22') was not reproduced or explained",
-  "status": "open",
-  "notes": "Jobs.segment waits for a job within catchUpSegments; a plausible mechanism for the stall in seeCue. Watch the failure ledger. Not the dogfood stall (JS-154: CPU speed); whether the scenario ever ran under real time is unverified (D-044)."
-}

@@ -1,9 +1,0 @@
-{
-  "id": "BL-264",
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner",
-  "source": "JS-041 triage; D-068",
-  "title": "A playback decision line names the mode's subtitle though it was dropped and the film direct played with none",
-  "notes": "Operator only: the line can show method=direct_play and subtitle_asked=none beside the planned subtitle's index, codec and language when no worker can burn it; the reply has no subtitle. Promote on one dogfood playback decision line with method=direct_play and a subtitle_index, or a deployment with no transcodeStore in use. Otherwise it joins JS-022 as one criterion when that task starts."
-}

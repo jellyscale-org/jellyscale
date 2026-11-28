@@ -1,9 +1,0 @@
-{
-  "id": "BL-181",
-  "source": "JS-112",
-  "reviewer": "",
-  "severity": "minor",
-  "title": "TestAChapterFrameEndsWhenItsContextEndsEvenIfAnotherProcessHoldsItsOutput allows 60 s where the criterion says 5 s (a 30 s WaitDelay passes)",
-  "status": "closed",
-  "notes": "Check weaker than its criterion: fix when that test is next touched Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}

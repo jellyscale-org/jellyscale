@@ -1,9 +1,0 @@
-{
-  "id": "BL-039",
-  "source": "state review 2026-11-10",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "Worker.encode is a 400-line function whose loop interleaves six concerns; split before JS-029 next changes it",
-  "status": "closed",
-  "notes": "Closed at the pivot: Rule 17: says nothing a viewer or operator would notice (a test's strength, a refactor, tooling or an internal cost). Reopen with the effect someone sees and its evidence."
-}

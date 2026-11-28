@@ -1,9 +1,0 @@
-{
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner",
-  "source": "JS-044",
-  "title": "A viewer's picture (avatar) on their account",
-  "notes": "From JS-044, dropped by D-126: no PRODUCT.md outcome. Back when Octave asks for it.",
-  "id": "BL-293"
-}

@@ -93,7 +93,7 @@ const LOCKED = {
 const { task, tests = [], id = '', ux = false, core = false, resolved = null, refine = true } = args
 let { acceptance = [] } = args
 // args.root runs the task in its own worktree, so two tasks can build side by side.
-// Only the lead consults the advisor, and only when stuck (owner, 2026-11-22; D-076). Claude Code gives every
+// Only the lead consults the advisor, and only when stuck (owner, 2026-11-22). Claude Code gives every
 // subagent the advisor and has no per-agent switch, so this line is the control; the lead checks each run's usage
 // for advisor calls.
 const advice = 'Never call the advisor tool, even if you have one: only the lead consults it.\n\n'
@@ -136,10 +136,10 @@ const criteria = acceptance.map((line) => `- ${line}`).join('\n')
 const commands = tests.map((line) => `- ${line}`).join('\n')
 const brief = `## Task${id ? ` ${id}` : ''}\n${task}\n\n## Acceptance criteria\n${criteria}\n\n## Test commands\n${commands}`
 
-// Owner's model routing (D-076). Anthropic carries judgement: Refine and Check
+// Owner's model routing. Anthropic carries judgement: Refine and Check
 // on Opus 5.5, Spec and the blind reviewers on Sonnet 5.5, the product owner and
-// advisor on Opus 5.5 (D-098: Fable only for a phase's direction review). OpenCode Zen's free models carry the mechanical work
-// (D-086): Build/Fix, QA and helpers. A free model that is unavailable, or fails
+// advisor on Opus 5.5 (Fable only for a phase's direction review). OpenCode Zen's free models carry the mechanical work
+// Build/Fix, QA and helpers. A free model that is unavailable, or fails
 // the same step twice, is replaced by Sonnet 5.5; say so in the task record.
 const MODELS = {
   'spec-writer': { model: 'claude-agent/haiku', effort: 'max' },

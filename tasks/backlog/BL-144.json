@@ -1,9 +1,0 @@
-{
-  "id": "BL-144",
-  "source": "JS-110 verify",
-  "reviewer": "architecture",
-  "severity": "minor",
-  "title": "Snapshot safety rests on panic/recover and on every refusal calling refuse/notFound/waitForPostgres",
-  "status": "open",
-  "notes": "A later handler edit that writes an error with plain http.Error or http.NotFound on a stream route would, when run from the snapshot during an outage, answer the viewer from the snapshot instead of waiting for Postgres. The old design had the same risk the other way round: an offline handler had to opt in to each answer. The new default is the safer one, but the guard is a convention with no mechanical check. internal/api/snapshot.go lines 70-100: waitForPostgres panics with errWait and serveFromSnapshot recovers it. Direct http.Error calls remain reachable in shared handlers, for example in serveSource. The new internal/api/oneroute_test.go checks each row, but nothing fails a new http.Error call placed before a snapshot-aware refusal. A cheap alternative is a lint or grep test that bans http.Error and http.NotFound in the stream-role handler files."
-}

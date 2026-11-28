@@ -9,15 +9,14 @@
     "A failover shows the dead worker's span end and the replacement's begin in one trace",
     "Helper decisions are traced and counted: helpers started with the job's speed, and helpers wanted but not started because no slot was free",
     "The demand number and its reasons are JS-164's; a playback's trace shows the same reason for that playback, so why the cluster grew can be read back from either",
-    "Log lines carry the trace id (JS-022), so a trace leads to its logs",
+    "Log lines carry the trace id, so a trace leads to its logs",
     "Exported over OTLP to any backend, off by default; the dogfood runs a backend and the docs show reading a stall from it",
-    "Checked with real processes: a test collector receives a playback's trace from three processes, with a stall and a failover in it"
+    "Checked with real processes: a test collector receives a playback's trace from three processes, with a stall and a failover in it",
+    "Each request and job log line carries ids that link them"
   ],
   "status": "todo",
-  "dependsOn": [
-    "JS-019"
-  ],
+  "dependsOn": [],
   "source": "work queue (later)",
-  "notes": "Needs a design review; the homelab has no tracing backend yet (Tempo suggested). Product owner (2026-11-08): wants to trace everything through the pipeline, see where something stalled and why more workers were needed; placed before P6 (Kubernetes). JS-024 review (UX): Sessions can show the viewer's job as done while helpers encode, and no log line says a helper started.",
+  "notes": "Needs a design review; the homelab has no tracing backend yet (Tempo suggested). Product owner (2026-11-08): wants to trace everything through the pipeline, see where something stalled and why more workers were needed; placed before P6 (Kubernetes). JS-024 review (UX): Sessions can show the viewer's job as done while helpers encode, and no log line says a helper started. Takes in the logging slice (formerly JS-022): its log-line criterion. The product owner cut JS-022 as a duplicate on 2026-11-27.",
   "ux": true
 }

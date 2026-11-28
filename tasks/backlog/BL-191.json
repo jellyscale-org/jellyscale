@@ -1,9 +1,0 @@
-{
-  "id": "BL-191",
-  "source": "picture",
-  "reviewer": "",
-  "severity": "minor",
-  "title": "Spike: AV1 re-encodes for clients that list AV1",
-  "status": "open",
-  "notes": "After people and library Revisit with JS-148's brief (D-021)."
-}

@@ -13,6 +13,6 @@
     "JS-194"
   ],
   "source": "PRODUCT.md phase5-library",
-  "notes": "Requested by Fluster, the client that ships with jellyscale: #103. No fingerprinting or other detection (D-036); the count decides whether that is reopened.",
+  "notes": "Requested by Fluster, the client that ships with jellyscale: #103. No fingerprinting or other detection; the count decides whether that is reopened.",
   "ux": true
 }

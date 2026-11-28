@@ -1,9 +1,0 @@
-{
-  "id": "BL-209",
-  "source": "JS-145 / D-020",
-  "reviewer": "product-owner",
-  "severity": "minor",
-  "title": "jellyfin-web cannot say \"try again later\" on a refused sign-in",
-  "status": "closed",
-  "notes": "Observe whether the sign-in page's branding disclaimer can carry it for a refused address. Promote with the OIDC task, which makes Branding real. Closed at the pivot: Covered by JS-184: a refused sign-in carries a reason Octave can explain."
-}

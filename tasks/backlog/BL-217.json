@@ -1,9 +1,0 @@
-{
-  "id": "BL-217",
-  "source": "JS-145 verify / D-023",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "A filtered e2e run (E2E_ONLY) of the refused-sign-in scenario fails the cors gate's 'checked no JSON responses' summary",
-  "status": "closed",
-  "notes": "Beside BL-075. Cause, from round 4 (reading only): responses are recorded for the gate's main page alone, and the scenario opens a page of its own, so the JSON jellyfin-web gets during a refused sign-in is neither written nor held to the schema; run alone, the gate has checked nothing and the run-level check fails. No viewer notices; the refusal's answer as jellyfin-web receives it is not held to Jellyfin's schema in e2e. Promote when a second task's filtered command fails the same way, or a refused sign-in's body is found to differ from the schema. Closed at the pivot: Both auditors: tied to Jellyfin's API, its apps, jellyfin-web or its captures, which go at the cutover (D-107, mandate rule 3)."
-}

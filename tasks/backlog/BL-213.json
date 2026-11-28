@@ -1,6 +1,6 @@
 {
   "id": "BL-213",
-  "source": "JS-145 / D-022",
+  "source": "JS-145",
   "reviewer": "product-owner",
   "severity": "minor",
   "title": "An operator who declares proxies while every client still arrives from one upstream address gets all viewers refused together",

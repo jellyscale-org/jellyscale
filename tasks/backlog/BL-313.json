@@ -1,9 +1,0 @@
-{
-  "id": "BL-313",
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner",
-  "source": "JS-035",
-  "title": "Scoped keys for integrations",
-  "notes": "From JS-035, dropped by the replan: no PRODUCT.md outcome. Back on an operator's recorded need."
-}

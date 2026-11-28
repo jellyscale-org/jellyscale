@@ -1,9 +1,0 @@
-{
-  "id": "BL-026",
-  "source": "JS-026",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "MP3 under Chrome re-encoded where Jellyfin copies (fMP4 only)",
-  "status": "closed",
-  "notes": "Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
-}

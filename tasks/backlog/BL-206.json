@@ -1,9 +1,0 @@
-{
-  "id": "BL-206",
-  "source": "JS-144 verify",
-  "reviewer": "ux",
-  "severity": "minor",
-  "title": "A hosted https client calling a server on a private address gets no Private Network Access answer",
-  "status": "open",
-  "notes": "Chromium is phasing the check in. Widens D-016's exposure, so it needs a decision; waits for a client that hits it."
-}

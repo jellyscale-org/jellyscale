@@ -13,7 +13,6 @@
   ],
   "status": "todo",
   "dependsOn": [
-    "JS-183",
     "JS-216"
   ],
   "source": "pivot-plan.md; D-107 to D-128",

@@ -1,9 +1,0 @@
-{
-  "id": "BL-070",
-  "source": "JS-070 verify",
-  "reviewer": "qa",
-  "severity": "minor",
-  "title": "e2e response recorder can drop bodies still in flight when a gate ends",
-  "status": "closed",
-  "notes": "test/e2e/conform.mjs appends a response only after response.text() resolves, and returns silently on error. If the browser context closes before a body is read, that response is never checked, so the gate can pass without holding it to the schema. Closed at the pivot: Tied to a Jellyfin route, a Jellyfin app, jellyfin-web, Quick Connect or Jellyfin's tooling, all removed at the cutover (D-107, D-109, rule 3)."
-}

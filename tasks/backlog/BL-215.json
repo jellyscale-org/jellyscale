@@ -1,9 +1,0 @@
-{
-  "id": "BL-215",
-  "source": "JS-145 verify / D-023",
-  "reviewer": "adversarial",
-  "severity": "minor",
-  "title": "A right password whose sign-in ends after the match began leaves a counted failure",
-  "status": "open",
-  "notes": "Two sightings, both reading only. The failure is stored before the password is compared and taken back after. Round 3: the take-back runs on the request context, so a client hang-up could leave the count. Round 4: the take-back detaches its context but runs only when the handler reaches it, so a client disconnect, a dead process or a timed-out comparison leaves it. Which of these holds is unverified. What a viewer would notice: at 19 failures the name is refused to new devices for 15 minutes with no wrong password given. Promote at once if a test shows a client hang-up alone, database healthy, leaves a count, or a viewer is refused after right passwords only."
-}
