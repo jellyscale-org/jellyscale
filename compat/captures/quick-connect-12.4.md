@@ -1,8 +1,6 @@
 # Quick Connect on Jellyfin 12.4 (JS-037)
 
-This file is written by `test/differential/capture_quick_connect.py`: edit the script, not this file. `python3 -I test/differential/capture_quick_connect.py --markdown compat/captures/quick-connect-12.4.json` writes it again from the capture.
-
-`quick-connect-12.4.json`, from `python3 -I test/differential/capture_quick_connect.py compat/captures/quick-connect-12.4.json` (about 25 minutes; `capture_quick_connect_web.mjs` is its browser part): a disposable `jellyfin/jellyfin:12.4` (12.4.0) on a Docker-assigned port, synthetic accounts `admin`, `viewer`, `other`, `gone`, no library. `cmd/jellyscale/quickconnect_capture_integration_test.go` asks jellyscale the `steps`.
+This record and `quick-connect-12.4.json` were made against a real Jellyfin 12.4 (about 25 minutes, with a browser part): a disposable `jellyfin/jellyfin:12.4` (12.4.0) on a Docker-assigned port, synthetic accounts `admin`, `viewer`, `other`, `gone`, no library. `cmd/jellyscale/quickconnect_capture_integration_test.go` asks jellyscale the `steps`.
 
 ## The observations that matter
 

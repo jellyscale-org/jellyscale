@@ -8,7 +8,7 @@ Chromium, a synthetic viewer signed in, on `#/quickconnect`. For each status Pla
 `POST /QuickConnect/Authorize` in the server's place (`text/plain`, `Error processing request.`), the code `123456` was
 typed and **Authorize** pressed, and the page was read 4 seconds later. A fresh browser context for each status.
 
-**Rerun:** `test/differential/capture_quick_connect_web.mjs` with `PHASE=refused-approval` and `BASE`, `PASSWORD` and
+**Rerun:** a real Jellyfin 12.4 with `PHASE=refused-approval` and `BASE`, `PASSWORD` and
 `CHROMIUM_PATH` set records the four rows as JSON under `refused_approve`; the table below is that result. Rerun on
 2026-11-26 against the same pinned jellyfin-web (copied from the Jellyfin 12.4 image): all four rows were as recorded.
 

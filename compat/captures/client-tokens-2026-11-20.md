@@ -75,7 +75,7 @@ The **Library** column matters because the Kotlin SDK decides the token question
 - Its minimum server is the SDK's `Jellyfin.minimumVersion` (`ServerRepository.kt` L55), which is 10.11.0 at SDK v1.8.12 (Jellyfin.kt L70 at that tag). jellyscale's 12.4.0 passes.
 - Activity: v0.20.0 on 2026-11-10. The repo is active.
 
-**Findroid** (confirmed at 0936178, newer than the 013eb52 in `compat/clients.yaml`).
+**Findroid** (confirmed at 0936178, newer than the 013eb52 recording).
 - Direct play uses `getVideoStreamUrl(itemId, static = true, mediaSourceId)` with no token. Neither the ExoPlayer nor the mpv player adds a header: a search of the whole repo finds no `Authorization`, `ApiKey` or `DataSource.Factory` in the player code.
 - The device profile has no transcoding profiles (JellyfinRepositoryImpl.kt L323), so it never asks for HLS.
 - Subtitles use `baseUrl + deliveryUrl` (FindroidMediaStream.kt L31), which carries the server's `ApiKey`.
@@ -178,7 +178,7 @@ jellyscale sends `Protocol: "File"` (`internal/media/media.go` L77, `internal/li
 
 ## Other things that break against a strict jellyscale (not tokens)
 
-- **Quick Connect.** Only `GET /QuickConnect/Enabled` exists, as a stub (`compat/endpoints.yaml`). Apps must sign in with a password. Findroid calls `/QuickConnect/Enabled` at startup (`compat/clients.yaml`). Which other apps offer Quick Connect, and whether each handles the stub cleanly, is unverified.
+- **Quick Connect.** Only `GET /QuickConnect/Enabled` exists, as a stub (`compat/endpoints.yaml`). Apps must sign in with a password. Findroid calls `/QuickConnect/Enabled` at startup (the client recordings). Which other apps offer Quick Connect, and whether each handles the stub cleanly, is unverified.
 - **Trickplay.** There are no `/Videos/{id}/Trickplay/…` routes. Clients that request trickplay tiles (Roku, Streamyfin, Fladder, Android TV, Jellyfin Android) get 404. That they degrade to no preview rather than an error is unverified.
 - **Server version.** jellyscale reports 12.4.0 (`compat/endpoints.yaml` header). Version gates read:
   - jellyfin-sdk-kotlin master: `minimumVersion = 12.0.0` (Jellyfin.kt L70).
@@ -195,4 +195,4 @@ jellyscale sends `Protocol: "File"` (`internal/media/media.go` L77, `internal/li
 - **Jellyfin itself requiring auth on `/Videos/{id}/stream`.** Every client would then have to send a token. No such change was found in this search (unverified either way).
 - **A device run.** None of the "works" rows has been played on a device against jellyscale. A run (or capture) of Swiftfin, Streamyfin, Moonfin, Fladder, Jellyfin Desktop and Jellyfin Android would turn "works from source" into "plays".
 - **Infuse and Wholphin's MPV backend** stay unknown until a capture as described above.
-- **Repo records are out of date.** `compat/clients.yaml` pins Findroid 013eb52, Android TV e14b088, Swiftfin ffc4398 and Streamyfin c82f5bf (2026-11-12). The HEADs read here are newer, and the verdicts did not change.
+- **Repo records are out of date.** the client recordings pin Findroid 013eb52, Android TV e14b088, Swiftfin ffc4398 and Streamyfin c82f5bf (2026-11-12). The HEADs read here are newer, and the verdicts did not change.

@@ -9,7 +9,6 @@ import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { createRequire } from "node:module";
 import { schedule, runLater, shardLine } from "./shard.mjs";
-// The shared viewer records each page's responses for the checker (conform.mjs).
 import { configure, ffmpegRuns, login, scenario, signInShown, sql, time, viewer, waitFor } from "./player.mjs";
 
 const require = createRequire(`${process.cwd()}/`);

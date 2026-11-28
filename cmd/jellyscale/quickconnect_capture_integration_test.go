@@ -15,15 +15,14 @@ import (
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
-	"gopkg.in/yaml.v3"
 )
 
-// JS-037: jellyscale is asked the requests of compat/captures/quick-connect-12.4.json (which
-// test/differential/capture_quick_connect.py takes from a real Jellyfin 12.4), in its order, and each answer is held to
+// JS-037: jellyscale is asked the requests of compat/captures/quick-connect-12.4.json (taken from a real
+// Jellyfin 12.4, as compat/captures/quick-connect-12.4.md records), in its order, and each answer is held to
 // Jellyfin's: the status; for a 200 the fields a client reads; and an error's body where it is a JSON string, which a
 // client can read ("Quick connect is disabled"). Other error bodies are ASP.NET's own and are not compared. A
-// difference must be listed in compat/differences.yaml under the request "quick connect: <step>", with the path
-// "(status)" or "body.<field>"; an entry that no longer differs fails too.
+// A step that answers otherwise must be one of the deliberate differences in qcListedDifferences,
+// under "quick connect: <step>" with the path "(status)" or "body.<field>"; one that no longer differs fails too.
 //
 // The capture turns Quick Connect off and on in the running server; jellyscale reads it from configuration, so the
 // replay starts another replica, with the same database, where the capture changed the setting. The capture's disabled
@@ -244,7 +243,7 @@ func TestJellyscaleAnswersTheCapturedQuickConnectRequests(t *testing.T) {
 		for _, step := range capture.Steps {
 			for d, what := range found {
 				if d.request == qcReplayed+step.Name && !allowed[d] {
-					t.Errorf("%s: %s differs from Jellyfin 12.4 and compat/differences.yaml does not list it: %s", d.request, d.path, what[0])
+					t.Errorf("%s: %s differs from Jellyfin 12.4 and not one of the deliberate differences: %s", d.request, d.path, what[0])
 				}
 			}
 		}
@@ -305,38 +304,26 @@ func TestJellyscaleAnswersTheCapturedQuickConnectRequests(t *testing.T) {
 	}
 	for d := range allowed {
 		if _, differs := found[d]; !differs {
-			t.Errorf("compat/differences.yaml lists %s of %q and jellyscale answers as Jellyfin does: remove the entry", d.path, d.request)
+			t.Errorf("%s of %q is listed as different but jellyscale answers as Jellyfin does", d.path, d.request)
 		}
 	}
 }
 
-// qcListedDifferences are the entries of compat/differences.yaml for the requests of this replay.
+// qcIntentionalDifferences are the captured steps where jellyscale deliberately answers
+// otherwise: a conflict where Jellyfin says 500, a refusal to sign a device into another
+// account, and the consequences of that refusal (JS-037, D-082). Every other step must
+// answer as the capture does, and each of these must still differ.
 func qcListedDifferences(t *testing.T) map[qcDifference]bool {
 	t.Helper()
-	listed, err := os.ReadFile("../../compat/differences.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var entries []struct {
-		Requests []string `yaml:"requests"`
-		Path     string   `yaml:"path"`
-		Paths    []string `yaml:"paths"`
-	}
-	if err := yaml.Unmarshal(listed, &entries); err != nil {
-		t.Fatal(err)
-	}
 	allowed := map[qcDifference]bool{}
-	for _, entry := range entries {
-		for _, request := range entry.Requests {
-			if !strings.HasPrefix(request, qcReplayed) {
-				continue
-			}
-			for _, path := range append([]string{entry.Path}, entry.Paths...) {
-				if path != "" {
-					allowed[qcDifference{request, path}] = true
-				}
-			}
-		}
+	status := []string{
+		"approve an approved code again", "another account approves an approved code", "approve after redemption",
+		"administrator names another user", "administrator names a user nobody is", "viewer names a malformed userId",
+		"redeem the approval naming another", "redeem after the approver is deleted",
 	}
+	for _, name := range status {
+		allowed[qcDifference{qcReplayed + name, "(status)"}] = true
+	}
+	allowed[qcDifference{qcReplayed + "connect after the administrator named another", "body.Authenticated"}] = true
 	return allowed
 }

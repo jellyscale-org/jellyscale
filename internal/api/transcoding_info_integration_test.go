@@ -31,7 +31,7 @@ import (
 // those of compat/captures/transcoding-info-12.4.json, which a real Jellyfin
 // 12.4 gave jellyfin-web over the same kinds of film. jellyscale adds three
 // fields to it, which the dashboard shows an operator and jellyfin-web ignores
-// (compat/differences.yaml lists them):
+// (the named exceptions held in the replay test lists them):
 //
 //	EncodeSpeed      film seconds the job encodes per second of its own running
 //	                 time, as the metrics slice measures it (JS-019); absent

@@ -2,7 +2,6 @@
 // browser it launched, the server it tests, the sign-in and where it keeps its failures; viewer, login, scenario
 // and the rest then work for that gate.
 import { execFileSync } from "node:child_process";
-import { recordResponses } from "./conform.mjs";
 import { forgetBefore, keepFailure, watch } from "./evidence.mjs";
 import { schedule } from "./shard.mjs";
 
@@ -122,7 +121,6 @@ export async function viewer() {
   const context = await gate.browser.newContext({ viewport: { width: 1280, height: 720 } });
   watch(context, base);
   const page = await context.newPage();
-  recordResponses(page, base);
   const seen = {
     infos: [], hls: [], playlists: [], subtitles: [], attachments: [], configs: 0, deletes: [], errors: [], console: [],
     failed: [], cut: [], requests: [], answers: [], reports: [], sockets: [], open: new Set(),

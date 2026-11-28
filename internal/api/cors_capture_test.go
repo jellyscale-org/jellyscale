@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// corsCapture is compat/captures/cors-12.4.json, which test/differential/capture_cors.py writes.
+// corsCapture is compat/captures/cors-12.4.json, described in compat/captures/cors-12.4.md.
 type corsCapture struct {
 	Image         string   `json:"image"`
 	ServerVersion string   `json:"server_version"`

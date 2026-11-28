@@ -43,7 +43,7 @@ import (
 //	subtitle_index, subtitle_codec, subtitle_language, subtitle_kind (text | image)   what it resolved to; none for -1 or a
 //	                 number that is no subtitle track
 //
-// THE VOCABULARY. Jellyfin's names are the TranscodeReason enum of compat/schema-12.4.json; jellyscale's own are not in it.
+// THE VOCABULARY. Jellyfin's names are its TranscodeReason enum, as captured in compat/captures/transcode-12.4.json; jellyscale's own are not in it.
 // The reasons below are what these checks pin.
 //
 //	Jellyfin's:  ContainerNotSupported VideoCodecNotSupported AudioCodecNotSupported SubtitleCodecNotSupported

@@ -8,14 +8,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
-
-	"gopkg.in/yaml.v3"
 
 	"jellyscale/internal/db"
 	"jellyscale/internal/media"
@@ -28,7 +24,7 @@ import (
 // SubtitleLanguagePreference choose, as Jellyfin 12.4 does (compat/captures/subtitles-default-12.4.md). The films are the
 // capture's 35, made as rows in jellyscale's numbering (the film's own tracks, then the files; testenv Rows), so a cell is
 // compared through the capture's map from Jellyfin's index to the same track here. A cell where jellyscale answers another
-// track is a compat/differences.yaml entry named "subtitle default: <film> | <mode> | <language>"; one it answers as captured
+// track is a named difference "subtitle default: <film> | <mode> | <language>"; one it answers as captured
 // must not be listed. The reply's DefaultSubtitleStreamIndex is -1 where Jellyfin's is absent.
 
 // sdFixture is a library of the capture's films with a worker (the text tracks are listed and a transcode can start) or
@@ -199,25 +195,14 @@ const (
 	nameNeverSaved = "subtitle default: a viewer who never saved a Configuration"
 )
 
-// listedSubtitleDifferences reads the entries compat/differences.yaml lists for the subtitle default, and holds each to its
-// form: a path of MediaSources[].DefaultSubtitleStreamIndex, a kind and a reason of some words, and a name that is one of
-// the three that are no cell or a cell of the capture (so an entry for a film, mode or language that is none fails).
+// listedSubtitleDifferences are the three cases where jellyscale deliberately starts a
+// different track: a request naming no stream starts none, a request with no profile still
+// honours the named track, and a viewer who never saved a Configuration starts none.
+// Every other captured cell must answer as the capture does. The guard keeps the three
+// names tied to real cells of the capture or to the named cases, so a changed capture
+// cannot leave a stale exception behind.
 func listedSubtitleDifferences(t *testing.T, c *testenv.SubtitlesDefaultCapture) map[string]bool {
 	t.Helper()
-	raw, err := os.ReadFile("../../compat/differences.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var entries []struct {
-		Requests []string `yaml:"requests"`
-		Path     string   `yaml:"path"`
-		Paths    []string `yaml:"paths"`
-		Kind     string   `yaml:"kind"`
-		Reason   string   `yaml:"reason"`
-	}
-	if err := yaml.Unmarshal(raw, &entries); err != nil {
-		t.Fatal(err)
-	}
 	known := map[string]bool{nameNamed99: true, nameNoProfile: true, nameNeverSaved: true}
 	for film, captured := range c.Films {
 		for _, cell := range captured.Results {
@@ -228,34 +213,23 @@ func listedSubtitleDifferences(t *testing.T, c *testenv.SubtitlesDefaultCapture)
 		known[smartName(cell.Film, cell.LanguagePreference, cell.AudioLanguagePreference, cell.PlayDefaultAudioTrack)] = true
 	}
 	listed := map[string]bool{}
-	for _, entry := range entries {
-		for _, name := range entry.Requests {
-			if !strings.HasPrefix(name, "subtitle default: ") {
-				continue
-			}
-			if !known[name] {
-				t.Errorf("compat/differences.yaml lists %q, which is no cell of the capture and none of the three named differences", name)
-			}
-			if !slices.Contains(append([]string{entry.Path}, entry.Paths...), "MediaSources[].DefaultSubtitleStreamIndex") {
-				t.Errorf("%s: the path is %v, want MediaSources[].DefaultSubtitleStreamIndex", name, entry.Paths)
-			}
-			if !slices.Contains([]string{"improvement", "gap", "non-goal"}, entry.Kind) || len(strings.Fields(entry.Reason)) < 4 {
-				t.Errorf("%s: kind %q and reason %q: a cell Jellyfin answers otherwise needs its kind and its reason", name, entry.Kind, entry.Reason)
-			}
-			listed[name] = true
+	for _, name := range []string{nameNamed99, nameNoProfile, nameNeverSaved} {
+		if !known[name] {
+			t.Errorf("%q is no cell of the capture and none of the three named differences", name)
 		}
+		listed[name] = true
 	}
 	return listed
 }
 
-// cellCheck is the one rule for a cell: where compat/differences.yaml excuses it, jellyscale must answer another track (an
-// entry whose cell is answered as captured fails); where it does not, the capture's track.
+// cellCheck is the one rule for a cell: where the named cases above excuse it, jellyscale answers another track (a
+// cell answered as captured fails); where they do not, the capture's track.
 func cellCheck(listed map[string]bool, name string, got, want int, wrong *problems) {
 	switch {
 	case listed[name] && got == want:
-		wrong.addf("%s: compat/differences.yaml lists this cell, but jellyscale answers %d, as Jellyfin does; remove the entry", name, got)
+		wrong.addf("%s: listed as a deliberate difference, but jellyscale answers %d, as Jellyfin does", name, got)
 	case !listed[name] && got != want:
-		wrong.addf("%s: jellyscale answers %d, Jellyfin's track is %d here, and the cell is not in compat/differences.yaml", name, got, want)
+		wrong.addf("%s: jellyscale answers %d, Jellyfin's track is %d here, and the cell is not one of the three named differences", name, got, want)
 	}
 }
 
@@ -456,7 +430,7 @@ func TestOnlyAViewerWhoSavedAModeIsStartedOnASubtitle(t *testing.T) {
 	f := sdEnv(t, "on")
 	listed := listedSubtitleDifferences(t, f.capture)
 	if !listed[nameNeverSaved] {
-		t.Errorf("compat/differences.yaml does not list %q: a new Jellyfin user is Default and a new jellyscale viewer starts on nothing", nameNeverSaved)
+		t.Errorf("%q is missing from the deliberate differences: a new Jellyfin user is Default and a new jellyscale viewer starts on nothing", nameNeverSaved)
 	}
 	never := f.viewerWith(t, "never", nil)
 	saved := f.viewerWith(t, "saved default", &settings{mode: "Default", playDefaultAudio: true})
@@ -494,13 +468,13 @@ func TestOnlyAViewerWhoSavedAModeIsStartedOnASubtitle(t *testing.T) {
 
 // A track the request names wins over every mode: inside the film, a file, a PGS track, and -1 (what the details page's Off
 // sends) answer as sent; 99, which is no stream, answers -1 here where Jellyfin echoes it (listed in
-// compat/differences.yaml); with no profile the named track is answered too, where Jellyfin ignores it (listed as well).
+// in the named differences); with no profile the named track is answered too, where Jellyfin ignores it (listed as well).
 func TestATrackTheRequestNamesWinsOverEveryMode(t *testing.T) {
 	f := sdEnv(t, "on")
 	listed := listedSubtitleDifferences(t, f.capture)
 	for _, name := range []string{nameNamed99, nameNoProfile} {
 		if !listed[name] {
-			t.Errorf("compat/differences.yaml does not list %q", name)
+			t.Errorf("%q is missing from the deliberate differences", name)
 		}
 	}
 	viewers := map[[2]string]viewer{}

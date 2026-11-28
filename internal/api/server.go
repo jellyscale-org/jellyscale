@@ -31,7 +31,7 @@ import (
 )
 
 // Version is the Jellyfin API baseline clients see. It moves only after the
-// differential suite passes against that release.
+// contract check passes against that release.
 const Version = "12.4.0"
 
 // Route statuses, recorded in compat/endpoints.yaml.

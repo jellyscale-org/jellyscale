@@ -11,7 +11,6 @@ import { createServer } from "node:net";
 import { dirname } from "node:path";
 import { promisify } from "node:util";
 import { createRequire } from "node:module";
-// The shared viewer records each page's responses for the checker (conform.mjs).
 import { advances, configure, parseFfmpeg, ffmpegRuns, login, scenario, sql, time, viewer, waitFor, workerChildren } from "./player.mjs";
 import { continuity, fallbacks, quality, routerFaults, samples, startSampler } from "./recovery.mjs";
 import { runLater, schedule, shardLine } from "./shard.mjs";

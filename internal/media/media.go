@@ -3,7 +3,7 @@
 // playback decision reads and what a client is answered with.
 //
 // Jellyfin's SDK-based clients decode strictly: an answer that lacks a field
-// the schema requires (compat/schema-12.4.json) fails to decode and the client
+// a strict client reads fails to decode and the client
 // stops. So each such field is a field of the type that is always sent, with
 // the value Jellyfin sends for a file played from disk when a stored row has
 // none. Every other field is sent only when it has a value.

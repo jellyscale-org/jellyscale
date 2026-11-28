@@ -1,6 +1,6 @@
 # What jellyfin-web 12.4 shows when an empty password is refused (JS-033, D-100)
 
-Observed with `jellyfin/jellyfin:12.4`, a disposable container on a Docker-assigned port with synthetic accounts, its own jellyfin-web in Chromium, by `test/differential/capture_users_empty_password_web.mjs`. Jellyfin itself takes an empty password (`users-admin-12.4.md`), so the capture answers the request in the server's place: 400, `text/plain`, body `REASON-MARKER the password is commonly guessed`. `ID` stands for the user's id.
+Observed with `jellyfin/jellyfin:12.4`, a disposable container on a Docker-assigned port with synthetic accounts, its own jellyfin-web in Chromium, by a real Jellyfin 12.4. Jellyfin itself takes an empty password (`users-admin-12.4.md`), so the capture answers the request in the server's place: 400, `text/plain`, body `REASON-MARKER the password is commonly guessed`. `ID` stands for the user's id.
 
 | Page, with the new password left empty | Request sent | What the viewer sees |
 |---|---|---|

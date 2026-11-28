@@ -1,6 +1,6 @@
 # How Jellyfin 12.4 manages users (JS-033)
 
-Observed with `jellyfin/jellyfin:12.4` (server 12.4.0), a disposable container on a Docker-assigned port with synthetic accounts, by `test/differential/capture_users_admin.py` (API) and `capture_users_admin_web.mjs` (the container's jellyfin-web in Chromium). Rerun from the repository root: `python3 -I test/differential/capture_users_admin.py compat/captures/users-admin-12.4.json`. Tokens and passwords are placeholders, ids are named after whom they stand for. The JSON holds the same rows in full.
+Observed with `jellyfin/jellyfin:12.4` (server 12.4.0), a disposable container on a Docker-assigned port with synthetic accounts, by a real Jellyfin 12.4 (API) and the browser part of the capture (the container's jellyfin-web in Chromium). Tokens and passwords are placeholders, ids are named after whom they stand for. The JSON holds the same rows in full.
 
 ## What stands out
 

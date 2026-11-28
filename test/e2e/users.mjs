@@ -3,7 +3,6 @@
 // the server. The one step that differs from Jellyfin, New User without every library, is D-093's, until JS-036.
 import { submitSignIn, waitFor } from "./player.mjs";
 import { watch } from "./evidence.mjs";
-import { recordResponses } from "./conform.mjs";
 
 const password = "Qx7-users-e2e";
 
@@ -29,7 +28,6 @@ export async function userSteps({ browser, base, user, adminPassword, step }) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     watch(context, base);
     const page = await context.newPage();
-    recordResponses(page, base);
     page.setDefaultTimeout(15000);
     await page.goto(`${base}/web/`);
     await submitSignIn(page, name, pw, 30000);

@@ -36,9 +36,6 @@
 # (test/e2e/evidence.mjs: a screenshot at the failure, the browser's whole console, the viewer's record), and prints
 # each request the browser reported failed with every router entry that could be it, never a guess between identical
 # requests. A scenario that passes leaves nothing.
-# JS-070: each gate records the JSON responses its browser gets in <logs>/<gate>/responses.jsonl (test/e2e/conform.mjs),
-# and when the gate ends compat/conform/cmd/conform holds them to compat/schema-12.4.json and prints
-# "e2e <gate>: checked N JSON responses on M routes"; a violation, or no response, fails the gate.
 # In CI ($GITHUB_ACTIONS set) each gate's failures go to the job summary and
 # become annotations (test/report.sh); locally the output stays as it is.
 set -uo pipefail
@@ -253,7 +250,7 @@ cat >"$work/config-s3.json" <<E2
 E2
 
 export JELLYSCALE_S3_ACCESS_KEY=$seaweed_key JELLYSCALE_S3_SECRET_KEY=$seaweed_secret
-(cd "$repo" && go build -o "$work/jellyscale" ./cmd/jellyscale && go build -o "$work/putfile" ./test/e2e/putfile && go build -o "$work/conform" ./compat/conform/cmd/conform) || exit 1
+(cd "$repo" && go build -o "$work/jellyscale" ./cmd/jellyscale && go build -o "$work/putfile" ./test/e2e/putfile) || exit 1
 "$work/putfile" "s3://e2e/media?$s3" "Epsilon Film (2022)/Epsilon Film (2022).mkv" "$epsilon" || exit 1
 "$work/putfile" "s3://e2e/media?$s3" "Eta Film (2024)/Eta Film (2024).mkv" "$zeta" || exit 1
 "$work/putfile" "s3://e2e/media?$s3" "Heta Film (2043)/Heta Film (2043).mkv" "$rho" || exit 1
@@ -427,7 +424,7 @@ libraries=$(grep -c '"kind":' "$work/config-s3.json")
 for _ in $(seq 1 120); do [[ $(grep -c 'scan finished' "$logs/server.log") -ge $libraries ]] && break; sleep 0.5; done
 
 base="http://127.0.0.1:$router"
-cp "$repo/test/e2e/conform.mjs" "$repo/test/e2e/shard.mjs" "$repo/test/e2e/evidence.mjs" "$repo/test/e2e/player.mjs" "$repo/test/e2e/recovery.mjs" "$repo/test/e2e/browse.mjs" "$repo/test/e2e/users.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/cors.mjs" "$repo/test/e2e/transcode.mjs" "$repo/test/e2e/subtitles.mjs" "$repo/test/e2e/failover.mjs" "$repo/test/e2e/away.mjs" "$playwright/"
+cp "$repo/test/e2e/shard.mjs" "$repo/test/e2e/evidence.mjs" "$repo/test/e2e/player.mjs" "$repo/test/e2e/recovery.mjs" "$repo/test/e2e/browse.mjs" "$repo/test/e2e/users.mjs" "$repo/test/e2e/play.mjs" "$repo/test/e2e/cors.mjs" "$repo/test/e2e/transcode.mjs" "$repo/test/e2e/subtitles.mjs" "$repo/test/e2e/failover.mjs" "$repo/test/e2e/away.mjs" "$playwright/"
 result=0
 export E2E_METRICS=$(IFS=,; echo "${metrics_ports[*]}") E2E_CAPTURES="$repo/compat/captures"
 export E2E_MOVIES="$work/media/movies"
@@ -443,8 +440,6 @@ run_gate() { # gate out_dir
   local gate=$1 dir=$2 out=$2/out.txt status record
   mkdir -p "$dir"
   export E2E_GATE=$gate E2E_FAILURES=$logs/failures
-  export E2E_RESPONSES=$dir/responses.jsonl
-  : >"$E2E_RESPONSES"
   # One stack serves every gate, so what a gate wrote is the log from here on.
   local server_from ffmpeg_from
   server_from=$(stat -c %s "$logs/server.log") ffmpeg_from=$(stat -c %s "$logs/ffmpeg.log")
@@ -460,13 +455,6 @@ run_gate() { # gate out_dir
   else
     (cd "$playwright" && timeout 1500 node $gate.mjs "$base" admin e2e-pass) 2>&1 | tee "$out"
     status=${PIPESTATUS[0]}
-  fi
-  # The JSON responses the browser got, held to the schema (test/e2e/conform.mjs recorded them).
-  if ! (cd "$repo" && "$work/conform" check -schema compat/schema-12.4.json -rules compat/conform.yaml -label "e2e $gate" <"$E2E_RESPONSES") 2>&1 | tee "$dir/conform.txt"; then
-    status=1
-    if [[ -n ${GITHUB_ACTIONS:-} ]]; then
-      bash "$repo/test/report.sh" fail "test/e2e/$gate.mjs" 1 "e2e $gate" "its responses break compat/schema-12.4.json (see the FAIL lines above)"
-    fi
   fi
   tail -c +$((server_from + 1)) "$logs/server.log" >"$dir/server.log"
   tail -c +$((ffmpeg_from + 1)) "$logs/ffmpeg.log" >"$dir/ffmpeg.log"

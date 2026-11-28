@@ -14,7 +14,7 @@ What the capture shows:
 - **Reasons are the PlaybackInfo's.** `TranscodeReasons` is the list in the `TranscodeReasons=` parameter of the `TranscodingUrl` the same request was given, in the same order (`TranscodeReasonsInUrl` in the JSON).
 - **`Framerate` and `CompletionPercentage` exist only while ffmpeg runs.** The three runs that finished within a second or two never had them, and `slow` lost them when its encode ended (`sessionsAfterTheEncodeEnded`). Jellyfin's `Framerate` is the encode's frames per second, 55 for a 24 fps film; jellyfin-web divides it by the source's frame rate and shows "55 fps (2.29x)", so it is also the encode speed.
 - **It stays while the session does, and goes with it.** `TranscodingInfo` is still there after the encode ended, and gone (`sessionsAfterStop`) after `Sessions/Playing/Stopped` and `DELETE /Videos/ActiveEncodings`.
-- **Jellyfin does not say how fast the encode runs against real time, or on which machine.** That is what jellyscale adds (`EncodeSpeed`, `Worker`, `IsBelowRealTime`; `compat/differences.yaml`).
+- **Jellyfin does not say how fast the encode runs against real time, or on which machine.** That is what jellyscale adds (`EncodeSpeed`, `Worker`, `IsBelowRealTime`; `the named exceptions held in the replay test`).
 
 ## What jellyfin-web reads
 

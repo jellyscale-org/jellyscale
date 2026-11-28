@@ -221,7 +221,7 @@ func TestApprovalAndRedemptionAtOnceOnTwoReplicasGiveNotYetOrTheToken(t *testing
 }
 
 // qcAlreadyApproved is what approving an already approved code answers. Jellyfin 12.4 answers 500 (the capture);
-// compat/differences.yaml lists the difference, and jellyfin-web shows both alike
+// the named exceptions held in the replay test lists the difference, and jellyfin-web shows both alike
 // (compat/captures/quick-connect-second-approval-12.4.md).
 const qcAlreadyApproved = 409
 
