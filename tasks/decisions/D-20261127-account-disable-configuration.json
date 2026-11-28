@@ -1,0 +1,11 @@
+{
+  "id": "D-20261127-account-disable-configuration",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "JS-194",
+  "brief": "## A2. Disabling an account: accept (a), configuration\n\n- decision: `accept`. A `disabled` setting per account, in configuration. Disabling ends the account's tokens.\n- serves: Goal 5, \"configuration is declarative\"; PRODUCT non-goal, \"Administration through a dashboard\".\n- reason: when an operator needs a viewer out at once, they revoke the viewer's devices (JS-042). That takes effect at once. Disabling is the lasting state, and a rollout is acceptable for it. (b) and (c) add code or an admin screen that viewers never see.\n- conditions: JS-184 criterion added: \"An account can be disabled in configuration; a start that reads it ends the account's tokens; docs/running.md says how, and that revoking its devices (JS-042) is the immediate cut.\"\n- entry: \"Disabling an account is configuration, applied by a rollout. Revoking its devices is the immediate cut.\"",
+  "tradeoff": "When an operator needs a viewer out at once, they revoke the viewer's devices (JS-042). That takes effect at once. Disabling is the lasting state, and a rollout is acceptable for it.",
+  "serves": "Goal 5, \"configuration is declarative\"; PRODUCT non-goal, \"Administration through a dashboard\".",
+  "decision": "accept",
+  "entry": "Disabling an account is configuration, applied by a rollout. Revoking its devices is the immediate cut."
+}

@@ -8,13 +8,14 @@
     "A refused play is answered with a refusal status and its reason, never inside a successful answer.",
     "Each M1 capability is in the state its design supports: declared until served, preview until Octave confirms it.",
     "The conformance check of JS-183 passes on the whole contract.",
-    "The change reaches Octave as a from:jellyscale issue before anything in it is served (D-132)."
+    "The change reaches Octave as a from:jellyscale issue before anything in it is served (D-132).",
+    "A playback's end reaches the app as a message, and in its progress-report answer, before its link is refused, so an app never learns of it only through a refused segment. A refused link answers 410 `playback-ended` with action `start-again`."
   ],
   "status": "todo",
   "dependsOn": [
     "JS-216"
   ],
   "source": "po-check.md §B and §F; D-20261127-domains-tasks",
-  "notes": "Phase M1 chosen (split from JS-216, M1); ux flag chosen: true. Plus JS-216's states, conformance and issue criteria.",
+  "notes": "Phase M1 chosen (split from JS-216, M1); ux flag chosen: true. Plus JS-216's states, conformance and issue criteria. Amended 2026-11-27 by D-20261127-media3-link-end-message, decided by the product owner: criterion 6 added. The design must say: \"Media3 shows such a refusal only as a load error, not as a player error (docs/pathsecret-link.md).\"",
   "ux": true
 }

@@ -1,0 +1,11 @@
+{
+  "id": "D-20261127-played-by-hand-keeps-place",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "JS-218",
+  "brief": "## A5. Marking watched keeps the place: accept\n\n- reason: a mark made by accident loses nothing.\n- condition: JS-218 criterion added: \"A title marked played by hand keeps its place and gets it back when unmarked. A title played to its end has no place to return, and starts from the beginning.\"\n- entry: \"Marking played by hand keeps the place. Unmarking returns it. Finishing a title clears it.\"",
+  "tradeoff": "A mark made by accident loses nothing.",
+  "serves": "",
+  "decision": "accept",
+  "entry": "Marking played by hand keeps the place. Unmarking returns it. Finishing a title clears it."
+}

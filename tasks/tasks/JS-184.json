@@ -9,13 +9,18 @@
     "A refused sign-in carries a reason Octave can explain: name or password not accepted (retry), try later (with how long), or, only after the right password on a disabled account, ask the operator. No answer tells a viewer which names exist.",
     "Every capability it adds is in the published contract (JS-183) and passes its conformance check.",
     "The sign-in answer names the account, the profile and the device, each with its own id.",
-    "No sign-in credential is stored in the clear: one read from the database signs no one in, shown by trying one."
+    "No sign-in credential is stored in the clear: one read from the database signs no one in, shown by trying one.",
+    "`GET /me` answers the caller's account, profile and device. After sign-out, or once the device is revoked, it is 401 `unauthorized` through any api replica, shown with real processes.",
+    "A token is accepted as `Authorization: Bearer` as well as in today's spellings.",
+    "`account-off` is served from the account's disabled state as it is set today. The setting in configuration (po-design.md A2) comes with JS-194.",
+    "Until the cutover, a token it gives is accepted on the Jellyfin routes as a Jellyfin sign-in's is.",
+    "Sign-in, sign-out and `/me` are `preview` once served."
   ],
   "status": "todo",
   "dependsOn": [
-    "JS-216"
+    "JS-223"
   ],
   "source": "pivot-plan.md; D-107 to D-128",
-  "notes": "",
+  "notes": "Amended 2026-11-27 by D-20261127-sign-in-first, decided by the product owner: dependsOn JS-223 (replacing JS-216), and criteria 7 to 11 added. Condition: the lead has not shown that accepting the token on Jellyfin's routes is cheap. If it costs more than the sign-in itself, the lead brings a brief before building it. Without it, Octave can test sign-in but not continue into the app with that token.",
   "ux": true
 }

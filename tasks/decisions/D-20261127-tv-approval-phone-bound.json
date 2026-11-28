@@ -1,0 +1,11 @@
+{
+  "id": "D-20261127-tv-approval-phone-bound",
+  "date": "2026-11-27",
+  "by": "product-owner",
+  "task": "JS-191",
+  "brief": "## A3. A TV while sign-ins are being refused: keep (a), with a condition\n\n- decision: `keep`. Approving a TV needs the password, as #301 requires.\n- reason: under (a), someone guessing at a viewer's name could stop that viewer adding a TV for as long as the guessing goes on. That outcome is not acceptable. docs/access.md already keeps a known device outside the bound per name, so the phone's approval is checked under the phone's own count.\n- conditions: JS-191 criterion added: \"The approval's password is checked under the signed-in phone's own known-device bound, never the bound per name, so tries at the name from elsewhere never stop a viewer approving a TV.\" Design §2.3: in \"Server rules\", replace \"counts toward the sign-in bounds\" with this.\n- entry: \"Approving a TV needs the password, checked under the phone's own device bound, so attempts at a name from elsewhere never block it.\"",
+  "tradeoff": "Under (a), someone guessing at a viewer's name could stop that viewer adding a TV for as long as the guessing goes on. That outcome is not acceptable.",
+  "serves": "",
+  "decision": "keep",
+  "entry": "Approving a TV needs the password, checked under the phone's own device bound, so attempts at a name from elsewhere never block it."
+}

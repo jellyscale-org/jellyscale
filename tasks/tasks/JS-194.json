@@ -11,7 +11,8 @@
     "The Jellyfin-only invariants are deleted from DOMAINS.md, and docs/status.md is rewritten against PRODUCT.md.",
     "Octave is told by a from:jellyscale issue, with the tag to test.",
     "Its pull request carries a ledger of every invariant: kept, removed or rewritten, with its tests before and after. A test is deleted only if its invariant is removed; a test driven through a Jellyfin route is ported to the new API and shown to fail on the fault it caught (review evidence).",
-    "The tables only Jellyfin's API used are listed in docs/ for removal one release later."
+    "The tables only Jellyfin's API used are listed in docs/ for removal one release later.",
+    "An account can be disabled in configuration; a start that reads it ends the account's tokens; docs/running.md says how, and that revoking its devices (JS-042) is the immediate cut."
   ],
   "status": "todo",
   "dependsOn": [
@@ -20,5 +21,5 @@
     "JS-042"
   ],
   "source": "pivot-plan.md; D-107 to D-128",
-  "notes": ""
+  "notes": "Amended 2026-11-27 by D-20261127-account-disable-configuration, decided by the product owner: criterion 9 added."
 }
