@@ -1,0 +1,11 @@
+{
+  "id": "D-20261128-rewrite-approved",
+  "date": "2026-11-28",
+  "by": "owner",
+  "task": "the rebuild",
+  "brief": "The rewritten guiding documents, with the review guide's recommendations: the older product statements to keep or change, and four questions about decisions and the old tests.",
+  "tradeoff": "A general import of accounts and watch history from other media servers is no longer promised; only the current test installation's viewers keep theirs.",
+  "serves": "",
+  "decision": "change",
+  "entry": "The owner: \"All changes are approved.\" As recommended and as the lead recorded them: the older statements in PRODUCT.md stand, except that importing from another media server is promised only for the current test installation's viewers; the product owner keeps deciding trade-offs and brings the owner only a change in what the product is for; the grouped decision records and the removal of earlier product-owner decisions are accepted; the first rebuild task retires the old server's test gates and keeps the video engine's tests. The two open questions in PRODUCT.md stay open."
+}
