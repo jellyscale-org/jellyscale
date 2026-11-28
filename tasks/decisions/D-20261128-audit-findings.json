@@ -1,0 +1,8 @@
+{
+  "id": "D-20261128-audit-findings",
+  "date": "2026-11-28",
+  "by": "owner",
+  "brief": "The owner, 2026-11-28, verbatim, about the findings of a code audit of the server as it stood: \"If any happen to be code that we are removing, then let's ignore them. But if there are any that point out things that will be staying, like our engine, then we need to address those.\"",
+  "decision": "change",
+  "entry": "Audit findings in code the rebuild removes are ignored. Every finding in code that stays, the engine included, is addressed; planning decides where each goes and in what order. The findings and recommendations are kept by the lead outside this public repository."
+}
