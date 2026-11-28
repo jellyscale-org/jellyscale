@@ -17,8 +17,8 @@ body:
   - type: input
     id: client
     attributes:
-      label: Client and version
-      placeholder: jellyfin-web 12.4, Chrome 140
+      label: App and version
+      placeholder: Octave for Android TV 1.2
     validations:
       required: true
   - type: dropdown

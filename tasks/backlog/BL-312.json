@@ -1,9 +1,0 @@
-{
-  "id": "BL-312",
-  "status": "open",
-  "severity": "minor",
-  "reviewer": "product-owner",
-  "source": "#108",
-  "title": "Trailers and extras kept beside a film, offered on its page",
-  "notes": "From #108. JS-080 keeps them out of Films; offering them is back when Octave's design asks for it."
-}

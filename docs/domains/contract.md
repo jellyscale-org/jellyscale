@@ -1,16 +1,12 @@
 # Contract (the edge)
 
+HTTP, the published contract between jellyscale and Octave, and the one writer of refusals.
+
 ## Words
 
-- **Capability:** a group of operations the contract declares. One group per domain.
-- **Reason:** plain words for a refusal or a conversion, from one list (JS-183). Each reason has an owning domain. `not-served` from an older replica during a roll means "not yet". The playback id and a viewer's reason are what the operator searches for.
-- **Action:** what an app may do next, such as `start-again` (rule 77).
-
-## Owns
-
-HTTP, the OpenAPI contract, the one refusal writer and conformance. No tables.
-
-Calls flow one way: Contract → {Finding, Playback, Place, People, Together} → Collection's types. Playback calls Making and Place. Today: `internal/api`, `internal/compat` and `compat/`. `internal/api` becomes the edge only, and domain logic moves out as each operation is built. `internal/compat`, `compat/` and `internal/quickconnect` go at the cutover; approval mechanics move to People.
+- **Capability:** a group of operations the contract declares.
+- **Reason:** plain words for a refusal or a conversion, from one list. jellyscale owns what each means; Octave owns the words a viewer reads.
+- **Action:** what an app may do next, such as starting again.
 
 ## Must not
 
@@ -18,10 +14,9 @@ Hold domain logic or SQL.
 
 ## Rules
 
-Rules at the cutover (JS-194); today's invariants apply until then.
-
-- **74.** Every answer and refusal is declared in the contract, with a reason from one list (JS-183).
-- **Rewritten 61, at the cutover (invariant 61 is unchanged until then):** Every operation declares its access in the contract; no content is open, pictures included. Pictures by id need a sign-in (D-20261127-pictures-signin).
-- **Removed at the cutover (JS-194):** invariants 16 to 20, and the socket and jellyfin-web parts of 31, 32, 37 and 43. Tables only Jellyfin's API used are listed in docs/ for removal one release later.
-
-Also decided: additions are compatible. An app ignores fields, reasons, actions and events it does not know. A refused Play is answered with a refusal status and its reason, never inside a successful answer (JS-217).
+1. The contract is the source of truth for what the server offers. An operation, an answer or a refusal is in the contract, with an example, before the server serves it.
+2. Every refusal carries a reason from the one list, and each reason has one owning domain. A refusal is answered as a refusal, never inside a success.
+3. Every operation declares who may call it. Nothing is open unless the contract says so and says why. (Which pictures are open is an open question: PRODUCT.md.)
+4. Additions are compatible: an app ignores fields, reasons and actions it doesn't know. A change that would break a supported Octave release is a new version, served beside the old.
+5. Names and shapes are jellyscale's own, chosen for Octave. None is kept because another server used it.
+6. Every change to the contract reaches Octave as an issue saying what changed and what each platform must do.

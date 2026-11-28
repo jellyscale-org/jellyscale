@@ -1,8 +1,0 @@
-{
-  "id": "D-151",
-  "date": "2026-11-27",
-  "by": "owner",
-  "task": "model routing",
-  "decision": "change",
-  "entry": "The owner: \"Since we're going to be working in multiple lanes, we need to make sure that we're using free models or discount models as much as we possibly can because otherwise I'll exhaust my usage immediately.\" Build, QA and helpers stay on free models. Refine, Check, Spec, design and the reviews move to Haiku 5.5 at max effort; only a core task's Check (Opus) and adversarial review (Sonnet) use stronger ones. Haiku passed all hidden tests of the code benchmark (one trial); its review quality is not measured, so an escape a Haiku review should have caught is recorded and brought back. OpenCode Go's weekly limit was reached on 2026-11-27; Command Code is no longer available."
-}

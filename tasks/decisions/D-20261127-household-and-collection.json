@@ -1,0 +1,18 @@
+{
+  "id": "D-20261127-household-and-collection",
+  "date": "2026-11-27",
+  "by": "owner",
+  "task": "PRODUCT.md",
+  "brief": "owner, in conversation",
+  "tradeoff": "A viewer who turns notifications on lets Apple or Google learn that something new is waiting, and when.",
+  "serves": "",
+  "decision": "change",
+  "entry": "The owner added to the product: profiles on a shared TV, each with its own history, languages and limits, and an optional PIN as a parental gate; viewing hours and limits on streams at once, set by the operator and refused with a reason that says which and when; new-episode notifications that may pass through Apple's and Google's notification services, opt-in and off by default, carrying no title, no detail and nothing about what the viewer watches (the one named exception to nothing leaving the operator's servers); films kept as disc images and disc folders count as films that must play, after a spike, since format support is unresearched; and, in Octave, Continue watching on the Android TV home screen and playback speed, asked of Octave by issue. Re-recorded on 2026-11-28 from the records named in `replaces`, which the tag `pre-rebuild` keeps. Quoted words are the owner's; the rest is the lead's record of 2026-11-27.",
+  "replaces": [
+    "D-143",
+    "D-144",
+    "D-145",
+    "D-146",
+    "D-147"
+  ]
+}

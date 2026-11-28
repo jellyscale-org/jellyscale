@@ -1,0 +1,11 @@
+{
+  "id": "D-20261128-rewrite-guiding-documents",
+  "date": "2026-11-28",
+  "by": "owner",
+  "task": "the rebuild",
+  "brief": "owner, in conversation",
+  "tradeoff": "None.",
+  "serves": "",
+  "decision": "change",
+  "entry": "The owner: \"let's have Fable rewrite all of our guiding vision documents and rule files. I think you also need to include the Claude.md because the Claude agent will actually use the Claude.md. So either they need to be symlinked or you need to include Claude-specific rules in that file.\" The owner reviews the rewrite before any planning starts. CLAUDE.md stays a link to AGENTS.md, which holds what a Claude agent needs."
+}

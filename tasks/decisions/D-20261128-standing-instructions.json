@@ -1,0 +1,11 @@
+{
+  "id": "D-20261128-standing-instructions",
+  "date": "2026-11-28",
+  "by": "owner",
+  "task": "AGENTS.md",
+  "brief": "Relayed by the lead in its brief for the rewrite of 2026-11-28. Except where quoted, the owner's exact words are not on record here; the owner corrects this file if it misstates them.",
+  "tradeoff": "None.",
+  "serves": "",
+  "decision": "keep",
+  "entry": "Standing instructions from the owner, as the lead relayed them: Fable 5.2 is used only when the owner asks for it. The product owner role decides priorities and order. Requests from Octave go to the product owner. What jellyscale needs from Octave goes on Octave's issue board, and nothing in Octave's repository changes without its lead's agreement. The owner is not a go-between for sessions: the issue boards are the record. The test installation may be redeployed after each task without asking; any other change to the owner's servers needs approval. Gemini through Antigravity is a reserve (\"if we need it\"), not used unless asked."
+}

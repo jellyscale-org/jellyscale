@@ -1,5 +1,7 @@
 # Picture quality of a re-encode
 
+> A measurement report, kept as written. Where it names a web client, another server, a task id or a document that is no longer in the tree, see [docs/engine/README.md](../../docs/engine/README.md), "Reading the code's comments". Its recommendations were for the earlier plan and are not decisions.
+
 **Recommendation: move x264 from `veryfast` to `faster`, as one cluster-wide setting that is part of the spec hash, and reprice the x264 rows from a real film before it ships.** `faster` is where the picture stops improving quickly: it gains about 2.5 VMAF on average and 3.5 to 5 on the worst frames for 1.2 to 1.6 times the CPU (1.4 on live action), at nearly the same bitrate. It starts a film about 45% later on the same CPUs. `medium` adds about 0.5 more for 2.2 times the CPU. CRF 20, a higher bitrate ceiling and AV1 are separate proposals below, each with something to lose, for the owner to decide.
 
 Measured 2026-11-19 on one workstation (Ryzen 7 7800X3D, 8 cores, 16 threads) that other work was using. Numbers are relative, not production capacity.

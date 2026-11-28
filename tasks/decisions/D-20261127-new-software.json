@@ -1,0 +1,14 @@
+{
+  "id": "D-20261127-new-software",
+  "date": "2026-11-27",
+  "by": "owner",
+  "task": "PRODUCT.md",
+  "brief": "owner, in conversation",
+  "tradeoff": "Every viewer's Jellyfin app goes; Octave becomes the only client.",
+  "serves": "",
+  "decision": "change",
+  "entry": "The owner: \"we are putting Jellyfin in the rear view mirror and thinking of this as a net new piece of software\". jellyscale is new software for a private collection of films and shows, for a household, friends and family, or a community. No Jellyfin parity; Octave need not work with Jellyfin servers; no promise that viewers keep their apps; behaviour is no longer checked against Jellyfin. Better playback comes first, with storage a constraint: the original on top, a handful of steps, 720p the usual floor, 480p where the content suits it. Offline viewing second. Never music or photo libraries. The record also planned a cutover of the old API and said Octave must always have something to build against; D-20261128-start-net-new replaces both for the rebuild. Re-recorded on 2026-11-28 from the records named in `replaces`, which the tag `pre-rebuild` keeps. Quoted words are the owner's; the rest is the lead's record of 2026-11-27.",
+  "replaces": [
+    "D-107"
+  ]
+}

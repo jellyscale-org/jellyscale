@@ -1,0 +1,14 @@
+{
+  "id": "D-20261127-picture-access-open",
+  "date": "2026-11-27",
+  "by": "owner",
+  "task": "PRODUCT.md, Open questions",
+  "brief": "owner, in conversation",
+  "tradeoff": "Not settled.",
+  "serves": "",
+  "decision": "open",
+  "entry": "Not decided; recorded so neither answer below is read as final. Asked whether every picture should need a sign-in, the owner said: \"Yes, every picture requires sign in.\" Later the same day: \"I just realized what pictures requiring sign-in means. I don't care if static assets like posters or images of actors are public assets. Although I think if we're having S3 be a potential storage solution, pre-signed URLs is a common case for that. But if we're already fetching them from a public place to populate them, then I don't see why we could just do that.\" The lead then asked whether pictures that are frames of the films themselves (generated posters, chapter pictures, scrub previews) need a sign-in; that question is unanswered. Until it is, no design locks picture access.",
+  "replaces": [
+    "D-20261127-pictures-signin"
+  ]
+}

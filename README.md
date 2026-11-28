@@ -1,61 +1,31 @@
 # jellyscale
 
-A video server in Go that speaks the Jellyfin client API and runs on more than one machine. Unmodified Jellyfin apps sign in, browse and play, while each part of the server (`api`, `stream`, `worker`) runs as many copies as it needs, coordinated through Postgres. It is for someone who runs a Jellyfin library, has outgrown one process, and wants a lost machine to be invisible to viewers. Video only: films and shows. Not affiliated with the Jellyfin project; [PRODUCT.md](PRODUCT.md) says what it should become.
+A self-hosted streaming server for a private collection of films and shows, shared with a household, friends and family, or a community. It runs across machines, keeps films on local disks or S3-compatible object storage, and is built for its own apps, [Octave](https://github.com/jellyscale-org/octave). Video only. [PRODUCT.md](PRODUCT.md) says what it should be.
 
-What it does better than Jellyfin, today:
+## Status: being rebuilt
 
-- **No single worker whose loss stops a film:** a killed worker is replaced within seconds and the picture goes on, and playback continues through a Postgres switchover.
-- **A slow transcode is shared** across workers, and reads only as far ahead as the viewer needs.
-- **Films on disk or in S3-compatible object storage,** per library.
-- **Media and personal data always need a token,** where Jellyfin serves some to anyone ([docs/access.md](docs/access.md)).
+jellyscale began as a server for another project's apps. It is now being rebuilt as software of its own: a new plan and new server code, keeping only the video engine (conversion, seeking, subtitles and storage) and its tests.
 
-## Status
+- **Nothing of the new server is released,** and there is nothing to deploy from `main` today.
+- **The earlier server** is the tag [`pre-rebuild`](https://github.com/jellyscale-org/jellyscale/tree/pre-rebuild), with its own documentation. It is not developed further.
+- **The code in the tree** is still mostly the earlier server's. It goes as the new server replaces it.
 
-A summary; [docs/status.md](docs/status.md) is the record of every feature.
-
-| Phase | | Status |
-|---|---|---|
-| 1 | Browse | done |
-| 2 | Direct play | done |
-| 3 | Transcode | mostly done; not built: encoding to HEVC or AV1 as the first choice for a client (only a copy's fallback encodes to them, JS-088 and JS-133), GPU tone mapping |
-| 4 | High availability | workers, API and stream replicas (JS-031) and Postgres done; Postgres switchover has a gap (JS-146) |
-| — | Identity | partial; user management, Quick Connect and OIDC not built |
-| 5 | Library and metadata | partial (scan, chapter images); metadata from files, trickplay, GPU encoders not built |
-| 6 | Kubernetes | partial (metrics, published images); manifests, Helm, autoscaling not built |
-| 7 | SyncPlay | not built |
-| — | Beyond Jellyfin (`/jellyscale/v1/`) | track languages: saved preferences and opt-in hiding of other languages' tracks done; starting in the viewer's language and a settings page coming |
-
-## Deploy
-
-From the repository root, with Docker Compose:
-
-```sh
-docker create --name jf jellyfin/jellyfin:12.4
-docker cp jf:/jellyfin/jellyfin-web web-dist && docker rm -v jf
-
-read -rs JELLYSCALE_ADMIN_PASSWORD && export JELLYSCALE_ADMIN_PASSWORD   # type the administrator's password
-MEDIA_DIR=/path/to/media docker compose -f deploy/compose/compose.yaml up --build
-```
-
-`MEDIA_DIR` needs `movies/` and `shows/` folders. Open http://127.0.0.1:8096/web/ and sign in as `admin`. For more than one machine, the roles, the ingress and configuration, see [docs/running.md](docs/running.md).
-
-## Contribute
-
-Read [CONTRIBUTING.md](CONTRIBUTING.md) first: behaviour is observed on a real Jellyfin 12.4, no Jellyfin code is ported, and a bug fix comes with a test that fails without it. `go test ./...` needs only Go; the integration, e2e and roles tiers are in [docs/testing.md](docs/testing.md).
+[docs/status.md](docs/status.md) is kept current.
 
 ## Documentation
 
-- [Running jellyscale](docs/running.md): roles, the Compose stack, ingress, rolling updates, configuration, metrics.
-- [Transcoding](docs/transcoding.md): settings, worker failover, read-ahead, video copy, tone mapping, storage costs.
-- [Subtitles](docs/subtitles.md): text and image tracks, files and fonts beside the film.
-- [Chapters](docs/chapters.md): chapters and chapter pictures.
-- [Access](docs/access.md): who may call each route, and why.
-- [jellyscale's own API](docs/api.md): the `/jellyscale/v1/` routes.
-- [Status](docs/status.md): every feature, client coverage and the route audit.
-- [Testing](docs/testing.md): the test tiers, CI shards, the fixture cache.
-- [Testing a client](docs/client-testing.md): the published image with test films, for a client's CI.
-- [Architecture decisions](docs/architecture-decisions.md): the superseded first design, kept for history.
+- [PRODUCT.md](PRODUCT.md): what jellyscale is for, and the experience it should give.
+- [DOMAINS.md](DOMAINS.md): its parts and the rules a change must keep.
+- [ARCHITECTURE.md](ARCHITECTURE.md): the intended design.
+- [docs/engine/](docs/engine/README.md): what is known, measured, about the video engine.
+- [docs/players.md](docs/players.md): what players were seen to do.
+- [docs/testing.md](docs/testing.md): how it is tested.
+- [AGENTS.md](AGENTS.md): the rules of working here, for people and agents. [docs/delivery.md](docs/delivery.md) is how a task is run.
+
+## Contribute
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md). While the rebuild is under way, open an issue before starting anything.
 
 ## License
 
-GPL-3.0-or-later. Written from observed behavior and public API documentation; no Jellyfin code is ported. jellyfin-web is a separate GPL-2.0 program and isn't included here.
+GPL-3.0-or-later. No code is copied from other media servers.

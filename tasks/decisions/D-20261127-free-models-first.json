@@ -1,0 +1,14 @@
+{
+  "id": "D-20261127-free-models-first",
+  "date": "2026-11-27",
+  "by": "owner",
+  "task": "model routing",
+  "brief": "owner, in conversation",
+  "tradeoff": "None.",
+  "serves": "",
+  "decision": "change",
+  "entry": "The owner: \"Since we're going to be working in multiple lanes, we need to make sure that we're using free models or discount models as much as we possibly can because otherwise I'll exhaust my usage immediately.\" Building, running checks and helper work go to free models first; writing checks, design and the reviews run on Haiku 5.5 at max effort; only a core task's review of its checks (Opus 5.5) and its adversarial review (Sonnet 5.5) use stronger ones. Haiku's review quality is not measured, so a defect a Haiku review should have caught is recorded and brought back. Later decisions add to this (D-20261127-build-models, D-20261127-strong-models). OpenCode Go reached its weekly limit on 2026-11-27 and no extra usage is turned on; Command Code is no longer available. Re-recorded on 2026-11-28 from the records named in `replaces`, which the tag `pre-rebuild` keeps. Quoted words are the owner's; the rest is the lead's record of 2026-11-27.",
+  "replaces": [
+    "D-151"
+  ]
+}

@@ -1,12 +1,15 @@
 ## What and why
 
+<!-- What a viewer or operator gets, and the task or issue it belongs to. -->
+
 ## How it was verified
 
-<!-- Commands run and results. For client behavior, which client. -->
+<!-- Commands run and their results: the whole of every package the change touches. For a player's behaviour, which player. -->
 
 ## Checklist
 
-- [ ] Fits [PRODUCT.md](../PRODUCT.md), including its non-goals
-- [ ] Respects the invariants in [DOMAINS.md](../DOMAINS.md), or updates them with a reason
-- [ ] Tests would fail without this change
-- [ ] `compat/endpoints.yaml` regenerated, if routes changed
+- [ ] Fits [PRODUCT.md](../PRODUCT.md)
+- [ ] Keeps the rules in [DOMAINS.md](../DOMAINS.md) and its domain files, or changes one with a reason
+- [ ] Tests would fail without this change, and none tests a document or a test tool
+- [ ] A changed fact in `docs/engine/` is changed there
+- [ ] Nothing private: no names, credentials, real titles or paths
