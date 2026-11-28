@@ -1,4 +1,4 @@
-package media
+package testenv
 
 // ClientFields is the one list of fields a strict client reads from every source,
 // stream and attachment. A value is "bool", "integer", or the allowed values of

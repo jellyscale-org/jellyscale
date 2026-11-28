@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"jellyscale/internal/media"
+	"jellyscale/internal/testenv"
 )
 
 // JS-086: the one MediaSource, MediaStream and MediaAttachment type, in package
@@ -33,7 +34,7 @@ func roundTrip[T any](t *testing.T, in string) map[string]any {
 
 func checkRequired(t *testing.T, typeName string, in string, out map[string]any) {
 	t.Helper()
-	for field, want := range media.ClientFields[typeName] {
+	for field, want := range testenv.ClientFields[typeName] {
 		value, ok := out[field]
 		if !ok {
 			t.Errorf("%s from %s lacks %s", typeName, in, field)
@@ -108,7 +109,7 @@ func TestAStreamCarriesTheRequiredFieldsAndNoZeroKeyItWasNotGiven(t *testing.T) 
 			t.Fatal(err)
 		}
 		for key, value := range out {
-			if _, ok := given[key]; !ok && media.ClientFields["stream"][key] == "" {
+			if _, ok := given[key]; !ok && testenv.ClientFields["stream"][key] == "" {
 				t.Errorf("a stream from %s gained %s = %v", in, key, value)
 			}
 		}
@@ -130,7 +131,7 @@ func TestAnAttachmentCarriesItsIndex(t *testing.T) {
 			t.Fatal(err)
 		}
 		for key := range out {
-			if _, ok := given[key]; !ok && media.ClientFields["attachment"][key] == "" {
+			if _, ok := given[key]; !ok && testenv.ClientFields["attachment"][key] == "" {
 				t.Errorf("an attachment from %s gained %s", in, key)
 			}
 		}

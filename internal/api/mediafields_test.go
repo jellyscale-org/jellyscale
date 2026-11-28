@@ -5,14 +5,14 @@ import (
 	"strings"
 	"testing"
 
-	"jellyscale/internal/media"
+	"jellyscale/internal/testenv"
 )
 
 // checkMediaFieldKinds fails unless every field a client reads is present, non-null and of
-// the kind it reads it as. The fields are typed once, in internal/media.ClientFields.
+// the kind it reads it as. The fields are typed once, in internal/testenv.ClientFields.
 func checkMediaFieldKinds(t *testing.T, kind string, obj map[string]any, where string) {
 	t.Helper()
-	for field, want := range media.ClientFields[kind] {
+	for field, want := range testenv.ClientFields[kind] {
 		value, ok := obj[field]
 		if !ok {
 			t.Errorf("%s: %s has no %s", where, kind, field)
