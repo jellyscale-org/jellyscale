@@ -144,14 +144,15 @@ func (s *Server) undeclared(w http.ResponseWriter, r *http.Request, status int, 
 	refusalEnvelope(w, http.StatusInternalServerError, reasonServerFailure, "")
 }
 
-// logRefusal writes the route, status and reason of a refusal. A viewer's own mistake is below the operator's threshold;
-// a failure inside the server is an error. Detail is never logged: it can hold a value from the request.
-func (s *Server) logRefusal(r *http.Request, status int, reason Reason) {
+// logRefusal writes the route, status and reason of a refusal, with the operator's cause. A viewer's own mistake is below
+// the operator's threshold; a failure inside the server is an error. The cause is always a fixed string from this code;
+// the answer's Detail is never logged, because it can hold a value from the request.
+func (s *Server) logRefusal(r *http.Request, status int, reason Reason, cause string) {
 	method, path, matched := patternOperation(r.Pattern)
 	if !matched {
 		method, path = r.Method, r.URL.Path
 	}
-	attrs := []any{"route", method + " " + path, "status", status, "reason", string(reason)}
+	attrs := []any{"route", method + " " + path, "status", status, "reason", string(reason), "cause", cause}
 	if status >= http.StatusInternalServerError {
 		s.Log.Error("v1 refusal", attrs...)
 	} else {
@@ -160,7 +161,7 @@ func (s *Server) logRefusal(r *http.Request, status int, reason Reason) {
 }
 
 // refuseV1 answers a v1 request from the contract's reasons, and a Jellyfin request as it always has. An optional detail
-// goes into the JSON answer for the app developer, never into the log.
+// goes into the JSON answer for the app developer, never into the log. text must be a fixed string: it is logged.
 func (s *Server) refuseV1(w http.ResponseWriter, r *http.Request, status int, reason Reason, text string, detail ...string) {
 	if !isV1Path(r.URL.Path) {
 		refuse(w, r, status, text)
@@ -170,7 +171,7 @@ func (s *Server) refuseV1(w http.ResponseWriter, r *http.Request, status int, re
 		s.undeclared(w, r, status, reason)
 		return
 	}
-	s.logRefusal(r, status, reason)
+	s.logRefusal(r, status, reason, text)
 	refusalEnvelope(w, status, reason, strings.Join(detail, ""))
 }
 

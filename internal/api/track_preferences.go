@@ -70,11 +70,11 @@ func (s *Server) patchTrackPreferences(w http.ResponseWriter, r *http.Request) {
 	// A switch is asked for only once its language is saved; a language cleared later leaves the switch as it was.
 	config := configurationOf(session.User.Configuration)
 	if patch["HideOtherAudio"] == true && (config.AudioLanguagePreference == nil || *config.AudioLanguagePreference == "") {
-		s.refuseV1(w, r, http.StatusConflict, reasonLanguageNotSaved, "language not saved", "HideOtherAudio needs AudioLanguagePreference to be saved first, with POST /Users/Configuration")
+		s.refuseV1(w, r, http.StatusConflict, reasonLanguageNotSaved, "HideOtherAudio needs AudioLanguagePreference to be saved first, with POST /Users/Configuration", "HideOtherAudio needs AudioLanguagePreference to be saved first, with POST /Users/Configuration")
 		return
 	}
 	if patch["HideOtherSubtitles"] == true && config.SubtitleLanguagePreference == "" {
-		s.refuseV1(w, r, http.StatusConflict, reasonLanguageNotSaved, "language not saved", "HideOtherSubtitles needs SubtitleLanguagePreference to be saved first, with POST /Users/Configuration")
+		s.refuseV1(w, r, http.StatusConflict, reasonLanguageNotSaved, "HideOtherSubtitles needs SubtitleLanguagePreference to be saved first, with POST /Users/Configuration", "HideOtherSubtitles needs SubtitleLanguagePreference to be saved first, with POST /Users/Configuration")
 		return
 	}
 	body, _ := json.Marshal(patch)
