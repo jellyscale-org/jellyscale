@@ -58,22 +58,23 @@ func (s *Server) patchTrackPreferences(w http.ResponseWriter, r *http.Request) {
 	session := sessionOf(r)
 	raw, err := io.ReadAll(io.LimitReader(r.Body, maxTrackPreferencesBody+1))
 	if err != nil || len(raw) > maxTrackPreferencesBody {
-		http.Error(w, "body is unreadable or over 16 KB", http.StatusBadRequest)
+		s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, "body is unreadable or over 16 KB", "body is unreadable or over 16 KB")
 		return
 	}
 	patch, err := parseTrackPreferencesPatch(raw)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		// The parser's error names the field and the value as sent. It goes to the client's Detail, never to the log.
+		s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, "invalid body", err.Error())
 		return
 	}
 	// A switch is asked for only once its language is saved; a language cleared later leaves the switch as it was.
 	config := configurationOf(session.User.Configuration)
 	if patch["HideOtherAudio"] == true && (config.AudioLanguagePreference == nil || *config.AudioLanguagePreference == "") {
-		http.Error(w, "HideOtherAudio needs AudioLanguagePreference to be saved first, with POST /Users/Configuration", http.StatusConflict)
+		s.refuseV1(w, r, http.StatusConflict, reasonLanguageNotSaved, "HideOtherAudio needs AudioLanguagePreference to be saved first, with POST /Users/Configuration", "HideOtherAudio needs AudioLanguagePreference to be saved first, with POST /Users/Configuration")
 		return
 	}
 	if patch["HideOtherSubtitles"] == true && config.SubtitleLanguagePreference == "" {
-		http.Error(w, "HideOtherSubtitles needs SubtitleLanguagePreference to be saved first, with POST /Users/Configuration", http.StatusConflict)
+		s.refuseV1(w, r, http.StatusConflict, reasonLanguageNotSaved, "HideOtherSubtitles needs SubtitleLanguagePreference to be saved first, with POST /Users/Configuration", "HideOtherSubtitles needs SubtitleLanguagePreference to be saved first, with POST /Users/Configuration")
 		return
 	}
 	body, _ := json.Marshal(patch)

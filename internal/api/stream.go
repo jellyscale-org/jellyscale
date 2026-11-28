@@ -246,7 +246,7 @@ func (s *Server) markedPlaybackInfo(w http.ResponseWriter, r *http.Request) {
 func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, marked bool) {
 	id := r.PathValue("itemId")
 	if !db.ValidID(id) {
-		http.NotFound(w, r)
+		s.refuseV1(w, r, http.StatusNotFound, reasonNotFound, "404 page not found")
 		return
 	}
 	var request playback.Request
@@ -256,7 +256,7 @@ func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, mark
 			request, err = playback.ParseRequest(body)
 		}
 		if err != nil {
-			http.Error(w, "invalid body", http.StatusBadRequest)
+			s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, "invalid body")
 			return
 		}
 	}
@@ -266,7 +266,7 @@ func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, mark
 		return
 	}
 	if !found {
-		http.NotFound(w, r)
+		s.refuseV1(w, r, http.StatusNotFound, reasonNotFound, "404 page not found")
 		return
 	}
 	wanted := r.URL.Query().Get("mediasourceid")
@@ -327,7 +327,17 @@ func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, mark
 			// text says the media can't play now, where "no compatible stream"
 			// would blame the client.
 			s.logDecisions(decision) // Alone: no other source of a refused reply is said to play.
-			writeJSON(w, map[string]any{"MediaSources": []media.MediaSource{}, "PlaySessionId": playSession, "ErrorCode": "RateLimitExceeded"})
+			reply := map[string]any{"MediaSources": []media.MediaSource{}, "PlaySessionId": playSession, "ErrorCode": "RateLimitExceeded"}
+			if marked {
+				// Jellyfin's ErrorCode stays for the player; jellyscale's own API also says what the viewer can do,
+				// through the same contract check a refusal of its own passes.
+				allowed, ok := s.bodyReason(w, r, reasonNoCapacity)
+				if !ok {
+					return
+				}
+				reply["Reason"], reply["Action"] = string(allowed), reasonActions[allowed]
+			}
+			writeJSON(w, reply)
 			return
 		}
 		burn := request.NoSubtitleProfiles() || (request.AlwaysBurnInSubtitleWhenTranscoding && source.TranscodingURL != "")
@@ -364,7 +374,35 @@ func (s *Server) answerPlaybackInfo(w http.ResponseWriter, r *http.Request, mark
 		result = append(result, source)
 	}
 	s.logDecisions(decisions...)
+	if len(result) == 0 {
+		// A series or a season exists but has no file of its own; a named source that is not on this item does not exist
+		// here. Both leave nothing to play, but only the second says the viewer named nothing.
+		reason := reasonNotFound
+		if s.nothingToPlay(r, id) {
+			reason = reasonNothingToPlay
+		}
+		reply := map[string]any{"MediaSources": []media.MediaSource{}, "PlaySessionId": playSession}
+		if marked {
+			allowed, ok := s.bodyReason(w, r, reason)
+			if !ok {
+				return
+			}
+			reply["Reason"], reply["Action"] = string(allowed), reasonActions[allowed]
+		}
+		writeJSON(w, reply)
+		return
+	}
 	writeJSON(w, map[string]any{"MediaSources": result, "PlaySessionId": playSession})
+}
+
+// nothingToPlay tells a title that exists from one that does not: a series or a season has no media source of its own,
+// and is told to choose one of its episodes or films rather than told it does not exist.
+func (s *Server) nothingToPlay(r *http.Request, id string) bool {
+	var kind string
+	if err := s.Pool.QueryRow(r.Context(), "SELECT type FROM items WHERE id = $1::uuid", id).Scan(&kind); err != nil {
+		return false
+	}
+	return kind == "Series" || kind == "Season"
 }
 
 // storedStreams is the file's own track list, empty when the row is gone.

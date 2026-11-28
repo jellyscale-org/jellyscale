@@ -414,10 +414,20 @@ func (a *accessSite) judge(u *accUniform, route Route, what string, r accReply, 
 		return
 	}
 	if !head {
-		if strings.TrimSpace(string(r.body)) != "unauthorized" || len(r.body) >= 64 {
+		// JS-183: jellyscale's own API answers the sign-in refusal as JSON (contract_integration_test.go); Jellyfin's routes keep the text.
+		if strings.HasPrefix(route.Path, "/jellyscale/v1/") {
+			if !isSignInRefusal(r.body) {
+				a.fail("%s: the body is %q, want the sign-in refusal as JSON", name, r.body)
+			}
+		} else if strings.TrimSpace(string(r.body)) != "unauthorized" || len(r.body) >= 64 {
 			a.fail("%s: the body is %q, want unauthorized, under 64 bytes", name, r.body)
 		}
-		u.seen[accShape(r)] = append(u.seen[accShape(r)], name)
+		// JS-183: jellyscale's own API has the sign-in refusal as JSON, so its shape is uniform apart from Jellyfin's.
+		shape := accShape(r)
+		if strings.HasPrefix(route.Path, "/jellyscale/v1/") {
+			shape = "jellyscale/v1\n" + shape
+		}
+		u.seen[shape] = append(u.seen[shape], name)
 	}
 	for _, leak := range []string{"Content-Range", "Content-Disposition", "ETag", "Location"} {
 		if r.header.Get(leak) != "" {
@@ -427,7 +437,14 @@ func (a *accessSite) judge(u *accUniform, route Route, what string, r accReply, 
 }
 
 func (u *accUniform) check(a *accessSite, handlerName string) {
-	if len(u.seen) > 1 {
+	// JS-183: one uniform shape on Jellyfin's routes and one on jellyscale's, whose body is the contract's sign-in refusal.
+	jellyscaleShapes := 0
+	for shape := range u.seen {
+		if strings.HasPrefix(shape, "jellyscale/v1\n") {
+			jellyscaleShapes++
+		}
+	}
+	if jellyscaleShapes > 1 || len(u.seen)-jellyscaleShapes > 1 {
 		var kinds []string
 		for s, who := range u.seen {
 			kinds = append(kinds, fmt.Sprintf("%d answers like %q, the first %s", len(who), strings.ReplaceAll(s, "\n", "|"), who[0]))
@@ -633,10 +650,15 @@ func (a *accessSite) outside(t *testing.T, h accHandler) {
 			}) {
 				continue
 			}
+			wantStatus, wantBody := http.StatusNotFound, "404 page not found\n"
+			// JS-183: a method the contract does not give a served v1 operation answers its method-not-allowed refusal.
+			if strings.HasPrefix(path, "/jellyscale/v1/") && slices.Contains(h.roles, RoleAPI) {
+				wantStatus, wantBody = http.StatusMethodNotAllowed, `{"Reason":"method-not-allowed","Action":"none"}`+"\n"
+			}
 			for _, token := range []string{"", a.token} {
 				r := accSend(method, h.base, path, token, 3, "")
-				if r.err != nil || r.status != 404 || string(r.body) != "404 page not found\n" {
-					a.fail("%s: %s %s (token %v) answered %d %.40q, want the catch-all's 404", h.name, method, path, token != "", r.status, r.body)
+				if r.err != nil || r.status != wantStatus || string(r.body) != wantBody {
+					a.fail("%s: %s %s (token %v) answered %d %.40q, want %d %.40q", h.name, method, path, token != "", r.status, r.body, wantStatus, wantBody)
 				}
 			}
 		}
@@ -695,6 +717,10 @@ func TestAccess(t *testing.T) {
 	}
 	// Every route was asked, on every accHandler that serves it, and a route that no accHandler serves is a failure.
 	for _, route := range routes {
+		// JS-183: an open route says why (Route.Why, docs/access.md); nothing else reads it.
+		if route.Access == AccessAnyone && route.Why == "" {
+			t.Errorf("%s is open and says no why", routeName(route))
+		}
 		for _, h := range []accHandler{both, apiOnly, streamOnly} {
 			if h.serves(route) && a.asked[h.name+" "+routeName(route)] == 0 {
 				t.Errorf("%s was not asked on the accHandler with roles %s", routeName(route), h.name)

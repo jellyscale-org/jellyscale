@@ -134,11 +134,12 @@ func TestEveryAnswerOfEveryRouteToARequestWithAnOriginAllowsIt(t *testing.T) {
 			}
 		}
 	}
-	if heads != 74*4 {
-		t.Fatalf("%d HEADs asked, want 74 GET routes x 2 origins x 2 credentials", heads)
+	// JS-183 adds two GET routes, the contract and the identity.
+	if heads != 76*4 {
+		t.Fatalf("%d HEADs asked, want 76 GET routes x 2 origins x 2 credentials", heads)
 	}
-	if len(routes) != 109 {
-		t.Fatalf("%d routes asked, want 109", len(routes))
+	if len(routes) != 111 {
+		t.Fatalf("%d routes asked, want 111", len(routes))
 	}
 	t.Logf("%d answers, by status: %v", asked, statuses)
 	if len(bad) > 0 {
@@ -276,7 +277,7 @@ func TestAPictureIsRightForEachOriginFromASharedCache(t *testing.T) {
 }
 
 // No route sets a cookie and a cookie is no token (DOMAINS.md names this check). Driven from the route table: a route
-// added tomorrow is asked too. A valid token sent only in a Cookie, under each spelling's name, is a 401 `unauthorized`.
+// added tomorrow is asked too. A valid token sent only in a Cookie, under each spelling's name, is a 401 as with no token.
 func TestNoRouteSetsACookieAndACookieIsNoToken(t *testing.T) {
 	a := newAccessSite(t)
 	handlers, routes := a.corsRoutes(t)
@@ -316,9 +317,13 @@ func TestNoRouteSetsACookieAndACookieIsNoToken(t *testing.T) {
 			r := accSend(route.Method, h.base, path, "", -1, body, "Cookie", name+"="+strings.ReplaceAll(value, `"`, "%22"), "Origin", corsA)
 			// The cookie's value may be quoted too: a server that reads either spelling would be let in by one of them.
 			r2 := accSend(route.Method, h.base, path, "", -1, body, "Cookie", name+`=`+value+`; `+name+`="`+token+`"`, "Origin", corsA)
+			wantBody := "unauthorized"
+			if strings.HasPrefix(route.Path, "/jellyscale/v1/") {
+				wantBody = `{"Reason":"unauthorized","Action":"sign-in"}`
+			}
 			for _, got := range []accReply{r, r2} {
-				if got.err != nil || got.status != 401 || strings.TrimSpace(string(got.body)) != "unauthorized" {
-					bad = append(bad, fmt.Sprintf("%s %s with the token only in a Cookie named %s: %d %.40q, want 401 unauthorized", route.Method, route.Path, name, got.status, got.body))
+				if got.err != nil || got.status != 401 || strings.TrimSpace(string(got.body)) != wantBody {
+					bad = append(bad, fmt.Sprintf("%s %s with the token only in a Cookie named %s: %d %.40q, want 401 %s", route.Method, route.Path, name, got.status, got.body, wantBody))
 				}
 			}
 		}

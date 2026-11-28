@@ -144,6 +144,8 @@ That does not open a viewer's account. No route reads or sets a cookie, so the b
 | `GET /Items/{itemId}/Similar` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
 | `GET /Items/{itemId}/SpecialFeatures` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
 | `GET /Items/{itemId}/ThemeMedia` | Lists or reads items of the library | viewer | the library as it is today (per-user libraries: JS-036); the caller's own account (`own`) |
+| `GET /jellyscale/v1/contract` | Gives a client the published contract | anyone | a client reads the published contract before anyone signs in; it holds no secret |
+| `GET /jellyscale/v1/server` | Says which server this is and what it offers | anyone | a client learns which server it is talking to before anyone signs in; it holds no secret |
 | `POST /jellyscale/v1/items/{itemId}/playback-info` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account (`own`) |
 | `GET /jellyscale/v1/track-preferences` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account (`own`) |
 | `PATCH /jellyscale/v1/track-preferences` | Reads or changes the caller's own data (watched, favourites, settings, resume) | viewer | the caller's own account (`own`) |

@@ -29,7 +29,9 @@ routes:
   - {method: GET, path: "/Items/{itemId}/Similar", status: stub, role: api, access: viewer, user: own}
   - {method: GET, path: "/Items/{itemId}/SpecialFeatures", status: stub, role: api, access: viewer, user: own}
   - {method: GET, path: "/Items/{itemId}/ThemeMedia", status: stub, role: api, access: viewer, user: own}
+  - {method: GET, path: "/jellyscale/v1/contract", status: implemented, role: api, access: anyone}
   - {method: POST, path: "/jellyscale/v1/items/{itemId}/playback-info", status: implemented, role: api, access: viewer, user: own}
+  - {method: GET, path: "/jellyscale/v1/server", status: implemented, role: api, access: anyone}
   - {method: GET, path: "/jellyscale/v1/track-preferences", status: implemented, role: api, access: viewer, user: own}
   - {method: PATCH, path: "/jellyscale/v1/track-preferences", status: implemented, role: api, access: viewer, user: own}
   - {method: PATCH, path: "/jellyscale/v1/users/configuration", status: implemented, role: api, access: viewer, user: own}

@@ -2,9 +2,13 @@
 
 Jellyfin's API has no place for some of what jellyscale offers a viewer. Those routes live under `/jellyscale/v1/`, never beside Jellyfin's, and no Jellyfin answer carries a field of them. A client finds out that it is talking to jellyscale by this namespace answering: a real Jellyfin answers 404.
 
-The version in the path, `v1`, is the shape of these routes. Within v1 a field may be added to an answer, but no field, route or accepted spelling is removed or changed in meaning; a break is `v2`, served beside v1. Field names are exact (`HideOtherAudio`, not `hideotheraudio`), so v1 never accepts a spelling it would have to take away. Paths, like all of jellyscale's, are matched without regard to case.
+The version in the path, `v1`, is the shape of these routes. Within v1 a field may be added to an answer, once the contract declares it, and a client ignores fields it does not know; no field, route or accepted spelling is removed or changed in meaning. A break is `v2`, served beside v1. The server answers only what its contract declares: the conformance check holds each typed answer to it (`additionalProperties: false`). The closed list of reasons is the one thing v1 extends: an entry may be added, never removed or renamed. Field names are exact (`HideOtherAudio`, not `hideotheraudio`), so v1 never accepts a spelling it would have to take away. Paths, like all of jellyscale's, are matched without regard to case.
 
-Every route needs a token (docs/access.md) and acts on the caller only. A `userId` or `controllableByUserId` query value, or a PlaybackInfo body's `UserId`, must name the caller in compact or dashed form, in any letter case; another, unknown or malformed id is answered 403, and an empty value is absent. A request without a known token is answered 401 before its user id is checked.
+A client reads `GET /jellyscale/v1/contract` and `GET /jellyscale/v1/server` with no token. The contract is the OpenAPI 3.1 document at `internal/contract/openapi.yaml`, which the image carries and serves byte for byte; identity gives the build's version, `ApiVersion: v1` and every capability with its state (`preview`, `declared` or `stable`). A capability the server has not built is `declared` and its route answers the `not-served` refusal, including when it shares a path with a served method. No capability is `stable` until a CI check fails on an incompatible change to it. `playback-info`, `user-configuration` and `track-preferences` leave at the cutover and can never be stable.
+
+Every refusal on this namespace is `{"Reason": "<code>", "Action": "<what the viewer can do>"}`, with optional `RetryAfterSeconds` and `Detail`. `Reason` and `Action` are open strings with known values: a client generated from an older copy decodes one it does not know. `Detail` is for the app developer, not for the viewer; it says which field or value was wrong where the old text did, and its wording may change within a version, so a client must not branch on it. The server never writes `Detail` to a log, because it can hold a value from the request. The codes are the closed list in the contract's `x-reasons`, each meaning written in words a viewer understands; the operator's detail goes in the server's log. The four transport reasons — an unknown route, a wrong method, a missing sign-in and a server failure — and any reason of a stable capability are added within a version, never reworded, removed or renamed. A reason used only by a preview capability may be reworded until its capability becomes stable, which the task that marks it stable locks. Each response declares the reasons it may carry, including a 200 body's. The server sends only a status and reason the operation declares: anything else is logged at error as `undeclared answer` and answered 500 `server-failure`. A viewer's own mistake is logged at Debug with the route, status and reason, so it never reaches an operator's Info log; a failure inside the server is logged at Error. A PlaybackInfo the server cannot start carries `Reason` and `Action` beside Jellyfin's `ErrorCode` in a 200 body. Jellyfin's routes keep their text refusals.
+
+Every route below needs a token (docs/access.md) and acts on the caller only. A `userId` or `controllableByUserId` query value, or a PlaybackInfo body's `UserId`, must name the caller in compact or dashed form, in any letter case; another, unknown or malformed id is answered 403, and an empty value is absent. A request without a known token is answered 401 before its user id is checked.
 
 ## Track preferences
 
@@ -32,9 +36,9 @@ Languages in a list are stored as lowercase three-letter codes, each once, in th
 
 ### Answers that are not 200
 
-- 400, with the text of what is wrong, and nothing stored (a body with several faults stores none of it): a body over 16 KB, not JSON, empty, not an object, or followed by more text; a field that is not one of the five (names are exact), is named twice, or has the wrong type (the switches are true or false, the lists are lists of strings; null is not read as absent); a list entry that names no language (`xx`, `german`, the empty string, `und`, `mis`, `mul`, `zxx`; the answer gives it as sent); a list of more than 20 languages.
-- 409, nothing stored: `HideOtherAudio` true while the caller's `AudioLanguagePreference` is empty, or `HideOtherSubtitles` true while `SubtitleLanguagePreference` is empty. The answer names the language to save first, with `POST /Users/Configuration`. `OriginalLanguage` counts as saved. Nothing else needs a language, and a language cleared afterwards leaves the stored document as it was.
-- 401: no token, or one jellyscale does not know.
+- 400 `invalid-body`, nothing stored (the log says why) (a body with several faults stores none of it): a body over 16 KB, not JSON, empty, not an object, or followed by more text; a field that is not one of the five (names are exact), is named twice, or has the wrong type (the switches are true or false, the lists are lists of strings; null is not read as absent); a list entry that names no language (`xx`, `german`, the empty string, `und`, `mis`, `mul`, `zxx`); a list of more than 20 languages.
+- 409 `language-not-saved`, nothing stored: `HideOtherAudio` true while the caller's `AudioLanguagePreference` is empty, or `HideOtherSubtitles` true while `SubtitleLanguagePreference` is empty. Save that language first, with `POST /Users/Configuration`; the log says which one. `OriginalLanguage` counts as saved. Nothing else needs a language, and a language cleared afterwards leaves the stored document as it was.
+- 401 `unauthorized`: no token, or one jellyscale does not know.
 
 ## Playback
 
@@ -51,7 +55,7 @@ One rule on the server decides what is hidden, so every client agrees. The marks
 {"Index": 3, "Type": "Audio", "Language": "deu", "Hidden": true}
 ```
 
-The answers that are not 200 are PlaybackInfo's: 404 for an unknown or malformed item id, 400 for a body that is not a JSON object, 401 for no token or an unknown one, and 403 when a user id names anyone but the caller. A transcode that cannot start is answered 200 with no sources and `ErrorCode` `RateLimitExceeded`, as PlaybackInfo does.
+The statuses are PlaybackInfo's, each with its reason: 404 `not-found` for an unknown or malformed item id, 400 `invalid-body` for a body that is not a JSON object, 401 `unauthorized` for no token or an unknown one, and 403 `forbidden` when a user id names anyone but the caller. A 200 with no sources carries `Reason` and `Action`: `no-capacity` beside `ErrorCode` `RateLimitExceeded` for a transcode that cannot start, `not-found` for a media source the item does not have, and `nothing-to-play` for an item with no sources of its own, such as a series.
 
 ## A viewer's settings
 
@@ -73,7 +77,7 @@ Limit: a whole-object save from an older read, as jellyfin-web makes with `POST 
 
 Answers that are not 200:
 
-- 400, with the text of what is wrong, and nothing stored (a body with one good and one refused field stores neither): a body of 65,537 bytes or more, not JSON, empty, not an object, or followed by more text; a field that is not one of the 15 (names are exact: `subtitleMode` is unknown; `CastReceiverId` is refused), is named twice, is `null`, or has the wrong type (the switches are true or false, the lists are lists of ids); a `SubtitleMode` outside `Default`, `Always`, `OnlyForced`, `None`, `Smart` and 0 to 4; a list entry that is not an id.
-- 401: no token, or one jellyscale does not know.
+- 400 `invalid-body`, nothing stored (the log says why) (a body with one good and one refused field stores neither): a body of 65,537 bytes or more, not JSON, empty, not an object, or followed by more text; a field that is not one of the 15 (names are exact: `subtitleMode` is unknown; `CastReceiverId` is refused), is named twice, is `null`, or has the wrong type (the switches are true or false, the lists are lists of ids); a `SubtitleMode` outside `Default`, `Always`, `OnlyForced`, `None`, `Smart` and 0 to 4; a list entry that is not an id.
+- 401 `unauthorized`: no token, or one jellyscale does not know.
 
 A change is logged at Info with the user id and the names of the fields sent.

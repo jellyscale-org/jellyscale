@@ -197,12 +197,13 @@ func (s *Server) patchConfiguration(w http.ResponseWriter, r *http.Request) {
 	session := sessionOf(r)
 	raw, err := io.ReadAll(io.LimitReader(r.Body, maxConfigurationPatchBody+1))
 	if err != nil || len(raw) > maxConfigurationPatchBody {
-		http.Error(w, "body is unreadable or over 65,536 bytes", http.StatusBadRequest)
+		s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, "body is unreadable or over 65,536 bytes", "body is unreadable or over 65,536 bytes")
 		return
 	}
 	patch, names, err := parseConfigurationPatch(raw)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		// The parser's error names the field as sent. It goes to the client's Detail, never to the log.
+		s.refuseV1(w, r, http.StatusBadRequest, reasonInvalidBody, "invalid body", err.Error())
 		return
 	}
 	body, _ := json.Marshal(patch)
@@ -211,7 +212,9 @@ func (s *Server) patchConfiguration(w http.ResponseWriter, r *http.Request) {
 	err = s.Pool.QueryRow(r.Context(), `UPDATE users SET configuration = COALESCE(configuration, '{}'::jsonb) || $2::jsonb
 		WHERE id = $1::uuid RETURNING configuration`, session.User.ID, string(body)).Scan(&stored)
 	if errors.Is(err, pgx.ErrNoRows) {
-		http.NotFound(w, r)
+		// The account went away between the token check and the write. From the caller's side that is the same state
+		// as a token Postgres does not know: sign in again, rather than hunt for a title that never existed.
+		s.refuseV1(w, r, http.StatusUnauthorized, reasonUnauthorized, "unauthorized")
 		return
 	}
 	if err != nil {

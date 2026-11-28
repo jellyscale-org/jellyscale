@@ -12,7 +12,7 @@
     "A conformance check in CI, against a real Postgres, sends each served operation valid and refused requests. It fails on any answer the contract does not allow and on any route the contract does not declare. It is proven on the routes served today plus one declared operation.",
     "Every contract change reaches Octave as a from:jellyscale issue that says what changed and what each platform must do, before the server serves it (D-132). Checked in review."
   ],
-  "status": "todo",
+  "status": "done",
   "dependsOn": [],
   "source": "pivot-plan.md; D-107 to D-128",
   "notes": "Cross-project need (D-132): Its M1 part follows Octave's approved M1 designs where Octave has them (ASK-3). A capability no design has yet confirmed ships as preview and becomes stable when Octave confirms it, so the contract never waits on another product. Split by D-20261127-contract-split: M1 content is JS-216."
