@@ -1,0 +1,22 @@
+{
+  "id": "JS-311",
+  "title": "A TV is signed in by approving it from a device already signed in",
+  "phase": 1,
+  "description": "Serves PRODUCT.md: \"A TV is approved from a phone, never by typing a password with a remote\" and the road's stage 1, \"Android TV and phones first\". Without it the Android TV app can't sign in in stage 1 without breaking that promise (D-20261128-tv-approval-stage-one).",
+  "acceptanceCriteria": [
+    "A TV shows a short code; a person signed in on another device sees the same code with the device and app asking, approves it, and the TV is signed in as that person, with no name or password typed on the TV.",
+    "A code lives a short, stated time, the number waiting at once is bounded, and it approves only for the person who approves it.",
+    "Guessing codes is bounded without locking the person out of approving their own TV.",
+    "Approving from a web sign-in, and creating a sign-in or setting a password from one, needs a fresh sign-in the server checks, good for that one action, once, and only for minutes.",
+    "The TV's sign-in is a device sign-in like any other: it stays until signed out and ends as JS-305 says.",
+    "Proven with Media3's Android TV emulator approving from Octave Web in Chromium, or from a stand-in when Octave's builds don't yet do it."
+  ],
+  "domains": ["People", "Contract"],
+  "ux": true,
+  "core": true,
+  "strong": true,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-310"],
+  "notes": "Moved from stage 4 to stage 1 by the owner (D-20261128-tv-approval-stage-one). Second stop: with JS-308 to JS-311, Octave builds sign-in on the TV and the web and playback of films a device plays as they are."
+}

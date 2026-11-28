@@ -1,0 +1,21 @@
+{
+  "id": "JS-328",
+  "title": "Stage 6, running on Kubernetes: install, grow, upgrade, back up, see everything",
+  "phase": 6,
+  "description": "Serves PRODUCT.md's road, stage 6: \"Manifests and a Helm chart, growing and shrinking with demand, upgrades without downtime, backup.\" and \"Nothing is hidden.\" A placeholder for the stage, to be split into tasks of one capability each before anything in it is built.",
+  "acceptanceCriteria": [
+    "Plain manifests or a Helm chart, a Postgres and declared storage install it.",
+    "The cluster grows and shrinks with demand by itself, using the hardware the operator gives it.",
+    "Upgrades interrupt no one, and an Octave app nobody updated keeps working after one.",
+    "Backups are the Postgres and the stores the operator already backs up.",
+    "The operator sees who is watching what, how it is delivered and why, and follows any one playback from Play to its end; measurements don't grow with every job made."
+  ],
+  "domains": ["Platform", "Playback", "Making"],
+  "ux": true,
+  "core": true,
+  "strong": false,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-319"],
+  "notes": "Coarse placeholder: never build as it stands. Split it when stage 6 is planned."
+}

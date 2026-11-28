@@ -4,7 +4,7 @@ jellyscale is being rebuilt: a new plan and new server code, with only the video
 
 | | State |
 |---|---|
-| The new server | Nothing built. No plan yet: the guiding documents are being reviewed first |
+| The new server | Nothing built. The plan is in `tasks/`, in `tasks/order.txt` order |
 | The video engine | In the tree, as part of the earlier server's code, with its tests. Not yet separated from that code ([engine/gaps.md](engine/gaps.md)) |
 | The earlier server | The tag `pre-rebuild`, with its documents. Its code is still in the tree and still what `main` builds. Nothing new is built on it |
 | Octave | Asked to pause building against the earlier contract until a new one is published |

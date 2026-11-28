@@ -1,0 +1,23 @@
+{
+  "id": "JS-330",
+  "title": "Titles show the synopses, artwork and people kept in files beside them",
+  "phase": 5,
+  "description": "Serves PRODUCT.md: \"A title's information, artwork and the people in it come from files beside the films\" and \"Finding something to watch is easy ... artwork and the people in a title\". In stage 1 a title has only the name and year from its file name and a poster kept beside it. Octave found a TV home of bare file names hard to browse (#299).",
+  "acceptanceCriteria": [
+    "A title shows the information kept in the files beside it, read automatically as titles are added: its title, original and other titles, year, synopsis, genres and rating, and an episode's own title and synopsis. The design lists the file kinds covered and tests each.",
+    "A title shows the artwork kept beside it or in its show's or season's folder (poster, backdrop, logo, a season's and an episode's own picture).",
+    "A title lists the people in it with their roles, each with the photo kept beside the files where there is one; where there is none, the app is told so and shows the name alone.",
+    "Artwork and people's photos are served without a sign-in at an address that changes when the picture does, and reveal nothing else about the collection (D-20261128-picture-access).",
+    "A picture embedded in a film's file is reached only through a link given to a signed-in person's app, which stops working after a stated time (D-20261128-picture-access).",
+    "A changed file beside a title is seen at the next scan; a file that can't be read is reported to the operator and holds up nothing else.",
+    "The design states the storage and database cost of a collection of 10,000 titles."
+  ],
+  "domains": ["Collection", "Finding", "Contract"],
+  "ux": true,
+  "core": true,
+  "strong": false,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-306", "JS-319"],
+  "notes": "From stage 5's artwork and metadata, ordered right after stage 1 because a TV home is mostly titles and artwork (#299). Pages for each person stay in the backlog (BL-20261128-people-pages)."
+}

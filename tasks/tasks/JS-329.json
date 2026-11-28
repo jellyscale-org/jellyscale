@@ -1,0 +1,18 @@
+{
+  "id": "JS-329",
+  "title": "Stage 7, together: watching in step and moving a film between devices",
+  "phase": 7,
+  "description": "Serves PRODUCT.md: \"Watching together works. A group can watch the same film in step, and a viewer can move what they are watching to another of their devices.\" A placeholder for the stage, to be split into tasks of one capability each before anything in it is built.",
+  "acceptanceCriteria": [
+    "A group watches the same film in step, whichever servers each member reaches, and no member gets anything they would be refused alone.",
+    "A viewer moves what they are watching to another of their devices, which carries on from the same moment with the same picks (#106, in part)."
+  ],
+  "domains": ["Together", "Playback", "People"],
+  "ux": true,
+  "core": true,
+  "strong": true,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-319"],
+  "notes": "Coarse placeholder: never build as it stands. Split it when stage 7 is planned."
+}

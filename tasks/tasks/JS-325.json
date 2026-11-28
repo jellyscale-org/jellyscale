@@ -1,0 +1,18 @@
+{
+  "id": "JS-325",
+  "title": "The next episode and a film about to be resumed are ready before Play",
+  "phase": 3,
+  "description": "Serves PRODUCT.md: \"Play starts in seconds and keeps up. The next episode and a film they are about to resume are ready before they press Play.\" Nothing is made before it is asked for today.",
+  "acceptanceCriteria": [
+    "The next episode, and a film a viewer is about to resume, start as fast as a film sent as it is, even when they must be converted.",
+    "Getting ready never slows anything a viewer is waiting for, and what it makes counts toward the budget and goes when unused."
+  ],
+  "domains": ["Playback", "Making", "Place"],
+  "ux": true,
+  "core": true,
+  "strong": true,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-313", "JS-318"],
+  "notes": "Coarse: sharpened when stage 3 is planned in detail."
+}

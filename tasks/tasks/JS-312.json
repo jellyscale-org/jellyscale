@@ -1,0 +1,25 @@
+{
+  "id": "JS-312",
+  "title": "A film whose container or sound a device can't play keeps its picture as it is",
+  "phase": 1,
+  "description": "Serves PRODUCT.md: \"One it can almost play has only the part it can't handle converted\" and \"Any film plays, and plays well.\" The engine that makes streams is carried over here, built from the stored playback, with the audit's findings on jobs and workers addressed (D-20261128-audit-findings). Octave asked to be told when converted sound loses channels (#295).",
+  "acceptanceCriteria": [
+    "When a device plays a film's picture but not its container or its sound, the picture is sent as it is and only the rest is converted; the viewer is told what is converted and why, and converted sound with fewer channels than the film's says so.",
+    "What is made for a playback is decided by the stored playback, never by what a link or a request says.",
+    "A seek anywhere gives the right picture and sound from its first frame.",
+    "A film whose last frame stands alone is still sent with its picture as it is.",
+    "When the picture falls back to being re-encoded because it can't be sent as it is after all, playback carries on in the same codec without a frozen picture; for a film whose sound starts before its picture, the sound stays in step from the first frame.",
+    "Work goes to a worker with room for it; when none has room the viewer is told at Play, and nothing stalls on one machine while another sits idle.",
+    "A job whose hold is renewed in time is never given up, under one rule for every kind of job; a worker takes work of any kind only while it holds its place in the cluster; a job waiting its turn never loses its working space.",
+    "The database load of workers waiting for and doing work is measured at the product's scale and stated.",
+    "Proven on Media3 on Android TV and phone emulators and on hls.js in Chromium, with the time from Play to the first picture stated; the design states what one playback stores and for how long."
+  ],
+  "domains": ["Making", "Playback", "Platform"],
+  "ux": true,
+  "core": true,
+  "strong": true,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-308"],
+  "notes": "Audit group 2 (jobs, leases) lands here, before anything relies on helpers (JS-313). The engine's failover machinery comes with it; proving it end to end on Octave's players is stage 2 (JS-320). Storage: a stream made this way stores about the film's own size while it is used, within the budget of JS-318; the design gives the figure."
+}

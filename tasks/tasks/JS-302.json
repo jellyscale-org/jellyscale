@@ -1,0 +1,24 @@
+{
+  "id": "JS-302",
+  "title": "An operator declares where films are kept, on local disk or object storage, as equals",
+  "phase": 1,
+  "description": "Serves PRODUCT.md: \"storage chosen for each place films are kept, local disks or S3-compatible object storage, with neither second-class\" and goal 4, \"Local disks and object storage are equals.\" Every other part reads and writes through storage, so it is carried over first, with the engine's storage code and the audit's storage findings addressed (D-20261128-audit-findings).",
+  "acceptanceCriteria": [
+    "An operator declares each place films are kept, and the place for what the server makes, in configuration, on local disk or S3-compatible object storage; the same behaviour is proven against local disk and two object stores.",
+    "A storage location that can't be read unambiguously, or that holds a secret, is refused at startup with a message that names the problem and not the value; no secret from it is ever stored or logged.",
+    "No storage operation reaches outside the place it was given.",
+    "A folder is never treated as a file.",
+    "Finding out whether something is stored, and its size and version, never downloads it and never lists the folder around it.",
+    "Every storage request ends within a stated time; a store that accepts a request and never answers fails it with a reason instead of holding it.",
+    "A read whose connection drops partway carries on where it was; a fault of the store is always reported as the store's, never as a fault of the file.",
+    "Store credentials come only from the environment."
+  ],
+  "domains": ["Platform", "Collection", "Making"],
+  "ux": true,
+  "core": true,
+  "strong": false,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-301"],
+  "notes": "Audit group 1, which the audit and the product owner put first. The design states the requests one stored-or-not question and one read cost on object storage."
+}

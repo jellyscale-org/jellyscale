@@ -48,4 +48,3 @@ Known questions the first designs must answer. None is decided here.
 - How the picture steps with the connection: the engine makes one re-encoded quality today ([docs/engine/gaps.md](docs/engine/gaps.md)).
 - Audio as its own stream, so a language switch doesn't make the picture again. The join proof must be made again for it.
 - How `stream` keeps serving one playback's stored bytes while Postgres is away, without honouring an account's credential from memory.
-- Which pictures need a sign-in, and whether outside metadata is allowed (PRODUCT.md, Open questions).

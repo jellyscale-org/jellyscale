@@ -1,0 +1,19 @@
+{
+  "id": "JS-323",
+  "title": "Switching audio or subtitles mid-film is quick and never costs the picture",
+  "phase": 3,
+  "description": "Serves PRODUCT.md: \"Changing audio or subtitles mid-film is quick, doesn't restart the picture, and never costs picture quality.\" Today each audio track is made with its own picture, and a subtitle drawn into the picture forces a re-encode.",
+  "acceptanceCriteria": [
+    "Changing the audio track mid-film takes moments and doesn't restart or re-make the picture.",
+    "Choosing a subtitle never lowers the picture's quality or turns a film sent as it is into a re-encode, on any of Octave's players.",
+    "The design states what this costs in storage and CPU."
+  ],
+  "domains": ["Playback", "Making"],
+  "ux": true,
+  "core": true,
+  "strong": true,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-315", "JS-316"],
+  "notes": "Coarse: sharpened when stage 3 is planned in detail."
+}

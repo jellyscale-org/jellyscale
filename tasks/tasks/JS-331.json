@@ -1,0 +1,26 @@
+{
+  "id": "JS-331",
+  "title": "An operator can have what the files lack filled in from The Movie Database",
+  "phase": 5,
+  "description": "Serves PRODUCT.md: \"An operator who turns it on can have what those files lack filled in from The Movie Database: off until they do, the files always winning, nothing to upload by hand.\" (D-20261128-outside-metadata). Without it, a collection with no files beside its films has no synopses, artwork or photos of people, and an operator can't add them except one by one.",
+  "acceptanceCriteria": [
+    "It is off until the operator turns it on with their own key, in configuration.",
+    "When it is on, each title's missing information, artwork and people's photos are filled in from The Movie Database automatically as titles are added; what files beside the film hold always wins.",
+    "To find a title, the server sends an identifier from its files when there is one, else its title and year, and nothing about who watches what.",
+    "The server fetches and serves the pictures itself; no viewer's device contacts The Movie Database.",
+    "An app can tell which titles show The Movie Database's data, so it can show the credit The Movie Database requires.",
+    "Nothing from The Movie Database is kept longer than six months: it is refreshed before then, and turning the feature off deletes all of it.",
+    "A title it can't match, or matches wrongly, is reported to the operator, who corrects it with an identifier in a file beside the film.",
+    "The Movie Database being slow or unreachable never holds up a scan, browsing or playback.",
+    "The operator documentation states what is sent, what is kept and for how long, and that The Movie Database's free use is for non-commercial use only.",
+    "The design states the storage, network and database cost for a collection of 10,000 titles."
+  ],
+  "domains": ["Collection", "Finding", "Contract", "Platform"],
+  "ux": true,
+  "core": true,
+  "strong": false,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-330"],
+  "notes": "Octave must show The Movie Database's logo and its notice that the app is not endorsed by it; ask on Octave's board. Pictures follow D-20261128-picture-access: posters, backdrops and photos of people may be public."
+}

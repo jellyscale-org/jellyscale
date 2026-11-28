@@ -1,0 +1,19 @@
+{
+  "id": "JS-320",
+  "title": "A machine lost mid-film costs at most a moment of buffering",
+  "phase": 2,
+  "description": "Serves PRODUCT.md: \"Failures are invisible. A machine that dies mid-film costs at most a moment of buffering, never the stream, the place in the film or the subtitles.\" and goal 2. The engine's failover is carried over in stage 1 but not proven with the new server's playback on Octave's players.",
+  "acceptanceCriteria": [
+    "Losing any one machine running any role mid-film costs a viewer at most a moment of buffering, never the stream, the place or the subtitles, shown on Media3 and in a browser.",
+    "A worker removed on purpose while films play costs no viewer a stall.",
+    "The operator sees what was lost, when, and what took over."
+  ],
+  "domains": ["Playback", "Making", "Platform"],
+  "ux": true,
+  "core": true,
+  "strong": true,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-313", "JS-315"],
+  "notes": "Coarse: sharpened when stage 2 is planned in detail."
+}

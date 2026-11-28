@@ -1,0 +1,19 @@
+{
+  "id": "JS-324",
+  "title": "The operator's upload is shared fairly, household first",
+  "phase": 3,
+  "description": "Serves PRODUCT.md: \"The upload is shared fairly. The operator says how much of their upload remote viewers may use. When it is full, streams step down to fit instead of anyone being refused, and the household comes before friends, and friends before a community.\" Nothing shares the upload today.",
+  "acceptanceCriteria": [
+    "The operator states how much upload remote viewers may use; remote streams together stay within it.",
+    "When it is full, streams step down to fit instead of anyone being refused, the household before friends and friends before a community.",
+    "A viewer whose picture stepped down for this can see why."
+  ],
+  "domains": ["Playback", "People"],
+  "ux": true,
+  "core": true,
+  "strong": true,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-322"],
+  "notes": "Coarse: sharpened when stage 3 is planned in detail. Needs circles (household, friends, community), which come with stage 4's people work; stage 3's detail settles which comes first."
+}

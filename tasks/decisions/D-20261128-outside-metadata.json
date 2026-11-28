@@ -1,0 +1,12 @@
+{
+  "id": "D-20261128-outside-metadata",
+  "date": "2026-11-28",
+  "by": "owner",
+  "task": "PRODUCT.md, open question 2 (outside metadata); JS-330, JS-331",
+  "brief": "May an operator turn on an outside service for film information and artwork? The owner asked how cast photos could be had without uploading them one by one. The lead proposed an optional feature: files beside a film always win; filling what is missing from The Movie Database (TMDB) is off until the operator turns it on, with the operator's own free key; the server matches by identifiers already in the files when present, else by title and year, and sends nothing about who watches what; the server downloads and serves the pictures itself, so no viewer's device contacts TMDB; it happens automatically as titles are added, with no per-item upload; where neither has a photo, the name shows with a placeholder. The lead then asked: \"Do you want the optional TMDB feature?\" The lead reported TMDB's terms: free only for non-commercial use; the app must show TMDB's logo and its notice that it is not endorsed by TMDB; its data may not be kept longer than six months; on ending use, its data and pictures must be deleted.",
+  "tradeoff": "An operator who turns it on sends TMDB what identifies each film (an identifier from its files, else its title and year): a second thing that leaves the operator's servers, chosen by the operator. Octave must credit TMDB wherever its data shows. An operator whose use is commercial needs their own arrangement with TMDB.",
+  "decision": "change",
+  "serves": "PRODUCT.md: \"Their data is theirs\" and \"Finding something to watch is easy ... artwork\".",
+  "entry": "The owner: \"Yes\", to the optional TMDB feature as the lead proposed it. Files beside the films come first, the operator's choice is off by default, nothing about viewers is sent, the server fetches and serves TMDB's pictures itself, TMDB's data is refreshed before it is six months old and deleted when the operator turns the feature off. Planned right after stage 1, with metadata and artwork from files beside the films (JS-330, JS-331); the owner did not ask for cast photos sooner.",
+  "replaces": []
+}

@@ -2,7 +2,7 @@
 
 The plan, the backlog and the decisions. [PRODUCT.md](../PRODUCT.md) says what to build; [docs/status.md](../docs/status.md) says what is built.
 
-The plan is empty: jellyscale is being rebuilt, and the new plan is written after the owner has reviewed the guiding documents (D-20261128-start-net-new). The earlier plan, backlog and decisions are in the tag `pre-rebuild`, as history and never as direction.
+jellyscale is being rebuilt (D-20261128-start-net-new), to the plan here (D-20261128-first-plan). The earlier plan, backlog and decisions are in the tag `pre-rebuild`, as history and never as direction.
 
 ## Layout
 

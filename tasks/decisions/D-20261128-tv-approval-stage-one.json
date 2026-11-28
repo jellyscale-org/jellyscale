@@ -1,0 +1,12 @@
+{
+  "id": "D-20261128-tv-approval-stage-one",
+  "date": "2026-11-28",
+  "by": "owner",
+  "task": "PRODUCT.md, The road there; JS-310, JS-311, JS-317",
+  "brief": "The product owner asked whether PRODUCT.md's road may list \"TV sign-in from a phone\" in stage 1 instead of stage 4, since stage 1 says \"Android TV and phones first\" and a TV is never to ask for a password typed with a remote. Octave asked for its web client, with the approval page, in every server before its Android TV app first ships (#318).",
+  "tradeoff": "Three tasks (Octave Web's sign-in, TV approval and shipping Octave Web) join stage 1, so the stage takes longer to finish. Nothing a viewer has is given up.",
+  "decision": "change",
+  "serves": "PRODUCT.md: \"A TV is approved from a phone, never by typing a password with a remote.\" and the road, stage 1: \"Android TV and phones first.\"",
+  "entry": "The owner: \"Yeah, I totally approve moving TV sign-in to stage one.\" PRODUCT.md's road lists a TV approved from a phone in stage 1 and no longer in stage 4. The plan carries TV approval (JS-311), the web sign-in a TV is approved from until Octave's phone app exists (JS-310), and Octave Web shipped in every install (JS-317) in stage 1.",
+  "replaces": []
+}

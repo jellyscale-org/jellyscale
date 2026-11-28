@@ -1,0 +1,10 @@
+{
+  "id": "BL-20261128-people-pages",
+  "date": "2026-11-28",
+  "title": "Pages for the people in a film, and finding titles by them",
+  "source": "Octave #107",
+  "description": "A viewer would open a page for an actor or director and see their titles in the collection. PRODUCT.md doesn't promise it. The people in a title, with their photos, are planned on its details (JS-330, JS-331); more like this and genre filters from #107 are planned (JS-327).",
+  "bringBack": "When stage 5 is split into tasks, once titles list their people (JS-330, JS-331).",
+  "status": "open",
+  "notes": ""
+}

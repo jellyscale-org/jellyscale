@@ -1,0 +1,22 @@
+{
+  "id": "JS-318",
+  "title": "Everything the server makes stays within one storage budget the operator sets",
+  "phase": 1,
+  "description": "Serves PRODUCT.md: \"Storage stays bounded. The collection is stored once, as it is. Everything made from it is made when a viewer needs it, kept while it is used, and held within a budget the operator sets.\" The engine's cleanup is carried over here, with the audit's cleanup findings addressed (D-20261128-audit-findings).",
+  "acceptanceCriteria": [
+    "An operator sets one storage budget for everything the server makes; what is made stays within it, and what nobody has used for a stated time is removed.",
+    "Nothing a playback in progress needs is removed for the budget; when what is in use alone exceeds it, the operator is told.",
+    "A viewer who starts a film at the moment its made pieces are being removed plays without a restart.",
+    "Each kind of cleanup runs once across the cluster, whatever the number of workers, and judges what to keep by one rule from start to end.",
+    "The operator can see what is made, its size against the budget, and why it is kept.",
+    "A fresh install with nothing made yet reports no error from cleanup."
+  ],
+  "domains": ["Making", "Platform"],
+  "ux": true,
+  "core": true,
+  "strong": false,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-312"],
+  "notes": "Versions made ahead are a later choice of the operator's and go first under the budget when they come (Making rule 5)."
+}

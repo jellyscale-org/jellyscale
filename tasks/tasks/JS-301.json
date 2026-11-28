@@ -1,0 +1,24 @@
+{
+  "id": "JS-301",
+  "title": "Octave reaches a new jellyscale server and reads its published contract",
+  "phase": 1,
+  "description": "Serves PRODUCT.md, The API: \"One API, jellyscale's own, versioned and published as one contract between jellyscale and Octave\" and \"Every refusal and failure carries a reason a client can explain.\" Nothing of the new server exists: no process, no contract, no list of reasons.",
+  "acceptanceCriteria": [
+    "An app reaches a running server and, without signing in, learns which contract versions it serves and that it is jellyscale.",
+    "The contract is published with the server; every operation in it says who may call it, and none is open unless the contract says so and why.",
+    "Every refusal an app can receive carries a reason from one published list, says what the app can do next, and is answered as a refusal, never inside a success.",
+    "An app that meets a field, reason or action it doesn't know keeps working.",
+    "Yes/no values and names in requests mean the same whatever their capitals.",
+    "An operator starts the server with a Postgres and one configuration; when either is wrong the server says plainly what and where, without showing any secret, and doesn't start half-way.",
+    "Several replicas started at the same moment on an empty database all come up and agree.",
+    "Octave gets an issue describing the first contract and what each platform must do."
+  ],
+  "domains": ["Contract", "Platform"],
+  "ux": true,
+  "core": true,
+  "strong": false,
+  "small": false,
+  "status": "todo",
+  "dependsOn": [],
+  "notes": "The foundation every later task adds to. Any connection an app keeps open to the server, if the contract has one, is bounded in how often it may make the server write and closes when its sign-in ends."
+}

@@ -1,0 +1,10 @@
+{
+  "id": "BL-20261128-typo-tolerant-search",
+  "date": "2026-11-28",
+  "title": "Search forgives a misspelled title",
+  "source": "Octave #116",
+  "description": "A viewer who misspells a title would still find it. PRODUCT.md promises search from a title's first letters (JS-327), not typo tolerance.",
+  "bringBack": "Searches on the new server are seen finding nothing for titles the collection has, often enough to matter, once search from first letters is built.",
+  "status": "open",
+  "notes": "The ordering and 'why it matched' parts of #116 are planned on JS-327."
+}

@@ -1,0 +1,21 @@
+{
+  "id": "JS-319",
+  "title": "The test installation's viewers keep their accounts and watch history on the new server",
+  "phase": 1,
+  "description": "Serves PRODUCT.md: \"The people watching on the current test installation keep their accounts and watch history when the new server replaces it\" (D-20261128-rewrite-approved). The test installation runs the earlier server until the new one can replace it.",
+  "acceptanceCriteria": [
+    "Every account of the test installation signs in to the new server with the password its person uses today; no device's earlier sign-in is carried over, so every device signs in again.",
+    "Every person's places, played marks and Continue watching are the same on the new server for every title found on both.",
+    "A title whose history can't be matched is reported to the operator with its reason, and its history is kept, not dropped.",
+    "Carrying over reads the earlier server's data and changes none of it, can be run against a copy first, and can be run again with the same result.",
+    "The operator documentation says how to carry over and how to go back."
+  ],
+  "domains": ["People", "Place", "Collection"],
+  "ux": true,
+  "core": true,
+  "strong": true,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-303", "JS-305", "JS-309"],
+  "notes": "End of stage 1. Replacing the test installation is a change to the owner's servers and needs the owner's approval, and Octave's apps to sign in with; it is not part of this task. A general import from other media servers is not promised (D-20261128-rewrite-approved)."
+}

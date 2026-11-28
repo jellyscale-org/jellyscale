@@ -1,0 +1,10 @@
+{
+  "id": "BL-20261128-continue-watching-cutoff",
+  "date": "2026-11-28",
+  "title": "Continue watching leaves out titles not played for longer than a viewer chooses",
+  "source": "Octave #101 (comment)",
+  "description": "A viewer whose Continue watching holds titles they abandoned long ago would see them drop off by themselves after a time they choose. Taking a title off by hand (JS-309) already lets them clear it.",
+  "bringBack": "Viewers on the test installation, once on the new server, are seen keeping stale titles they don't take off by hand.",
+  "status": "open",
+  "notes": ""
+}

@@ -1,0 +1,19 @@
+{
+  "id": "JS-317",
+  "title": "A fresh install opens Octave Web in a browser, with nothing copied in",
+  "phase": 1,
+  "description": "Serves PRODUCT.md: \"Each release of jellyscale ships a specific, tested release of Octave Web\" and \"A fresh install opens in a browser.\" Octave asked for every server to serve Octave Web, with its TV approval page, by the time its Android TV app first ships (#318).",
+  "acceptanceCriteria": [
+    "A fresh install serves Octave Web at the server's address, with nothing for the operator to copy in or configure.",
+    "Each jellyscale release names the Octave Web release it ships, and that pair was tested together: signing in, approving a TV, browsing Films and Shows and playing a film in Chromium.",
+    "An upgrade of jellyscale that changes the Octave Web it ships never leaves a viewer's open page unable to sign in again."
+  ],
+  "domains": ["Contract", "Platform"],
+  "ux": true,
+  "core": false,
+  "strong": false,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-310", "JS-311"],
+  "notes": "Needs an Octave Web release that works with the new contract; ask Octave for it on its issue board, don't work around it. Must land before Octave's Android TV app first ships (#318)."
+}

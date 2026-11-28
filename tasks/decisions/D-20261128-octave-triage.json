@@ -1,0 +1,12 @@
+{
+  "id": "D-20261128-octave-triage",
+  "date": "2026-11-28",
+  "by": "product-owner",
+  "task": "Octave's open requests #101 to #321",
+  "brief": "Every open request from Octave, untriaged for the new plan; several ask for behaviour in the shape of another server's routes, which the new server does not have.",
+  "tradeoff": "Declined for now, kept in the backlog: a Continue watching cutoff by date, typo-tolerant search, review scores, Home rows a viewer arranges, trailers, pages for people in films, and controlling one device from another. Viewers can clear Continue watching by hand meanwhile; the rest are not promised by PRODUCT.md.",
+  "decision": "change",
+  "serves": "PRODUCT.md: \"Octave has the server it needs, through one API designed for the best viewer experience\" and \"Another server's API or features\" is not part of the product.",
+  "entry": "Planned in stage 1: #227, #234, #288, #114 (marks on tracks) on JS-306; #101 and #233 on JS-309; #222 and #224 on JS-308; #295 on JS-312; #117 on JS-316; #301 on JS-310 and JS-311; #318 on JS-317 with JS-311; #299 in part (names and posters, JS-303). Planned right after stage 1: #299 the rest and the people in a title with their photos, from files beside the films and, when the operator turns it on, The Movie Database (JS-330, JS-331). Planned in later stages: #296 (JS-326); #103, #105 (pictures through temporary links, D-20261128-picture-access), #107 in part, #114 filters, #116 in part, #228, #319 in part (JS-327); #106 in part (JS-329). Backlog: #101's date cutoff, #116's typo tolerance, #319's Home rows, #320, #321, #107's people pages, #106's remote control. Nothing is built in another server's shapes; each need is met on jellyscale's own contract.",
+  "replaces": []
+}

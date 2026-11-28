@@ -21,5 +21,5 @@ Serve requests; decide access; know a viewer.
 3. A track's identity names one track of one revision of a file, or nothing. After a file is replaced, an old identity is refused with a reason; it never silently names another track.
 4. A viewer's pick of a track is stored as a description (kind, language, forced, for the deaf, commentary), so it follows them to the next episode and to another version.
 5. A place that can't be reached is never taken for an empty one: no title is removed because storage was missing.
-6. What the collection knows about a file comes from the file and the files beside it. (Outside metadata is an open question: PRODUCT.md.)
+6. What the collection knows about a file comes from the file and the files beside it, which always win. TMDB fills what they lack only when the operator turns it on (D-20261128-outside-metadata).
 7. Collection records facts about a title. It records nothing about who may see it beyond the marks People reads.

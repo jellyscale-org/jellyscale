@@ -1,0 +1,25 @@
+{
+  "id": "JS-303",
+  "title": "The films and shows in each place become titles, named as a person reads them",
+  "phase": 1,
+  "description": "Serves PRODUCT.md: \"Films and Shows are the ways in, each holding everything the viewer may see, however the operator keeps the files\", \"Several files of one film are one title\" and \"one removed or renamed keeps everyone's history\". There is no collection in the new server.",
+  "acceptanceCriteria": [
+    "A film or episode kept in a declared place becomes a title when the server scans, which happens at start and whenever the operator asks.",
+    "Films are named with their year, and shows with their seasons and episodes in order, from the file and folder names of the common ways collections are kept; the design lists the ways covered and each is tested.",
+    "Several files of one film are one title with several versions; a different cut of a film is a title of its own, linked to it.",
+    "Trailers, extras and samples kept beside a film are never listed as films or episodes.",
+    "A title keeps its identity, and everything attached to it, when its file is renamed, moved within its place, rescanned or absent for a while; it is removed only after a stated time absent.",
+    "A place that can't be reached, or appears empty when it held films, is never taken for an empty one: no title is removed because of it.",
+    "Each scan reports to the operator what it found, what it couldn't read and why.",
+    "A poster kept beside a film or in a show's folder is the title's picture; no picture is made from the film itself in this task.",
+    "The design states the time and database cost of scanning and rescanning a collection of 10,000 files on each kind of storage."
+  ],
+  "domains": ["Collection", "Platform"],
+  "ux": true,
+  "core": true,
+  "strong": false,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-302"],
+  "notes": "Synopses, other artwork and the people in a title come right after stage 1 (JS-330, JS-331); new films appearing without a scan request is stage 5 (JS-327). A picture made from a film or taken out of its file reaches apps only through a temporary link (D-20261128-picture-access); none is made in this task."
+}

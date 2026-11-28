@@ -1,0 +1,23 @@
+{
+  "id": "JS-309",
+  "title": "One watch history per person, and Continue watching the same on every device",
+  "phase": 1,
+  "description": "Serves PRODUCT.md: \"Their place is always one press away. Each person has one watch history, whichever device or version they watched. Continue watching, with each show's next episode, is the same on every device, and a title can be taken off it without losing the place.\" and \"Stop on the TV and carry on from the phone at the same moment.\" Octave asked for a show to come back when a new episode arrives (#101) and for taking a title off Continue watching (#233).",
+  "acceptanceCriteria": [
+    "Each person has one place and one played mark per title, whichever device or version they watched; an older or late report never undoes a newer one.",
+    "A place reached on one device is where another device starts within seconds.",
+    "A viewer can mark a title played or not played.",
+    "Continue watching lists the titles in progress and each show's next episode, newest first, the same on every device.",
+    "A show the viewer had caught up on comes back when a new episode arrives.",
+    "A viewer can take a title off Continue watching and keep its place; it comes back when they watch it again.",
+    "Nothing shows one viewer what another watched."
+  ],
+  "domains": ["Place", "Finding", "Contract"],
+  "ux": true,
+  "core": true,
+  "strong": false,
+  "small": false,
+  "status": "todo",
+  "dependsOn": ["JS-308"],
+  "notes": "Profiles on a shared TV are stage 4; until then a person is their account's one profile."
+}
