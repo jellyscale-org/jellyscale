@@ -11,7 +11,7 @@ import (
 
 // The capture of what a real Jellyfin 12.4 does with a viewer's settings (JS-116),
 // compat/captures/user-configuration-12.4.json, read for the tests that hold jellyscale to it.
-// The file's layout is described in test/differential/capture_user_configuration.py.
+// The file's layout is described in compat/captures/user-configuration-12.4.md.
 
 // ConfigStep is one request of a case: who sends it, by which route, naming whom.
 type ConfigStep struct {

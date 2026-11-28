@@ -314,6 +314,9 @@ func TestSearchHintsOfAFilmASeriesAndAnEpisodeCarryTheFieldsClientsRead(t *testi
 	if response.StatusCode != 200 {
 		t.Fatalf("status %d", response.StatusCode)
 	}
+	if contentType := response.Header.Get("Content-Type"); !strings.Contains(strings.ToLower(contentType), "json") {
+		t.Fatalf("Content-Type is %q, want JSON (the answer %s)", contentType, body)
+	}
 	var doc map[string]any
 	if err := json.Unmarshal(body, &doc); err != nil {
 		t.Fatal(err)

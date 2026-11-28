@@ -11,8 +11,8 @@ import (
 )
 
 // The capture of which subtitle a real Jellyfin 12.4 names as DefaultSubtitleStreamIndex (JS-041),
-// compat/captures/subtitles-default-12.4.json, read for the tests that hold jellyscale to it. The file's layout is made by
-// test/differential/capture_subtitles_default.py and read in compat/captures/subtitles-default-12.4.md. Every index in it
+// compat/captures/subtitles-default-12.4.json, read for the tests that hold jellyscale to it. The file's layout is
+// described in compat/captures/subtitles-default-12.4.md. Every index in it
 // is Jellyfin's: the subtitle files first, then the film's own streams.
 
 // SubtitleTrack is one subtitle of a captured film as Jellyfin listed it. Tag is the language the file was made with

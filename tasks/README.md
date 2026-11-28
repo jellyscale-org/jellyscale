@@ -20,7 +20,7 @@ One file per record, JSON, `jq --indent 2`, the file's `id` equals its name. The
 - **status**: done | in_progress | todo | dropped
 - **order**: `tasks/order.txt`, open task ids in priority order; the first open one is next; only the product owner changes it
 - **delivery**: each task goes through the build workflow (`.claude/workflows/build.js`): checks written first and locked, one implementer until they pass, QA and one blind adversarial review with evidence-gated findings, one fix round; then PR, CI, merge, redeploy the dogfood
-- **differential**: a task that adds or changes a route jellyfin-web or another client calls adds its requests to `test/differential/requests.yaml`, and any difference it keeps to `compat/differences.yaml` with a reason
+- **behaviour**: a task that adds or changes a route names the answer it must give in its checks; a recorded Jellyfin observation stays in `compat/captures/`, and a deliberate difference is a named case in the test that replays it
 
 ## phases
 
